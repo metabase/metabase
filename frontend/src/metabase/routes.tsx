@@ -30,11 +30,6 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
-import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
-import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
-import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
@@ -42,7 +37,6 @@ import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirec
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
-import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
@@ -54,20 +48,7 @@ import {
 } from "metabase/plugins";
 import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
 import type { State } from "metabase/redux/store";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
-import TableListContainer from "metabase/reference/databases/TableListContainer";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { getReferenceRoutes } from "metabase/reference/routes";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
@@ -136,6 +117,25 @@ const metabotQueryBuilder = () =>
  * Documents, in their own chunk. It carries the rich text editing stack, which
  * nothing outside the document page needs on first paint.
  */
+/**
+ * The dashboard, in its own chunk. Its three modal children defer separately, so
+ * opening one does not depend on the page chunk having arrived.
+ */
+const dashboardApp = () =>
+  import("metabase/dashboard/containers/DashboardApp/DashboardApp").then(
+    ({ DashboardApp }) => ({ Component: DashboardApp }),
+  );
+
+const automaticDashboardApp = () =>
+  import("metabase/dashboard/containers/AutomaticDashboardApp").then(
+    ({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }),
+  );
+
+const metricsViewerPage = () =>
+  import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
+    Component: MetricsViewerPage,
+  }));
+
 const documentPage = () =>
   import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
     Component: DocumentPageOuter,
@@ -166,6 +166,9 @@ registerPagePrefetch("/document/", documentPage);
 // against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
 // in exchange for the sidesheet already being there when it is opened.
 registerPagePrefetch("/document/", commentsSidesheet);
+registerPagePrefetch("/dashboard/", dashboardApp);
+registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
+registerPagePrefetch("/explore", metricsViewerPage);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -324,20 +327,36 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "dashboard/:slug",
-                element: <DashboardApp />,
-                children: toRouteObjects(
-                  <>
-                    {modalRoute("move", DashboardMoveModalConnected, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("copy", DashboardCopyModalConnected, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("archive", ArchiveDashboardModalConnected, {
-                      noWrap: true,
-                    })}
-                  </>,
-                ),
+                lazy: dashboardApp,
+                children: [
+                  lazyModalRoute(
+                    "move",
+                    () =>
+                      import("metabase/dashboard/components/DashboardMoveModal").then(
+                        ({ DashboardMoveModalConnected }) =>
+                          DashboardMoveModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                  lazyModalRoute(
+                    "copy",
+                    () =>
+                      import("metabase/dashboard/components/DashboardCopyModal").then(
+                        ({ DashboardCopyModalConnected }) =>
+                          DashboardCopyModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                  lazyModalRoute(
+                    "archive",
+                    () =>
+                      import("metabase/dashboard/containers/ArchiveDashboardModal").then(
+                        ({ ArchiveDashboardModalConnected }) =>
+                          ArchiveDashboardModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                ],
               },
 
               {
@@ -420,7 +439,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 ],
               },
 
-              { path: "explore", element: <MetricsViewerPage /> },
+              { path: "explore", lazy: metricsViewerPage },
 
               {
                 path: "table",
@@ -434,62 +453,10 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               // INDIVIDUAL DASHBOARDS
-              { path: "/auto/dashboard/*", element: <AutomaticDashboardApp /> },
+              { path: "/auto/dashboard/*", lazy: automaticDashboardApp },
 
               // REFERENCE
-              {
-                path: "/reference",
-                children: [
-                  { index: true, element: redirect("/reference/databases") },
-                  { path: "segments", element: <SegmentListContainer /> },
-                  {
-                    path: "segments/:segmentId",
-                    element: <SegmentDetailContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/fields",
-                    element: <SegmentFieldListContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/fields/:fieldId",
-                    element: <SegmentFieldDetailContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/questions",
-                    element: <SegmentQuestionsContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/revisions",
-                    element: <SegmentRevisionsContainer />,
-                  },
-                  { path: "databases", element: <DatabaseListContainer /> },
-                  {
-                    path: "databases/:databaseId",
-                    element: <DatabaseDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables",
-                    element: <TableListContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId",
-                    element: <TableDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/fields",
-                    element: <FieldListContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/fields/:fieldId",
-                    element: <FieldDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/questions",
-                    element: <TableQuestionsContainer />,
-                  },
-                  { path: "glossary", element: <GlossaryContainer /> },
-                ],
-              },
+              ...getReferenceRoutes(),
 
               // ACCOUNT
               ...toRouteObjects(getAccountRoutes(store, IsAuthenticated)),

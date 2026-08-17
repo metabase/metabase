@@ -15,7 +15,6 @@ type SliceReducer = Reducer<SliceState>;
  * `metabase/entities/UPDATE` (see `hydrateMetadataStore`).
  */
 const ENTITY_SLICE_NAMES = [
-  "collections",
   "dashboards",
   "databases",
   "fields",

@@ -83,6 +83,10 @@ export function addAlertModalTests(
         withinModal.queryByText("Where do you want to send the results?"),
       ).not.toBeInTheDocument();
       expect(withinModal.getByText("More options")).toBeVisible();
+
+      await userEvent.click(withinModal.getByTestId("select-time"));
+      await userEvent.click(screen.getByRole("option", { name: "8:00" }));
+
       await userEvent.click(withinModal.getByRole("button", { name: "Done" }));
 
       const createNotificationRequest = (await findRequests("POST")).find(

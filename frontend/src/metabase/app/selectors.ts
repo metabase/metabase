@@ -4,7 +4,7 @@ import {
   getDashboard,
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
-} from "metabase/dashboard/selectors";
+} from "metabase/dashboard/shell-selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";

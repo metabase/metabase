@@ -19,6 +19,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -38,6 +39,7 @@
     "anthropic"  claude/claude
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
+    "google"     google/google
     "mistral"    mistral/mistral
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
@@ -52,6 +54,7 @@
     "anthropic"  claude/list-models
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
+    "google"     google/list-models
     "mistral"    mistral/list-models
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
