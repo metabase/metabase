@@ -5,6 +5,7 @@
     :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
@@ -134,15 +135,20 @@
 
 (defn- table-measure-names
   "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
-  A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+  A measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]].
+
+  The `measure` table was introduced in v59; a CLI run pointed at an older appdb falls back to
+  no measures via [[appdb-source/with-missing-relation-fallback]]."
   [table-ids]
-  (into {}
-        (mapcat (fn [chunk]
-                  (u/group-by :table_id :name
-                              (t2/select [:model/Measure :table_id :name]
-                                         :archived false
-                                         :table_id [:in chunk]))))
-        (partition-all in-clause-chunk-size table-ids)))
+  (appdb-source/with-missing-relation-fallback
+    ::measure-names {}
+    #(into {}
+           (mapcat (fn [chunk]
+                     (u/group-by :table_id :name
+                                 (t2/select [:model/Measure :table_id :name]
+                                            :archived false
+                                            :table_id [:in chunk]))))
+           (partition-all in-clause-chunk-size table-ids))))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
@@ -164,12 +170,15 @@
    :measure-names (get measure-names id [])})
 
 (defn- library-collection-ids
-  "Set of collection IDs that make up the Library (root + descendants). Empty when the instance has no Library yet."
+  "Set of collection IDs that make up the Library (root + descendants). Empty when the instance
+   has no Library yet, or when the CLI is pointed at an appdb older than the Library feature."
   []
-  (into #{}
-        (when-let [root (collections/library-collection)]
-          ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
-          (cons (:id root) (collections/descendant-ids root)))))
+  (appdb-source/with-missing-relation-fallback
+    ::library-collection #{}
+    #(into #{}
+           (when-let [root (collections/library-collection)]
+             ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
+             (cons (:id root) (collections/descendant-ids root))))))
 
 (defn- metabot-collection-scope-ids
   "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
@@ -184,14 +193,23 @@
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
-  "Set of Card ids whose most-recent moderation review is `verified`."
+  "Set of Card ids whose most-recent moderation review is `verified`.
+
+   Tolerates missing schema (very old appdbs) by falling back to an empty set. Because the
+   downstream consumer requires both `curated-only?` to hold AND `verified-ids` to be non-empty
+   before installing the metabot-card predicate, an empty fallback under `curated-only? true`
+   short-circuits to no predicate and the metabot Card catalog becomes empty. That's a deliberate
+   safe-default: we can't honestly tell which Cards are curated, so the metabot Card catalog
+   stays empty rather than silently widening to everything."
   []
   ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
   ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
+  (appdb-source/with-missing-relation-fallback
+    ::verified-cards #{}
+    #(t2/select-fn-set :moderated_item_id :model/ModerationReview
+                       :moderated_item_type "card"
+                       :most_recent         true
+                       :status              "verified")))
 
 (defn- official-collection-id-set
   "Set of collection ids with `official` authority level."
@@ -201,9 +219,13 @@
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
-   catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
+   catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`.
+
+   Falls back to an empty set if the column doesn't exist on an older appdb."
   []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
+  (appdb-source/with-missing-relation-fallback
+    ::routed-databases #{}
+    #(t2/select-fn-set :id :model/Database :router_database_id [:not= nil])))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -239,19 +261,31 @@
         verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
-        ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
-        ;; library/metabot derivations below — they're ignored by `->card-entity` /
-        ;; `->table-entity`. `:card_schema` is required by `:model/Card`'s post-select hooks
-        ;; even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id :data_layer :data_authority]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
+        ;; Raw `t2/query` against the physical tables instead of `t2/select [:model/Card ...]` /
+        ;; `:model/Table` — we read only the columns the scorer actually consumes (no
+        ;; `:card_schema` etc.) and bypass each model's post-select hooks entirely. That keeps
+        ;; the CLI safe when a modern jar is pointed at an older appdb whose `:model/*` definitions
+        ;; reference columns the schema hasn't grown yet. Wrapped in
+        ;; [[appdb-source/with-missing-relation-fallback]] so a missing `is_published` /
+        ;; `collection_id` / `data_layer` on an ancient appdb degrades to an empty catalog rather
+        ;; than a stack trace; cron / API (with [[appdb-source/*tolerate-missing-relations?*]] off)
+        ;; still raise.
+        universe-cards    (appdb-source/with-missing-relation-fallback
+                            ::universe-cards []
+                            #(t2/query {:select [:id :name :type :collection_id]
+                                        :from   [:report_card]
+                                        :where  [:and
+                                                 [:in :type ["metric" "model"]]
+                                                 [:= :archived false]
+                                                 [:not= :database_id audit/audit-db-id]]}))
+        universe-tables   (appdb-source/with-missing-relation-fallback
+                            ::universe-tables []
+                            #(t2/query {:select [:id :name :collection_id :is_published
+                                                 :visibility_type :db_id :data_layer :data_authority]
+                                        :from   [:metabase_table]
+                                        :where  [:and
+                                                 [:= :active true]
+                                                 [:not= :db_id audit/audit-db-id]]}))
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)

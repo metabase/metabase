@@ -37,7 +37,8 @@
 (defn maybe-advance-last-fingerprint!
   "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.
   On failure we leave it untouched so the next boot or cron retries.
-  Shared by the cron, API recompute, and CLI appdb paths to keep all persisters in lockstep."
+  Shared by the cron and API recompute paths to keep both persisters in lockstep. The CLI's appdb
+  mode deliberately does not call this — its run is out-of-band relative to the cron's bookkeeping."
   [fingerprint result]
   (if (::complexity/snowplow-published? (meta result))
     (settings/data-complexity-scoring-last-fingerprint! fingerprint)
