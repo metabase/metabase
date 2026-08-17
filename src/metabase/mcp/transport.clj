@@ -1,13 +1,9 @@
 (ns metabase.mcp.transport
   "MCP (Model Context Protocol) Streamable HTTP transport.
 
-   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the
-   `initialize` handshake and session issuance, origin validation (DNS-rebinding protection),
-   cookie/bearer auth resolution, per-user throttling, SSE responses and the GET keepalive
-   stream, and OAuth discovery hints on 401s.
-
-   A surface supplies only what differs — its method dispatch and its endpoint paths — via
-   [[make-handler]]."
+  Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
+  session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
+  SSE responses and the GET keepalive stream, and OAuth discovery hints on 401s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -62,47 +58,45 @@
 
 (defn handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
-   `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
-   `instructions`, when given, rides the result as the MCP `instructions` field — the one channel
-   that reaches the model before any tool call."
-  ([id params capabilities]
-   (handle-initialize id params capabilities nil))
-  ([id params capabilities instructions]
-   (when-let [client-info (:clientInfo params)]
-     (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
-   (jsonrpc-response
-    id
-    (cond-> {:protocolVersion protocol-version
-             :capabilities    capabilities
-             :serverInfo      server-info}
-      instructions (assoc :instructions instructions)))))
+
+  - `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
+  - `instructions` rides the result as the MCP `instructions` field."
+  [id params capabilities instructions]
+  (when-let [client-info (:clientInfo params)]
+    (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
+  (jsonrpc-response
+   id
+   (cond-> {:protocolVersion protocol-version
+            :capabilities    capabilities
+            :serverInfo      server-info}
+     instructions (assoc :instructions instructions))))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
-  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
-  ;; namespaced keyword `:io.modelcontextprotocol/ui`.
+  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the namespaced
+  ;; keyword `:io.modelcontextprotocol/ui`.
   (contains?
    (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))
 
 (defn- eval-session-override
-  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and
-  later fetch) the trace itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates
-  the `Mcp-Session-Id` internally, so without this the harness can't know which `<uuid>.jsonl` to read.
+  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and later fetch) the trace
+  itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates the `Mcp-Session-Id` internally, so
+  without this the harness can't know which `<uuid>.jsonl` to read.
 
-  Validates through [[ait/checked-session-id]] — the mint-time boundary, and the single source of truth
-  for the safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls
-  back to the Mcp-Session-Id correlator rather than 500ing ahead of [[dispatch-request]]'s try/catch. The
-  `when-let` guards the absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid
-  branch (which would invent a trace file the harness never named)."
+  Validates through [[ait/checked-session-id]] — the mint-time boundary, and the single source of truth for the
+  safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls back to the
+  Mcp-Session-Id correlator rather than 500ing ahead of [[dispatch-request]]'s try/catch. The `when-let` guards the
+  absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid branch (which would invent a trace
+  file the harness never named)."
   [request]
   (when-let [id (get-in request [:headers "x-eval-session-id"])]
     (try (ait/checked-session-id id) (catch Exception _ nil))))
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request through the surface's `dispatch-method-fn`.
-   Returns a response map or nil for notifications."
+  Returns a response map or nil for notifications."
   [dispatch-method-fn {:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session and open a per-request root
   ;; span; tool/resource/agent-api spans nest under it automatically. Key on the harness-supplied
@@ -172,9 +166,9 @@
 
 (defn- normalize-domain
   "Extract and lowercase the domain from a URL or Host-style header value.
-   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
-   Uses [[mw.security/try-parse-url]] (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
-   are expected and shouldn't spam the error logs."
+  Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+  Uses [[mw.security/try-parse-url]] (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
+  are expected and shouldn't spam the error logs."
   [url]
   (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
 
