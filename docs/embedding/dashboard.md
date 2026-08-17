@@ -53,7 +53,7 @@ The wizard writes most of the code for you.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
 5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an interactive/SSO embed, because in that case people can explore the data based on their data and collection permissions.)
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. With guest embeds, you can only control whether people can download the data. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If your dashboard has filters, set each filter to  **Editable** or **Locked**, or leave as **Disabled**. Filters are disabled by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
+7. If your dashboard has filters, set each filter to **Editable** or **Locked**, or leave as **Disabled**. Filters are disabled by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
@@ -233,14 +233,14 @@ For the full list of props, see [`EditableDashboard` props](./dashboard-referenc
 
 ## Let people create dashboards
 
-- [Web components](#web-components-let-people-create-dashboards)
-- [React SDK](#react-sdk-let-people-create-dashboards)
+- [Web component](#web-component-dashboard-creation)
+- [React SDK](#react-sdk-dashboard-creation)
 
-### Web components let people create dashboards
+### Web component dashboard creation
 
 There's no attribute that creates a dashboard on its own. Set `read-only="false"` on the [collection browser](./browser.md#add-new-question-and-new-dashboard-buttons), and people get a **New dashboard** button. Metabase suggests whichever collection the person is browsing as the place to save it, and the new dashboard opens ready to edit.
 
-### React SDK let people create dashboards
+### React SDK dashboard creation
 
 You can let people create new dashboards from your app with either the `useCreateDashboardApi` hook or the `CreateDashboardModal` component. Both create an empty dashboard, which you'd typically hand to `EditableDashboard` so people can fill it in.
 
@@ -329,7 +329,24 @@ Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewi
 
 ## Let people set up dashboard subscriptions
 
-You can let people set up [dashboard subscriptions](../dashboards/subscriptions.md) with the [`with-subscriptions`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute on the web component:
+You can let people set up [dashboard subscriptions](../dashboards/subscriptions.md) from an embedded dashboard.
+
+- [Web component](#web-component-dashboard-subscriptions)
+- [React SDK](#react-sdk-dashboard-subscriptions)
+
+Either way, Metabase hides the subscriptions button unless all of these are true:
+
+- Your Metabase has [email set up](../configuring-metabase/email.md). Slack on its own won't do it: the button checks for email specifically.
+- The embed is an authenticated (SSO) embed. Guest embeds don't get subscriptions.
+- The dashboard has at least one question card (i.e., not a text or heading card).
+
+Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to set one up. Metabase grants that permission to the All Users group by default, so admins have to set it to **No** to take it away.
+
+Subscriptions sent from an embedded dashboard exclude links to Metabase items.
+
+### Web component dashboard subscriptions
+
+Set the [`with-subscriptions`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute:
 
 ```html
 <metabase-dashboard
@@ -338,30 +355,28 @@ You can let people set up [dashboard subscriptions](../dashboards/subscriptions.
 ></metabase-dashboard>
 ```
 
-Or by passing `withSubscriptions` to a dashboard component in the SDK:
+Drill-through also has to be on. Setting `drills="false"` renders a view-only dashboard, which has no subscriptions button.
+
+### React SDK dashboard subscriptions
+
+Pass `withSubscriptions` to a dashboard component:
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/dashboard-subscriptions.tsx" snippet="example" %}
 ```
 
-Metabase hides the subscriptions button unless all of these are true:
-
-- Your Metabase has [email set up](../configuring-metabase/email.md). Slack on its own won't do it: the button checks for email specifically.
-- The embed is an authenticated (SSO) embed. Guest embeds don't get subscriptions.
-- Drill-through is on, if you're using the web component. Setting `drills="false"` renders a view-only dashboard, which has no subscriptions button. (In the SDK, to show the button on a `StaticDashboard`, you can pass `withSubscriptions`.)
-- The dashboard has at least one question card (i.e., not a text or heading card).
-
-Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to set one up. Metabase grants that permission to the All Users group by default, so admins have to set it to **No** to take it away.
-
-Subscriptions sent from an embedded dashboard exclude links to Metabase items.
+`StaticDashboard` takes `withSubscriptions` too, so you can show the button on a view-only dashboard.
 
 ## Refresh a dashboard automatically
 
-Each refresh re-queries your database, so pick an interval your database can keep up with.
+To rerun a dashboard's cards on a timer, set a refresh interval in seconds. Each refresh re-queries your database, so pick an interval your database can keep up with.
 
-### Refresh with web components
+- [Web component](#web-component-auto-refresh)
+- [React SDK](#react-sdk-auto-refresh)
 
-To rerun a dashboard's cards on a timer, set `auto-refresh-interval` to a number of seconds:
+### Web component auto-refresh
+
+Set `auto-refresh-interval`:
 
 ```html
 <metabase-dashboard
@@ -370,9 +385,9 @@ To rerun a dashboard's cards on a timer, set `auto-refresh-interval` to a number
 ></metabase-dashboard>
 ```
 
-### Refresh with the React SDK
+### React SDK auto-refresh
 
-To rerun a dashboard's cards on a timer, set `autoRefreshInterval` to a number of seconds:
+Set `autoRefreshInterval`:
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/dashboard-auto-refresh.tsx" snippet="example" %}
@@ -380,13 +395,35 @@ To rerun a dashboard's cards on a timer, set `autoRefreshInterval` to a number o
 
 ## Customize dashboard appearance
 
-You can theme an embedded dashboard and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Dashboard component reference](./dashboard-reference.md).
+You can toggle parts of an embedded dashboard's UI and set how tall it renders.
 
-- **Title**: show or hide the dashboard title with `with-title` (web component) or `withTitle` (SDK).
-- **Card titles**: show or hide the title on each card with `withCardTitle` (SDK only).
-- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads` / `withDownloads`. Defaults to `false` on Pro and Enterprise, so set it to `true` if you want people to be able to download results. On OSS and Starter, downloads are always on; turning them off requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+- [Web component](#web-component-dashboard-appearance)
+- [React SDK](#react-sdk-dashboard-appearance)
 
-### Set the height of an embedded dashboard
+### Web component dashboard appearance
+
+- **Title**: show or hide the dashboard title with `with-title`.
+- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads`.
+
+To set the height, style the `<metabase-dashboard>` element with CSS. The element renders as a block, and the embed fills it:
+
+```html
+<style>
+  metabase-dashboard {
+    height: 800px;
+  }
+</style>
+
+<metabase-dashboard dashboard-id="42"></metabase-dashboard>
+```
+
+The embed won't render shorter than 600 pixels, no matter which height you set.
+
+### React SDK dashboard appearance
+
+- **Title**: show or hide the dashboard title with `withTitle`.
+- **Card titles**: show or hide the title on each card with `withCardTitle`.
+- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `withDownloads`.
 
 Dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
 
@@ -396,7 +433,9 @@ Dashboard components fill the height of their container (`min-height: 100%`). Ov
 
 ### Theme an embedded dashboard
 
-Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. The `dashboard` component in the theme has its own overrides:
+Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. Web components take the theme in [`defineMetabaseConfig`](./appearance.md#add-an-advanced-theme-to-your-embed); the SDK takes it from [`defineMetabaseTheme`](./appearance.md#reuse-a-saved-theme-in-the-sdk) on `MetabaseProvider`. The theme object itself is the same either way.
+
+The `dashboard` component in the theme has its own overrides:
 
 ```js
 {
@@ -420,7 +459,7 @@ Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. T
 }
 ```
 
-Colors set in a card's visualization settings override theme colors.
+Colors set in a card's visualization settings override theme colors. See also [appearance](./appearance.md).
 
 ### Remove the "Powered by Metabase" banner
 
