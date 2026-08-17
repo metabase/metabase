@@ -21,7 +21,7 @@ There are three ways you can embed a dashboard:
 
 ## Embed a view-only dashboard
 
-A view-only (a.k.a. "static") dashboard displays results without letting people explore the data. Nobody can drill through the charts or change the questions behind them. You can, however, add editable filters that people can change to update the results.
+A view-only (a.k.a. "static") dashboard displays results without letting people explore the data. Nobody can drill through the charts or change the questions behind them. You can, however, add editable filters that people can change to update the results, as well as locked filters you can use to filter results based on who is logged in to your app.
 
 - [Web component](#web-component-view-only-dashboard)
 - [React SDK](#react-sdk-view-only-dashboard)
@@ -29,25 +29,31 @@ A view-only (a.k.a. "static") dashboard displays results without letting people 
 View-only isn't tied to one kind of embed:
 
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
-- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
+- **[SSO embeds](./introduction.md#sso-embeds)**: interactive by default. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
 
 For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay per user viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
 ### Web component view-only dashboard
 
-You can use the in-app wizard to set up a view-only dashboard using web components. These steps walk through a guest embed.
+You need to use the in-app wizard to set up a view-only dashboard using web components. These steps walk through a guest embed.
 
 ![In-app embedding wizard](./images/in-app-embedding-wizard.png)
 
-Three things need to happen: you publish the dashboard embed in Metabase, you paste the dashboard code into your app, and your server signs a JWT. The wizard writes most of the code for you.
+Three things need to happen:
+
+- You publish the dashboard embed in Metabase.
+- You paste the dashboard code into your app (frontend and back)
+- Your server signs a JWT.
+
+The wizard writes most of the code for you.
 
 1. Visit the dashboard in your Metabase.
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
-5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
-6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. Set each of the dashboard's filters to **Editable** or **Locked**. Filters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
+5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an interactive/SSO embed, because in that case people can explore the data based on their data and collection permissions.)
+6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. With guest embeds, you can only control whether people can download the data. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
+7. If your dashboard has filters, set each filter to  **Editable** or **Locked**, or leave as **Disabled**. Filters are disabled by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
@@ -93,9 +99,9 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 
 The `theme` key sets the dashboard's appearance. For the full theme object with all the options, check out [Appearance](./appearance.md).
 
-On your app's server, sign a token that sets the **Customer** filter to whoever's account page your app is rendering. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's numbers. For the signing code, see [Locked parameters](./guest-embedding.md#locked-parameters).
+On your app's server, sign a token that sets the **Customer** filter to whoever's account page your app is rendering. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's numbers. To be clear, with guest embeds, only your app would know who's viewing the page, as you're not using SSO to also sign the person in to your Metabase.
 
-To get this code from the in-app wizard, set the **Customer** filter to **Locked**.
+For the signing code, see [Locked parameters](./guest-embedding.md#locked-parameters). To get this code from the in-app wizard, set the **Customer** filter to **Locked**.
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
@@ -138,7 +144,7 @@ To control what people can do with the dashboard, check out [web component attri
 
 #### Let people follow links to other dashboards and questions
 
-By default, an embedded dashboard is a dead end: clicking a link to another dashboard or question does nothing, so people stay on the one thing you embedded. To let them navigate to linked content inside the embed, turn on `enable-entity-navigation`:
+By default, clicking a link to another dashboard or question does nothing, so people stay on the one thing you embedded. To let them navigate to linked content inside an SSO embed, turn on `enable-entity-navigation`:
 
 ```html
 <metabase-dashboard
@@ -178,16 +184,16 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 ## Embed an editable dashboard
 
-An editable dashboard does everything an interactive dashboard does, and also lets people add and update questions, content, and the dashboard's layout.
+An editable dashboard does everything an interactive dashboard does, and also lets people add and update questions and other cards, and rearrange the dashboard's layout.
 
 - [Web component](#web-component-editable-dashboard)
 - [React SDK](#react-sdk-editable-dashboard)
 
-Editing requires SSO. Nobody logs in to a guest embed, so Metabase has no account to check write access against.
+Editing requires SSO.
 
 Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are the exception: they're always read-only, whatever the permissions say.
 
-People in a [tenant](./tenants.md) can only be granted **View** access to the shared collections you publish to every tenant, so they can never edit those dashboards. They can edit dashboards in their own tenant collection.
+People in a [tenant](./tenants.md) can only be granted **View** access to the shared collections you publish to every tenant, so they can never edit those dashboards. They can, however, edit dashboards in their own tenant collection.
 
 If the dashboard renders but the edit pencil doesn't appear, the person viewing it lacks write access to that dashboard---check the `can_write` field on `GET /api/dashboard/:id` as that user.
 
@@ -227,11 +233,14 @@ For the full list of props, see [`EditableDashboard` props](./dashboard-referenc
 
 ## Let people create dashboards
 
-### Create dashboards with web components
+- [Web components](#web-components-let-people-create-dashboards)
+- [React SDK](#react-sdk-let-people-create-dashboards)
+
+### Web components let people create dashboards
 
 There's no attribute that creates a dashboard on its own. Set `read-only="false"` on the [collection browser](./browser.md#add-new-question-and-new-dashboard-buttons), and people get a **New dashboard** button. Metabase suggests whichever collection the person is browsing as the place to save it, and the new dashboard opens ready to edit.
 
-### Create dashboards with the React SDK
+### React SDK let people create dashboards
 
 You can let people create new dashboards from your app with either the `useCreateDashboardApi` hook or the `CreateDashboardModal` component. Both create an empty dashboard, which you'd typically hand to `EditableDashboard` so people can fill it in.
 
@@ -297,7 +306,7 @@ To swap out the whole menu, pass a function that returns a React element. The fu
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
 ```
 
-## Customize what happens when someone clicks a card
+### Customize what happens when someone clicks a card
 
 To change the menu people get when they click a data point on a dashboard card, use the `mapQuestionClickActions` plugin. See [Customize what happens when someone clicks on a chart](./chart.md#customize-what-happens-when-someone-clicks-on-a-chart).
 
@@ -312,20 +321,11 @@ Say you want to show each customer only their own numbers. How you filter the re
 
 ### Lock a filter on a guest embed
 
-Embeds with **Guest** authentication can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the filter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it.
-
-For the signing code, see [Locked parameters](./guest-embedding.md#locked-parameters). Two things to know before you lock a filter on a dashboard:
-
-- [Locking a filter narrows the values available to the other filters](./guest-embedding.md#locked-parameters-limit-the-values-available-to-other-editable-parameters) on the dashboard.
-- [If a locked filter is linked to a SQL question](./guest-embedding.md#locked-parameters-on-dashboards-with-sql-questions), you can only pass a single value for it in the JWT.
+See [Modular embedding parameters](./parameters.md).
 
 ### Use permissions on an SSO embed
 
 Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewing, you can apply [data permissions](../permissions/embedding.md) and let Metabase filter the rows, instead of locking filters by hand.
-
-### Set filter values from your app
-
-See [Modular embedding parameters](./parameters.md).
 
 ## Let people set up dashboard subscriptions
 
