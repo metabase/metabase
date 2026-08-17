@@ -193,20 +193,46 @@
   (let [answers (atom nil)
         probe   (fn [] (let [[answer & remaining] @answers]
                          (reset! answers (vec remaining))
-                         answer))]
-    (testing "a confirmed yes latches: an app-db hiccup reads as no, and must not take retrieval offline"
+                         (if (instance? Throwable answer)
+                           (throw answer)
+                           answer)))]
+    (testing "an answer is trusted for its cooldown, so a search does not probe the app db each time"
       (reset! answers [true false])
-      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
-                    entity-retrieval.core/retry-app-db-schema-probe probe]
+      (with-redefs [entity-retrieval.core/app-db-schema-probe    (atom nil)
+                    entity-retrieval.core/app-db-schema-usable?* probe]
         (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
         (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
         (is (= [false] @answers) "the probe was not consulted again")))
-    (testing "a no is re-checked, so a privilege granted while we run gets picked up"
+    (testing "a yes is re-asked once that expires, so a schema dropped under us takes retrieval offline"
+      (reset! answers [true false])
+      (with-redefs [entity-retrieval.core/app-db-schema-probe    (atom nil)
+                    entity-retrieval.core/probe-cooldown-ms      0
+                    entity-retrieval.core/app-db-schema-usable?* probe]
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (false? (#'entity-retrieval.core/app-db-schema-usable?)))))
+    (testing "a no is re-checked too, so a privilege granted while we run gets picked up"
       (reset! answers [false true])
-      (with-redefs [entity-retrieval.core/app-db-schema-confirmed?  (atom false)
-                    entity-retrieval.core/retry-app-db-schema-probe probe]
+      (with-redefs [entity-retrieval.core/app-db-schema-probe    (atom nil)
+                    entity-retrieval.core/probe-cooldown-ms      0
+                    entity-retrieval.core/app-db-schema-usable?* probe]
         (is (false? (#'entity-retrieval.core/app-db-schema-usable?)))
-        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))))))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))))
+    (testing "a probe that could not answer leaves the store's standing alone rather than reading as a no"
+      (reset! answers [true (ex-info "app db unreachable" {}) false])
+      (with-redefs [entity-retrieval.core/app-db-schema-probe     (atom nil)
+                    entity-retrieval.core/probe-cooldown-ms       0
+                    entity-retrieval.core/probe-error-cooldown-ms 0
+                    entity-retrieval.core/app-db-schema-usable?*  probe]
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?)))
+        (is (true? (#'entity-retrieval.core/app-db-schema-usable?))
+            "an outage is not a refusal")
+        (is (false? (#'entity-retrieval.core/app-db-schema-usable?))
+            "and the next answer still lands")))
+    (testing "an outage before any answer reads as unusable"
+      (reset! answers [(ex-info "app db unreachable" {})])
+      (with-redefs [entity-retrieval.core/app-db-schema-probe    (atom nil)
+                    entity-retrieval.core/app-db-schema-usable?* probe]
+        (is (false? (#'entity-retrieval.core/app-db-schema-usable?)))))))
 
 (deftest entity-retrieval-availability-requires-a-closed-breaker-test
   (mt/with-premium-features #{:library-retrieval}

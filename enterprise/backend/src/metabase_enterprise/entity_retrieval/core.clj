@@ -5,7 +5,6 @@
   OSS shims live in [[metabase.entity-retrieval.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
@@ -58,45 +57,77 @@
          END AS privileged")
 
 (defn- app-db-schema-usable?*
-  "Whether this role can hold the index in [[index-table/index-schema]].
+  "Whether this role can hold the index in [[index-table/index-schema]], asked afresh.
   Privileges, not existence: USAGE without CREATE passes a mere existence check, then fails in
   [[index-table/ensure-tables!]].
-  A database failure reads as unusable, so an outage can't throw out of the fire-and-forget
-  [[request-entity-sync!]]."
+  Throws when the app db never got as far as answering, which [[app-db-schema-usable?]] tells apart from a
+  refusal."
   []
   (let [schema index-table/index-schema]
-    (try
-      (if-some [privileged (:privileged (jdbc/execute-one!
-                                         (mdb/data-source)
-                                         [schema-privilege-sql schema schema schema]
-                                         {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
-        privileged
-        ;; Not there yet -- can this role create it? Rolled back, so nothing is persisted here.
-        (do
-          (jdbc/with-transaction [tx (mdb/data-source) {:rollback-only true}]
-            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))]))
-          true))
-      (catch InterruptedException e
-        (throw e))
-      (catch Exception e
-        (log/debugf "The application database user cannot host the library retrieval schema: %s" (ex-message e))
-        false))))
+    (if-some [privileged (:privileged (jdbc/execute-one!
+                                       (mdb/data-source)
+                                       [schema-privilege-sql schema schema schema]
+                                       {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+      privileged
+      ;; Not there yet -- can this role create it? Rolled back, so nothing is persisted here.
+      (try
+        (jdbc/with-transaction [tx (mdb/data-source) {:rollback-only true}]
+          (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))]))
+        true
+        (catch InterruptedException e
+          (throw e))
+        (catch Exception e
+          ;; Creating it was the whole question, so a failure here answers it. The privilege read just
+          ;; succeeded on this same app db, so a connection fault is not the likely explanation.
+          (log/debugf "The application database user cannot host the library retrieval schema: %s"
+                      (ex-message e))
+          false)))))
 
-(defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
-  app-db-schema-confirmed?
-  (atom false))
+(def ^:private probe-cooldown-ms
+  "How long a probe that answered is trusted before the schema is looked at again.
+  Long enough to keep a never-provisioned instance from writing its rolled-back CREATE into the DDL audit
+  log every few seconds, short enough that a grant made -- or revoked -- at runtime lands without a restart."
+  (.toMillis (java.time.Duration/ofMinutes 5)))
 
-(def ^:private retry-app-db-schema-probe
-  "[[app-db-schema-usable?*]], re-run at most every five minutes."
-  (memoize/ttl app-db-schema-usable?* :ttl/threshold (* 5 60 1000)))
+(def ^:private probe-error-cooldown-ms
+  "How long a probe that could not answer is left alone before being asked again.
+  Much shorter than [[probe-cooldown-ms]]: nothing was learned, and until something is, the store keeps
+  whatever standing it already had."
+  (.toMillis (java.time.Duration/ofSeconds 30)))
 
-;; A latch that closes once we detect the necessary schema.
-;; This way we retry until the resource is ready, but don't leave it disabled for TTL on transient failures.
+(defonce ^{:doc "The last app-db schema probe, as `{:usable? :answered? :timer}`, or nil before the first.
+  `:usable?` is the last answer we actually got, which a probe that failed to get one leaves alone.
+  Tests rebind it."}
+  app-db-schema-probe
+  (atom nil))
+
+(defn- probe-due?
+  "Whether the last probe has outlived the cooldown its answer earned."
+  [{:keys [answered? timer]}]
+  (or (nil? timer)
+      (>= (u/since-ms timer) (if answered? probe-cooldown-ms probe-error-cooldown-ms))))
+
 (defn- app-db-schema-usable?
-  "Whether this role can hold the index, cached. [[available?]] asks on every write nudge and every search,
-  and the underlying check can attempt DDL."
+  "Whether this role can hold the index, cached for [[probe-cooldown-ms]]. [[available?]] asks on every write
+  nudge and every search, and the underlying check can attempt DDL.
+  The answer is not latched: a schema dropped or a grant revoked under a running instance has to turn
+  retrieval back off, or it goes on advertising itself while every reconcile fails."
   []
-  (swap! app-db-schema-confirmed? #(or % (retry-app-db-schema-probe))))
+  (let [{:keys [usable?] :as probe} @app-db-schema-probe]
+    (if-not (probe-due? probe)
+      (boolean usable?)
+      (let [answer (try
+                     {:usable? (app-db-schema-usable?*), :answered? true}
+                     (catch InterruptedException e
+                       (throw e))
+                     (catch Exception e
+                       ;; An outage is not a refusal, so the store's last standing carries. Nothing may throw
+                       ;; out of here either: the fire-and-forget [[request-entity-sync!]] asks.
+                       (log/debugf "The application database did not answer the schema check: %s"
+                                   (ex-message e))
+                       {:usable? usable?, :answered? false}))]
+        (reset! app-db-schema-probe (assoc answer :timer (u/start-timer)))
+        (boolean (:usable? answer))))))
 
 (defn pgvector-configured?
   "Whether a pgvector store is resolvable, dedicated or on the app db.
