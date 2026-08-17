@@ -19,7 +19,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-modular", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

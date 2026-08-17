@@ -21,8 +21,8 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("enable-embedding-modular", true);
+    H.updateSetting("enable-embedding-modular", false);
     H.mockEmbedJsToDevServer();
   });
 

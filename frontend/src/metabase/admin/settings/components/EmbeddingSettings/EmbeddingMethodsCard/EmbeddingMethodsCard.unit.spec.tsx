@@ -36,6 +36,8 @@ async function setup({
   const settingValues = createMockSettings({
     "enable-embedding-modular": false,
     "enable-embedding-interactive": false,
+    "show-simple-embed-terms": false,
+    "show-sdk-embed-terms": false,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
     }),

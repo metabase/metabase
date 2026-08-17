@@ -23,7 +23,7 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-modular", true);
   });
 
   afterEach(() => {
@@ -62,7 +62,7 @@ describe(suiteTitle, () => {
     // been accepted yet, so the option cards start dimmed.
     H.updateSetting("show-simple-embed-terms", true);
     H.updateSetting("show-static-embed-terms", true);
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("enable-embedding-modular", false);
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");

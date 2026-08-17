@@ -32,7 +32,7 @@ const setup = ({
 
   const storeInitialState = createMockState({
     settings: mockSettings({
-      "enable-embedding-simple": true,
+      "enable-embedding-modular": true,
       "show-simple-embed-terms": false,
     }),
   });
