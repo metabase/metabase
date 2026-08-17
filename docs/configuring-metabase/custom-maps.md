@@ -39,7 +39,7 @@ The URL must be a template with `{z}`, `{x}`, and `{y}` placeholders, and option
 https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 ```
 
-Tile server URLs must start with `http://` or `https://`. You can also point to a relative path to a local file in the JVM's classpath.
+Tile server URLs must start with `http://` or `https://`.
 
 ### Don't put a private key in the tile server URL
 
