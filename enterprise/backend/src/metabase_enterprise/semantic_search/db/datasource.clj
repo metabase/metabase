@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.app-db.core :as mdb]
    [metabase.connection-pool :as connection-pool]
    [metabase.util :as u]
@@ -411,26 +412,36 @@
       false)))
 
 (def ^:private app-db-store-catalog-sql
-  ;; The schema_exists alias reads information_schema.schemata (privilege-filtered), not pg_namespace. It
-  ;; answers "a semantic_search schema this role can use exists", not mere catalog presence: a schema the
-  ;; app-db role lacks USAGE on reads as absent, so the store degrades to unavailable rather than passing
-  ;; here and crashing later when init creates tables it can't write.
-  ;; schema_in_catalog is the unfiltered question, and only the two together tell a schema this role has lost
-  ;; its grip on from one nobody has created yet.
+  ;; Both privileges are asked for by name rather than inferred from information_schema.schemata, whose
+  ;; filter is `pg_has_role(owner) OR has_schema_privilege(oid, 'CREATE, USAGE')` -- an OR, so a role holding
+  ;; only one of the two still sees the schema there. The store needs both: init creates tables in the schema
+  ;; and every later query reads through it.
+  ;; The privilege columns are scalar subqueries because has_schema_privilege raises on a schema that isn't
+  ;; there; this way an absent one reads as NULL, which is the answer we want anyway.
+  ;; schema_in_catalog is the unfiltered question, and only it and the privileges together tell a schema this
+  ;; role has lost its grip on from one nobody has created yet.
   (str "SELECT"
        " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
        " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
-       " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists,"
-       " EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = ?) AS schema_in_catalog"))
+       " EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = ?) AS schema_in_catalog,"
+       " (SELECT has_schema_privilege(oid, 'USAGE') FROM pg_namespace WHERE nspname = ?) AS schema_usable,"
+       " (SELECT has_schema_privilege(oid, 'CREATE') FROM pg_namespace WHERE nspname = ?) AS schema_writable"))
 
 (defn- app-db-store-catalog
   "What the app db's catalog says about the store's pieces, as
-  `{:installed :available :schema-exists :schema-in-catalog}`."
+  `{:installed :available :schema-in-catalog :schema-usable :schema-writable}`."
   [conn budget]
   (jdbc/execute-one! conn
-                     [app-db-store-catalog-sql app-db-schema app-db-schema]
+                     [app-db-store-catalog-sql app-db-schema app-db-schema app-db-schema]
                      {:builder-fn jdbc.rs/as-unqualified-kebab-maps
                       :timeout    (remaining-seconds budget)}))
+
+(defn- schema-ready?
+  "Whether the store's schema is there and this role can both read it and add tables to it.
+  Either privilege missing puts the store out of reach: without USAGE nothing in it can be queried, and
+  without CREATE the next migration cannot add a table."
+  [{:keys [schema-usable schema-writable]}]
+  (boolean (and schema-usable schema-writable)))
 
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
@@ -447,14 +458,15 @@
   (let [budget (start-budget support-check-bounds)]
     (with-bounded-connection support-check-bounds
       (fn [conn]
-        (let [{:keys [installed available schema-exists]} (app-db-store-catalog conn budget)]
+        (let [{:keys [installed available schema-in-catalog] :as catalog} (app-db-store-catalog conn budget)
+              ready?                                                     (schema-ready? catalog)]
           (cond
-            (not (or installed available)) false
-            (and installed schema-exists)  true
-            :else                          (app-db-can-provision-pgvector? conn
-                                                                           budget
-                                                                           (not installed)
-                                                                           (not schema-exists))))))))
+            (not (or installed available))       false
+            ;; A schema that is there but out of this role's reach is not something provisioning can fix:
+            ;; CREATE SCHEMA IF NOT EXISTS finds it already there and grants nothing.
+            (and schema-in-catalog (not ready?)) false
+            (and installed ready?)               true
+            :else (app-db-can-provision-pgvector? conn budget (not installed) (not ready?))))))))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.
@@ -503,6 +515,15 @@
                          (ex-message e))
                false))))))))
 
+(defn- remember-app-db-store-provisioned!
+  "Record that the store's schema has been seen on this app db, so a later probe finding it gone knows it was
+  lost rather than never created.
+  Written from the probe rather than the activation path, so a store provisioned by an earlier version is
+  picked up too. Only the first sighting writes; the rest read the setting cache."
+  []
+  (when-not (semantic.settings/pgvector-app-db-store-provisioned)
+    (semantic.settings/pgvector-app-db-store-provisioned! true)))
+
 (defn probe-app-db-store!
   "Whether the app db is a usable pgvector store right now: it answers, and its pieces are still there.
   Only reached once [[pgvector-mode]] has settled on `:app-db`, so whether this role may provision the store
@@ -510,17 +531,23 @@
   answers on every probe -- no cache, so an extension dropped under a running instance shows up despite
   [[app-db-pgvector-support]] latching true, and no rolled-back DDL, which would only show that the piece
   could be created again rather than that it is there now.
-  A store whose schema this instance can no longer see is out of reach whatever else is true. One with no
-  schema anywhere has never been provisioned and so has nothing to have lost: there the extension being
-  installed or installable is the whole of the question."
+  A store whose schema this instance can no longer read or write is out of reach whatever else is true. One
+  with no schema anywhere is either a store that lost it -- unreachable, and the reason the sighting is
+  remembered at all -- or one nobody has created yet, where the extension being installed or installable is
+  the whole of the question. Reporting the latter unreachable would put every instance that has not activated
+  semantic search into a permanent red, and this check reports the store, not any feature's use of it."
   []
-  (let [{:keys [installed available schema-exists schema-in-catalog]}
+  (let [{:keys [installed available schema-in-catalog] :as catalog}
         (with-bounded-connection probe-bounds
-          #(app-db-store-catalog % (start-budget probe-bounds)))]
+          #(app-db-store-catalog % (start-budget probe-bounds)))
+        ready? (schema-ready? catalog)]
+    (when ready?
+      (remember-app-db-store-provisioned!))
     (cond
-      schema-exists     (boolean installed)
-      schema-in-catalog false
-      :else             (boolean (or installed available)))))
+      ready?                                               (boolean installed)
+      schema-in-catalog                                    false
+      (semantic.settings/pgvector-app-db-store-provisioned) false
+      :else                                                (boolean (or installed available)))))
 
 (defn pgvector-mode
   "How this instance reaches its pgvector database:

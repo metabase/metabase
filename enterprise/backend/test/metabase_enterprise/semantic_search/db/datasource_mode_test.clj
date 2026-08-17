@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
@@ -114,79 +115,113 @@
           (is (not (semantic.db.datasource/pgvector-configured?)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))))))
 
+(defn- catalog-row
+  "An app-db store catalog row, defaulting every column to \"not there\".
+  A present schema is `:schema-in-catalog` plus the two privileges, which are read separately because holding
+  one of them is not holding the other."
+  [m]
+  (fn [& _]
+    (merge {:installed false, :available false
+            :schema-in-catalog false, :schema-usable nil, :schema-writable nil}
+           m)))
+
+(def ^:private provisioned-schema
+  "The catalog columns for a schema this role has full use of."
+  {:schema-in-catalog true, :schema-usable true, :schema-writable true})
+
 (deftest support-requires-provisionable-store-test
   (testing "supported only when the vector extension and the semantic_search schema exist or can be created"
-    (letfn [(check [] (semantic.db.datasource/check-app-db-pgvector-support))
-            (catalog [m] (fn [& _] m))]
+    (letfn [(check [] (semantic.db.datasource/check-app-db-pgvector-support))]
       (with-redefs [mdb/data-source      (constantly ::app-pool)
                     jdbc/get-connection (fn [_] (stub-connection))]
         (testing "extension neither installed nor available → unsupported, no provisioning probe"
-          (with-redefs [jdbc/execute-one! (catalog {:installed false :available false :schema-exists false})
+          (with-redefs [jdbc/execute-one! (catalog-row {})
                         semantic.db.datasource/app-db-can-provision-pgvector?
                         (fn [& _] (throw (AssertionError. "must not probe when the extension is unavailable")))]
             (is (false? (check)))))
         (testing "extension installed and schema present → supported without a DDL probe"
-          (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema-exists true})
+          (with-redefs [jdbc/execute-one! (catalog-row (merge {:installed true :available true}
+                                                              provisioned-schema))
                         semantic.db.datasource/app-db-can-provision-pgvector?
                         (fn [& _] (throw (AssertionError. "must not probe when already fully provisioned")))]
             (is (true? (check)))))
         (testing "installed but schema missing → probe schema creation only, not the extension"
-          (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema-exists false})
+          (with-redefs [jdbc/execute-one! (catalog-row {:installed true :available true})
                         semantic.db.datasource/app-db-can-provision-pgvector?
                         (fn [_ _ create-extension? create-schema?]
                           (is (= [false true] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
         (testing "available but not installed → probe both extension and schema creation"
-          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists false})
+          (with-redefs [jdbc/execute-one! (catalog-row {:available true})
                         semantic.db.datasource/app-db-can-provision-pgvector?
                         (fn [_ _ create-extension? create-schema?]
                           (is (= [true true] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
         (testing "available but not installed, schema pre-created → probe the extension only"
-          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists true})
+          (with-redefs [jdbc/execute-one! (catalog-row (merge {:available true} provisioned-schema))
                         semantic.db.datasource/app-db-can-provision-pgvector?
                         (fn [_ _ create-extension? create-schema?]
                           (is (= [true false] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
         (testing "a privilege gap while provisioning → unsupported"
-          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema-exists false})
+          (with-redefs [jdbc/execute-one! (catalog-row {:available true})
                         semantic.db.datasource/app-db-can-provision-pgvector? (fn [& _] false)]
-            (is (false? (check)))))))))
+            (is (false? (check)))))
+        ;; information_schema.schemata, the earlier stand-in, shows a schema to a role holding either
+        ;; privilege, so both of these read as fully provisioned there and passed the check.
+        (testing "a schema this role holds only one privilege on → unsupported, and provisioning can't fix it"
+          (doseq [[held missing] [[:schema-usable :schema-writable]
+                                  [:schema-writable :schema-usable]]]
+            (testing (format "holding %s but not %s" (name held) (name missing))
+              (with-redefs [jdbc/execute-one! (catalog-row {:installed true :available true
+                                                            :schema-in-catalog true
+                                                            held true, missing false})
+                            semantic.db.datasource/app-db-can-provision-pgvector?
+                            (fn [& _] (throw (AssertionError.
+                                              "CREATE SCHEMA IF NOT EXISTS grants nothing on a schema already there")))]
+                (is (false? (check)))))))))))
 
 (deftest probe-app-db-store-test
   (testing "the readiness probe asks what the store has now, where the support check asks what it could have"
-    (letfn [(probe [] (semantic.db.datasource/probe-app-db-store!))
-            (catalog [m] (fn [& _] (merge {:installed false :available false
-                                           :schema-exists false :schema-in-catalog false}
-                                          m)))]
+    (letfn [(probe [] (semantic.db.datasource/probe-app-db-store!))]
       ;; A latched-true support cache throughout: the probe must not be answering from it.
       (with-support-cache true
-        (with-redefs [mdb/data-source     (constantly ::app-pool)
-                      jdbc/get-connection (fn [_] (stub-connection))
-                      semantic.db.datasource/check-app-db-pgvector-support
-                      (fn [] (throw (AssertionError. "the probe must read the catalog, not the cache")))
-                      semantic.db.datasource/app-db-can-provision-pgvector?
-                      (fn [& _] (throw (AssertionError. "rolled-back DDL answers nothing about now")))]
-          (testing "store provisioned here and the extension is installed → reachable"
-            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true
-                                                      :schema-exists true :schema-in-catalog true})]
-              (is (true? (probe)))))
-          (testing "store provisioned here but the extension was dropped → unreachable"
-            (with-redefs [jdbc/execute-one! (catalog {:available true :schema-exists true
-                                                      :schema-in-catalog true})]
-              (is (false? (probe)))))
-          (testing "the store's schema exists but this role can no longer see it → out of reach"
-            (with-redefs [jdbc/execute-one! (catalog {:installed true :available true
-                                                      :schema-in-catalog true})]
-              (is (false? (probe)))))
-          (testing "never provisioned anywhere → the extension being installable is the whole question"
-            (with-redefs [jdbc/execute-one! (catalog {:available true})]
-              (is (true? (probe))))
-            (with-redefs [jdbc/execute-one! (catalog {})]
-              (is (false? (probe))))))))))
+        (mt/with-temporary-setting-values [pgvector-app-db-store-provisioned false]
+          (with-redefs [mdb/data-source     (constantly ::app-pool)
+                        jdbc/get-connection (fn [_] (stub-connection))
+                        semantic.db.datasource/check-app-db-pgvector-support
+                        (fn [] (throw (AssertionError. "the probe must read the catalog, not the cache")))
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [& _] (throw (AssertionError. "rolled-back DDL answers nothing about now")))]
+            (testing "never provisioned anywhere → the extension being installable is the whole question"
+              (with-redefs [jdbc/execute-one! (catalog-row {:available true})]
+                (is (true? (probe))))
+              (with-redefs [jdbc/execute-one! (catalog-row {})]
+                (is (false? (probe))))
+              (is (false? (semantic.settings/pgvector-app-db-store-provisioned))
+                  "and nothing has been provisioned to remember"))
+            (testing "store provisioned here and the extension is installed → reachable"
+              (with-redefs [jdbc/execute-one! (catalog-row (merge {:installed true :available true}
+                                                                  provisioned-schema))]
+                (is (true? (probe))))
+              (is (true? (semantic.settings/pgvector-app-db-store-provisioned))
+                  "the sighting is remembered, so a later probe can tell a lost schema from an uncreated one"))
+            (testing "store provisioned here but the extension was dropped → unreachable"
+              (with-redefs [jdbc/execute-one! (catalog-row (merge {:available true} provisioned-schema))]
+                (is (false? (probe)))))
+            (testing "the store's schema is there but this role has lost a privilege on it → out of reach"
+              (doseq [lost [:schema-usable :schema-writable]]
+                (testing (name lost)
+                  (with-redefs [jdbc/execute-one! (catalog-row (merge {:installed true :available true}
+                                                                      provisioned-schema
+                                                                      {lost false}))]
+                    (is (false? (probe)))))))
+            (testing "the store's schema was dropped outright → unreachable, not mistaken for a fresh app db"
+              (with-redefs [jdbc/execute-one! (catalog-row {:installed true :available true})]
+                (is (false? (probe)))))))))))
 
 (deftest support-check-caching-test
   (with-redefs [semantic.db.datasource/db-url nil
