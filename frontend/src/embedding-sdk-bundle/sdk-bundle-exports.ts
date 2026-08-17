@@ -1,5 +1,3 @@
-/* eslint-disable import/order */
-
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { resolveDatasetQuery } from "embedding-sdk-bundle/lib/create-metabase-query";

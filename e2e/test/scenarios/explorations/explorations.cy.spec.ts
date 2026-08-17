@@ -586,7 +586,7 @@ function visitExplorationUntilSettled(
   const awaitThreadCompletion = (attempt: number) => {
     cy.wait("@getExploration", { timeout: 30000 }).then(({ response }) => {
       // Unjustified type cast. FIXME
-      const threads = (response?.body as Exploration).threads ?? [];
+      const threads = (response?.body as Exploration)?.threads ?? [];
       if (!threads.every((thread) => thread.completed_at != null)) {
         expect(
           attempt,
@@ -997,7 +997,7 @@ describe("scenarios > explorations > chart click-through", () => {
             expect(request.body.explore_filters[0].operator).to.eq("=");
 
             // Unjustified type cast. FIXME
-            const threads = (response?.body as Exploration).threads ?? [];
+            const threads = (response?.body as Exploration)?.threads ?? [];
             const newThread = threads.find(
               (thread) => !initialThreadIds.includes(thread.id),
             );
@@ -1124,7 +1124,7 @@ describe("scenarios > explorations > chart click-through", () => {
             .and.have.length(2);
 
           // Cypress does not type intercept response bodies.
-          const threads = (response?.body as Exploration).threads ?? [];
+          const threads = (response?.body as Exploration)?.threads ?? [];
           const newThread = threads.find(
             (thread) => !initialThreadIds.includes(thread.id),
           );
