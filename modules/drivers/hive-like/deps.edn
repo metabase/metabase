@@ -243,7 +243,7 @@
   ;; Commons — pinned to override old transitive versions from httpclient/zookeeper.
   ;; commons-io 2.11.0 has CVE-2024-47554 (ReDoS).
   commons-io/commons-io                              {:mvn/version "2.18.0"}
-  commons-codec/commons-codec                        {:mvn/version "1.17.1"}
+  commons-codec/commons-codec                        {:mvn/version "1.22.1"}
   commons-logging/commons-logging                    {:mvn/version "1.3.5"}
 
   ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
