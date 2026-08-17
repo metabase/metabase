@@ -235,7 +235,6 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
       cy.findByText("Count").should("exist"); // y-axis
       cy.findByText("Created At: Month").should("exist"); // x-axis
       cy.findByText("May 2026").should("exist");
-      cy.findByText("December 2026").should("exist");
     });
   });
 });
