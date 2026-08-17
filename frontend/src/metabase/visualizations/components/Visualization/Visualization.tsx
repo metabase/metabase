@@ -28,7 +28,7 @@ import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensi
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import { Flex, type IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
 import {
@@ -42,7 +42,6 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
@@ -929,12 +928,11 @@ class Visualization extends PureComponent<
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
                 style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
+                {/* The same view the card shows while its data loads, so a
+                    chunk that arrives after the data does not swap one
+                    loading state for a different one. */}
                 <Suspense
-                  fallback={
-                    <Flex h="100%" w="100%" direction="column">
-                      {getChartSkeletonImage(visualization?.identifier)}
-                    </Flex>
-                  }
+                  fallback={renderLoadingView({ expectedDuration, isSlow })}
                 >
                   <VisualizationRenderedWrapper
                     onRendered={this.handleVisualizationRendered}
