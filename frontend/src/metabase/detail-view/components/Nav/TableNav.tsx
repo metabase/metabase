@@ -28,7 +28,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
       <Breadcrumb
         color="text-secondary"
         icon="database"
-        to={`/browse/databases/${table.db_id}`}
+        to={Urls.browseDatabase(table.db)}
         showTooltip
       >
         {table.db.name}
@@ -40,7 +40,10 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
 
           <Breadcrumb
             color="text-secondary"
-            to={`/browse/databases/${table.db_id}/schema/${encodeURIComponent(table.schema)}`}
+            to={Urls.browseSchemaBySlug(
+              Urls.databaseSlug(table.db),
+              table.schema,
+            )}
             showTooltip
           >
             {table.schema}
