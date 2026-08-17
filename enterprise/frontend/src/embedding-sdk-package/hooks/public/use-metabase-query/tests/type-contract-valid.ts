@@ -1,5 +1,3 @@
-/* eslint-disable import/order */
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";

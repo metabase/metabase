@@ -2,7 +2,6 @@
 // chunk. If this module is ever declared side-effect free, the bundler would
 // drop this import and the graph would render unstyled.
 import "@xyflow/react/dist/style.css";
-
 import {
   Background,
   Panel,

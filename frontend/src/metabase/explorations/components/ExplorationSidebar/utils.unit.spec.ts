@@ -1231,14 +1231,14 @@ describe("group pageIds", () => {
 
     expect(tree[0]?.data?.type).toBe("heading");
     // Unjustified type cast. FIXME
-    expect((tree[0]?.data as { pageIds?: number[] }).pageIds).toEqual([101]);
+    expect((tree[0]?.data as { pageIds?: number[] })?.pageIds).toEqual([101]);
 
     // Unjustified type cast. FIXME
-    expect((tree[1]?.data as { pageIds?: number[] }).pageIds).toEqual([202]);
+    expect((tree[1]?.data as { pageIds?: number[] })?.pageIds).toEqual([202]);
 
     const blockHeading = tree[1]?.children?.[0];
     // Unjustified type cast. FIXME
-    expect((blockHeading?.data as { pageIds?: number[] }).pageIds).toEqual([
+    expect((blockHeading?.data as { pageIds?: number[] })?.pageIds).toEqual([
       202,
     ]);
   });
@@ -1264,7 +1264,7 @@ describe("group pageIds", () => {
 
     expect(
       // Unjustified type cast. FIXME
-      ((tree[0]?.data as { pageIds?: number[] }).pageIds ?? []).toSorted(
+      ((tree[0]?.data as { pageIds?: number[] })?.pageIds ?? []).toSorted(
         (a, b) => a - b,
       ),
     ).toEqual([101, 202]);
@@ -1303,13 +1303,13 @@ describe("group pageIds", () => {
         headings.find((h) => h.name === name)?.data as {
           allHidden?: boolean;
         }
-      ).allHidden;
+      )?.allHidden;
 
     expect(allHiddenOf("All hidden")).toBe(true);
     expect(allHiddenOf("Mixed")).toBe(false);
     // the thread heading mixes a hidden and a visible page → not all hidden
     // Unjustified type cast. FIXME
-    expect((tree[0]?.data as { allHidden?: boolean }).allHidden).toBe(false);
+    expect((tree[0]?.data as { allHidden?: boolean })?.allHidden).toBe(false);
   });
 });
 

@@ -42,8 +42,8 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
   type OnCreateOptions,
   useCreateQuestion,
+  useSaveQuestion,
 } from "metabase/query_builder";
-import { useSaveQuestion } from "metabase/query_builder";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
