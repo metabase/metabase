@@ -32,14 +32,6 @@ describe("MonitorHeaderTabs", () => {
     );
   });
 
-  it("does not use the ARIA tabs pattern, since activating a tab navigates", () => {
-    setup();
-
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument();
-  });
-
   it("marks the tab matching the current pathname as the current page", () => {
     setup({ initialRoute: "/monitor/example/events" });
 

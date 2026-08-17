@@ -8,7 +8,6 @@ import { CliBreakoutChart } from "./CliBreakoutChart";
 import { CliCallerLivenessTable } from "./CliCallerLivenessTable";
 import { CliCallsTimelineChart } from "./CliCallsTimelineChart";
 
-/** The CLI analytics usage charts, rendered at `/monitor/ai-auditing/cli/usage`. */
 export function CliUsagePage() {
   const { dataSources, chartFilters, hasErrors } = useCliAnalyticsContext();
 

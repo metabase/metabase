@@ -105,8 +105,6 @@ const auditDatabase: Database = createMockDatabase({
 
 // A breakout/count dataset that satisfies both the chart visualizations
 // (breakout + aggregation columns) and the events table (named columns).
-// Aggregation column first so the page's no-breakout count probe (reads rows[0][0]) sees a
-// positive number; the `source` tags still let the breakout charts find the right columns.
 const datasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [
@@ -131,8 +129,6 @@ const datasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
-// A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
-// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
 const multiPageDatasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [
@@ -175,13 +171,11 @@ const emptyDatasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
-/** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
 function setupEndpoints(
   dataset: Dataset = datasetResponse,
   datasetError = false,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
-  // useAuditTable pulls the table's fields (and its FK targets') from here.
   fetchMock.post("path:/api/dataset/query_metadata", {
     databases: [auditDatabase],
     tables: auditDatabase.tables ?? [],
@@ -199,7 +193,6 @@ function setupEndpoints(
   }
 }
 
-/** Render the CLI analytics section (layout + usage/calls sub-routes) with EE plugins + `audit_app`. */
 function setup({
   dataset,
   datasetError,
@@ -216,8 +209,6 @@ function setup({
   setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
-    // Mirrors `getCliAnalyticsRoutes()`: the index redirect sits outside the layout, which only
-    // renders its outlet once the shared count query resolves with rows.
     <Route path={Urls.monitorAiAuditingCli()}>
       <Route index element={redirect("usage")} />
       <Route element={<CliAnalyticsSectionLayout />}>
@@ -246,9 +237,7 @@ type EventsMbqlStage = {
 };
 
 /**
- * The first MBQL stage of every adhoc `dataset` request issued so far. The row-level events query
- * is the one that carries a `:page` clause on stage 0 (the chart queries don't), so tests filter
- * on `.page`. Non-string bodies are skipped.
+ * The first MBQL stage of every adhoc `dataset` request issued so far.
  */
 const eventsDatasetStages = (): EventsMbqlStage[] =>
   fetchMock.callHistory
@@ -263,7 +252,7 @@ const eventsDatasetStages = (): EventsMbqlStage[] =>
     .filter((stage): stage is EventsMbqlStage => stage != null);
 
 describe("CliAnalyticsSectionLayout", () => {
-  it("redirects the bare section route to the usage sub-route", async () => {
+  it("redirects from root route to the /usage sub-route", async () => {
     const { router } = setup({ initialRoute: Urls.monitorAiAuditingCli() });
 
     await waitFor(() => {
@@ -274,20 +263,19 @@ describe("CliAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
   });
 
-  it("redirects the bare section route even when the section has no data", async () => {
+  it("redirects from root route even when the section has no data", async () => {
     const { router } = setup({
       dataset: emptyDatasetResponse,
       initialRoute: Urls.monitorAiAuditingCli(),
     });
 
-    // The layout gates its outlet on the count query, so the redirect must not live inside it.
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
     });
     expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
   });
 
-  it("keeps the URL filter params when navigating between usage and calls", async () => {
+  it("keeps the URL filter params when navigating between /usage and /calls", async () => {
     const { router } = setup({
       initialRoute: `${Urls.monitorAiAuditingCliUsage()}?date=past7days~&user=1`,
     });
@@ -295,8 +283,6 @@ describe("CliAnalyticsSectionLayout", () => {
     await screen.findByRole("heading", { name: "CLI analytics" });
     await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
 
-    // Tab links are plain route links, so they have to carry the filters themselves — otherwise
-    // the address bar (and anything shared or reloaded from it) loses the scoped view.
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
     });
@@ -314,7 +300,7 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(backSearch).toContain("user=1");
   });
 
-  it("renders the header, filters, and usage route by default", async () => {
+  it("renders the header, filters, and /usage route by default", async () => {
     setup();
 
     expect(
@@ -323,12 +309,10 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
-    // Tabs appear only after the initial count query resolves (the page shows a loader first).
     expect(
       await screen.findByRole("link", { name: "Usage" }),
     ).toBeInTheDocument();
 
-    // Charts run ad-hoc dataset queries through /api/dataset.
     await waitFor(() => {
       expect(fetchMock.callHistory.called("dataset")).toBe(true);
     });
@@ -337,7 +321,7 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(await screen.findByText("Errors by operation")).toBeInTheDocument();
   });
 
-  it("navigates to the calls route and renders the sortable row-level table", async () => {
+  it("navigates to the /calls route and renders the sortable row-level table", async () => {
     const { router } = setup();
 
     await screen.findByRole("heading", { name: "CLI analytics" });
@@ -347,7 +331,6 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(
       await screen.findByRole("treegrid", { name: "Calls" }),
     ).toBeInTheDocument();
-    // a curated column header and a cell value from the mocked page render
     expect(
       await screen.findByRole("columnheader", { name: "Operation" }),
     ).toBeInTheDocument();
@@ -356,12 +339,11 @@ describe("CliAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
   });
 
-  it("sorts the calls table server-side when a column header is clicked", async () => {
+  it("sorts the /calls table server-side when a column header is clicked", async () => {
     setup({ initialRoute: Urls.monitorAiAuditingCliCalls() });
 
     await screen.findByRole("treegrid", { name: "Calls" });
 
-    // The Operation header is sortable; clicking it re-sorts ascending (it wasn't the active column).
     await userEvent.click(
       await screen.findByRole("columnheader", { name: "Operation" }),
     );
@@ -382,7 +364,7 @@ describe("CliAnalyticsSectionLayout", () => {
     });
   });
 
-  it("paginates the calls table when there are more matching rows than one page", async () => {
+  it("paginates the /calls table when there are more matching rows than one page", async () => {
     setup({
       dataset: multiPageDatasetResponse,
       initialRoute: Urls.monitorAiAuditingCliCalls(),
@@ -391,7 +373,6 @@ describe("CliAnalyticsSectionLayout", () => {
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
     });
-    // First page: previous disabled, next enabled (total 60 spans multiple pages of 25).
     expect(within(pagination).getByLabelText("Previous page")).toBeDisabled();
     const nextButton = within(pagination).getByLabelText("Next page");
     expect(nextButton).toBeEnabled();
@@ -407,7 +388,7 @@ describe("CliAnalyticsSectionLayout", () => {
     });
   });
 
-  it("updates the page URL param (debounced) when Next is clicked", async () => {
+  it("updates the page URL param when Next is clicked", async () => {
     const { router } = setup({
       dataset: multiPageDatasetResponse,
       initialRoute: Urls.monitorAiAuditingCliCalls(),
@@ -417,19 +398,16 @@ describe("CliAnalyticsSectionLayout", () => {
       name: "pagination",
     });
     await userEvent.click(within(pagination).getByLabelText("Next page"));
-
-    // Unlike MCP's events pagination, CLI's `onPageChange` doesn't pass `{ immediate: true }`, so
-    // the URL update goes through the normal debounce.
     await waitFor(() => {
       expect(router?.location.search).toContain("page=1");
     });
   });
 
-  it("orders the calls query by a total order (created_at + call_id) for stable paging", async () => {
+  it("orders the /calls query by a total order (created_at + call_id) for stable paging", async () => {
     setup({ initialRoute: Urls.monitorAiAuditingCliCalls() });
 
     // The calls request is the paginated one (carries a `page` clause); its order-by must be
-    // created_at followed by the call_id (PK) tiebreaker, so pages can't skip/duplicate rows on
+    // created_at + call_id (PK) tiebreaker, so pages can't skip/duplicate rows on
     // tied timestamps.
     await waitFor(() => {
       const eventsStage = eventsDatasetStages().find(
@@ -448,14 +426,11 @@ describe("CliAnalyticsSectionLayout", () => {
     expect(
       await screen.findByRole("heading", { name: "CLI analytics" }),
     ).toBeInTheDocument();
-    // Regression: the count query erroring (e.g. a 500) used to leave isInitialLoading
-    // stuck true forever on CLI (unlike MCP, which already surfaced this), so the page never got
-    // past the loader.
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
     expect(screen.queryByText("Calls by operation")).not.toBeInTheDocument();
   });
 
-  it("keeps the shared filters visible after navigating between usage and calls", async () => {
+  it("keeps the shared filters visible after navigating between /usage and /calls", async () => {
     setup();
 
     await screen.findByRole("heading", { name: "CLI analytics" });
@@ -465,12 +440,6 @@ describe("CliAnalyticsSectionLayout", () => {
 
     await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
     await screen.findByRole("treegrid", { name: "Calls" });
-    expect(
-      screen.getByTestId("conversation-filters-date-select"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
-    expect(await screen.findByText("Calls by operation")).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
@@ -484,7 +453,6 @@ describe("CliAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
 
-    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
     expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Calls" })).toBeInTheDocument();
     expect(

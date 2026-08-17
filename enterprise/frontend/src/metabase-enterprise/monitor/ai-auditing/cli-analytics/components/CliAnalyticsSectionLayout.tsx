@@ -22,7 +22,6 @@ import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analy
 import type { CliEventSortColumn } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import {
-  // The shared audit filter bar; aliased since it has nothing to do with Metabot "conversations".
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
@@ -68,7 +67,6 @@ const CliAnalyticsContext = createContext<CliAnalyticsContextValue | null>(
   null,
 );
 
-/** Shared filters, data sources, and calls pagination/sorting, provided by {@link CliAnalyticsSectionLayout}. */
 export function useCliAnalyticsContext(): CliAnalyticsContextValue {
   const context = useContext(CliAnalyticsContext);
   if (context == null) {
@@ -79,12 +77,6 @@ export function useCliAnalyticsContext(): CliAnalyticsContextValue {
   return context;
 }
 
-/**
- * Shared layout for the CLI analytics section: header, tab navigation, and the audit filter bar,
- * with `/usage` (charts) and `/calls` (row-level table) rendered through `<Outlet />`. Owns the
- * URL-state filters and calls pagination/sorting so both sub-routes stay in sync, and gates the
- * outlet on a single shared "has any data" query so switching tabs never re-fetches the count.
- */
 export function CliAnalyticsSectionLayout(): ReactNode {
   const location = useLocation();
   const [
@@ -132,9 +124,7 @@ export function CliAnalyticsSectionLayout(): ReactNode {
   const usagePath = Urls.monitorAiAuditingCliUsage();
   const callsPath = Urls.monitorAiAuditingCliCalls();
 
-  // Tab links carry the current query string so the filters (and the table's page/sort) survive a
-  // tab switch in the URL itself, keeping it shareable — the old query-param tabs patched the URL,
-  // which preserved them implicitly. Selection still matches on the pathname alone.
+  // Tab links carry the current query string so the filters survive a tab switch.
   const tabs: MonitorHeaderTab[] = [
     {
       label: t`Usage`,
@@ -148,7 +138,6 @@ export function CliAnalyticsSectionLayout(): ReactNode {
     },
   ];
 
-  // The Calls route is a data grid that should scroll internally.
   const isEventsRoute = location.pathname === callsPath;
 
   const outletContext: CliAnalyticsContextValue = {

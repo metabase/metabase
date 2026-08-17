@@ -7,7 +7,6 @@ import { useMcpAnalyticsContext } from "./McpAnalyticsSectionLayout";
 import { McpBreakoutChart } from "./McpBreakoutChart";
 import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
 
-/** The MCP analytics usage charts, rendered at `/monitor/ai-auditing/mcp/usage`. */
 export function McpUsagePage() {
   const { dataSources, chartFilters, hasErrors } = useMcpAnalyticsContext();
 

@@ -115,9 +115,6 @@ registerPagePrefetch(
 );
 registerPagePrefetch(Urls.monitorAiAuditingCliCalls(), cliCallsPage);
 
-// The index redirects sit outside the section layouts: the layouts only render their `<Outlet />`
-// once the shared "has any data" query resolves with rows, so an index route nested inside one
-// would never fire on an empty, still-loading, or errored section and the bare path would stick.
 function getMcpAnalyticsRoutes() {
   return (
     <Route element={<McpAnalyticsAvailabilityLayout />}>

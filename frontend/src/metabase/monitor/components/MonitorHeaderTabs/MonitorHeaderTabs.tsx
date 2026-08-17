@@ -27,12 +27,6 @@ function isTabSelected(tab: MonitorHeaderTab, pathname: string) {
     : (isSelected ?? to === pathname);
 }
 
-/**
- * Each "tab" navigates to a real, bookmarkable route rather than switching in-place content, so
- * these are rendered as plain links with `aria-current="page"` (matching `AreaTab`) rather than
- * the ARIA tabs pattern (`role="tab"`/`tabpanel`) — that pattern implies activating a tab doesn't
- * navigate, which isn't true here.
- */
 export function MonitorHeaderTabs({ tabs }: MonitorHeaderTabsProps) {
   const { pathname } = useLocation();
 

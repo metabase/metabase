@@ -22,8 +22,6 @@ jest.mock(
     MetabotAnalyticsUpsellPage: () => <div>Usage stats upsell</div>,
   }),
 );
-// The section layouts render their sub-route through an outlet, so the mocks do too — otherwise
-// the leaf routes below would never render and a missing/misspelled child route would go unnoticed.
 jest.mock("./mcp-analytics/components/McpAnalyticsSectionLayout", () => {
   const { Outlet } = jest.requireActual<typeof Router>("metabase/router");
   return {

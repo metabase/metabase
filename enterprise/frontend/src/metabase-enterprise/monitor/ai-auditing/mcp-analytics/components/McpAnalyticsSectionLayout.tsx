@@ -22,7 +22,6 @@ import { useMcpHasData } from "metabase-enterprise/monitor/ai-auditing/mcp-analy
 import type { McpEventSortColumn } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 import { mcpUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/url-state";
 import {
-  // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
   ConversationFilters as McpToolCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
@@ -68,7 +67,6 @@ const McpAnalyticsContext = createContext<McpAnalyticsContextValue | null>(
   null,
 );
 
-/** Shared filters, data sources, and events pagination/sorting, provided by {@link McpAnalyticsSectionLayout}. */
 export function useMcpAnalyticsContext(): McpAnalyticsContextValue {
   const context = useContext(McpAnalyticsContext);
   if (context == null) {
@@ -79,12 +77,6 @@ export function useMcpAnalyticsContext(): McpAnalyticsContextValue {
   return context;
 }
 
-/**
- * Shared layout for the MCP analytics section: header, tab navigation, and the audit filter bar,
- * with `/usage` (charts) and `/events` (row-level table) rendered through `<Outlet />`. Owns the
- * URL-state filters and events pagination/sorting so both sub-routes stay in sync, and gates the
- * outlet on a single shared "has any data" query so switching tabs never re-fetches the count.
- */
 export function McpAnalyticsSectionLayout(): ReactNode {
   const location = useLocation();
   const [
@@ -104,8 +96,6 @@ export function McpAnalyticsSectionLayout(): ReactNode {
     hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
-  // IP address and error message are PII (null unless retention is on), so only surface those
-  // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
@@ -134,9 +124,6 @@ export function McpAnalyticsSectionLayout(): ReactNode {
   const usagePath = Urls.monitorAiAuditingMcpUsage();
   const eventsPath = Urls.monitorAiAuditingMcpEvents();
 
-  // Tab links carry the current query string so the filters (and the table's page/sort) survive a
-  // tab switch in the URL itself, keeping it shareable — the old query-param tabs patched the URL,
-  // which preserved them implicitly. Selection still matches on the pathname alone.
   const tabs: MonitorHeaderTab[] = [
     {
       label: t`Usage`,
@@ -150,7 +137,6 @@ export function McpAnalyticsSectionLayout(): ReactNode {
     },
   ];
 
-  // The Tool calls route is a data grid that should scroll internally.
   const isEventsRoute = location.pathname === eventsPath;
 
   const outletContext: McpAnalyticsContextValue = {

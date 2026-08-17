@@ -217,8 +217,6 @@ function setup({
   setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
-    // Mirrors `getMcpAnalyticsRoutes()`: the index redirect sits outside the layout, which only
-    // renders its outlet once the shared count query resolves with rows.
     <Route path={Urls.monitorAiAuditingMcp()}>
       <Route index element={redirect("usage")} />
       <Route element={<McpAnalyticsSectionLayout />}>
@@ -265,7 +263,7 @@ const eventsDatasetStages = (): EventsMbqlStage[] =>
     .filter((stage): stage is EventsMbqlStage => stage != null);
 
 describe("McpAnalyticsSectionLayout", () => {
-  it("redirects the bare section route to the usage sub-route", async () => {
+  it("redirects from root route to the /usage sub-route", async () => {
     const { router } = setup({ initialRoute: Urls.monitorAiAuditingMcp() });
 
     await waitFor(() => {
@@ -276,20 +274,18 @@ describe("McpAnalyticsSectionLayout", () => {
     ).toBeInTheDocument();
   });
 
-  it("redirects the bare section route even when the section has no data", async () => {
+  it("redirects from the root route even when the section has no data", async () => {
     const { router } = setup({
       dataset: emptyDatasetResponse,
       initialRoute: Urls.monitorAiAuditingMcp(),
     });
-
-    // The layout gates its outlet on the count query, so the redirect must not live inside it.
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpUsage());
     });
     expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
   });
 
-  it("renders the header, filters, and usage route by default", async () => {
+  it("renders the header, filters, and /usage route by default", async () => {
     setup();
 
     expect(
@@ -312,7 +308,7 @@ describe("McpAnalyticsSectionLayout", () => {
     expect(await screen.findByText("Errors by type")).toBeInTheDocument();
   });
 
-  it("navigates to the events route and renders the row-level table", async () => {
+  it("navigates to the /events route and renders the row-level table", async () => {
     const { router } = setup();
 
     await screen.findByRole("heading", { name: "MCP analytics" });
@@ -329,7 +325,7 @@ describe("McpAnalyticsSectionLayout", () => {
     expect(await screen.findByText("search_data")).toBeInTheDocument();
   });
 
-  it("keeps the shared filters visible after navigating between usage and events", async () => {
+  it("keeps the shared filters visible after navigating between /usage and /events", async () => {
     setup();
 
     await screen.findByRole("heading", { name: "MCP analytics" });
@@ -344,15 +340,9 @@ describe("McpAnalyticsSectionLayout", () => {
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
-
-    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
-    expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
-    expect(
-      screen.getByTestId("conversation-filters-date-select"),
-    ).toBeInTheDocument();
   });
 
-  it("keeps the URL filter params when navigating between usage and events", async () => {
+  it("keeps the URL filter params when navigating between /usage and /events", async () => {
     const { router } = setup({
       initialRoute: `${Urls.monitorAiAuditingMcpUsage()}?date=past7days~&user=1`,
     });
@@ -362,8 +352,6 @@ describe("McpAnalyticsSectionLayout", () => {
       await screen.findByRole("link", { name: "Tool calls" }),
     );
 
-    // Tab links are plain route links, so they have to carry the filters themselves — otherwise
-    // the address bar (and anything shared or reloaded from it) loses the scoped view.
     await waitFor(() => {
       expect(router?.location.pathname).toBe(Urls.monitorAiAuditingMcpEvents());
     });

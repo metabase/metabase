@@ -1,7 +1,6 @@
 import { useCliAnalyticsContext } from "./CliAnalyticsSectionLayout";
 import { CliEventsTable } from "./CliEventsTable";
 
-/** The CLI row-level calls table, rendered at `/monitor/ai-auditing/cli/calls`. */
 export function CliCallsPage() {
   const {
     dataSources,

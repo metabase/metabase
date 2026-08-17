@@ -1,7 +1,6 @@
 import { useMcpAnalyticsContext } from "./McpAnalyticsSectionLayout";
 import { McpEventsTable } from "./McpEventsTable";
 
-/** The MCP row-level tool calls table, rendered at `/monitor/ai-auditing/mcp/events`. */
 export function McpEventsPage() {
   const {
     dataSources,
