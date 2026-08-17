@@ -71,6 +71,10 @@
     (testing "opted in, but a library_retrieval schema already exists — refusing to clobber it"
       (is false "the appdb-mode job should start from a fresh app db"))
 
+    (contains? (tables-in-schema (mdb/data-source) "public") (:vectors index-table/legacy-tables))
+    (testing "opted in, but a public library_entity_index already exists — refusing to clobber it"
+      (is false "the round trip creates that table itself; drop the leftover from an interrupted run"))
+
     :else
     (mt/with-premium-features #{:library :library-retrieval}
       ;; near-identical vectors, so the query lands on its document and nothing else

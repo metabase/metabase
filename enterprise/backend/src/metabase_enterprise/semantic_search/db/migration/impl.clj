@@ -53,9 +53,10 @@
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here.
   Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
-  swept, but only for tables [[semantic-search-table?]] recognizes — library retrieval keeps its index
-  there too. Refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed
-  at the application database would otherwise destroy it here, on first init)."
+  swept, but only for tables [[semantic-search-table?]] recognizes — the schema is shared, and an index
+  library retrieval built before it had a schema of its own still sits there until adoption moves it.
+  Refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at the
+  application database would otherwise destroy it here, on first init)."
   [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx

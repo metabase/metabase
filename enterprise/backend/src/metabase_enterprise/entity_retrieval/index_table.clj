@@ -37,7 +37,9 @@
 (def index-schema
   "Schema holding the library entity index, in a dedicated store and on the app db alike.
   Its own, not semantic search's: [[metabase-enterprise.semantic-search.db.migration.impl]] wipes the
-  schema it is given, and in a dedicated store that is the default schema these tables used to sit in."
+  schema it is given, and a dedicated store's reset sweeps the default schema these tables used to sit in.
+  It spares the names it recognizes, and ours were never among them -- but an index should not depend on
+  another module's list of what it may destroy."
   "library_retrieval")
 
 ;; TODO (Chris 2026-07-14) -- these names carry no version, so an on-disk upgrade has nothing to key off.
