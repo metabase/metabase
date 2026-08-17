@@ -298,4 +298,7 @@
   :encryption :no
   :export?    false
   :visibility :internal
-  :doc        false)
+  :doc        false
+  ;; Bookkeeping about one app db, so an env var has nothing true to say about it: false there would keep a
+  ;; sighting from ever taking effect, and true would make a fresh database look like it had lost its schema.
+  :can-read-from-env? false)

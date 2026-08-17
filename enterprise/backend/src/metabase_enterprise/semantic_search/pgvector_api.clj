@@ -9,6 +9,7 @@
   After this, the document management and query functions will work as long as you pass the same index-metadata configuration."
   (:require
    [metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
@@ -26,8 +27,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  (require '[metabase-enterprise.semantic-search.db.datasource :as semantic.db])
-  (def pgvector (or @semantic.db/data-source (semantic.db/init-db!)))
+  (def pgvector (or @semantic.db.datasource/data-source (semantic.db.datasource/init-db!)))
   (def index-metadata semantic.index-metadata/default-index-metadata)
 
   (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
@@ -118,10 +118,16 @@
 
   Designed to be called once at application startup (or in tests)."
   [pgvector index-metadata embedding-model & {:as opts}]
-  (semantic.db.connection/with-migrate-tx [tx pgvector]
-    (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
-                                              :embedding-model embedding-model})
-    (initialize-index! tx index-metadata embedding-model opts)))
+  (let [index (semantic.db.connection/with-migrate-tx [tx pgvector]
+                (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
+                                                          :embedding-model embedding-model})
+                (initialize-index! tx index-metadata embedding-model opts))]
+    ;; A schema on the index-metadata means the store shares the app db, where this is the call that creates
+    ;; it. Recorded once the transaction has committed, and here rather than only on the readiness probe, so
+    ;; a schema dropped before the first probe still reads as lost rather than never created.
+    (when (:schema index-metadata)
+      (semantic.db.datasource/mark-app-db-store-provisioned!))
+    index))
 
 ;; query/index-mgmt require an active index to be established first.
 ;; init-semantic-search! must be called on startup

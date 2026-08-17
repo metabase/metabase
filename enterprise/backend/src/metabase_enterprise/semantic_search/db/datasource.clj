@@ -515,14 +515,20 @@
                          (ex-message e))
                false))))))))
 
-(defn- remember-app-db-store-provisioned!
-  "Record that the store's schema has been seen on this app db, so a later probe finding it gone knows it was
-  lost rather than never created.
-  Written from the probe rather than the activation path, so a store provisioned by an earlier version is
-  picked up too. Only the first sighting writes; the rest read the setting cache."
+(defn mark-app-db-store-provisioned!
+  "Record that the store's schema is on this app db, so a later probe finding it gone knows it was lost
+  rather than never created.
+  Called by activation once its schema creation has committed, and again by any probe that sees the schema,
+  which is what picks up a store provisioned by a version that didn't record it.
+  Only the first call writes; the rest read the setting cache. Best-effort: this is bookkeeping behind a
+  gauge, and neither activation nor the readiness probe should fail over it."
   []
-  (when-not (semantic.settings/pgvector-app-db-store-provisioned)
-    (semantic.settings/pgvector-app-db-store-provisioned! true)))
+  (try
+    (when-not (semantic.settings/pgvector-app-db-store-provisioned)
+      (semantic.settings/pgvector-app-db-store-provisioned! true))
+    (catch Exception e
+      (log/warn e (str "Semantic search: could not record that the pgvector store is provisioned on the"
+                       " application database")))))
 
 (defn probe-app-db-store!
   "Whether the app db is a usable pgvector store right now: it answers, and its pieces are still there.
@@ -542,7 +548,7 @@
           #(app-db-store-catalog % (start-budget probe-bounds)))
         ready? (schema-ready? catalog)]
     (when ready?
-      (remember-app-db-store-provisioned!))
+      (mark-app-db-store-provisioned!))
     (cond
       ready?                                               (boolean installed)
       schema-in-catalog                                    false
