@@ -21,7 +21,7 @@ type SetupProps = Partial<
   Omit<SettingDefinition<EmbeddingToggleProps["settingKey"]>, "key">;
 
 const setup = async ({
-  settingKey = "enable-embedding-static",
+  settingKey = "enable-embedding-modular",
   label = undefined,
   disabled = undefined,
   is_env_setting = false,
@@ -36,6 +36,8 @@ const setup = async ({
   ];
   const settingValues = createMockSettings({
     [settingKey]: value,
+    "show-sdk-embed-terms": false,
+    "show-simple-embed-terms": false,
   });
 
   setupSettingsEndpoints(settings);
@@ -91,7 +93,7 @@ describe("EmbeddingToggle", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
-      expect(body).toEqual({ "enable-embedding-static": true });
+      expect(body).toEqual({ "enable-embedding-modular": true });
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
@@ -103,7 +105,7 @@ describe("EmbeddingToggle", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
-      expect(body).toEqual({ "enable-embedding-static": false });
+      expect(body).toEqual({ "enable-embedding-modular": false });
     });
   });
 

@@ -84,7 +84,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     const [{ body }] = puts;
     expect(body).toEqual({
-      "enable-embedding-simple": true,
+      "enable-embedding-modular": true,
+      "show-sdk-embed-terms": false,
       "show-simple-embed-terms": false,
     });
   });

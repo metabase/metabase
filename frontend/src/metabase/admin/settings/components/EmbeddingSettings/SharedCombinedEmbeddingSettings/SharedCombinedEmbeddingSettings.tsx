@@ -28,7 +28,7 @@ export function SharedCombinedEmbeddingSettings({
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
-  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isGuestEmbedsEnabled = useSetting("enable-embedding-modular");
 
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embedding-settings" }),
@@ -44,7 +44,7 @@ export function SharedCombinedEmbeddingSettings({
       <EmbeddingSettingsCard
         title={t`Enable guest embeds`}
         description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through.`}
-        settingKey="enable-embedding-static"
+        settingKey="enable-embedding-modular"
         actionButton={<NewEmbedButton forceIsGuest />}
         sdk-setting-card
         testId="guest-embeds-setting-card"

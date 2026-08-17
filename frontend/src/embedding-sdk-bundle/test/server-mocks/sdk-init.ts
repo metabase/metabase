@@ -27,7 +27,7 @@ import {
 
 export const setupSdkState = ({
   currentUser = createMockUser(),
-  settingValues = createMockSettings({ "enable-embedding-sdk": true }),
+  settingValues = createMockSettings({ "enable-embedding-modular": true }),
   tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
