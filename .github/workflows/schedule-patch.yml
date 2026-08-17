@@ -11,7 +11,7 @@ jobs:
   trigger-auto-patch:
     # Never run on a fork's inherited cron; honor the kill switch.
     if: ${{ github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_PATCH == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Dispatch patch release for the current and previous major
