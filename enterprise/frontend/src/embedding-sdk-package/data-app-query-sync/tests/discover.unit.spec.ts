@@ -7,10 +7,10 @@ import { checkResourcesSynced } from "../sync";
 import {
   FAKE_HASH,
   makeApp,
-  seedQueries,
   setupResourceSyncTests,
   writeAction,
   writeQuery,
+  writeQueryLockfile,
 } from "./setup";
 
 describe("query discovery", () => {
@@ -70,7 +70,7 @@ describe("query discovery", () => {
       `export const Orders = defineQuery({ savedQuestionSourceId: 10, source: { type: "table", id: 1 }, limit: 5 });`,
     );
 
-    seedQueries(appRoot, [
+    writeQueryLockfile(appRoot, [
       {
         tableId: 1,
         hash: FAKE_HASH,

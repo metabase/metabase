@@ -7,9 +7,9 @@ import {
   isResourcePermissionsRequest,
   jsonResponse,
   makeApp,
-  seedQueries,
   setupResourceSyncTests,
   writeQuery,
+  writeQueryLockfile,
 } from "./setup";
 
 describe("query reconciliation upserts", () => {
@@ -23,7 +23,7 @@ describe("query reconciliation upserts", () => {
       `export const Orders = defineQuery({ savedQuestionSourceId: 35, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    seedQueries(appRoot, [
+    writeQueryLockfile(appRoot, [
       {
         tableId: query.tableId,
         hash: query.hash,
@@ -94,7 +94,7 @@ describe("query reconciliation upserts", () => {
       `export const RenamedOrders = defineQuery({ savedQuestionSourceId: 80, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    seedQueries(appRoot, [
+    writeQueryLockfile(appRoot, [
       {
         tableId: query.tableId,
         hash: query.hash,

@@ -2,8 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { readResourceLockfile } from "../lockfile";
-
 export function setupResourceSyncTests(): void {
   const appRoots: string[] = [];
 
@@ -68,15 +66,9 @@ export function writeAction(appRoot: string, body: string) {
   return filePath;
 }
 
-/** Reads the lockfile through the real parser, so tests also assert it stays valid. */
-export function readLockfile(appRoot: string) {
-  return readResourceLockfile(appRoot);
-}
-
 export const FAKE_HASH = `v1:sha256:${"0".repeat(64)}`;
 
-/** Writes a lockfile holding only query entries, in the real on-disk shape. */
-export function seedQueries(
+export function writeQueryLockfile(
   appRoot: string,
   queries: Array<{
     tableId: number;
@@ -127,12 +119,11 @@ export function isResourcePermissionsRequest(
   );
 }
 
-/** The fields the fake reads; everything else is passed through untouched. */
-type Row = { id: number; model_id?: number } & Record<string, unknown>;
+type FakeEntity = { id: number; model_id?: number } & Record<string, unknown>;
 
 export interface FakeInstance {
-  cards: Map<number, Row>;
-  actions: Map<number, Row>;
+  cards: Map<number, FakeEntity>;
+  actions: Map<number, FakeEntity>;
   requests: Array<{
     method: string;
     pathname: string;
@@ -142,8 +133,8 @@ export interface FakeInstance {
 }
 
 export function createFakeInstance(seed: {
-  cards?: Row[];
-  actions?: Row[];
+  cards?: FakeEntity[];
+  actions?: FakeEntity[];
 }): FakeInstance {
   return {
     cards: new Map((seed.cards ?? []).map((card) => [card.id, card])),
@@ -159,10 +150,6 @@ export function called(fake: FakeInstance, method: string, pathname: string) {
   );
 }
 
-/**
- * Serves the endpoints resource synchronization uses, including the app DB's
- * `ON DELETE CASCADE` from a model card to the actions hanging off it.
- */
 export function serveFakeInstance(
   fake: FakeInstance,
   { slug, collectionId }: { slug: string; collectionId: number },
