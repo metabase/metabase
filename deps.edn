@@ -41,7 +41,7 @@
   com.github.jknack/handlebars              {:mvn/version "4.5.3"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
-  com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
+  com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1118"}           ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.10"}             ; Telemetry library
   com.github.steffan-westcott/clj-otel-exporter-otlp {:mvn/version "0.2.10"}    ; OTLP span exporter (gRPC and HTTP)
   com.github.steffan-westcott/clj-otel-sdk  {:mvn/version "0.2.10"}             ; OpenTelemetry SDK for programmatic configuration
