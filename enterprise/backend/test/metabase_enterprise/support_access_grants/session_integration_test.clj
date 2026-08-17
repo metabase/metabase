@@ -13,8 +13,13 @@
    [metabase.session.api :as api.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+;; :test-users is load-bearing, not boilerplate -- deactivating the support user is only legal while another admin
+;; exists, and crowberto is that admin.
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
                               (with-redefs [api.session/throttling-disabled? true]
