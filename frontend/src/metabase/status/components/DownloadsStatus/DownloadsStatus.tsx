@@ -5,7 +5,7 @@ import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
 import {
   clearAll,
   getDownloads,
-} from "metabase/visualizations/redux/downloads";
+} from "metabase/visualizations/store/downloads";
 
 import { DownloadsStatusLarge } from "../DownloadsStatusLarge";
 import { DownloadsStatusSmall } from "../DownloadsStatusSmall";

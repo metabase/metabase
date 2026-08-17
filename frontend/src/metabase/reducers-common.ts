@@ -16,7 +16,7 @@ import entities from "metabase/redux/entities";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
-import { reducer as downloads } from "metabase/visualizations/redux/downloads";
+import { reducer as downloads } from "metabase/visualizations/store/downloads";
 
 import { metabotReducer as metabot } from "./metabot/state";
 

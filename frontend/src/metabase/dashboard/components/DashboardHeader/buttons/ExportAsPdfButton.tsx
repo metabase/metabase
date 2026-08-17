@@ -8,7 +8,7 @@ import { isDashboardOrTabEmpty } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/redux";
 import type { ActionIconProps } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import { downloadDashboardToPdf } from "metabase/visualizations/redux/downloads";
+import { downloadDashboardToPdf } from "metabase/visualizations/store/downloads";
 
 export const ExportAsPdfButton = (
   props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,

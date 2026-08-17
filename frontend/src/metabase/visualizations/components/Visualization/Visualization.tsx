@@ -80,7 +80,7 @@ import type {
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
-import { getIsDownloadingToImage } from "../../redux/downloads";
+import { getIsDownloadingToImage } from "../../store/downloads";
 import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";

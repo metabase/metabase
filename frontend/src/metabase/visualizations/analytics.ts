@@ -4,7 +4,7 @@ import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { ExportFormat } from "metabase/common/types/export";
 import type { DashboardId } from "metabase-types/api";
 
-import type { ResourceAccessedVia, ResourceType } from "./redux/downloads";
+import type { ResourceAccessedVia, ResourceType } from "./store/downloads";
 import type { RegularClickAction } from "./types";
 
 const SCHEMA = "downloads";
