@@ -38793,7 +38793,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
+            "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -38934,7 +38934,28 @@
                     "oneOf" : [ {
                       "type" : "object",
                       "properties" : {
+                        "base-url" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
                         "access-key-id" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "secret-access-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "project-id" : {
                           "oneOf" : [ {
                             "type" : "string"
                           }, {
@@ -38948,7 +38969,14 @@
                             "type" : "null"
                           } ]
                         },
-                        "base-url" : {
+                        "service-account-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "location" : {
                           "oneOf" : [ {
                             "type" : "string"
                           }, {
@@ -38962,7 +38990,7 @@
                             "type" : "null"
                           } ]
                         },
-                        "secret-access-key" : {
+                        "oauth-access-token" : {
                           "oneOf" : [ {
                             "type" : "string"
                           }, {
@@ -38990,7 +39018,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
+                    "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]

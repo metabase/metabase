@@ -1370,6 +1370,46 @@ The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
 
 TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
 
+### `MB_LLM_GOOGLE_API_BASE_URL`
+
+- Type: string
+- Default: `https://aiplatform.googleapis.com`
+- [Configuration file name](./config-file.md): `llm-google-api-base-url`
+
+The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.
+
+### `MB_LLM_GOOGLE_LOCATION`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-location`
+
+The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.
+
+### `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-oauth-access-token`
+
+A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.
+
+### `MB_LLM_GOOGLE_PROJECT_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-project-id`
+
+The Google Cloud project ID for the Gemini Enterprise Agent Platform.
+
+### `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-service-account-key`
+
+A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
+
 ### `MB_LLM_MAX_TOKENS`
 
 - Type: integer
