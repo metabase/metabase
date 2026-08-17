@@ -33,6 +33,7 @@ const SIDE_EFFECT_FREE_PATHS = [
   // the lezer tokenizer, so a picker importing only `getClauseDefinition` from it
   // would otherwise pull CodeMirror into the initial bundle.
   path.join(REPO_ROOT, "frontend/src/metabase/querying/expressions") + path.sep,
+  path.join(REPO_ROOT, "frontend/src/metabase/ui") + path.sep,
 ];
 
 /**
@@ -52,9 +53,26 @@ const SIDE_EFFECT_PATHS = [
     REPO_ROOT,
     "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
   ),
+  // Both replace `.Dropdown` on Mantine's own component object at import time.
+  // Mantine's Combobox, Menu, ColorInput and HoverCard render `Popover.Dropdown`
+  // internally, so a bundle that never imports our `Popover` still depends on
+  // the replacement having run.
+  path.join(
+    REPO_ROOT,
+    "frontend/src/metabase/ui/components/overlays/Popover/index.tsx",
+  ),
+  path.join(
+    REPO_ROOT,
+    "frontend/src/metabase/ui/components/overlays/HoverCard/index.tsx",
+  ),
 ];
 
 const SIDE_EFFECT_FREE_RULE = {
+  // Script files only. A CSS module imported for its class names is reachable
+  // only through the script that imports it, so it is dropped with that script
+  // and needs no flag of its own; leaving CSS at rspack's default also keeps a
+  // stray `import "./x.css"` from being shaken should one slip past the lint.
+  test: /\.[jt]sx?$/,
   include: SIDE_EFFECT_FREE_PATHS,
   // Prefix-matched like `include`, so a directory entry excludes its whole tree.
   exclude: SIDE_EFFECT_PATHS,
