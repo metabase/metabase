@@ -174,7 +174,7 @@ const config = {
         type: "asset/source",
       },
       {
-        test: /\.(tsx?|jsx?)$/,
+        test: /\.(tsx?|js)$/,
         exclude: [
           /node_modules/,
           /cljs/,
@@ -233,16 +233,7 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [
-      ".webpack.js",
-      ".web.js",
-      ".js",
-      ".jsx",
-      ".ts",
-      ".tsx",
-      ".css",
-      ".svg",
-    ],
+    extensions: [".js", ".ts", ".tsx", ".css", ".svg"],
     alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),

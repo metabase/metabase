@@ -61,7 +61,7 @@ const baseConfig = {
   module: {
     rules: [
       {
-        test: /\.(tsx?|jsx?)$/,
+        test: /\.(tsx?|js)$/,
         exclude: /node_modules|cljs/,
         use: [
           {

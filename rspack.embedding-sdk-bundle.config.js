@@ -122,7 +122,7 @@ const config = {
     rules: [
       SIDE_EFFECT_FREE_RULE,
       {
-        test: /\.(tsx?|jsx?)$/,
+        test: /\.(tsx?|js)$/,
         exclude: /node_modules|cljs/,
         use: [
           {

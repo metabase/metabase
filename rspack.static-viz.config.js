@@ -64,7 +64,7 @@ module.exports = (env) => {
           use: "null-loader",
         },
         {
-          test: /\.(tsx?|jsx?)$/,
+          test: /\.(tsx?|js)$/,
           exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
           use: [
             {
@@ -123,7 +123,7 @@ module.exports = (env) => {
       ],
     },
     resolve: {
-      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      extensions: [".js", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,

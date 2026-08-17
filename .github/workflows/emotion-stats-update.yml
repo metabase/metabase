@@ -26,8 +26,6 @@ jobs:
             git grep -l -E "(from|import) ['\"]@emotion/" -- \
               'frontend/**/*.ts' \
               'frontend/**/*.tsx' \
-              'frontend/**/*.js' \
-              'frontend/**/*.jsx' \
               | wc -l || true
           )
 
@@ -35,8 +33,6 @@ jobs:
             git grep -l -E "(from|import) ['\"]@emotion/" -- \
               'enterprise/frontend/**/*.ts' \
               'enterprise/frontend/**/*.tsx' \
-              'enterprise/frontend/**/*.js' \
-              'enterprise/frontend/**/*.jsx' \
               | wc -l || true
           )
 
