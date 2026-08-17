@@ -5,8 +5,8 @@ import { syncResources } from "../sync";
 
 import {
   FAKE_HASH,
-  called,
   createFakeInstance,
+  hasRequest,
   jsonResponse,
   makeApp,
   serveFakeInstance,
@@ -108,7 +108,7 @@ async function sync(appRoot: string) {
   });
 }
 
-function start(
+function serveInstance(
   appRoot: string,
   seed: Parameters<typeof createFakeInstance>[0],
 ) {
@@ -126,7 +126,7 @@ describe("model reconciliation", () => {
   it("grants view-data on a query action's own database, not just its model's", async () => {
     const appRoot = makeApp();
     declareActions(appRoot, [{ id: 61 }]);
-    const fake = start(appRoot, {
+    const fake = serveInstance(appRoot, {
       cards: [sourceModel()],
       actions: [
         {
@@ -160,7 +160,7 @@ describe("model reconciliation", () => {
     const appRoot = makeApp();
     declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
     seedLockfile(appRoot, [[51, 91]]);
-    const fake = start(appRoot, {
+    const fake = serveInstance(appRoot, {
       cards: [sourceModel(), copiedModel()],
       actions: [sourceAction(51, "Create"), copiedAction(91, 51, "Create")],
     });
@@ -175,7 +175,7 @@ describe("model reconciliation", () => {
       );
 
     await expect(sync(appRoot)).rejects.toThrow();
-    expect(called(fake, "POST", "/api/card")).toBe(false);
+    expect(hasRequest(fake, "POST", "/api/card")).toBe(false);
   });
 
   /** Seeds an app whose single action is already copied and recorded. */
@@ -183,7 +183,7 @@ describe("model reconciliation", () => {
     const appRoot = makeApp();
     declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
     seedLockfile(appRoot, [[51, 91]]);
-    const fake = start(appRoot, {
+    const fake = serveInstance(appRoot, {
       cards: [sourceModel(), copiedModel()],
       actions: [sourceAction(51, "Create"), copiedAction(91, 51, "Create")],
     });
@@ -195,8 +195,8 @@ describe("model reconciliation", () => {
 
     await sync(appRoot);
 
-    expect(called(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(false);
-    expect(called(fake, "PUT", "/api/action/91")).toBe(false);
+    expect(hasRequest(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(false);
+    expect(hasRequest(fake, "PUT", "/api/action/91")).toBe(false);
   });
 
   // The lockfile records the source payload, so only fingerprinting the copy
@@ -207,7 +207,7 @@ describe("model reconciliation", () => {
 
     await sync(appRoot);
 
-    expect(called(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(true);
+    expect(hasRequest(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(true);
     expect(fake.cards.get(COPIED_MODEL_ID)?.name).toBe("Orders");
   });
 
@@ -220,7 +220,7 @@ describe("model reconciliation", () => {
 
     await sync(appRoot);
 
-    expect(called(fake, "PUT", "/api/action/91")).toBe(true);
+    expect(hasRequest(fake, "PUT", "/api/action/91")).toBe(true);
     expect(fake.actions.get(91)?.name).toBe("Create");
   });
 
@@ -237,14 +237,14 @@ describe("model reconciliation", () => {
       await expect(sync(appRoot)).rejects.toThrow(
         "no longer hangs off copied model",
       );
-      expect(called(fake, "POST", "/api/action")).toBe(false);
+      expect(hasRequest(fake, "POST", "/api/action")).toBe(false);
       expect(fake.actions.has(91)).toBe(true);
     });
 
     it("rejects an action whose parent card is not a model", async () => {
       const appRoot = makeApp();
       declareActions(appRoot, [{ id: 51 }]);
-      const fake = start(appRoot, {
+      const fake = serveInstance(appRoot, {
         cards: [sourceModel({ type: "question" })],
         actions: [sourceAction(51, "Create")],
       });
@@ -252,7 +252,7 @@ describe("model reconciliation", () => {
       await expect(sync(appRoot)).rejects.toThrow(
         `references an action on card ${SOURCE_MODEL_ID}, which is not a model`,
       );
-      expect(called(fake, "POST", "/api/card")).toBe(false);
+      expect(hasRequest(fake, "POST", "/api/card")).toBe(false);
     });
   });
 });

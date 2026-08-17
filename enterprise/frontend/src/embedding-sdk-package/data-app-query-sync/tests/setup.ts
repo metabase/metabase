@@ -144,7 +144,11 @@ export function createFakeInstance(seed: {
   };
 }
 
-export function called(fake: FakeInstance, method: string, pathname: string) {
+export function hasRequest(
+  fake: FakeInstance,
+  method: string,
+  pathname: string,
+) {
   return fake.requests.some(
     (request) => request.method === method && request.pathname === pathname,
   );

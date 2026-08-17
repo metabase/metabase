@@ -12,7 +12,7 @@ import {
 } from "./ast/query-source";
 import { canonicalJson, getQueryFingerprint } from "./canonical";
 import { isPositiveInteger, isRecord } from "./guards";
-import { definitionLocation } from "./messages";
+import { getRelativeDefinitionLocation } from "./messages";
 import type { DiscoveredAction, DiscoveredQuery } from "./types";
 
 interface EvaluatedDefinition extends QuerySource {
@@ -91,7 +91,10 @@ async function evaluateDefinitions(
       const value = first[exportName];
       const repeatedValue = second[exportName];
 
-      const location = definitionLocation(appRoot, { filePath, exportName });
+      const location = getRelativeDefinitionLocation(appRoot, {
+        filePath,
+        exportName,
+      });
 
       if (!isRecord(value)) {
         throw new Error(
@@ -158,7 +161,7 @@ export async function discoverQueries(
       query: value,
       savedQuestionSourceId: positiveId(
         value[QUERY_DEFINITIONS.idKey],
-        definitionLocation(appRoot, { filePath, exportName }),
+        getRelativeDefinitionLocation(appRoot, { filePath, exportName }),
         QUERY_DEFINITIONS.idKey,
       ),
       tableId,
@@ -169,7 +172,7 @@ export async function discoverQueries(
   assertUniqueIds(
     discovered.map((query) => ({
       id: query.savedQuestionSourceId,
-      location: definitionLocation(appRoot, query),
+      location: getRelativeDefinitionLocation(appRoot, query),
     })),
     "Saved question",
   );
@@ -183,7 +186,10 @@ export async function discoverActions(
   const definitions = await evaluateDefinitions(appRoot, ACTION_DEFINITIONS);
 
   const discovered = definitions.map(({ exportName, filePath, value }) => {
-    const location = definitionLocation(appRoot, { filePath, exportName });
+    const location = getRelativeDefinitionLocation(appRoot, {
+      filePath,
+      exportName,
+    });
     const action = value.action;
 
     if (!isRecord(action) || !isPositiveInteger(action.id)) {
@@ -208,14 +214,14 @@ export async function discoverActions(
   assertUniqueIds(
     discovered.map((action) => ({
       id: action.sourceActionId,
-      location: definitionLocation(appRoot, action),
+      location: getRelativeDefinitionLocation(appRoot, action),
     })),
     "Action",
   );
   assertUniqueIds(
     discovered.map((action) => ({
       id: action.copiedActionId,
-      location: definitionLocation(appRoot, action),
+      location: getRelativeDefinitionLocation(appRoot, action),
     })),
     "Generated action",
   );

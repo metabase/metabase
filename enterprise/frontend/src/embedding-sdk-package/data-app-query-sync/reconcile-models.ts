@@ -2,7 +2,7 @@ import { ACTION_DEFINITIONS, injectGeneratedId } from "./ast/query-source";
 import { getPayloadFingerprint } from "./canonical";
 import { isPositiveInteger } from "./guards";
 import { writeResourceLockfile } from "./lockfile";
-import { definitionLocation, errorMessage } from "./messages";
+import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
 import type {
@@ -95,13 +95,13 @@ async function resolveActions(
         source = await client.getAction(action.sourceActionId);
       } catch (error) {
         throw new Error(
-          `Could not read action ${action.sourceActionId} for ${definitionLocation(appRoot, action)}: ${errorMessage(error)}`,
+          `Could not read action ${action.sourceActionId} for ${getRelativeDefinitionLocation(appRoot, action)}: ${getErrorMessage(error)}`,
         );
       }
 
       if (!isPositiveInteger(source.model_id)) {
         throw new Error(
-          `${definitionLocation(appRoot, action)} references action ${action.sourceActionId}, which does not belong to a model.`,
+          `${getRelativeDefinitionLocation(appRoot, action)} references action ${action.sourceActionId}, which does not belong to a model.`,
         );
       }
 
@@ -117,14 +117,17 @@ async function fetchSourceModels(
 ): Promise<Map<number, MetabaseCard>> {
   const models = await Promise.all(
     [...desired].map(async ([id, actions]) => {
-      const location = definitionLocation(appRoot, actions[0].action);
+      const location = getRelativeDefinitionLocation(
+        appRoot,
+        actions[0].action,
+      );
 
       let card: MetabaseCard;
       try {
         card = await client.getCard(id);
       } catch (error) {
         throw new Error(
-          `Could not read model ${id} for ${location}: ${errorMessage(error)}`,
+          `Could not read model ${id} for ${location}: ${getErrorMessage(error)}`,
         );
       }
 

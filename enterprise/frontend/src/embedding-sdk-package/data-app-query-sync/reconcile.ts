@@ -5,7 +5,7 @@ import { QUERY_DEFINITIONS, injectGeneratedId } from "./ast/query-source";
 import { getCanonicalQueryJson } from "./canonical";
 import { isPositiveInteger } from "./guards";
 import { RESOURCE_LOCKFILE, writeResourceLockfile } from "./lockfile";
-import { definitionLocation, errorMessage } from "./messages";
+import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
 import type {
@@ -99,7 +99,7 @@ function recoverMissingQueryIds(
 
     if (candidates.length > 1) {
       throw new Error(
-        `${definitionLocation(appRoot, query)} matches multiple lockfile entries. Restore its savedQuestionSourceId manually and run sync-resources again.`,
+        `${getRelativeDefinitionLocation(appRoot, query)} matches multiple lockfile entries. Restore its savedQuestionSourceId manually and run sync-resources again.`,
       );
     }
 
@@ -139,7 +139,7 @@ async function resolveQueries(
         };
       } catch (error) {
         throw new Error(
-          `Could not resolve ${definitionLocation(appRoot, query)}: ${errorMessage(error)}`,
+          `Could not resolve ${getRelativeDefinitionLocation(appRoot, query)}: ${getErrorMessage(error)}`,
         );
       }
     }),
