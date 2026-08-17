@@ -25,21 +25,38 @@
     }
   }
 
+  &[data-size="xs"]:has([data-combined-clear-section]) {
+    .SelectInput {
+      padding-right: 2.5625rem;
+    }
+  }
+
+  &[data-size="sm"]:has([data-combined-clear-section]) {
+    .SelectInput {
+      padding-right: 3.125rem;
+    }
+  }
+
   &[data-size="md"]:has([data-combined-clear-section]) {
     .SelectInput {
       padding-right: 3.75rem;
     }
   }
 
-  &[data-size="xs"]:has([data-combined-clear-section]) {
+  &[data-size="lg"]:has([data-combined-clear-section]) {
     .SelectInput {
-      padding-right: 2.5625rem;
+      padding-right: 4.5rem;
+    }
+  }
+
+  &[data-size="xl"]:has([data-combined-clear-section]) {
+    .SelectInput {
+      padding-right: 5.5625rem;
     }
   }
 }
 
 .SelectInput {
-  overflow: hidden;
   color: var(--mb-color-text-primary);
   text-overflow: ellipsis;
   background-color: var(--mb-color-background_page-primary);

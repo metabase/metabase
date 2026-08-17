@@ -54,7 +54,7 @@ const SelectButtonInner = forwardRef(function SelectButton(
     [onClear],
   );
 
-  const showClear = hasValue && onClear != null;
+  const showClear = hasValue && !!onClear;
 
   const iconClassName = cx(
     S.icon,
@@ -93,14 +93,9 @@ const SelectButtonInner = forwardRef(function SelectButton(
         {children}
       </span>
       {showClear && (
-        <Icon
-          className={iconClassName}
-          name="close"
-          size={16}
-          onClick={handleClear}
-        />
+        <Icon className={iconClassName} name="close" onClick={handleClear} />
       )}
-      <Icon className={iconClassName} name="chevrondown" size={16} />
+      <Icon className={iconClassName} name="chevrondown" />
     </button>
   );
 });
