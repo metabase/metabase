@@ -130,5 +130,3 @@ function canonicalize(value: unknown, seen = new Set<object>()): unknown {
 
   return result;
 }
-
-/** Checks whether a value is a non-array object. */
