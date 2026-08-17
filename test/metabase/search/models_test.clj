@@ -103,6 +103,22 @@
         (is (false? (t2/exists? :model/Action action-id)))
         (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))))))
 
+(deftest ^:synchronized purge-cards-on-database-delete-test
+  (testing "deleting a database purges the entries for the cards it deletes without a per-row hook, and for
+            what the database cascades away with them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}     {}
+                     :model/Card     {card-id :id}   {:name "Db Delete Model" :type :model :database_id db-id}
+                     :model/Action   {action-id :id} {:name     "Db Delete Action"
+                                                      :model_id card-id
+                                                      :type     :query}]
+        (is (= 1 (t2/count (search.index/active-table) :model "dataset" :model_id (str card-id))))
+        (is (= 1 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))
+        (t2/delete! :model/Database db-id)
+        (is (false? (t2/exists? :model/Card card-id)))
+        (is (= 0 (t2/count (search.index/active-table) :model "dataset" :model_id (str card-id))))
+        (is (= 0 (t2/count (search.index/active-table) :model "action" :model_id (str action-id))))))))
+
 (deftest ^:synchronized surviving-cascade-documents-are-not-purged-test
   (testing "a cascade-fed document that still resolves after the delete keeps its index entry"
     (search.tu/with-appdb-search-if-available-without-fallback
