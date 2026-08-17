@@ -20,17 +20,26 @@ export type EmbeddingSettingKey =
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;
   dependentSettingKeys?: EmbeddingSettingKey[];
+  /**
+   * Settings this switch stands in for, rather than depends on. One switch
+   * presents several embedding methods: it reads on when any of them is on and
+   * writes all of them at once.
+   */
+  mergedSettingKeys?: EmbeddingSettingKey[];
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
   settingKey,
   dependentSettingKeys = [],
+  mergedSettingKeys = [],
   labelPosition = "left",
   ...switchProps
 }: EmbeddingToggleProps) {
   const { value, settingDetails } = useAdminSetting(settingKey);
   const { values: dependentSettingsValues, updateSettings } =
     useAdminSettings(dependentSettingKeys);
+  const { values: mergedValues, details: mergedDetails } =
+    useAdminSettings(mergedSettingKeys);
 
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
@@ -40,12 +49,21 @@ export function EmbeddingToggle({
     { open: openLegaleseModal, close: closeLegaleseModal },
   ] = useDisclosure(false);
 
-  if (settingDetails?.is_env_setting) {
+  // A merged switch has to write every setting it stands for. It cannot write
+  // an env-pinned one, and writing the rest would leave the instance in the
+  // mixed state the merge exists to remove, so one pinned setting locks the row.
+  const isPinnedToEnv =
+    settingDetails?.is_env_setting ||
+    Object.values(mergedDetails).some((detail) => detail?.is_env_setting);
+
+  if (isPinnedToEnv) {
     return <Text c="text-secondary">{t`Set via environment variable`}</Text>;
   }
 
   const isEnabled =
-    Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
+    mergedSettingKeys.length > 0
+      ? Boolean(value) || Object.values(mergedValues).some(Boolean)
+      : Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
   const isEmbeddingToggle =
     settingKey === "enable-embedding-sdk" ||
@@ -61,7 +79,11 @@ export function EmbeddingToggle({
       return;
     }
 
-    const settingKeys = [settingKey, ...dependentSettingKeys];
+    const settingKeys = [
+      settingKey,
+      ...dependentSettingKeys,
+      ...mergedSettingKeys,
+    ];
 
     updateSettings(
       Object.fromEntries(settingKeys.map((key) => [key, checked])),
