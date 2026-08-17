@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import dayjs from "metabase/utils/dayjs";
 import type {
   ClickAction,
   ClickActionsMode,

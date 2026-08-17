@@ -1,5 +1,3 @@
-import dayjs from "dayjs";
-
 import type {
   DatePickerOperator,
   DatePickerUnit,
@@ -7,6 +5,7 @@ import type {
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
+import dayjs from "metabase/utils/dayjs";
 
 import { TABS } from "./constants";
 import type { Tab } from "./types";

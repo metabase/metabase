@@ -1,8 +1,9 @@
 import cx from "classnames";
-import dayjs, { type Dayjs } from "dayjs";
+import type { Dayjs } from "dayjs";
 
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import dayjs from "metabase/utils/dayjs";
 import { formatNumber, removeNewLines } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
 import {

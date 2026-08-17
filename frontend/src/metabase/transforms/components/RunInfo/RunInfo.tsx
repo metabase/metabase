@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import dayjs from "dayjs";
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
@@ -16,6 +15,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import type { TransformRunStatus } from "metabase-types/api";
 
 import S from "./RunInfo.module.css";

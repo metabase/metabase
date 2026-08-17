@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import {
@@ -10,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import dayjs from "metabase/utils/dayjs";
 import type { Settings } from "metabase-types/api";
 import {
   createMockDatabase,

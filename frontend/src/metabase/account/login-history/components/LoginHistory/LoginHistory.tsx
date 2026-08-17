@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, Text } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import type { UserLoginHistoryItem } from "metabase-types/api";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {

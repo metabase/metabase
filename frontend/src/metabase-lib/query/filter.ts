@@ -1,6 +1,7 @@
-import dayjs, { type Dayjs } from "dayjs";
+import type { Dayjs } from "dayjs";
 
 import * as ML from "cljs/metabase.lib.js";
+import dayjs from "metabase/utils/dayjs";
 import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";

@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import dayjs from "metabase/utils/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 

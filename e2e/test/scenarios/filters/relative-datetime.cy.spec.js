@@ -1,6 +1,4 @@
-import dayjs from "dayjs";
-
-import "metabase/utils/dayjs";
+import dayjs from "metabase/utils/dayjs";
 
 const { H } = cy;
 

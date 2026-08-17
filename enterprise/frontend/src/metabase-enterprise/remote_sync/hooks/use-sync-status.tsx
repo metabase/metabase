@@ -1,7 +1,6 @@
-import dayjs from "dayjs";
-
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import dayjs from "metabase/utils/dayjs";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";

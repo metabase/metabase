@@ -1,6 +1,7 @@
-import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
+
+import dayjs from "metabase/utils/dayjs";
 
 // Enable timezone and UTC plugins
 dayjs.extend(utc);

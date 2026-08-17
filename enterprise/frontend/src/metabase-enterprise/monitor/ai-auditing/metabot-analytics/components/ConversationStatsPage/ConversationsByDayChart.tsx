@@ -1,9 +1,9 @@
-import dayjs from "dayjs";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Skeleton, useMantineTheme } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 

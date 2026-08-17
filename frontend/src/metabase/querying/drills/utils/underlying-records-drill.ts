@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { msgid, ngettext } from "ttag";
 
+import dayjs from "metabase/utils/dayjs";
 import { inflect } from "metabase/utils/formatting/strings";
 import type {
   Drill,

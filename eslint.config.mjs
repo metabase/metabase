@@ -756,6 +756,7 @@ const configs = [
                 "!metabase/utils/number",
                 "!metabase/utils/time",
                 "!metabase/utils/time-dayjs",
+                "!metabase/utils/dayjs",
                 "!metabase/utils/types",
                 "!metabase/urls",
                 "!metabase/utils/clone",

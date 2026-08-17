@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
@@ -6,6 +5,7 @@ import { t } from "ttag";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import {
   useGetGsheetsFolderQuery,
   useSyncGsheetsFolderMutation,

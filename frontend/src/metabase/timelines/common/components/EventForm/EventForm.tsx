@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -18,6 +17,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {

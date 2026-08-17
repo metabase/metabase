@@ -1,9 +1,8 @@
-import dayjs from "dayjs";
-
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting, useUserSetting } from "metabase/settings";
+import dayjs from "metabase/utils/dayjs";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import { DevModeBanner } from "./DevModeBanner";

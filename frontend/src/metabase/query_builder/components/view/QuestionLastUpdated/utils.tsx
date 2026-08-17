@@ -1,7 +1,8 @@
-import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import updateLocale from "dayjs/plugin/updateLocale";
 import { c, t } from "ttag";
+
+import dayjs from "metabase/utils/dayjs";
 
 dayjs.extend(relativeTime);
 dayjs.extend(updateLocale);

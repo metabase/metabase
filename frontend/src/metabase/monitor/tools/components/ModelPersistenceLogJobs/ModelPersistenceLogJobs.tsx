@@ -1,5 +1,4 @@
 import type { Row } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -33,6 +32,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import dayjs from "metabase/utils/dayjs";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";

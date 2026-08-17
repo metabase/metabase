@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type React from "react";
 import {
   type RefObject,
@@ -19,6 +18,7 @@ import {
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import dayjs from "metabase/utils/dayjs";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,

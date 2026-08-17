@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -16,6 +15,7 @@ import {
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import { getObjectKeys } from "metabase/utils/objects";
 import type { OnBrush } from "metabase/visualizations/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";

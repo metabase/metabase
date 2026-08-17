@@ -1,9 +1,9 @@
 import type { DateStringValue } from "@mantine/dates";
-import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 
 import { setDatePart, setTimePart } from "../../utils";
 

@@ -1,4 +1,4 @@
-import dayjs, { type Dayjs, type OpUnitType } from "dayjs";
+import type { Dayjs, OpUnitType } from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -12,6 +12,7 @@ import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenTimelines } from "metabase/redux/query-builder";
 import { Box, Button, Icon } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
 import type Question from "metabase-lib/v1/Question";

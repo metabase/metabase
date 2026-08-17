@@ -1,5 +1,6 @@
-import dayjs from "dayjs";
 import { msgid, ngettext, t } from "ttag";
+
+import dayjs from "../dayjs";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;

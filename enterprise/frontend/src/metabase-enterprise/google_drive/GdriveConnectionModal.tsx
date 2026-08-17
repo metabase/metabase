@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
@@ -17,6 +16,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import dayjs from "metabase/utils/dayjs";
 import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,

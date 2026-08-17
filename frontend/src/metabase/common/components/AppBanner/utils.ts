@@ -1,5 +1,6 @@
-import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+
+import dayjs from "metabase/utils/dayjs";
 
 dayjs.extend(utc);
 

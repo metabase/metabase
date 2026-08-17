@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -12,6 +11,7 @@ import {
   createQuery,
 } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
+import dayjs from "metabase/utils/dayjs";
 import type {
   ExplorationBlockNode,
   ExplorationQuery,

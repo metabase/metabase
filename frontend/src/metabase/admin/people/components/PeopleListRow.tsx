@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
@@ -17,6 +16,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import dayjs from "metabase/utils/dayjs";
 import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,
