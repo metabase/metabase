@@ -2,12 +2,15 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
+   [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.string :as string]
@@ -20,9 +23,30 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(def ^:private session-hash-secret*
+  (delay (encryption/validate-and-hash-secret-key
+          (or (env/env :mb-session-hash-secret-key)
+              (env/env :mb-encryption-secret-key)))))
+
+(defn- session-hash-secret
+  "Secret used to HMAC session keys before they are stored in or looked up from the app DB. Read from
+  `MB_SESSION_HASH_SECRET_KEY`, falling back to `MB_ENCRYPTION_SECRET_KEY`. Nil when neither is set."
+  ^bytes []
+  @session-hash-secret*)
+
 (def ^{:arglists '([session-key])} hash-session-key
-  "Hash the session-key for storage in the database"
-  (memo/lru (fn [^String session-key] (codecs/bytes->hex (buddy-hash/sha512 (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)))) {} :lru/threshold 100))
+  "Hash the session-key for storage in (and lookup from) the database.
+
+  When a secret is configured this is an HMAC-SHA512 keyed by that secret, so a valid `key_hashed` value cannot be
+  computed with app-db (SQL) access alone. Without a secret this falls back to a plain SHA-512; such instances also
+  store their credentials unencrypted, so the keyed hash would add no protection there."
+  (memo/lru (fn [^String session-key]
+              (let [key-bytes (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
+                (codecs/bytes->hex
+                 (if-let [secret (session-hash-secret)]
+                   (mac/hash key-bytes {:key secret :alg :hmac+sha512})
+                   (buddy-hash/sha512 key-bytes)))))
+            {} :lru/threshold 100))
 
 (defn generate-session-key
   "Generate a new session key."

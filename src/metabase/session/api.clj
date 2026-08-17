@@ -220,7 +220,7 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
+        rows-deleted (t2/delete! :model/Session :key_hashed session-key-hashed)]
     (api/check-404 (> rows-deleted 0))
     (request/clear-session-cookie api/generic-204-no-content)))
 
