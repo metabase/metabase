@@ -640,6 +640,7 @@ describe(
       H.addNotificationHandlerChannel(secondWebhookName, {
         hasNoChannelsAdded: true,
       });
+      H.selectScheduleTime();
       H.modal().button("Done").click();
 
       cy.findByLabelText("Move, trash, and more…").click();
