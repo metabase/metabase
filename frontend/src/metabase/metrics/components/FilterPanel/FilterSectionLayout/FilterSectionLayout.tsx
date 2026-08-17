@@ -18,7 +18,7 @@ export function FilterSectionLayout({
     <Group
       p="md"
       bdrs="md"
-      bg="background-secondary"
+      bg="background_page-secondary"
       justify="space-between"
       wrap="nowrap"
     >

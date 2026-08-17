@@ -293,6 +293,17 @@
                                                     :rows [["apple" 3]
                                                            ["banana" 4]]})))))
 
+(deftest ^:parallel detect-pulse-chart-type-test-8b
+  (testing "Treemap charts are correctly identified and return `:javascript_visualization`."
+    (is (= :javascript_visualization
+           (channel.render/detect-pulse-chart-type {:display :treemap}
+                                                   nil
+                                                   {:cols [{:base_type :type/Text}
+                                                           {:base_type :type/Text}
+                                                           {:base_type :type/Number}]
+                                                    :rows [["apple" "fuji" 3]
+                                                           ["banana" "cavendish" 4]]})))))
+
 (deftest ^:parallel detect-pulse-chart-type-test-9
   (testing "Dashboard Cards can return `:multiple`."
     (is (= :javascript_visualization
@@ -470,6 +481,18 @@
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
           (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest dashcard-title-override-wins-over-card-name-test
+  (testing "a dashcard's card.title override wins over the underlying card's own name in rendered emails (#18344)"
+    (mt/with-temp [:model/Card card {:name "Orders" :dataset_query (mt/mbql-query orders {:limit 1})}
+                   :model/Dashboard dashboard {}
+                   :model/DashboardCard dc {:dashboard_id (:id dashboard) :card_id (:id card)
+                                            :visualization_settings {:card.title "OrdersFoo"}}]
+      (let [rendered (:content (channel.render/render-pulse-card :inline "UTC" card dc
+                                                                 (qp/process-query (:dataset_query card))
+                                                                 {:channel.render/include-title? true}))]
+        (is (match/match-one rendered [:a _ "OrdersFoo"] true))
+        (is (not (match/match-one rendered [:a _ "Orders"] true)))))))
 
 (deftest render-card-with-abbreviated-dates-test
   (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"

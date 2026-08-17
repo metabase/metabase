@@ -7,11 +7,11 @@
   border-radius: var(--mantine-radius-xs);
 
   [data-mantine-color-scheme] &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-weekend] {
@@ -19,16 +19,16 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-brand);
     border-radius: 0;
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -72,12 +72,12 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &:where([data-weekend]) {
@@ -85,16 +85,16 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-selected);
     border-radius: 0;
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
@@ -176,13 +176,13 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -194,13 +194,13 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -210,7 +210,7 @@
 
 .input {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .error {
@@ -230,7 +230,7 @@
   }
 
   &:hover:not([data-selected], :disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }

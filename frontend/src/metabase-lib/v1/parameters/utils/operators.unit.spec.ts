@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 
 import {
@@ -37,15 +38,19 @@ describe("parameters/utils/operators", () => {
 
     describe("when parameter is associated with an operator", () => {
       it("should return relevant operator object", () => {
-        const operator2 = deriveFieldOperatorFromParameter(
-          createMockUiParameter({
-            type: "string/contains",
-          }),
+        const operator2 = checkNotNull(
+          deriveFieldOperatorFromParameter(
+            createMockUiParameter({
+              type: "string/contains",
+            }),
+          ),
         );
-        const operator3 = deriveFieldOperatorFromParameter(
-          createMockUiParameter({
-            type: "number/between",
-          }),
+        const operator3 = checkNotNull(
+          deriveFieldOperatorFromParameter(
+            createMockUiParameter({
+              type: "number/between",
+            }),
+          ),
         );
         expect(operator2.name).toEqual("contains");
         expect(operator3.name).toEqual("between");
@@ -55,18 +60,22 @@ describe("parameters/utils/operators", () => {
     describe("when parameter is location/category", () => {
       it("should map to an = operator", () => {
         expect(
-          deriveFieldOperatorFromParameter(
-            createMockUiParameter({
-              type: "location/city",
-            }),
+          checkNotNull(
+            deriveFieldOperatorFromParameter(
+              createMockUiParameter({
+                type: "location/city",
+              }),
+            ),
           ).name,
         ).toBe("=");
 
         expect(
-          deriveFieldOperatorFromParameter(
-            createMockUiParameter({
-              type: "category",
-            }),
+          checkNotNull(
+            deriveFieldOperatorFromParameter(
+              createMockUiParameter({
+                type: "category",
+              }),
+            ),
           ).name,
         ).toBe("=");
       });

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.render.js.color :as js.color]
-   [metabase.channel.render.js.engine :as js.engine]
    [metabase.formatter.core :as formatter]
    [metabase.test :as mt])
   (:import
@@ -10,135 +9,77 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private red "#ff0000")
-(def ^:private green "#00ff00")
+(def ^:private red-cell "rgba(255, 0, 0, 0.65)")
+(def ^:private red-row "rgba(255, 0, 0, 0.2)")
 
-(def ^:private ^String test-script
-  "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
-     cols = JSON.parse(colsJSON);
-     settings = JSON.parse(settingsJSON);
-     cols.map(function (a) { return a; });
-     return function(value, rowIndex, columnName) {
-        if(rowIndex % 2 == 0){
-          return settings[\"even\"]
-        } else {
-          return settings[\"odd\"]
-        }
-    }
-   }")
+(defn- single-rule [column operator value & {:as overrides}]
+  (merge {:columns       [column]
+          :type          :single
+          :operator      operator
+          :value         value
+          :color         "#ff0000"
+          :highlight_row false}
+         overrides))
 
-(defmacro ^:private with-test-js-engine!
-  "Setup a javascript engine with a stubbed script useful making sure `get-background-color` works independently from
-  the real color picking script"
-  [script & body]
-  `(with-redefs [js.color/js-engine (let [delay# (delay (doto (js.engine/context)
-                                                          (js.engine/load-js-string ~script ~(name (gensym "color-src")))))]
-                                      (fn [] @delay#))]
-     ~@body))
+(deftest cell-background-colors-test
+  (testing "colors are returned positionally: matching cells get the rule's color, others nil"
+    (is (= [nil red-cell nil red-cell]
+           (js.color/cell-background-colors {:cols [{:name "test"}]
+                                             :rows [[1] [5] [3] [5]]}
+                                            {:table.column_formatting [(single-rule "test" "=" 5)]}
+                                            [[1 0 "test"] [5 1 "test"] [3 2 "test"] [5 3 "test"]])))))
 
-(deftest color-test
-  (testing "The test script above should return red on even rows, green on odd rows"
-    (with-test-js-engine! test-script
-      (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
-                                                          :rows [[1] [2] [3] [4]]}
-                                                         {"even" red, "odd" green})]
-        (is (= [red green red green]
-               (for [row-index (range 0 4)]
-                 (js.color/get-background-color color-selector "any value" "any column" row-index))))))))
+(deftest row-index-test
+  (testing "row-highlight rules read the full row via the row index, coloring cells in other columns"
+    (is (= [red-row nil]
+           (js.color/cell-background-colors {:cols [{:name "a"} {:name "b"}]
+                                             :rows [[5 10] [1 20]]}
+                                            {:table.column_formatting [(single-rule "a" "=" 5 :highlight_row true)]}
+                                            ;; both queries are against column b; only row 0 has a=5
+                                            [[10 0 "b"] [20 1 "b"]])))))
 
-(deftest convert-keywords-test
-  (testing (str "Same test as above, but make sure we convert any keywords as keywords don't get converted to "
-                "strings automatically when passed to a JavaScript function")
-    (with-test-js-engine! test-script
-      (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
-                                                          :rows [[1] [2] [3] [4]]}
-                                                         {:even red, :odd  green})]
-        (is (= [red green red green]
-               (for [row-index (range 0 4)]
-                 (js.color/get-background-color color-selector "any value" "any column" row-index))))))))
+(deftest no-formatting-rules-fast-path-test
+  (testing "without formatting rules every color is nil (and no JS is invoked)"
+    (is (= [nil nil]
+           (js.color/cell-background-colors {:cols [{:name "test"}] :rows [[1] [2]]}
+                                            {}
+                                            [[1 0 "test"] [2 1 "test"]])))
+    (is (= [] (js.color/cell-background-colors {:cols [{:name "test"}] :rows [[1]]}
+                                               {:table.column_formatting [(single-rule "test" "=" 1)]}
+                                               [])))))
 
 (deftest render-color-is-thread-safe-test
   (is (every? some?
               (mt/repeat-concurrently
                3
                (fn []
-                 (js.color/get-background-color (js.color/make-color-selector {:cols [{:name "test"}]
-                                                                               :rows [[5] [5]]}
-                                                                              {:table.column_formatting [{:columns ["test"],
-                                                                                                          :type :single,
-                                                                                                          :operator "=",
-                                                                                                          :value 5,
-                                                                                                          :color "#ff0000",
-                                                                                                          :highlight_row true}]})
-                                                "any value" "test" 1))))))
+                 (first (js.color/cell-background-colors {:cols [{:name "test"}]
+                                                          :rows [[5] [5]]}
+                                                         {:table.column_formatting [(single-rule "test" "=" 5
+                                                                                                 :highlight_row true)]}
+                                                         [["any value" 1 "test"]])))))))
 
 (deftest text-wrapper-null-empty-str-test
-  (testing "get-background-color should correctly handle not-null operator for nulls and empty strings (VIZ-87)"
-    (let [test-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
-                         cols = JSON.parse(colsJSON);
-                         settings = JSON.parse(settingsJSON);
-                         return function(value, rowIndex, columnName) {
-                           if (value === null || value === undefined) {
-                             return null;
-                           }
-                           return settings['color'];
-                         }
-                       }"]
-      (with-test-js-engine! test-script
-        (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
-                                                            :rows [[1] [2] [3] [4]]}
-                                                           {"color" red})]
-          (testing "TextWrapper cell with original value of empty string should receive color"
-            (is (= red (js.color/get-background-color color-selector (formatter/->TextWrapper "" "") "test" 0))))
-          (testing "TextWrapper cell with original value of nil should not receive color"
-            (is (nil? (js.color/get-background-color color-selector (formatter/->TextWrapper "" nil) "test" 0))))))))
-  (deftest convert-bignumbers-by-column-test
-    (testing "convert-bignumbers-by-column should convert BigDecimal and BigInteger values to doubles/longs"
-      (let [convert-fn #'js.color/convert-bignumbers-by-column]
-        (testing "empty data returns empty vector"
-          (is (= [] (convert-fn []))))
-        (testing "data with no BigDecimals or BigIntegers remains unchanged"
-          (let [data [[1 2 "test"] [3 4 "another"]]]
-            (is (= data (convert-fn data)))))
-        (testing "BigDecimal values are converted to doubles"
-          (let [big-decimal (BigDecimal. "123.456")
-                data [[big-decimal 2 "test"] [big-decimal 4 "another"]]
-                result (convert-fn data)]
-            (is (= [[123.456 2 "test"] [123.456 4 "another"]] result))
-            (is (every? #(instance? Double (first %)) result))))
-        (testing "BigInteger values are converted to longs"
-          (let [big-integer (BigInteger. "987654321")
-                data [[big-integer 2 "test"] [big-integer 4 "another"]]
-                result (convert-fn data)]
-            (is (= [[987654321 2 "test"] [987654321 4 "another"]] result))
-            (is (every? #(instance? Long (first %)) result))))
-        (testing "mixed BigDecimal and BigInteger conversion"
-          (let [big-decimal (BigDecimal. "123.456")
-                big-integer (BigInteger. "789")
-                data [[big-decimal big-integer "test"] [big-decimal big-integer "another"]]
-                result (convert-fn data)]
-            (is (= [[123.456 789 "test"] [123.456 789 "another"]] result))
-            (is (every? #(instance? Double (first %)) result))
-            (is (every? #(instance? Long (second %)) result))))
-        (testing "values that overflow primitive ranges become nil rather than silently truncating"
-          (let [too-big-int (.shiftLeft (BigInteger. "1") 65) ; doesn't fit in long
-                too-big-dec (.scaleByPowerOfTen (BigDecimal. "1") 400)] ; beyond Double range
-            (is (= [[nil] [42]] (convert-fn [[too-big-int] [(BigInteger. "42")]])))
-            (is (= [[nil] [1.5]] (convert-fn [[too-big-dec] [(BigDecimal. "1.5")]])))))))))
+  (testing "cell-background-colors should correctly handle not-null operator for nulls and empty strings (VIZ-87)"
+    (let [colors (js.color/cell-background-colors {:cols [{:name "test"}]
+                                                   :rows [[""] [nil]]}
+                                                  {:table.column_formatting [(single-rule "test" "not-null" nil)]}
+                                                  [[(formatter/->TextWrapper "" "") 0 "test"]
+                                                   [(formatter/->TextWrapper "" nil) 1 "test"]])]
+      (testing "TextWrapper cell with original value of empty string should receive color"
+        (is (= red-cell (first colors))))
+      (testing "TextWrapper cell with original value of nil should not receive color"
+        (is (nil? (second colors)))))))
 
 (deftest bigdecimal-cell-gets-range-color-test
-  (testing "get-background-color applies range colors to BigDecimal cell values (GDGT-2412)"
-    (let [viz      {:table.column_formatting
-                    [{:columns ["pct"] :type "range" :colors ["#ffffff" "#ff0000"]}]}
-          selector (js.color/make-color-selector
-                    {:cols [{:name "pct"}] :rows [[0.0] [0.5] [1.0]]}
-                    viz)
+  (testing "range colors apply to BigDecimal/BigInteger cell values (GDGT-2412)"
+    (let [viz       {:table.column_formatting
+                     [{:columns ["pct"] :type "range" :colors ["#ffffff" "#ff0000"]}]}
+          data      {:cols [{:name "pct"}] :rows [[0.0] [0.5] [1.0]]}
           color-for (fn [n]
-                      (js.color/get-background-color
-                       selector
-                       (formatter/->NumericWrapper (str n) n)
-                       "pct"
-                       1))]
+                      (first (js.color/cell-background-colors
+                              data viz
+                              [[(formatter/->NumericWrapper (str n) n) 1 "pct"]])))]
       (is (= "rgba(255, 128, 128, 0.75)" (color-for 0.5)))
       (is (= "rgba(255, 128, 128, 0.75)" (color-for (BigDecimal. "0.5"))))
       (is (= "rgba(255, 0, 0, 0.75)" (color-for (BigInteger. "1")))))))

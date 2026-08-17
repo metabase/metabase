@@ -9,8 +9,8 @@ const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
-  "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
-  "../enterprise/frontend/**/*.stories.@(js|jsx|ts|tsx)",
+  "../frontend/*/!(embedding-sdk-bundle|embedding-sdk-shared)/**/*.stories.@(js|jsx|ts|tsx)",
+  "../enterprise/frontend/*/!(embedding-sdk-ee|embedding-sdk-package)/**/*.stories.@(js|jsx|ts|tsx)",
 ];
 
 // Allow filtering to specific story files via env var (used by stress tests)

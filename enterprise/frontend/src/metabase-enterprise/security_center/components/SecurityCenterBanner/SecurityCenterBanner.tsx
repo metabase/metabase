@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import {
@@ -6,8 +5,9 @@ import {
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import { getPlan } from "metabase/common/utils/plan";
+import { useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";
@@ -62,7 +62,7 @@ export function SecurityCenterBanner() {
     <Banner
       contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
-      bg="error"
+      bg="feedback-negative"
       body={<Text lh="inherit">{body}</Text>}
       py="md"
     />

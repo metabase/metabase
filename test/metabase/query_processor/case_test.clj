@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
@@ -148,6 +149,17 @@
                                             [:case [[[:> $rating 4] 1]] {:default 0}]]}
                  :limit    2
                  :order-by [[:asc $id]]})))))))
+
+(deftest ^:parallel case-with-boolean-column-condition-test
+  (testing "a boolean column can be used directly as a :case condition (#16386)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+      (mt/dataset places-cam-likes
+        (let [mp    (mt/metadata-provider)
+              liked (lib.metadata/field mp (mt/id :places :liked))
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :places)))
+                        (lib/aggregate (lib/sum (lib/case [[liked 1]] 0))))]
+          (is (= [[2.0]]
+                 (mt/formatted-rows [1.0] (qp/process-query query)))))))))
 
 (deftest ^:parallel if-test
   (testing "If should work as syntactic sugar for case"

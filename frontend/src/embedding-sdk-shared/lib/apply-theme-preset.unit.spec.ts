@@ -68,6 +68,7 @@ describe("applyThemePreset", () => {
   describe("invalid preset", () => {
     it("returns empty colors for unknown preset", () => {
       const theme = {
+        // Unjustified type cast. FIXME
         preset: "invalid-preset" as any,
         colors: { brand: "#custom" },
       };

@@ -1,6 +1,20 @@
-import { readFileSync, statSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
+
+// The canonical wire shape and the numeric-env parser live once in the
+// ci-conductor module (release/ci-conductor), shared by the backend and
+// frontend reporters. e2e reuses them so the report path and the quarantine
+// path can't drift on a test's identity (see contract.ts). The transport stays
+// forked here: e2e posts mid-run from inside Cypress's `after:spec` hook on
+// node-fetch, with screenshots and a dry-run mode — none of which the module's
+// bun-native, post-run transport covers.
+import type {
+  FailedTestsBody,
+  NormalizedTest,
+} from "../../release/ci-conductor/src/contract";
+import { toNumber } from "../../release/ci-conductor/src/util";
 
 // `Cypress` and `CypressCommandLine` are global namespaces provided by the
 // "cypress" types (see e2e/tsconfig.json), so they're referenced without import.
@@ -11,15 +25,16 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
  * than waiting for the whole job to finish — lets failures be tied back to the
  * CI run (and through it the PR / release branch) before the job completes.
  *
- * The webhooks base URL is only supplied via env in CI, so local runs no-op.
+ * The base URL is only supplied via env in CI, so local runs no-op.
  *
  * See DEV-1999.
  */
 
 const {
-  CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
   CI_CONDUCTOR_DRY_RUN,
+  CI_CONDUCTOR_TEST_SUITE,
   REPO_ID,
   GITHUB_RUN_ID,
   GITHUB_RUN_ATTEMPT,
@@ -38,34 +53,17 @@ const {
 // resolution and payload shape in CI before sending real data. See DEV-1999.
 const isDryRun = CI_CONDUCTOR_DRY_RUN === "true";
 
-/** Matches the `tests[]` shape consumed by ci-conductor's `ingestFailedTests`. */
-type ConductorTest = {
-  name: string;
-  /** The test's suite path (the joined `describe` titles), formerly `class`. */
-  path?: string;
-  file?: string;
-  duration?: number;
-  /** Raw per-attempt shape from Cypress, e.g. [{state:"failed"},{state:"passed"}]. */
-  attempts?: { state: string }[];
-  /**
-   * "failure" when every attempt failed (broken), "flake" when it failed then
-   * passed on retry, "passed" when every attempt passed. Passes are only
-   * reported on re-runs (run attempt > 1). Derived from `attempts`.
-   */
-  status?: "failure" | "flake" | "passed";
-  /**
-   * Cypress' final `displayError` blob for the test. Null for flaky tests
-   * (Cypress drops it when the final attempt passes); only broken tests carry a
-   * value. Conductor schema isn't final — fields it doesn't store are ignored.
-   */
-  message?: string | null;
-  /**
-   * The test's first failure screenshot as a base64 PNG data URI. ci-conductor
-   * uploads it to S3 and stores the public URL. Attached at send time by
-   * `reportFailedTestsToConductor`; absent when there's no screenshot or it
-   * can't be read. See DEV-2000.
-   */
-  failure_screenshot?: string;
+/**
+ * One reportable e2e test: the shared `NormalizedTest` wire shape (defined once
+ * in the ci-conductor module, so the report path and the quarantine path can't
+ * drift on a test's identity) plus a transient, never-sent `screenshotPath`.
+ *
+ * The Cypress-specific field semantics live at `extractFailedTests`: `message`
+ * is null for flakes (Cypress drops `displayError` once the final attempt
+ * passes), passing tests are only reported on re-runs, and `status` is derived
+ * from `attempts` by `classifyStatus`.
+ */
+type E2ETest = NormalizedTest & {
   /**
    * Transient (never sent on the wire): absolute path to the resolved first
    * failure screenshot, set by `extractFailedTests`. It's read and encoded into
@@ -99,15 +97,6 @@ function classifyStatus(
  */
 function getJobId(): number | null {
   return toNumber(JOB_ID);
-}
-
-/** Parse a numeric env var, treating missing/blank/non-numeric as null. */
-function toNumber(value: string | undefined): number | null {
-  if (value == null || value === "") {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Normalize a string to just [a-z0-9] for sanitization-proof matching. */
@@ -213,7 +202,7 @@ function encodeScreenshot(filePath: string): string | undefined {
 export function extractFailedTests(
   spec: Cypress.Spec,
   results: CypressCommandLine.RunResult,
-): ConductorTest[] {
+): E2ETest[] {
   const file = spec?.relative;
 
   // On a re-run we also report passing tests (not just failures) so conductor
@@ -273,15 +262,57 @@ export function extractFailedTests(
 }
 
 /**
+ * Where after:spec records this run's ultimate test failures for the post-run
+ * quarantine gate (DEV-2082). One JSON object per line
+ * (`{test_name, test_path, file_path}`), appended per spec, so the gate step
+ * can read the whole job's failures from a single file. Override with
+ * QUARANTINE_FAILURES_FILE. Note these are the SAME fields ci-conductor stores
+ * in its quarantine list (both derived from the same Cypress title array), so
+ * the gate can compare them exactly. See
+ * `release/ci-conductor/src/check-e2e-quarantine.ts`.
+ */
+const QUARANTINE_FAILURES_FILE =
+  process.env.QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";
+
+/**
+ * Persist the tests that ultimately failed (status "failure") so the post-run
+ * quarantine gate can decide whether the job passes. Flaky tests that recovered
+ * on retry and passing tests don't gate the build, so they're filtered out.
+ * Best-effort and never throws — recording must not break the test run.
+ */
+export function recordFailedTestsForQuarantine(tests: E2ETest[]): void {
+  try {
+    const broken = tests.filter((test) => test.status === "failure");
+    if (broken.length === 0) {
+      return;
+    }
+    const lines =
+      broken
+        .map((test) =>
+          JSON.stringify({
+            test_name: test.name,
+            test_path: test.path ?? null,
+            file_path: test.file ?? null,
+          }),
+        )
+        .join("\n") + "\n";
+    mkdirSync(dirname(QUARANTINE_FAILURES_FILE), { recursive: true });
+    appendFileSync(QUARANTINE_FAILURES_FILE, lines);
+  } catch (error) {
+    console.error("[quarantine] failed to record failures", error);
+  }
+}
+
+/**
  * Report the given failures to ci-conductor. In dry-run mode the payload is
  * logged and nothing is sent. Otherwise it's POSTed, no-opping when the webhook
  * URL isn't configured (local runs, PRs without the secret). Never throws —
  * reporting must not break a test run — so all errors are logged and swallowed.
  */
 export async function reportFailedTestsToConductor(
-  tests: ConductorTest[],
+  tests: E2ETest[],
 ): Promise<void> {
-  if (tests.length === 0 || (!CI_CONDUCTOR_WEBHOOK_URL && !isDryRun)) {
+  if (tests.length === 0 || (!CI_CONDUCTOR_BASE_URL && !isDryRun)) {
     return;
   }
 
@@ -299,12 +330,15 @@ export async function reportFailedTestsToConductor(
       return failure_screenshot ? { ...rest, failure_screenshot } : rest;
     });
 
-    const body = {
+    // Typed against the shared contract so the run-level identity stays in
+    // lockstep with the backend/frontend reporters; `retries` is the one e2e-only
+    // field (Cypress has a retry ceiling; the JUnit producers don't).
+    const body: FailedTestsBody & { retries: number | null } = {
       repo_id: toNumber(REPO_ID),
       run_id: toNumber(GITHUB_RUN_ID),
       attempt: toNumber(GITHUB_RUN_ATTEMPT),
       job_id: getJobId(),
-      test_suite: "e2e",
+      test_suite: CI_CONDUCTOR_TEST_SUITE || "e2e",
       // PR head sha / target branch when set by e2e-test.yml, else the ambient
       // (push/local) values. Empty strings collapse to null.
       sha: COMMIT_SHA || GITHUB_SHA || null,
@@ -336,14 +370,15 @@ export async function reportFailedTestsToConductor(
       return;
     }
 
-    if (!CI_CONDUCTOR_WEBHOOK_URL) {
+    if (!CI_CONDUCTOR_BASE_URL) {
       // already excluded by the guard above; this also narrows the type
       return;
     }
 
-    // CI_CONDUCTOR_WEBHOOK_URL holds the webhooks *base* (e.g. ".../webhooks");
-    // we append the specific endpoint so the same secret can serve others later.
-    const endpoint = `${CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "")}/failed-tests`;
+    // CI_CONDUCTOR_BASE_URL holds the ci-conductor base origin (e.g.
+    // "https://conductor.<host>"); we append this endpoint's path. Other
+    // consumers (e.g. the quarantine gate's /api/quarantine) build their own.
+    const endpoint = `${CI_CONDUCTOR_BASE_URL.replace(/\/+$/, "")}/webhooks/failed-tests`;
 
     // ci-conductor authenticates this endpoint via the x-internal-secret header.
     const headers: Record<string, string> = {

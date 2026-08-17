@@ -7,7 +7,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.core :as core]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
@@ -16,7 +18,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 (defn- venues-query []
   {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
@@ -186,6 +188,98 @@
           (is (some (fn [[_ c]] (re-find (re-pattern a-eid) c)) files-after) "card A preserved")
           (is (nil? (rso "Card" card-b)) "deleted entity's RemoteSyncObject row removed"))))))
 
+(deftest disable-collection-pushes-removal-and-survives-pull-test
+  (testing "disabling a synced collection removes its files (and its contents') from the remote on the
+            next export, and a subsequent import does not re-enable it (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (let [coll-eid (t2/select-one-fn :entity_id :model/Collection :id coll-id)
+              a-eid    (t2/select-one-fn :entity_id :model/Card :id card-a)
+              b-eid    (t2/select-one-fn :entity_id :model/Card :id card-b)]
+          (is (entity-exported? mock coll-eid) "precondition: the collection is on the remote")
+          ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
+          ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality —
+          ;; it is how a collection's contents are located when the collection is un-synced.
+          (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                      {:model_collection_id coll-id})
+          ;; Clear the initial-export task: a direct impl/export! never marks its task ended, so the
+          ;; bulk-set-remote-sync guard would otherwise (correctly) refuse to run alongside it.
+          (t2/delete! :model/RemoteSyncTask)
+          ;; USER ACTION: disable the collection from remote sync.
+          (core/bulk-set-remote-sync {coll-id false})
+          (is (true? (remote-sync.object/dirty?))
+              "disabling leaves a pending change to push (the removal)")
+          ;; USER ACTION: push. The removal must reach the remote.
+          (let [task   (new-task!)
+                result (impl/export! (source.p/snapshot mock) task "disable collection")]
+            (is (= :success (:status result)))
+            (is (not (entity-exported? mock coll-eid)) "collection file removed from the remote")
+            (is (not (entity-exported? mock a-eid)) "card A removed from the remote")
+            (is (not (entity-exported? mock b-eid)) "card B removed from the remote"))
+          ;; USER ACTION: pull from the remote. Because the removal was pushed, the collection is no
+          ;; longer in the remote, so the import cannot re-enable it.
+          (let [task   (new-task!)
+                result (impl/import! (source.p/snapshot mock) task)]
+            (is (= :success (:status result))
+                "the pull itself succeeds — otherwise the assertion below passes vacuously"))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id))
+              "a pull does not re-enable a collection that was disabled and pushed"))))))
+
+(deftest reenable-collection-before-export-keeps-contents-test
+  (testing "disable → re-enable before any export runs: the next export must not delete the collection's
+            contents from the remote (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (let [coll-eid (t2/select-one-fn :entity_id :model/Collection :id coll-id)
+              a-eid    (t2/select-one-fn :entity_id :model/Card :id card-a)
+              b-eid    (t2/select-one-fn :entity_id :model/Card :id card-b)]
+          ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
+          ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality.
+          (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                      {:model_collection_id coll-id})
+          ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+          (t2/delete! :model/RemoteSyncTask)
+          ;; USER ACTION: disable the collection, then re-enable it before any export runs.
+          (core/bulk-set-remote-sync {coll-id false})
+          (core/bulk-set-remote-sync {coll-id true})
+          ;; USER ACTION: push. Nothing was disabled at push time, so nothing may be deleted.
+          (let [task   (new-task!)
+                result (impl/export! (source.p/snapshot mock) task "after re-enable")]
+            (is (= :success (:status result)))
+            (is (entity-exported? mock coll-eid) "collection file still on the remote")
+            (is (entity-exported? mock a-eid) "card A still on the remote")
+            (is (entity-exported? mock b-eid) "card B still on the remote")))))))
+
+(deftest reenable-retracks-never-pushed-content-test
+  (testing "a card created but never pushed, dropped when its collection was disabled, is re-tracked on
+            re-enable so the next export pushes it instead of silently losing it (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        ;; Mirror production: content RSOs carry model_collection_id, so the disable can find them.
+        (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                    {:model_collection_id coll-id})
+        (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
+          ;; Card C is new and never pushed: a 'create' RSO with no file_path (as a card-create event
+          ;; produces). It exists locally in the synced collection but is not yet on the remote.
+          (t2/delete! :model/RemoteSyncObject :model_type "Card" :model_id card-c)
+          (t2/insert! :model/RemoteSyncObject
+                      {:model_type "Card" :model_id card-c :model_name "Card C"
+                       :model_collection_id coll-id :status "create"
+                       :status_changed_at (t/offset-date-time)})
+          (let [c-eid (t2/select-one-fn :entity_id :model/Card :id card-c)]
+            (is (not (entity-exported? mock c-eid)) "precondition: card C has never been pushed")
+            ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+            (t2/delete! :model/RemoteSyncTask)
+            ;; USER ACTION: disable then re-enable before card C is ever pushed. The disable drops card C's
+            ;; never-pushed 'create' row; re-enable must re-track it.
+            (core/bulk-set-remote-sync {coll-id false})
+            (core/bulk-set-remote-sync {coll-id true})
+            ;; USER ACTION: push. Card C must reach the remote, not be silently lost.
+            (let [result (impl/export! (source.p/snapshot mock) (new-task!) "after re-enable")]
+              (is (= :success (:status result)))
+              (is (entity-exported? mock c-eid)
+                  "card C is pushed to the remote after the disable/re-enable cycle"))))))))
+
 (deftest rename-without-stored-path-falls-back-test
   (with-exported-collection!
     (fn [{:keys [mock card-a]}]
@@ -203,6 +297,9 @@
 (deftest delete-without-stored-path-falls-back-test
   (with-exported-collection!
     (fn [{:keys [mock card-b]}]
+      ;; A real delete (archive) with no stored file_path can't resolve its path incrementally, so it
+      ;; falls back to full — which drops the archived entity's file, producing a real commit.
+      (t2/update! :model/Card card-b {:archived true})
       (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-b {:file_path nil})
       (set-status! "Card" card-b "delete")
       (let [task   (new-task!)
@@ -320,12 +417,52 @@
       ;; fresh "create" whose target path already holds THIS same entity is a safe overwrite, so it must
       ;; stay incremental rather than fall back (the path is occupied, but by us).
       (let [a-eid (t2/select-one-fn :entity_id :model/Card :id card-a)]
+        ;; A real content change keeps the staged commit non-empty, isolating the path-selection behavior
+        ;; under test from the empty-commit skip.
+        (t2/update! :model/Card card-a {:description "re-created A"})
         (set-status! "Card" card-a "create")
         (let [task (new-task!)]
           (impl/export! (source.p/snapshot mock) task "re-create A")
           (is (= "apply-changes-version" (written-version task))
               "a create whose path already holds the same entity stays incremental")
           (is (entity-exported? mock a-eid) "card A is still exported"))))))
+
+;;; ----------------------------------- Empty-commit suppression (GHY-3934) -----------------------------------
+;;; A dirty row whose serialized content already matches the repo stages no net tree change. The export must
+;;; succeed without pushing an empty commit, and still clear the stale dirty flag.
+
+(deftest incremental-no-op-skips-empty-commit-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      ;; Re-"create" an already-exported card without touching its content: the staged upsert is identical
+      ;; to the repo, so the incremental commit would be empty.
+      (let [files-before (files mock)]
+        (set-status! "Card" card-a "create")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "re-create A unchanged")]
+          (is (= :success (:status result)))
+          (is (= {:kind "push-skipped"} (:outcome result)) "no empty commit is pushed")
+          (is (nil? (written-version task)) "the task version is not advanced")
+          (is (= files-before (files mock)) "the repo is left untouched")
+          (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
+              "the false-dirty flag is cleared"))))))
+
+(deftest full-export-no-op-skips-empty-commit-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-b]}]
+      ;; A delete with no stored file_path forces a full export, but the entity still exists and
+      ;; re-serializes identically — the full re-export matches the repo, so the empty commit is skipped.
+      (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-b {:file_path nil})
+      (set-status! "Card" card-b "delete")
+      (let [files-before (files mock)
+            task         (new-task!)
+            result       (impl/export! (source.p/snapshot mock) task "no-op full")]
+        (is (= :success (:status result)))
+        (is (= {:kind "push-skipped"} (:outcome result)) "no empty commit is pushed")
+        (is (nil? (written-version task)) "the task version is not advanced")
+        (is (= files-before (files mock)) "the repo is left untouched")
+        (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
+            "the false-dirty flag is cleared")))))
 
 ;;; ------------------------------------ Disabled content cleanup (GHY-3725) ------------------------------------
 ;;; When a content type is disabled (transforms is off in `with-exported-collection!`), stale files left

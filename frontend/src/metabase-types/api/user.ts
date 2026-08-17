@@ -60,7 +60,6 @@ export interface UserPermissions {
   can_access_subscription?: boolean;
   can_access_data_studio?: boolean;
   can_access_transforms?: boolean;
-  can_access_workspaces?: boolean;
 }
 
 export interface User extends BaseUser {
@@ -72,7 +71,7 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
-  personal_collection_id: CollectionId;
+  personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
   custom_homepage: {
@@ -87,7 +86,11 @@ export interface UserListResult {
   last_name: string | null;
   common_name: string;
   email: string;
-  personal_collection_id: CollectionId;
+  /**
+   * `null` for API-key users (see `include-personal-collection-ids`
+   * in `collections/models/collection.clj`).
+   */
+  personal_collection_id: CollectionId | null;
   structured_attributes?: StructuredUserAttributes;
 }
 
@@ -125,6 +128,12 @@ export type UserLoginHistoryItem = {
 
 export type UserLoginHistory = UserLoginHistoryItem[];
 
+export type InviteTarget = {
+  type: "dashboard" | "question";
+  id: number;
+  name: string;
+};
+
 export type CreateUserRequest = {
   email: string;
   first_name?: string;
@@ -133,6 +142,7 @@ export type CreateUserRequest = {
   login_attributes?: UserAttributeMap;
   password?: string;
   source?: "setup" | "admin";
+  invite_target?: InviteTarget;
 };
 
 export type UpdatePasswordRequest = {
@@ -189,7 +199,12 @@ export type UserKeyValue =
     }
   | {
       namespace: "data_studio";
-      key: string;
+      key: "isNavbarOpened" | "hasSeenGuide";
+      value: boolean;
+    }
+  | {
+      namespace: "monitor";
+      key: "isNavbarOpened";
       value: boolean;
     }
   | {

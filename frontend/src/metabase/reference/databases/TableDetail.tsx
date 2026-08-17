@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -87,7 +86,6 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateTableDetail,
-  onChangeLocation: push,
 };
 
 interface TableDetailProps {
@@ -245,4 +243,5 @@ const TableDetail = (props: TableDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableDetail as unknown as React.ComponentType);

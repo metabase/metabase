@@ -1,0 +1,148 @@
+name: Bundle Size Stats
+
+# Reuses the uberjar built on every master merge: downloads the jar (for the
+# emitted JS) plus the bundle-stats and embedding-sdk artifacts, measures
+# initial/total bundle sizes, and appends them to stats.metabase.com.
+
+on:
+  workflow_run:
+    workflows: ["Build Uberjar"]
+    types: [completed]
+    # Master only: releases form non-linear lines whose deltas are meaningless,
+    # so their sizes are backfilled separately rather than logged here.
+    branches: [master]
+
+concurrency:
+  group: bundle-size-stats-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size-stats:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      # Only record a data point when a bundle's as-served size (brotli where the
+      # build ships .br, else gzip) moved by at least this percent vs the last
+      # plotted point, keeping the chart to real changes.
+      MIN_DELTA_PERCENT: "0.5"
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Download EE uberjar
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          edition: ee
+          extract-path: temp/uberjar
+      - name: Extract front-end bundles from uberjar
+        run: |
+          mkdir -p resources artifacts
+          unzip -o "temp/uberjar/metabase.jar" \
+            "frontend_client/app/dist/*" \
+            "frontend_client/app/embed.js" \
+            "frontend_client/app/embedding-sdk/*" \
+            -d resources
+          unzip -o -j "temp/uberjar/metabase.jar" version.properties -d artifacts
+      - name: Download bundle stats and SDK package artifacts
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const fs = require("fs");
+
+            async function fetchArtifact(name) {
+              const res = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                per_page: 1,
+              });
+              const artifact = res.data?.artifacts?.[0];
+              if (!artifact) {
+                console.log(`Artifact not found: ${name}`);
+                return "";
+              }
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: "zip",
+              });
+              fs.writeFileSync(`${name}.zip`, Buffer.from(download.data));
+              console.log(`Downloaded ${name}`);
+              return `${name}.zip`;
+            }
+
+            const sha = process.env.HEAD_SHA;
+            core.exportVariable("STATS_ZIP", await fetchArtifact(`metabase-bundle-stats-ee-${sha}`));
+            core.exportVariable("PKG_ZIP", await fetchArtifact(`embedding-sdk-${sha}`));
+      - name: Extract stats and SDK package
+        run: |
+          mkdir -p artifacts resources/embedding-sdk
+          if [ -n "$STATS_ZIP" ]; then unzip -o "$STATS_ZIP" -d artifacts; fi
+          if [ -n "$PKG_ZIP" ]; then unzip -o "$PKG_ZIP" -d resources/embedding-sdk; fi
+      - name: Restore last plotted bundle sizes
+        uses: actions/cache/restore@v4
+        with:
+          path: bundle-size-cache
+          key: bundle-size-last-${{ github.run_id }}
+          restore-keys: |
+            bundle-size-last-
+      - name: Measure bundle sizes
+        run: node ./.github/scripts/measure-bundle-sizes.js | tee artifacts/bundle-sizes.json
+      - name: Compute deltas and decide whether to record this point
+        id: prepare
+        env:
+          CURRENT: artifacts/bundle-sizes.json
+          LAST: bundle-size-cache/last.json
+          CACHE_OUT: bundle-size-cache/last.json
+          ROWS_OUT: artifacts/upload-rows.json
+          VERSION_PROPS: artifacts/version.properties
+          # Passed via env (not interpolated into the shell) so the commit
+          # message can't inject commands; the script keeps only the subject.
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+        run: node ./.github/scripts/bundle-size-stats-prepare.js
+      - name: Upload sizes (with deltas) to Stats
+        id: upload
+        if: steps.prepare.outputs.significant == 'true'
+        uses: actions/github-script@v9
+        env:
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const fs = require("fs");
+            const { uploadCsvToMb } = require("${{ github.workspace }}/.github/scripts/csv-to-mb.js");
+
+            const data = JSON.parse(
+              fs.readFileSync("${{ github.workspace }}/artifacts/upload-rows.json", "utf8"),
+            );
+
+            console.table(data);
+
+            try {
+              await uploadCsvToMb({
+                baseUrl: "https://stats.metabase.com",
+                tableId: 79702,
+                jsonData: data,
+                mode: "append",
+              });
+              console.log("Bundle sizes uploaded successfully");
+              core.setOutput("uploaded", "true");
+            } catch (error) {
+              // Stats logging is best-effort: if stats.metabase.com is still
+              // unreachable after the client's retries, keep the run green. The
+              // last-plotted cache is only saved on a successful upload (below),
+              // so this point is re-attempted on the next master build and
+              // nothing is silently dropped.
+              core.warning(`Bundle-size upload failed after retries; leaving run green: ${error.message}`);
+              core.setOutput("uploaded", "false");
+            }
+      - name: Remember this as the last plotted point
+        if: steps.upload.outputs.uploaded == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: bundle-size-cache
+          key: bundle-size-last-${{ github.run_id }}

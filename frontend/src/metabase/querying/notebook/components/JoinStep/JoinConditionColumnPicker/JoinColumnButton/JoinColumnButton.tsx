@@ -5,8 +5,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import { isTouchDevice } from "metabase/utils/browser";
@@ -47,6 +47,12 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
     () => getButtonLabel(query, stageIndex, expression, tc, locale),
     [query, stageIndex, expression, tc, locale],
   );
+  const columnTableName = useMemo(
+    () =>
+      getLHSColumnTableName(query, stageIndex, expression, isLhsPicker) ??
+      tableName,
+    [query, stageIndex, expression, isLhsPicker, tableName],
+  );
   const isEmpty = expression == null;
   const isLiteral =
     expression != null && Lib.isJoinConditionLHSorRHSLiteral(expression);
@@ -79,7 +85,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       onClick={onClick}
       aria-label={isLhsPicker ? t`Left column` : t`Right column`}
     >
-      {tableName != null && !isLiteral && (
+      {columnTableName != null && !isLiteral && (
         <Text
           display="block"
           fz={11}
@@ -88,7 +94,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           ta="left"
           fw={400}
         >
-          {tc(tableName)}
+          {tc(columnTableName)}
         </Text>
       )}
       <Text
@@ -128,4 +134,22 @@ function getButtonLabel(
   }
 
   return t`Custom expression`;
+}
+
+function getLHSColumnTableName(
+  query: Lib.Query,
+  stageIndex: number,
+  expression: Lib.ExpressionClause | undefined,
+  isLhsPicker: boolean,
+) {
+  // The LHS of a join condition can reference a column from the source table
+  // or a previous join, so the join condition table should be the columns
+  // table (#72823).
+  if (
+    isLhsPicker &&
+    expression != null &&
+    Lib.isJoinConditionLHSorRHSColumn(expression)
+  ) {
+    return Lib.displayInfo(query, stageIndex, expression).table?.displayName;
+  }
 }

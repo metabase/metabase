@@ -1,6 +1,6 @@
 .radioCard {
   cursor: pointer;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .radioCard[data-checked] {

@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
-type ApiKeylessProviders = "metabase";
+type ApiKeylessProviders = "metabase" | "google";
 type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
 
 type MetabotApiKeylessProviderOption = {
@@ -25,7 +25,8 @@ export type MetabotProviderOption =
 
 export function getProviderOptions(
   hasMetabaseProviderAccess: boolean,
-): Partial<Record<ApiKeylessProviders, MetabotApiKeylessProviderOption>> &
+): Partial<Record<"metabase", MetabotApiKeylessProviderOption>> &
+  Record<"google", MetabotApiKeylessProviderOption> &
   Record<ApiKeyProviders, MetabotApiKeyProviderOption> {
   return {
     ...(hasMetabaseProviderAccess && {
@@ -61,6 +62,27 @@ export function getProviderOptions(
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
     },
+    google: {
+      value: "google",
+      label: "Gemini Enterprise Agent Platform",
+    },
+    mistral: {
+      value: "mistral",
+      label: "Mistral",
+      apiKey: {
+        // Mistral keys have no recognizable prefix
+        placeholder: t`Enter your Mistral API key`,
+        addKeyUrl: "https://console.mistral.ai/api-keys",
+      },
+    },
+    moonshot: {
+      value: "moonshot",
+      label: "Moonshot AI",
+      apiKey: {
+        placeholder: "sk-...",
+        addKeyUrl: "https://platform.kimi.ai/console/api-keys",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -77,12 +99,21 @@ export function getProviderOptions(
         addKeyUrl: "https://openrouter.ai/keys",
       },
     },
+    zai: {
+      value: "zai",
+      label: "Z.AI",
+      apiKey: {
+        // Z.AI keys have no recognizable prefix
+        placeholder: t`Enter your Z.AI API key`,
+        addKeyUrl: "https://z.ai/manage-apikey/apikey-list",
+      },
+    },
   };
 }
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  "metabase" | "azure" | "bedrock"
+  "metabase" | "azure" | "bedrock" | "google"
 >;
 
 export function isMetabotProvider(
@@ -96,17 +127,31 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "anthropic" ||
     provider === "azure" ||
     provider === "bedrock" ||
-    provider === "metabase"
+    provider === "google" ||
+    provider === "metabase" ||
+    provider === "mistral" ||
+    provider === "moonshot" ||
+    provider === "openai" ||
+    provider === "openrouter" ||
+    provider === "zai"
   );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-mistral-api-key"
+  | "llm-moonshot-api-key"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  mistral: "llm-mistral-api-key",
+  moonshot: "llm-moonshot-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
 };
 
 export const AZURE_MODEL_FAMILIES = [

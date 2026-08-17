@@ -15,7 +15,7 @@ import type {
   FieldVisibilityType,
 } from "./field";
 import type { Insight } from "./insight";
-import type { ParameterOptions } from "./parameters";
+import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
@@ -88,6 +88,7 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
 
   remapping?: Map<RowValue, string | number>;
 }
@@ -120,7 +121,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -133,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;

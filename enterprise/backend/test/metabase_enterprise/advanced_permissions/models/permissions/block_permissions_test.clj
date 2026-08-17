@@ -39,10 +39,10 @@
 
                              "the API"
                              api-test-db-perms}]
-      (testing (str message "\n"))
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-        (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-        (is (nil? (perms group-id)))))))
+      (testing (str message "\n")
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+          (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+          (is (nil? (perms group-id))))))))
 
 (defn- grant-block-perms! [group-id]
   (data-perms.graph/update-data-perms-graph!

@@ -120,6 +120,12 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ![Pivot table options](../images/pivot-table-options.png)
 
+## Treemaps
+
+[Treemaps](./treemap.md) display hierarchical data as nested rectangles, sized by a metric. Use them to break a total down across one or two nested categorical dimensions.
+
+![Treemap](../images/treemap.png)
+
 ## Progress bars
 
 [Progress bars](./progress-bar.md) are for comparing a single number to a goal value that you set.

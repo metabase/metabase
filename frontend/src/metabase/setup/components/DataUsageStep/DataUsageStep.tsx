@@ -6,6 +6,7 @@ import { ActionButton } from "metabase/common/components/ActionButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Switch } from "metabase/ui";
 
 import { goToNextStep, updateTracking } from "../../actions";
 import { getIsTrackingAllowed } from "../../selectors";
@@ -18,7 +19,6 @@ import {
   StepDescription,
   StepError,
   StepInfoList,
-  StepToggle,
   StepToggleContainer,
   StepToggleLabel,
 } from "./DataUsageStep.styled";
@@ -74,10 +74,11 @@ export const DataUsageStep = ({
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </StepDescription>
       <StepToggleContainer>
-        <StepToggle
-          value={isTrackingAllowed}
+        <Switch
+          flex="0 0 auto"
+          checked={isTrackingAllowed}
           autoFocus
-          onChange={handleTrackingChange}
+          onChange={(e) => handleTrackingChange(e.currentTarget.checked)}
           aria-labelledby="anonymous-usage-events-label"
         />
         <StepToggleLabel id="anonymous-usage-events-label">

@@ -48,6 +48,15 @@ export type PermissionsGraph = {
   revision: number;
 };
 
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
+export type UpdatePermissionsGraphRequest = {
+  groups: GroupsPermissions;
+  revision: number;
+  [key: string]: unknown;
+};
+
 export type GroupsPermissions = {
   [key: GroupId | string]: GroupPermissions;
 };
@@ -137,6 +146,12 @@ export type FieldsPermissions =
   | DataPermissionValue.LEGACY_NO_SELF_SERVICE
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
+
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
 
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;

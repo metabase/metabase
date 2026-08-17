@@ -17,6 +17,7 @@ const getSize = (
   visualizationType: VisualizationDisplay,
   sizeKey: "min" | "default",
 ): VisualizationSize =>
+  // Unjustified type cast. FIXME
   _.get(
     VISUALIZATION_SIZES,
     [visualizationType, sizeKey],

@@ -32,6 +32,7 @@ describe("scenarios > custom column > field resolution", () => {
 
     Object.entries(QUESTION.query.expressions ?? []).forEach(
       ([name, expression]) => {
+        // Unjustified type cast. FIXME
         const str = (expression as ["value", string])[1];
         H.getNotebookStep("expression").icon("add").click();
 

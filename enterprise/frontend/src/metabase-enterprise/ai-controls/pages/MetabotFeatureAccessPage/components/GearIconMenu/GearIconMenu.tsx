@@ -15,7 +15,7 @@ export function GearIconMenu() {
         <Menu.Target>
           <ActionIcon
             aria-label={t`Settings`}
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             c="text-primary"
             size="lg"
             variant="outline"

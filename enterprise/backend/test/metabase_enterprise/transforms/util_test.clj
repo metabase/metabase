@@ -11,12 +11,9 @@
   (testing "tables with schema"
     (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
           table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
-      (mt/with-premium-features #{:hosting}
+      (mt/with-premium-features #{}
         (is (false? (transforms.u/is-temp-transform-table? table-with-schema)))
         (is (false? (transforms.u/is-temp-transform-table? table-without-schema))))
-      (mt/with-premium-features #{}
-        (is (transforms.u/is-temp-transform-table? table-without-schema))
-        (is (transforms.u/is-temp-transform-table? table-with-schema)))
       (mt/with-premium-features #{:hosting :transforms-basic}
         (is (transforms.u/is-temp-transform-table? table-without-schema))
         (is (transforms.u/is-temp-transform-table? table-with-schema)))))

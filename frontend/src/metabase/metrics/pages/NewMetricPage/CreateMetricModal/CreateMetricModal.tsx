@@ -3,8 +3,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useCreateCardMutation } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { trackMetricCreated } from "metabase/data-studio/analytics";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
+import { trackMetricCreated } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -141,7 +141,6 @@ function getCreateRequest(
     name,
     description,
     collection_id,
-    collection_position: 1,
     result_metadata,
     type: "metric",
     dataset_query: Lib.toJsQuery(query),

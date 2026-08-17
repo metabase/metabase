@@ -7,9 +7,12 @@ import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { Button, Flex } from "metabase/ui";
 import type {
   ActionFormInitialValues,
@@ -31,6 +34,8 @@ interface ActionFormProps {
   // and they will be submitted together in batch.
   hiddenFields?: ParameterId[];
 
+  submitButtonFullWidth?: boolean;
+
   onSubmit: (
     parameters: ParametersForActionExecution,
     actions: FormikHelpers<ParametersForActionExecution>,
@@ -42,6 +47,7 @@ function ActionForm({
   action,
   initialValues: rawInitialValues = {},
   hiddenFields = [],
+  submitButtonFullWidth,
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
@@ -55,14 +61,6 @@ function ActionForm({
     () => form.fields.filter((field) => !hiddenFields.includes(field.name)),
     [form, hiddenFields],
   );
-
-  const submitButtonProps = useMemo(() => {
-    const variant = getSubmitButtonColor(action);
-    return {
-      title: getSubmitButtonLabel(action),
-      [variant]: true,
-    };
-  }, [action]);
 
   const handleSubmit = useCallback(
     (
@@ -88,10 +86,15 @@ function ActionForm({
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton {...submitButtonProps} />
+          <FormSubmitButton
+            label={getSubmitButtonLabel(action)}
+            variant="filled"
+            color={getSubmitButtonColor(action)}
+            fullWidth={submitButtonFullWidth}
+          />
         </Flex>
 
-        <FormErrorMessage />
+        <FormErrorMessage mt="md" />
       </Form>
     </FormProvider>
   );

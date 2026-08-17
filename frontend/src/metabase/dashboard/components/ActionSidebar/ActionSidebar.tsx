@@ -45,6 +45,7 @@ export function ActionSidebar() {
     if (!dashboard?.dashcards || !dashcardId) {
       return null;
     }
+    // Unjustified type cast. FIXME
     return dashboard.dashcards.find(
       (dc) => dc?.id === dashcardId && isActionDashCard(dc),
     ) as ActionDashboardCard | undefined;
@@ -134,7 +135,7 @@ export function ActionSidebar() {
           <Modal.Content>
             <ActionDashcardSettings
               dashboard={dashboard}
-              dashcard={dashcard as ActionDashboardCard}
+              dashcard={dashcard}
               onClose={closeActionModal}
             />
           </Modal.Content>

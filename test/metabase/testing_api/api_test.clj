@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
@@ -115,3 +116,14 @@
                 (mt/user-http-request :rasta :post 200 "testing/set-time")))))
     (finally
       (alter-var-root #'java-time.clock/*clock* (constantly nil)))))
+
+(deftest reset-throttlers-test
+  (let [throttler (:username @#'session.api/login-throttlers)]
+    (try
+      (reset! (:attempts throttler) (list ["someone@metabase.test" (System/currentTimeMillis)]))
+      (testing "POST /api/testing/reset-throttlers clears accumulated throttle state"
+        (is (= {:success true}
+               (mt/user-http-request :rasta :post 200 "testing/reset-throttlers")))
+        (is (empty? @(:attempts throttler))))
+      (finally
+        (reset! (:attempts throttler) nil)))))

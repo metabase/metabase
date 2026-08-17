@@ -64,7 +64,7 @@ const setupState = ({
   setupNotificationChannelsEndpoints({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -80,6 +80,7 @@ const setupState = ({
 
   return createMockState({
     settings: mockSettings(settingValues),
+    // Unjustified type cast. FIXME
     currentUser: {
       ...user,
       permissions: {

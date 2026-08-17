@@ -202,7 +202,7 @@
                    (= :attachment type)
                    (= "text/csv" content-type))
               [(strip-timestamp file-name)
-               (let [[h & r] (csv/read-csv (slurp content))]
+               (let [[h & r] (csv/read-csv (u/strip-bom (slurp content)))]
                  (zipmap h (apply mapv vector r)))])))
          (into {}))))
 
@@ -623,7 +623,7 @@
                                                    (= :attachment type)
                                                    (= "text/csv" content-type))
                                               [(strip-timestamp file-name)
-                                               (first (csv/read-csv (slurp content)))])))
+                                               (first (csv/read-csv (u/strip-bom (slurp content))))])))
                                          (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]

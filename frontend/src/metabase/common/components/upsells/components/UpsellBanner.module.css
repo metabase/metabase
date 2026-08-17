@@ -5,7 +5,7 @@
   gap: 1rem;
   padding: 1.25rem 2rem;
   overflow: hidden;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   width: 100%;
 

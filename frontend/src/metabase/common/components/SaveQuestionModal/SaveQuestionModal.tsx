@@ -4,7 +4,6 @@ import {
 } from "metabase/common/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -22,8 +21,6 @@ export const SaveQuestionModal = ({
   targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  useEscapeToCloseModal(onClose);
-
   return (
     <SaveQuestionProvider
       question={question}
@@ -43,12 +40,7 @@ export const SaveQuestionModal = ({
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root
-        padding="xl"
-        {...modalProps}
-        closeOnEscape={false}
-        onClose={onClose}
-      >
+      <Modal.Root padding="xl" {...modalProps} onClose={onClose}>
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>

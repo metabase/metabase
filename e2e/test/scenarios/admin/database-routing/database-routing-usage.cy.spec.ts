@@ -98,6 +98,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
   });
 
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     H.restore("db-routing-3-dbs" as any);
     cy.signInAsAdmin();
   });

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -10,6 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks/state";
+import { Route } from "metabase/router";
 import { dataStudioArchivedSnippets } from "metabase/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
@@ -45,13 +45,11 @@ const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
     <>
       <Route
         path="/"
-        component={() => (
-          <RootSnippetsCollectionMenu collectionId={collection.id} />
-        )}
+        element={<RootSnippetsCollectionMenu collectionId={collection.id} />}
       />
       <Route
         path={dataStudioArchivedSnippets()}
-        component={() => <div data-testid="archived-snippets" />}
+        element={<div data-testid="archived-snippets" />}
       />
     </>,
     {
@@ -124,16 +122,14 @@ describe("RootSnippetsCollectionMenu", () => {
 
   describe("view archived snippets option", () => {
     it("navigates to archived snippets page", async () => {
-      const { history } = setup();
+      const { router } = setup();
       await userEvent.click(
         screen.getByRole("button", { name: "Snippet collection options" }),
       );
       await userEvent.click(
         screen.getByRole("menuitem", { name: /View archived snippets/ }),
       );
-      expect(history?.getCurrentLocation()?.pathname).toMatch(
-        /\/snippets\/archived/,
-      );
+      expect(router?.location?.pathname).toMatch(/\/snippets\/archived/);
     });
   });
 });

@@ -9,7 +9,9 @@
    [java-time.api :as t]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -311,6 +313,24 @@
                                         {"DATE" {:$lt (ISODate "2014-03-03T00:00:00Z")}}]}}
                        {:$sort {:_id 1}}])}
             (mongo.params/substitute-native-parameters :mongo mp stage)))))
+
+(deftest ^:parallel variable-default-value-substitution-test
+  (testing "previewing a Mongo native query substitutes a plain variable tag's :default when no runtime param is supplied (#47793)"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:database {:features (conj (:features (lib.metadata/database meta/metadata-provider))
+                                             :native-requires-specified-collection)}})
+          query (-> (lib/native-query mp (to-bson [{:$match {"quantity" (bson-literal "{{quantity}}")}}]))
+                    (lib/with-native-extras {:collection "orders"})
+                    (lib/with-template-tags {"quantity" {:name         "quantity"
+                                                         :display-name "Quantity"
+                                                         :type         :number
+                                                         :default      "10"
+                                                         :required     false}}))
+          stage (-> (lib/query-stage query 0)
+                    (assoc :parameters (or (:parameters query) [])))]
+      (is (=? {:native (to-bson [{:$match {"quantity" 10}}])}
+              (mongo.params/substitute-native-parameters :mongo mp stage))))))
 
 (deftest e2e-field-filter-test
   (mt/test-driver :mongo

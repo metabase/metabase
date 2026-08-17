@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -52,11 +51,10 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateDatabaseDetail,
-  onChangeLocation: push,
 };
 
 interface DatabaseDetailProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   entity: StubbedDatabase;
   user: User | null;
   isEditing?: boolean;

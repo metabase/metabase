@@ -62,8 +62,9 @@
 
 (mu/defn apply-defaults-to-collection :- NewCollectionArguments
   "Converts `CreateCollectionArguments` into `NewCollectionArguments` — i.e. translates what the API
-  gets into what toucan needs to create a collection. Inherits `:namespace`, `:type` (excluding
-  `\"trash\"`), and `:is_remote_synced` from the parent collection."
+  gets into what toucan needs to create a collection. Inherits `:namespace`, `:type` (only the
+  library family — see `collection/library-collection-types`), and `:is_remote_synced` from the
+  parent collection."
   [coll-data :- CreateCollectionArguments]
   (let [parent-coll (parent-or-root coll-data)]
     ;; `api/write-check` handles both branches - a real collection and the root sentinel
@@ -73,8 +74,12 @@
           (and (:namespace parent-coll)
                (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
           parent-coll (assoc :location (collection/children-location parent-coll))
-          (and (:type parent-coll)
-               (not= (:type parent-coll) "trash")) (assoc :type (:type parent-coll)))
+          ;; Only the library family of types propagates to children. Other special types
+          ;; (e.g. "trash", "tenant-specific-root-collection") are root-only sentinels and must
+          ;; NOT leak onto children — doing so fails the closed `NewCollectionArguments` schema and
+          ;; would mis-tag the child (UXW-4520).
+          (contains? collection/library-collection-types (:type parent-coll))
+          (assoc :type (:type parent-coll)))
         (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
         (select-keys (malli.util/keys NewCollectionArguments)))))
 

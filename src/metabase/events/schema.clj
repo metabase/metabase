@@ -15,7 +15,6 @@
   (or (mr/registered-schema topic)
       :map))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- with-hydrate
   "Given a malli entry schema of a map, return a new entry schema with an additional option
   to hydrate information when sending system event notifications.
@@ -103,6 +102,11 @@
              [:is_from_setup {:optional true} :boolean]
              [:first_name    {:optional true} [:maybe :string]]
              [:invite_method {:optional true} :string]
+             [:invite_target {:optional true}
+              [:map
+               [:type [:enum "dashboard" "question"]]
+               [:id   ms/PositiveInt]
+               [:name ms/NonBlankString]]]
              [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
    [:details {:optional true}
     [:map {:closed true}

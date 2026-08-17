@@ -1,11 +1,11 @@
 .container {
   border-radius: 1rem;
   overflow: hidden;
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .container:has([data-has-error]) {
-  box-shadow: inset 0 0 0 1px var(--mb-color-error);
+  box-shadow: inset 0 0 0 1px var(--mb-color-feedback-negative);
 }
 
 .filterPillsSection {

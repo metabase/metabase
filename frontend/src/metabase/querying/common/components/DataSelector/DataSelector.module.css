@@ -2,7 +2,7 @@
   width: 100%;
   position: relative;
   padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
   cursor: pointer;
 }
@@ -20,7 +20,7 @@
 
 .TextSchema {
   font-size: 0.75em;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   line-height: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

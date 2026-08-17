@@ -16,12 +16,14 @@ import { DatabaseDangerZoneSection } from "./DatabaseDangerZoneSection";
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 function getDiscardFieldValuesConfirmModal() {
+  // Unjustified type cast. FIXME
   return document.querySelector(
     "[data-testid=discard-field-values-confirm-modal]",
   ) as HTMLElement;
 }
 
 function getRemoveDatabaseConfirmModal() {
+  // Unjustified type cast. FIXME
   return document.querySelector(
     "[data-testid=remove-database-confirm-modal]",
   ) as HTMLElement;

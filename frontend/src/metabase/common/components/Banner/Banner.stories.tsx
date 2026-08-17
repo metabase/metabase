@@ -15,7 +15,7 @@ export const Default = {
   render: (args: BannerProps) => <Banner {...args} />,
   args: {
     icon: "warning_round_filled",
-    bg: "var(--mb-color-background-primary-inverse)",
+    bg: "var(--mb-color-background_page-primary-inverse)",
     iconColor: "var(--mb-color-text-primary-inverse)",
     body: (
       <Text lh="inherit" c="text-primary-inverse">
@@ -38,7 +38,7 @@ export const NonClosable = {
   render: (args: BannerProps) => <Banner {...args} />,
   args: {
     closable: false,
-    bg: "var(--mb-color-success)",
+    bg: "var(--mb-color-feedback-positive)",
     body: (
       <Text lh="inherit" c="text-primary-inverse">
         This is a banner

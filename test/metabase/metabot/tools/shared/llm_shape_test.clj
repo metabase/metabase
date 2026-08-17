@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
@@ -99,7 +103,30 @@
     (let [metric {:id 1 :name "Test" :verified false}
           xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
-      (is (not (str/includes? xml "### Dimensions"))))))
+      (is (not (str/includes? xml "### Dimensions")))))
+  (testing "surfaces join-required (FK-less join) dimensions with the pasteable join clause (BOT-1612)"
+    (let [metric {:id 42 :name "Order Count by Campaign" :verified true
+                  :join-required-dimensions
+                  [{:join_alias   "Campaign"
+                    :target_table "CAMPAIGNS"
+                    :join         {"lib/type" "mbql/join" "strategy" "left-join" "alias" "Campaign"
+                                   "stages" [{"lib/type" "mbql.stage/mbql"
+                                              "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]}
+                    :dimensions   [{:name "NAME" :field_id 301 :type "string"
+                                    :portable_fk ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]
+                                    :reference   ["field" {"join-alias" "Campaign"}
+                                                  ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]}]}]}
+          xml    (llm-shape/metric->xml metric)]
+      (is (str/includes? xml "### Dimensions that require an explicit join"))
+      (is (str/includes? xml "no foreign key"))
+      (testing "the exact join clause is embedded as JSON for the LLM to paste"
+        (is (str/includes? xml "\"mbql/join\""))
+        (is (str/includes? xml "\"source-table\"")))
+      (testing "the per-dimension Reference is the ALIAS-QUALIFIED field clause, not a bare FK"
+        (is (str/includes? xml "NAME"))
+        ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
+        ;; dead-end on :no-fk-path (BOT-1612)
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
@@ -261,8 +288,8 @@
                  :database_schema "public"
                  :description "User accounts"
                  :fields [{:name "id" :field_id "f1" :base-type :type/Integer :database_type "INTEGER"}]
-                 :related_tables [{:id 20 :name "orders" :fully_qualified_name "public.orders"
-                                   :related_by "user_id" :fields []}]}
+                 :related_tables [{:id 20 :name "orders" :database_schema "public"
+                                   :related_by {:id 91 :name "user_id"} :fields []}]}
           xml (llm-shape/table->xml table)]
       (is (str/starts-with? xml "<table"))
       ;; Python format: id="10", name="users"
@@ -632,6 +659,25 @@
           xml (llm-shape/search-result->xml result)]
       (is (not (str/includes? xml "portable_entity_id"))))))
 
+(deftest ^:parallel search-result->xml-uri-test
+  (testing "search results carry a numeric-id read_resource uri attribute"
+    (are [result expected-uri] (str/includes? (llm-shape/search-result->xml result)
+                                              (str "uri=\"" expected-uri "\""))
+      {:id 133 :type "model" :name "Foundation MO"} "metabase://model/133"
+      {:id 11 :type :dataset :name "D"}             "metabase://model/11"
+      {:id 5 :type "question" :name "Q"}            "metabase://question/5"
+      {:id 13 :type :card :name "C"}                "metabase://question/13"
+      {:id 7 :type :metric :name "M"}               "metabase://metric/7"
+      {:id 9 :type "table" :name "T"}               "metabase://table/9"
+      {:id 15 :type "dashboard" :name "Dash"}       "metabase://dashboard/15"
+      {:id 17 :type "measure" :name "Meas"}         "metabase://measure/17"
+      {:id 19 :type "segment" :name "Seg"}          "metabase://segment/19"))
+  (testing "types without a read_resource URI form omit the uri attribute"
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type "action" :name "A"})
+                            "uri=")))
+    (is (not (str/includes? (llm-shape/search-result->xml {:id 3 :type nil :name "A"})
+                            "uri=")))))
+
 (deftest ^:parallel search-result->xml-test-9
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
@@ -652,6 +698,25 @@
     ;; Card/question uses <metabase_question> tag
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
     (is (str/starts-with? (llm-shape/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
+
+(deftest ^:parallel search-result-write-permission-test
+  (testing "renders false as an explicit destination permission"
+    (is (str/includes? (llm-shape/search-result->xml
+                        {:id 5 :type :dashboard :name "Read only" :can_write false})
+                       "can_write=\"false\"")))
+  (testing "omits write permission for search entities where it is not supplied"
+    (is (not (str/includes? (llm-shape/search-result->xml
+                             {:id 1 :type :table :name "Orders"})
+                            "can_write=")))))
+
+(deftest ^:parallel list-item-write-permission-test
+  (is (str/includes? (llm-shape/metabot-list->xml
+                      {:list-type :dashboards
+                       :items     [{:type "dashboard" :id 5 :name "Read only" :can_write false}]
+                       :total     1
+                       :page      1
+                       :pages     1})
+                     "can_write=\"false\"")))
 
 (deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
@@ -735,3 +800,211 @@
   (testing "falls back to pr-str for unknown types"
     (let [result (llm-shape/entity->xml {:type :unknown :data "test"})]
       (is (str/includes? result ":type")))))
+
+(def ^:private base-table-with-related
+  "Orders with one column-bearing related table, two surfaced without columns, and more dropped entirely
+  (surfaced 3, total 5)."
+  {:id 10
+   :name "orders"
+   :database_id 1
+   :database_engine "postgres"
+   :database_schema "public"
+   :related_tables [{:id 20 :name "products" :database_schema "public"
+                     :related_by {:id 92 :name "product_id"} :fields []}]
+   :related_tables_without_fields [{:id 21 :name "people" :database_schema "public"
+                                    :related_by {:id 91 :name "user_id"}}
+                                   {:id 22 :name "reviews" :database_schema "public"
+                                    :related_by {:id 93 :name "review_id"}}]
+   :related_tables_total 5})
+
+(deftest ^:parallel table->xml-related-tables-with-fields-test
+  (testing "a column-bearing related table renders as <related-table> with a derived fully_qualified_name"
+    (let [xml (llm-shape/table->xml base-table-with-related)]
+      (is (str/includes? xml "<related-table id=\"20\" name=\"products\"")
+          "the column-bearing related table is rendered")
+      (is (str/includes? xml "fully_qualified_name=\"public.products\"")
+          "the FQN is derived from the related table's schema + name (not a precomputed key)"))))
+
+(deftest ^:parallel table->xml-related-tables-fields-omitted-test
+  (testing (str "related tables surfaced without fields render under a <related-tables-fields-omitted> note as "
+                "<related-table> elements with FK + FQN but no <field>s, so the LLM can look them up if needed")
+    (let [xml (llm-shape/table->xml base-table-with-related)]
+      (is (str/includes? xml "<related-tables-fields-omitted>")
+          "a note tells the LLM these tables' fields were omitted")
+      (is (str/includes? xml (str "<related-table id=\"21\" name=\"people\" related_by_field_name=\"user_id\" "
+                                  "related_by_field_id=\"91\" fully_qualified_name=\"public.people\"></related-table>"))
+          "an identity-only table renders as <related-table> with FQN and FK but no columns")
+      (is (str/includes? xml (str "<related-table id=\"22\" name=\"reviews\" related_by_field_name=\"review_id\" "
+                                  "related_by_field_id=\"93\" fully_qualified_name=\"public.reviews\"></related-table>"))))))
+
+(deftest ^:parallel table->xml-related-table-description-test
+  (testing "a related table surfaces its description when present, and omits it when absent"
+    (let [xml (llm-shape/table->xml
+               (assoc base-table-with-related
+                      :related_tables_without_fields [{:id 22 :name "reviews" :database_schema "public"
+                                                       :related_by {:id 93 :name "review_id"}
+                                                       :description "All the reviews customers left"}
+                                                      {:id 21 :name "people" :database_schema "public"
+                                                       :related_by {:id 91 :name "user_id"}}]))]
+      (is (str/includes? xml "All the reviews customers left")
+          "the description renders inside the <related-table> element")
+      (is (str/includes? xml (str "<related-table id=\"21\" name=\"people\" related_by_field_name=\"user_id\" "
+                                  "related_by_field_id=\"91\" fully_qualified_name=\"public.people\"></related-table>"))
+          "a related table with no description renders no description content")))
+  (testing "a long related-table description is capped and gets an ellipsis"
+    (let [long-desc (apply str (repeat 600 "x"))
+          cap-len   @#'llm-shape/max-related-table-description-length
+          xml       (llm-shape/table->xml
+                     (assoc base-table-with-related
+                            :related_tables_without_fields [{:id 22 :name "reviews" :database_schema "public"
+                                                             :related_by {:id 93 :name "review_id"}
+                                                             :description long-desc}]))]
+      (is (str/includes? xml (str (apply str (repeat cap-len "x")) "..."))
+          "the description is rendered truncated to the cap with an ellipsis")
+      (is (not (str/includes? xml (apply str (repeat (inc cap-len) "x"))))
+          "the description is truncated to the cap before the ellipsis"))))
+
+(deftest ^:parallel table->xml-related-tables-total-truncation-test
+  (testing "when more FK-related tables exist than were surfaced, a <related-tables-truncated> note reports the totals"
+    (let [xml (llm-shape/table->xml base-table-with-related)] ; surfaced 3, total 5
+      (is (str/includes? xml "<related-tables-truncated surfaced=\"3\" total=\"5\">"))
+      (is (str/includes? xml "more FK-related tables than the 3 shown here"))))
+  (testing "no truncation note when every FK-related table was surfaced"
+    (let [xml (llm-shape/table->xml (assoc base-table-with-related :related_tables_total 3))] ; surfaced 3, total 3
+      (is (not (str/includes? xml "<related-tables-truncated"))
+          "surfacing the full set leaves no tables dropped, so no truncation note"))))
+
+(deftest ^:parallel table->xml-no-related-notes-test
+  (testing "when every related table fits under the caps, neither a fields-omitted nor a truncated note appears"
+    (let [xml (llm-shape/table->xml {:id 10 :name "orders" :database_id 1 :database_engine "postgres"
+                                     :database_schema "public"
+                                     :related_tables [{:id 20 :name "products" :database_schema "public"
+                                                       :related_by {:id 92 :name "product_id"} :fields []}]})]
+      (is (str/includes? xml "<related-table id=\"20\""))
+      (is (not (str/includes? xml "<related-tables-fields-omitted")))
+      (is (not (str/includes? xml "<related-tables-truncated"))))))
+
+(deftest ^:parallel model->xml-related-tables-test
+  (testing "model related-tables render the same fields-omitted + truncated notes as tables"
+    (let [xml (llm-shape/model->xml (assoc base-table-with-related :name "orders_model"))]
+      (is (str/includes? xml "<related-tables-fields-omitted>"))
+      (is (str/includes? xml "<related-table id=\"21\" name=\"people\""))
+      (is (str/includes? xml "<related-tables-truncated surfaced=\"3\" total=\"5\">")))))
+
+(deftest ^:parallel table->xml-related-by-field-id-test
+  (testing (str "a `{:id :name}` `related_by` renders symmetric `related_by_field_name` + `related_by_field_id` "
+                "attributes so the LLM can tell two related-table entries apart when they share an FK name (two FK "
+                "fields with the same name -> the same table)")
+    (let [xml (llm-shape/table->xml
+               {:id 10 :name "orders" :database_id 1 :database_engine "postgres" :database_schema "public"
+                :related_tables [{:id 20 :name "products" :database_schema "public"
+                                  :related_by {:id 101 :name "product_id"} :fields []}
+                                 {:id 20 :name "products" :database_schema "public"
+                                  :related_by {:id 202 :name "product_id"} :fields []}]
+                :related_tables_without_fields [{:id 21 :name "people" :database_schema "public"
+                                                 :related_by {:id 303 :name "user_id"}}
+                                                {:id 22 :name "reviews" :database_schema "public"
+                                                 :related_by {:id 404 :name "review_id"}}]
+                :related_tables_total 5})]
+      (testing "column-bearing related tables render both the FK field name and id"
+        (is (str/includes? xml "related_by_field_name=\"product_id\" related_by_field_id=\"101\""))
+        (is (str/includes? xml "related_by_field_name=\"product_id\" related_by_field_id=\"202\"")))
+      (testing "identity-only related tables render both the FK field name and id"
+        (is (str/includes? xml "related_by_field_name=\"user_id\" related_by_field_id=\"303\""))
+        (is (str/includes? xml "related_by_field_name=\"review_id\" related_by_field_id=\"404\""))))))
+
+(deftest ^:parallel transform-query->text-native-test
+  (testing "native SQL renders verbatim"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+      {:native {:query "SELECT 1"}}
+      "SELECT 1")))
+
+(deftest ^:parallel transform-query->text-orphaned-source-test
+  (testing "orphaned sources skip normalization and still render as SQL through their string keys"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {"database" nil "native" {"query" "SELECT 1"}}
+      {"database" nil "stages" [{"native" "SELECT 1"}]})))
+
+(deftest ^:parallel transform-query->text-nil-test
+  (testing "nil stays nil"
+    (is (nil? (llm-shape/transform-query->text nil)))))
+
+(deftest ^:parallel transform-query->text-portable-mbql-test
+  (testing "an MBQL query exports to portable form, referencing tables by FK path"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/query mp (lib.metadata/table mp (mt/id :products))))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (not (contains? exported "lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-export-failure-fallback-test
+  (testing "a query that fails to export falls back to EDN without the metadata provider"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-existing-metadata-fallback-test
+  (testing "the EDN fallback strips an existing provider even when there is no database to normalize"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type     :mbql/query
+                 :lib/metadata :fake-provider
+                 :stages       [{:lib/type :mbql.stage/mbql}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-multi-stage-test
+  (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/append-stage (lib/native-query mp "SELECT * FROM PRODUCTS")))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= 2 (count (get exported "stages"))))
+      (is (= "SELECT * FROM PRODUCTS" (get-in exported ["stages" 0 "native"]))))))
+
+(deftest transform-query->text-source-card-permission-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id, entity-id :entity_id}
+                   {:collection_id collection-id
+                    :database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}]
+      (let [query       {:lib/type :mbql/query
+                         :database (mt/id)
+                         :stages   [{:lib/type :mbql.stage/mbql
+                                     :source-card card-id}]}
+            render-as   (fn [user-id]
+                          (mt/with-current-user user-id
+                            (llm-shape/transform-query->text query)))
+            readable    (render-as (mt/user->id :crowberto))
+            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))]
+        (testing "a user who can read the source Card gets its portable entity id"
+          (is (= entity-id (get-in exported ["stages" 0 "source-card"]))))
+        (testing "a user who cannot read the source Card gets nothing at all"
+          (is (nil? (render-as (mt/user->id :rasta)))))))))
+
+(deftest ^:parallel transform->xml-source-query-test
+  (testing "a native source query renders as verbatim SQL text"
+    (let [xml (llm-shape/transform->xml
+               {:id     7
+                :name   "Orders rollup"
+                :source {:type  :query
+                         :query {:stages [{:lib/type :mbql.stage/native
+                                           :native   "SELECT * FROM orders WHERE total < 100"}]}}})]
+      (is (str/includes? xml "<query>SELECT * FROM orders WHERE total < 100</query>"))))
+  (testing "an MBQL source query renders as a JSON code block"
+    (let [xml (llm-shape/transform->xml
+               {:id     8
+                :name   "Notebook rollup"
+                :source {:type  :query
+                         :query (lib/query (mt/metadata-provider)
+                                           (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})]
+      (is (str/includes? xml "<query>\n```json"))
+      (is (str/includes? xml "```\n</query>"))
+      (is (str/includes? xml "\"PRODUCTS\"")))))

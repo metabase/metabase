@@ -4,17 +4,16 @@
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -167,8 +166,9 @@
            :from [:metabase_field]
            :where [:and
                    [:= :fk_target_field_id (:id field)]
-                   [:not [:in :id {:select [:field_id]
-                                   :from [:metabase_field_user_settings]}]]]}
+                   [:not [:exists {:select [1]
+                                   :from   [:metabase_field_user_settings]
+                                   :where  [:= :metabase_field_user_settings.field_id :metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
@@ -270,10 +270,6 @@
      :id
      {:default false})))
 
-(defmethod serdes/hash-fields :model/Field
-  [_field]
-  [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
-
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
 (defn values
@@ -351,6 +347,18 @@
           :let  [dimension (get id->dimensions (:id field))]]
       (assoc field :dimensions (if dimension [dimension] [])))))
 
+(defn- field->has-field-values-input
+  "Build the minimal Lib-style column map that [[lib/infer-has-field-values]] reads.
+
+  Going through [[metabase.lib-be.core/instance->metadata]] here would run a full Malli coercion over the ~90-key
+  `::lib.schema.metadata/column` schema for every Field, which dominates the cost of endpoints that hydrate whole
+  databases. The three keys below are the only ones `infer-has-field-values` looks at, and `deftransforms` has already
+  keywordized them. `mu/defn` still validates this map in dev and test."
+  [field]
+  {:base-type        (:base_type field)
+   :effective-type   (:effective_type field)
+   :has-field-values (:has_field_values field)})
+
 (methodical/defmethod t2.hydrate/simple-hydrate [#_model :default #_k :has_field_values]
   "Infer what the value of the `has_field_values` should be for Fields where it's not set. See documentation for
   [[metabase.lib.schema.metadata/column-has-field-values-options]] for a more detailed explanation of what these
@@ -361,8 +369,7 @@
   See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
-      (assoc field k has-field-values))))
+    (assoc field k (lib/infer-has-field-values (field->has-field-values-input field)))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
@@ -371,11 +378,19 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields"
+  "Efficiently checks if each field is readable and returns only readable fields.
+
+  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
+  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
+  out across tables, such as hydrating `:target` over a dashboard's FK columns."
   [fields]
-  (for [field (t2/hydrate fields :table)
-        :when (mi/can-read? field)]
-    (dissoc field :table)))
+  (let [fields (t2/hydrate fields :table)
+        tables (into #{} (keep :table) fields)]
+    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                    :table-ids (into #{} (keep :id) tables)})
+    (for [field fields
+          :when (mi/can-read? field)]
+      (dissoc field :table))))
 
 (mi/define-batched-hydration-method with-targets
   :target
@@ -466,7 +481,7 @@
         field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
     (t2/select-one :model/Field field-q)))
 
-(defmethod serdes/dependencies "Field" [field]
+(defmethod serdes/deserialization-dependencies "Field" [field]
   (let [db-path (first (serdes/path field))]
     #{[db-path]}))
 
@@ -496,42 +511,3 @@
     (conj (serdes/storage-path-prefixes path)
           {:label "fields"}
           {:label field-name :key field-name})))
-
-(defmethod serdes/metadata-query :model/Field
-  [model opts]
-  (t2/reducible-query
-   {:select [[:f.id :id]
-             [:f.table_id :table_id]
-             [:f.name :name]
-             [:f.parent_id :parent_id]
-             [:f.fk_target_field_id :fk_target_field_id]
-             [:f.description :description]
-             [:f.base_type :base_type]
-             [:f.database_type :database_type]
-             [:f.effective_type :effective_type]
-             [:f.semantic_type :semantic_type]
-             [:f.coercion_strategy :coercion_strategy]
-             [:f.nfc_path :nfc_path]]
-    :from   [[(t2/table-name model) :f]]
-    :join   [[(t2/table-name :model/Table) :t]    [:= :f.table_id :t.id]
-             [(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
-    :where  [:and
-             (serdes/metadata-query-filter :model/Database :db opts)
-             (serdes/metadata-query-filter :model/Table :t opts)
-             (serdes/metadata-query-filter model :f opts)]}))
-
-(defmethod serdes/metadata-query-filter :model/Field
-  [_model alias {:keys [field-ids]}]
-  (cond-> [:and
-           [:= (u/qualified-key alias :active) true]
-           [:<> (u/qualified-key alias :visibility_type) "sensitive"]]
-    (seq field-ids) (conj [:in (u/qualified-key alias :id) field-ids])))
-
-(defmethod serdes/metadata-query-format :model/Field
-  [_model {:keys [base_type effective_type nfc_path] :as row}]
-  (-> row
-      (assoc :effective_type (when (not= base_type effective_type) effective_type))
-      (assoc :nfc_path (cond-> nfc_path
-                         (string? nfc_path) json/decode
-                         nfc_path           seq))
-      u/remove-nils))

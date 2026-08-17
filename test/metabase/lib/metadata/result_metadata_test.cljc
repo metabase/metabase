@@ -1173,3 +1173,19 @@
                 :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count_2"}]
               (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
                    (result-metadata/returned-columns query initial-cols)))))))
+
+(deftest ^:parallel explicit-join-in-card-plus-outer-implicit-join-stay-separate-test
+  (testing "#33972 an implicitly-joined Products.Category carried by a source card and an outer explicit Products.Category join stay distinct"
+    (let [card-q (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/aggregate q (lib/count))
+                   (lib/breakout q (m/find-first #(= (:id %) (meta/id :products :category))
+                                                 (lib/breakoutable-columns q))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 card-q)
+          outer  (-> (lib/query mp (lib.metadata/card mp 1))
+                     (lib/join (-> (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :product-id)
+                                                            (meta/field-metadata :products :id))])
+                                   (lib/with-join-alias "Products")
+                                   (lib/with-join-fields [(meta/field-metadata :products :category)]))))
+          cols   (lib/visible-columns outer)]
+      (is (= 2 (count (filter #(= (:id %) (meta/id :products :category)) cols)))))))

@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockDashboard,
+  createMockModelResult,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -307,6 +307,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight question's collection if selected", async () => {
       const card = createMockCard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
       });
       await setup({
@@ -325,6 +326,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight dashboard's collection if selected", async () => {
       const dashboard = createMockDashboard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
       });
       await setup({
@@ -343,6 +345,7 @@ describe("nav > containers > MainNavbar", () => {
 
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
+        // Unjustified type cast. FIXME
         collection_id: TEST_COLLECTION.id as number,
         type: "model",
       });

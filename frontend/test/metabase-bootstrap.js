@@ -1,4 +1,3 @@
-import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 
 window.MetabaseBootstrap = {

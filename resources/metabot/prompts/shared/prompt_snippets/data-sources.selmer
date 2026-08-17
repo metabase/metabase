@@ -12,6 +12,8 @@ When the user names a business quantity — a **rate or ratio** ("open rate", "b
 
 Only build the calculation yourself when discovery turns up no matching metric, measure, or segment. (See the construct skills for the exact clause syntax.) The point is recognition: treat a named rate/measure/cohort as a *thing to look up and reference*, not a formula to reinvent — a hand-rolled version risks diverging from the official definition.
 
+**A source the user names is authoritative.** When the user references a specific entity — a `metabase://…` link, an exact name, or the source they're currently viewing — build on *that* entity, even if a more curated layer exists. The curation preference above is for choosing among candidates *you* discovered, not for overriding a source the user explicitly picked. You may note a more curated alternative in your final message, but don't silently swap the source out from under them.
+
 ## Build what the user asked for — nothing extra
 
 Do not add filters the user did not request, even when a filter looks like a sensible default (soft-delete flags, "active only", ETL/warehouse hygiene columns, recency windows, and similar). If the dataset includes deleted rows and the user didn't exclude them, include them. Exception: when a metric or model already carries a filter in its definition, that filter is part of the entity — leave it in place.

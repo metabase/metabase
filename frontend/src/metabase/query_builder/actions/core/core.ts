@@ -17,8 +17,11 @@ import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { createQuestionCard, updateQuestionCard } from "metabase/redux/cards";
 import {
+  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
+  RELOAD_CARD,
   REVERT_CARD_TO_REVISION,
+  SET_CARD_AND_RUN,
   SOFT_RELOAD_CARD,
   clearQueryResult,
   onCloseSidebars,
@@ -71,7 +74,6 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   };
 });
 
-export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedQuestion = getQuestion(getState());
@@ -103,7 +105,6 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - clicking in the entity details view
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
-export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard: Card,
   { shouldUpdateUrl = true } = {},
@@ -217,7 +218,6 @@ export const setDatasetQuery =
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
-export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = (
   question: Question,
   options?: OnCreateOptions,
@@ -379,6 +379,7 @@ async function reduxCreateQuestion(
 ) {
   const display = question.display();
   const size = getDefaultSize(display);
+  // Unjustified type cast. FIXME
   const card = (await dispatch(
     createQuestionCard({
       ...question.card(),
@@ -403,6 +404,7 @@ async function reduxUpdateQuestion(
 
   const card = _.omit(fullCard, ...keysToOmit);
 
+  // Unjustified type cast. FIXME
   const updatedCard = (await dispatch(
     updateQuestionCard({ id: question.id(), ...card }),
   )) as Card;

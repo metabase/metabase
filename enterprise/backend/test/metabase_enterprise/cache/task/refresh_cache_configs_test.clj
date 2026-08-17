@@ -32,7 +32,7 @@
   [card-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     card-id :api
+     (t2/select-one :model/Card :id card-id) :api
      :parameters parameters
      :make-run (constantly
                 (fn [query info]
@@ -42,9 +42,9 @@
   [card-id dashboard-id dashcard-id parameters]
   (mt/as-admin
     (qp.card/process-query-for-card
-     card-id :api
+     (t2/select-one :model/Card :id card-id) :api
      :dashboard-id dashboard-id
-     :dashcard-id dashcard-id
+     :dashcard (t2/select-one :model/DashboardCard :id dashcard-id)
      :parameters parameters
      :make-run (constantly
                 (fn [query info]
@@ -560,6 +560,38 @@
                       (compare-query-results original-result cached-result))
                     (finally
                       (delete-cache-entry! original-cache-entry))))))))))))
+
+(deftest refresh-schedule-cache-uses-invalidated-at-cutoff-test
+  ;; Regression for #78341.
+  (binding [task.cache/*run-cache-refresh-async* false]
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
+                                              :dataset_query (parameterized-native-query)}]
+      (let [created-at     (t/minus (t/offset-date-time) (t/days 30))
+            invalidated-at (t/minus (t/offset-date-time) (t/hours 1))
+            captured       (atom nil)
+            capture-cutoff
+            (fn [cache-config]
+              (reset! captured ::not-called)
+              (mt/with-dynamic-fn-redefs [task.cache/scheduled-queries-to-rerun
+                                          (fn [_card-id cutoff]
+                                            (reset! captured cutoff)
+                                            [])]
+                (@#'task.cache/refresh-schedule-cache! cache-config))
+              @captured)]
+        (testing "rerun-cutoff is the previous refresh (invalidated_at), not the config's created_at"
+          (is (= invalidated-at
+                 (capture-cutoff {:model          "question"
+                                  :model_id       card-id
+                                  :strategy       :schedule
+                                  :created_at     created-at
+                                  :invalidated_at invalidated-at}))))
+        (testing "falls back to created_at when the config has never been invalidated (first run)"
+          (is (= created-at
+                 (capture-cutoff {:model          "question"
+                                  :model_id       card-id
+                                  :strategy       :schedule
+                                  :created_at     created-at
+                                  :invalidated_at nil}))))))))
 
 (deftest refresh-duration-cache-card-e2e-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}

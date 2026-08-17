@@ -11,7 +11,7 @@ export const AlertTriggerIcon = () => {
         borderRadius: "100%",
       }}
     >
-      <Icon name="alert" c="white" />
+      <Icon name="alert" c="core-white" />
     </Center>
   );
 };

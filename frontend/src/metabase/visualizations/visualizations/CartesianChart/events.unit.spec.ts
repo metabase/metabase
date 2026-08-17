@@ -1,27 +1,38 @@
+import dayjs from "dayjs";
+
 import {
   createMockBreakoutSeriesModel,
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import type {
+  EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
+} from "metabase/visualizations/echarts/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,
   createMockSingleSeries,
-  createMockTimelineEvent,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
 import {
   canBrush,
+  getBrushClickObject,
   getEventDimensions,
-  getTimelineEventsForEvent,
+  getSeriesClickData,
+  getTooltipModel,
+  normalizeDimensionValue,
 } from "./events";
 
 const CARD_ID = 107;
@@ -267,6 +278,158 @@ describe("getEventDimensions", () => {
   });
 });
 
+describe("getSeriesClickData", () => {
+  const categoryColumn = createMockColumn({
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+  });
+
+  const sumColumn = createMockColumn({
+    name: "sum",
+    display_name: "Sum",
+    source: "aggregation",
+  });
+
+  const dataKey = getDatasetKey(sumColumn, CARD_ID);
+
+  it("supplies cardId, metric column, dimensions, and normalized dates", () => {
+    const createdAtColumn = createMockDatetimeColumn({
+      name: "CREATED_AT",
+      source: "breakout",
+    });
+    const createdAtKey = getDatasetKey(createdAtColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "2027-10-01T00:00:00Z",
+      [createdAtKey]: "2027-10-01T00:00:00Z",
+      [sumKey]: 42,
+    };
+
+    const seriesModel = createMockSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      columnIndex: 1,
+      cardId: CARD_ID,
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [createdAtKey]: createdAtColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+      },
+      cardsColumns: [
+        {
+          dimension: { column: createdAtColumn, index: 0 },
+          metrics: [{ column: sumColumn, index: 1 }],
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData).toMatchObject({
+      cardId: CARD_ID,
+      column: sumColumn,
+      value: 42,
+      dimensions: [
+        {
+          column: createdAtColumn,
+          value: normalizeDimensionValue(
+            createdAtColumn,
+            "2027-10-01T00:00:00Z",
+          ),
+        },
+      ],
+    });
+  });
+
+  it("includes breakout dimensions alongside the x-axis dimension", () => {
+    const sourceColumn = createMockColumn({
+      name: "SOURCE",
+      source: "breakout",
+    });
+    const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const sumKey = dataKey;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "Gadget",
+      [sourceKey]: "Affiliate",
+      [sumKey]: 12,
+    };
+
+    const seriesModel = createMockBreakoutSeriesModel({
+      dataKey: sumKey,
+      column: sumColumn,
+      cardId: CARD_ID,
+      breakoutColumn: sourceColumn,
+      breakoutValue: "Affiliate",
+    });
+
+    const chartModel = createMockCartesianChartModel({
+      seriesModels: [seriesModel],
+      seriesIdToDataKey: { [sumKey]: sumKey },
+      dataset: [datum],
+      // Unjustified type cast. FIXME
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
+      ] as Datum[],
+      columnByDataKey: {
+        [sourceKey]: sourceColumn,
+        [sumKey]: sumColumn,
+      },
+      dimensionModel: {
+        column: categoryColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: categoryColumn },
+      },
+      cardsColumns: [
+        {
+          dimension: { column: categoryColumn, index: 0 },
+          breakout: { column: sourceColumn, index: 1 },
+          metric: { column: sumColumn, index: 2 },
+        },
+      ],
+    });
+
+    const clickData = getSeriesClickData(
+      chartModel,
+      {},
+      // Unjustified type cast. FIXME
+      {
+        seriesId: sumKey,
+        dataIndex: 0,
+        event: { event: new MouseEvent("click") },
+      } as EChartsSeriesMouseEvent,
+    );
+
+    expect(clickData?.dimensions).toEqual([
+      { column: categoryColumn, value: "Gadget" },
+      { column: sourceColumn, value: "Affiliate" },
+    ]);
+  });
+});
+
 describe("canBrush", () => {
   const productIdColumn = createMockColumn({
     name: "PRODUCT_ID",
@@ -351,46 +514,161 @@ describe("canBrush", () => {
   });
 });
 
-describe("getTimelineEventsForEvent", () => {
-  const timelineEventsModel: TimelineEventsModel = [
-    {
-      date: "2027-10-01T00:00:00Z",
-      events: [createMockTimelineEvent({ id: 1, name: "RC1" })],
-    },
-    {
-      date: "2027-11-01T00:00:00Z",
-      events: [createMockTimelineEvent({ id: 2, name: "RC2" })],
-    },
-  ];
+describe("getBrushClickObject", () => {
+  // mock element
+  const chartElement = {
+    getBoundingClientRect: () => ({
+      left: 100,
+      top: 50,
+      width: 400,
+      height: 200,
+      right: 500,
+      bottom: 250,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
 
-  it("finds events by event.value", () => {
+  it("builds a temporal brush click object with naive wall-clock strings and sorted bounds", () => {
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+      },
+      xAxisModel: {
+        axisType: "time",
+        toEChartsAxisValue: (value) => String(value),
+        fromEChartsAxisValue: (value) => dayjs.utc(value),
+        interval: { unit: "month", count: 1 },
+        intervalsCount: 12,
+        range: [dayjs.utc("2020-01-01"), dayjs.utc("2020-12-01")],
+        formatter: String,
+      },
+    });
+    // mock event
     const event = {
-      value: "2027-10-01T00:00:00Z",
-      data: null,
-    } as unknown as EChartsSeriesMouseEvent;
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [Date.UTC(2020, 2, 1), Date.UTC(2020, 0, 1)],
+          range: [40, 180],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
 
-    const result = getTimelineEventsForEvent(timelineEventsModel, event);
-    expect(result).toEqual(timelineEventsModel[0].events);
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "temporal",
+      start: "2020-01-01T00:00:00",
+      end: "2020-03-01T00:00:00",
+    });
+    expect(clicked?.column).toBe(createdAtColumn);
+    expect(clicked?.event.clientX).toBe(280);
+    expect(clicked?.event.clientY).toBe(150);
   });
 
-  it("finds events by event.data.xAxis when value is not populated (stacked series) #74005", () => {
+  it("builds a numeric brush click object with sorted bounds", () => {
+    const priceColumn = createMockColumn({
+      name: "PRICE",
+      source: "breakout",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: priceColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: priceColumn },
+      },
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+    });
+    // mock event
     const event = {
-      value: undefined,
-      data: { xAxis: "2027-10-01T00:00:00Z" },
-    } as unknown as EChartsSeriesMouseEvent;
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [4, 1],
+          range: [20, 90],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
 
-    const result = getTimelineEventsForEvent(timelineEventsModel, event);
-    expect(result).toEqual(timelineEventsModel[0].events);
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "numeric",
+      start: 1,
+      end: 4,
+    });
+    expect(clicked?.column).toBe(priceColumn);
+  });
+});
+
+describe("getTooltipModel", () => {
+  // The shape produced by funnelToBarTransform and scalarsBarTransform:
+  // each series is a separate card with a datapoint at only its own category.
+  const createStepSeriesChartModel = (dataset: Datum[]) =>
+    createMockCartesianChartModel({
+      seriesModels: [
+        createMockSeriesModel({ dataKey: "Doohickey", name: "Doohickey" }),
+        createMockSeriesModel({ dataKey: "Gadget", name: "Gadget" }),
+      ],
+      dataset,
+      transformedDataset: dataset,
+    });
+
+  it("shows only series with a datapoint at the hovered position in the default tooltip (metabase#76933)", () => {
+    const chartModel = createStepSeriesChartModel([
+      { [X_AXIS_DATA_KEY]: "Doohickey", [INDEX_KEY]: 0, Doohickey: 3976 },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual(["Doohickey"]);
   });
 
-  it("returns undefined when no matching date exists", () => {
-    const event = {
-      value: "9999-01-01T00:00:00Z",
-      data: null,
-    } as unknown as EChartsSeriesMouseEvent;
+  it("keeps series with explicit null values in the default tooltip", () => {
+    const chartModel = createStepSeriesChartModel([
+      {
+        [X_AXIS_DATA_KEY]: "Doohickey",
+        [INDEX_KEY]: 0,
+        Doohickey: 3976,
+        Gadget: null,
+      },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
 
-    expect(
-      getTimelineEventsForEvent(timelineEventsModel, event),
-    ).toBeUndefined();
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual([
+      "Doohickey",
+      "Gadget",
+    ]);
   });
 });

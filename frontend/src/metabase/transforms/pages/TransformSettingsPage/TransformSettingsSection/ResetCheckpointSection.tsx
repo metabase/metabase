@@ -50,7 +50,7 @@ export function ResetCheckpointSection({
   const checkpointFieldName = checkpointField?.display_name;
   const label = checkpointFieldName
     ? jt`Last processed ${(
-        <Code key="field" bg="background-tertiary">
+        <Code key="field" bg="background_page-tertiary">
           {checkpointFieldName}
         </Code>
       )}`

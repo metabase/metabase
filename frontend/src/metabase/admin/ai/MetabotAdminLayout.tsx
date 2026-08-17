@@ -1,15 +1,16 @@
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import { Outlet } from "metabase/router";
 import { Box } from "metabase/ui";
 
 import { MetabotNavPane } from "./MetabotNavPane";
 
 export const MetabotAdminLayout = ({
-  children,
+  children = <Outlet />,
   fullWidth,
   innerContentProps,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   fullWidth?: boolean;
   innerContentProps?: {
     fullWidth?: boolean;

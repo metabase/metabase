@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
@@ -34,7 +34,7 @@ const setup = ({
   setupEnterprisePlugins();
 
   return renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotNavPane} />,
+    <Route path="/admin/metabot*" element={<MetabotNavPane />} />,
     {
       withRouter: true,
       initialRoute,
@@ -94,6 +94,14 @@ describe("MetabotNavPane", () => {
     ).toBeInTheDocument();
   });
 
+  it("no longer exposes the Auditing folder or CLI analytics with audit_app", async () => {
+    setup({ aiControlsEnabled: true, auditAppEnabled: true });
+
+    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.queryByText("Auditing")).not.toBeInTheDocument();
+    expect(screen.queryByText("CLI analytics")).not.toBeInTheDocument();
+  });
+
   it("displays the ai controls upsell links when the ai controls feature is unavailable", async () => {
     setup({ aiControlsEnabled: false, aiFeaturesEnabled: true });
 
@@ -122,19 +130,5 @@ describe("MetabotNavPane", () => {
     expect(
       screen.getByRole("link", { name: "Authorizations" }),
     ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
-  });
-
-  it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {
-    setup({
-      aiControlsEnabled: false,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: true,
-    });
-
-    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("link", { name: /Usage auditing/ }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing");
   });
 });

@@ -4,7 +4,13 @@ import fetchMock from "fetch-mock";
 import { screen, within } from "__support__/ui";
 import type { DashboardSubscription } from "metabase-types/api";
 
-import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
+import {
+  dashcard,
+  hasBasicFilterOptions,
+  selectScheduleTime,
+  setup,
+  user,
+} from "./setup";
 
 describe("DashboardSubscriptionsSidebar", () => {
   it("should forward non-admin to email form - when slack is not setup", async () => {
@@ -253,6 +259,50 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
+
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      await selectScheduleTime();
+
+      expect(
+        await screen.findByText(
+          "Slack messages will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      // Pick a channel so the subscription is valid and can be sent
+      await userEvent.type(
+        await screen.findByPlaceholderText("Pick a user or channel..."),
+        "#general",
+      );
+
+      await userEvent.click(
+        await screen.findByRole("switch", {
+          name: /Send dashboard as PDF/,
+        }),
+      );
+
+      await userEvent.click(await screen.findByText("Send to Slack now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.channel).toBe("#general");
+      expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
   });
 
   describe("Email Subscription sidebar", () => {
@@ -263,6 +313,25 @@ describe("DashboardSubscriptionsSidebar", () => {
       await screen.findByText("Email this dashboard");
 
       expect(hasBasicFilterOptions(screen)).toBe(true);
+    });
+
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: true, slack: false });
+
+      await screen.findByText("Email this dashboard");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      await selectScheduleTime();
+
+      expect(
+        await screen.findByText(
+          "Emails will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should filter out actions and links when sending a test subscription", async () => {
@@ -285,6 +354,67 @@ describe("DashboardSubscriptionsSidebar", () => {
       const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
+    });
+
+    it("should keep 'Send email now' enabled when the frequency change clears the time", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("weekly"),
+      );
+
+      const sendNowButton = screen.getByRole("button", {
+        name: "Send email now",
+      });
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      expect(sendNowButton).toBeEnabled();
+
+      await userEvent.click(sendNowButton);
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels).toHaveLength(1);
+    });
+
+    it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await screen.findByText("Email this dashboard");
+
+      const pdfSwitch = await screen.findByRole("switch", {
+        name: /Attach a PDF of the dashboard/,
+      });
+      expect(pdfSwitch).not.toBeChecked();
+
+      await userEvent.click(pdfSwitch);
+      expect(pdfSwitch).toBeChecked();
+
+      // Confirm the flag rides along in the channel details on send
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.click(await screen.findByText("Send email now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.include_pdf).toBe(true);
     });
   });
 });

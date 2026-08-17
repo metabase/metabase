@@ -19,7 +19,7 @@ export function ChartTypePicker({
     <Flex
       className={S.root}
       gap="xs"
-      bg="background-secondary"
+      bg="background_page-secondary"
       p="xs"
       bdrs="md"
     >
@@ -29,7 +29,7 @@ export function ChartTypePicker({
           h="1.5rem"
           key={type}
           variant={value === type ? "filled" : "subtle"}
-          bg={value === type ? "background-primary" : undefined}
+          bg={value === type ? "background_page-primary" : undefined}
           onClick={() => onChange(type)}
           aria-label={type}
           className={value === type ? S.selected : undefined}

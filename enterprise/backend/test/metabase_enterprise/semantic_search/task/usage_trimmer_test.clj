@@ -3,12 +3,17 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.task.usage-trimmer :as semantic.task.trimmer]
    [metabase-enterprise.semantic-search.util :as semantic.u]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.sql Timestamp)
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
+
+;; raw t2 access below runs before any auto-initializing mt helper — on the appdb-mode CI job this
+;; namespace can be an early db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest trim-test
   (when (semantic.u/semantic-search-available?)

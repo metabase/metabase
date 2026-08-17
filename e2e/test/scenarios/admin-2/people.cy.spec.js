@@ -142,8 +142,6 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${FULL_NAME} has been added`);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show").click();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -165,8 +163,6 @@ describe("scenarios > admin > people", () => {
       // second modal
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${email} has been added`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
@@ -200,8 +196,10 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText(/Email/).type(email);
 
       // Add user to Administrators group
-      H.modal().findByText("Default").click();
+      H.modal().findByRole("combobox", { name: "Groups" }).click();
       H.popover().findByText("Administrators").click();
+      // dismiss the open dropdown so it doesn't cover the submit button
+      H.modal().findByText("Create user").click();
 
       clickButton("Create");
 
@@ -894,7 +892,9 @@ describe("scenarios > admin > people > group managers", () => {
   });
 });
 
-describe("issue 23689", () => {
+// TODO: remove skip when this issue gets fixed. Initial attempt: https://github.com/metabase/metabase/pull/23825,
+// reverted in https://github.com/metabase/metabase/pull/24760 to fix a security vulnerability.
+describe("issue 23689", { tags: "@skip" }, () => {
   function findUserByFullName(user) {
     const { first_name, last_name } = user;
     return cy.findByText(`${first_name} ${last_name}`);
@@ -906,9 +906,6 @@ describe("issue 23689", () => {
   }
 
   beforeEach(() => {
-    // TODO: remove the next line when this issue gets fixed
-    cy.skipOn(true);
-
     cy.intercept("GET", "/api/permissions/membership").as("membership");
 
     H.restore();

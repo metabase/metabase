@@ -71,7 +71,7 @@ export const AppBarSmall = ({
   }, []);
 
   return (
-    <Box bg="background-primary">
+    <Box bg="background_page-primary">
       {isHeaderVisible && (
         <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
           <Flex justify="space-between" align="center" gap="sm" h="100%">

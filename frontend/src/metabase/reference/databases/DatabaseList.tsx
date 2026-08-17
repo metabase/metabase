@@ -2,14 +2,14 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
 import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 import type { NormalizedDatabase } from "metabase-types/api";
 

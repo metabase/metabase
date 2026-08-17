@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -15,7 +15,6 @@ import {
   getGenericErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -43,6 +42,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -58,6 +58,7 @@ export function syncParametersAndEmbeddingParams(before: any, after: any) {
         }
       }
       return memo;
+      // Unjustified type cast. FIXME
     }, {} as any);
   } else {
     return before.embedding_params;
@@ -76,6 +77,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
+      // Unjustified type cast. FIXME
       series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
@@ -141,6 +143,7 @@ export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
 ): DashboardCardWithInlineFilters | undefined {
+  // Unjustified type cast. FIXME
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
@@ -197,6 +200,7 @@ export function showVirtualDashCardInfoText(
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
+    // Unjustified type cast. FIXME
     const cards = [dashcard.card].concat((dashcard as any).series || []);
     results.push(...cards.map((card) => ({ card, dashcard })));
   }
@@ -212,6 +216,13 @@ export function getCurrentTabDashboardCards(
       (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
       dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {
@@ -276,6 +287,7 @@ export function getDashcardResultsError(
     return permissionError;
   }
 
+  // Unjustified type cast. FIXME
   const staticEntityLoadingError = datasets.find((dataset) =>
     isStaticEmbeddingEntityLoadingError(dataset.error, {
       isGuestEmbed,
@@ -398,8 +410,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }
@@ -523,6 +537,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
     return noBehaviorMessage;
   }
 
+  // Unjustified type cast. FIXME
   const clickBehavior = dashcard.visualization_settings
     .click_behavior as ClickBehavior;
 

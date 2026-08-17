@@ -4,9 +4,12 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,6 +62,19 @@
               (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
                    ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
                  (->> result :data (map (juxt :model :id)) set)))))))))
+
+(deftest recursive-search-skips-archived-descendants-test
+  (testing "a recursive search does not descend into archived collections"
+    (mt/with-premium-features #{:collection-cleanup}
+      (with-collection-hierarchy! [{:keys [a b]}]
+        (stale.test/with-stale-items [:model/Card card   {:collection_id (:id a)}
+                                      :model/Card hidden {:collection_id (:id b)}]
+          (t2/update! :model/Collection (:id b) {:archived true})
+          (let [result (mt/user-http-request :crowberto :get 200 (stale-url a) :is_recursive true)
+                ids    (->> result :data (map (juxt :model :id)) set)]
+            (is (contains? ids ["card" (u/the-id card)]))
+            (is (not (contains? ids ["card" (u/the-id hidden)]))
+                "a card in an archived descendant collection must not be offered as stale")))))))
 
 (deftest can-fetch-stale-candidates-1c
   (mt/with-premium-features #{:collection-cleanup}
@@ -234,3 +250,23 @@
                        "cutoff_date" "1988-01-21T00:00:00Z"}
                 :user-id (str (mt/user->id :crowberto))}
                (last (snowplow-test/pop-event-data-and-user-id!))))))))
+
+(deftest stale-candidates-respects-permissions-test
+  (mt/with-premium-features #{:collection-cleanup}
+    (testing "GET /api/ee/stale/:id read-checks the target collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (stale-url collection)))))))
+    (testing "is_recursive traversal excludes descendants the user cannot write to"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection parent {}
+                       :model/Collection child {:location (collection/children-location parent)}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) child)
+          (stale.test/with-stale-items [:model/Card parent-card {:collection_id (:id parent)}
+                                        :model/Card child-card {:collection_id (:id child)}]
+            (let [result (mt/user-http-request :rasta :get 200 (stale-url parent) :is_recursive true)
+                  ids    (->> result :data (map (juxt :model :id)) set)]
+              (is (contains? ids ["card" (u/the-id parent-card)]))
+              (is (not (contains? ids ["card" (u/the-id child-card)]))))))))))

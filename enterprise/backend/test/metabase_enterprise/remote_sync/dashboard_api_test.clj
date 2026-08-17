@@ -178,3 +178,24 @@
             "Copied dashboard should be in target collection")
         (is (not= dash-id (:id response))
             "Copied dashboard should have different ID")))))
+
+(deftest api-update-dashboard-add-non-remote-synced-dashcard-rejected-test
+  (testing "PUT /api/dashboard/:id rejects adding a dashcard that points to a non-remote-synced card (GHY-3791)"
+    (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
+                   :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Dashboard {dash-id :id} {:name "Remote-Synced Dashboard"
+                                                   :collection_id remote-synced-id}
+                   :model/Card {non-remote-synced-card-id :id} {:name "Non-Remote-Synced Card"
+                                                                :collection_id non-remote-synced-id
+                                                                :dataset_query (mt/native-query {:query "SELECT 1"})}]
+      (let [response (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
+                                           {:dashcards [{:id      -1
+                                                         :card_id non-remote-synced-card-id
+                                                         :row     0
+                                                         :col     0
+                                                         :size_x  4
+                                                         :size_y  4}]
+                                            :tabs      []})]
+        (is (= "Uses content that is not remote synced." (:message response))))
+      (testing "dashcard was not added - transaction rolled back"
+        (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id)))))))

@@ -7,6 +7,7 @@ import type { Parameter } from "metabase-types/api";
 
 export function canUseLinkedFilters(parameter: Parameter): boolean {
   const type = getParameterType(parameter);
+  // Unjustified type cast. FIXME
   return (TYPE_SUPPORTS_LINKED_FILTERS as readonly string[]).includes(type);
 }
 

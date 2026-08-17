@@ -17,6 +17,7 @@ export const ACTIVITY_MODELS = [
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
 
 export const isActivityModel = (model: string): model is ActivityModel =>
+  // Unjustified type cast. FIXME
   (ACTIVITY_MODELS as unknown as string[]).includes(model);
 
 export const isLoggableActivityModel = (item: {

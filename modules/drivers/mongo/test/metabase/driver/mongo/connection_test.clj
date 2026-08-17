@@ -11,7 +11,8 @@
    [metabase.test :as mt])
   (:import
    (com.mongodb MongoCredential ServerAddress)
-   (com.mongodb.client MongoDatabase)))
+   (com.mongodb.client MongoDatabase)
+   (com.mongodb.spi.dns InetAddressResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -22,6 +23,29 @@
    :dbname "datadb"
    :authdb "authdb"
    :use-srv true})
+
+(deftest warehouse-inet-address-resolver-test
+  (let [resolver (-> (mongo.connection/db-details->mongo-client-settings {:host "db.example.com"})
+                     .getInetAddressResolver)]
+    (testing "external-only rejects private and loopback topology hosts"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network address"
+                              (.lookupByName ^InetAddressResolver resolver "127.0.0.1")))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network address"
+                              (.lookupByName ^InetAddressResolver resolver "10.0.0.5")))))
+    (testing "allow-private permits private addresses but still rejects loopback"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+        (is (seq (.lookupByName ^InetAddressResolver resolver "10.0.0.5")))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (.lookupByName ^InetAddressResolver resolver "127.0.0.1"))))))
+  (testing "a Mongo connection using an SSH tunnel permits its local tunnel entrance"
+    (let [resolver (-> (mongo.connection/db-details->mongo-client-settings
+                        {:host "localhost" :tunnel-enabled true})
+                       .getInetAddressResolver)]
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (is (seq (.lookupByName ^InetAddressResolver resolver "localhost")))))))
 
 (deftest ^:parallel fqdn?-test
   (testing "test hostname is fqdn"

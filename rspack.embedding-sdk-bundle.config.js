@@ -8,6 +8,9 @@ const BundleAnalyzerPlugin =
 const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 const { resolve } = require("path");
 const path = require("path");
 
@@ -22,6 +25,9 @@ const {
 } = require("./frontend/build/embedding-sdk/rspack/shared");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
@@ -108,6 +114,7 @@ const config = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
@@ -234,6 +241,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
@@ -343,6 +351,31 @@ const config = {
                   bootstrapKey,
                   new rspack.sources.RawSource(newSource),
                 );
+              },
+            );
+          },
+        );
+      },
+    },
+    // Stop `.hot-update` files for the sdk being written to the disk. HMR doesn't work for the SDK bundle anyway
+    {
+      name: "drop-sdk-hot-update-assets",
+      apply(compiler) {
+        compiler.hooks.compilation.tap(
+          "drop-sdk-hot-update-assets",
+          (compilation) => {
+            compilation.hooks.processAssets.tap(
+              {
+                name: "drop-sdk-hot-update-assets",
+                // Run last, after the HMR plugin has emitted the deltas.
+                stage: rspack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+              },
+              (assets) => {
+                for (const name of Object.keys(assets)) {
+                  if (name.includes(".hot-update.")) {
+                    compilation.deleteAsset(name);
+                  }
+                }
               },
             );
           },

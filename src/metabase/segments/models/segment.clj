@@ -48,8 +48,7 @@
                    (let [definition
                          (if (:aggregation definition)
                            (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
-                                       {:segment-definition definition})
+                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration")
                              (dissoc definition :aggregation))
                            definition)]
                      {:database database-id
@@ -188,7 +187,7 @@
   (try
     (migrated-segment-definition segment)
     (catch Throwable e
-      (log/error e "Error upgrading segment definition:" (ex-message e))
+      (log/errorf "Error upgrading segment definition: %s" (ex-message e))
       nil)))
 
 (t2/define-after-select :model/Segment
@@ -203,7 +202,7 @@
     (try
       (lib/describe-top-level-key definition :filters)
       (catch Throwable e
-        (log/error e "Error calculating Segment description:" (ex-message e))
+        (log/errorf "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]
@@ -213,12 +212,8 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Segment
-  [_segment]
-  [:name (serdes/hydrated-hash :table) :created_at])
-
-(defmethod serdes/dependencies "Segment" [{:keys [definition]}]
-  (serdes/mbql-deps definition))
+(defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
+  (serdes/mbql-deps false definition))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
   (let [table-path (-> segment :definition serdes/serialized-query-source-table)]

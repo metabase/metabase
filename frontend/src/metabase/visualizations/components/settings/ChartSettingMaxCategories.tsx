@@ -35,6 +35,7 @@ export const ChartSettingMaxCategories = ({
     (value: string | null) => {
       if (value) {
         onChangeSettings({
+          // Unjustified type cast. FIXME
           "graph.other_category_aggregation_fn": value as AggregationFunction,
         });
       }

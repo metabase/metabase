@@ -70,7 +70,7 @@ export function CenterControls(props: CenterControlsProps) {
           <Popover.Dropdown
             className={S.centerControlsPopoverDropdown}
             p="md"
-            bg="background-primary"
+            bg="background_page-primary"
           >
             <ControlsContent
               setIsXAxisPopoverOpen={setIsXAxisPopoverOpen}

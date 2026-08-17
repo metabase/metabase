@@ -1,16 +1,16 @@
-import { Route } from "react-router";
-
 import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
+  setupUpdateCollectionEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
@@ -18,7 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { CollectionHeaderProps } from "../CollectionHeader";
-import CollectionHeader from "../CollectionHeader";
+import { CollectionHeader } from "../CollectionHeader";
 
 const getProps = (
   opts?: Partial<CollectionHeaderProps>,
@@ -28,9 +28,8 @@ const getProps = (
   isBookmarked: false,
   canUpload: false,
   uploadsEnabled: true,
-  onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
-  saveFile: jest.fn(),
+  onSaveFile: jest.fn(),
   onDeleteBookmark: jest.fn(),
   ...opts,
 });
@@ -67,6 +66,8 @@ export const setup = ({
     ...otherProps,
   });
 
+  setupUpdateCollectionEndpoint(props.collection);
+
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
@@ -81,7 +82,7 @@ export const setup = ({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    <Route path="/" element={<CollectionHeader {...props} />} />,
     {
       storeInitialState: state,
       initialRoute: "/",

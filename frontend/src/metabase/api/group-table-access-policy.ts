@@ -31,10 +31,21 @@ export const groupTableAccessPolicyApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("group-table-access-policy")],
     }),
+    validateGroupTableAccessPolicy: builder.mutation<
+      void,
+      GroupTableAccessPolicy
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/mt/gtap/validate",
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useListGroupTableAccessPoliciesQuery,
   useGetGroupTableAccessPolicyQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } = groupTableAccessPolicyApi;

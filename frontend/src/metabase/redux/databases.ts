@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata-typed";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData } from "metabase-types/api";

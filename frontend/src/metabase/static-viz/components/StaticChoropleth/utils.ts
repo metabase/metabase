@@ -2,7 +2,11 @@ import Color from "color";
 import type { Feature, FeatureCollection } from "geojson";
 
 import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
-import type { GeoJSONData, RowValue } from "metabase-types/api";
+import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { getStoredSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { GeoJSONData, RawSeries, RowValue } from "metabase-types/api";
 
 // Color constants and legend helpers are shared with the runtime ChoroplethMap via
 // metabase/visualizations/lib/choropleth (a Leaflet-free module the static-viz bundle can load).
@@ -25,6 +29,18 @@ export function getFeatures(geoJson: GeoJSONData): Feature[] {
 
 export function getFeatureKey(feature: Feature, keyProperty: string): string {
   return String(feature.properties?.[keyProperty]).toLowerCase();
+}
+
+// `map` isn't registered in the static-viz bundle (needs Leaflet), so computed settings here lack the
+// `settings.column` accessor — rebuild it so PDF legends format the metric like the live ChoroplethMap.
+export function getStaticChoroplethSettings(
+  rawSeries: RawSeries,
+): ComputedVisualizationSettings {
+  const storedSettings = getStoredSettingsForSeries(rawSeries);
+  return {
+    ...storedSettings,
+    ...getComputedSettings(columnSettings(), rawSeries, storedSettings),
+  };
 }
 
 // Sum each row's metric by canonical region key (for feature lookup); non-numeric metrics count as 0.

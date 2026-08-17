@@ -10,7 +10,7 @@ import { initialState as documentsInitialState } from "metabase/documents/docume
 import {
   createMockNodeViewProps,
   createMockProseMirrorNode,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed/__support__/node-view-mocks";
+} from "metabase/metabot/components/editor-extensions/MetabotEmbed/__support__/node-view-mocks";
 import type { Comment } from "metabase-types/api";
 import { createMockDocument } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
@@ -103,12 +103,14 @@ const schema = new Schema({
 });
 
 const buildEditor = (doc: ReturnType<Schema["node"]>) =>
+  // Unjustified type cast. FIXME
   ({ state: { doc } }) as unknown as Editor;
 
 const buildArgs = (
   editor: Editor | null,
   getPos: NodeViewProps["getPos"] | null,
 ) =>
+  // Unjustified type cast. FIXME
   ({ editor, getPos }) as unknown as Pick<NodeViewProps, "editor" | "getPos">;
 
 describe("isTopLevel", () => {
@@ -164,6 +166,7 @@ describe("isTopLevel", () => {
       false,
     );
     expect(
+      // Unjustified type cast. FIXME
       isTopLevel(buildArgs(buildEditor(doc), () => undefined as never)),
     ).toBe(false);
   });

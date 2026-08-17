@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/dashboard/utils";
-import { clickBehaviorIsValid } from "metabase/parameters/utils/click-behavior";
 import {
   Button,
   Flex,
@@ -20,6 +19,7 @@ import type {
   ClickBehavior,
   DashboardCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";

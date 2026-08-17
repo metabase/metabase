@@ -1,10 +1,10 @@
 import querystring from "querystring";
 
-import type { Location } from "history";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -58,6 +58,7 @@ export function getURLForCardState(
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
+      // Unjustified type cast. FIXME
       (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;

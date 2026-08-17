@@ -148,7 +148,7 @@
               "Transform should be removed from the search index after deletion"))))))
 
 (deftest transform-search-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (search.tu/with-temp-index-table
       (mt/as-admin
         (testing "Transforms can be indexed and subsequently searched for"

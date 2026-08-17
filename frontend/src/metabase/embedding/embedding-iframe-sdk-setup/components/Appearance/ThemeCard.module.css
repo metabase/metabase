@@ -1,5 +1,5 @@
 .card {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   padding: 8px;
   min-width: 120px;
   flex: 1;

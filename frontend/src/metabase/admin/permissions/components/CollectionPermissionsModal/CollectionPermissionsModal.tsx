@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { isPersonalCollectionChild } from "metabase/collections/utils";
+import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";

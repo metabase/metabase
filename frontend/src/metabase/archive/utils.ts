@@ -14,6 +14,7 @@ export const TRASHABLE_MODELS_ARRAY = [
   "dashboard",
   "collection",
   "document",
+  "exploration",
 ] as const;
 
 export type TrashableModel = (typeof TRASHABLE_MODELS_ARRAY)[number];
@@ -39,6 +40,7 @@ function isDashboardQuestion(entity: unknown): entity is {
   if (typeof entity !== "object" || entity === null) {
     return false;
   }
+  // Unjustified type cast. FIXME
   const { type, dashboard_id } = entity as {
     type?: unknown;
     dashboard_id?: unknown;

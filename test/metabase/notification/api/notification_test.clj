@@ -197,6 +197,22 @@
                                                            :details nil}]}]}}
                       (mt/latest-audit-log-entry))))))))))
 
+(deftest slack-recipient-persists-channel-id-and-name-test
+  (testing "A Slack recipient's details persist both the display name and the immutable channel_id"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [notification {:payload_type "notification/card"
+                            :active       true
+                            :creator_id   (mt/user->id :crowberto)
+                            :payload      {:card_id card-id}
+                            :handlers     [{:channel_type :channel/slack
+                                            :recipients   [{:type    :notification-recipient/raw-value
+                                                            :details {:value "#work" :channel_id "C001"}}]}]}
+              created       (mt/user-http-request :crowberto :post 200 "notification" notification)
+              slack-details (-> created :handlers first :recipients first :details)]
+          (is (=? {:value "#work" :channel_id "C001"}
+                  slack-details)))))))
+
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))
@@ -253,15 +269,18 @@
             (is (=? template recreated-template))))))))
 
 (deftest api-rejects-handlebars-resource-templates-test
-  (let [resource-template {:name         "test"
+  (let [;; the request schema only admits the handlebars-text template type, so the API rejects a
+        ;; handlebars-resource one before the endpoint gets a chance to look at it
+        rejected          {:errors {:handlers {:template {:details {:type "enum of :email/handlebars-text, email/handlebars-text"}}}}}
+        resource-template {:name         "test"
                            :channel_type "channel/email"
                            :details      {:type    "email/handlebars-resource"
                                           :subject "test"
-                                          :path    "metabase/channel/email/password_reset.hbs"}}]
+                                          :path    "password_reset"}}]
     (testing "POST /api/notification rejects handlebars-resource templates"
       (mt/with-model-cleanup [:model/Notification]
         (mt/with-temp [:model/Card {card-id :id} {}]
-          (is (=? "invalid template"
+          (is (=? rejected
                   (mt/user-http-request :crowberto :post 400 "notification"
                                         {:payload_type "notification/card"
                                          :payload      {:card_id card-id}
@@ -271,7 +290,7 @@
                                                                          :user_id (mt/user->id :crowberto)}]}]}))))))
     (testing "POST /api/notification/send rejects handlebars-resource templates"
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :post 400 "notification/send"
                                       {:payload_type "notification/card"
                                        :payload      {:card_id        card-id
@@ -285,11 +304,43 @@
         [notification {:handlers [{:channel_type "channel/email"
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}]}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
                                       (update notification :handlers
                                               (fn [[handler]]
                                                 [(assoc handler :template resource-template)])))))))))
+
+(deftest api-validates-template-shape-test
+  (let [bad-template "not-a-template"]
+    (testing "POST /api/notification rejects a non-map template"
+      (mt/with-model-cleanup [:model/Notification :model/ChannelTemplate]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (mt/user-http-request :rasta :post 400 "notification"
+                                {:payload_type "notification/card"
+                                 :payload      {:card_id card-id}
+                                 :handlers     [{:channel_type "channel/email"
+                                                 :template     bad-template
+                                                 :recipients   [{:type    "notification-recipient/user"
+                                                                 :user_id (mt/user->id :rasta)}]}]}))))
+    (testing "POST /api/notification/send rejects a non-map template"
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (mt/user-http-request :rasta :post 400 "notification/send"
+                              {:payload_type "notification/card"
+                               :payload      {:card_id        card-id
+                                              :send_condition "has_result"}
+                               :handlers     [{:channel_type "channel/email"
+                                               :template     bad-template
+                                               :recipients   [{:type    "notification-recipient/user"
+                                                               :user_id (mt/user->id :rasta)}]}]})))
+    (testing "PUT /api/notification/:id rejects a non-map template"
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type "channel/email"
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}]}]}]
+        (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
+                              (update notification :handlers
+                                      (fn [[handler]]
+                                        [(assoc handler :template bad-template)])))))))
 
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]

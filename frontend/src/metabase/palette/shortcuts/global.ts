@@ -16,9 +16,19 @@ export const globalShortcuts = {
       return t`Create a native query`;
     },
     get keywords() {
-      return t`add native query, add SQL, create SQL, new SQL`;
+      return t`add native query, add SQL, create SQL`;
     },
     shortcut: ["c n"],
+    shortcutGroup: "global" as const,
+  },
+  "create-new-research": {
+    get name() {
+      return t`Create a research`;
+    },
+    get keywords() {
+      return t`add research, add exploration, research mode`;
+    },
+    shortcut: ["c r"],
     shortcutGroup: "global" as const,
   },
   "create-new-dashboard": {
@@ -147,7 +157,11 @@ export const globalShortcuts = {
     get name() {
       return t`Toggle sidebar`;
     },
+    // `shortcut` is what kbar binds (a single key, to avoid kbar treating a
+    // multi-element array as a key sequence). `$mod+.` is handled separately
+    // (MainNavbar/AreaLayout), so we surface both triggers via `shortcutDisplay`.
     shortcut: ["["],
+    shortcutDisplay: ["[", "$mod+."],
     shortcutGroup: "global" as const,
   },
   "navigate-admin-settings": {

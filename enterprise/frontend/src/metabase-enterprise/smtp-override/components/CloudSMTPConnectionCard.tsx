@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
-import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -76,7 +75,7 @@ export const CloudSMTPConnectionCard = () => {
               />
             ) : (
               <Flex gap={"md"}>
-                <Icon name="check" c="success" size={20} />
+                <Icon name="check" c="feedback-positive" size={20} />
                 <Stack gap={0}>
                   <Text
                     className={S.cardTitle}

@@ -532,9 +532,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled")
       .trigger("mouseenter", { force: true });
-    H.tooltip().findByText(
-      "This database is managed by Metabase Cloud and cannot be modified.",
-    );
+    H.tooltip().findByText("The sample database cannot be edited.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
@@ -654,139 +652,6 @@ describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
-  });
-
-  it("database settings", () => {
-    visitDatabase(SAMPLE_DB_ID);
-
-    cy.findAllByTestId("database-connection-info-section").should(
-      "contain.text",
-      "Connected",
-    );
-
-    editDatabase();
-
-    // should not display a setup help card
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Need help connecting?").should("not.exist");
-
-    cy.log(
-      "should not be possible to change database type for the Sample Database (metabase#16382)",
-    );
-    cy.findByLabelText("Database type")
-      .should("have.value", "H2")
-      .and("be.disabled");
-
-    cy.log("should correctly display connection settings");
-    cy.findByLabelText("Display name").should("have.value", "Sample Database");
-    cy.findByLabelText("Connection String")
-      .should("have.attr", "value")
-      .and("contain", "sample-database.db");
-
-    cy.log("should be possible to modify the connection settings");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show advanced options").click();
-    // `auto_run_queries` toggle should be ON by default
-    cy.findByLabelText(/Rerun queries for simple explorations/)
-      .should("have.attr", "data-checked", "true")
-      .click();
-    // Reported failing in v0.36.4
-    cy.log(
-      "should respect the settings for automatic query running (metabase#13187)",
-    );
-    cy.findByLabelText(/Rerun queries for simple explorations/).should(
-      "have.attr",
-      "data-checked",
-      "false",
-    );
-
-    cy.log("change the metadata_sync period");
-    cy.findByLabelText(/Choose when syncs and scans happen/).click();
-    cy.findByDisplayValue("Hourly").click();
-    H.popover().within(() => {
-      cy.findByText("Daily").click();
-    });
-
-    // "lets you change the cache_field_values period"
-    cy.findByDisplayValue("Never, I'll do this manually if I need to")
-      .should("be.visible")
-      .click();
-
-    H.popover().findByText("Regularly, on a schedule").click();
-    cy.findAllByDisplayValue("Daily").should("have.length", 2).eq(1).click();
-    H.popover().findByText("Weekly").click();
-
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.details["let-user-control-scheduling"]).to.equal(true);
-      expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
-      expect(body.schedules.cache_field_values.schedule_type).to.equal(
-        "weekly",
-      );
-    });
-
-    // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
-    cy.findByDisplayValue("Regularly, on a schedule").click();
-    H.popover().findByText("Only when adding a new filter widget").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-    });
-
-    // and back to never
-    cy.findByDisplayValue("Only when adding a new filter widget").click();
-    H.popover().findByText("Never, I'll do this manually if I need to").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-    });
-  });
-
-  it("allows to save the default schedule (metabase#57198)", () => {
-    visitDatabase(SAMPLE_DB_ID);
-    editDatabase();
-    cy.findByRole("button", { name: /Show advanced options/ }).click();
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-      // frontend sends wrong value but backend automatically corrects it for us:
-      expect(response.body.schedules.cache_field_values).to.equal(null);
-    });
-
-    editDatabase();
-    cy.findByDisplayValue("Never, I'll do this manually if I need to").click();
-    H.popover().findByText("Regularly, on a schedule").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(true);
-      expect(body.is_on_demand).to.equal(false);
-      expect(body.schedules.cache_field_values).to.deep.eq({
-        schedule_day: "mon",
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      });
-    });
-
-    editDatabase();
-    cy.findByDisplayValue("Regularly, on a schedule").click();
-    H.popover().findByText("Only when adding a new filter widget").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-      expect(body.schedules.cache_field_values).to.equal(null);
-    });
   });
 
   it("database actions", () => {
@@ -809,7 +674,6 @@ describe("scenarios > admin > databases > sample database", () => {
     H.createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

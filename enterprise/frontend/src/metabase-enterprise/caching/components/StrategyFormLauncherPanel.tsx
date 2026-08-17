@@ -45,7 +45,7 @@ export const StrategyFormLauncherPanel = ({
       component="section"
       role="group"
       h="100%"
-      bg="background-secondary"
+      bg="background_page-secondary"
       className={S.root}
     >
       <Box className={cx(S.section, S.divided)}>

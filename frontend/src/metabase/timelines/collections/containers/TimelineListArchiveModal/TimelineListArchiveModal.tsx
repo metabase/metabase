@@ -1,12 +1,10 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useGetCollectionQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -23,7 +21,7 @@ function TimelineListArchiveModalContainer({
   params,
   ...props
 }: TimelineListArchiveModalContainerProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
@@ -56,7 +54,7 @@ function TimelineListArchiveModalContainer({
     archive({ id: timeline.id, model: "timeline" }, false);
 
   const onGoBack = (collection: Collection) => {
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    navigate(Urls.timelinesInCollection(collection));
   };
 
   return (

@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -55,6 +54,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "bar",
@@ -67,6 +67,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         getCount: true,
         visualization: "pie",
@@ -79,6 +80,7 @@ const interestingQuestions = (
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
+        // Unjustified type cast. FIXME
         fieldId: field.id as FieldId,
         metadata,
       }),
@@ -110,7 +112,6 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateFieldDetail,
-  onChangeLocation: push,
 };
 
 interface FieldDetailProps {
@@ -283,8 +284,19 @@ const FieldDetail = (props: FieldDetailProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `metadata` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type FieldDetailOwnProps = ReferenceRouteProps &
+  Pick<FieldDetailProps, "metadata">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(FieldDetail as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  FieldDetail as unknown as React.ComponentType<FieldDetailOwnProps>,
+);

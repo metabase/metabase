@@ -17,22 +17,51 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (def ^:private fake-catalog
-  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model"}
-   {:id "openai.gpt-5.5" :object "model"}
-   {:id "anthropic.claude-haiku-4-5" :object "model"}
-   {:id "openai.gpt-oss-120b" :object "model"}
-   {:id "deepseek.v3.2" :object "model"}
-   {:id "anthropic.claude-opus-4-8" :object "model"}
-   {:id "anthropic.claude-fable-5" :object "model"}
-   {:id "openai.gpt-5.4" :object "model"}])
+  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model" :status "available"}
+   {:id "openai.gpt-5.5" :object "model" :status "available"}
+   {:id "anthropic.claude-haiku-4-5" :object "model" :status "available"}
+   {:id "openai.gpt-oss-120b" :object "model" :status "available"}
+   {:id "deepseek.v3.2" :object "model" :status "available"}
+   {:id "anthropic.claude-opus-4-8" :object "model" :status "available"}
+   {:id "anthropic.claude-fable-5" :object "model" :status "available"}
+   {:id "anthropic.claude-3-5-sonnet" :object "model" :status "available"}
+   {:id "openai.gpt-5.4" :object "model" :status "available"}])
 
-(deftest list-models-filters-to-supported-vendors-test
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-opus-5" "anthropic.claude-opus-4-8"
+                "anthropic.claude-sonnet-5" "openai.gpt-5.5"]]
+      (is (true? (#'bedrock/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported, even for supported vendors"
+    (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
+                "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]
+      (is (false? (#'bedrock/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-to-whitelist-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
-    (testing "only anthropic.* and openai.* models survive, gpt-oss and fable excluded, sorted by id"
-      (is (= {:models [{:id "anthropic.claude-haiku-4-5" :display_name "anthropic.claude-haiku-4-5"}
-                       {:id "anthropic.claude-opus-4-8" :display_name "anthropic.claude-opus-4-8"}
-                       {:id "openai.gpt-5.4" :display_name "openai.gpt-5.4"}
-                       {:id "openai.gpt-5.5" :display_name "openai.gpt-5.5"}]}
+    (testing "only whitelisted models survive sorted by id"
+      (is (= {:models [{:id "anthropic.claude-fable-5" :display_name "Claude Fable 5"}
+                       {:id "anthropic.claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic.claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                       {:id "openai.gpt-5.4" :display_name "GPT-5.4"}
+                       {:id "openai.gpt-5.5" :display_name "GPT-5.5"}]}
+             (bedrock/list-models))))))
+
+(deftest list-models-filters-unavailable-models-test
+  (mt/with-dynamic-fn-redefs
+    [bedrock/list-all-models
+     (constantly
+      [{:id             "anthropic.claude-fable-5"
+        :object         "model"
+        :status         "unavailable"
+        :status_reason  "This model is not available under data retention mode 'default'."
+        :data_retention {:allowed_modes ["provider_data_share"] :mode "default" :source "model_default"}}
+       {:id             "anthropic.claude-sonnet-5"
+        :object         "model"
+        :status         "available"
+        :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}])]
+    (testing "whitelisted models whose catalog status is not \"available\" are excluded"
+      (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models))))))
 
 (deftest list-models-missing-credentials-test
@@ -57,7 +86,8 @@
     (testing "credentials passed in opts are used without requiring saved settings"
       (let [captured (atom nil)]
         (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
-          (is (=? {:models [{:id "anthropic.claude-haiku-4-5"}
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
                             {:id "anthropic.claude-opus-4-8"}
                             {:id "openai.gpt-5.4"}
                             {:id "openai.gpt-5.5"}]}
@@ -125,6 +155,7 @@
                                      llm.settings/llm-bedrock-session-token nil
                                      llm.settings/llm-bedrock-region "us-east-1"]
     (with-redefs [self.core/sse-reducible identity
+                  self.core/reducible-with-api-errors (fn [r _ _] r)
                   debug/capture-stream    (fn [r _] r)
                   http/request            (fn [req] {:body req})]
       (bedrock/bedrock-raw opts))))
@@ -166,6 +197,37 @@
             body))
     (testing "temperature is omitted for openai.-prefixed reasoning models"
       (is (not (contains? body :temperature))))))
+
+(defn- captured-body!
+  "The decoded request body `bedrock-raw` would send for `opts`, with a stock user message."
+  [opts]
+  (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
+
+(deftest anthropic-model-max-tokens-test
+  (testing "the `anthropic.` prefix is stripped so the model's own ceiling resolves"
+    (are [opts tokens] (= tokens (:max_tokens (captured-body! opts)))
+      {:model "anthropic.claude-opus-4-8"}                  128000
+      {:model "anthropic.claude-opus-4-8" :max-tokens 128}     128))
+  (testing "openai.* models omit the field entirely"
+    (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
+
+(deftest reasoning-is-disabled-test
+  (testing "anthropic models get no thinking config and reasoning parts are stripped"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request!
+                        {:model "anthropic.claude-opus-4-8"
+                         :input [{:type :reasoning :id "r1" :text ""
+                                  :provider-metadata {:anthropic {:signature "abc"}}}
+                                 {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
+      (is (not (contains? body :thinking)))
+      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
+              (:messages body)))))
+  (testing "openai models get no reasoning summary or encrypted-content include"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "openai.gpt-5.5"
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include))))))
 
 (deftest unsupported-model-throws-test
   (is (thrown-with-msg?

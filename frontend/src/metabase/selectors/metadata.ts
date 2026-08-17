@@ -2,7 +2,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
-import { FieldSchema } from "metabase/schema";
+import { type FieldEntity, FieldSchema } from "metabase/schema";
+import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -30,8 +31,6 @@ import type {
   NormalizedTable,
   Segment,
 } from "metabase-types/api";
-
-import { getSettings } from "./settings";
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
@@ -237,12 +236,7 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
 }
 
 function createField(field: NormalizedField, metadata: Metadata): Field {
-  // We need a way to distinguish field objects that come from the server
-  // vs. those that are created client-side to handle lossy transformations between
-  // Field instances and FieldDimension instances.
-  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
-  // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
+  const instance = new Field(field);
   instance.metadata = metadata;
   return instance;
 }
@@ -355,7 +349,11 @@ function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
   }
 
   return apiTable.original_fields.map((apiField) => {
-    const { entities, result } = normalize(apiField, FieldSchema);
+    // normalizing a single field always stores it under `result`
+    const { entities, result } = normalize<
+      FieldEntity,
+      Pick<State["entities"], "fields">
+    >(apiField, FieldSchema);
     const normalizedField = entities.fields?.[result];
     return createField(normalizedField, metadata);
   });

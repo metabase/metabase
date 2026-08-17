@@ -89,7 +89,32 @@
    {:keys [skip-graph force]} :- [:map
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- :map]
+   body :- [:map
+            ;; keyed by group id, then by database id -- `::permissions-rest.schema/strict-api-permissions-graph`
+            ;; below turns both back into the ints the graph is stored under, and checks the per-database
+            ;; permissions, so the value stays open here
+            [:groups                          [:map-of :keyword [:maybe ms/Map]]]
+            [:revision       {:optional true} [:maybe ms/Int]]
+            [:force          {:optional true} [:maybe :boolean]]
+            ;; sandboxes without an `:id` are created, ones with an `:id` are updated -- and only in the keys the
+            ;; request actually carries, so `:card_id`/`:attribute_remappings` have to keep their present/absent
+            ;; distinction
+            [:sandboxes      {:optional true}
+             [:maybe [:sequential
+                      [:map
+                       [:id                   {:optional true} ms/PositiveInt]
+                       [:group_id             {:optional true} ms/PositiveInt]
+                       [:table_id             {:optional true} ms/PositiveInt]
+                       [:card_id              {:optional true} [:maybe ms/PositiveInt]]
+                       ;; user attribute name -> the parameter target it is remapped to
+                       [:attribute_remappings {:optional true} [:maybe ms/Map]]
+                       [:permission_id        {:optional true} [:maybe ms/PositiveInt]]]]]]
+            [:impersonations {:optional true}
+             [:maybe [:sequential
+                      [:map
+                       [:group_id  ms/PositiveInt]
+                       [:db_id     ms/PositiveInt]
+                       [:attribute ms/NonBlankString]]]]]]]
   (api/check-superuser)
   (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
                              body
@@ -212,11 +237,29 @@
   "Fetch the details for a certain permissions group."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (perms/check-group-manager id)
+  (perms/check-manager-of-group id)
   (api/check-404
    (some-> (t2/select-one :model/PermissionsGroup :id id)
            (t2/hydrate :members)
            (maybe-fix-name (setting/get :use-tenants)))))
+
+(api.macros/defendpoint :get "/invite-group-ids"
+  :- [:sequential ms/PositiveInt]
+  "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a
+  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark
+  the ones whose members can already see the item; the Administrators group has implicit access to everything and is
+  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a
+  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself."
+  [_route-params
+   {:keys [id] item-type :type} :- [:map
+                                    [:type [:enum "dashboard" "question"]]
+                                    [:id   ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [model (case item-type
+                "dashboard" :model/Dashboard
+                "question"  :model/Card)
+        item  (api/read-check model id)]
+    (vec (sort (perms/collection-read-access-group-ids (:collection_id item))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

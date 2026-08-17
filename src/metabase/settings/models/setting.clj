@@ -84,10 +84,6 @@
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
-(defmethod serdes/hash-fields :model/Setting
-  [_setting]
-  [:key])
-
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
@@ -730,7 +726,7 @@
 (defn- throw-or-log
   "Given an error that should never happen, throw it for us, log it for customers."
   [e]
-  (if config/is-prod? (log/warn e) (throw e)))
+  (if config/is-prod? (log/warn (ex-message e)) (throw e)))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -787,9 +783,8 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn "Error inserting a new Setting:\n"
-                   (ex-message e) "\n"
-                   "Assuming Setting already exists in DB and updating existing value.")
+         (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
+                    (ex-message e))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -993,11 +988,19 @@
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
      (when (and feature (not (has-feature? feature)))
-       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature)
+                       {:status-code 402
+                        :status      "error-premium-feature-not-available"
+                        :setting     s-name
+                        :feature     feature})))
      (when (and enabled? (not (enabled?)))
-       (throw (ex-info (tru "Setting {0} is not enabled" s-name) setting)))
+       (throw (ex-info (tru "Setting {0} is not enabled" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not (current-user-can-access-setting? setting)
-       (throw (ex-info (tru "You do not have access to the setting {0}" s-name) setting)))
+       (throw (ex-info (tru "You do not have access to the setting {0}" s-name)
+                       {:status-code 400
+                        :setting     s-name})))
      (when-not bypass-read-only?
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
@@ -1524,7 +1527,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e "Error fetching value of Setting")))
+                         (log/errorf "Error fetching value of Setting: %s" (ex-message e))))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
@@ -1667,7 +1670,7 @@
   (cond
     (instance? JsonEOFException ex) false
     (instance? JsonParseException ex) true
-    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+    :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))
 
@@ -1704,8 +1707,9 @@
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))
-      (log/warn (:parse-error invalid-setting)
-                (format "Unable to parse setting %s" (:name invalid-setting))))))
+      (log/warnf "Unable to parse setting %s: %s"
+                 (name (:name invalid-setting))
+                 (ex-message (:parse-error invalid-setting))))))
 
 (defn migrate-encrypted-settings!
   "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.

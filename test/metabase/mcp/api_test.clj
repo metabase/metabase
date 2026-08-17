@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -21,6 +22,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -70,6 +72,13 @@
                                {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
                                                                   extra-headers)}}
                                body))
+
+(defn- save-access-token!
+  "Persist an OAuth access token into the provider backing the MCP endpoint."
+  [token user-id scopes]
+  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                token (str user-id) "test-client" (vec scopes)
+                                (+ (inst-ms (java.util.Date.)) 3600000) nil))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
@@ -209,6 +218,13 @@
                                   {"host"   "mbtest.poom.dev"
                                    "origin" "HTTPS://example.com"})]
         (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))
+  (testing "a trailing slash on a configured MCP CORS origin has no effect (#75839)"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "http://127.0.0.1:6274/"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
         (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
 
 (deftest mcp-enabled-setting-test
@@ -262,18 +278,45 @@
           delete-response (mcp-delete {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response))))))
 
+(deftest ^:parallel eval-session-override-test
+  (testing "the x-eval-session-id header is honored only when it's a safe trace-file name"
+    (let [override #'mcp.api/eval-session-override]
+      (testing "a bare uuid (what the harness mints) is honored"
+        (is (= "1ae768c9-5773-48dd-afca-c75780dae84c"
+               (override {:headers {"x-eval-session-id" "1ae768c9-5773-48dd-afca-c75780dae84c"}}))))
+      (testing "a safe slug is honored"
+        (is (= "evalprobe_1.2" (override {:headers {"x-eval-session-id" "evalprobe_1.2"}}))))
+      (testing "path traversal / unsafe chars are rejected (fall back to the Mcp-Session-Id)"
+        (is (nil? (override {:headers {"x-eval-session-id" "../etc/passwd"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" "a/b"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" ".hidden"}}))))
+      (testing "a value over max-session-id-length is rejected even though every char is safe"
+        ;; 201 chars: regex-safe but one past the real cap — the boundary a looser copy of the
+        ;; contract would wrongly accept (and then 500 downstream in checked-session-id).
+        (is (= 200 ait/max-session-id-length))
+        (is (nil? (override {:headers {"x-eval-session-id" (apply str (repeat 201 "a"))}})))
+        (testing "the id exactly at the cap is honored, returned verbatim"
+          (let [id (apply str (repeat 200 "a"))]
+            (is (= id (override {:headers {"x-eval-session-id" id}}))))))
+      (testing "absent header yields nil"
+        (is (nil? (override {:headers {}})))))))
+
 (def ^:private all-tool-names
   #{"construct_query"
+    "construct_native_query"
     "create_collection"
     "create_dashboard"
+    "create_metric"
     "create_question"
     "execute_query"
+    "execute_question"
     "execute_sql"
     "query"
     "read_resource"
     "render_drill_through"
     "search"
     "update_dashboard"
+    "update_metric"
     "update_question"
     "visualize_query"})
 
@@ -651,10 +694,10 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "construct_query" "query" "execute_query" "execute_sql"
+  #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
-    "create_question" "create_dashboard"
-    "update_question" "update_dashboard" "create_collection"})
+    "create_question" "execute_question" "create_metric" "create_dashboard"
+    "update_question" "update_metric" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -677,9 +720,15 @@
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table [db-name "PUBLIC" "ORDERS"]
                                             :limit        5}]}
+                ;; A metric needs exactly one aggregation — `create_metric` rejects a plain query.
+                metric-query   {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :aggregation  [["count" {}]]}]}
                 ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
                 ;; assertion in `call-tool` fails partway through the sequence.
                 question-id    (atom nil)
+                metric-id      (atom nil)
                 dash-id        (atom nil)
                 coll-id        (atom nil)]
             (try
@@ -687,6 +736,10 @@
                     _              (call-tool session-id "search" {:term_queries ["orders"]})
                     ;; Query construction + execution
                     construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    native-data    (call-tool session-id "construct_native_query"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (is (uuid? (parse-uuid (:query_handle native-data))))
                     _              (call-tool session-id "query" {:query orders-query})
                     _              (call-tool session-id "execute_query"
                                               {:query_handle (:query_handle construct-data)})
@@ -712,19 +765,34 @@
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
+                    metric-handle  (call-tool session-id "construct_query" {:query metric-query})
+                    metric-data    (call-tool session-id "create_metric"
+                                              {:name         "Smoke Metric Card"
+                                               :query_handle (:query_handle metric-handle)})
+                    _              (reset! metric-id (:id metric-data))
+                    _              (is (= "scalar" (:display metric-data)))
+                    _              (call-tool session-id "update_metric"
+                                              {:id          (:id metric-data)
+                                               :description "Smoke updated metric"})
+                    _              (call-tool session-id "execute_question"
+                                              {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))
                     _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
                                           (:url dash-data)))
-                    _              (call-tool session-id "update_dashboard"
+                    dash-update    (call-tool session-id "update_dashboard"
                                               {:id          (:id dash-data)
-                                               :description "Smoke updated dashboard"})
+                                               :description "Smoke updated dashboard"
+                                               :dashcards   [{:action "add_heading" :text "Smoke Section"}
+                                                             {:action "add_text" :text "Smoke *narrative*"}]})
+                    _              (is (= 2 (count (:dashcard_ids dash-update))))
                     coll-data      (call-tool session-id "create_collection"
                                               {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))
               (finally
                 (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+                (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
                 (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
@@ -1282,7 +1350,7 @@
 
 (defn- dispatch-initialized-request [msg token-scopes]
   (let [session-id (str (random-uuid))]
-    (#'mcp.api/dispatch-request msg session-id token-scopes)))
+    (#'mcp.api/dispatch-request msg session-id token-scopes nil nil)))
 
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
@@ -1328,7 +1396,9 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:other"})
+                        #{"agent:other"}
+                        nil
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris construct-query-uri)
               "public construct-query reference is still listed")
@@ -1340,7 +1410,9 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:search"})
+                        #{"agent:search"}
+                        nil
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris scoped-test-uri)))))))
 
@@ -1368,6 +1440,59 @@
     (let [tools (mcp.tools/list-tools #{})]
       (is (empty? tools)
           "Empty scopes should not grant access to scoped tools"))))
+
+(deftest oauth-token-scope-validation-test
+  (testing "an OAuth token with a limited scope exposes only matching tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (not (contains? tool-names "update_question"))
+                "Only matching tools should be available")))))))
+
+(deftest full-access-token-scope-validation-test
+  (testing "an OAuth token with the full-access grant exposes all tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{oauth-server/full-access-scope})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (contains? tool-names "update_question"))))))))
+
+(deftest tools-call-token-scope-validation-test
+  (testing "an OAuth token with a limited scope cannot call a tool outside that scope"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Validation Card"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (oauth-server/reset-provider!)
+          (let [token (str (random-uuid))]
+            (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+            (let [sid      (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                  response (mcp-request-with-bearer token 200
+                                                    (jsonrpc-request "tools/call"
+                                                                     {:name      "update_question"
+                                                                      :arguments {:id card-id :name "Renamed by narrow token"}})
+                                                    {"mcp-session-id" sid})]
+              (is (=? {:isError true} (get-in response [:body :result]))
+                  "update_question is outside agent:search and must be refused")
+              (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
+                  "the card must not have been renamed"))))))))
 
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
@@ -1506,8 +1631,8 @@
 
 ;;; -------------------------------------------- Session Lifecycle -------------------------------------------------
 
-(deftest session-embedding-reuse-test
-  (testing "multiple resources/read calls within one session reuse the same embedding session"
+(deftest resources-read-renders-ui-configuration-test
+  (testing "multiple resources/read calls within one session render a usable UI configuration"
     (let [[session-id _] (initialize!)
           read1 (mcp-request (jsonrpc-request "resources/read"
                                               {:uri "ui://metabase/visualize-query.html"} 1)
@@ -1517,12 +1642,33 @@
                              {"mcp-session-id" session-id})]
       (is (= 200 (:status read1)))
       (is (= 200 (:status read2)))
-      ;; Both responses should contain the same session token in the rendered HTML
+      ;; Each resource response contains an independently short-lived UI credential.
       (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
             html2 (-> (get-in read2 [:body :result :contents]) first :text)]
         (is (some? html1))
-        (is (= html1 html2)
-            "Same embedding session should produce identical HTML output")))))
+        (is (str/includes? html1 "uiCredential"))
+        (is (str/includes? html2 "uiCredential"))))))
+
+(deftest mcp-ui-credential-validation-test
+  (testing "a scoped MCP Apps resource provides the UI request surface, but not general API access"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token       (str (random-uuid))
+              _           (save-access-token! token (mt/user->id :crowberto) #{"agent:viz:mcp-ui:query"})
+              initialize  (mcp-request-with-bearer token 200 (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities}) {})
+              session-id  (get-in initialize [:headers "Mcp-Session-Id"])
+              resource    (mcp-request-with-bearer token 200
+                                                   (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
+                                                   {"mcp-session-id" session-id})
+              html        (-> resource :body :result :contents first :text)
+              credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
+              headers     {"x-metabase-mcp-ui-auth" credential}]
+          (is (string? credential))
+          (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                           {:request-options {:headers headers}}))))
+          (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                           {:request-options {:headers headers}})))))))))
 
 (deftest batch-initialized-then-resources-read-test
   (testing "batch containing notifications/initialized + resources/read succeeds"

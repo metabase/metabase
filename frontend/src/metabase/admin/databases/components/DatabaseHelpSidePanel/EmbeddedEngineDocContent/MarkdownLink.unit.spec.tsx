@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockVersion } from "metabase-types/api/mocks";
 
 import { MarkdownLink } from "./MarkdownLink";
@@ -24,7 +24,7 @@ const setup = ({ href, children }: SetupProps) => {
   });
   return renderWithProviders(
     <Route
-      component={() => <MarkdownLink href={href}>{children}</MarkdownLink>}
+      element={<MarkdownLink href={href}>{children}</MarkdownLink>}
       path="/"
     />,
     {

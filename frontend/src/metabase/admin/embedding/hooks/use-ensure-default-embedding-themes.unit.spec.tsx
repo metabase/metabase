@@ -9,6 +9,7 @@ import { useEnsureDefaultEmbeddingThemes } from "./use-ensure-default-embedding-
 function setup({ alreadySeeded }: { alreadySeeded: boolean }) {
   fetchMock.post("path:/api/embed-theme/seed-defaults", 204);
 
+  // Unjustified type cast. FIXME
   const initialState = createMockState({
     settings: {
       values: { "default-embedding-themes-seeded": alreadySeeded },
@@ -39,6 +40,7 @@ describe("useEnsureDefaultEmbeddingThemes", () => {
     const [call] = fetchMock.callHistory.calls(
       "path:/api/embed-theme/seed-defaults",
     );
+    // Unjustified type cast. FIXME
     const body = JSON.parse(call?.options?.body as string);
     expect(body.themes).toHaveLength(2);
     expect(body.themes.map((t: { name: string }) => t.name)).toEqual([
@@ -80,6 +82,7 @@ describe("useEnsureDefaultEmbeddingThemes", () => {
   it("does not post while the setting has not hydrated", () => {
     fetchMock.post("path:/api/embed-theme/seed-defaults", 204);
 
+    // Unjustified type cast. FIXME
     const initialState = createMockState({
       settings: { values: {} },
     } as Partial<State>);

@@ -20,7 +20,7 @@ describe("map", () => {
           database: 1,
           type: "query",
           query: { "source-table": 1 },
-        } as JsonQuery;
+        };
         const encodedQuery = JSON.stringify(datasetQuery);
 
         const url = getTileUrl({
@@ -90,7 +90,7 @@ describe("map", () => {
           database: 1,
           type: "query",
           query: { "source-table": 1 },
-        } as JsonQuery;
+        };
         const encodedQuery = JSON.stringify(datasetQuery);
 
         const url = getTileUrl({

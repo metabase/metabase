@@ -11,9 +11,11 @@ import {
 } from "metabase/api";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
+  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUERY,
   CANCEL_QUESTION_CHANGES,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
   CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
@@ -24,28 +26,47 @@ import {
   CLOSE_QUESTION_SETTINGS,
   CLOSE_SIDEBARS,
   CLOSE_TIMELINES,
+  DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
+  HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
   OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   OPEN_QUESTION_INFO,
   OPEN_QUESTION_SETTINGS,
   OPEN_TIMELINES,
   QUERY_COMPLETED,
   QUERY_ERRORED,
+  RELOAD_CARD,
   RESET_QB,
   RESET_ROW_ZOOM,
   RESET_UI_CONTROLS,
   RUN_QUERY,
+  SELECT_TIMELINE_EVENTS,
+  SET_CARD_AND_RUN,
+  SET_CURRENT_STATE,
+  SET_DATA_REFERENCE_STACK,
   SET_DOCUMENT_TITLE,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_METADATA_DIFF,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
   SET_PARAMETER_VALUE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_SNIPPET_COLLECTION_ID,
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
+  SHOW_TIMELINE_EVENTS,
   SOFT_RELOAD_CARD,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+  UPDATE_QUESTION,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
 import type {
@@ -68,29 +89,6 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
-import {
-  API_CREATE_QUESTION,
-  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
-  DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
-  LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  OPEN_DATA_REFERENCE_AT_QUESTION,
-  RELOAD_CARD,
-  SELECT_TIMELINE_EVENTS,
-  SET_CARD_AND_RUN,
-  SET_CURRENT_STATE,
-  SET_DATA_REFERENCE_STACK,
-  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  SET_METADATA_DIFF,
-  SET_MODAL_SNIPPET,
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
-  SET_SNIPPET_COLLECTION_ID,
-  SHOW_TIMELINE_EVENTS,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_SNIPPET_SIDEBAR,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-  UPDATE_QUESTION,
-} from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
   DEFAULT_LOADING_CONTROLS,
@@ -316,7 +314,9 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         isShowingQuestionInfoSidebar: false,
       }))
       .addCase(OPEN_QUESTION_SETTINGS, (state) =>
+        // Unjustified type cast. FIXME
         setUIControls(state, {
+          // Unjustified type cast. FIXME
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
         } as Partial<QueryBuilderUIControls>),
@@ -325,12 +325,16 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         ...state,
         isShowingQuestionSettingsSidebar: false,
       }))
-      .addCase(OPEN_TIMELINES, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingTimelineSidebar: true,
-      }))
+      .addCase<string, { type: string; payload: number[] | undefined }>(
+        OPEN_TIMELINES,
+        (state, action) => ({
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+          isShowingTimelineSidebar: true,
+          focusedTimelineEventIds: action.payload ?? null,
+        }),
+      )
       .addCase(CLOSE_TIMELINES, (state) => ({
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -633,76 +637,90 @@ type NestedCardPayloadAction = {
   };
 };
 
-// the card that is actively being worked on
-export const card = createReducer<Card | null>(null, (builder) => {
-  builder
-    .addCase(RESET_QB, () => null)
-    .addCase(CLOSE_QB, () => null)
-    .addCase<string, NestedCardPayloadAction>(INITIALIZE_QB, (state, action) =>
-      action.payload ? action.payload.card : null,
-    )
-    .addCase<string, CardPayloadAction>(
-      SOFT_RELOAD_CARD,
-      (state, action) => action.payload,
-    )
-    .addCase<string, CardPayloadAction>(
-      RELOAD_CARD,
-      (state, action) => action.payload,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      SET_CARD_AND_RUN,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, CardPayloadAction>(
-      API_CREATE_QUESTION,
-      (state, action) => action.payload,
-    )
-    .addCase<string, CardPayloadAction>(
-      API_UPDATE_QUESTION,
-      (state, action) => action.payload,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      CANCEL_QUESTION_CHANGES,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      UPDATE_QUESTION,
-      (state, action) => action.payload.card,
-    )
-    .addCase<string, NestedCardPayloadAction>(
-      QUERY_COMPLETED,
-      (state, action) => {
-        if (!state) {
-          return state;
-        }
-        return {
-          ...state,
-          display: action.payload.card.display,
-          result_metadata: action.payload.card.result_metadata,
-          visualization_settings: action.payload.card.visualization_settings,
-        };
-      },
-    )
-    .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        public_uuid: action.payload.uuid,
-      };
-    })
-    .addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
-      if (!state) {
-        return state;
-      }
+const handleQueryCompleted = (
+  state: Card | null,
+  action: NestedCardPayloadAction,
+): Card | null => {
+  if (!state) {
+    return state;
+  }
+  return {
+    ...state,
+    display: action.payload.card.display,
+    result_metadata: action.payload.card.result_metadata,
+    visualization_settings: action.payload.card.visualization_settings,
+  };
+};
 
-      return {
-        ...state,
-        public_uuid: null,
-      };
-    })
-    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
+// the card that is actively being worked on
+//
+// NOTE: the `.addCase` / `.addMatcher` calls below are written as separate
+// statements rather than a single fluent chain on purpose. The chained form
+// accumulates generic instantiation depth across every link, and the RTK
+// Query `matchFulfilled` matchers at the end push that past TypeScript's
+// "excessively deep" limit (TS2589) whenever the global API type graph grows.
+// Splitting into per-statement calls keeps each call's inference shallow.
+export const card = createReducer<Card | null>(null, (builder) => {
+  builder.addCase(RESET_QB, () => null);
+  builder.addCase(CLOSE_QB, () => null);
+  builder.addCase<string, NestedCardPayloadAction>(
+    INITIALIZE_QB,
+    (state, action) => (action.payload ? action.payload.card : null),
+  );
+  builder.addCase<string, CardPayloadAction>(
+    SOFT_RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    SET_CARD_AND_RUN,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    API_CREATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardPayloadAction>(
+    API_UPDATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    CANCEL_QUESTION_CHANGES,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    UPDATE_QUESTION,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, NestedCardPayloadAction>(
+    QUERY_COMPLETED,
+    handleQueryCompleted,
+  );
+  builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
+    if (!state) {
+      return state;
+    }
+    return {
+      ...state,
+      public_uuid: action.payload.uuid,
+    };
+  });
+  builder.addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
+    if (!state) {
+      return state;
+    }
+
+    return {
+      ...state,
+      public_uuid: null,
+    };
+  });
+  builder.addMatcher(
+    updateCardEnableEmbedding.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -710,8 +728,11 @@ export const card = createReducer<Card | null>(null, (builder) => {
         ...state,
         enable_embedding: action.payload.enable_embedding,
       };
-    })
-    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
+    },
+  );
+  builder.addMatcher(
+    updateCardEmbeddingParams.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -721,5 +742,6 @@ export const card = createReducer<Card | null>(null, (builder) => {
         embedding_params: action.payload.embedding_params,
         initially_published_at: action.payload.initially_published_at,
       };
-    });
+    },
+  );
 });

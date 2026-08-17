@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { RequireMetabotConfigured } from "./RequireMetabotConfigured";
 
@@ -11,13 +10,10 @@ const INDEX_PATH = "/admin/metabot/";
 function setup({ configured }: { configured: boolean }) {
   return renderWithProviders(
     <>
-      <Route component={RequireMetabotConfigured}>
-        <Route
-          path={SUB_PAGE_PATH}
-          component={() => <div>SUB PAGE CONTENT</div>}
-        />
+      <Route element={<RequireMetabotConfigured />}>
+        <Route path={SUB_PAGE_PATH} element={<div>SUB PAGE CONTENT</div>} />
       </Route>
-      <Route path={INDEX_PATH} component={() => <div>METABOT INDEX</div>} />
+      <Route path={INDEX_PATH} element={<div>METABOT INDEX</div>} />
     </>,
     {
       withRouter: true,
@@ -33,16 +29,16 @@ function setup({ configured }: { configured: boolean }) {
 
 describe("RequireMetabotConfigured", () => {
   it("redirects to the AI settings index when AI is not configured", async () => {
-    const { history } = setup({ configured: false });
+    const { router } = setup({ configured: false });
 
     expect(await screen.findByText("METABOT INDEX")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(INDEX_PATH);
+    expect(router?.location.pathname).toBe(INDEX_PATH);
   });
 
   it("renders the requested sub-page when AI is configured", async () => {
-    const { history } = setup({ configured: true });
+    const { router } = setup({ configured: true });
 
     expect(await screen.findByText("SUB PAGE CONTENT")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(SUB_PAGE_PATH);
+    expect(router?.location.pathname).toBe(SUB_PAGE_PATH);
   });
 });

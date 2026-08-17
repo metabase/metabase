@@ -38,7 +38,7 @@ Export your questions, dashboards, and more as YAML files that you can check int
 
 A command-line client that drives a Metabase instance over its API, on its own or through an AI agent.
 
-## [Monitoring your Metabase](./monitoring-metabase.md)
+## [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)
 
 Monitor your Metabase with JMX.
 

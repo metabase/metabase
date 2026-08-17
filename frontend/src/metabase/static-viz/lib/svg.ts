@@ -1,8 +1,25 @@
-import type { Element, ElementContent } from "hast";
-import { fromHtml } from "hast-util-from-html";
-import { toHtml } from "hast-util-to-html";
+import Color from "color";
 
-// FIXME: instead of Regex parse svg, update, serialize
+const FUNCTIONAL_COLOR_ATTRIBUTE_REGEX = /="((?:hsla?|rgba?)\([^")]*\))"/g;
+
+/**
+ * Batik (the backend SVG rasterizer) only understands CSS2 color syntax and
+ * rejects elements with functional color notations like `hsl()`/`hsla()`.
+ * Colors resolved through the static rendering context are already hex, but
+ * anything that bypasses it would break rendering, so rewrite any leftover
+ * functional color in an attribute value to hex (dropping alpha, same as
+ * `getHexColor`).
+ */
+export const replaceFunctionalColors = (svgString: string) => {
+  return svgString.replace(FUNCTIONAL_COLOR_ATTRIBUTE_REGEX, (match, value) => {
+    try {
+      return `="${Color(value).hex()}"`;
+    } catch {
+      return match;
+    }
+  });
+};
+
 const transformSvgForOutline = (svgString: string) => {
   const regex =
     /<text([^>]*fill="([^"]+)"[^>]*stroke="([^"]+)"[^>]*)>(.*?)<\/text>/g;
@@ -27,34 +44,18 @@ const transformSvgForOutline = (svgString: string) => {
 };
 
 /**
- * Recursive ast traversal helper for `patchDominantBaseline`
- */
-function patchNode(node: ElementContent) {
-  if (node.type !== "element") {
-    return;
-  }
-
-  if (
-    node.tagName === "text" &&
-    node.properties.dominantBaseline === "central"
-  ) {
-    node.properties.dy = "0.5em";
-  }
-
-  node.children.forEach((child) => patchNode(child));
-}
-
-/**
  * Fixes `<text>` elements not being vertically centered due to Batik not
- * supporting the `dominant-baseline` property.
+ * supporting the `dominant-baseline` property. ECharts emits
+ * `dominant-baseline="central"`; we add an equivalent `dy` via a string
+ * transform instead of a full hast parse/serialize round-trip, which is very
+ * slow on large SVGs (~a quarter of a big chart's render time).
  */
 export function patchDominantBaseline(svgString: string) {
-  const svgElem = fromHtml(svgString, { fragment: true, space: "svg" })
-    .children[0] as Element;
-
-  patchNode(svgElem);
-
-  return toHtml(svgElem, { space: "svg" });
+  return svgString.replace(
+    /<text\b[^>]*\bdominant-baseline="central"[^>]*>/g,
+    (tag) =>
+      /\bdy=/.test(tag) ? tag : tag.replace(/(\/?)>$/, ' dy="0.5em"$1>'),
+  );
 }
 
 export const sanitizeSvgForBatik = (
@@ -65,8 +66,9 @@ export const sanitizeSvgForBatik = (
     return svgString;
   }
 
-  return [transformSvgForOutline, patchDominantBaseline].reduce(
-    (currSVGString, transform) => transform(currSVGString),
-    svgString,
-  );
+  return [
+    transformSvgForOutline,
+    patchDominantBaseline,
+    replaceFunctionalColors,
+  ].reduce((currSVGString, transform) => transform(currSVGString), svgString);
 };

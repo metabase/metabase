@@ -8,6 +8,7 @@ export const MCP_APP_VISUALIZATION_SETTINGS: VisualizationSettings = {
 
 export function getMcpDeserializedCard(query: string): Card | null {
   try {
+    // Unjustified type cast. FIXME
     return {
       display: "table",
       dataset_query: JSON.parse(b64_to_utf8(query)),

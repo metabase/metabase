@@ -1,0 +1,60 @@
+## Server-side store for the SAML SSO RelayState context.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.gu89weuix
+      author: nvoxland
+      comment: Create sso_relay_state table for SAML embedding popup callbacks
+      changes:
+        - createTable:
+            tableName: sso_relay_state
+            remarks: Server-side store for SAML SSO RelayState context
+            columns:
+              - column:
+                  name: id
+                  type: varchar(128)
+                  remarks: SHA-512 hash of the RelayState key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: continue_url
+                  type: ${text.type}
+                  remarks: URL the popup falls back to when there is no opener window
+                  constraints:
+                    nullable: false
+              - column:
+                  name: origin
+                  type: varchar(254)
+                  remarks: Origin used as the postMessage target when handing the session back to the opener (embedding only)
+              - column:
+                  name: embedding
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether this is a modular-embedding popup login (postMessage handback) vs. a regular redirect login
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: When this RelayState entry expires and is no longer valid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this RelayState entry was created
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.j98bawra
+      author: nvoxland
+      comment: Index sso_relay_state.expires_at for the expired-row cleanup sweep
+      changes:
+        - createIndex:
+            tableName: sso_relay_state
+            indexName: idx_sso_relay_state_expires_at
+            columns:
+              - column:
+                  name: expires_at

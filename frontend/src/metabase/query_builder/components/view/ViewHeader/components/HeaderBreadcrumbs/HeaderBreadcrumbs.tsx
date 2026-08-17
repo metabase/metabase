@@ -25,7 +25,7 @@ function getBadgeInactiveColor({
   variant: "head" | "subhead";
   isLast: boolean;
 }) {
-  return isLast && variant === "head" ? "text-primary" : "text-tertiary";
+  return isLast && variant === "head" ? "text-primary" : "text-disabled";
 }
 
 interface HeadBreadcrumbsProps {

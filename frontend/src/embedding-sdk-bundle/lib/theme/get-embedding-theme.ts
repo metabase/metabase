@@ -72,6 +72,7 @@ export function getEmbeddingThemeOverride(
       override.colors = {};
     }
 
+    // Unjustified type cast. FIXME
     override.colors[key as MetabaseColorKey] = colorTuple(
       whitelabeledColors[key],
     );
@@ -105,6 +106,7 @@ export function getEmbeddingThemeOverride(
     // For example, if they forgot to define `background-secondary` but have
     // defined `background`, we use it as a fallback.
     for (const key in SDK_MISSING_COLORS_FALLBACK) {
+      // Unjustified type cast. FIXME
       const targetColor = key as MappableSdkColor;
       const fallbackColor = SDK_MISSING_COLORS_FALLBACK[targetColor];
 
@@ -119,10 +121,12 @@ export function getEmbeddingThemeOverride(
 
     // Apply color palette overrides
     for (const name in userColors) {
+      // Unjustified type cast. FIXME
       const color = userColors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
         const themeColorNames =
+          // Unjustified type cast. FIXME
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
         // If the sdk color does not exist in the mapping, skip it.
@@ -144,6 +148,7 @@ export function getEmbeddingThemeOverride(
       const accents = mapChartColorsToAccents(theme.colors.charts);
 
       for (const _accentKey in accents) {
+        // Unjustified type cast. FIXME
         const accentKey = _accentKey as MetabaseAccentColorKey;
         const accentColor = accents[accentKey];
 
@@ -163,6 +168,7 @@ export function getEmbeddingThemeOverride(
 
     for (const _tooltipKey in SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING) {
       type TooltipKey = keyof NonNullable<MetabaseComponentTheme["tooltip"]>;
+      // Unjustified type cast. FIXME
       const tooltipKey = _tooltipKey as TooltipKey;
       const colorKey = SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING[tooltipKey];
       const tooltipColor = theme.components.tooltip[tooltipKey];

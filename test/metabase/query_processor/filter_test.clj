@@ -178,6 +178,7 @@
     (testing ":between with dates"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (when (= driver/*driver* :snowflake)
         (driver/notify-database-updated driver/*driver* (mt/id)))
@@ -1254,3 +1255,85 @@
                     (lib/limit 2))]
       (is (= [[3 "Artisan"] [4 "Asian"]]
              (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(defn- lib-field
+  "Column metadata for `table`.`field` in the current dataset."
+  [mp table field]
+  (lib.metadata/field mp (mt/id table field)))
+
+(defn- lib-filtered-count
+  "Build `SELECT count(*) FROM <table> WHERE <filter>` entirely with lib and return the integer count.
+  `filter-fn` receives the metadata provider and returns a lib filter expression."
+  [table filter-fn]
+  (let [mp    (mt/metadata-provider)
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                  (lib/aggregate (lib/count))
+                  (lib/filter (filter-fn mp)))]
+    ;; mongo returns no rows instead of 0 for an empty count (#5419)
+    (or (ffirst (mt/formatted-rows [int] (qp/process-query query)))
+        0)))
+
+(deftest ^:parallel does-not-contain-keeps-null-rows-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing "`:does-not-contain` must keep rows with a NULL value (metabase#13332, metabase#37100)"
+        ;; region.name has 8 NULLs out of 415 rows; the NULL rows must survive the filter
+        (is (= 412
+               (lib-filtered-count :region
+                                   (fn [mp]
+                                     (lib/does-not-contain (lib-field mp :region :name) "Cali")))))))))
+
+(deftest ^:parallel compare-two-fields-filter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "a comparison filter with two field operands (metabase#17963)"
+      ;; orders.discount is NULL for most rows; under SQL three-valued logic those rows fail `>`
+      ;; and must land in the complement, so the two disjoint filters partition every row.
+      (let [total  18760
+            gt     (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/> (lib-field mp :orders :discount)
+                                                (lib-field mp :orders :quantity))))
+            not-gt (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/or (lib/<= (lib-field mp :orders :discount)
+                                                         (lib-field mp :orders :quantity))
+                                                 (lib/is-null (lib-field mp :orders :discount)))))]
+        (is (pos? gt))
+        (is (< gt total))
+        (is (= total (+ gt not-gt)))))))
+
+(deftest ^:parallel date-vs-datetime-equality-filter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "`=` filters on a datetime column distinguish a date-only literal from an exact timestamp (metabase#43057)"
+      (let [total     18760
+            whole-day (lib-filtered-count :orders
+                                          (fn [mp]
+                                            (lib/= (lib/with-temporal-bucket (lib-field mp :orders :created_at) :day)
+                                                   "2019-06-26")))
+            exact     (lib-filtered-count :orders
+                                          (fn [mp]
+                                            (lib/= (lib-field mp :orders :created_at)
+                                                   "2019-06-26T00:40:07.285Z")))]
+        (testing "a date-only literal matches the whole day, not a single instant"
+          (is (< 1 whole-day))      ; more than one row => day granularity, not instant matching
+          (is (< whole-day total))) ; and the filter is not a no-op
+        (testing "an exact timestamp matches a single instant, not the whole day"
+          ;; drivers that truncate fractional seconds match 0 rows; all match at most one, strictly fewer than the day
+          (is (<= exact 1))
+          (is (< exact whole-day)))))))
+
+(deftest ^:parallel exclude-temporal-extract-filter-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+    (testing "an exclude-date filter on an extracted temporal unit filters rows out"
+      ;; every row is either in Q1 or not; the two extractions partition all rows, and excluding
+      ;; Q1 must actually drop rows (a dropped filter would leave the count at the total).
+      (let [total  18760
+            not-q1 (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/!= (lib/get-quarter (lib-field mp :orders :created_at)) 1)))
+            q1     (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/= (lib/get-quarter (lib-field mp :orders :created_at)) 1)))]
+        (is (pos? q1))
+        (is (< not-q1 total))
+        (is (= total (+ not-q1 q1)))))))

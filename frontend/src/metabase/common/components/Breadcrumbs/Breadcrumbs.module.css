@@ -1,5 +1,5 @@
 :root {
-  --breadcrumbs-color: var(--mb-color-text-tertiary);
+  --breadcrumbs-color: var(--mb-color-text-disabled);
   --breadcrumb-page-color: var(--mb-color-text-primary);
   --breadcrumb-divider-spacing: 0.75em;
 

@@ -2,10 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  useGetMetabotSettingsQuery,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { type ComboboxItem, Select } from "metabase/ui";
@@ -13,6 +9,11 @@ import type {
   MetabotProvider,
   MetabotSettingsResponse,
 } from "metabase-types/api";
+
+import {
+  useGetMetabotSettingsQuery,
+  useUpdateMetabotSettingsMutation,
+} from "../../api";
 
 type MetabotModelOption = ComboboxItem & {
   group?: string | null;
@@ -52,7 +53,9 @@ export const ProviderModelPicker = ({
   const [sendToast] = useToast();
 
   useEffect(() => {
-    setModel(connectedModel);
+    if (connectedModel) {
+      setModel(connectedModel);
+    }
   }, [connectedModel]);
 
   const modelOptions = useMemo(() => getLlmModelOptions(models), [models]);

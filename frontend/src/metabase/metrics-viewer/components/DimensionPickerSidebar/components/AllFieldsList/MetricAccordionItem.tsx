@@ -41,7 +41,13 @@ export function MetricAccordionItem({
             {group.name}
           </Text>
           {showOccurrenceCount && (
-            <Badge className={S.occurrenceCountBadge} circle c="text-hover">
+            <Badge
+              circle
+              className={S.occurrenceCountBadge}
+              color="brand"
+              size="sm"
+              variant="outline"
+            >
               {group.occurrenceCount}
             </Badge>
           )}

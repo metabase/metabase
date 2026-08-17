@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
+import { Schedule } from "metabase/common/components/Schedule";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import { FormField } from "metabase/forms";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
@@ -30,18 +31,17 @@ const DatabaseSyncScheduleField = ({
   const [{ value }, , { setValue }] = useField(name);
 
   const handleScheduleChange = useCallback(
-    (value: ScheduleSettings) => {
-      setValue(value);
-    },
+    ({ value }: ScheduleChangeEvent) => setValue(value),
     [setValue],
   );
 
   return (
     <FormField title={title} description={description}>
-      <SchedulePicker
-        schedule={value ?? DEFAULT_SCHEDULE}
+      <Schedule
+        mt="md"
+        value={value ?? DEFAULT_SCHEDULE}
         scheduleOptions={SCHEDULE_OPTIONS}
-        textBeforeInterval={t`Sync`}
+        verb={t`Sync`}
         minutesOnHourPicker
         onScheduleChange={handleScheduleChange}
       />

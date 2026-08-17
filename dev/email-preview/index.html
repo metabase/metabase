@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<!--
+  Email template preview tool.
+
+  Renders the Handlebars email templates in src/metabase/channel/email/ with
+  sample data, entirely in the browser — no backend required. Run it with:
+
+      ./bin/email-preview
+
+  then edit any .hbs file in your editor; the preview reloads automatically.
+
+  Fidelity notes: production renders these templates with Java Handlebars
+  (jknack) — this tool uses handlebars.js, which is equivalent for everything
+  these templates use ({{#if}}, {{#each}}, {{#with}}, partials). The custom
+  helpers (equals, format-date, now, initials, card-url, dashboard-url,
+  trash-url) are re-implemented below; format-date approximates java-time
+  formatting with a common-token subset.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Metabase Email Template Preview</title>
+<script src="https://cdn.jsdelivr.net/npm/handlebars@4.7.8/dist/handlebars.min.js"></script>
+<script src="sample-contexts.js"></script>
+<style>
+  :root {
+    --brand: #509EE3;
+    --text-dark: #4C5773;
+    --text-medium: #949AAB;
+    --border: #EEECEC;
+    --bg: #F9FBFC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Lato', 'Helvetica Neue', Helvetica, sans-serif;
+    color: var(--text-dark);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 260px;
+    min-width: 260px;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    overflow-y: auto;
+    padding: 0.5em 0;
+  }
+  #sidebar h1 {
+    font-size: 0.95em;
+    padding: 0.5em 1em;
+    margin: 0;
+    color: var(--text-dark);
+  }
+  #sidebar .group-label {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-medium);
+    padding: 1em 1.2em 0.3em;
+  }
+  #sidebar button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0.45em 1.2em;
+    font: inherit;
+    font-size: 0.85em;
+    color: var(--text-dark);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  #sidebar button:hover { background: #EDF2F5; }
+  #sidebar button.active {
+    border-left-color: var(--brand);
+    background: #EDF2F5;
+    font-weight: bold;
+    color: var(--brand);
+  }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.5em 1em;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85em;
+  }
+  #toolbar .name { font-weight: bold; margin-right: auto; }
+  #toolbar button {
+    font: inherit;
+    padding: 0.3em 0.8em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: white;
+    color: var(--text-dark);
+    cursor: pointer;
+  }
+  #toolbar button.on { border-color: var(--brand); color: var(--brand); font-weight: bold; }
+  #error {
+    display: none;
+    padding: 0.6em 1em;
+    background: #FDF3F3;
+    color: #C7484C;
+    font-size: 0.85em;
+    border-bottom: 1px solid #EFC7C7;
+    white-space: pre-wrap;
+  }
+  #content { flex: 1; display: flex; min-height: 0; }
+  #preview-pane {
+    flex: 1;
+    overflow: auto;
+    background: #E8EDF2;
+    display: flex;
+    justify-content: center;
+    padding: 1.5em;
+  }
+  #frame {
+    border: none;
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    height: 100%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    transition: max-width 0.15s ease;
+  }
+  #context-pane {
+    width: 340px;
+    min-width: 340px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+  #context-pane header {
+    display: flex;
+    align-items: center;
+    padding: 0.5em 0.8em;
+    font-size: 0.8em;
+    color: var(--text-medium);
+  }
+  #context-pane header span { margin-right: auto; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85em; }
+  #context-pane header button {
+    font: inherit;
+    font-size: 0.95em;
+    border: none;
+    background: none;
+    color: var(--brand);
+    cursor: pointer;
+  }
+  #context {
+    flex: 1;
+    border: none;
+    border-top: 1px solid var(--border);
+    resize: none;
+    font-family: Menlo, Monaco, 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 0.8em;
+    color: var(--text-dark);
+    background: white;
+    outline: none;
+  }
+  #context.bad { background: #FDF3F3; }
+  #context-pane header .tab {
+    color: var(--text-medium);
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+  }
+  #context-pane header .tab.on { color: var(--brand); font-weight: bold; background: #EDF2F5; }
+  #fields {
+    flex: 1;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    background: white;
+    padding: 0.6em 0.8em 1.5em;
+  }
+  #fields label {
+    display: block;
+    font-size: 0.7em;
+    color: var(--text-medium);
+    margin: 0.9em 0 0.25em;
+    word-break: break-all;
+  }
+  #fields input[type=text], #fields textarea.field {
+    width: 100%;
+    font: inherit;
+    font-size: 0.8em;
+    padding: 0.35em 0.5em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dark);
+  }
+  #fields textarea.field { resize: vertical; min-height: 3.2em; }
+  #fields .note {
+    font-size: 0.75em;
+    color: var(--text-medium);
+    margin-top: 1.2em;
+    line-height: 1.5;
+  }
+  #empty {
+    margin: auto;
+    color: var(--text-medium);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <nav id="sidebar">
+    <h1>📧 Email templates</h1>
+    <div id="template-list"></div>
+    <div class="group-label">Partials (shared header/footer)</div>
+    <div id="partial-list"></div>
+  </nav>
+  <div id="main">
+    <div id="toolbar">
+      <span class="name" id="current-name">—</span>
+      <button data-width="900">Desktop</button>
+      <button data-width="600">Narrow</button>
+      <button data-width="375">Phone</button>
+      <button id="copy-html" title="Copy rendered HTML to clipboard">Copy HTML</button>
+    </div>
+    <div id="error"></div>
+    <div id="content">
+      <div id="preview-pane">
+        <div id="empty">← Pick a template.<br><br>Edit the .hbs file in any editor and<br>the preview refreshes automatically.</div>
+        <iframe id="frame" hidden></iframe>
+      </div>
+      <div id="context-pane">
+        <header>
+          <span>Sample data</span>
+          <button class="tab on" data-tab="fields">Fields</button>
+          <button class="tab" data-tab="json">JSON</button>
+          <button id="reset-context" title="Discard edits, restore the default sample data">Reset</button>
+        </header>
+        <div id="fields"></div>
+        <textarea id="context" spellcheck="false" hidden></textarea>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+const TEMPLATE_DIR = '/src/metabase/channel/email/';
+const POLL_MS = 1000;
+
+// Used only if the server doesn't provide a directory listing.
+const FALLBACK_TEMPLATES = [
+  '_dashsub_alert_header', '_footer', '_header', '_logo', '_notification_card_condition',
+  'broken_subscription_notification', 'card_notification_archived', 'card_notification_changed_stopped',
+  'comment_created', 'creator_sentiment_email', 'dashboard_subscription', 'follow_up_email',
+  'login_from_new_device', 'mfa_disabled', 'mfa_enabled', 'mfa_login_code', 'mfa_removed_by_admin',
+  'new_user_invite', 'notification_card', 'notification_card_new_confirmation',
+  'notification_card_unsubscribed', 'notification_card_you_were_added', 'notification_card_you_were_removed',
+  'password_reset', 'persisted-model-error', 'security_advisory', 'slack_token_error',
+  'support_access_grant', 'transform_failed', 'transform_failure_digest', 'user_joined_notification',
+  'warn_deprecate_pulse',
+];
+
+// ---- Custom helpers, mirroring metabase.channel.template.handlebars-helper ----
+
+const SITE_URL = (window.COMMON_CONTEXT && window.COMMON_CONTEXT.siteUrl) || 'http://localhost:3000';
+
+Handlebars.registerHelper('equals', (x, y) => x === y || String(x) === String(y));
+Handlebars.registerHelper('now', () => new Date());
+Handlebars.registerHelper('initials', (name) => {
+  const m = String(name || '').match(/\b\w/g);
+  return m ? m.slice(0, 2).join('').toUpperCase() : '';
+});
+Handlebars.registerHelper('card-url', (id) => `${SITE_URL}/question/${id}`);
+Handlebars.registerHelper('dashboard-url', (id) => `${SITE_URL}/dashboard/${id}`);
+Handlebars.registerHelper('trash-url', () => `${SITE_URL}/trash`);
+// Approximates java-time formatting for the common tokens.
+Handlebars.registerHelper('format-date', (date, fmt) => {
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d)) return String(date);
+  const pad = (n) => String(n).padStart(2, '0');
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const tokens = {
+    yyyy: d.getFullYear(), YYYY: d.getFullYear(),
+    MMMM: MONTHS[d.getMonth()], MMM: MONTHS[d.getMonth()].slice(0, 3), MM: pad(d.getMonth() + 1),
+    dd: pad(d.getDate()), d: d.getDate(),
+    HH: pad(d.getHours()), h: ((d.getHours() + 11) % 12) + 1,
+    mm: pad(d.getMinutes()), a: d.getHours() < 12 ? 'AM' : 'PM',
+  };
+  if (typeof fmt !== 'string') return d.toLocaleString();
+  return fmt.replace(/yyyy|YYYY|MMMM|MMM|MM|dd|d|HH|h|mm|a/g, (t) => tokens[t]);
+});
+
+// ---- State ----
+
+let allNames = [];
+let currentName = null;
+let sources = {};       // name -> .hbs source text
+let lastRenderedHtml = '';
+let contextDebounce = null;
+
+const $ = (sel) => document.querySelector(sel);
+const isPartial = (name) => name.startsWith('_');
+const partials = () => allNames.filter(isPartial);
+
+// ---- Template discovery & fetching ----
+
+async function fetchSource(name) {
+  const res = await fetch(TEMPLATE_DIR + name + '.hbs', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Could not load ${name}.hbs (HTTP ${res.status})`);
+  return res.text();
+}
+
+async function discoverTemplates() {
+  // Served by dev/email-preview/serve.ts (bun run email-dev).
+  try {
+    const res = await fetch('/templates.json', { cache: 'no-store' });
+    if (res.ok) {
+      const names = await res.json();
+      if (Array.isArray(names) && names.length) return names.sort();
+    }
+  } catch (e) { /* fall through */ }
+  // Any static server with directory listings (e.g. python3 -m http.server).
+  try {
+    const res = await fetch(TEMPLATE_DIR, { cache: 'no-store' });
+    const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    const names = [...doc.querySelectorAll('a')]
+      .map((a) => a.getAttribute('href') || '')
+      .filter((h) => h.endsWith('.hbs'))
+      .map((h) => decodeURIComponent(h.split('/').pop().replace(/\.hbs$/, '')));
+    if (names.length) return names.sort();
+  } catch (e) { /* fall through */ }
+  return FALLBACK_TEMPLATES;
+}
+
+// ---- Context handling ----
+
+function deepMerge(a, b) {
+  if (Array.isArray(a) || Array.isArray(b) || typeof a !== 'object' || typeof b !== 'object' || !a || !b) {
+    return b === undefined ? a : b;
+  }
+  const out = { ...a };
+  for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k]);
+  return out;
+}
+
+function defaultContext(name) {
+  const sample = (window.SAMPLE_CONTEXTS || {})[name] || {};
+  return deepMerge(window.COMMON_CONTEXT || {}, sample);
+}
+
+const storageKey = (name) => `email-preview:ctx:${name}`;
+
+function loadContextText(name) {
+  return localStorage.getItem(storageKey(name))
+      || JSON.stringify(defaultContext(name), null, 2);
+}
+
+function currentContext() {
+  return JSON.parse($('#context').value);
+}
+
+// ---- Fields form: a simple fill-in-the-blanks view over the same JSON ----
+
+function leafPaths(obj, prefix = []) {
+  const out = [];
+  for (const [k, v] of Object.entries(obj || {})) {
+    const path = [...prefix, k];
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      out.push(...leafPaths(v, path));
+    } else {
+      out.push({ path, value: v });
+    }
+  }
+  return out;
+}
+
+function setPath(obj, path, value) {
+  let o = obj;
+  for (const k of path.slice(0, -1)) o = o[k] ?? (o[k] = {});
+  o[path[path.length - 1]] = value;
+}
+
+let fieldDebounce = null;
+
+function updateFromField(path, value) {
+  clearTimeout(fieldDebounce);
+  fieldDebounce = setTimeout(() => {
+    let ctx;
+    try { ctx = currentContext(); } catch (e) { return; }
+    setPath(ctx, path, value);
+    $('#context').value = JSON.stringify(ctx, null, 2);
+    localStorage.setItem(storageKey(currentName), $('#context').value);
+    render();
+  }, 300);
+}
+
+function buildFieldsForm() {
+  const el = $('#fields');
+  el.innerHTML = '';
+  let ctx;
+  try {
+    ctx = currentContext();
+  } catch (e) {
+    el.innerHTML = '<div class="note">The JSON tab has a syntax error — fix it there first.</div>';
+    return;
+  }
+  for (const { path, value } of leafPaths(ctx)) {
+    const label = document.createElement('label');
+    label.textContent = path.join(' › ');
+    el.appendChild(label);
+    let input;
+    if (typeof value === 'boolean') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = value;
+      input.addEventListener('change', () => updateFromField(path, input.checked));
+    } else if (Array.isArray(value)) {
+      input = document.createElement('textarea');
+      input.className = 'field';
+      input.value = JSON.stringify(value, null, 2);
+      input.addEventListener('input', () => {
+        try { updateFromField(path, JSON.parse(input.value)); } catch (e) { /* keep typing */ }
+      });
+    } else {
+      const isLong = typeof value === 'string' && value.length > 60;
+      input = document.createElement(isLong ? 'textarea' : 'input');
+      if (isLong) { input.className = 'field'; } else { input.type = 'text'; }
+      input.value = value == null ? '' : String(value);
+      const wasNumber = typeof value === 'number';
+      input.addEventListener('input', () =>
+        updateFromField(path, wasNumber && input.value !== '' && !isNaN(input.value) ? Number(input.value) : input.value));
+    }
+    el.appendChild(input);
+  }
+  el.insertAdjacentHTML('beforeend',
+    '<div class="note">These are demo values — they only affect this preview, never real emails. ' +
+    'For arrays or new keys, use the JSON tab. Edits are saved in your browser; Reset restores the defaults.</div>');
+}
+
+// ---- Rendering ----
+
+function showError(msg) {
+  const el = $('#error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearError() { $('#error').style.display = 'none'; }
+
+function render() {
+  if (!currentName) return;
+  let ctx;
+  try {
+    ctx = currentContext();
+    $('#context').classList.remove('bad');
+  } catch (e) {
+    $('#context').classList.add('bad');
+    showError('Sample data is not valid JSON: ' + e.message);
+    return;
+  }
+  try {
+    for (const p of partials()) Handlebars.registerPartial(p, sources[p] ?? '');
+    const template = Handlebars.compile(sources[currentName] ?? '');
+    lastRenderedHtml = template(ctx);
+    clearError();
+  } catch (e) {
+    showError('Template error: ' + e.message);
+    return;
+  }
+  const frame = $('#frame');
+  const scrollY = frame.contentWindow ? frame.contentWindow.scrollY : 0;
+  frame.onload = () => frame.contentWindow.scrollTo(0, scrollY);
+  frame.srcdoc = lastRenderedHtml;
+  frame.hidden = false;
+  $('#empty').style.display = 'none';
+}
+
+// ---- Selection ----
+
+async function selectTemplate(name) {
+  currentName = name;
+  $('#current-name').textContent = name + '.hbs';
+  document.querySelectorAll('#sidebar button').forEach((b) =>
+    b.classList.toggle('active', b.dataset.name === name));
+  $('#context').value = loadContextText(name);
+  buildFieldsForm();
+  const needed = [name, ...partials()];
+  await Promise.all(needed.map(async (n) => { sources[n] = await fetchSource(n); }));
+  render();
+  history.replaceState(null, '', '#' + name);
+}
+
+// ---- Live reload: poll the current template + partials for changes ----
+
+setInterval(async () => {
+  if (!currentName) return;
+  let changed = false;
+  for (const n of [currentName, ...partials()]) {
+    try {
+      const text = await fetchSource(n);
+      if (text !== sources[n]) { sources[n] = text; changed = true; }
+    } catch (e) { /* transient; keep last good copy */ }
+  }
+  if (changed) render();
+}, POLL_MS);
+
+// ---- UI wiring ----
+
+$('#context').addEventListener('input', () => {
+  clearTimeout(contextDebounce);
+  contextDebounce = setTimeout(() => {
+    localStorage.setItem(storageKey(currentName), $('#context').value);
+    render();
+  }, 300);
+});
+
+$('#reset-context').addEventListener('click', () => {
+  localStorage.removeItem(storageKey(currentName));
+  $('#context').value = loadContextText(currentName);
+  buildFieldsForm();
+  render();
+});
+
+document.querySelectorAll('#context-pane .tab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#context-pane .tab').forEach((b) => b.classList.remove('on'));
+    btn.classList.add('on');
+    const showFields = btn.dataset.tab === 'fields';
+    $('#fields').hidden = !showFields;
+    $('#context').hidden = showFields;
+    if (showFields) buildFieldsForm(); // pick up any JSON-tab edits
+  });
+});
+
+document.querySelectorAll('#toolbar button[data-width]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#toolbar button[data-width]').forEach((b) => b.classList.remove('on'));
+    btn.classList.add('on');
+    $('#frame').style.maxWidth = btn.dataset.width + 'px';
+  });
+});
+
+$('#copy-html').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(lastRenderedHtml);
+  $('#copy-html').textContent = 'Copied!';
+  setTimeout(() => { $('#copy-html').textContent = 'Copy HTML'; }, 1200);
+});
+
+// ---- Boot ----
+
+(async function init() {
+  if (typeof Handlebars === 'undefined') {
+    showError('Could not load handlebars.js from the CDN — this tool needs an internet connection.');
+    return;
+  }
+  allNames = await discoverTemplates();
+  const list = $('#template-list');
+  const plist = $('#partial-list');
+  for (const name of allNames) {
+    const btn = document.createElement('button');
+    btn.textContent = name;
+    btn.dataset.name = name;
+    btn.addEventListener('click', () => selectTemplate(name));
+    (isPartial(name) ? plist : list).appendChild(btn);
+  }
+  const fromHash = location.hash.slice(1);
+  if (fromHash && allNames.includes(fromHash)) selectTemplate(fromHash);
+})();
+</script>
+</body>
+</html>

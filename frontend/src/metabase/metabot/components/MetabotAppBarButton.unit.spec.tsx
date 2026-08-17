@@ -1,15 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { UserMetabotPermissions } from "metabase-types/api";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
 
@@ -46,15 +42,12 @@ function setup({
   );
 
   const { store } = renderWithProviders(
-    <Route path="*" component={TestComponent} />,
+    <Route path="*" element={<TestComponent />} />,
     {
       withRouter: true,
       initialRoute: pathname,
       storeInitialState: createMockState({
         settings,
-        routing: createMockRoutingState({
-          locationBeforeTransitions: createMockLocation({ pathname }),
-        }),
       }),
     },
   );
@@ -95,12 +88,19 @@ describe("MetabotAppBarButton", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should disable the button on the full-page AI exploration (/question/ask) surface", async () => {
-    setup({ isMetabotEnabled: true, pathname: "/question/ask" });
-    expect(
-      await screen.findByRole("button", { name: /Chat with Metabot/ }),
-    ).toBeDisabled();
-  });
+  it.each([
+    "/question/ask",
+    "/question/ask/",
+    "/metabot/conversation/past-conversation-id",
+  ])(
+    "should disable the button on the full-page metabot surface (%s)",
+    async (pathname) => {
+      setup({ isMetabotEnabled: true, pathname });
+      expect(
+        await screen.findByRole("button", { name: /Chat with Metabot/ }),
+      ).toBeDisabled();
+    },
+  );
 
   it("should not disable the button on other question pages", async () => {
     setup({ isMetabotEnabled: true, pathname: "/question/123" });
@@ -112,6 +112,7 @@ describe("MetabotAppBarButton", () => {
   it("should toggle metabot visibility when clicked", async () => {
     const { store } = setup({ isMetabotEnabled: true });
 
+    // Unjustified type cast. FIXME
     const initialState = store.getState() as any;
     expect(initialState.metabot.conversations.omnibot.visible).toBe(false);
 
@@ -119,6 +120,7 @@ describe("MetabotAppBarButton", () => {
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
     );
 
+    // Unjustified type cast. FIXME
     const newState = store.getState() as any;
     expect(newState.metabot.conversations.omnibot.visible).toBe(true);
   });

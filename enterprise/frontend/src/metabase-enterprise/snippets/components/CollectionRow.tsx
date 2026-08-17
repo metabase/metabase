@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Icon } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";

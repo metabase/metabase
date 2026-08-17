@@ -5,6 +5,7 @@ import type {
   Collection,
   IconName,
   RemoteSyncEntityStatus,
+  SettingDefinition,
 } from "metabase-types/api";
 
 import type { CollectionPathSegment } from "./displayGroups";
@@ -39,6 +40,21 @@ type ParsedError = {
   currentBranch: string | null;
 };
 
+// TODO: Should merge with getExtraFormFieldProps from admin/settings/utils.ts
+export const getEnvSettingProps = <T>(
+  setting?: SettingDefinition,
+  extras?: T,
+) => {
+  if (setting?.is_env_setting) {
+    return {
+      description: t`Using ${setting.env_name}`,
+      readOnly: true,
+      ...extras,
+    };
+  }
+  return {};
+};
+
 export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
   switch (status) {
     case "create":
@@ -59,15 +75,15 @@ export const getSyncStatusColor = (
 ): ColorName => {
   switch (status) {
     case "create":
-      return "success";
+      return "feedback-positive";
     case "removed":
     case "delete":
-      return "danger";
+      return "feedback-negative";
     case "update":
     case "touch":
-      return "saturated-blue";
+      return "core-blue-saturated";
     default:
-      return "info";
+      return "core-info";
   }
 };
 

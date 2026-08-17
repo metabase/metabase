@@ -130,6 +130,44 @@
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
             (is (false? (get-in response [:checklist :data-permissions-and-enable-tenants])))))))))
 
+(deftest move-dashboard-to-shared-checklist-test
+  (mt/id) ;; force the app-db's own database row to exist so add-data resolves deterministically
+  (mt/with-premium-features #{:embedding :tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist") [:checklist k]))]
+        (is (false? (ck :move-dashboard-to-shared)))
+        (mt/with-temp [:model/Collection {sc :id} {:namespace "shared-tenant-collection"}]
+          (is (false? (ck :move-dashboard-to-shared)))
+          (mt/with-temp [:model/Dashboard _ {:collection_id sc :archived false}]
+            (is (true? (ck :move-dashboard-to-shared)))))))))
+
+(deftest setting-and-sso-checklist-test
+  (mt/id) ;; force the app-db's own database row to exist so add-data resolves deterministically
+  (testing "402 without :embedding feature"
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :get 402 "/ee/embedding-hub/checklist")))
+  (mt/with-premium-features #{:embedding}
+    (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist") [:checklist k]))]
+      (testing "create-test-embed reflects a published guest embed"
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (true? (ck :create-test-embed)))))
+      (testing "create-test-embed reflects the test-embed-snippet-created setting"
+        (mt/with-temporary-setting-values [embedding-hub-test-embed-snippet-created true]
+          (is (true? (ck :create-test-embed)))))
+      (testing "embed-production reflects the production-embed-snippet-created setting"
+        (mt/with-temporary-setting-values [embedding-hub-production-embed-snippet-created true]
+          (is (true? (ck :embed-production)))))))
+  (mt/with-premium-features #{:embedding :sso-jwt}
+    (mt/with-temporary-setting-values [jwt-shared-secret         "0123456789abcdef0123456789abcdef"
+                                       jwt-identity-provider-uri "https://idp.example.com"
+                                       jwt-enabled                true]
+      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+                         [:checklist :sso-configured])))))
+  (mt/with-premium-features #{:embedding}
+    (mt/with-temporary-setting-values [embedding-hub-sso-auth-manual-tested true]
+      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+                         [:checklist :sso-auth-manual-tested]))))))
+
 (deftest data-isolation-strategy-test
   (testing "data-isolation-strategy is nil when no strategy is configured"
     (mt/with-premium-features #{:embedding}

@@ -1,7 +1,7 @@
 .SnippetForm {
   .FormSnippetTextArea {
     width: 100%;
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
     font-family: Monaco, monospace;
     font-size: 0.875em;
     font-weight: 400;
@@ -11,6 +11,6 @@
 
 .ArchiveButton {
   &[data-variant="subtle"]:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }

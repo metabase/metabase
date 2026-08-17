@@ -161,6 +161,29 @@ describe("error reporting modal", () => {
     });
   });
 
+  it("should include the hydrated dashboard definition for a dashboard", () => {
+    cy.signInAsAdmin();
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    cy.findByTestId("dashboard-grid").realClick();
+
+    cy.realPress(["Control", "F1"]);
+    H.modal().within(() => {
+      cy.findByText("Gather diagnostic information").should("be.visible");
+      cy.findByLabelText("Dashboard definition").should("be.checked");
+
+      cy.button(/Download/i).click();
+    });
+
+    getDiagnosticInfoFile().then((fileContent) => {
+      expect(fileContent.entityName).to.equal("dashboard");
+      expect(fileContent.entityInfo).to.not.be.null;
+      expect(fileContent.entityInfo.id).to.equal(ORDERS_DASHBOARD_ID);
+      expect(fileContent.entityInfo.dashcards).to.be.an("array").and.not.be
+        .empty;
+    });
+  });
+
   it("should not include backend logs for non-admin users", () => {
     cy.signInAsNormalUser();
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -191,7 +214,15 @@ describe("error reporting modal", () => {
   });
 });
 
-function getDiagnosticInfoFile() {
+type DiagnosticInfoFile = {
+  entityName?: string;
+  url?: string;
+  // The hydrated entity (dashboard / card / collection) or null. Typed loosely
+  // because these tests poke at entity-specific fields like `dashcards`.
+  entityInfo?: any;
+};
+
+function getDiagnosticInfoFile(): Cypress.Chainable<DiagnosticInfoFile> {
   cy.findByLabelText("Gather diagnostic information").should("not.exist");
   return cy
     .verifyDownload("metabase-diagnostic-info-", {
@@ -201,12 +232,14 @@ function getDiagnosticInfoFile() {
     })
     .then(() => {
       return cy
-        .task("findFiles", {
+        .task<string[]>("findFiles", {
           path: downloadsFolder,
           fileName: "metabase-diagnostic-info-",
         })
         .then(([fileName]) => {
-          return cy.readFile(`${downloadsFolder}/${fileName}`);
+          return cy.readFile<DiagnosticInfoFile>(
+            `${downloadsFolder}/${fileName}`,
+          );
         });
     });
 }

@@ -1,3 +1,4 @@
+import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
   CollectionId,
@@ -76,6 +77,7 @@ export function modelToUrl(item: UrlableModel): string {
     case "transform":
       return transform(item.id);
     case "indexed-entity":
+      // Unjustified type cast. FIXME
       return indexedEntity(item as IndexedEntity);
     case "action":
       if (item.model_id != null) {
@@ -92,6 +94,8 @@ export function modelToUrl(item: UrlableModel): string {
         return dataStudioPublishedTableMeasure(item.table_id, item.id);
       }
       return NOT_FOUND_URL;
+    case "exploration":
+      return exploration(item.id);
     default:
       return NOT_FOUND_URL;
   }

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { isLibraryCollection } from "metabase/collections/utils";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 import { getAccessibleCollection } from "../utils";

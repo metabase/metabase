@@ -57,7 +57,8 @@
                      :sql "SELECT * FROM test"
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
-        (is (true? (:final-response? result)))
+        (is (some? structured)
+            "structured-output present -> a successful, terminal-eligible call")
         (is (= "document_construct_sql_chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))
@@ -85,8 +86,8 @@
                      :approach "Test Approach"
                      :sql "SELECT FROM test"
                      :viz_settings {:chart_type "bar"}})]
-        (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
+        (is (nil? (:structured-output result))
+            "no structured-output -> a failure, which must NOT terminate the turn")
         (is (re-find #"SQL chart draft generation failed" (:output result)))
         (is (re-find #"syntax error near FROM" (:output result)))))))
 
@@ -111,8 +112,8 @@
                      :approach "Test Approach"
                      :sql "SELECT * FROM missing_table"
                      :viz_settings {:chart_type "bar"}})]
-        (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
+        (is (nil? (:structured-output result))
+            "no structured-output -> a failure, which must NOT terminate the turn")
         (is (re-find #"could not be processed by Metabase" (:output result)))
         (is (re-find #"missing_table" (:output result)))))))
 
@@ -131,7 +132,8 @@
                      :query ""
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
-        (is (true? (:final-response? result)))
+        (is (some? structured)
+            "structured-output present -> a successful, terminal-eligible call")
         (is (= "document_construct_model_chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))

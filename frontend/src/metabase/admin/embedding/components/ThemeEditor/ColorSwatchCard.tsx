@@ -31,7 +31,7 @@ export function ColorSwatchCard({
               style={{
                 borderRadius: "50%",
                 backgroundColor: value || "transparent",
-                border: "1px solid var(--mb-color-border)",
+                border: "1px solid var(--mb-color-border-neutral)",
               }}
             />
             <Text fz={10}>{label}</Text>

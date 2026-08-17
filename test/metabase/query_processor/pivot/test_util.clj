@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot.test-util]}}}}}}
   (:require
    [metabase.lib.core :as lib]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]))
 
 (defn applicable-drivers
@@ -92,3 +93,18 @@
      {:pivot_table.column_split
       {:rows    [(get breakout 1) (get breakout 0)]
        :columns [(get breakout 2)]}}}))
+
+;;; ---- Pivot-path parity check ----
+;;;
+;;; `qp.pivot/run-pivot-query` runs both the native and multi-query paths and reports mismatches whenever
+;;; `qp.pivot/*check-pivot-parity?*` is on. That defaults to `true` in test builds, so every pivot query
+;;; in the test suite gets parity coverage automatically — no fixture required. Tests that intentionally
+;;; exercise behavior that differs between the two paths (e.g. the per-sub-query row cap applied by
+;;; `qp.pivot/pivot-query-max-rows`) can wrap the divergent block in [[without-pivot-parity-check]].
+
+(defmacro without-pivot-parity-check
+  "Disable pivot parity checking inside `body`. Use for tests whose query intentionally exercises behavior
+  that differs between the multi-query and native paths."
+  [& body]
+  `(binding [qp.pivot/*check-pivot-parity?* false]
+     ~@body))

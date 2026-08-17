@@ -99,7 +99,7 @@ describe("Table editing", () => {
       TablePicker.getTable("Orders")
         .findByTestId("table-published")
         .should("not.exist");
-      H.DataStudio.nav().findByLabelText("Library").click();
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );
@@ -178,6 +178,7 @@ describe("Table editing", () => {
     () => {
       H.restore("postgres-writable");
       H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 
       const SOURCE_TABLE = "Animals";

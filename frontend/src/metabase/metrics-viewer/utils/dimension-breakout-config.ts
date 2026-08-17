@@ -2,8 +2,8 @@ import {
   DIMENSION_PREDICATES,
   getGeoSubtype,
 } from "metabase/common/metrics/utils/dimension-types";
-import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getBreakoutSeriesName } from "metabase/visualizations/echarts/cartesian/model/series";
+import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import { isCountry, isState } from "metabase-lib/v1/types/utils/isa";
 import type {

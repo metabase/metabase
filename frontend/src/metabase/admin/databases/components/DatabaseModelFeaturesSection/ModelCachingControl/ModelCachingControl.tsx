@@ -6,8 +6,9 @@ import {
   useUnpersistDatabaseMutation,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { hasFeature } from "metabase/common/utils/database";
+import { useSetting } from "metabase/settings";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 import type { Database } from "metabase-types/api";
@@ -50,6 +51,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
         await persistDatabase(databaseId).unwrap();
       }
     } catch (error) {
+      // Unjustified type cast. FIXME
       const response = error as ErrorResponse;
       if (isLackPermissionsError(response)) {
         setError(
@@ -91,8 +93,8 @@ export function ModelCachingControl({ database, disabled }: Props) {
       {disabled && (
         <Box>
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >

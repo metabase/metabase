@@ -39,6 +39,7 @@ export const useAvailableParameters = ({
     }
 
     if (experience === "dashboard") {
+      // Unjustified type cast. FIXME
       const dashboard = resource as Dashboard;
       return getSavedDashboardUiParameters(
         dashboard.dashcards,
@@ -47,6 +48,7 @@ export const useAvailableParameters = ({
         metadata,
       );
     } else if (experience === "chart") {
+      // Unjustified type cast. FIXME
       const card = resource as Card;
       return getCardUiParameters(card, metadataRef.current) || [];
     }

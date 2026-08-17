@@ -309,7 +309,7 @@ export function SchemaViewer({
           <Panel position="bottom-left">
             <Group gap="sm">
               <Button
-                bg="background-primary"
+                bg="background_page-primary"
                 variant="default"
                 leftSection={<Icon name="sparkles" />}
                 onClick={resetLayout}
@@ -318,7 +318,7 @@ export function SchemaViewer({
               </Button>
               {selectedNodeId != null && (
                 <Button
-                  bg="background-primary"
+                  bg="background_page-primary"
                   variant="default"
                   onClick={() => focusOnNode(selectedNodeId)}
                 >
@@ -362,7 +362,7 @@ export function SchemaViewer({
               pt="xl"
               data-testid="schema-viewer-empty-state"
             >
-              <Text c="text-tertiary">{t`No schema selected`}</Text>
+              <Text c="text-disabled">{t`No schema selected`}</Text>
             </Stack>
           </Panel>
         )}

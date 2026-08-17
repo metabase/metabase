@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/utils/types";
-import visualizations from "metabase/visualizations";
+import {
+  getIconForVisualizationType,
+  visualizations,
+} from "metabase/visualizations";
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type {
   Dataset,
@@ -27,11 +30,13 @@ export function getVisualizationItem(
     return null;
   }
 
+  const icon = getIconForVisualizationType(visualizationType);
+
   return {
     value: visualizationType,
     label: visualization.getUiName(),
-    iconName: visualization.iconName,
-    iconUrl: visualization.iconUrl,
+    iconName: icon.name,
+    iconUrl: icon.iconUrl,
   };
 }
 

@@ -2,7 +2,7 @@
   "Utility functions for parsing `provider-and-model` strings.
 
   These strings have the format `provider/model` (e.g. `anthropic/claude-haiku-4-5`,
-  `openrouter/anthropic/claude-haiku-4-5`) or `metabase/provider/model` when routed
+  `openrouter/anthropic/claude-haiku-4.5`) or `metabase/provider/model` when routed
   through the Metabase Cloud AI proxy."
   (:require
    [clojure.string :as str]))
@@ -41,7 +41,7 @@
   "Extract the model name from a provider-and-model string.
   For `metabase/anthropic/model` returns `\"model\"`.
   For `anthropic/model` returns `\"model\"`.
-  For `openrouter/anthropic/claude-haiku-4-5` returns `\"anthropic/claude-haiku-4-5\"`."
+  For `openrouter/anthropic/claude-haiku-4.5` returns `\"anthropic/claude-haiku-4.5\"`."
   [provider-and-model]
   (when provider-and-model
     (let [[first-seg rest-seg] (str/split provider-and-model #"/" 2)]
@@ -51,8 +51,8 @@
 
 (defn strip-metabase-prefix
   "Strip the `metabase/` routing prefix from a provider-and-model string.
-  For `metabase/openrouter/anthropic/claude-haiku-4-5` returns
-  `\"openrouter/anthropic/claude-haiku-4-5\"`.
+  For `metabase/openrouter/anthropic/claude-haiku-4.5` returns
+  `\"openrouter/anthropic/claude-haiku-4.5\"`.
   Returns the input unchanged if no prefix is present."
   [provider-and-model]
   (if (metabase-provider? provider-and-model)

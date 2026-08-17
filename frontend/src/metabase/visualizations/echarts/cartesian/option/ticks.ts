@@ -19,7 +19,7 @@ import {
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
-const getPadding = (intervalsCount: number) => {
+export const getPadding = (intervalsCount: number) => {
   if (intervalsCount <= 1) {
     return 5 / 6;
   }
@@ -37,6 +37,7 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
+  // Unjustified type cast. FIXME
   const xDomain = range.map((day) => {
     const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {
@@ -117,6 +118,15 @@ export const getTicksOptions = (
       count: 1,
       unit: effectiveTicksUnit,
     });
+  }
+
+  // HACK: ECharts 6.1.0 emits intermediate (mid-year) ticks within the padded
+  // single-point year domain. Unlike week/month/quarter, the year path had no
+  // boundary guard, so two ticks in the same year both format as that year and
+  // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+  if (largestInterval.unit === "year") {
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) && date.month() === 0 && date.date() === 1;
   }
 
   if (!maxInterval) {

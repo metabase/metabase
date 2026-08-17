@@ -175,6 +175,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: firstDashboard as Dashboard | Card | null },
         },
       );
@@ -207,6 +208,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: dashboard as Dashboard | Card | null },
         },
       );
@@ -250,7 +252,9 @@ describe("useAvailableParameters", () => {
           }),
         {
           initialProps: {
+            // Unjustified type cast. FIXME
             experience: "dashboard" as "dashboard" | "chart",
+            // Unjustified type cast. FIXME
             resource: dashboard as Dashboard | Card | null,
           },
         },
@@ -276,6 +280,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: null as Dashboard | Card | null },
         },
       );
@@ -298,6 +303,7 @@ describe("useAvailableParameters", () => {
             resource,
           }),
         {
+          // Unjustified type cast. FIXME
           initialProps: { resource: mockDashboard as Dashboard | Card | null },
         },
       );
@@ -327,6 +333,7 @@ describe("useAvailableParameters", () => {
       renderHook(() =>
         useAvailableParameters({
           experience: "dashboard",
+          // Unjustified type cast. FIXME
           resource: dashboardWithParamFields as unknown as Dashboard,
         }),
       );

@@ -64,11 +64,11 @@ function ParameterMultiSelectHelpInfo() {
         <Box p="md" maw="24rem">
           <Text>
             {jt`Most of the time you’ll want to use this with an ${(
-              <Code key="in" bg="background-tertiary">
+              <Code key="in" bg="background_page-tertiary">
                 {"IN"}
               </Code>
             )} clause, like ${(
-              <Code key="where" bg="background-tertiary">
+              <Code key="where" bg="background_page-tertiary">
                 {"WHERE category IN ({{categories}})"}
               </Code>
             )}`}

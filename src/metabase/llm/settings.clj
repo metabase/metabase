@@ -2,10 +2,13 @@
   "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
+   (java.net MalformedURLException URL)
    (software.amazon.awssdk.regions Region)))
 
 (set! *warn-on-reflection* true)
@@ -25,12 +28,50 @@
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
+(def ^:private loopback-hosts
+  "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
+  wrapped in brackets, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]" "::1"})
+
+(defn assert-llm-host-allowed!
+  "Safeguard for Cypress e2e tests: refuse to send an LLM request to any host
+  other than localhost. e2e tests are expected to point the LLM URL at a local
+  mock server (see `startMockLlmServer`), so throwing here keeps a misconfigured
+  test run from sending traffic to a real provider. No-op outside of e2e mode and
+  for blank URLs (so the normal not-configured handling still runs)."
+  [url]
+  (when (and config/is-e2e? (not (str/blank? url)))
+    (let [host (try
+                 (u/lower-case-en (.getHost (URL. ^String url)))
+                 ;; A malformed URL can't be verified as localhost — treat it as
+                 ;; not allowed (fail closed) rather than throwing raw.
+                 (catch MalformedURLException _ nil))]
+      (when-not (and host (contains? loopback-hosts host))
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
+                        {:status-code 400
+                         :llm-url     url}))))))
+
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
     (when (and trimmed (not (str/starts-with? trimmed prefix)))
       (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
+
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
+(defn- set-normalized-base-url!
+  "Set a base-URL setting to `new-value` with trailing slashes trimmed; blank values are stored as nil.
+  Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would otherwise
+  produce `//models`."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
@@ -59,8 +100,7 @@
   :encryption :no
   :visibility :settings-manager
   :default "claude-opus-4-5-20251101"
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
@@ -68,8 +108,7 @@
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
-  :deprecated-name  :ee-anthropic-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-anthropic-api-base-url)
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -82,13 +121,12 @@
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
 (defsetting llm-openai-model
-  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')")
   :encryption       :no
   :visibility       :settings-manager
-  :default          "gpt-4.1-mini"
+  :default          "gpt-5.4"
   :export?          false
-  :deprecated-name  :ee-openai-model
-  :doc              false)
+  :deprecated-name  :ee-openai-model)
 
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
@@ -96,8 +134,7 @@
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
-  :deprecated-name  :ee-openai-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-openai-api-base-url)
 
 (defsetting llm-openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -108,8 +145,7 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openai-api-key
                              "sk-"
-                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
-  :doc              false)
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''.")))
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
@@ -119,8 +155,7 @@
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
-  :deprecated-name  :ee-openrouter-api-base-url
-  :doc              false)
+  :deprecated-name  :ee-openrouter-api-base-url)
 
 (defsetting llm-openrouter-api-key
   (deferred-tru "The OpenRouter API Key.")
@@ -131,8 +166,156 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openrouter-api-key
                              "sk-or-v1-"
-                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
-  :doc              false)
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")))
+
+;;; --------------------------------------------------- Z.AI ----------------------------------------------------
+
+(defsetting llm-zai-api-base-url
+  (deferred-tru "The Z.AI API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.z.ai/api/paas/v4"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-zai-api-base-url))
+
+(defsetting llm-zai-api-key
+  (deferred-tru "The Z.AI API Key.")
+  ;; Z.AI keys are `{id}.{secret}` pairs with no documented prefix, so unlike the other
+  ;; direct-provider keys there is no format validation.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-zai-api-key))
+
+;;; -------------------------------------------------- Mistral ---------------------------------------------------
+
+(defsetting llm-mistral-api-base-url
+  (deferred-tru "The Mistral API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.mistral.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-mistral-api-base-url))
+
+(defsetting llm-mistral-api-key
+  (deferred-tru "The Mistral API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+
+;;; ------------------------------------------------- Moonshot --------------------------------------------------
+
+(defsetting llm-moonshot-api-base-url
+  (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.moonshot.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+
+(defsetting llm-moonshot-api-key
+  (deferred-tru "The Moonshot AI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
+
+;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
+;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
+;;; project ID is necessary. The location is optional and defaults to `global`.
+
+(defsetting llm-google-service-account-key
+  (deferred-tru "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-google-service-account-key))
+
+(defsetting llm-google-oauth-access-token
+  (deferred-tru "A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-google-oauth-access-token))
+
+(def ^:private google-project-id-pattern
+  "Matches a Google Cloud project ID: 6 to 30 characters of lowercase letters, digits and hyphens, starting with a
+  letter and not ending with a hyphen.
+  https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"
+  #"[a-z][a-z0-9-]{4,28}[a-z0-9]")
+
+(defn valid-google-project-id?
+  "True if `project-id` looks like a valid google project id."
+  [project-id]
+  (boolean (and (string? project-id)
+                (re-matches google-project-id-pattern project-id))))
+
+(def ^:private google-location-pattern
+  "Matches a Google Cloud location ID, e.g. `us-central1`: hyphen-separated segments of lowercase letters and digits,
+  the first of which starts with a letter."
+  #"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+
+(def ^:private google-location-max-length
+  "The longest location that still leaves a legal DNS label in `{location}-aiplatform.googleapis.com`.
+  A label holds 63 characters and the `-aiplatform` suffix takes 11 of them."
+  52)
+
+(defn valid-google-location?
+  "True if `location` can be spliced into a Gemini Enterprise Agent Platform request host.
+  A location becomes a DNS label of that host, so a value that is not one cannot be sent.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations"
+  [location]
+  (boolean (and (<= (count location) google-location-max-length)
+                (re-matches google-location-pattern location))))
+
+(defn- set-google-project-id!
+  [new-value]
+  (let [project-id (trimmed-string new-value)]
+    (when (and project-id (not (valid-google-project-id? project-id)))
+      (throw (ex-info (tru (str "{0} is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase "
+                                "letters, digits and hyphens — rather than the project name or number.")
+                           (pr-str project-id))
+                      {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-google-project-id project-id)))
+
+(defsetting llm-google-project-id
+  (deferred-tru "The Google Cloud project ID for the Gemini Enterprise Agent Platform.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :setter      set-google-project-id!)
+
+(defn- set-google-location!
+  [new-value]
+  (let [location (trimmed-string new-value)]
+    (when (and location (not (valid-google-location? location)))
+      (throw (ex-info (tru (str "{0} is not a valid Google Cloud location. Use a location ID like \"us-central1\", "
+                                "or leave it blank to use the global location.")
+                           (pr-str location))
+                      {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-google-location location)))
+
+(defsetting llm-google-location
+  (deferred-tru "The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :setter      set-google-location!)
+
+(def google-global-api-base-url
+  "Google's global Gemini Enterprise Agent Platform host, and the default for [[llm-google-api-base-url]].
+  It serves only the `global` location. A regional location uses `https://{location}-aiplatform.googleapis.com`, and
+  the `us` and `eu` multi-region locations use `https://aiplatform.{location}.rep.googleapis.com`."
+  "https://aiplatform.googleapis.com")
+
+(defsetting llm-google-api-base-url
+  (deferred-tru "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     google-global-api-base-url
+  :export?     false
+  :setter      (partial set-normalized-base-url! :llm-google-api-base-url))
 
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
@@ -141,7 +324,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
 
 (defsetting llm-bedrock-secret-access-key
@@ -149,7 +331,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
 
 (defsetting llm-bedrock-session-token
@@ -157,7 +338,6 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
 
 (defn- set-bedrock-region!
@@ -173,18 +353,7 @@
   :visibility  :settings-manager
   :default     "us-east-1"
   :export?     false
-  :doc         false
   :setter      set-bedrock-region!)
-
-(defsetting llm-bedrock-configured?
-  "Whether the required AWS Bedrock credentials are configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
-                             (trimmed-string (llm-bedrock-secret-access-key))))
-  :doc        false)
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
@@ -194,25 +363,14 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
 
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
-
 (defsetting llm-azure-api-base-url
-  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. https://<resource>.services.ai.azure.com/openai.")
+  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :doc         false
-  :setter      (fn [new-value]
-                 (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
+  :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
@@ -260,37 +418,41 @@
   :type :integer
   :default 4096
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
+        "For streaming responses this bounds the gap between successive chunks, "
+        "NOT the total response time. Picked generously: extended thinking can "
+        "pause for tens of seconds between chunks. Without it, a hung read inside "
+        "the stream blocks the worker indefinitely — observed in production when "
+        "an upstream proxy held the connection open without sending data."))
   :type :integer
-  :default 60000
+  :default 120000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-connection-timeout-ms
-  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "TCP connection timeout in milliseconds for LLM API requests. A provider "
+        "that is down or unreachable should fail fast instead of holding a worker "
+        "thread forever."))
   :type :integer
-  :default 5000
+  :default 10000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-user
   (deferred-tru "Maximum SQL generation requests per user per minute.")
   :type :integer
   :default 20
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-ip
   (deferred-tru "Maximum SQL generation requests per IP address per minute.")
   :type :integer
   :default 100
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)

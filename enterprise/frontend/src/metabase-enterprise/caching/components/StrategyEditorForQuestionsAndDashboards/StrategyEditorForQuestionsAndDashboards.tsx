@@ -14,7 +14,6 @@ import type { ColumnItem } from "metabase/common/components/Table/types";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { Center, Flex, Repeat, Skeleton, Stack } from "metabase/ui";
 import type { CacheSortColumn, CacheableModel } from "metabase-types/api";
-import { CacheDurationUnit } from "metabase-types/api";
 import type { SortDirection } from "metabase-types/api/sorting";
 
 import type { CacheableItem, UpdateTarget } from "../types";
@@ -52,6 +51,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
   // Handle sort column click
   const handleSort = useCallback(
     (columnName: string, direction: SortDirection) => {
+      // Unjustified type cast. FIXME
       setSortColumn(columnName as CacheSortColumn);
       setSortDirection(direction);
       resetPage();
@@ -99,16 +99,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
         })
       : undefined;
 
-  const savedStrategy = useMemo(() => {
-    const strategy = targetConfig?.strategy;
-    if (!strategy) {
-      return undefined;
-    }
-    if (strategy.type === "duration") {
-      return { ...strategy, unit: CacheDurationUnit.Hours };
-    }
-    return { ...strategy };
-  }, [targetConfig?.strategy]);
+  const savedStrategy = targetConfig?.strategy;
 
   const targetName = useMemo(() => {
     if (targetId === null || targetModel === null) {
@@ -273,7 +264,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-tertiary">
+  <Center fw="bold" c="text-disabled">
     {t`No dashboards or questions have their own caching policies yet.`}
   </Center>
 );

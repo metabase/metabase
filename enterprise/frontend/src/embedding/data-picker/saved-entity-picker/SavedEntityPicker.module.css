@@ -2,7 +2,7 @@
   display: flex;
   width: 620px;
   overflow: hidden;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 
   @media screen and (max-width: 40em) {
     flex-direction: column;
@@ -15,12 +15,12 @@
   display: flex;
   flex-direction: column;
   min-width: 310px;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   overflow: auto;
 
   @media screen and (max-width: 40em) {
     min-height: 220px;
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 }
 
@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   color: var(--mb-color-text-primary);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding: 1rem;
 
   &:hover {

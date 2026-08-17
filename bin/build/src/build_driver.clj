@@ -1,6 +1,6 @@
 (ns build-driver
   (:require
-   [build-drivers.build-driver :as build-driver]
+   [build-drivers.build-driver :as bd]
    [metabuild-common.core :as u]))
 
 (defn build-driver
@@ -10,4 +10,4 @@
     (when-not driver
       (throw (ex-info "Usage: clojure -X:build:drivers:build/driver :driver <driver> [:edition <edition>]"
                       {})))
-    (build-driver/build-driver! (u/parse-as-keyword driver) (or (u/parse-as-keyword edition) :oss))))
+    (bd/build-driver! (u/parse-as-keyword driver) (or (u/parse-as-keyword edition) :oss))))

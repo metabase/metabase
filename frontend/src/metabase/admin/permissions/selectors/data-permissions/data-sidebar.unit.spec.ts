@@ -6,6 +6,7 @@ import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getDataFocusSidebar } from ".";
 
+// Unjustified type cast. FIXME
 const state = mockState as unknown as State;
 
 const getRouteProps = ({
@@ -162,7 +163,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns flat list of tables for a schemaless database", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: "3" }),
       );
 

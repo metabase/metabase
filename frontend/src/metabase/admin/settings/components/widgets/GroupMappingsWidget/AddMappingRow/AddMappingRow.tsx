@@ -1,10 +1,10 @@
-import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
-import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
+import { Button, Flex, Group } from "metabase/ui";
+
+import S from "./AddMappingRow.module.css";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
@@ -13,7 +13,7 @@ type AddMappingRowProps = {
   onAdd: (value: string) => void | Promise<void>;
 };
 
-function AddMappingRow({
+export function AddMappingRow({
   mappings,
   placeholder,
   onCancel,
@@ -22,14 +22,16 @@ function AddMappingRow({
   const [value, setValue] = useState("");
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Enter key
-    if (e.keyCode === 13) {
-      handleSubmit();
+    if (e.key === "Enter") {
+      // don't natively submit an enclosing settings form
+      e.preventDefault();
+      if (isMappingNameUnique) {
+        handleAdd();
+      }
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
+  const handleAdd = async () => {
     await onAdd(value);
     setValue("");
   };
@@ -42,49 +44,36 @@ function AddMappingRow({
   const isMappingNameUnique = value && mappings[value] === undefined;
 
   return (
-    <tr>
-      <td colSpan={3} style={{ padding: 0 }}>
-        <div
-          className={cx(
-            CS.m2,
-            CS.p1,
-            CS.bordered,
-            CS.borderBrand,
-            CS.justifyBetween,
-            CS.rounded,
-            CS.relative,
-            CS.flex,
-            CS.alignCenter,
-          )}
-        >
-          <input
-            aria-label="new-group-mapping-name-input"
-            className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
-            type="text"
-            value={value}
-            placeholder={placeholder}
-            autoFocus
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <div>
-            <Button
-              variant="subtle"
-              onClick={handleCancelClick}
-            >{t`Cancel`}</Button>
-            <Button
-              className={CS.ml2}
-              type="submit"
-              variant={isMappingNameUnique ? "filled" : "default"}
-              disabled={!isMappingNameUnique}
-              onClick={() => (isMappingNameUnique ? handleSubmit() : undefined)}
-            >{t`Add`}</Button>
-          </div>
-        </div>
-      </td>
-    </tr>
+    <Flex
+      align="center"
+      justify="space-between"
+      bd="1px solid var(--mb-color-core-brand)"
+      bdrs="md"
+      m="md"
+      p="sm"
+    >
+      <input
+        aria-label={t`New group mapping name`}
+        className={S.input}
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        autoFocus
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+      <Group gap="md">
+        <Button
+          variant="subtle"
+          onClick={handleCancelClick}
+        >{t`Cancel`}</Button>
+        <Button
+          type="button"
+          variant={isMappingNameUnique ? "filled" : "default"}
+          disabled={!isMappingNameUnique}
+          onClick={() => (isMappingNameUnique ? handleAdd() : undefined)}
+        >{t`Add`}</Button>
+      </Group>
+    </Flex>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AddMappingRow;

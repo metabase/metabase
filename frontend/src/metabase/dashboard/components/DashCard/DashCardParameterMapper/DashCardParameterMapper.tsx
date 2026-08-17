@@ -38,7 +38,7 @@ export const DashCardParameterMapper = ({
         <div
           className={cx(CS.mx4, CS.my1, CS.p1, CS.rounded, CS.textMedium)}
           style={{
-            backgroundColor: color("background-secondary"),
+            backgroundColor: color("background_page-secondary"),
             marginTop: -10,
           }}
         >

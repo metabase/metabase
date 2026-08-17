@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -13,16 +12,11 @@ import type {
   OnPin,
   OnRestore,
   OnToggleBookmark,
-  OnTogglePreview,
   OnToggleSelected,
-} from "metabase/collections/types";
-import {
-  isFullyParameterized,
-  isItemModel,
-  isItemPinned,
-  isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import { isItemModel, isItemPinned } from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { Link } from "metabase/common/components/Link";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
@@ -35,6 +29,7 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -42,7 +37,6 @@ import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
-  EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
@@ -161,6 +155,7 @@ function MenuItemTooltip({
 function EntityItemMenu({
   item,
   isBookmarked,
+  isSelected,
   isXrayEnabled,
   onPin,
   onMove,
@@ -169,11 +164,12 @@ function EntityItemMenu({
   onRestore,
   onDeletePermanently,
   onToggleBookmark,
-  onTogglePreview,
+  onToggleSelected,
   className,
 }: {
   item: CollectionItem;
   isBookmarked?: boolean;
+  isSelected?: boolean;
   isXrayEnabled?: boolean;
   onPin?: OnPin;
   onMove?: OnMove;
@@ -182,17 +178,23 @@ function EntityItemMenu({
   onRestore?: OnRestore;
   onDeletePermanently?: OnDeletePermanently;
   onToggleBookmark?: OnToggleBookmark;
-  onTogglePreview?: OnTogglePreview;
+  onToggleSelected?: () => void;
   className?: string;
 }) {
   const isPinned = isItemPinned(item);
-  const isPreviewed = isPreviewShown(item);
-  const isParameterized = isFullyParameterized(item);
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
 
   const actions = useMemo(() => {
     const result: EntityItemMenuAction[] = [];
+
+    if (onToggleSelected) {
+      result.push({
+        title: isSelected ? t`Deselect` : t`Select`,
+        icon: "check",
+        action: onToggleSelected,
+      });
+    }
 
     if (onPin) {
       result.push({
@@ -215,20 +217,6 @@ function EntityItemMenu({
         title: t`X-ray this`,
         link: Urls.xrayModel(item.id),
         icon: "bolt",
-      });
-    }
-
-    if (onTogglePreview) {
-      result.push({
-        title: isPreviewed
-          ? t`Don’t show visualization`
-          : t`Show visualization`,
-        icon: isPreviewed ? "eye_crossed_out" : "eye",
-        action: onTogglePreview,
-        tooltip: !isParameterized
-          ? t`Open this question and fill in its variables to see it.`
-          : undefined,
-        disabled: !isParameterized,
       });
     }
 
@@ -284,15 +272,14 @@ function EntityItemMenu({
     item,
     isPinned,
     isXrayShown,
-    isPreviewed,
-    isParameterized,
     isBookmarked,
+    isSelected,
     onPin,
     onMove,
     onCopy,
     onArchive,
-    onTogglePreview,
     onToggleBookmark,
+    onToggleSelected,
     onDeletePermanently,
     onRestore,
   ]);
@@ -317,10 +304,14 @@ function EntityItemMenu({
             const disabledProps = action.disabled
               ? { "aria-disabled": true, "data-disabled": true }
               : {};
+            const dangerColor: ColorName | undefined = action.danger
+              ? "danger"
+              : undefined;
             const menuItemProps = {
               ...disabledProps,
               className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
               leftSection: getLeftSection(action.icon),
+              c: dangerColor,
             };
 
             if (action.link) {
@@ -384,7 +375,6 @@ export const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
-  loading,
   disabled,
 }: {
   name: string;
@@ -401,7 +391,6 @@ export const EntityItem = ({
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
-  loading?: boolean;
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
@@ -431,7 +420,6 @@ export const EntityItem = ({
 
       <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
-        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

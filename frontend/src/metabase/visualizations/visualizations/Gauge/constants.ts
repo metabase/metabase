@@ -13,11 +13,11 @@ export const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 export const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-export const getBackgroundArcColor = () => color("background-tertiary");
+export const getBackgroundArcColor = () => color("background_page-tertiary");
 export const getSegmentLabelColor = () => color("text-primary");
 export const getCenterLabelColor = () => color("text-primary");
 export const getArrowFillColor = () => color("text-secondary-opaque");
-export const getArrowStrokeColor = () => color("background-primary");
+export const getArrowStrokeColor = () => color("background_page-primary");
 
 // in px, because scaling was not working well with PDF Exports (metabase#65322)
 export const FONT_SIZE_SEGMENT_LABEL = 4;

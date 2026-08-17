@@ -48,14 +48,13 @@ const table = createMockTable({
 });
 
 function setup({
-  onNextClick = jest.fn(),
-  onPreviousClick = jest.fn(),
   showNav = true,
 }: {
-  onNextClick?: jest.Mock;
-  onPreviousClick?: jest.Mock;
   showNav?: boolean;
 } = {}) {
+  const onNextClick = jest.fn();
+  const onPreviousClick = jest.fn();
+
   setupDatabasesEndpoints([database]);
   setupActionsEndpoints([updateAction]);
 

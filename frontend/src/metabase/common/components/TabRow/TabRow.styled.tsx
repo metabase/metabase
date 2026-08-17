@@ -32,7 +32,7 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   top: 0;
   width: 3rem;
   text-align: ${(props) => props.direction};
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 
   &:hover {
     color: var(--mb-color-core-brand);
@@ -41,9 +41,9 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
 
   background: linear-gradient(
     to ${(props) => props.direction},
-    ${() => alpha("background-primary", 0.1)},
-    ${() => alpha("background-primary", 0.5)},
+    ${() => alpha("background_page-primary", 0.1)},
+    ${() => alpha("background_page-primary", 0.5)},
     30%,
-    var(--mb-color-background-primary)
+    var(--mb-color-background_page-primary)
   );
 `;

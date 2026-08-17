@@ -1,5 +1,10 @@
 .ColorButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
+  font-weight: bold;
+  border-radius: var(--default-button-border-radius);
   transition: background 300ms;
   color: var(--notebook-action-button-color);
   background-color: color-mix(
@@ -7,6 +12,18 @@
     var(--notebook-action-button-color),
     transparent 80%
   );
+
+  &.large {
+    padding: 0.5rem 0.75rem;
+
+    @media screen and (--breakpoint-min-lg) {
+      padding: 0.75rem 1rem;
+    }
+  }
+
+  &.small {
+    padding: 0.5rem;
+  }
 
   &.secondary {
     color: var(--mb-color-text-secondary);
@@ -25,4 +42,11 @@
     );
     color: color-mix(in srgb, var(--notebook-action-button-color), black 11.5%);
   }
+}
+
+.label {
+  margin-top: 0.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

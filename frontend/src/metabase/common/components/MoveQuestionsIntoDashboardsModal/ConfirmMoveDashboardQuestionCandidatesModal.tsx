@@ -96,13 +96,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         {match({ isLoading, fetchError, rows })
           .with({ isLoading: true }, () => (
             <Flex justify="center" py="18.25rem">
-              <Loader size="xl" data-testid="loading-indicator" />
+              <Loader size="xl" />
             </Flex>
           ))
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
             return (
               <Flex justify="center" py="19rem">
-                <Text color="error" size="1.25rem" px="md">
+                <Text color="feedback-negative" size="1.25rem" px="md">
                   {fetchError instanceof Error
                     ? (fetchError?.message ?? defaultErrMsg)
                     : defaultErrMsg}
@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="md" color="text-tertiary">
+              <Text size="1.25rem" px="md" color="text-disabled">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>
@@ -135,7 +135,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         px="1.25rem"
       >
         {mutationError ? (
-          <Text color="error">
+          <Text color="feedback-negative">
             {mutationError instanceof Error
               ? (mutationError?.message ?? defaultErrMsg)
               : defaultErrMsg}
@@ -150,7 +150,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "error" : "core-brand"}
+            color={mutationError ? "feedback-negative" : "core-brand"}
           >
             {t`Move these questions`}
           </Button>

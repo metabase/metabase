@@ -3,13 +3,12 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { databaseApi } from "metabase/api";
 import {
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import { databaseApi } from "metabase/api";
+} from "metabase/common/utils/groups";
 import { getPlan } from "metabase/common/utils/plan";
-import { getIsHosted } from "metabase/databases/selectors";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -17,7 +16,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { getSetting, getTokenFeature } from "metabase/selectors/settings";
+import { getSetting, getTokenFeature } from "metabase/settings";
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
@@ -69,6 +68,7 @@ const getGroupHint = (groupType: SpecialGroupType): string | null => {
 // editor/sidebar loading and error UI.
 const selectDatabaseTablesMetadata = (state: State, databaseId: string) =>
   databaseApi.endpoints.getDatabaseMetadata.select({
+    // Unjustified type cast. FIXME
     id: databaseId as unknown as DatabaseId,
     include_hidden: true,
     remove_inactive: true,
@@ -190,7 +190,7 @@ type EntityWithPermissions = {
 
 export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
-  getIsHosted,
+  (state: State) => getSetting(state, "is-hosted?"),
   (state: State) => getSetting(state, "transforms-enabled"),
   (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {
@@ -267,7 +267,8 @@ export const getDatabasesPermissionEditor = createSelector(
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
         ? database.getSchemas()[0]
-        : (database.schema(schemaName) as Schema);
+        : // Unjustified type cast. FIXME
+          (database.schema(schemaName) as Schema);
       permissionSubject = "fields";
       entities = (schema.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
@@ -321,7 +322,9 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
+        // Unjustified type cast. FIXME
         .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
+        // Unjustified type cast. FIXME
         .filter((db) => !(db as Database).router_database_id)
         .map((database) => {
           const entityId = getDatabaseEntityId(database);

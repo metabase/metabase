@@ -1,9 +1,7 @@
-import { push } from "react-router-redux";
-
 import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -14,7 +12,7 @@ function TimelineArchiveModalContainer({
   params,
   ...props
 }: ModalComponentProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -35,7 +33,7 @@ function TimelineArchiveModalContainer({
     archive({ id: event.id, model: "timeline-event" }, false);
 
   const handleGoBack = (timeline: Timeline) => {
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    navigate(Urls.timelineInCollection(timeline));
   };
 
   return (

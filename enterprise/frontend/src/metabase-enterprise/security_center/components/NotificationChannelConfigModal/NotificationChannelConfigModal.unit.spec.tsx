@@ -35,6 +35,7 @@ jest.mock("../../hooks/use-notification-config", () => {
 });
 
 const mockedUseNotificationConfig =
+  // Unjustified type cast. FIXME
   useNotificationConfig as any as jest.MockedFn<typeof useNotificationConfig>;
 
 const DEFAULT_CONFIG: NotificationConfig = {
@@ -263,7 +264,9 @@ const ADMIN_GROUP_RECIPIENT = {
 function setupWithRealHook({
   emailConfigured = true,
   slackConfigured = true,
+  // Unjustified type cast. FIXME
   slackChannel = null as string | null,
+  // Unjustified type cast. FIXME
   emailRecipients = null as any[] | null,
 } = {}) {
   // Restore the real implementation for save-payload tests

@@ -28,7 +28,9 @@ export const FileUploadStatus = () => {
     "collectionId",
   );
 
+  // Unjustified type cast. FIXME
   const tables = Object.keys(groupedTables) as TableId[];
+  // Unjustified type cast. FIXME
   const collections = Object.keys(groupedCollections) as CollectionId[];
 
   return (

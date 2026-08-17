@@ -6,6 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.models.job-run :as job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2])
@@ -111,7 +112,7 @@
             (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-id)))
             (testing "reaped row carries the distinguishing message"
-              (is (= "Timed out: no heartbeat"
+              (is (= "Timed out: crashed"
                      (t2/select-one-fn :message :model/TransformRun :id stale-id))))))
         (testing "a second sweep finds nothing (row already inactive)"
           (is (empty? (transform-run/reap-orphaned-runs! 5))))))))
@@ -143,14 +144,14 @@
                                                           :is_active      nil
                                                           :run_method     :manual
                                                           :last_heartbeat (minutes-ago 10)}]
-      (job-run/heartbeat-runs! [beat-id done-id])
+      (coordinated-run/heartbeat-runs! :model/TransformJobRun [beat-id done-id])
       (testing "only the passed run that is still active gets a fresh heartbeat"
         (is (job-recently-beaten? beat-id))
         (is (not (job-recently-beaten? other-id)) "a run not in the id list is left to go stale"))
       (testing "an inactive run is not stamped even when passed (is_active guard)"
         (is (not (job-recently-beaten? done-id))))
       (testing "empty id list is a no-op"
-        (is (nil? (job-run/heartbeat-runs! [])))))))
+        (is (nil? (coordinated-run/heartbeat-runs! :model/TransformJobRun [])))))))
 
 (deftest job-reap-orphaned-runs!-test
   (mt/with-premium-features #{:transforms-basic}
@@ -171,7 +172,7 @@
             (is (= [stale-id] (mapv :id reaped)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id stale-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-id)))
-            (is (= "Timed out: no heartbeat"
+            (is (= "Timed out: crashed"
                    (t2/select-one-fn :message :model/TransformJobRun :id stale-id)))))
         (testing "a second sweep finds nothing (row already inactive)"
           (is (empty? (job-run/reap-orphaned-runs! 5))))))))

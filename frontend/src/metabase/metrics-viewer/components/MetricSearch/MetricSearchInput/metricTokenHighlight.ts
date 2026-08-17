@@ -244,6 +244,7 @@ const metricTokenKeymap = keymap.of([
       }
       view.dispatch({
         changes: { from: match.from, to: match.to },
+        userEvent: "delete",
       });
       return true;
     },
@@ -263,6 +264,7 @@ const metricTokenKeymap = keymap.of([
       }
       view.dispatch({
         changes: { from: match.from, to: match.to },
+        userEvent: "delete",
       });
       return true;
     },

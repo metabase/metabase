@@ -15,6 +15,7 @@
   {:severity          mi/transform-keyword
    :match_status      mi/transform-keyword
    :affected_versions mi/transform-json
+   :download_jar_urls mi/transform-json
    ;; EDN because HoneySQL treats keywords as identifiers and strings as values.
    :matching_query    mi/transform-edn})
 

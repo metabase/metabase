@@ -6,7 +6,6 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-import { getVisualizationTransformed } from "metabase/visualizations";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
@@ -19,7 +18,7 @@ import {
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 import {
   type DateTimeAbsoluteUnit,
@@ -32,6 +31,8 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
+import { getVisualizationTransformed } from "../../../lib/registry";
+
 function createMockChartMeasurements(
   outerWidth: number,
   xTickWidth: number,
@@ -43,6 +44,7 @@ function createMockChartMeasurements(
       yTicksWidthLeft: 0,
       yTicksWidthRight: 0,
       xTicksHeight: 0,
+      xTickWidthCap: 0,
       firstXTickWidth: 0,
       lastXTickWidth: 0,
     },

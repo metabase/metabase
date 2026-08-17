@@ -75,7 +75,7 @@ const cardModerationVerified: RevisionOrModerationEvent = {
 const cardModerationRemoved: RevisionOrModerationEvent = {
   title: "Bob Jones removed verification.",
   timestamp: "2026-03-17T13:00:00.000Z",
-  icon: { name: "close", color: "text-tertiary" },
+  icon: { name: "close", color: "text-disabled" },
 };
 
 const cardEvents: RevisionOrModerationEvent[] = [

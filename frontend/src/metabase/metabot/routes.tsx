@@ -1,13 +1,32 @@
-import { Route } from "react-router";
+import { Route, registerPagePrefetch } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { SlackConnectSuccess } from "./components/SlackConnectSuccess";
+
+const metabotConversationPage = () =>
+  import("./components/MetabotConversationPage").then(
+    ({ MetabotConversationPage }) => ({ Component: MetabotConversationPage }),
+  );
+
+const slackConnectSuccess = () =>
+  import("./components/SlackConnectSuccess").then(
+    ({ SlackConnectSuccess }) => ({ Component: SlackConnectSuccess }),
+  );
+
+registerPagePrefetch(
+  `/${Urls.CONVERSATION_BASE_PATH}/`,
+  metabotConversationPage,
+);
 
 export const getMetabotRoutes = () => {
   return (
     <>
       {getMetabotQuickLinks()}
-      <Route path="slack-connect-success" component={SlackConnectSuccess} />
+      <Route
+        path={`${Urls.CONVERSATION_BASE_PATH}/:convoId`}
+        lazy={metabotConversationPage}
+      />
+      <Route path="slack-connect-success" lazy={slackConnectSuccess} />
     </>
   );
 };

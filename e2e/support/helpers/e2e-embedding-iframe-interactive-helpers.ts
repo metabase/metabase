@@ -51,6 +51,7 @@ export function postMessageToIframe(options: PostMessageOptions) {
   cy.get(iframeSelector)
     .should("be.visible")
     .then(($iframe) => {
+      // Unjustified type cast. FIXME
       const iframeEl = $iframe[0] as HTMLIFrameElement;
       // Get the actual parent window from the iframe's perspective
       const actualParent = iframeEl.ownerDocument.defaultView;

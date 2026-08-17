@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -20,6 +19,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -63,11 +63,11 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
     collectionItems: [],
   });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path={SEGMENTS_URL} component={TestHome} />
-      <Route path={FORM_URL} component={SegmentApp} />
+      <Route path="/" element={<TestHome />} />
+      <Route path={SEGMENTS_URL} element={<TestHome />} />
+      <Route path={FORM_URL} element={<SegmentApp />} />
     </>,
     {
       initialRoute,
@@ -78,7 +78,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   return {
-    history: checkNotNull(history),
+    router: checkNotNull(router),
     mockEventListener,
   };
 };
@@ -110,21 +110,21 @@ describe("SegmentApp", () => {
   });
 
   it("does not show custom warning modal when leaving with no changes via SPA navigation", () => {
-    const { history } = setup({ initialRoute: "/" });
+    const { router } = setup({ initialRoute: "/" });
 
     act(() => {
-      history.push(FORM_URL);
-      history.goBack();
+      router.navigate(FORM_URL);
+      router.back();
     });
 
     expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 
   it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-    const { history } = setup({ initialRoute: "/" });
+    const { router } = setup({ initialRoute: "/" });
 
     act(() => {
-      history.push(FORM_URL);
+      router.navigate(FORM_URL);
     });
 
     await userEvent.type(
@@ -133,14 +133,14 @@ describe("SegmentApp", () => {
     );
 
     act(() => {
-      history.goBack();
+      router.back();
     });
 
     expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await userEvent.click(screen.getByText("Select a table"));
 
@@ -171,7 +171,7 @@ describe("SegmentApp", () => {
     await userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {
-      expect(history.getCurrentLocation().pathname).toBe(SEGMENTS_URL);
+      expect(router.location.pathname).toBe(SEGMENTS_URL);
     });
 
     expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();

@@ -2,13 +2,14 @@ import { type FormikHelpers, useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
-import { useAdminSettings } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { FormErrorMessage, FormProvider, FormTextInput } from "metabase/forms";
+import { useAdminSettings } from "metabase/settings";
 import { Text } from "metabase/ui";
 import type { BedrockCredentials } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {
@@ -158,7 +159,7 @@ const BedrockCredentialFields = ({
       />
       {accessKeyIdEnvName && <SetByEnvVar varName={accessKeyIdEnvName} />}
       {credentialsError && (
-        <Text size="sm" c="error" role="alert">
+        <Text size="sm" c="feedback-negative" role="alert">
           {credentialsError}
         </Text>
       )}

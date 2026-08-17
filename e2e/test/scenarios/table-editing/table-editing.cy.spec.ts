@@ -134,39 +134,41 @@ describe("scenarios > table-editing", () => {
         `CREATE TABLE IF NOT EXISTS ${INLINE_EDIT_TEST_TABLE_NAME} AS SELECT id, uuid, integer, tinyint, string, date, datetime, boolean FROM ${EDITABLE_SOURCE_TABLE_NAME}`,
         "postgres",
       );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-      H.getTableId({
-        databaseId: WRITABLE_DB_ID,
-        name: INLINE_EDIT_TEST_TABLE_NAME,
-      }).then((tableId) => {
-        /*
-          Adjusting "string" column type.
-          By default it is set to "type/Category" due to only 2 unique values in test dataset.
-          This causes to "string" column cell rendering a dropdown instead of an input field
-          when editing.
-        */
-        H.getFieldId({
-          tableId,
-          name: "string",
-        }).then((fieldId) => {
-          cy.request("PUT", `/api/field/${fieldId}`, {
-            semantic_type: null,
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID }).then(() => {
+        H.getTableId({
+          databaseId: WRITABLE_DB_ID,
+          name: INLINE_EDIT_TEST_TABLE_NAME,
+        }).then((tableId) => {
+          /*
+            Adjusting "string" column type.
+            By default it is set to "type/Category" due to only 2 unique values in test dataset.
+            This causes to "string" column cell rendering a dropdown instead of an input field
+            when editing.
+          */
+          H.getFieldId({
+            tableId,
+            name: "string",
+          }).then((fieldId) => {
+            cy.request("PUT", `/api/field/${fieldId}`, {
+              semantic_type: null,
+            });
           });
+
+          cy.intercept("GET", `/api/table/${tableId}/query_metadata`).as(
+            "getDataTable",
+          );
+          cy.intercept("POST", "api/dataset").as("getTableDataQuery");
+          cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
+            "updateTableData",
+          );
+
+          cy.visit(
+            `/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`,
+          );
+
+          cy.wait("@getDataTable");
+          cy.log("table data loaded");
         });
-
-        cy.intercept("GET", `/api/table/${tableId}/query_metadata`).as(
-          "getDataTable",
-        );
-        cy.intercept("POST", "api/dataset").as("getTableDataQuery");
-        cy.intercept("POST", "api/ee/action-v2/execute-bulk").as(
-          "updateTableData",
-        );
-
-        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
-
-        cy.wait("@getDataTable");
-        cy.log("table data loaded");
       });
     });
 
@@ -385,9 +387,9 @@ describe("scenarios > table-editing", () => {
             });
           });
 
-        const day = Math.floor(Math.random() * 10) + 10; // 10-20
-        const hour = Math.floor(Math.random() * 12);
-        const minute = Math.floor(Math.random() * 60);
+        const day = 15;
+        const hour = 11;
+        const minute = 35;
 
         H.popover().within(() => {
           cy.findByRole("button", { name: `${day} February 2020` }).click();
@@ -401,9 +403,7 @@ describe("scenarios > table-editing", () => {
         });
 
         cy.wait("@updateTableData").then(({ response, request }) => {
-          const targetDate = dayjs(
-            new Date(2020, 1, day, hour, minute, 0),
-          ).format("YYYY-MM-DDTHH:mm:ss");
+          const targetDate = "2020-02-15T11:35:00";
 
           const requestDate = request.body.params.datetime;
           const responseDate = response?.body.outputs[0].row.datetime;

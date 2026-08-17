@@ -32,7 +32,7 @@ interface FieldLabelProps {
 export const FieldLabel = styled.label<FieldLabelProps>`
   display: block;
   color: ${(props) =>
-    props.hasError ? color("error") : color("text-secondary")};
+    props.hasError ? color("feedback-negative") : color("text-secondary")};
   font-size: 0.77rem;
   font-weight: 900;
 `;
@@ -57,7 +57,7 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
 `;
 
 export const FieldLabelError = styled.span`
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 `;
 
 export const FieldDescription = styled.div`
@@ -66,7 +66,7 @@ export const FieldDescription = styled.div`
 `;
 
 export const FieldInfoIcon = styled(Icon)`
-  color: var(--mb-color-background-tertiary-inverse);
+  color: var(--mb-color-background_page-tertiary-inverse);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;

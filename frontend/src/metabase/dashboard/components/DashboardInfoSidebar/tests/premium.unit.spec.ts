@@ -28,6 +28,7 @@ describe("DashboardInfoSidebar > enterprise", () => {
   describe("entity id display", () => {
     it("should show entity ids only with serialization feature", async () => {
       const dashboard = createMockDashboard({
+        // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as Dashboard["entity_id"],
       });
       await setupEnterprise({ dashboard });

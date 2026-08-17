@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -32,8 +33,22 @@
     (= ::field-values/fv-deleted result) {:deleted 1}))
 
 (defn- table->fields-to-scan
-  [table]
-  (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  "Up to `limit` active, normal-visibility Fields of `table`, ordered by id so the selection is stable across syncs.
+  Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
+  into memory and issuing a warehouse request per field."
+  [table limit]
+  (t2/select :model/Field
+             :table_id (u/the-id table), :active true, :visibility_type "normal"
+             {:order-by [[:id :asc]] :limit limit}))
+
+(defn- warn-too-many-fields!
+  "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
+  `limit` are scanned and the rest skipped -- scanning that many Fields would load them all into memory and (on non-SQL
+  drivers like Mongo) issue a warehouse request per field."
+  [table limit]
+  (log/warnf (str "Table %s has more than scan-max-fields-per-table (%d) fields to scan for field values; scanning the "
+                  "first %d and skipping the rest. Raise MB_SCAN_MAX_FIELDS_PER_TABLE to scan more.")
+             (sync-util/name-for-logging table) limit limit))
 
 (defn- can-batch-distinct?
   "Can this `table`'s database support the UNION ALL distinct-batch query? Requires:
@@ -164,7 +179,11 @@
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
   [table :- i/TableInstance]
-  (let [all-fields       (table->fields-to-scan table)
+  (let [limit            (sync.settings/scan-max-fields-per-table)
+        scanned          (table->fields-to-scan table (inc limit))
+        _                (when (> (count scanned) limit)
+                           (warn-too-many-fields! table limit))
+        all-fields       (take limit scanned)
         {to-sync  true
          to-clear false} (group-by #(boolean (field-values/field-should-have-field-values? %))
                                    all-fields)
@@ -181,8 +200,8 @@
                                     (let [fv (get fvs-map (u/the-id field))]
                                       (cond
                                         (not fv)
-                                        (do (log/infof "%s does not have FieldValues. Skipping..."
-                                                       (sync-util/name-for-logging field))
+                                        (do (log/tracef "%s does not have FieldValues. Skipping..."
+                                                        (sync-util/name-for-logging field))
                                             false)
 
                                         (field-values/inactive? fv)
@@ -270,7 +289,7 @@
   For more info about advanced FieldValues, check the docs
   in [[metabase.warehouse-schema.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
-  (->> (table->fields-to-scan table)
+  (->> (table->fields-to-scan table (sync.settings/scan-max-fields-per-table))
        (map delete-expired-advanced-field-values-for-field!)
        (reduce +)))
 

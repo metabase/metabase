@@ -417,15 +417,21 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
+            ;; `invite-user!` passes this through to `create-and-invite-user!`; without it the new user gets a random
+            ;; password and can never log in. Deliberately not `ms/ValidPassword`: admins provisioning accounts here
+            ;; have never been held to the complexity rules that `PUT /api/user/:id/password` enforces.
+            [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
-            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+            [:invite_target          {:optional true} [:maybe users.schema/InviteTarget]]]]
   (users/invite-user! (set/rename-keys body {:first_name             :first-name
                                              :last_name              :last-name
                                              :user_group_memberships :user-group-memberships
                                              :login_attributes       :login-attributes
-                                             :tenant_id              :tenant-id})))
+                                             :tenant_id              :tenant-id
+                                             :invite_target          :invite-target})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -589,7 +595,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+                                       [:password     ms/ValidPassword]
+                                       [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],

@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
-
 export const PageRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -32,8 +30,4 @@ export const PageBody = styled.div`
   line-height: 1.457em;
   margin: 1rem 0;
   text-align: center;
-`;
-
-export const PageButton = styled(Button)`
-  margin-top: 2rem;
 `;

@@ -29,6 +29,23 @@
              (appearance.settings/help-link! :hidden)))
         (is (= :metabase (appearance.settings/help-link)))))))
 
+(deftest application-font-validation-test
+  (mt/discard-setting-changes [application-font]
+    (mt/with-premium-features #{:whitelabel}
+      (testing "application-font accepts a valid font"
+        (appearance.settings/application-font! "Open Sans")
+        (is (= "Open Sans" (appearance.settings/application-font))))
+      (testing "application-font rejects an unknown font"
+        (is (thrown-with-msg?
+             Exception #"Invalid font"
+             (appearance.settings/application-font! "Comic Sans")))))
+    (mt/with-premium-features #{}
+      (testing "application-font cannot be set when whitelabeling is not enabled"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting application-font is not enabled because feature :whitelabel is not available"
+             (appearance.settings/application-font! "Open Sans")))))))
+
 (deftest validate-help-url-test
   (testing "validate-help-url accepts valid URLs with HTTP or HTTPS protocols"
     (is (nil? (#'appearance.settings/validate-help-url "http://www.metabase.com")))

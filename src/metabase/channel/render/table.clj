@@ -181,7 +181,7 @@
   "Renders the body (<tbody>) of an HTML table as a Hiccup data structure.
 
   Params:
-  - get-background-color: Function that determines cell background colors
+  - get-background-color: (fn [row-idx col-idx]) returning the cell's background color or nil
   - column-names: Sequence of column names/identifiers
   - rows: Sequence of row data, each containing cell values
   - columns: Column configuration objects with type information
@@ -207,7 +207,7 @@
           [:td {:style (style/style
                         (row-style-for-type cell)
                         (get col->styles (:name column))
-                        {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
+                        {:background-color (get-background-color row-idx col-idx)}
                         (when (= row-idx (dec (count rows)))
                           {:border-bottom 0})
                         (when (= col-idx (dec (count row)))
@@ -296,7 +296,8 @@
   "Generates a complete HTML table as a Hiccup data structure for displaying tabular data.
 
   Params:
-  - color-selector: Function that determines background colors for cells
+  - color-data: `{:cols ... :rows ...}` query results the cell-coloring rules evaluate against
+      (see [[js.color/cell-background-colors]]); the rules themselves come from viz-settings
   - column-names-map: Map containing:
       :col-names - Display names of visible columns to show in the UI
       :cols-for-color-lookup - Original column names needed for color determination
@@ -304,7 +305,7 @@
   - columns: Filtered column definitions
   - viz-settings: Visualization settings map controlling display options
   - minibar-cols: Columns that should display mini-bar visualizations"
-  ([color-selector {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
+  ([color-data {:keys [col-names cols-for-color-lookup]} [header & rows] columns viz-settings minibar-cols]
    (let [col->styles        (column->viz-setting-styles columns viz-settings)
          row-index?         (:table.row_index viz-settings)
          pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
@@ -317,7 +318,14 @@
                                                          (let [group (:num-value (nth (:row row) pivot-grouping-idx))]
                                                            (when (= 0 group)
                                                              (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
-         color-getter       (partial js.color/get-background-color color-selector)
+         keyed-cells        (for [[row-idx {:keys [row]}] (m/indexed rows)
+                                  [col-idx cell]          (m/indexed row)]
+                              [[row-idx col-idx]
+                               [cell row-idx (get cols-for-color-lookup col-idx)]])
+         cell-colors        (zipmap (map first keyed-cells)
+                                    (js.color/cell-background-colors color-data viz-settings
+                                                                     (mapv second keyed-cells)))
+         color-getter       (fn [row-idx col-idx] (get cell-colors [row-idx col-idx]))
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
          tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]
      [:table {:style       (style/style {:max-width     "100%"

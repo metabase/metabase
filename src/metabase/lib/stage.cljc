@@ -14,6 +14,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -141,7 +142,9 @@
    options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
+      (not-empty
+       (into [] (remove :remapped-from)
+             (lib.metadata.calculation/returned-columns query stage-number card options))))))
 
 ;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
 (mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -294,7 +297,7 @@
 (mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- ::lib.metadata.calculation/returned-columns
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
-   _stage                                 :- ::lib.schema/stage
+   stage                                  :- ::lib.schema/stage
    {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   ;; Not including the stage itself in the cache key, since it's not used(!)
   (lib.computed/with-cache-ephemeral* query [::returned-columns stage-number (lib.metadata.calculation/cacheable-options options)]
@@ -328,7 +331,9 @@
                                source-cols
                                (expressions-metadata query stage-number {:include-late-exprs? true})
                                (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-                               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))]
+                               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
+             cols         (cond-> cols
+                            (:pivot stage) lib.pivot/splice-pivot-grouping)]
          (into []
                (comp (lib.field.util/add-source-and-desired-aliases-xform query)
                      ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break

@@ -3,15 +3,15 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { skipToken, useGetMetabotSettingsQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { skipToken } from "metabase/api";
 import {
   AIProviderConfigurationForm,
   getProviderOptions,
   parseProviderAndModel,
+  useGetMetabotSettingsQuery,
 } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import { Badge, Flex, Group } from "metabase/ui";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {
@@ -39,9 +39,8 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
           <Group gap="xs" wrap="nowrap">
             {connectedProvider && (
               <Badge
-                circle
-                size="12"
-                bg={hasCredentialsError ? "error" : "success"}
+                color={hasCredentialsError ? "negative" : "positive"}
+                indicator
                 mr="sm"
               />
             )}

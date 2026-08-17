@@ -8,6 +8,7 @@ module.exports = {
     version: "1.0.0",
   },
   rules: {
+    "enforce-module-public-api": require("./rules/enforce-module-public-api"),
     "jtag-missing-key": require("./rules/jtag-missing-key"),
     "no-color-literals": require("./rules/no-color-literals"),
     "no-direct-helper-import": require("./rules/no-direct-helper-import"),
@@ -20,5 +21,6 @@ module.exports = {
     "no-unsafe-element-filtering": require("./rules/no-unsafe-element-filtering"),
     "no-unscoped-text-selectors": require("./rules/no-unscoped-text-selectors"),
     "no-analytics-import-outside-analytics-files": require("./rules/no-analytics-import-outside-analytics-files"),
+    "no-unjustified-type-casts": require("./rules/no-unjustified-type-casts"),
   },
 };

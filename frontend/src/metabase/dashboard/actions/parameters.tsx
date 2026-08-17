@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -42,6 +41,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValuesMap,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -85,6 +85,9 @@ import {
 } from "../utils";
 
 import {
+  REMOVE_PARAMETER,
+  RESET_PARAMETERS,
+  SET_PARAMETER_VALUE,
   type SetDashCardAttributesOpts,
   setDashCardAttributes,
   setDashboardAttributes,
@@ -139,7 +142,10 @@ export function duplicateParameters(
   getState: GetState,
   parameterIds: ParameterId[],
 ) {
-  const parameters = getParameters(getState());
+  // getParameters returns UiParameters, which are not serializable
+  // so the duplicated parameter will throw on save. we need dashboard.parameters instead
+  const dashboard = getDashboard(getState());
+  const parameters = dashboard?.parameters ?? [];
 
   const newParameters = parameterIds.map((parameterId) => {
     const parameter = parameters.find((p) => p.id === parameterId);
@@ -378,7 +384,6 @@ export function removeParameterAndReferences(
   });
 }
 
-export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
@@ -821,7 +826,6 @@ export const setParameterFilteringParameters = createThunkAction(
     },
 );
 
-export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
@@ -876,7 +880,6 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
 export const resetParameters = createThunkAction(
   RESET_PARAMETERS,
   () => (_dispatch, getState) => {
@@ -951,6 +954,7 @@ export const setParameterTemporalUnits = createThunkAction(
         temporal_units: temporalUnits,
         default:
           parameter.default &&
+          // Unjustified type cast. FIXME
           temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,
@@ -1066,7 +1070,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: LocationDescriptorObject["query"] = {}) =>
+  (queryParams: ParameterValuesMap = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
@@ -1137,3 +1141,5 @@ export const closeAutoApplyFiltersToast = createThunkAction(
     }
   },
 );
+
+export { REMOVE_PARAMETER, RESET_PARAMETERS, SET_PARAMETER_VALUE };

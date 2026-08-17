@@ -274,6 +274,11 @@
   [f coll]
   (unreduced (reduce #(if (f %2) true (reduced false)) true coll)))
 
+(defn every-key?
+  "Efficiently check if every key in map `m` matched predicate `f`."
+  [f m]
+  (reduce-kv (fn [_ k _] (if (f k) true (reduced false))) true m))
+
 (defn concat
   "Like `clojure.core/concat` but accumulates the result into a vector. NOT a drop-in replacement."
   ([a b]
@@ -362,7 +367,6 @@
   (cond (nil? m) {}
         ;; Fallback for non-editable collections where transients aren't supported.
         (not (editable? m))
-        #_{:clj-kondo/ignore [:discouraged-var]}
         (clojure.core/update-keys m f)
         :else (-> (reduce-kv (fn [acc k v]
                                (let [k' (f k)]
@@ -383,7 +387,6 @@
   (cond (nil? coll) {}
         ;; Fallback for non-editable collections where transients aren't supported.
         (not (editable? coll))
-        #_{:clj-kondo/ignore [:discouraged-var]}
         (clojure.core/update-vals coll f)
         :else (-> (reduce-kv (fn [acc k v]
                                (let [v' (f v)]

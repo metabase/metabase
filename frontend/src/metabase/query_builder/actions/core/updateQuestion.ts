@@ -3,6 +3,7 @@ import _ from "underscore";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import {
+  UPDATE_QUESTION,
   onCloseQuestionInfo,
   setUIControls,
 } from "metabase/redux/query-builder";
@@ -14,7 +15,6 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Series } from "metabase-types/api";
 
 import {
   getIsShowingTemplateTagsEditor,
@@ -52,12 +52,14 @@ function shouldTemplateTagEditorBeVisible({
   ).isNative;
 
   const previousTags = isCurrentQuestionNative
-    ? (
+    ? // Unjustified type cast. FIXME
+      (
         currentQuestion.legacyNativeQuery() as NativeQuery
       ).variableTemplateTags()
     : [];
   const nextTags = isNewQuestionNative
-    ? (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
+    ? // Unjustified type cast. FIXME
+      (newQuestion.legacyNativeQuery() as NativeQuery).variableTemplateTags()
     : [];
   if (nextTags.length > previousTags.length) {
     return true;
@@ -76,7 +78,6 @@ export type UpdateQuestionOpts = {
 /**
  * Replaces the currently active question with the given Question object.
  */
-export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion: Question,
   {
@@ -101,12 +102,12 @@ export const updateQuestion = (
       run = false;
     }
 
-    const rawSeries = getRawSeries(getState()) as Series;
+    const rawSeries = getRawSeries(getState());
 
     const computedPivotQuestion = computeQuestionPivotTable({
       question: newQuestion,
       currentQuestion,
-      rawSeries,
+      rawSeries: rawSeries ?? undefined,
     });
 
     newQuestion = computedPivotQuestion.question;

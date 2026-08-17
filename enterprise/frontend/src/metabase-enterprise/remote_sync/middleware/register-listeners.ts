@@ -9,6 +9,7 @@ import { isAnyOf } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
 import type { State } from "metabase/redux/store";
+import { getSetting } from "metabase/settings";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";
@@ -49,7 +50,7 @@ function shouldInvalidateForRemoteSyncedModel(
 }
 
 function isTransformsSyncEnabled(state: State): boolean {
-  return !!state.settings?.values?.[TRANSFORMS_KEY];
+  return !!getSetting(state, TRANSFORMS_KEY);
 }
 
 function shouldInvalidateForCollection(
@@ -92,6 +93,7 @@ function shouldInvalidateForCollection(
  */
 function getActionPayload<T>(action: UnknownAction): T | undefined {
   if (action && typeof action === "object" && "payload" in action) {
+    // Unjustified type cast. FIXME
     return action.payload as T;
   }
   return undefined;
@@ -181,6 +183,7 @@ function registerUpdateListeners(
           }
           const oldModel = invalidation.getOriginal(
             getOriginalState(),
+            // Unjustified type cast. FIXME
             newModel.id as number,
           );
           if (shouldInvalidateForRemoteSyncedModel(oldModel, newModel)) {
@@ -243,6 +246,7 @@ function registerDeleteListeners(
           }
           const model = invalidation.getOriginal(
             getOriginalState(),
+            // Unjustified type cast. FIXME
             id as number,
           );
           if (model?.is_remote_synced) {

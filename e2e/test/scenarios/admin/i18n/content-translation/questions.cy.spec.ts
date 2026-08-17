@@ -16,6 +16,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
       );
     });
 
+    // Unjustified type cast. FIXME
     let productsQuestionId = null as unknown as number;
 
     before(() => {
@@ -41,6 +42,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
       });
     });
 
+    // Unjustified type cast. FIXME
     let visitEmbeddedQuestion = null as unknown as ({
       locale,
     }: {
@@ -48,6 +50,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
     }) => void;
 
     beforeEach(() => {
+      // Unjustified type cast. FIXME
       H.restore("snapshot-for-questions" as any);
       visitEmbeddedQuestion = ({ locale }) => {
         H.visitEmbeddedPage(

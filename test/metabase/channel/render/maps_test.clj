@@ -2,8 +2,11 @@
   (:require
    [clj-http.fake :as fake]
    [clojure.test :refer :all]
+   [metabase.channel.render.body :as body]
    [metabase.channel.render.maps :as maps]
-   [metabase.pulse.render.test-util :as render.tu])
+   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.test :as mt]
+   [metabase.util.match :as match])
   (:import
    (java.awt Color)
    (java.io ByteArrayInputStream)
@@ -49,6 +52,15 @@
                                :metric  9}]
                              (assoc test-sizing-opts
                                     :tile-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"))))))
+
+(deftest render-region-map-test
+  (mt/id) ;; force the app-db test dataset to exist; the render pipeline queries it for timeline annotations
+  (testing "A region (choropleth) map card renders to an image, not a leaked-data table"
+    (let [card {:display :map :visualization_settings {"map.type" "region" "map.region" "us_states"}}
+          data {:cols [{:name "STATE" :base_type :type/Text} {:name "METRIC" :base_type :type/Number}]
+                :rows [["CA" 99999] ["NY" 11111]]}
+          rendered (body/render :region_map :inline "UTC" card nil data)]
+      (is (match/match-one (:content rendered) [:img _] true)))))
 
 (deftest ^:parallel pin-marker-icon-loads-test
   (testing "the teardrop pin marker icon is present on the classpath (markers pin type depends on it)"

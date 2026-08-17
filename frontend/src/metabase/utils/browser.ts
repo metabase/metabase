@@ -19,6 +19,24 @@ function parseQueryStringOptions(s: string) {
   return options;
 }
 
+export type SearchQuery = Record<string, string | string[]>;
+
+/**
+ * Parse a URL search string into a query object: a repeated key becomes an
+ * array, a valueless key stays `""`. For the call sites that hand a whole query
+ * bag to something else (dashboard parameter values, search filters, the command
+ * palette); read a named param off `URLSearchParams` instead where you can.
+ */
+export function parseSearchQuery(search: string): SearchQuery {
+  const params = new URLSearchParams(search);
+  const query: SearchQuery = {};
+  for (const key of new Set(params.keys())) {
+    const values = params.getAll(key);
+    query[key] = values.length > 1 ? values : values[0];
+  }
+  return query;
+}
+
 export function isWebkit() {
   const ua = navigator.userAgent || "";
 

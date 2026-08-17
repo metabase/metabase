@@ -1,25 +1,59 @@
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import type {
+import {
+  type OnBeforeRequestHandler,
+  type OnBeforeRequestHandlerConfig,
+  PLUGIN_API,
+} from "./request-handlers";
+
+export type {
   OnBeforeRequestHandler,
   OnBeforeRequestHandlerConfig,
-} from "metabase/plugins/oss/api";
+} from "./request-handlers";
+
+/**
+ * The complete, ordered request-manipulation pipeline.
+ *
+ * Every handler is a named slot on `PLUGIN_API` — a no-op by default,
+ * populated by the owning feature's init flow (SDK auth, guest/public/static
+ * embeds, the embed-referrer handlers). Listing them here, rather than letting
+ * features push handlers onto a dynamic array, keeps the full set of things
+ * that can rewrite an outgoing request — and the order they run in — visible
+ * in one place.
+ *
+ * Order matters: handlers run in sequence and each one sees the result of the
+ * previous one. In particular the embed-preview rewrite must run after the
+ * embed overrides, which produce the `/api/embed/...` urls it rewrites.
+ */
+function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
+  return [
+    PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders,
+    PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader,
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders,
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader,
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler,
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.embedReferrer,
+  ];
+}
 
 export async function apiRequestManipulationMiddleware(
-  beforeRequestHandlers: OnBeforeRequestHandler[],
   requestConfig: OnBeforeRequestHandlerConfig,
 ): Promise<OnBeforeRequestHandlerConfig> {
-  // Handlers order is important.
-  // Handlers are executed in order and each handler uses the data returned by a previous handler.
-  const handlers = [
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-      .getOrRefreshGuestSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
-    ...beforeRequestHandlers,
-  ];
+  return runBeforeRequestHandlers(getOnBeforeRequestHandlers(), requestConfig);
+}
 
+/**
+ * Run a list of handlers over the request config, in order, merging each
+ * handler's partial result into the running config. Exported so the
+ * merge/ordering semantics can be unit-tested with an explicit handler list.
+ */
+export async function runBeforeRequestHandlers(
+  handlers: OnBeforeRequestHandler[],
+  requestConfig: OnBeforeRequestHandlerConfig,
+): Promise<OnBeforeRequestHandlerConfig> {
   let result = requestConfig;
   for (const handler of handlers) {
     const next = await handler(result);

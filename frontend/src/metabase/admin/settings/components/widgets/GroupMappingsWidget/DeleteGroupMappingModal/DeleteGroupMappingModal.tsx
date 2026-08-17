@@ -5,17 +5,7 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Modal } from "metabase/common/components/Modal";
-import { ModalFooter } from "metabase/common/components/ModalContent";
-import { Radio } from "metabase/common/components/Radio";
-import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
-
-import {
-  ModalHeader,
-  ModalRadioRoot,
-  ModalSubtitle,
-} from "./DeleteGroupMappingModal.styled";
+import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
@@ -28,7 +18,7 @@ export type DeleteGroupMappingModalProps = {
   onHide: () => void;
 };
 
-const DeleteGroupMappingModal = ({
+export const DeleteGroupMappingModal = ({
   name,
   groupIds,
   onConfirm,
@@ -64,48 +54,51 @@ const DeleteGroupMappingModal = ({
       : t`What should happen with the group itself in Metabase?`;
 
   return (
-    <Modal>
-      <div>
-        <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
-        <ModalSubtitle>{subtitle}</ModalSubtitle>
-        <ModalRadioRoot>
-          <p>{whatShouldHappenText}</p>
+    <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
+      <Stack gap="lg" mt="sm">
+        <Text>{subtitle}</Text>
 
-          <Radio
-            className={CS.ml2}
-            vertical
-            value={value as DeleteMappingModalValueType | undefined}
-            options={[
-              {
-                name: t`Nothing, just remove the mapping`,
-                value: "nothing",
-              },
-              {
-                name: t`Also remove all group members (except from Admin)`,
-                value: "clear",
-              },
-              {
-                name:
+        <Box>
+          <Text mb="md">{whatShouldHappenText}</Text>
+          <Radio.Group
+            value={value}
+            onChange={(newValue) =>
+              // Unjustified type cast. FIXME
+              handleChange(newValue as DeleteMappingModalValueType)
+            }
+          >
+            <Stack gap="sm">
+              <Radio
+                value="nothing"
+                label={t`Nothing, just remove the mapping`}
+              />
+              <Radio
+                value="clear"
+                label={t`Also remove all group members (except from Admin)`}
+              />
+              <Radio
+                value="delete"
+                label={
                   groupIds.length > 1
                     ? t`Also delete the groups (except Admin)`
-                    : t`Also delete the group`,
-                value: "delete",
-              },
-            ]}
-            showButtons
-            onChange={handleChange}
-          />
-        </ModalRadioRoot>
-        <ModalFooter fullPageModal={false} formModal={true}>
+                    : t`Also delete the group`
+                }
+              />
+            </Stack>
+          </Radio.Group>
+        </Box>
+
+        <Group justify="flex-end">
           <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button variant="filled" color="error" onClick={handleConfirm}>
-            {submitButtonLabels[value as DeleteMappingModalValueType]}
+          <Button
+            variant="filled"
+            color="feedback-negative"
+            onClick={handleConfirm}
+          >
+            {submitButtonLabels[value]}
           </Button>
-        </ModalFooter>
-      </div>
+        </Group>
+      </Stack>
     </Modal>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteGroupMappingModal;

@@ -231,8 +231,8 @@
                   (format "%s :synonym_pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-metabot-catalog-test
-  (testing ":metabot mirrors :universe when neither content-verification nor use_verified_content is active"
-    ;; Pin both gates explicitly instead of relying on test-env defaults — the reused-verbatim path
+  (testing ":metabot mirrors :universe when use_verified_content is off"
+    ;; Pin the setting explicitly instead of relying on test-env defaults — the unfiltered path
     ;; is only exercised when the scope is empty, and we want this assertion to keep passing even
     ;; if the ambient defaults shift.
     (mt/with-premium-features #{}
@@ -241,23 +241,28 @@
         (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] nil)]
           (let [resp (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)]
             (is (= (:universe resp) (:metabot resp))))))))
-  (testing ":metabot is scored separately when :content-verification + use_verified_content are both active"
-    ;; Positive path: verified-only filtering restricts Cards to those with an active verified
-    ;; moderation review. We inject a fresh unverified Card so the assertion doesn't depend on
-    ;; ambient test-env content — the `:universe` count includes this Card, `:metabot` excludes it.
-    (mt/with-premium-features #{:content-verification}
+  (testing ":metabot is narrowed to curated content when use_verified_content is on — with no premium-feature gate"
+    ;; Positive path: curated-only filtering restricts Cards and Tables to curated ones. We inject
+    ;; a fresh uncurated Card + Table so the assertion doesn't depend on ambient test-env content —
+    ;; the `:universe` count includes them, `:metabot` excludes them. Premium features are pinned
+    ;; OFF to guard against reintroducing the old :content-verification gate (curated-only
+    ;; filtering mirrors the search index's precomputed `curated` column, which has no runtime gate).
+    (mt/with-premium-features #{}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Card    _           {:database_id db-id
                                                  :type        :model
-                                                 :name        "Unverified Only Card"
-                                                 :archived    false}]
+                                                 :name        "Uncurated Card"
+                                                 :archived    false}
+                     :model/Table   _           {:db_id  db-id
+                                                 :name   "uncurated_table"
+                                                 :active true}]
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content true :collection_id nil}
           (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] nil)]
             (let [resp (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)]
               (is (< (get-in resp [:metabot  :components :size :components :entity_count :measurement])
                      (get-in resp [:universe :components :size :components :entity_count :measurement]))
-                  ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card"))))))))
+                  ":metabot entity-count must be strictly < :universe when curated-only filters out the injected uncurated Card/Table"))))))))
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-metabot-collection-scope-test
   (testing ":metabot is scoped to the internal Metabot's collection_id subtree (root + descendants)"
@@ -267,10 +272,10 @@
     ;;   sibling    → holds the out-of-subtree Card
     ;;   empty      → no Cards; baseline scope so we can pin *exact* card-count deltas
     ;;
-    ;; Tables pass through :metabot unfiltered, so ambient table counts cancel when we take
-    ;; differentials against `empty`. That leaves us a clean count of Cards visible under each
-    ;; scope, which lets us assert exact expected counts rather than relative inequalities.
-    ;; Pin premium features off explicitly so `:verified-only?` can't drift in and confound.
+    ;; With use_verified_content off, Tables only get the visibility/routed-DB filter — identical
+    ;; across scopes — so ambient table counts cancel when we take differentials against `empty`.
+    ;; That leaves us a clean count of Cards visible under each scope, which lets us assert exact
+    ;; expected counts rather than relative inequalities.
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {parent-id :id}  {:name "Metabot Scope Parent"
                                                          :location "/"}
@@ -401,22 +406,21 @@
           (is (= 2 @call-count)))))))
 
 (deftest internal-metabot-scope-test
-  (testing ":verified-only? is true only when the premium feature + use_verified_content both apply"
-    (doseq [{:keys [features use-verified? expected-verified?]}
-            [{:features #{}                        :use-verified? false :expected-verified? false}
-             {:features #{}                        :use-verified? true  :expected-verified? false}
-             {:features #{:content-verification}   :use-verified? false :expected-verified? false}
-             {:features #{:content-verification}   :use-verified? true  :expected-verified? true}]]
+  (testing ":curated-only? mirrors use_verified_content regardless of premium features"
+    ;; No feature gate, matching the search index's precomputed `curated` column: a curation signal
+    ;; can only be set while its feature is present, so the signals are already feature-correct.
+    (doseq [features      [#{} #{:content-verification}]
+            use-verified? [false true]]
       (testing (format "features=%s use_verified_content=%s" (pr-str features) use-verified?)
         (mt/with-premium-features features
           (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                    {:use_verified_content use-verified? :collection_id nil}
-            (is (= {:verified-only? expected-verified? :collection-id nil}
+            (is (= {:curated-only? use-verified? :collection-id nil}
                    (metabot-scope/internal-metabot-scope))))))))
   (testing ":collection-id is read straight from the internal Metabot row regardless of premium features"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "metabot scope test coll"}]
       (mt/with-premium-features #{}
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content false :collection_id coll-id}
-          (is (= {:verified-only? false :collection-id coll-id}
+          (is (= {:curated-only? false :collection-id coll-id}
                  (metabot-scope/internal-metabot-scope))))))))

@@ -1,18 +1,19 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isTouchDevice } from "metabase/utils/browser";
+import { isPlainKey } from "metabase/utils/keyboard";
 import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
@@ -20,8 +21,8 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,
@@ -53,7 +54,11 @@ const ItemLinkComponent = ({
   }
 
   return (
-    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
+    <ItemLink
+      draggable={item.model !== "collection"}
+      to={modelToUrl(item)}
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );
@@ -80,6 +85,16 @@ export const Columns = {
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}
+            onKeyDown={(event) => {
+              if (
+                // Blurs the checkbox when these keys are pressed so that shortcuts can work
+                isPlainKey(event, "Escape") ||
+                isPlainKey(event, "Delete") ||
+                isPlainKey(event, "Backspace")
+              ) {
+                event.currentTarget.blur();
+              }
+            }}
             aria-label={t`Select all items`}
           />
         </BulkSelectWrapper>
@@ -142,9 +157,7 @@ export const Columns = {
     ),
   },
   Name: {
-    Col: ({ isInDragLayer }: { isInDragLayer: boolean }) => (
-      <col style={{ width: isInDragLayer ? "10rem" : undefined }} />
-    ),
+    Col: () => <col />,
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="name"
@@ -334,29 +347,11 @@ export const Columns = {
   ActionMenu: {
     Header: () => <th></th>,
     Col: () => <col style={{ width: "100px" }} />,
-    Cell: ({
-      item,
-      collection,
-      databases,
-      bookmarks,
-      onCopy,
-      onMove,
-      createBookmark,
-      deleteBookmark,
-    }: ActionMenuProps) => {
+    Cell: (props: ActionMenuProps) => {
       return (
         <ItemCell>
-          <RowActionsContainer>
-            <ActionMenu
-              item={item}
-              collection={collection}
-              databases={databases}
-              bookmarks={bookmarks}
-              onCopy={onCopy}
-              onMove={onMove}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-            />
+          <RowActionsContainer data-ignore-row-selection>
+            <ActionMenu {...props} />
           </RowActionsContainer>
         </ItemCell>
       );

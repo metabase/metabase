@@ -760,7 +760,7 @@
                                 [:cum-sum
                                  [:field "TOTAL" {::add/source-table ::add/source
                                                   ::add/source-alias "TOTAL"}]]
-                                {::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                {::add/source-alias "sum"
                                  ::add/desired-alias "sum"}]]
                  :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
                                                   ::add/desired-alias "CREATED_AT"}]

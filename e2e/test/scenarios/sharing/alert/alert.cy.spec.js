@@ -80,6 +80,7 @@ describe("scenarios > alert", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       H.notificationList().findByText("Your alert is all set up.");
@@ -138,6 +139,7 @@ describe("scenarios > alert", () => {
 
     cy.findByLabelText("Move, duplicate, and more…").click();
     H.popover().findByText("Create an alert").click();
+    H.selectScheduleTime();
     H.modal().button("Done").click();
 
     cy.findByLabelText("Move, duplicate, and more…").click();
@@ -162,8 +164,11 @@ describe("scenarios > alert", () => {
       const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
-        // Mantine Select has the role `textbox` 🤦
-        cy.findAllByRole("textbox").first().click().type(`${email}`).blur();
+        cy.findByTestId("token-field")
+          .findByRole("combobox")
+          .click()
+          .type(`${email}`)
+          .blur();
       }
 
       function setAllowedDomains() {
@@ -184,12 +189,11 @@ describe("scenarios > alert", () => {
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
 
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("token-field").within(() => {
-            addEmailRecipient(deniedEmail);
-          });
+          addEmailRecipient(deniedEmail);
 
           cy.findByText(adminAlertError);
           cy.button("Done").should("be.disabled");
@@ -198,7 +202,7 @@ describe("scenarios > alert", () => {
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openDashboardMenu("Subscriptions");
+        H.toggleDashboardSubscriptionsSidebar();
 
         H.sidebar().within(() => {
           cy.findByText("Email it").click();
@@ -217,22 +221,21 @@ describe("scenarios > alert", () => {
 
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("token-field").within(() => {
-            addEmailRecipient(deniedEmail);
-          });
+          addEmailRecipient(deniedEmail);
 
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserAlertError);
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openDashboardMenu("Subscriptions");
+        H.toggleDashboardSubscriptionsSidebar();
 
         H.sidebar().within(() => {
           addEmailRecipient(deniedEmail);
@@ -240,7 +243,7 @@ describe("scenarios > alert", () => {
           cy.button("Done").click();
         });
         cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserSubscriptionError);
         });
       });

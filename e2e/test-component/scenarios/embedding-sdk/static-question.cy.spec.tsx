@@ -6,8 +6,14 @@ import {
   type StaticQuestionProps,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, modal, popover } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  popover,
+  selectScheduleTime,
+} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
@@ -216,6 +222,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       cy.log("alerts modal is open");
       cy.wait("@listAlerts");
+      selectScheduleTime();
       modal().within(() => {
         cy.findByRole("heading", { name: "New alert" }).should("be.visible");
         cy.button("Done").click();
@@ -237,6 +244,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
       });
 
       popover().findByRole("option", { name: "weekly" }).click();
+      selectScheduleTime();
       modal().within(() => {
         cy.button("Save changes").click();
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
@@ -280,5 +288,44 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       getSdkRoot().button("Alerts").should("be.visible");
     });
+  });
+
+  it("should not request /api/card/undefined when clicking a data point on a query-only ad-hoc card", () => {
+    // A query-only ad-hoc card has no saved card id. A static question must not
+    // navigate on a chart click — previously it did, fetching
+    // `GET /api/card/undefined` (the new card's id was `undefined`).
+    cy.intercept("GET", "/api/card/undefined").as("getUndefinedCard");
+
+    mountSdkContent(
+      <StaticQuestion
+        card={{
+          query: {
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+        }}
+      />,
+    );
+
+    getSdkRoot().within(() => {
+      cy.log("the aggregated query renders a cartesian chart");
+      H.cartesianChartCircle().should("have.length.greaterThan", 0);
+
+      cy.log("clicking a data point must not navigate to a new card");
+      H.cartesianChartCircle().first().click();
+
+      // The chart stays put (retry gives any erroneous navigation time to fire).
+      H.cartesianChartCircle().should("have.length.greaterThan", 0);
+    });
+
+    cy.get("@getUndefinedCard.all").should("have.length", 0);
   });
 });

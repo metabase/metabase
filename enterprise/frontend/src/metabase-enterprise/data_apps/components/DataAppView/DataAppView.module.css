@@ -1,0 +1,10 @@
+/*
+ * Cap the width of the stack-trace box (`ErrorBox`), applied via
+ * `ErrorDetails`' `errorBoxClassName` — a long trace otherwise stretches the
+ * box to the full content width.
+ */
+.stackTrace {
+  max-width: 40rem;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}

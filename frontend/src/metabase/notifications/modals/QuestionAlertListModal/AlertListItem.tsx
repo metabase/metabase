@@ -3,8 +3,8 @@ import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import {
+  formatCreatorMessage,
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
 } from "metabase/notifications/utils";
@@ -88,7 +88,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            <Text size="sm" c="text-tertiary">
+            <Text size="sm" c="text-disabled">
               •
             </Text>
             <Text size="sm" c="inherit">

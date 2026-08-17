@@ -26,7 +26,6 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -72,7 +71,6 @@
        "email@metabase.com"   false)))
 
 (deftest ^:parallel state?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -173,7 +171,6 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -357,6 +354,17 @@
     "string" 3  "str"
     "string" 0  ""))
 
+(deftest ^:parallel strip-bom-test
+  (are [s expected] (= expected
+                       (u/strip-bom s))
+    nil                          nil
+    ""                           ""
+    "ID,Name"                    "ID,Name"
+    (str u/utf8-bom "ID,Name")   "ID,Name"
+    (str u/utf8-bom)             ""
+    ;; only a *leading* BOM is stripped
+    (str "ID" u/utf8-bom "Name") (str "ID" u/utf8-bom "Name")))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale! "tr"
@@ -374,7 +382,6 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -517,7 +524,6 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true
@@ -538,13 +544,15 @@
                  :b [:c :d]
                  :c nil
                  :d [:e]
-                 :e nil}]
+                 :e nil}
+          neighbors-fn #(zipmap (get graph %) (repeat #{%}))]
       (is (= {:a nil
               :b #{:a}
               :c #{:b}
               :d #{:a :b}
               :e #{:d}}
-             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+             (u/traverse [:a] neighbors-fn)))
+      (is (= {} (u/traverse [] neighbors-fn))))))
 
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected

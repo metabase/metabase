@@ -1,16 +1,20 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMessages, metabotReducer } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { Menu } from "metabase/ui";
 
 import { NewMenuItemAIExploration } from "./NewMenuItemAIExploration";
 
-function setup() {
+function setup(
+  { hasNlqAccess } = {
+    hasNlqAccess: true,
+  },
+) {
   const metabotInitialState = assocIn(
     getMetabotInitialState(),
     ["conversations", "ask", "messages"],
@@ -20,13 +24,13 @@ function setup() {
   const TestComponent = () => (
     <Menu opened>
       <Menu.Dropdown>
-        <NewMenuItemAIExploration />
+        <NewMenuItemAIExploration hasNlqAccess={hasNlqAccess} />
       </Menu.Dropdown>
     </Menu>
   );
 
   const { store } = renderWithProviders(
-    <Route path="*" component={TestComponent} />,
+    <Route path="*" element={<TestComponent />} />,
     {
       withRouter: true,
       storeInitialState: createMockState({ metabot: metabotInitialState }),
@@ -38,7 +42,7 @@ function setup() {
 }
 
 describe("NewMenuItemAIExploration", () => {
-  it("links to the ask mode question page", () => {
+  it("links to the ask mode question page when hasNlqAccess is true", () => {
     setup();
 
     expect(
@@ -56,5 +60,15 @@ describe("NewMenuItemAIExploration", () => {
     );
 
     expect(getMessages(store.getState(), "ask")).toHaveLength(0);
+  });
+
+  it("should link to the research mode page when hasNlqAccess is false", () => {
+    setup({
+      hasNlqAccess: false,
+    });
+
+    expect(
+      screen.getByRole("menuitem", { name: /AI exploration/ }),
+    ).toHaveAttribute("href", "/question/research");
   });
 });

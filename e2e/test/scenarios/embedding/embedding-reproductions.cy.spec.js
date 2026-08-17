@@ -326,16 +326,11 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     H.modal().within(() => {
-      // select the dropdown next to the Text parameter so that we can set the value to "Locked"
-      cy.findByText("Text")
-        .parent()
-        .within(() => {
-          cy.findByText("Disabled").click();
-        });
+      // open the visibility dropdown for the Text parameter so that we can set the value to "Locked"
+      cy.findByLabelText("Text").click();
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Locked").click();
+    H.selectDropdown().findByText("Locked").click();
 
     H.modal().within(() => {
       // set a parameter value
@@ -1408,52 +1403,52 @@ describe("issue 51934 (EMB-189)", () => {
     const QA_DB_NAME = "QA Postgres12";
     const DATA_SOURCE_NAME = "Orders";
 
-    // The data/join pickers re-render while their collection list loads, AND
-    // clicking a menu item itself triggers a re-render (card metadata fetch +
-    // selection state change) that detaches Cypress's actionability retry on
-    // `.click()`. Wait for the list to be stable (loader gone), then click
-    // with `{ force: true }` to skip the post-find actionability re-check —
-    // we already know the item is visible; we don't want to retry-and-detach
-    // when clicking it causes its own re-render.
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
     const clickPickerItem = (name) => {
       cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
-      cy.findByRole("menuitem", { name }).click({ force: true });
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
     };
 
-    // Any click that swaps one popover for another (data-source -> join,
-    // notebook-step click -> data-picker) can leave both briefly — or, on a
-    // slow CI runner, for longer than Cypress's default 4 s retry —
-    // visible: the outgoing one is still in its close transition while the
-    // incoming one is already mounted. Cypress's `H.popover().within()`
-    // selects every visible popover, so on a microtask-scheduled fetch
-    // resolution it can match 2 elements and throw.
+    // The data-source picker and the join picker are both rendered by the same
+    // embedding DataSourceSelector, so a generic popover query could not tell
+    // them apart. When a click swaps one for the other they can briefly overlap
+    // (the outgoing one is still in its close transition while the incoming one
+    // is already mounted), which made matching ambiguous and flaky on slow CI
+    // runners.
     //
-    // `latestPopover()` always returns the most recently mounted visible
-    // popover. Mantine appends portalled popovers to the end of <body>, so
-    // the last DOM match is the newest. Use this in place of
-    // `H.popover()` whenever a click might have just swapped popovers.
-    const latestPopover = () =>
+    // Each picker now carries its trigger's label as the dropdown's accessible
+    // name (`aria-label`), so we can target each popover deterministically by
+    // name regardless of any transition overlap. `.filter(":visible").last()`
+    // guards against a same-named popover that is still animating closed.
+    const pickerPopover = (name) =>
       cy
-        .get(
-          '.popover[data-state~="visible"],[data-element-id=mantine-popover]',
-        )
+        .get(`[data-element-id=mantine-popover][aria-label="${name}"]`)
         .filter(":visible")
         .should("have.length.at.least", 1)
         .last();
+    const dataSourcePopover = () => pickerPopover("Pick your starting data");
+    const joinPopover = () => pickerPopover("Pick data to join");
 
-    // Each click below swaps the picker view (or selects an item), which
-    // remounts the popover. A single `latestPopover().within(...)` would pin
-    // the popover element from its first command, so a later command in the
-    // same block hits the now-detached node. Re-acquire `latestPopover()` for
-    // every remounting action so Cypress re-queries onto the newest popover.
     cy.log("select a table as a data source");
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Raw Data").click();
     });
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByRole("heading", { name: QA_DB_NAME }).click();
     });
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
     });
     H.getNotebookStep("data").button("Join data").click();
@@ -1461,7 +1456,7 @@ describe("issue 51934 (EMB-189)", () => {
     cy.log(
       'select the "Join" step when the data source is a table will open a table in the same database',
     );
-    latestPopover().within(() => {
+    joinPopover().within(() => {
       cy.findByText(QA_DB_NAME).should("be.visible");
       cy.findByRole("option", { name: "Orders" }).should("be.visible");
     });
@@ -1472,24 +1467,26 @@ describe("issue 51934 (EMB-189)", () => {
     H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
 
     cy.log('go back to the "Bucket" step');
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.icon("chevronleft").click();
     });
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.icon("chevronleft").click();
     });
 
     cy.log(
       "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
     );
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Saved Questions").click();
     });
-    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
-    latestPopover().within(() => clickPickerItem(QUESTION_IN_COLLECTION_NAME));
+    dataSourcePopover().within(() => clickPickerItem(COLLECTION_NAME));
+    dataSourcePopover().within(() =>
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME),
+    );
 
     cy.log("the join popover is automatically opened");
-    latestPopover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
         "have.css",
@@ -1506,18 +1503,17 @@ describe("issue 51934 (EMB-189)", () => {
     H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
 
     // Go back to the "Bucket" step
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Saved Questions").click();
     });
     // We're now at the "Bucket" step
-    latestPopover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Models").click();
     });
-    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
-    latestPopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
-    latestPopover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
         "have.css",
@@ -1532,10 +1528,10 @@ describe("issue 51934 (EMB-189)", () => {
       "select a data source after selecting a join step should refresh the data picker on the join step",
     );
     H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
-    latestPopover().within(() => clickPickerItem("Our analytics"));
-    latestPopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+    dataSourcePopover().within(() => clickPickerItem("Our analytics"));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
 
-    latestPopover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the new data source should be selected");
       cy.findByRole("menuitem", { name: "Our analytics" }).should(
         "have.css",

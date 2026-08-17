@@ -21,7 +21,10 @@
 
 (defn get-index-metadata
   "Returns this instances index metadata configuration.
-  Currently, an instance only has one metadata root, so this will always have the same value in production."
+  Currently, an instance only has one metadata root, so this will always have the same value in production:
+  the schema-qualified configuration when sharing the application database, the bare default otherwise."
   []
   ;; still useful to indirect this for tests
-  semantic.index-metadata/default-index-metadata)
+  (if (= :app-db (semantic.db.datasource/pgvector-mode))
+    semantic.index-metadata/app-db-index-metadata
+    semantic.index-metadata/default-index-metadata))

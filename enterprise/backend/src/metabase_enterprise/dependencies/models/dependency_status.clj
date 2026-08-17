@@ -110,19 +110,24 @@
 (defn record-failure!
   "Record a failed dependency calculation attempt for an entity.
   Increments fail_count and sets next_retry_at based on exponential backoff.
-  If max retries exceeded, marks the entity as terminal."
+  If max retries exceeded, marks the entity as terminal.
+  Creates the entry if it doesn't exist, since entities with no row yet are exactly the ones
+  [[instances-for-dependency-calculation]] picks up first.
+  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
   [entity-type entity-id max-retries delay-minutes]
-  (when-let [status (t2/select-one :model/DependencyStatus
-                                   :entity_type entity-type
-                                   :entity_id entity-id)]
-    (let [new-fail-count (inc (:fail_count status 0))]
-      (if (> new-fail-count max-retries)
-        (t2/update! :model/DependencyStatus (:id status)
-                    {:fail_count new-fail-count
-                     :terminal true
-                     :next_retry_at nil})
-        (let [retry-minutes (* new-fail-count delay-minutes)]
-          (t2/update! :model/DependencyStatus (:id status)
-                      {:fail_count new-fail-count
-                       :next_retry_at (when (pos? retry-minutes)
-                                        (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))
+  (app-db/update-or-insert!
+   :model/DependencyStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [existing]
+     ;; An inserted row takes the column defaults for `stale` (false) and `dependency_analysis_version` (0). 0 is
+     ;; below `current-dependency-analysis-version`, which is what keeps the entity eligible for the retry once
+     ;; `next_retry_at` has elapsed.
+     (let [new-fail-count (inc (:fail_count existing 0))]
+       (if (> new-fail-count max-retries)
+         {:fail_count new-fail-count
+          :terminal true
+          :next_retry_at nil}
+         (let [retry-minutes (* new-fail-count delay-minutes)]
+           {:fail_count new-fail-count
+            :next_retry_at (when (pos? retry-minutes)
+                             (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))

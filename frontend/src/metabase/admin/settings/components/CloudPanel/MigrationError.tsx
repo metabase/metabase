@@ -25,7 +25,7 @@ export const MigrationError = ({
     <>
       <MigrationCard>
         <Flex gap="md">
-          <LargeIconContainer color={color("error")}>
+          <LargeIconContainer color={color("feedback-negative")}>
             <Icon size="1.5rem" name="warning" />
           </LargeIconContainer>
           <Box>

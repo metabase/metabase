@@ -25,7 +25,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
 import {
@@ -48,6 +48,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
 
 type View =
@@ -72,6 +73,7 @@ export const BreadcrumbsTestComponent = () => {
           const type = match<string, SdkBreadcrumbItemType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
+            // Unjustified type cast. FIXME
             .otherwise((model) => model as SdkBreadcrumbItemType);
 
           setView({ type, id: item.id });

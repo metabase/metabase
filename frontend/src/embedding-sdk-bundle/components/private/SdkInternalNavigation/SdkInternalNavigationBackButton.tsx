@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Button, Icon } from "metabase/ui";
 
 import { withPublicComponentWrapper } from "../PublicComponentWrapper";

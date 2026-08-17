@@ -5,8 +5,7 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
 } from "metabase/admin/components/AdminNav";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 
 /**
  * Find the child whose path is the best (longest) prefix match for the current
@@ -20,6 +19,7 @@ const findBestMatchingChild = (
   let bestLen = 0;
 
   for (const child of children) {
+    // Unjustified type cast. FIXME
     const childPath = child?.props?.path as string | undefined;
     if (!childPath) {
       continue;
@@ -43,8 +43,9 @@ export function SettingsNavItem({
   children: childrenProp,
   ...navItemProps
 }: AdminNavItemProps & { active?: boolean }) {
+  // Unjustified type cast. FIXME
   const children = React.Children.toArray(childrenProp) as ReactElement[];
-  const currentPath = useSelector(getLocation)?.pathname ?? "";
+  const currentPath = useLocation().pathname;
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
     folderPattern ? currentPath.includes(folderPattern) : false,
   );
@@ -70,7 +71,8 @@ export function SettingsNavItem({
       {children.length > 0
         ? children.map((child) =>
             child?.props?.path
-              ? React.cloneElement(child, {
+              ? // Unjustified type cast. FIXME
+                React.cloneElement(child, {
                   active: child === bestChild,
                 } as any)
               : child,

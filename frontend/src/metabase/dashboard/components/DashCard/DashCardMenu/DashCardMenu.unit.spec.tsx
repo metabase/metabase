@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCardQueryDownloadEndpoint,
@@ -13,6 +12,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
@@ -144,11 +144,11 @@ const setup = ({
   setupCardQueryDownloadEndpoint(card, "json");
 
   setupLastDownloadFormatEndpoints();
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route
         path="dashboard/:slug"
-        component={() => (
+        element={
           <MockDashboardContext
             dashboardId={mockDashboard.id}
             dashboard={mockDashboard}
@@ -162,10 +162,10 @@ const setup = ({
               onEditVisualization={onEditVisualization}
             />
           </MockDashboardContext>
-        )}
+        }
       />
-      <Route path="question/:slug" component={() => <div />} />
-      <Route path="question/:slug/notebook" component={() => <div />} />
+      <Route path="question/:slug" element={<div />} />
+      <Route path="question/:slug/notebook" element={<div />} />
     </>,
     {
       storeInitialState,
@@ -174,47 +174,47 @@ const setup = ({
     },
   );
 
-  return { history };
+  return { router };
 };
 
 describe("DashCardMenu", () => {
   it("should display a link to the notebook editor", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit question"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}/notebook`);
   });
 
   it("should display a link to the query builder for native questions", async () => {
-    const { history } = setup({ card: TEST_CARD_NATIVE });
+    const { router } = setup({ card: TEST_CARD_NATIVE });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit question"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}`);
   });
 
   it("should display a link to the editor for models", async () => {
-    const { history } = setup({ card: TEST_CARD_MODEL });
+    const { router } = setup({ card: TEST_CARD_MODEL });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit model"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/model/${TEST_CARD_SLUG}/query`);
   });
 
   it("should display a link to the editor for metrics", async () => {
-    const { history } = setup({ card: TEST_CARD_METRIC });
+    const { router } = setup({ card: TEST_CARD_METRIC });
 
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Edit metric"));
 
-    const pathname = history?.getCurrentLocation().pathname;
+    const pathname = router?.location.pathname;
     expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
   });
 
@@ -248,6 +248,7 @@ describe("DashCardMenu", () => {
   });
 
   it("should not display query export options when query is running", async () => {
+    // Unjustified type cast. FIXME
     setup({ result: {} as any });
 
     await userEvent.click(getIcon("ellipsis"));

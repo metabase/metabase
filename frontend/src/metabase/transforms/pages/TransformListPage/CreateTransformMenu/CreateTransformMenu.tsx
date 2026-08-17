@@ -1,13 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -18,7 +23,7 @@ import { CreateTransformCollectionModal } from "../../../components/CreateTransf
 import { shouldDisableItem } from "./utils";
 
 export const CreateTransformMenu = () => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
   const [
@@ -36,19 +41,27 @@ export const CreateTransformMenu = () => {
   });
   const shouldShowPythonScriptOption =
     hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const { remoteSyncReadOnly } = useTransformPermissions();
+
+  const metabot = useMetabotAgent("omnibot");
+  const metabotName = useSetting("metabot-name");
+  const { hasMetabotAccess } = useUserMetabotPermissions();
+
+  const handleMetabotClick = () => {
+    trackTransformCreate({ creationType: "metabot" });
+    metabot.setPrompt(t`Create a transform that `);
+    metabot.setVisible(true);
+  };
 
   const handlePythonClick = () => {
-    dispatch(push(Urls.newPythonTransform())); // Route will show upsell modal if feature is not enabled
+    navigate(Urls.newPythonTransform()); // Route will show upsell modal if feature is not enabled
 
     if (hasPythonTransformsFeature) {
       trackTransformCreate({ creationType: "python" });
     }
   };
 
-  if (isRemoteSyncReadOnly) {
+  if (remoteSyncReadOnly) {
     return (
       <Tooltip
         label={t`Transforms can't be created when Remote Sync is in read-only mode`}
@@ -85,11 +98,19 @@ export const CreateTransformMenu = () => {
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
+              {hasMetabotAccess && (
+                <Menu.Item
+                  leftSection={<Icon name="metabot" />}
+                  onClick={handleMetabotClick}
+                >
+                  {metabotName}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="notebook" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "query" });
-                  dispatch(push(Urls.newQueryTransform()));
+                  navigate(Urls.newQueryTransform());
                 }}
               >
                 {t`Query builder`}
@@ -98,7 +119,7 @@ export const CreateTransformMenu = () => {
                 leftSection={<Icon name="sql" />}
                 onClick={() => {
                   trackTransformCreate({ creationType: "native" });
-                  dispatch(push(Urls.newNativeTransform()));
+                  navigate(Urls.newNativeTransform());
                 }}
               >
                 {t`SQL query`}
@@ -142,7 +163,7 @@ export const CreateTransformMenu = () => {
           models={["card", "dataset"]}
           isDisabledItem={(item) => shouldDisableItem(item, databases?.data)}
           onChange={(item) => {
-            dispatch(push(Urls.newTransformFromCard(item.id)));
+            navigate(Urls.newTransformFromCard(item.id));
             closePicker();
           }}
           onClose={closePicker}

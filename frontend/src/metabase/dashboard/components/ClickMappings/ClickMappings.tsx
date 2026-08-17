@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Parameter } from "metabase-types/api";
 
@@ -116,7 +117,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
           <p className={cx(CS.mb2, CS.textMedium)}>
             {getTargetsHeading(props.object, setTargets)}
           </p>
-          <div data-testid="unset-click-mappings">
+          <Stack data-testid="unset-click-mappings" gap="sm">
             {unsetTargetsWithSourceOptions.map(
               ({
                 target,
@@ -134,7 +135,7 @@ export function ClickMappings(props: ClickMappingsOwnProps) {
                 />
               ),
             )}
-          </div>
+          </Stack>
         </div>
       )}
     </div>

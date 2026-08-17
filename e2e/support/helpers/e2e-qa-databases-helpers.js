@@ -388,51 +388,62 @@ export function waitForSyncToFinish({
       retrigger,
     });
 
-  cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
-    if (!body.tables.length) {
-      return rerunSync();
-    }
-
-    if (tables.length) {
-      const completed = new Set(
-        body.tables
-          .filter((table) => table.initial_sync_status === "complete")
-          .map((table) => table.name),
-      );
-
-      return tables.every((name) => completed.has(name)) ? null : rerunSync();
-    }
-
-    if (tableName) {
-      const table = body.tables.find(
-        (table) =>
-          table.name === tableName && table.initial_sync_status === "complete",
-      );
-
-      if (!table) {
+  return cy
+    .request("GET", `/api/database/${dbId}/metadata`)
+    .then(({ body }) => {
+      if (!body.tables.length) {
         return rerunSync();
       }
 
-      if (tableAlias) {
-        cy.wrap(table).as(tableAlias);
+      if (tables.length) {
+        const completed = new Set(
+          body.tables
+            .filter((table) => table.initial_sync_status === "complete")
+            .map((table) => table.name),
+        );
+
+        return tables.every((name) => completed.has(name)) ? null : rerunSync();
       }
 
-      return null;
-    }
-  });
+      if (tableName) {
+        const table = body.tables.find(
+          (table) =>
+            table.name === tableName &&
+            table.initial_sync_status === "complete",
+        );
+
+        if (!table) {
+          return rerunSync();
+        }
+
+        if (tableAlias) {
+          cy.wrap(table).as(tableAlias);
+        }
+
+        return null;
+      }
+    });
 }
 
+/**
+ * @param {object} options
+ * @param {number} [options.dbId]
+ * @param {string} [options.tableName] - wait until this table is synced
+ * @param {string} [options.tableAlias]
+ * @param {string[]} [options.tables] - wait until all of these tables are synced
+ * @param {boolean} [options.retrigger] - occasionally re-trigger the schema sync while waiting
+ */
 export function resyncDatabase({
   dbId = 2,
   tableName = "",
-  tableAlias = undefined, // TS was complaining that this was a required param
-  tables,
+  tableAlias = undefined,
+  tables = [],
   retrigger = false,
 }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({
+  return waitForSyncToFinish({
     iteration: 0,
     dbId,
     tableName,

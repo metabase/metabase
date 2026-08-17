@@ -5,6 +5,7 @@ import { getSeriesColors } from "./colors";
 
 jest.mock("metabase/ui/colors/charts");
 
+// Unjustified type cast. FIXME
 const mockGetColorsForValues = getColorsForValues as jest.MockedFunction<
   typeof getColorsForValues
 >;

@@ -123,7 +123,7 @@
            :structured-output {:database_id database-id
                                :sql_engine  (:engine db)}})))
     (catch Exception e
-      (log/error e "Error collecting document schema")
+      (log/errorf "Error collecting document schema: %s" (ex-message e))
       {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
 
 (def ^:private sql-chart-schema
@@ -171,10 +171,9 @@
                             :query         query
                             :result-type   :chart-draft}]
             {:output "Draft chart payload generated from SQL query."
-             :structured-output structured
-             :final-response? true}))))
+             :structured-output structured}))))
     (catch Exception e
-      (log/error e "Error constructing SQL chart draft")
+      (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
@@ -216,13 +215,12 @@
                              :chart_type    chart-type
                              :query_id      query-id
                              :query         dataset-query
-                             :result-type   :chart-draft}
-         :final-response? true}
+                             :result-type   :chart-draft}}
         ;; Preserve tool error messaging from construct_notebook_query path.
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e
-      (log/error e "Error constructing model chart draft")
+      (log/errorf "Error constructing model chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))

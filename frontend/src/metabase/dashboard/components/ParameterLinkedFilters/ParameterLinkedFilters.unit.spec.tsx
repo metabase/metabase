@@ -113,6 +113,7 @@ describe("ParameterLinkedFilters", () => {
         parameter: createMockUiParameter({
           id: "p1",
           name: "P1",
+          // Unjustified type cast. FIXME
           values_source_type: valuesSourceType as ValuesSourceType,
           values_source_config: {
             values: ["foo", "bar"],

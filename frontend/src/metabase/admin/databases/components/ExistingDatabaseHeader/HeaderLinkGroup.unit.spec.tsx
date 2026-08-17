@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import { browseDatabase } from "metabase/urls";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -9,10 +8,7 @@ import { HeaderLinkGroup } from "./HeaderLinkGroup";
 
 const setup = (mockDatabase: Database) => {
   renderWithProviders(
-    <Route
-      path="*"
-      component={() => <HeaderLinkGroup database={mockDatabase} />}
-    />,
+    <Route path="*" element={<HeaderLinkGroup database={mockDatabase} />} />,
     { withRouter: true },
   );
 };

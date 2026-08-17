@@ -44,7 +44,7 @@ const CardSectionTemplate = ({
   <Box maw="20rem">
     <Card {...args}>
       <Card.Section withBorder={withSectionBorder}>
-        <Box bg="background-primary" h="10rem" />
+        <Box bg="background_page-primary" h="10rem" />
       </Card.Section>
       <Stack mt="md" gap="sm">
         <Text fw="bold">{sampleArgs.title}</Text>

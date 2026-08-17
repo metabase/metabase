@@ -23,20 +23,19 @@ import {
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
-import { updateMentionsCache } from "metabase/documents/documents.slice";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { Icon } from "metabase/ui";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
-} from "metabase/metabot/utils/links";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { Icon } from "metabase/ui";
+} from "metabase/urls";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
 import type {
   Card,
-  CardDisplayType,
   Collection,
   Dashboard,
   Database,
@@ -429,6 +428,7 @@ export const useEntityData = (
     }
     case "indexed-entity":
     case "measure":
+    case "exploration":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
@@ -451,14 +451,15 @@ export const SmartLinkComponent = memo(
     const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
+    const host = useEditorHost();
     useEffect(() => {
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
         updateAttributes({ label: name });
-        dispatch(updateMentionsCache({ entityId, model, name }));
+        dispatch(host.actions.updateMentionsCache({ entityId, model, name }));
       }
-    }, [updateAttributes, dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, host, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {
@@ -512,6 +513,7 @@ export const SmartLinkComponent = memo(
         ? getIcon(cachedEntity)
         : getIcon(
             entityToObjectWithModel(
+              // Unjustified type cast. FIXME
               entity as NonNullable<typeof networkEntity>,
               model,
             ),
@@ -556,8 +558,11 @@ function entityToObjectWithModel(
   model: SuggestionModel | null,
 ): ObjectWithModel {
   return {
+    // Unjustified type cast. FIXME
     model: ((entity as Dashboard).model || model || "") as IconModel,
-    display: (entity as Card).display as CardDisplayType,
+    // Unjustified type cast. FIXME
+    display: (entity as Card).display,
+    // Unjustified type cast. FIXME
     is_personal: (entity as Collection).is_personal,
   };
 }

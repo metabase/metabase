@@ -1,14 +1,11 @@
 import type { MenuDropdownProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import type { ReactNode, Ref } from "react";
-import { forwardRef, useEffect } from "react";
+import type { Ref } from "react";
+import { forwardRef } from "react";
 
 import { PreventEagerPortal } from "metabase/ui";
-import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
+import { OverlayStackItem } from "metabase/ui/components/overlays/overlay-stack";
 
-// hack to prevent a parent registered in the RENDERED_POPOVERS stack (legacy
-// Modal via OnClickOutsideWrapper) from closing when selecting a Menu.Item
-// remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
 export const MenuDropdown = forwardRef(function MenuDropdown(
   { children, ...props }: MenuDropdownProps,
   ref: Ref<HTMLDivElement>,
@@ -16,24 +13,9 @@ export const MenuDropdown = forwardRef(function MenuDropdown(
   return (
     <PreventEagerPortal {...props}>
       <Menu.Dropdown {...props} data-element-id="mantine-popover" ref={ref}>
-        <MenuDropdownContent>{children}</MenuDropdownContent>
+        <OverlayStackItem />
+        {children}
       </Menu.Dropdown>
     </PreventEagerPortal>
   );
 });
-
-interface MenuDropdownContentProps {
-  children?: ReactNode;
-}
-
-function MenuDropdownContent({ children }: MenuDropdownContentProps) {
-  const { setupCloseHandler, removeCloseHandler } =
-    useSequencedContentCloseHandler();
-
-  useEffect(() => {
-    setupCloseHandler(document.body, () => undefined);
-    return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler]);
-
-  return <>{children}</>;
-}

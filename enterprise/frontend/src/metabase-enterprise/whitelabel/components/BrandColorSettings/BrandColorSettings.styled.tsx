@@ -12,10 +12,10 @@ const cellStyles = css`
 `;
 
 export const TableHeader = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 `;
 
 export const TableHeaderRow = styled.div`
@@ -36,7 +36,7 @@ export const TableHeaderCell = styled.div`
 `;
 
 export const TableBody = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 `;
@@ -46,7 +46,7 @@ export const TableBodyRow = styled.div`
   align-items: center;
 
   &:not(:first-of-type) {
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
   }
 `;
 

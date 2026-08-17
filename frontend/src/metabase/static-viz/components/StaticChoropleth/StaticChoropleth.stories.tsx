@@ -6,7 +6,13 @@ import {
   StaticChoropleth,
   type StaticChoroplethProps,
 } from "./StaticChoropleth";
-import { customRegion, noData, usStates, worldCountries } from "./stories-data";
+import {
+  customRegion,
+  noData,
+  usStates,
+  usStatesCurrency,
+  worldCountries,
+} from "./stories-data";
 
 export default {
   title: "Viz/Static Viz/StaticChoropleth",
@@ -17,7 +23,12 @@ const renderingContext = createStaticRenderingContext();
 
 const Template: StoryFn<StaticChoroplethProps> = (args) => {
   return (
-    <div style={{ border: "1px solid black", display: "inline-block" }}>
+    <div
+      style={{
+        border: "1px solid black",
+        display: "inline-block",
+      }}
+    >
       <StaticChoropleth {...args} />
     </div>
   );
@@ -39,6 +50,20 @@ export const WorldCountries = {
 export const CustomRegion = {
   render: Template,
   args: { ...customRegion, renderingContext },
+};
+
+// A currency metric: legend labels carry the column's formatting ("$1.4k"-style), matching the live
+// dashboard. Guards that getStaticChoroplethSettings feeds column formatting into the legend.
+export const USStatesCurrency = {
+  render: Template,
+  args: { ...usStatesCurrency, renderingContext },
+};
+
+// Same data with the legend placed vertically to the side (the wide-card layout the live map uses),
+// instead of the default horizontal strip below the map.
+export const USStatesCurrencySideLegend = {
+  render: Template,
+  args: { ...usStatesCurrency, renderingContext, legendPosition: "side" },
 };
 
 // No rows join to a feature: every region falls to the no-data gray and no legend is drawn.

@@ -127,6 +127,7 @@ export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();
   cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
     cy.wrap(
+      // Unjustified type cast. FIXME
       (files as string[]).filter(
         (file: string) => !file.includes(".git") && file.includes(".yaml"),
       ),
@@ -164,6 +165,7 @@ export const updateRemoteQuestion = (
 ) => {
   wrapSyncedCollectionFiles();
   cy.get("@syncedCollectionFiles").then((syncedCollectionFiles) => {
+    // Unjustified type cast. FIXME
     const questionFilePath = (
       syncedCollectionFiles as unknown as string[]
     ).find((file) => file.includes("remote_sync_test_question.yaml"));
@@ -171,6 +173,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
+      // Unjustified type cast. FIXME
       const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
@@ -236,22 +239,16 @@ export const getPushOption = () => {
   return popover().findByRole("option", { name: /Push changes/ });
 };
 
-export const getSwitchBranchOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Switch branch/ });
-};
-
 // Mantine combobox options can drop a synthetic `.click()` if the dropdown's
 // state machine isn't fully wired yet (e.g. right after the menu opens — the
 // dropdown is visible but the option's handler isn't attached). `realClick`
 // dispatches native mouse events that Mantine processes reliably, and we then
 // verify the menu closed; if not, re-click once with a synthetic click.
 //
-// We detect "menu still open" by looking for the main-menu options
-// (Pull/Push/Switch branch) — neither "any popover visible" nor the controls'
-// `data-expanded` attribute distinguishes the main menu from follow-up popovers
-// like the branch picker that opens after clicking "Switch branch".
-const MAIN_MENU_OPTION_RE = /Pull changes|Push changes|Switch branch/;
+// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
+// neither "any popover visible" nor the controls' `data-expanded` attribute
+// distinguishes the main menu from follow-up popovers.
+const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
@@ -271,8 +268,40 @@ const clickGitSyncOption = (
 
 export const clickPullOption = () => clickGitSyncOption(getPullOption);
 export const clickPushOption = () => clickGitSyncOption(getPushOption);
-export const clickSwitchBranchOption = () =>
-  clickGitSyncOption(getSwitchBranchOption);
+
+// --- Branch switching (moved from the app bar to the instance Settings panel) ---
+
+export const visitRemoteSyncSettings = () =>
+  cy.visit("/admin/settings/remote-sync");
+
+// The read-write branch switcher lives in the "Sync branch" section of the Settings page.
+export const getSettingsBranchSwitcher = () =>
+  cy.findByTestId("settings-branch-switcher");
+
+// Open the branch picker on the Settings page (navigates there first).
+const openSettingsBranchPicker = () => {
+  visitRemoteSyncSettings();
+  // The Sync branch section sits below the fold at the default viewport, and Cypress treats an element
+  // clipped by a scrollable ancestor as hidden, so scroll to it before asserting visibility.
+  getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
+};
+
+// Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.
+export const createBranchViaSettings = (name: string) => {
+  openSettingsBranchPicker();
+  popover().findByPlaceholderText("Find or create a branch...").type(name);
+  popover()
+    .findByRole("option", { name: /Create branch/ })
+    .click();
+};
+
+// Select an existing branch via the Settings branch switcher. With unsaved changes this opens the
+// choose-what-to-do modal instead of switching immediately.
+export const switchBranchViaSettings = (branch: string) => {
+  openSettingsBranchPicker();
+  popover().findByPlaceholderText("Find or create a branch...").type(branch);
+  popover().findByRole("option", { name: branch }).click();
+};
 
 // Enable tenants feature for testing
 export const enableTenants = () => {
@@ -291,6 +320,15 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+/**
+ * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a
+ * subsequent interaction isn't blocked by the modal overlay. Waits for the Close button since the modal
+ * renders from the same task poll that `waitForTask` observes.
+ */
+export const closeSyncResultModal = () => {
+  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
+};
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
@@ -305,6 +343,8 @@ export const waitForTask = (
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
+    // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
+    return closeSyncResultModal();
   });
 };
 

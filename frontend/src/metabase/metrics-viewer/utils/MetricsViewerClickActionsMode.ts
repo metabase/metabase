@@ -9,18 +9,27 @@ import * as LibMetric from "metabase-lib/metric";
 import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 
 import {
+  type ExpressionDefinitionEntry,
   type MetricDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
   type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
+  isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
 
-import { getEffectiveDefinitionEntry } from "./definition-entries";
+import {
+  getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
+} from "./definition-entries";
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
-import { type MetricSlot, findStandaloneSlot } from "./metric-slots";
+import {
+  type MetricSlot,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "./metric-slots";
 
 type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
@@ -100,7 +109,7 @@ function getZoomInTimeSeriesAction({
   onDimensionBreakoutUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!entity || entityIndex == null || !isMetricEntry(entity)) {
+  if (!entity || entityIndex == null) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -111,14 +120,26 @@ function getZoomInTimeSeriesAction({
   if (!isValidTemporalUnit(currentTemporalUnit)) {
     return;
   }
-  const nextTemporalUnit = getNextTemporalUnit(
-    definitions,
-    entity,
-    entityIndex,
-    metricSlots,
-    dimensionBreakout,
-    currentTemporalUnit,
-  );
+  let nextTemporalUnit: TemporalUnit | undefined;
+  if (isMetricEntry(entity)) {
+    nextTemporalUnit = getNextTemporalUnit(
+      definitions,
+      entity,
+      entityIndex,
+      metricSlots,
+      dimensionBreakout,
+      currentTemporalUnit,
+    );
+  } else if (isExpressionEntry(entity)) {
+    nextTemporalUnit = getNextTemporalUnitForExpression(
+      definitions,
+      entity,
+      entityIndex,
+      metricSlots,
+      dimensionBreakout,
+      currentTemporalUnit,
+    );
+  }
   if (!nextTemporalUnit) {
     return;
   }
@@ -207,6 +228,49 @@ function getNextTemporalUnit(
     return undefined;
   }
   const dimensionId = dimensionBreakout.dimensionMapping[slot.slotIndex];
+  if (!definition || !dimensionId) {
+    return undefined;
+  }
+  const dimension = findDimensionById(definition, dimensionId);
+  if (!dimension) {
+    return undefined;
+  }
+  const availableBuckets = LibMetric.availableTemporalBuckets(
+    definition,
+    dimension,
+  ).map((bucket) => LibMetric.displayInfo(definition, bucket).shortName);
+  const filteredNextTemporalUnitMap = Object.fromEntries(
+    Object.entries(nextTemporalUnitMap).filter(([_key, value]) =>
+      availableBuckets.includes(value),
+    ),
+  );
+  return filteredNextTemporalUnitMap[currentUnit];
+}
+
+function getNextTemporalUnitForExpression(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  entity: ExpressionDefinitionEntry,
+  entityIndex: number,
+  metricSlots: MetricSlot[],
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+  currentUnit: TemporalUnit,
+): TemporalUnit | undefined {
+  const expressionSlots = slotsForEntity(metricSlots, entityIndex);
+  const firstSlot = expressionSlots[0];
+  if (!firstSlot) {
+    return undefined;
+  }
+  const tokenPosition = firstSlot.tokenPosition;
+  if (tokenPosition === undefined) {
+    return undefined;
+  }
+  const token = entity.tokens[tokenPosition];
+  if (!token || token.type !== "metric") {
+    return undefined;
+  }
+  const definitionEntry = getEffectiveTokenDefinitionEntry(token, definitions);
+  const definition = definitionEntry.definition;
+  const dimensionId = dimensionBreakout.dimensionMapping[firstSlot.slotIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

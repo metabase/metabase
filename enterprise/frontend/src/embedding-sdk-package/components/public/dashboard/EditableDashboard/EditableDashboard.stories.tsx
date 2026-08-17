@@ -5,6 +5,7 @@ import { MetabaseProvider } from "../../MetabaseProvider";
 
 import { EditableDashboard } from "./EditableDashboard";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 const config = getStorybookSdkAuthConfigForUser("admin");
 

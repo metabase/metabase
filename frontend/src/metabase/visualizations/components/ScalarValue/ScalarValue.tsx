@@ -2,7 +2,7 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 import cx from "classnames";
-import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -95,7 +95,7 @@ export const ScalarValue = ({
       lh={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
       // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
-      style={{ "--scalar-value-color": color } as CSSProperties}
+      style={{ "--scalar-value-color": color }}
     >
       {value ?? t`null`}
     </Box>

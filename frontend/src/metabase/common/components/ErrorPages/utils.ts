@@ -1,9 +1,8 @@
 import Bowser from "bowser";
 
-import { cardApi, dashboardApi } from "metabase/api";
+import { cardApi, collectionApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { DispatchFn } from "metabase/redux";
-import { CollectionsApi } from "metabase/services";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
 
 import type { ReportableEntityName } from "./types";
@@ -45,7 +44,11 @@ export const getEntityDetails = ({
         dashboardApi.endpoints.getDashboard,
       ).catch(nullOnCatch);
     case "collection":
-      return CollectionsApi.get({ id }).catch(nullOnCatch);
+      return runRtkEndpoint(
+        { id },
+        dispatch,
+        collectionApi.endpoints.getCollection,
+      ).catch(nullOnCatch);
     default:
       return Promise.resolve(null);
   }

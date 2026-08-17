@@ -357,6 +357,12 @@
    {:encode/for-hashing #'sort-parameter-values}
    :any])
 
+(mr/def ::parameter.options
+  "Options the frontend attaches to a parameter value."
+  [:map
+   [:case-sensitive  {:optional true} :boolean]
+   [:include-current {:optional true} :boolean]])
+
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query.
@@ -364,6 +370,7 @@
   Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT
   schema refer to `:metabase.parameters.schema/parameter`."
   [:and
+   {:description "parameter must be a map with a :type key"}
    [:map
     {:decode/normalize #'normalize-parameter}
     [:type [:ref ::type]]
@@ -380,8 +387,9 @@
     ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
     ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
-    [:default  {:optional true} :any]
-    [:required {:optional true} :any]]
+    [:default  {:optional true} [:ref ::parameter.value]]
+    [:required {:optional true} [:maybe :boolean]]
+    [:options  {:optional true} [:maybe [:ref ::parameter.options]]]]
    ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])

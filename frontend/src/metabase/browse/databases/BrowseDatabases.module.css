@@ -1,5 +1,5 @@
 .dbCard {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 
   &:hover {
     color: var(--mb-color-core-brand);
@@ -7,7 +7,7 @@
 }
 
 .addCard {
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
 
   &:hover {
     background-color: var(--mb-color-core-brand);

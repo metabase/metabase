@@ -1,11 +1,17 @@
 .row {
   &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-background-tertiary);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .link {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   color: var(--mb-color-core-brand);
 }

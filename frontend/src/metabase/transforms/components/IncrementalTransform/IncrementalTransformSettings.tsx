@@ -1,16 +1,12 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { FormSelect } from "metabase/forms";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  SOURCE_STRATEGY_OPTIONS,
-  TARGET_STRATEGY_OPTIONS,
-} from "metabase/transforms/constants";
+import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
@@ -23,7 +19,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TransformSource } from "metabase-types/api";
+import type { TableId, TransformSource } from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";
 
 import {
@@ -31,6 +27,8 @@ import {
   NativeQueryTableTagFieldSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
+import { LookbackField } from "./LookbackField";
+import { UniqueKeyField } from "./UniqueKeyField";
 import type { IncrementalSettingsFormValues } from "./form";
 import { useHasCheckpointOptions } from "./useHasCheckpointOptions";
 
@@ -40,7 +38,10 @@ type IncrementalTransformSettingsProps = {
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
   extraActions?: React.ReactNode;
+  // When the target table already exists, its id powers a column picker for the unique key.
+  targetTableId?: TableId;
 };
 
 export const IncrementalTransformSettings = ({
@@ -49,13 +50,12 @@ export const IncrementalTransformSettings = ({
   onIncrementalChange,
   variant = "embedded",
   readOnly,
+  remoteSyncReadOnly,
   extraActions,
+  targetTableId,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
 
   const { hasCheckpointOptions, transformType } =
     useHasCheckpointOptions(source);
@@ -94,11 +94,7 @@ export const IncrementalTransformSettings = ({
 
     const switchContent = (
       <Switch
-        disabled={
-          readOnly ||
-          isRemoteSyncReadOnly ||
-          (!incremental && transformHasIssues)
-        }
+        disabled={readOnly || (!incremental && transformHasIssues)}
         checked={incremental}
         size="sm"
         label={getLabel()}
@@ -109,7 +105,7 @@ export const IncrementalTransformSettings = ({
       />
     );
 
-    if (isRemoteSyncReadOnly) {
+    if (remoteSyncReadOnly) {
       return (
         <Tooltip
           label={t`You can't edit this setting since Remote Sync is currently in read-only mode.`}
@@ -165,7 +161,11 @@ export const IncrementalTransformSettings = ({
                 <Group p="lg">{extraActions}</Group>
               </>
             )}
-            <TargetStrategyFields variant={variant} />
+            <TargetStrategyFields
+              variant={variant}
+              targetTableId={targetTableId}
+              readOnly={readOnly}
+            />
           </>
         )}
       </TitleSection>
@@ -188,7 +188,11 @@ export const IncrementalTransformSettings = ({
             query={libQuery}
             transformType={transformType}
           />
-          <TargetStrategyFields variant={variant} />
+          <TargetStrategyFields
+            variant={variant}
+            targetTableId={targetTableId}
+            readOnly={readOnly}
+          />
         </>
       )}
     </Stack>
@@ -197,19 +201,18 @@ export const IncrementalTransformSettings = ({
 
 function TargetStrategyFields({
   variant,
+  targetTableId,
+  readOnly,
 }: {
   variant: "embedded" | "standalone";
+  targetTableId?: TableId;
+  readOnly?: boolean;
 }) {
-  const content = TARGET_STRATEGY_OPTIONS.length > 1 && (
+  // No explicit strategy picker: leaving the unique key empty appends; setting it upserts
+  // (merge/restate) matching rows in place.
+  const content = (
     <Stack>
-      <FormSelect
-        name="targetStrategy"
-        label={t`Target Strategy`}
-        description={t`How to update the target table`}
-        data={TARGET_STRATEGY_OPTIONS}
-      />
-      {/* Append strategy has no additional fields */}
-      {/* Future strategies like "merge" could add fields here */}
+      <UniqueKeyField targetTableId={targetTableId} readOnly={readOnly} />
     </Stack>
   );
 
@@ -218,12 +221,10 @@ function TargetStrategyFields({
   }
 
   return (
-    content && (
-      <>
-        <Divider />
-        <Group p="lg">{content}</Group>
-      </>
-    )
+    <>
+      <Divider />
+      <Group p="lg">{content}</Group>
+    </>
   );
 }
 
@@ -260,7 +261,7 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
               source={source}
@@ -272,7 +273,7 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
               disabled={readOnly}
@@ -283,12 +284,13 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               sourceTables={source["source-tables"]}
               disabled={readOnly}
             />
           )}
+          <LookbackField readOnly={readOnly} />
         </>
       )}
     </>

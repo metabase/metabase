@@ -91,3 +91,18 @@
                                             :status              "verified"
                                             :moderated_item_id   Integer/MAX_VALUE
                                             :moderated_item_type "card"}))))))))))
+
+(deftest create-dashboard-review-test
+  (testing "POST /api/moderation-review can verify a dashboard"
+    (mt/with-premium-features #{:content-verification}
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (mt/with-model-cleanup [:model/ModerationReview]
+          (is (=? {:status              "verified"
+                   :moderated_item_type "dashboard"
+                   :moderated_item_id   dashboard-id
+                   :moderator_id        (mt/user->id :crowberto)
+                   :most_recent         true}
+                  (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                        {:status              "verified"
+                                         :moderated_item_id   dashboard-id
+                                         :moderated_item_type "dashboard"}))))))))

@@ -1,8 +1,6 @@
 (ns metabase-enterprise.stale.impl
   (:require
-   [metabase.embedding.settings :as embed.settings]
-   [metabase.settings.core :as setting]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.staleness.core :as staleness]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -15,88 +13,21 @@
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
    [:sort-column  [:enum {:doc "The column to sort by."} :name :last_used_at]]
-   [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]])
-
-(defmulti ^:private find-stale-query
-  "Find stale content of a given model type."
-  {:arglists '([model args])}
-  (fn [model _args] model))
-
-(defmethod find-stale-query :model/Card
-  [_model args]
-  {:select [:report_card.id
-            [(h2x/literal "Card") :model]
-            [:report_card.name :name]
-            :last_used_at]
-   :from :report_card
-   :left-join [:moderation_review [:and
-                                   [:= :moderation_review.moderated_item_id :report_card.id]
-                                   [:= :moderation_review.moderated_item_type (h2x/literal "card")]
-                                   [:= :moderation_review.most_recent true]
-                                   [:= :moderation_review.status (h2x/literal "verified")]]
-               :pulse_card [:= :pulse_card.card_id :report_card.id]
-               :pulse [:and
-                       [:= :pulse_card.pulse_id :pulse.id]
-                       [:= :pulse.archived false]]
-               :sandboxes [:= :sandboxes.card_id :report_card.id]
-               :collection [:= :collection.id :report_card.collection_id]]
-   :where [:and
-           [:= :sandboxes.id nil]
-           [:= :pulse.id nil]
-           [:= :moderation_review.id nil]
-           [:= :report_card.archived false]
-           [:<= :report_card.last_used_at (-> args :cutoff-date)]
-           ;; find things only in regular collections, not the `instance-analytics` collection.
-           [:= :collection.type nil]
-           (when (embed.settings/some-embedding-enabled?)
-             [:= :report_card.enable_embedding false])
-           (when (setting/get :enable-public-sharing)
-             [:= :report_card.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_card.collection_id nil])
-            [:in :report_card.collection_id (-> args :collection-ids)]]]})
-
-(defmethod find-stale-query :model/Dashboard
-  [_model args]
-  {:select [:report_dashboard.id
-            [(h2x/literal "Dashboard") :model]
-            [:report_dashboard.name :name]
-            [:last_viewed_at :last_used_at]]
-   :from :report_dashboard
-   :left-join [:pulse [:and
-                       [:= :pulse.archived false]
-                       [:= :pulse.dashboard_id :report_dashboard.id]]
-               :collection [:= :collection.id :report_dashboard.collection_id]
-               :moderation_review [:and
-                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                   [:= :moderation_review.most_recent true]
-                                   [:= :moderation_review.status (h2x/literal "verified")]]]
-   :where [:and
-           [:= :pulse.id nil]
-           [:= :moderation_review.id nil]
-           [:= :report_dashboard.archived false]
-           [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-           ;; find things only in regular collections, not the `instance-analytics` collection.
-           [:= :collection.type nil]
-           (when (embed.settings/some-embedding-enabled?)
-             [:= :report_dashboard.enable_embedding false])
-           (when (setting/get :enable-public-sharing)
-             [:= :report_dashboard.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_dashboard.collection_id nil])
-            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+   [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]
+   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]])
 
 (defn- sort-column [column]
   (case column
     :name :%lower.name
     :last_used_at :last_used_at))
 
-(defn- queries [args]
-  (for [model [:model/Card :model/Dashboard]]
-    (find-stale-query model args)))
+(defn- queries [{:keys [models] :or {models #{:model/Card :model/Dashboard}} :as args}]
+  ;; Ensure each model's namespace is loaded so its `find-stale-query` method is registered before we
+  ;; dispatch — passing the `:model/X` keyword alone does not trigger Toucan model resolution.
+  (run! t2/resolve-model models)
+  (when-let [unsupported (seq (remove #(get-method staleness/find-stale-query %) models))]
+    (throw (ex-info (str "No staleness method registered for: " (vec unsupported)) {})))
+  (map #(staleness/find-stale-query % args) models))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
   (cond-> {:select [:id :model]

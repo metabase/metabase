@@ -8,7 +8,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -53,7 +53,7 @@ const getDatabaseId = (
   } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
     return undefined;
   } else {
-    return dbId as DatabaseId;
+    return dbId;
   }
 };
 
@@ -89,7 +89,9 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     { pollingInterval: reloadInterval || undefined },
   );
   const databaseResult = useGetDatabaseMetadataQuery(
-    dbId != null && !useSchemaTables ? { id: dbId } : skipToken,
+    dbId != null && !useSchemaTables
+      ? { id: dbId, skip_fields: true }
+      : skipToken,
     { pollingInterval: reloadInterval || undefined },
   );
 

@@ -11,11 +11,3 @@
   :feature :writable-connection
   [database]
   (:write-data-details database))
-
-(defenterprise database-admin-details
-  "Returns the `:admin-details` for a database when the `:workspaces` feature is available.
-
-  `database` is a [[lib/metadata]] database instance. To pass a Toucan2 database instance, use [[driver.u/ensure-lib-database]]."
-  :feature :workspaces
-  [database]
-  (:admin-details database))

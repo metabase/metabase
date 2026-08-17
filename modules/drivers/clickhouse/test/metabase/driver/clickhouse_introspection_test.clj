@@ -513,17 +513,18 @@
                                               :clickhouse :db
                                               {:database-name "default"})
                                              {:db-filters-type "all"})}]
-        (let [describe-result (driver/describe-database :clickhouse db)]
+        (let [describe-result (driver/describe-database :clickhouse db)
+              tables          (into #{} (:tables describe-result))]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
-            (is (contains? (:tables describe-result) table)))
+            (is (contains? tables table)))
           ;; should not contain any ClickHouse system tables
           (is (not (some #(= (:schema %) "system")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "information_schema")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
-                         (:tables describe-result)))))))))
+                         tables))))))))
 
 (deftest ^:parallel clickhouse-describe-database-multiple
   (mt/test-driver :clickhouse

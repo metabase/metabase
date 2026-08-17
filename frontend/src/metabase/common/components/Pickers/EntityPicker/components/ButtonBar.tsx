@@ -67,7 +67,7 @@ export const ButtonBar = ({
       p="md"
       miw={0}
       style={{
-        borderTop: "1px solid var(--mb-color-border)",
+        borderTop: "1px solid var(--mb-color-border-neutral)",
         overflowX: "auto",
       }}
     >
@@ -76,7 +76,7 @@ export const ButtonBar = ({
         <NewDashboardDialog />
       </Flex>
       {error && (
-        <Text c="error" px="md" lh="1rem">
+        <Text c="feedback-negative" px="md" lh="1rem">
           {error}
         </Text>
       )}

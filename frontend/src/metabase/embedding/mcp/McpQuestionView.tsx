@@ -15,10 +15,14 @@ const QUERY_BAR_RESERVED_HEIGHT = "calc(2rem + var(--mantine-spacing-sm))";
 const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-lg)";
 
 export interface McpQuestionViewProps {
+  queryKey: string | null;
   safeAreaPaddingTop: number;
 }
 
-export function McpQuestionView({ safeAreaPaddingTop }: McpQuestionViewProps) {
+export function McpQuestionView({
+  queryKey,
+  safeAreaPaddingTop,
+}: McpQuestionViewProps) {
   const {
     hasChartTypeSelector,
     hasTimeControls,
@@ -27,7 +31,7 @@ export function McpQuestionView({ safeAreaPaddingTop }: McpQuestionViewProps) {
     chartTypes,
     currentChartType,
     onChartTypeChange,
-  } = useMcpQueryControls();
+  } = useMcpQueryControls(queryKey);
 
   const isTableVisualization = currentChartType === "table";
 
@@ -98,7 +102,7 @@ export function McpQuestionView({ safeAreaPaddingTop }: McpQuestionViewProps) {
           <Flex
             h={32}
             align="stretch"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="md"
             style={{ overflow: "hidden" }}
             data-testid="query-explorer-bar"

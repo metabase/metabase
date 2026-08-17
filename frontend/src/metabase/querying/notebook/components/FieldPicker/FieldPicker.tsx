@@ -4,8 +4,8 @@ import { t } from "ttag";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { useTranslateContent } from "metabase/i18n/hooks";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 

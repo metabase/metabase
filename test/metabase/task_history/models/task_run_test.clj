@@ -329,19 +329,21 @@
 
 (deftest notification->task-run-info-test
   (testing "notification->task-run-info extracts correct info"
-    (testing "card notification (alert)"
-      (is (= {:run_type :alert :entity_type :card :entity_id 123}
+    (testing "card notification (alert) is attributed to the notification id"
+      (is (= {:run_type :alert :entity_type :card :entity_id 123 :notification_id 7}
              (notification.send/notification->task-run-info
-              {:payload_type :notification/card
+              {:id           7
+               :payload_type :notification/card
                :payload      {:card_id 123}}))))
     (testing "card notification with nil card_id returns nil"
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/card
                   :payload      {:card_id nil}}))))
-    (testing "dashboard notification (subscription)"
-      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456}
+    (testing "dashboard notification (subscription) is attributed to the notification id"
+      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456 :notification_id 9}
              (notification.send/notification->task-run-info
-              {:payload_type :notification/dashboard
+              {:id           9
+               :payload_type :notification/dashboard
                :payload      {:dashboard_id 456}}))))
     (testing "dashboard notification with nil dashboard_id returns nil"
       (is (nil? (notification.send/notification->task-run-info

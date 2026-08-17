@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionsEndpoints,
@@ -19,6 +18,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
@@ -68,8 +68,8 @@ const setup = ({
   setupUserRecipientsEndpoint({ users: [createMockUser()] });
   setupCollectionsEndpoints({ collections: [] });
 
-  const { history } = renderWithProviders(
-    <Route path="*" component={SearchBar} />,
+  const { router } = renderWithProviders(
+    <Route path="*" element={<SearchBar />} />,
     {
       withRouter: true,
       initialRoute,
@@ -77,7 +77,7 @@ const setup = ({
     },
   );
 
-  return { history: checkNotNull(history) };
+  return { router: checkNotNull(router) };
 };
 
 const getSearchBar = () => {
@@ -87,12 +87,12 @@ const getSearchBar = () => {
 describe("SearchBar", () => {
   describe("typing a search query", () => {
     it("should change URL when user types a query and hits `Enter`", async () => {
-      const { history } = setup();
+      const { router } = setup();
 
       await userEvent.type(getSearchBar(), "BC{enter}");
 
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual("search");
+      const location = router.location;
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=BC");
     });
 
@@ -154,6 +154,7 @@ describe("SearchBar", () => {
         await userEvent.tab();
 
         expect(
+          // Unjustified type cast. FIXME
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
       }
@@ -180,30 +181,30 @@ describe("SearchBar", () => {
 
   describe("persisting search filters", () => {
     it("should keep URL search filters when changing the text query", async () => {
-      const { history } = setup({
+      const { router } = setup({
         initialRoute: "/search?q=foo&type=card",
       });
 
       await userEvent.clear(getSearchBar());
       await userEvent.type(getSearchBar(), "bar{enter}");
 
-      const location = history.getCurrentLocation();
+      const location = router.location;
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar&type=card");
     });
 
     it("should not keep URL search filters when not in the search app", async () => {
-      const { history } = setup({
+      const { router } = setup({
         initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
       });
 
       await userEvent.clear(getSearchBar());
       await userEvent.type(getSearchBar(), "bar{enter}");
 
-      const location = history.getCurrentLocation();
+      const location = router.location;
 
-      expect(location.pathname).toEqual("search");
+      expect(location.pathname).toEqual("/search");
       expect(location.search).toEqual("?q=bar");
     });
   });

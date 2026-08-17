@@ -1,9 +1,8 @@
 import cx from "classnames";
 import { Fragment } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
@@ -51,7 +50,7 @@ export function PanelHeader({
 
   return (
     <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
-      <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background-secondary">
+      <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background_page-secondary">
         <FixedSizeIcon name="table" c="core-brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>

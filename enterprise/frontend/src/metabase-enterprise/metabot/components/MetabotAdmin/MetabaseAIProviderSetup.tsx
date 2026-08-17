@@ -2,17 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import {
-  useRefreshTokenStatusMutation,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/api";
+import { useRefreshTokenStatusMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
-import { useAIProviderConfigurationContext } from "metabase/metabot";
+import {
+  useAIProviderConfigurationContext,
+  useUpdateMetabotSettingsMutation,
+} from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Anchor,
   Box,
@@ -272,19 +272,19 @@ export function MetabaseAIProviderSetup({
       )}
 
       {metabaseManagedAiPurchaseError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {metabaseManagedAiPurchaseError}
         </Text>
       )}
 
       {updateMetabotSettingsError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {updateMetabotSettingsError}
         </Text>
       )}
 
       {removeMetabaseManagedAiError && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {removeMetabaseManagedAiError}
         </Text>
       )}
@@ -381,7 +381,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -402,7 +402,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -427,7 +427,7 @@ function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">
@@ -469,7 +469,7 @@ function MetabasePricingRow({
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">

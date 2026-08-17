@@ -15,7 +15,7 @@ export const LockedTransformsBanner = () => {
 
   return (
     <Flex
-      bg="background-tertiary"
+      bg="background_page-tertiary"
       p="lg"
       mb="sm"
       bdrs="md"

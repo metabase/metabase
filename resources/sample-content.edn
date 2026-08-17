@@ -19,7 +19,7 @@
    :is_sample true,
    :id 1,
    :is_on_demand false,
-   :engine "h2",
+   :engine "sqlite",
    :initial_sync_status "complete",
    :is_audit false,
    :dbms_version "{}",
@@ -94,7 +94,7 @@
  :metabase_table
  ({:description "Information on the user accounts registered with Sample Company.",
    :entity_type "entity/UserTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "PEOPLE",
@@ -113,7 +113,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Confirmed Sample Company orders for a product, from a user.",
    :entity_type "entity/TransactionTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ORDERS",
@@ -133,7 +133,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Includes a catalog of all the products ever sold by the famed Sample Company.",
    :entity_type "entity/ProductTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "PRODUCTS",
@@ -152,7 +152,7 @@
    :points_of_interest "Is it? You tell us!"}
   {:description "Reviews that Sample Company customers have left on our products.",
    :entity_type "entity/GenericTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "REVIEWS",
@@ -173,7 +173,7 @@
   {:description
    "With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.",
    :entity_type "entity/GenericTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "FEEDBACK",
@@ -194,7 +194,7 @@
   {:description
    "Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.",
    :entity_type "entity/UserTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ACCOUNTS",
@@ -215,7 +215,7 @@
   {:description
    "Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.",
    :entity_type "entity/EventTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "ANALYTIC_EVENTS",
@@ -236,7 +236,7 @@
   {:description
    "Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.",
    :entity_type "entity/GenericTable",
-   :schema "PUBLIC",
+   :schema nil,
    :database_require_filter nil,
    :show_in_getting_started false,
    :name "INVOICES",

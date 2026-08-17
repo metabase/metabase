@@ -5,6 +5,8 @@ import {
 } from "metabase/schema";
 import type {
   Collection,
+  CollectionItemModel,
+  CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
@@ -15,6 +17,7 @@ import type {
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
+  UpdateCollectionPermissionsGraphRequest,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -45,6 +48,13 @@ const collectionSchemaForRequest = (
   request?.namespace === "snippets"
     ? SnippetCollectionSchema
     : CollectionSchema;
+
+const getCollectionItemTagModels = (
+  models: ListCollectionItemsRequest["models"],
+): CollectionItemModel[] | undefined =>
+  models?.filter(
+    (model): model is CollectionItemModel => model !== "no_models",
+  );
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -97,7 +107,10 @@ export const collectionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response, error, { models, id }) => [
-        ...provideCollectionItemListTags(response?.data ?? [], models),
+        ...provideCollectionItemListTags(
+          response?.data ?? [],
+          getCollectionItemTagModels(models),
+        ),
         { type: "collection", id: `${id}-items` },
       ],
       onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
@@ -121,6 +134,26 @@ export const collectionApi = Api.injectEndpoints({
           request,
           lifecycle,
         ),
+    }),
+    getCollectionPermissionsGraph: builder.query<
+      CollectionPermissionsGraph,
+      { namespace?: string } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/graph",
+        params: params ?? undefined,
+      }),
+    }),
+    updateCollectionPermissionsGraph: builder.mutation<
+      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/collection/graph?skip-graph=true",
+        body,
+      }),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
@@ -220,6 +253,8 @@ export const {
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
   useGetCollectionQuery,
+  useGetCollectionPermissionsGraphQuery,
+  useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,

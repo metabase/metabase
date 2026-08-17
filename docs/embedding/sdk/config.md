@@ -32,6 +32,10 @@ To pass a theme, use `defineMetabaseTheme`. See [Reuse a saved theme in the SDK]
 
 {% include_file "{{ dirname }}/api/snippets/MetabaseProviderProps.md" snippet="properties" %}
 
+## Custom visualizations
+
+The SDK can render [custom visualizations](../../questions/visualizations/custom.md) that you allowlist with the `allowedCustomVisualizations` prop on `MetabaseProvider`. See [Custom visualizations in embeds](../custom-visualizations.md).
+
 ## Global event handlers
 
 You can listen for events by defining the `eventHandlers` prop for `MetabaseProvider`.

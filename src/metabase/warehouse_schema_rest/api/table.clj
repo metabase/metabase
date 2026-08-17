@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -25,7 +26,7 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -73,7 +74,7 @@
   - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-write include-transform-targets]}
+           published-only can-query can-write include-transform-targets]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -83,6 +84,7 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
+       [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
@@ -110,6 +112,7 @@
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
+                     published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
                      (conj [:not-exists {:select [:*]
                                          :from   [[:dependency :d]]
@@ -121,6 +124,9 @@
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
+      (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                          :table-ids (into #{} (map :id) tables)})
+          tables)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
                      (if can-write (filter mi/can-write?) identity)
@@ -218,13 +224,14 @@
          (let [database (t2/select-one :model/Database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -453,25 +460,38 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(def ^:private CsvUploadParts
+  "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
+  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  [:and
+   [:map
+    ["file"
+     [:map
+      [:filename :string]
+      [:tempfile (ms/InstanceOfClass java.io.File)]]]
+    ["collection_id" {:optional true} :string]
+    [::mc/default [:map-of :string :any]]]
+   (mu/with-api-error-message
+    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    (deferred-tru "unexpected multipart part"))])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
-  uploading a CSV file."
-  {:multipart true}
+  uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -483,19 +503,17 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
-  been created by uploading a CSV file."
-  {:multipart true}
+  been created by uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -531,12 +549,13 @@
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
-                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
-                                              (:name database) (:name table)))
+                    (log/warn (u/format-color :red "Cannot connect to database %s in order to sync table '%s'"
+                                              (:id database) (:name table)))
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do

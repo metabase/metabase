@@ -25,7 +25,10 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import type { Database, Field, FieldId } from "metabase-types/api";
+import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
+import type MetadataTable from "metabase-lib/v1/metadata/Table";
+import { getRemappings } from "metabase-lib/v1/queries/utils/field";
+import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 
 import {
   type ChangeOptions,
@@ -39,7 +42,6 @@ import {
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
-  getFieldRemappedValues,
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
@@ -104,7 +106,7 @@ export const RemappingPicker = ({
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
   const mapping = useMemo(() => {
-    return getFieldRemappedValues(fieldValues?.values);
+    return new Map(getRemappings({ values: fieldValues?.values }));
   }, [fieldValues?.values]);
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
@@ -238,7 +240,11 @@ export const RemappingPicker = ({
           async () => {
             const { error } = await updateFieldValues({
               id,
-              values: Array.from(mapping),
+              values: Array.from(
+                mapping,
+                ([key, label]): FieldValue =>
+                  label == null ? [key] : [key, label],
+              ),
             });
 
             sendUndoToast(error);
@@ -274,16 +280,19 @@ export const RemappingPicker = ({
            */}
           {fkTargetTable && (
             <FieldDataSelector
-              databases={[database]}
+              // DataSelector is typed against metabase-lib entities; here we
+              // feed it plain API entities, which carry the fields it reads.
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove these casts
+              // once DataSelector's entity props use structural interfaces.
+              databases={[database] as unknown as MetadataDatabase[]}
               isInitiallyOpen={isChoosingInitialFkTarget}
-              selectedDatabase={database}
               selectedDatabaseId={database.id}
-              selectedField={fkRemappingField}
               selectedFieldId={fkRemappingField?.id}
-              selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
-              tables={tables}
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
+              // once DataSelector's entity props use structural interfaces.
+              tables={tables as unknown as MetadataTable[]}
               triggerElement={
                 <Select
                   data={[
@@ -314,7 +323,7 @@ export const RemappingPicker = ({
       {value === "custom" && (
         <>
           {isFieldsAccessRestricted && (
-            <Alert mt="md">
+            <Alert size="compact" variant="light" mt="md">
               {t`You need unrestricted data access on this table to map custom display values.`}
             </Alert>
           )}

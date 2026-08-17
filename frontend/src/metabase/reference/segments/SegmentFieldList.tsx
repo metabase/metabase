@@ -3,8 +3,6 @@ import { useFormik } from "formik";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
@@ -15,6 +13,8 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
 import * as actions from "metabase/reference/reference";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
@@ -188,8 +188,10 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
                             databaseId={table.db_id!}
                             field={entity}
                             url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                            // Unjustified type cast. FIXME
                             icon={getIconForField(entity) as IconName}
                             isEditing={isEditing}
+                            // Unjustified type cast. FIXME
                             formField={getNestedFormField(entity.id as FieldId)}
                           />
                         </li>
@@ -209,8 +211,19 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `table` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type SegmentFieldListOwnProps = ReferenceRouteProps &
+  Pick<SegmentFieldListProps, "table">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(SegmentFieldList as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  SegmentFieldList as unknown as React.ComponentType<SegmentFieldListOwnProps>,
+);

@@ -3,7 +3,7 @@
 }
 
 .NodeListItemIcon {
-  color: var(--mb-color-focus);
+  color: var(--mb-color-input-focus);
   margin-top: 1px;
   width: 1rem;
 
@@ -26,7 +26,7 @@
   text-decoration: none;
 
   &:hover {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 
   &.isDisabled {

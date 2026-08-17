@@ -22,10 +22,9 @@ const MODEL_NAME = "Test Action Model";
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
-        cy.intercept(
-          "GET",
-          "/api/dashboard/*/dashcard/*/execute?parameters=*",
-        ).as("prefetchValues");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
+          "prefetchValues",
+        );
 
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
           "executeAction",
@@ -470,7 +469,7 @@ const MODEL_NAME = "Test Action Model";
             });
 
             H.popover().within(() => {
-              cy.findByLabelText("Required").uncheck();
+              cy.findByLabelText("Required").uncheck({ force: true });
             });
 
             H.modal().within(() => {
@@ -529,7 +528,7 @@ const MODEL_NAME = "Test Action Model";
             });
 
             H.popover().within(() => {
-              cy.findByLabelText("Required").check();
+              cy.findByLabelText("Required").check({ force: true });
             });
 
             H.modal().within(() => {
@@ -618,19 +617,21 @@ const MODEL_NAME = "Test Action Model";
 
               changeValue({
                 fieldName: "Integer",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.integer,
                 newValue: 123,
               });
 
               changeValue({
                 fieldName: "Float",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.float,
                 newValue: 2.2,
               });
 
-              cy.findByLabelText("Boolean").should("be.checked").click();
+              cy.findByLabelText("Boolean")
+                .should("be.checked")
+                .click({ force: true });
 
               changeValue({
                 fieldName: "String",
@@ -704,7 +705,11 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("Integer").type("-20");
             cy.findByPlaceholderText("IntegerUnsigned").type("20");
             cy.findByPlaceholderText("Tinyint").type("101");
-            cy.findByPlaceholderText("Tinyint1").type("1");
+            if (dialect === "mysql") {
+              cy.findByLabelText("Tinyint1").click({ force: true });
+            } else {
+              cy.findByPlaceholderText("Tinyint1").type("1");
+            }
             cy.findByPlaceholderText("Smallint").type("32767");
             cy.findByPlaceholderText("Mediumint").type("8388607");
             cy.findByPlaceholderText("Bigint").type("922337204775");
@@ -712,7 +717,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("Double").type("1.79769313486");
             cy.findByPlaceholderText("Decimal").type("123901.21");
 
-            cy.findByLabelText("Boolean").click();
+            cy.findByLabelText("Boolean").click({ force: true });
 
             cy.findByPlaceholderText("String").type("Zany Zebras");
             cy.findByPlaceholderText("Text").type("Zany Zebras");
@@ -1080,7 +1085,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
 
     cy.intercept("GET", "/api/action").as("getActions");
     cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-    cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
       "prefetchValues",
     );
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
@@ -1113,10 +1118,8 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("not.exist");
-        cy.findByLabelText(
-          "Team Name: This Team_name value already exists.",
-        ).should("exist");
+        cy.findByLabelText("Team Name").should("exist");
+        cy.findByText("This Team_name value already exists.").should("exist");
 
         cy.findByText("Team_name already exists.").should("exist");
       });
@@ -1133,10 +1136,9 @@ describe(
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
-      cy.intercept(
-        "GET",
-        "/api/dashboard/*/dashcard/*/execute?parameters=*",
-      ).as("executePrefetch");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
+        "executePrefetch",
+      );
     });
 
     describe("Inline action edit", () => {
@@ -1345,13 +1347,11 @@ function createDashboardWithActionButton({
     cy.findByRole("dialog").within(() => {
       cy.findByText(/has no parameters to map/i).should("not.exist");
       cy.findByText(/Where should the values/i);
-      cy.findAllByText(/ask the user/i)
+      cy.findAllByDisplayValue(/ask the user/i)
         .first()
         .click();
     });
-    H.popover().within(() => {
-      cy.findByText("ID").click();
-    });
+    H.selectDropdown().findByText("ID").click();
   }
 
   cy.findByRole("dialog").within(() => {

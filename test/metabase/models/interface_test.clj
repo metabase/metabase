@@ -9,9 +9,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (com.fasterxml.jackson.core JsonParseException)))
+   [toucan2.core :as t2]))
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914
@@ -108,19 +106,19 @@
         (mi/encrypted-json-out
          (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
         (is (=? [{:level   :error
-                  :e       JsonParseException
+                  :e       nil
                   :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
                 (messages)))))
     (testing "Invalid JSON throws correct error"
       (mt/with-log-messages-for-level [messages :error]
         (mi/encrypted-json-out "{\"a\": 1")
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages))))
       (mt/with-log-messages-for-level [messages :error]
         (encryption-test/with-secret-key "qwe"
           (mi/encrypted-json-out
            (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages)))))))
 
 (deftest ^:parallel instances-with-hydrated-data-test

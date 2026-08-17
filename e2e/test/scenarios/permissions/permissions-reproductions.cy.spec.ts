@@ -1,12 +1,14 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_TOTAL_FIELD: ConcreteFieldReference = [
   "field",
@@ -99,6 +101,7 @@ describe("issue 39221", () => {
   ["admin", "normal"].forEach((user) => {
     it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
       cy.signOut();
+      // Unjustified type cast. FIXME
       cy.signIn(user as "admin" | "normal");
       H.openReviewsTable({ mode: "notebook" });
       // Opening a SQL preview sidebar will trigger a user-local setting update
@@ -108,5 +111,40 @@ describe("issue 39221", () => {
 
       cy.get("@siteSettings").should("be.null");
     });
+  });
+});
+
+describe("issue 76710", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          [DataPermission.VIEW_DATA]: {
+            PUBLIC: {
+              [ORDERS_ID]: DataPermissionValue.UNRESTRICTED,
+              [PRODUCTS_ID]: DataPermissionValue.BLOCKED,
+            },
+          },
+          [DataPermission.CREATE_QUERIES]: {
+            PUBLIC: {
+              [ORDERS_ID]: DataPermissionValue.QUERY_BUILDER,
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("can view a table whose foreign key targets a table the user can't access (metabase#76710)", () => {
+    cy.intercept("GET", `/api/field/${PRODUCTS.ID}`).as("fkTargetField");
+    cy.signIn("none");
+    cy.visit(`/table/${ORDERS_ID}`);
+    cy.wait("@fkTargetField").its("response.statusCode").should("eq", 403);
+    H.tableInteractive().should("be.visible");
+    H.tableHeaderColumn("Product ID").should("be.visible");
   });
 });

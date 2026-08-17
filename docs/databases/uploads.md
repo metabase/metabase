@@ -19,6 +19,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Snowflake](../databases/connections/snowflake.md)
 - [Redshift](../databases/connections/redshift.md)
 - [ClickHouse](../databases/connections/clickhouse.md) (only supported on ClickHouse Cloud)
 
@@ -34,8 +35,6 @@ There are a few things admins need to do to support CSV uploads:
 ## Connect to a database using a database user account with write access
 
 To upload data to Metabase, an admin will need to connect your Metabase to a database that supports uploads using a database user account that has write access to that database.
-
-You can also upload data to the Sample Database included with Metabase (an H2 database), though we don't recommend using the Sample Database for any data that you want to keep around.
 
 For more, check out:
 

@@ -1047,7 +1047,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.echartsContainer().findByText("Goal").trigger("mousemove");
 
-    H.popover().within(() => {
+    H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
       cy.findByText("87.5%").should("exist");
     });

@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  findRequests,
   setupBillingEndpoints,
   setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
@@ -16,9 +16,11 @@ import {
   type MetabotApiKeyProvider,
 } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,
+  GoogleCredentials,
   MetabotCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
@@ -73,6 +75,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     value: "azure/anthropic/claude-sonnet-4-5",
     models: [],
   },
+  google: {
+    // Google has no model dropdown. Model IDs are free text, validated at connect time.
+    value: "google/google/gemini-3.5-flash",
+    models: [],
+  },
   bedrock: {
     value: "bedrock/anthropic.claude-haiku-4-5",
     models: [
@@ -88,22 +95,37 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
-  openai: {
-    value: "openai/gpt-4.1-mini",
+  mistral: {
+    value: "mistral/mistral-medium-3-5",
+    models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
+  },
+  moonshot: {
+    value: "moonshot/kimi-k3",
     models: [
-      { id: "gpt-4.1-mini", display_name: "GPT-4.1 mini" },
-      { id: "gpt-4.1", display_name: "GPT-4.1" },
+      { id: "kimi-k2.6", display_name: "Kimi K2.6" },
+      { id: "kimi-k3", display_name: "Kimi K3" },
+    ],
+  },
+  openai: {
+    value: "openai/gpt-5.4",
+    models: [
+      { id: "gpt-5.4", display_name: "gpt-5.4" },
+      { id: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
     ],
   },
   openrouter: {
-    value: "openrouter/openai/gpt-4.1-mini",
+    value: "openrouter/openai/gpt-5.4-mini",
     models: [
       {
-        id: "openai/gpt-4.1-mini",
-        display_name: "OpenAI GPT-4.1 mini",
+        id: "openai/gpt-5.4-mini",
+        display_name: "OpenAI: GPT-5.4 Mini",
         group: "OpenAI",
       },
     ],
+  },
+  zai: {
+    value: "zai/glm-5.2",
+    models: [{ id: "glm-5.2", display_name: "GLM-5.2" }],
   },
 };
 
@@ -118,17 +140,38 @@ type MetabotSettingsApiResponse =
   | MetabotSettingsResponse
   | (() => Promise<MetabotSettingsResponse>);
 
+type GoogleSettingKey =
+  | "llm-google-service-account-key"
+  | "llm-google-oauth-access-token"
+  | "llm-google-project-id"
+  | "llm-google-location";
+
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | GoogleSettingKey
+  | "llm-mistral-api-key"
+  | "llm-moonshot-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
+  | "llm-zai-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-bedrock-secret-access-key"
   | "llm-bedrock-region"
   | "llm-bedrock-session-token";
+
+const API_KEY_SETTING_BY_PROVIDER: Partial<
+  Record<MetabotProvider, MetabotSettingKey>
+> = {
+  anthropic: "llm-anthropic-api-key",
+  mistral: "llm-mistral-api-key",
+  moonshot: "llm-moonshot-api-key",
+  openai: "llm-openai-api-key",
+  openrouter: "llm-openrouter-api-key",
+  zai: "llm-zai-api-key",
+};
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
@@ -160,6 +203,11 @@ type SetupOptions = {
   deferPurchaseCloudAddOnResponse?: boolean;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
   apiKeyValues?: Partial<Record<MetabotProvider, string | null>>;
+  googleProjectIdValue?: string | null;
+  googleServiceAccountValue?: string | null;
+  googleOauthTokenValue?: string | null;
+  googleLocationValue?: string | null;
+  googleEnvSettings?: Partial<Record<GoogleSettingKey, string>>;
   pauseUpdateResponse?: boolean;
   deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
@@ -169,6 +217,53 @@ type SetupOptions = {
   renderAsModal?: boolean;
   onClose?: jest.Mock;
 };
+
+type GoogleSettingValues = Pick<
+  SetupOptions,
+  | "googleProjectIdValue"
+  | "googleServiceAccountValue"
+  | "googleOauthTokenValue"
+  | "googleLocationValue"
+  | "googleEnvSettings"
+>;
+
+function createGoogleSettingDefinitions({
+  googleProjectIdValue = "my-project",
+  googleServiceAccountValue = null,
+  googleOauthTokenValue = null,
+  googleLocationValue = null,
+  googleEnvSettings = {},
+}: GoogleSettingValues): Record<GoogleSettingKey, MetabotSettingDefinition> {
+  const createGoogleSetting = (key: GoogleSettingKey, value: string | null) => {
+    const envName = googleEnvSettings[key];
+    return createMockSettingDefinition({
+      key,
+      value: value ?? undefined,
+      is_env_setting: Boolean(envName),
+      env_name: envName,
+    });
+  };
+
+  return {
+    "llm-google-service-account-key": createGoogleSetting(
+      "llm-google-service-account-key",
+      googleServiceAccountValue,
+    ),
+    "llm-google-oauth-access-token": createGoogleSetting(
+      "llm-google-oauth-access-token",
+      googleOauthTokenValue,
+    ),
+    // The project ID is saved with an OAuth token. A service account key includes its own.
+    "llm-google-project-id": createGoogleSetting(
+      "llm-google-project-id",
+      googleOauthTokenValue ? (googleProjectIdValue ?? null) : null,
+    ),
+    "llm-google-location": createGoogleSetting(
+      "llm-google-location",
+      googleLocationValue,
+    ),
+  };
+}
 
 async function setup({
   isHosted = false,
@@ -191,6 +286,11 @@ async function setup({
   deferPurchaseCloudAddOnResponse = false,
   removeCloudAddOnResponse = 200,
   apiKeyValues,
+  googleProjectIdValue,
+  googleServiceAccountValue,
+  googleOauthTokenValue,
+  googleLocationValue,
+  googleEnvSettings,
   pauseUpdateResponse = false,
   deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
@@ -216,8 +316,11 @@ async function setup({
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    mistral: null,
+    moonshot: null,
     openai: null,
     openrouter: null,
+    zai: null,
     ...apiKeyValues,
   };
 
@@ -272,6 +375,21 @@ async function setup({
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
     }),
+    ...createGoogleSettingDefinitions({
+      googleProjectIdValue,
+      googleServiceAccountValue,
+      googleOauthTokenValue,
+      googleLocationValue,
+      googleEnvSettings,
+    }),
+    "llm-mistral-api-key": createMockSettingDefinition({
+      key: "llm-mistral-api-key",
+      value: mergedApiKeyValues.mistral ?? undefined,
+    }),
+    "llm-moonshot-api-key": createMockSettingDefinition({
+      key: "llm-moonshot-api-key",
+      value: mergedApiKeyValues.moonshot ?? undefined,
+    }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
@@ -279,6 +397,10 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-zai-api-key": createMockSettingDefinition({
+      key: "llm-zai-api-key",
+      value: mergedApiKeyValues.zai ?? undefined,
     }),
     "llm-bedrock-access-key-id": createMockSettingDefinition({
       key: "llm-bedrock-access-key-id",
@@ -341,6 +463,7 @@ async function setup({
   const settings = mockSettings(sessionProperties);
   setupEnterpriseOnlyPlugin("metabot");
 
+  // Unjustified type cast. FIXME
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
 
@@ -370,17 +493,14 @@ async function setup({
   });
 
   const handleMetabotSettingsUpdate = (call: { options?: RequestInit }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
 
-    if ("api-key" in body) {
-      const apiKeySettingKey =
-        body.provider === "anthropic"
-          ? "llm-anthropic-api-key"
-          : body.provider === "openai"
-            ? "llm-openai-api-key"
-            : "llm-openrouter-api-key";
+    const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[body.provider];
+
+    if ("api-key" in body && apiKeySettingKey) {
       const maskedApiKey = body["api-key"]
         ? `**********${String(body["api-key"]).slice(-2)}`
         : undefined;
@@ -425,6 +545,43 @@ async function setup({
       updateBedrockSetting("llm-bedrock-session-token", "session-token");
     }
 
+    if (body.provider === "google" && "credentials" in body) {
+      const mask = (value: string | null | undefined) =>
+        value ? `**********${String(value).slice(-2)}` : undefined;
+
+      // Same rules as Bedrock. `credentials: null` clears everything. In the map, an absent
+      // field keeps the saved value, and a null field clears it.
+      const requestCredentials = body.credentials ?? null;
+      const updateGoogleSetting = (
+        settingKey: GoogleSettingKey,
+        field: keyof GoogleCredentials,
+        masked: boolean,
+      ) => {
+        if (requestCredentials !== null && !(field in requestCredentials)) {
+          return;
+        }
+        const nextValue = requestCredentials?.[field];
+        settingsDefinitions[settingKey] = createMockSettingDefinition({
+          ...settingsDefinitions[settingKey],
+          key: settingKey,
+          value: masked ? mask(nextValue) : (nextValue ?? undefined),
+        });
+      };
+
+      updateGoogleSetting(
+        "llm-google-service-account-key",
+        "service-account-key",
+        true,
+      );
+      updateGoogleSetting(
+        "llm-google-oauth-access-token",
+        "oauth-access-token",
+        true,
+      );
+      updateGoogleSetting("llm-google-project-id", "project-id", false);
+      updateGoogleSetting("llm-google-location", "location", false);
+    }
+
     if ("model" in body) {
       sessionProperties["llm-metabot-provider"] = updateResponse.value;
       sessionProperties["llm-metabot-configured?"] = true;
@@ -456,24 +613,28 @@ async function setup({
       return settingUpdateResponse;
     }
 
+    // Unjustified type cast. FIXME
     const body = JSON.parse(String(call.options?.body ?? "{}")) as Partial<
       Record<MetabotSettingKey, string | null>
     >;
 
     Object.entries(body).forEach(([key, nextValue]) => {
       if (key in settingsDefinitions) {
+        // Unjustified type cast. FIXME
         settingsDefinitions[key as keyof typeof settingsDefinitions] =
           createMockSettingDefinition({
+            // Unjustified type cast. FIXME
             ...settingsDefinitions[key as keyof typeof settingsDefinitions],
+            // Unjustified type cast. FIXME
             key: key as keyof typeof settingsDefinitions,
+            // Unjustified type cast. FIXME
             value: (nextValue ??
               undefined) as MetabotSettingDefinition["value"],
           });
       }
 
       if (key === "llm-metabot-provider") {
-        sessionProperties["llm-metabot-provider"] =
-          (nextValue as string | null) ?? null;
+        sessionProperties["llm-metabot-provider"] = nextValue ?? null;
         sessionProperties["llm-metabot-configured?"] = Boolean(nextValue);
       }
     });
@@ -492,7 +653,10 @@ async function setup({
         },
       )
     : renderWithProviders(
-        <Route path="/admin/metabot*" component={AIProviderSettingsSection} />,
+        <Route
+          path="/admin/metabot*"
+          element={<AIProviderSettingsSection />}
+        />,
         {
           withRouter: true,
           initialRoute: "/admin/metabot",
@@ -541,6 +705,27 @@ async function confirmDisconnectProvider() {
   );
 }
 
+const METABOT_SETTINGS_PATH = "/api/metabot/settings";
+const SETTING_PATH = "/api/setting";
+
+async function findPutRequests() {
+  const requests = await findRequests("PUT");
+  return requests.map(({ url, body }) => ({
+    path: new URL(url, location.origin).pathname,
+    body,
+  }));
+}
+
+async function findPutBodies(path: string) {
+  return (await findPutRequests())
+    .filter((request) => request.path === path)
+    .map(({ body }) => body);
+}
+
+const findMetabotSettingsUpdates = () => findPutBodies(METABOT_SETTINGS_PATH);
+
+const findSettingUpdates = () => findPutBodies(SETTING_PATH);
+
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
@@ -563,34 +748,29 @@ describe("AIProviderSettingsSection", () => {
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
-  it("shows Anthropic as selectable in the provider dropdown", async () => {
+  it("shows the providers as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
 
-    const anthropicOption = await screen.findByRole("option", {
-      name: "Anthropic",
-    });
-    expect(anthropicOption).toBeInTheDocument();
-    expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
-  });
+    for (const name of [
+      /Anthropic/,
+      /OpenAI/,
+      /OpenRouter/,
+      /Mistral/,
+      /Moonshot AI/,
+      /Z\.AI/,
+      /Microsoft Azure/,
+      /Amazon Bedrock/,
+      /Gemini Enterprise Agent Platform/,
+    ]) {
+      const option = await screen.findByRole("option", { name });
+      expect(option).toBeInTheDocument();
+      expect(option).not.toHaveAttribute("aria-disabled", "true");
+      expect(option).not.toHaveAttribute("data-combobox-disabled");
+    }
 
-  it("shows Coming soon for non-Anthropic providers and disables them", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    const openaiOption = await screen.findByRole("option", {
-      name: /OpenAI/,
-    });
-    expect(openaiOption).toHaveAttribute("data-combobox-disabled");
-
-    const openrouterOption = await screen.findByRole("option", {
-      name: /OpenRouter/,
-    });
-    expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
-
-    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
@@ -648,7 +828,10 @@ describe("AIProviderSettingsSection", () => {
 
   it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
     await setup();
-    await screen.findByLabelText("API key");
+    // Wait for the saved key from the setting-details
+    await waitFor(() =>
+      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
+    );
 
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
@@ -667,22 +850,11 @@ describe("AIProviderSettingsSection", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "anthropic", "api-key": "sk-ant-rotated" },
+      ]);
     });
-
-    const request = fetchMock.callHistory
-      .calls("path:/api/metabot/settings")
-      .find(
-        (call) =>
-          call.request?.method === "PUT" || call.options?.method === "PUT",
-      );
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({ provider: "anthropic", "api-key": "sk-ant-rotated" }),
-    );
 
     await waitFor(() => {
       expect(
@@ -735,7 +907,10 @@ describe("AIProviderSettingsSection", () => {
       },
     });
 
-    expect(await screen.findByLabelText("API key")).toBeDisabled();
+    // Wait for the env-backed state from setting-details
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toBeDisabled();
+    });
     expect(
       await screen.findByText("Anthropic API key expired or invalid"),
     ).toBeInTheDocument();
@@ -1491,22 +1666,11 @@ describe("AIProviderSettingsSection", () => {
     await openModelSelector();
     await userEvent.click(await screen.findByText("Claude Sonnet 4.5"));
 
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "anthropic", model: "claude-sonnet-4-5" },
+      ]);
     });
-
-    const [request] = fetchMock.callHistory.calls(
-      "path:/api/metabot/settings",
-      {
-        method: "PUT",
-      },
-    );
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({ provider: "anthropic", model: "claude-sonnet-4-5" }),
-    );
 
     await waitFor(() => {
       expect(
@@ -1523,6 +1687,314 @@ describe("AIProviderSettingsSection", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("connects to OpenAI by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { openai: null },
+      updateResponse: {
+        value: "openai/gpt-5.4",
+        models: DEFAULT_RESPONSES.openai.models,
+      },
+    });
+
+    await selectProvider("OpenAI");
+    await userEvent.type(screen.getByLabelText("API key"), "sk-openai-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openai", "api-key": "sk-openai-test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("gpt-5.4"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openai", "api-key": "sk-openai-test" },
+        { provider: "openai", model: "gpt-5.4" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects OpenAI by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "openai/gpt-5.4",
+      isConfigured: true,
+      apiKeyValues: { openai: "**********ey" },
+    });
+
+    await screen.findByText("Connected to OpenAI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-openai-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to OpenRouter by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { openrouter: null },
+      updateResponse: {
+        value: "openrouter/anthropic/claude-sonnet-4.6",
+        models: DEFAULT_RESPONSES.openrouter.models,
+      },
+    });
+
+    await selectProvider("OpenRouter");
+    await userEvent.type(
+      screen.getByLabelText("API key"),
+      "sk-or-v1-openrouter-test",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("OpenAI: GPT-5.4 Mini"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
+        { provider: "openrouter", model: "openai/gpt-5.4-mini" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects OpenRouter by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "openrouter/openai/gpt-5.4-mini",
+      isConfigured: true,
+      apiKeyValues: { openrouter: "**********st" },
+    });
+
+    await screen.findByText("Connected to OpenRouter");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-openrouter-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Mistral by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { mistral: null },
+      updateResponse: {
+        value: "mistral/mistral-medium-3-5",
+        models: DEFAULT_RESPONSES.mistral.models,
+      },
+    });
+
+    await selectProvider("Mistral");
+    await userEvent.type(screen.getByLabelText("API key"), "mistral-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "mistral", "api-key": "mistral-key.test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Mistral Medium 3.5"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "mistral", "api-key": "mistral-key.test" },
+        { provider: "mistral", model: "mistral-medium-3-5" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Mistral by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "mistral/mistral-medium-3-5",
+      isConfigured: true,
+      apiKeyValues: { mistral: "**********st" },
+    });
+
+    await screen.findByText("Connected to Mistral");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-mistral-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Z.AI by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { zai: null },
+      updateResponse: {
+        value: "zai/glm-5.2",
+        models: DEFAULT_RESPONSES.zai.models,
+      },
+    });
+
+    await selectProvider("Z.AI");
+    await userEvent.type(screen.getByLabelText("API key"), "zai-key.test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "zai", "api-key": "zai-key.test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("GLM-5.2"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "zai", "api-key": "zai-key.test" },
+        { provider: "zai", model: "glm-5.2" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Z.AI by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "zai/glm-5.2",
+      isConfigured: true,
+      apiKeyValues: { zai: "**********st" },
+    });
+
+    await screen.findByText("Connected to Z.AI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-zai-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Moonshot by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { moonshot: null },
+      updateResponse: {
+        value: "moonshot/kimi-k3",
+        models: DEFAULT_RESPONSES.moonshot.models,
+      },
+    });
+
+    await selectProvider("Moonshot AI");
+    await userEvent.type(screen.getByLabelText("API key"), "sk-moonshot-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "moonshot", "api-key": "sk-moonshot-test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Kimi K2.6"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "moonshot", "api-key": "sk-moonshot-test" },
+        { provider: "moonshot", model: "kimi-k2.6" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Moonshot by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "moonshot/kimi-k2.6",
+      isConfigured: true,
+      apiKeyValues: { moonshot: "**********st" },
+    });
+
+    await screen.findByText("Connected to Moonshot AI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-moonshot-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
   it("disconnects an API-key provider by clearing both the provider and API key settings", async () => {
     await setup();
 
@@ -1537,24 +2009,17 @@ describe("AIProviderSettingsSection", () => {
         "This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.",
       ),
     ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
-    ).toHaveLength(0);
+    expect(await findSettingUpdates()).toEqual([]);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Disconnect provider" }),
     );
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-            "llm-anthropic-api-key": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-anthropic-api-key": null,
+      });
     });
 
     expect(
@@ -1582,15 +2047,10 @@ describe("AIProviderSettingsSection", () => {
 
     await confirmDisconnectProvider();
 
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", {
-          method: "PUT",
-          body: {
-            "llm-metabot-provider": null,
-          },
-        }),
-      ).toBe(true);
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+      });
     });
 
     expect(
@@ -1644,10 +2104,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 
@@ -1697,10 +2155,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 
@@ -1788,18 +2244,6 @@ describe("AIProviderSettingsSection", () => {
   });
 
   describe("Microsoft Azure", () => {
-    it("shows Microsoft Azure as selectable in the provider dropdown", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await userEvent.click(screen.getByLabelText("Provider"));
-
-      const azureOption = await screen.findByRole("option", {
-        name: "Microsoft Azure",
-      });
-      expect(azureOption).toBeInTheDocument();
-      expect(azureOption).not.toHaveAttribute("data-combobox-disabled");
-    });
-
     it("shows the Azure fields without a model dropdown when selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -1846,29 +2290,18 @@ describe("AIProviderSettingsSection", () => {
       expect(connectButton).toBeEnabled();
       await userEvent.click(connectButton);
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "azure",
-          model: "openai/my-deployment",
-          credentials: {
-            "api-key": "azure-key",
-            "base-url": "https://my-resource.services.ai.azure.com/openai",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "azure",
+            model: "openai/my-deployment",
+            credentials: {
+              "api-key": "azure-key",
+              "base-url": "https://my-resource.services.ai.azure.com/openai",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("shows the saved family, base URL, and deployment for a connected Azure provider", async () => {
@@ -1877,11 +2310,17 @@ describe("AIProviderSettingsSection", () => {
         apiKeyValues: { azure: "**********ey" },
       });
 
-      expect(await screen.findByLabelText("Model provider")).toHaveValue(
-        "Anthropic",
+      // The saved values hydrate from the async setting-details fetch, so
+      // wait for them rather than asserting synchronously.
+      await waitFor(() =>
+        expect(screen.getByLabelText("Model provider")).toHaveValue(
+          "Anthropic",
+        ),
       );
-      expect(screen.getByLabelText("Base URL")).toHaveValue(
-        "https://my-resource.services.ai.azure.com/anthropic",
+      await waitFor(() =>
+        expect(screen.getByLabelText("Base URL")).toHaveValue(
+          "https://my-resource.services.ai.azure.com/anthropic",
+        ),
       );
       expect(screen.getByLabelText("Deployment name")).toHaveValue(
         "claude-sonnet-4-5",
@@ -1903,36 +2342,30 @@ describe("AIProviderSettingsSection", () => {
       });
 
       const deploymentInput = await screen.findByLabelText("Deployment name");
+      // Wait for the saved deployment to hydrate before editing it — clearing
+      // the still-empty input is a no-op the arriving value then overwrites.
+      await waitFor(() =>
+        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
+      );
       await userEvent.clear(deploymentInput);
       await userEvent.type(deploymentInput, "renamed-deployment");
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched key and base URL round-trip as displayed values in the form, but must be
       // sent as null so the backend keeps the real saved values.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "azure",
-          model: "anthropic/renamed-deployment",
-          credentials: {
-            "api-key": null,
-            "base-url": null,
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "azure",
+            model: "anthropic/renamed-deployment",
+            credentials: {
+              "api-key": null,
+              "base-url": null,
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("disconnects Azure by clearing the credentials before the provider setting", async () => {
@@ -1944,41 +2377,19 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("Deployment name");
       await confirmDisconnectProvider();
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
             body: { provider: "azure", credentials: null },
-          }),
-        ).toBe(true);
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/setting", {
-            method: "PUT",
+          },
+          {
+            path: SETTING_PATH,
             body: { "llm-metabot-provider": null },
-          }),
-        ).toBe(true);
+          },
+        ]);
       });
-
-      const callHistory = fetchMock.callHistory.calls();
-      const [credentialsRequest] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-      const [providerRequest] = fetchMock.callHistory.calls(
-        "path:/api/setting",
-        { method: "PUT" },
-      );
-
-      if (!credentialsRequest || !providerRequest) {
-        throw new Error("Expected credentials and provider requests to exist");
-      }
-
-      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
-        callHistory.indexOf(providerRequest),
-      );
 
       expect(
         await screen.findByText("Connect to an AI provider"),
@@ -1986,19 +2397,542 @@ describe("AIProviderSettingsSection", () => {
     });
   });
 
-  describe("Amazon Bedrock", () => {
-    it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
+  describe("Gemini Enterprise Agent Platform", () => {
+    // The "OAuth token" label on the auth toggle is the same as the label on the OAuth token
+    // input. Thus the queries for credential inputs also give the element type.
+    const CREDENTIAL_INPUT = { selector: "input[type='password']" };
+
+    it("shows the project ID, location, model, and auth type toggle with the service account key picker when selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
-      await userEvent.click(screen.getByLabelText("Provider"));
+      await selectProvider("Gemini Enterprise Agent Platform");
 
-      const bedrockOption = await screen.findByRole("option", {
-        name: "Amazon Bedrock",
-      });
-      expect(bedrockOption).toBeInTheDocument();
-      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
+      expect(await screen.findByLabelText("Project ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Location")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Authentication method"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Service account key file")).toBeInTheDocument();
+      // Only the credential input for the selected auth type is shown.
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
     });
 
+    it("explains that model availability varies by location and links to the location docs", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Model");
+
+      expect(
+        screen.getByText(/Model availability varies by location/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", {
+          name: "See which Gemini models are available in each location.",
+        }),
+      ).toHaveAttribute(
+        "href",
+        "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#google-models",
+      );
+    });
+
+    const typeModel = async (model: string) => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await userEvent.type(await screen.findByLabelText("Model"), model);
+    };
+
+    const MODEL_WARNING =
+      "Metabot works best with these models: gemini-3.5-flash, gemini-3.6-flash, gemini-3.7-flash. Other models may not work as expected.";
+
+    it.each(["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"])(
+      "shows no advisory warning for %s",
+      async (model) => {
+        await typeModel(model);
+
+        expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
+      },
+    );
+
+    it("shows no advisory warning for a recommended model entered with the google publisher prefix", async () => {
+      await typeModel("google/gemini-3.5-flash");
+
+      expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
+    });
+
+    it("lists the recommended models when the model is another Gemini model", async () => {
+      await typeModel("gemini-2.5-flash");
+
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
+    });
+
+    it("lists the recommended models when the model is not a Gemini model", async () => {
+      await typeModel("claude-sonnet-4-6");
+
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
+    });
+
+    it("shows no advisory warning while the model is still blank", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Model");
+
+      expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
+    });
+
+    it("advisory warnings do not block connect", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-2.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-2.5-flash");
+
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-2.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("shows a single credential input matching the selected auth type", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      expect(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Service account key file"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Service account key"));
+      expect(screen.getByText("Service account key file")).toBeInTheDocument();
+      expect(screen.getByText("Click to select a file")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Service account key file input"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps Connect disabled until the OAuth token, project ID, and model are filled in", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+    });
+
+    it("connects with a service account key file alone and sends its contents as credentials", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+
+      expect(
+        await screen.findByRole("button", { name: "Connect" }),
+      ).toBeDisabled();
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.upload(
+        screen.getByLabelText("Service account key file input"),
+        new File(['{"type": "service_account"}'], "service-account.json", {
+          type: "application/json",
+        }),
+      );
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "service-account-key": '{"type": "service_account"}',
+            },
+          },
+        ]);
+      });
+    });
+
+    it("clears a selected service account file with the clear button", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.upload(
+        screen.getByLabelText("Service account key file input"),
+        new File(['{"type": "service_account"}'], "service-account.json", {
+          type: "application/json",
+        }),
+      );
+      expect(
+        await screen.findByText("service-account.json"),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Clear the selected file" }),
+      );
+      expect(
+        screen.queryByText("service-account.json"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+    });
+
+    it("connects by sending the qualified model and the credentials object in one request", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      // A bare Gemini model ID gets the `google/` publisher prefix.
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // The location field did not change, thus it is not sent. Only changed fields are sent.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("keeps an explicitly publisher-qualified model ID unchanged", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.6-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(
+        screen.getByLabelText("Model"),
+        "google/gemini-3.6-flash",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.6-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("indicates a saved service account key without echoing it and shows the saved model", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+      });
+
+      // The auth toggle defaults to the saved credential type.
+      expect(
+        await screen.findByText("Service account key file"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("A service account key is saved."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+      // The saved model is shown as the bare Gemini ID, without the `google/` publisher prefix.
+      expect(await screen.findByLabelText("Model")).toHaveValue(
+        "gemini-3.5-flash",
+      );
+    });
+
+    it("clears a saved service account key when connecting with an OAuth token instead", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      // The toggle starts on the saved service account. Change to the OAuth token auth type.
+      await screen.findByText("Service account key file");
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.new-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // The service account field goes as null. The backend prefers the service account key to
+      // the OAuth token, thus the old key must not stay active.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.new-token",
+              "project-id": "my-project",
+              "service-account-key": null,
+            },
+          },
+        ]);
+      });
+    });
+
+    it("opens on the service account key when both credentials are saved, matching the backend's precedence", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        googleOauthTokenValue: "**********en",
+      });
+
+      expect(
+        await screen.findByText("Service account key file"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+    });
+
+    it("leaves an env-backed service account key alone when connecting with an OAuth token", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        googleEnvSettings: {
+          "llm-google-service-account-key": "MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY",
+        },
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await screen.findByLabelText("Project ID");
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.new-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // An env-set key cannot be cleared, so the request leaves it out.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.new-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("shows the saved credentials and model for a connected provider", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+      });
+
+      expect(
+        await screen.findByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).toHaveValue("**********en");
+      expect(screen.getByLabelText("Project ID")).toHaveValue("my-project");
+      expect(screen.getByLabelText("Model")).toHaveValue("gemini-3.5-flash");
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Connect instead of Disconnect when the connected model is edited", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+        updateResponse: {
+          value: "google/google/gemini-3.6-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      expect(await screen.findByLabelText("Model")).toHaveValue(
+        "gemini-3.5-flash",
+      );
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+
+      await userEvent.clear(screen.getByLabelText("Model"));
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.6-flash");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.6-flash",
+            credentials: {},
+          },
+        ]);
+      });
+    });
+
+    it("shows the connect error when validating the model fails", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        metabotSettingsUpdateResponse: {
+          status: 400,
+          body: {
+            message:
+              "Google API endpoint is unavailable or the model was not found.",
+          },
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-9000");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      expect(
+        await screen.findByText(
+          "Google API endpoint is unavailable or the model was not found.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("disconnects by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+      });
+
+      await screen.findByLabelText("Project ID");
+      await confirmDisconnectProvider();
+
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
+            body: { provider: "google", credentials: null },
+          },
+          {
+            path: SETTING_PATH,
+            body: { "llm-metabot-provider": null },
+          },
+        ]);
+      });
+    });
+  });
+
+  describe("Amazon Bedrock", () => {
     it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
       await setup({ savedProviderValue: null, isConfigured: false });
 
@@ -2027,30 +2961,19 @@ describe("AIProviderSettingsSection", () => {
       await userEvent.type(screen.getByLabelText("Region"), "us-east-2");
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched session token field is omitted entirely — only changed fields are sent.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            "access-key-id": "AKIDEXAMPLE",
-            "secret-access-key": "test-secret",
-            region: "us-east-2",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              "access-key-id": "AKIDEXAMPLE",
+              "secret-access-key": "test-secret",
+              region: "us-east-2",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("does not echo obfuscated credentials when editing only the region of a connected Bedrock provider", async () => {
@@ -2065,29 +2988,18 @@ describe("AIProviderSettingsSection", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // The untouched access key, secret, and session token round-trip as obfuscated placeholders
       // in the form, and must be omitted so the backend leaves the real saved values intact.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            region: "us-west-2",
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              region: "us-west-2",
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("clears the session token by sending an explicit null without touching the other fields", async () => {
@@ -2101,28 +3013,17 @@ describe("AIProviderSettingsSection", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
-          }),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-
       // null means an explicit clear; the untouched fields are omitted so the saved keys survive.
-      expect(request?.options?.body).toBe(
-        JSON.stringify({
-          provider: "bedrock",
-          credentials: {
-            "session-token": null,
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "bedrock",
+            credentials: {
+              "session-token": null,
+            },
           },
-        }),
-      );
+        ]);
+      });
     });
 
     it("shows the grouped model picker for a connected Bedrock provider", async () => {
@@ -2149,41 +3050,19 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("Access key ID");
       await confirmDisconnectProvider();
 
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/metabot/settings", {
-            method: "PUT",
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
             body: { provider: "bedrock", credentials: null },
-          }),
-        ).toBe(true);
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called("path:/api/setting", {
-            method: "PUT",
+          },
+          {
+            path: SETTING_PATH,
             body: { "llm-metabot-provider": null },
-          }),
-        ).toBe(true);
+          },
+        ]);
       });
-
-      const callHistory = fetchMock.callHistory.calls();
-      const [credentialsRequest] = fetchMock.callHistory.calls(
-        "path:/api/metabot/settings",
-        { method: "PUT" },
-      );
-      const [providerRequest] = fetchMock.callHistory.calls(
-        "path:/api/setting",
-        { method: "PUT" },
-      );
-
-      if (!credentialsRequest || !providerRequest) {
-        throw new Error("Expected credentials and provider requests to exist");
-      }
-
-      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
-        callHistory.indexOf(providerRequest),
-      );
 
       expect(
         await screen.findByText("Connect to an AI provider"),
@@ -2210,14 +3089,203 @@ describe("AIProviderSettingsSection", () => {
         ).toBe(true);
       });
 
-      expect(
-        fetchMock.callHistory
-          .calls("path:/api/setting")
-          .some((call) => call.request?.method === "PUT"),
-      ).toBe(false);
+      expect(await findSettingUpdates()).toEqual([]);
       expect(
         screen.getByRole("button", { name: "Disconnect" }),
       ).toBeInTheDocument();
     });
+  });
+});
+
+const DEFAULT_PROVIDER_VALUE = "anthropic/claude-sonnet-4-6";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
+const DIVERGENT_MODELS = [
+  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
+  { id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
+];
+
+function setupDivergentReadsBackend({
+  delayAdminSettingDetailsRefetch = false,
+}: { delayAdminSettingDetailsRefetch?: boolean } = {}) {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+
+  const backend: { apiKeySaved: boolean; providerRow: string | null } = {
+    apiKeySaved: false,
+    providerRow: null,
+  };
+
+  const providerValue = () => backend.providerRow ?? DEFAULT_PROVIDER_VALUE;
+  const isConfigured = () => backend.apiKeySaved;
+
+  const sessionPropertiesResponse = () =>
+    createMockSettings({
+      "llm-metabot-provider": providerValue(),
+      "llm-metabot-configured?": isConfigured(),
+    });
+
+  const disconnectedSnapshot = sessionPropertiesResponse();
+  let pendingStaleSessionPropertiesReads = 0;
+
+  fetchMock.get("path:/api/session/properties", () => {
+    if (pendingStaleSessionPropertiesReads > 0) {
+      pendingStaleSessionPropertiesReads -= 1;
+      return disconnectedSnapshot;
+    }
+    return sessionPropertiesResponse();
+  });
+
+  const adminSettingDetailsResponse = () => [
+    createMockSettingDefinition({
+      key: "llm-metabot-provider",
+      value: backend.providerRow ?? undefined,
+    }),
+    createMockSettingDefinition({
+      key: "llm-anthropic-api-key",
+      value: backend.apiKeySaved ? "**********ey" : undefined,
+    }),
+  ];
+
+  const detailsRefetchDeferred = defer<void>();
+  let adminSettingDetailsRequestCount = 0;
+
+  fetchMock.get("path:/api/setting", async () => {
+    adminSettingDetailsRequestCount += 1;
+    if (
+      delayAdminSettingDetailsRefetch &&
+      adminSettingDetailsRequestCount > 1
+    ) {
+      await detailsRefetchDeferred.promise;
+    }
+    return adminSettingDetailsResponse();
+  });
+
+  fetchMock.get("path:/api/metabot/settings", () => ({
+    value: providerValue(),
+    models: backend.apiKeySaved ? DIVERGENT_MODELS : [],
+  }));
+
+  fetchMock.put("path:/api/metabot/settings", (call) => {
+    const body: MetabotSettingsUpdateBody = JSON.parse(
+      String(call.options?.body ?? "{}"),
+    );
+    const currentProviderFromGetter = providerValue().split("/")[0];
+    const providerChanged = currentProviderFromGetter !== body.provider;
+
+    if ("api-key" in body) {
+      backend.apiKeySaved = Boolean(body["api-key"]);
+    }
+
+    const model =
+      body.model ?? (providerChanged ? DEFAULT_ANTHROPIC_MODEL : null);
+    if (model) {
+      backend.providerRow = `${body.provider}/${model}`;
+    }
+
+    return { value: providerValue(), models: DIVERGENT_MODELS };
+  });
+
+  renderWithProviders(
+    <Route path="/admin/metabot*" element={<AIProviderSettingsSection />} />,
+    {
+      withRouter: true,
+      initialRoute: "/admin/metabot",
+      storeInitialState: {
+        settings: mockSettings(disconnectedSnapshot),
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
+  );
+
+  return {
+    backend,
+    releaseAdminSettingDetailsRefetch: () => detailsRefetchDeferred.resolve(),
+    markNextSessionPropertiesReadStale: () => {
+      pendingStaleSessionPropertiesReads += 1;
+    },
+  };
+}
+
+async function connectToAnthropicFromScratch() {
+  await screen.findByText("Connect to an AI provider");
+  await userEvent.click(await screen.findByLabelText("Provider"));
+  await userEvent.click(
+    await screen.findByRole("option", { name: "Anthropic" }),
+  );
+  await userEvent.type(
+    await screen.findByLabelText("API key"),
+    "sk-ant-test-key",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+}
+
+describe("AIProviderSettingsSection with divergent settings reads", () => {
+  it("keeps the entered API key and offers the model picker while the setting-details refetch lags behind session-properties", async () => {
+    const { releaseAdminSettingDetailsRefetch } = setupDivergentReadsBackend({
+      delayAdminSettingDetailsRefetch: true,
+    });
+
+    await connectToAnthropicFromScratch();
+
+    expect(await screen.findByLabelText("Model")).toBeInTheDocument();
+    expect(screen.getByLabelText("API key")).toHaveValue("sk-ant-test-key");
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    expect(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    releaseAdminSettingDetailsRefetch();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("API key")).toHaveValue("**********ey");
+    });
+    expect(
+      await screen.findByText("Connected to Anthropic"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the provider and model selection when a stale node serves the session-properties refetch after picking a model", async () => {
+    const { backend, markNextSessionPropertiesReadStale } =
+      setupDivergentReadsBackend();
+
+    await connectToAnthropicFromScratch();
+    await screen.findByText("Connected to Anthropic");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
+    });
+
+    // Let the session-properties refetch land before arming the one-shot stale marker.
+    // Otherwise that in-flight refetch consumes it and the model-pick refetch below
+    // gets fresh data instead of stale.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/session/properties"),
+      ).toHaveLength(2);
+    });
+    await act(async () => {
+      await fetchMock.callHistory.flush(true);
+    });
+
+    markNextSessionPropertiesReadStale();
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
+    );
+
+    await waitFor(() => {
+      expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
+    });
+
+    // Wait for the stale refetch to flip the section back to the setup layout
+    // then check the form kept the new selection instead of resetting to the stale snapshot.
+    expect(await screen.findByLabelText("Provider")).toHaveValue("Anthropic");
+    expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
   });
 });

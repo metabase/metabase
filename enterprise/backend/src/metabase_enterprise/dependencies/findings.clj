@@ -57,14 +57,20 @@
         instance-id (:id toucan-instance)]
     (if-let [errors (seq (pre-analysis-errors toucan-instance))]
       (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (when-let [db-id (instance-db-id toucan-instance)]
+      (if-let [db-id (instance-db-id toucan-instance)]
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
-                             (log/error e "Error analyzing entity")
+                             (log/errorf "Error analyzing entity: %s" (ex-message e))
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))))))
+          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
+        ;; No resolvable database, and no pre-analysis error explaining it: record a terminal error so
+        ;; the entity gets a finding (clearing its stale flag) instead of no-oping forever and being
+        ;; re-selected on every run. It re-checks normally if its database later becomes resolvable.
+        (deps.analysis-finding/upsert-analysis!
+         entity-type instance-id false
+         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."
@@ -72,8 +78,8 @@
   (doseq [instance instances]
     (try (upsert-analysis! instance)
          (catch Exception e
-           (log/errorf e "Analyzing entity %s %s failed"
-                       (t2/model instance) (:id instance))))))
+           (log/errorf "Analyzing entity %s %s failed: %s"
+                       (t2/model instance) (:id instance) (ex-message e))))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
@@ -158,11 +164,14 @@
   termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
-  (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
-    (lib-be/with-metadata-provider-cache
+  ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
+  ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
+  ;; the batch a private one.
+  (lib-be/with-metadata-provider-cache
+    (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
       (doseq [instance instances]
         (try (upsert-analysis! instance)
              (catch Exception e
-               (log/errorf e "Analyzing entity %s %s failed"
-                           (t2/model instance) (:id instance))))))
-    (count instances)))
+               (log/errorf "Analyzing entity %s %s failed: %s"
+                           (t2/model instance) (:id instance) (ex-message e)))))
+      (count instances))))

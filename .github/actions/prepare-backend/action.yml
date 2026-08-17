@@ -4,7 +4,7 @@ description: |
 inputs:
   java-version:
     required: true
-    default: "21"
+    default: "25"
   clojure-version:
     required: true
     default: "1.12.0.1488"
@@ -49,6 +49,8 @@ runs:
         path: |
           ~/.m2
           ~/.gitlibs
+          ~/.deps.clj
+          bin/bb
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.m2-restore-key }}

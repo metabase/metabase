@@ -225,7 +225,7 @@ describe("issue 56567", () => {
       H.getPermissionRowPermissions("All Users").click();
 
       // checks the 'Also change sub-collections' toggle
-      H.popover().findByRole("switch").click();
+      H.popover().findByRole("switch").click({ force: true });
       H.popover().findByRole("switch").should("be.checked");
 
       // selected desired permission

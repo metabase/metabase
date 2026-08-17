@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.ai-tracing.core :as ait]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,17 +15,18 @@
    [metabase.lib.core :as lib]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -56,6 +58,87 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
+(defn- make-out-of-sync-fn
+  [conversation-id parent-message-id retry-message-id]
+  (fn [reason & [cause]]
+    (log/warn "Rejecting agent-streaming request"
+              {:conversation-id   conversation-id
+               :parent-message-id parent-message-id
+               :retry-message-id  retry-message-id
+               :reason            reason})
+    (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
+                    {:status-code 409 :reason reason}
+                    cause))))
+
+(defn- external-id-conflict?
+  ;; driver-specific violation messages all contain the constraint name; see the
+  ;; opaque-exception caveat on [[metabase.app-db.query/with-conflict-retry]]
+  [e]
+  (boolean (some #(re-find #"(?i)uq_metabot_message_external_id" (str (ex-message %)))
+                 (u/full-exception-chain e))))
+
+(defn- check-retry!
+  [messages retry-message-id out-of-sync!]
+  (let [retry-msg (u/seek #(= retry-message-id (:external_id %)) (rseq messages))
+        last-user (u/seek #(= :user (:role %)) (rseq messages))]
+    (cond
+      (nil? retry-msg)                       (out-of-sync! :retry-message-not-found)
+      (not= (:role retry-msg) :user)         (out-of-sync! :retry-message-not-user-role)
+      (not= (:id retry-msg) (:id last-user)) (out-of-sync! :retry-message-not-last)
+      :else
+      (let [delete-ids (->> messages
+                            (m/drop-upto #(= (:id %) (:id retry-msg)))
+                            (filter #(= :assistant (:role %)))
+                            (mapv :id))]
+        (when (> (count delete-ids) 1)
+          (log/warn "Retry found multiple live assistant rows for one prompt"
+                    {:conversation-id (:conversation_id retry-msg) :message-ids delete-ids}))
+        {:action :retry :message-ids delete-ids}))))
+
+(defn- check-parent-msg!
+  [messages parent-message-id out-of-sync!]
+  (let [parent-msg (when parent-message-id
+                     (u/seek #(= parent-message-id (:external_id %)) (rseq messages)))]
+    (cond
+      (and parent-message-id (nil? parent-msg))             (out-of-sync! :parent-message-not-found)
+      (and parent-msg (not= (:role parent-msg) :assistant)) (out-of-sync! :parent-message-not-agent-role)
+      :else
+      (let [tail       (if parent-msg
+                         (m/drop-upto #(= (:id %) (:id parent-msg)) messages)
+                         messages)
+            assistants (filter #(= :assistant (:role %)) tail)]
+        (cond
+          (and (seq assistants) (every? #(some? (:error %)) assistants))
+          {:action :replace-failed-turn :message-ids (mapv :id tail)}
+
+          (nil? parent-message-id) (out-of-sync! :parent-message-missing)
+          :else                    (out-of-sync! :parent-message-stale))))))
+
+(defn- check-turn!
+  "Decides how the incoming request continues the conversation, reading only from the
+  conversation's live `messages` (reader order, from [[metabot.persistence/live-messages]]):
+    {:action :start}                                    — append a new turn
+    {:action :retry :message-ids [pk...]}               — regenerate `retry-message-id`'s response,
+                                                          soft-deleting the trailing live replies
+    {:action :replace-failed-turn :message-ids [pk...]} — soft-delete trailing failed turns, then start
+  Calls `out-of-sync!` (which throws 409) when the request does not line up with `messages`.
+
+  A retry must target the last live user message. A plain request must either point
+  `parent-message-id` at the leaf, or at the assistant message right before trailing
+  turns that all failed (assistant rows with a recorded error) — the failed rows are
+  then handed back for replacement."
+  [messages parent-message-id retry-message-id out-of-sync!]
+  (let [leaf-id (:external_id (u/seek #(= :assistant (:role %)) (rseq messages)))]
+    (cond
+      (some? retry-message-id)
+      (check-retry! messages retry-message-id out-of-sync!)
+
+      (= parent-message-id leaf-id)
+      {:action :start}
+
+      :else
+      (check-parent-msg! messages parent-message-id out-of-sync!))))
+
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -82,12 +165,29 @@
            (vreset! canceled? true)
            (reduced acc)))))))
 
+(defn- inject-title-events-xf
+  "Inject the title once its job settles, then stop watching to avoid repeated DB reads."
+  [title-job conversation-id]
+  (let [watching? (volatile! (boolean title-job))]
+    (mapcat
+     (fn [line]
+       (if (or (not @watching?)
+               (= self.core/done-sse-line line)
+               (not (conversation-title/job-settled? title-job)))
+         [line]
+         (do
+           (vreset! watching? false)
+           (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
+             [line (self.core/format-sse-event event)]
+             [line])))))))
+
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
-  collecting parts for database storage. Text parts are combined before storage
-  to consolidate streaming chunks into single text parts.
+  Streams AI SDK SSE `data: {UIMessageChunk}` events
+  (see [[self.core/parts->aisdk-sse-xf]]) to the client in real-time while
+  simultaneously collecting parts for database storage. Text parts are combined
+  before storage to consolidate streaming chunks into single text parts.
 
   Monitors `canceled-chan` for client disconnection — when the client closes the
   connection, the pipeline stops via `reduced` and collected parts are still persisted.
@@ -97,35 +197,45 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
-  line protocol so the client can correlate streamed messages with feedback."
+  `:external-id` is the assistant row's `external_id`, emitted as the SSE
+  `start` event's `messageId` so the client can correlate streamed messages
+  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  emitted as the `start` event's `messageMetadata.userMessageId`.
+  `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
+  it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           assistant-msg-id external-id]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
+           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
+  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
+                                                                  :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (let [parts-atom (atom [])
-            canceled?  (volatile! false)
+      (let [parts-atom  (atom [])
+            memory-atom (atom nil)
+            canceled?   (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
             ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
             ;; subclasses, or failures from the agent's recovery `rf` write). Without
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))]
+                             (self.core/parts->aisdk-sse-xf
+                              (cond-> {:message-id external-id}
+                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
+                             (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages      messages
-                               :state         state
-                               :metabot-id    metabot-id
-                               :profile-id    (keyword profile-id)
-                               :context       enriched-context
-                               :tracking-opts {:session-id conversation-id}}
+                      (cond-> {:messages        messages
+                               :state           state
+                               :metabot-id      metabot-id
+                               :conversation-id conversation-id
+                               :profile-id      (keyword profile-id)
+                               :context         enriched-context
+                               :eval-session-id eval-session-id
+                               :memory-atom     memory-atom
+                               :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -137,10 +247,24 @@
             ;; the socket cleanly when this body fn returns. The error is fully
             ;; captured in the row via the `finally` below and in the log here.
             (vreset! thrown t)
-            (log/error t "Native agent stream failed"
+            (log/error "Native agent stream failed"
                        {:conversation-id conversation-id
                         :assistant-msg-id assistant-msg-id
-                        :external-id     external-id}))
+                        :external-id     external-id
+                        :error           (ex-message t)})
+            ;; Stream a well-formed AI SDK error tail so the client surfaces the failure
+            ;; instead of treating the truncated stream as a silent success. Unlike binary
+            ;; downloads (which abort the connection), an event stream carries its own error
+            ;; framing, so we emit the error event, a closing `finish`, and `[DONE]`, then let
+            ;; the body fn return to close the socket cleanly — aborting here would deny the
+            ;; client this very event.
+            (try
+              (.write os (.getBytes ^String (self.core/format-error-frames
+                                             {:error (metabot.persistence/throwable->error-payload t)})
+                                    "UTF-8"))
+              (.flush os)
+              (catch org.eclipse.jetty.io.EofException _
+                (vreset! canceled? true))))
           (finally
             (try
               (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
@@ -155,15 +279,17 @@
                                      thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
-                 conversation-id assistant-msg-id combined-parts
+                 assistant-msg-id combined-parts
                  :profile-id profile-id
                  :finished?  (not aborted?)
-                 :error      error-data))
+                 :error      error-data
+                 :turn-state (some-> @memory-atom memory/turn-state)))
               (catch Exception e
-                (log/error e "Failed to finalize assistant turn"
+                (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
                             :assistant-msg-id assistant-msg-id
-                            :external-id      external-id})))))))))
+                            :external-id      external-id
+                            :error            (ex-message e)})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc.
@@ -172,7 +298,8 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id
+           user_message_id assistant_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -183,10 +310,38 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (let [{:keys [assistant-msg-id assistant-external-id]}
-          (metabot.persistence/start-turn! conversation_id profile-id message
-                                           :hostname hostname
-                                           :pii-info pii-info)]
+    (let [out-of-sync! (make-out-of-sync-fn conversation_id parent_message_id retry_message_id)
+          {:keys [messages message-ids turn]}
+          (metabot.persistence/with-conversation-lock conversation_id
+            (let [messages (metabot.persistence/live-messages conversation_id)
+                  {:keys [action message-ids]} (check-turn! messages parent_message_id retry_message_id out-of-sync!)
+                  turn     (try
+                             (if (= action :retry)
+                               (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                                                :assistant-external-id assistant_message_id
+                                                                :delete-message-ids message-ids)
+                               (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                :hostname hostname
+                                                                :pii-info pii-info
+                                                                :delete-message-ids message-ids
+                                                                :user-external-id user_message_id
+                                                                :assistant-external-id assistant_message_id))
+                             (catch Exception e
+                               (if (external-id-conflict? e)
+                                 (out-of-sync! :external-id-taken e)
+                                 (throw e))))]
+              {:messages messages :message-ids message-ids :turn turn}))
+          {:keys [assistant-msg-id assistant-external-id user-external-id]} turn
+          deleted?  (set message-ids)
+          live      (remove #(deleted? (:id %)) messages)
+          history   (metabot.persistence/history live)
+          state     (metabot.persistence/conversation-state live)
+          first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
+                        (:content message))
+          title-job (conversation-title/ensure-title!
+                     conversation_id
+                     (metabot.usage/valid-usage-profile-id profile-id)
+                     first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -197,8 +352,11 @@
         :conversation-id  conversation_id
         :state            state
         :debug?           debug?
+        :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
-        :external-id      assistant-external-id}))))
+        :external-id      assistant-external-id
+        :user-external-id user-external-id
+        :title-job        title-job}))))
 
 (defn- legacy->modern-query
   [query]
@@ -236,11 +394,16 @@
             [:message ms/NonBlankString]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
-            [:history [:maybe ::metabot.schema/messages]]
-            [:state [:map
-                     [:queries {:optional true} [:map-of :string :any]]
-                     [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
+            [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:retry_message_id {:optional true} [:maybe ms/UUIDString]]
+            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
+            ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
+            ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.
+            ;; `ait/max-session-id-length` / `ait/safe-session-id-re` are the single source of truth.
+            [:eval_session_id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
+            [:user_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:assistant_message_id {:optional true} [:maybe ms/UUIDString]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)
@@ -265,13 +428,7 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (let [message (metabot.feedback/persist-feedback! body)]
-    (try
-      (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                      (metabot.feedback/harbormaster-payload body message))
-                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
-      (catch Exception e
-        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/source-feedback" :- [:map
@@ -306,15 +463,21 @@
    [:models [:sequential llm-model-response-schema]]])
 
 (def ^:private provider-credentials-schema
-  "Provider credentials carried by the request body's `:credentials` map.
-  Bedrock sends AWS key material; Azure sends an API key and base URL."
+  "Provider credentials carried by the request body's `:credentials` map."
   [:map
-   [:access-key-id     {:optional true} [:maybe :string]]
-   [:secret-access-key {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]
-   [:session-token     {:optional true} [:maybe :string]]
-   [:api-key           {:optional true} [:maybe :string]]
-   [:base-url          {:optional true} [:maybe :string]]])
+   ;; bedrock
+   [:access-key-id       {:optional true} [:maybe :string]]
+   [:secret-access-key   {:optional true} [:maybe :string]]
+   [:region              {:optional true} [:maybe :string]]
+   [:session-token       {:optional true} [:maybe :string]]
+   ;; azure
+   [:api-key             {:optional true} [:maybe :string]]
+   [:base-url            {:optional true} [:maybe :string]]
+   ;; google
+   [:project-id          {:optional true} [:maybe :string]]
+   [:location            {:optional true} [:maybe :string]]
+   [:service-account-key {:optional true} [:maybe :string]]
+   [:oauth-access-token  {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
   [:map
@@ -327,8 +490,11 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "mistral"    :llm-mistral-api-key
+    "moonshot"   :llm-moonshot-api-key
     "openai"     :llm-openai-api-key
-    "openrouter" :llm-openrouter-api-key))
+    "openrouter" :llm-openrouter-api-key
+    "zai"        :llm-zai-api-key))
 
 (defn- non-blank-string
   [value]
@@ -383,21 +549,32 @@
     (str/starts-with? id "openai.")    "OpenAI"
     :else                              nil))
 
+(defn- openai-model-group
+  "Group an OpenAI model by version family for the picker."
+  [{:keys [id]}]
+  (when-let [version (second (re-find #"^gpt-(\d+(?:\.\d+)?)" id))]
+    (str "GPT-" version)))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
-  (or (some-> display_name
-              (str/split #": " 2)
-              first)
-      (some-> id
-              (str/split #"/" 2)
-              first
-              title-case-token)))
+  (cond
+    (and display_name (str/includes? display_name ": "))
+    (-> display_name
+        (str/split #": " 2)
+        first)
+
+    (and id (str/includes? id "/"))
+    (-> id
+        (str/split #"/" 2)
+        first
+        title-case-token)))
 
 (defn- decorate-provider-model
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
     "bedrock"    (assoc model :group (bedrock-model-group model))
+    "openai"     (assoc model :group (openai-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -415,7 +592,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
@@ -515,17 +692,32 @@
    :base-url (or (llm.settings/normalize-llm-base-url base-url)
                  (llm.settings/normalize-llm-base-url (llm.settings/llm-azure-api-base-url)))})
 
+(def ^:private google-credential-fields
+  [:service-account-key :oauth-access-token :project-id :location])
+
+(defn- effective-google-credentials
+  "The Google credentials a settings request resolves to.
+
+  Each field follows the same contract as the top-level `:credentials` key: a field present in the request replaces
+  the saved `llm-google-*` value, while an absent field keeps the saved value. Nil or blank means an explicit clear."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field) (assoc field (non-blank-string (get supplied-creds field)))))
+          (metabot.settings/configured-provider-credentials "google")
+          google-credential-fields))
+
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
 
   nil when the request does not touch credentials for `provider`.
 
-  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock and
-  Azure — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the Bedrock
-  credentials map follow that map's presence contract (see [[effective-bedrock-credentials]]); blank fields *inside*
-  the Azure credentials map mean \"keep the saved value\" (see [[effective-azure-credentials]]), so e.g. a key-only
-  rotation can't wipe the base URL. Throws a 400 when non-nil Bedrock/Azure credentials don't resolve to a complete
-  set."
+  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock,
+  Azure, and Google — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the
+  Bedrock and Google credentials maps follow that map's presence contract (see [[effective-bedrock-credentials]] and
+  [[effective-google-credentials]]); blank fields *inside* the Azure credentials map mean \"keep the saved value\" (see
+  [[effective-azure-credentials]]), so e.g. a key-only rotation can't wipe the base URL. Throws a 400 when non-nil
+  Bedrock/Azure/Google credentials don't resolve to a complete set."
   [provider {:keys [api-key credentials] :as body}]
   (case provider
     "bedrock"
@@ -558,59 +750,76 @@
                                                         [:api-key :base-url]))})))
           creds)))
 
+    "google"
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:service-account-key nil
+         :oauth-access-token  nil
+         :project-id          nil
+         :location            nil}
+        (let [creds (effective-google-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "Google credentials are incomplete.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys (vec (remove #(non-blank-string (get creds %))
+                                                        [:service-account-key :oauth-access-token :project-id]))})))
+          creds)))
+
     (when (contains? body :api-key)
       {:api-key (non-blank-string api-key)})))
 
-(defn- save-bedrock-credentials!
-  "Persist a Bedrock credentials map resolved by [[request-credentials]]; nil key material clears those settings.
-  The region is written only when the map carries it — a nil region resets the setting to its default. A top-level
-  credentials clear (disconnect) carries `:region nil`, so it resets the region too; a field-level edit that omits
-  `:region` leaves the saved value in place."
-  [{:keys [access-key-id secret-access-key session-token] :as credentials}]
-  (setting/set! :llm-bedrock-access-key-id access-key-id)
-  (setting/set! :llm-bedrock-secret-access-key secret-access-key)
-  (setting/set! :llm-bedrock-session-token session-token)
-  (when (contains? credentials :region)
-    (setting/set! :llm-bedrock-region (:region credentials))))
-
 (defn- check-not-env-shadowed!
-  "Throw a 400 when `setting-key` is controlled by an env var. Writes to env-shadowed settings
-  persist to the app DB but the env var wins on every read, so they silently do nothing — reject
-  them up front instead."
-  [setting-key]
-  (when (some? (setting/env-var-value setting-key))
+  "Throw a 400 when writing `value` to `setting-key` would be silently ignored because an env var shadows it."
+  [setting-key value]
+  (when (and (some? (setting/env-var-value setting-key))
+             ;; If value is nil we are attempting to clear the setting. We allow this so that callers can still
+             ;; disconnect a provider even if some settings are shadowed by env vars.
+             (some? value)
+             (not= value (setting/get setting-key)))
     (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
                          (setting/env-var-name setting-key))
                     {:status-code 400
                      :setting     setting-key}))))
 
-(defn- save-azure-credentials!
-  "Persist an Azure credentials map resolved by [[request-credentials]]; nil values clear those settings."
-  [{:keys [api-key base-url]}]
-  (setting/set! :llm-azure-api-key api-key)
-  (setting/set! :llm-azure-api-base-url base-url))
+(defn- credential-setting-writes
+  "The settings that should be saved to store `credentials` for `provider`.
+  Returns `[setting-key value]` pairs. [[save-credentials!]] applies them.
+  An optional field is written only when actually present in the `credentials` map.
+  A disconnect includes every field explicitly, so it still clears them all."
+  [provider credentials]
+  (let [always   (fn [setting-key field]
+                   [[setting-key (get credentials field)]])
+        optional (fn [setting-key field]
+                   (when (contains? credentials field)
+                     [[setting-key (get credentials field)]]))]
+    (case provider
+      "bedrock" (concat (always :llm-bedrock-access-key-id       :access-key-id)
+                        (always :llm-bedrock-secret-access-key   :secret-access-key)
+                        (always :llm-bedrock-session-token       :session-token)
+                        (optional :llm-bedrock-region            :region))
+      "azure"   (concat (always :llm-azure-api-key               :api-key)
+                        (always :llm-azure-api-base-url          :base-url))
+      "google"  (concat (optional :llm-google-service-account-key :service-account-key)
+                        (optional :llm-google-oauth-access-token  :oauth-access-token)
+                        (optional :llm-google-project-id          :project-id)
+                        (optional :llm-google-location            :location))
+      (always (provider-api-key-setting-key provider) :api-key))))
+
+(defn- set-setting-unless-env-shadowed!
+  "Write `value` to `setting-key`, unless an env var supplies the setting and would mask the write.
+  A nil `value` always goes through. Skipping a clear would leave stale values in the appdb after a disconnect."
+  [setting-key value]
+  (when (or (nil? value)
+            (not (setting/env-var-value setting-key)))
+    (setting/set! setting-key value)))
 
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
   (when credentials
-    (case provider
-      "bedrock" (save-bedrock-credentials! credentials)
-      "azure"   (save-azure-credentials! credentials)
-      (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
-
-(defn- credential-setting-keys
-  "The app-DB settings that persisting `provider`'s resolved `credentials` map would write
-  (mirrors [[save-credentials!]]). Used to reject writes to env-shadowed settings up front: a write
-  to an env-shadowed setting persists a DB row the env var then silently wins over. Bedrock writes
-  `:llm-bedrock-region` only when the credentials carry it (see [[save-bedrock-credentials!]]), so it
-  is guarded only then; the other fields are always written."
-  [provider credentials]
-  (case provider
-    "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
-                (contains? credentials :region) (conj :llm-bedrock-region))
-    "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
-    [(provider-api-key-setting-key provider)]))
+    (doseq [[setting-key value] (credential-setting-writes provider credentials)]
+      (set-setting-unless-env-shadowed! setting-key value))))
 
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
@@ -644,16 +853,16 @@
                                                :provider    provider})))
                             (when model
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
-        ;; Reject writes to env-shadowed settings before verifying or persisting anything: guard every
-        ;; credential setting a save would touch (see [[credential-setting-keys]]), plus the
-        ;; provider/model setting whenever a provider/model write would happen.
+        ;; Reject writes to env-shadowed settings before verifying or persisting anything.
         _                 (when credentials
-                            (run! check-not-env-shadowed! (credential-setting-keys provider credentials)))
+                            (run! (partial apply check-not-env-shadowed!)
+                                  (credential-setting-writes provider credentials)))
         _                 (when model
-                            (check-not-env-shadowed! :llm-metabot-provider))
-        ;; Azure connect validation needs the candidate model's wire family; credential-only
-        ;; rotations on a connected Azure provider fall back to the saved model.
-        validation-model  (when (= provider "azure")
+                            (check-not-env-shadowed! :llm-metabot-provider (str provider "/" model)))
+        ;; Azure connect validation needs the candidate model's wire family, and the Google connect
+        ;; probe needs it to check the model is served in the configured location; credential-only
+        ;; rotations on a connected provider fall back to the saved model.
+        validation-model  (when (contains? #{"azure" "google"} provider)
                             (or model
                                 (when-not provider-changed?
                                   (provider-util/provider-and-model->model (metabot.settings/llm-metabot-provider)))))
@@ -664,7 +873,7 @@
     (when credentials
       (save-credentials! provider credentials))
     (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
+      (set-setting-unless-env-shadowed! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes

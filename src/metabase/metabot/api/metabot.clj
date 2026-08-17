@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
+   [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
@@ -56,18 +57,9 @@
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
         (t2/update! :model/Metabot id metabot-updates)
-        (when-not (metabot.usage/managed-free-limit-reached?)
-          ;; Delete + regenerate atomically so a raced managed-AI lock (the 402 swallowed below) or
-          ;; any other failure rolls back the delete instead of leaving the Metabot with zero
-          ;; prompts. The 402 still triggers the rollback because it escapes the transaction body
-          ;; before we catch it. Swallowing it keeps a settings-only PUT from failing on a race.
-          (try
-            (t2/with-transaction [_conn]
-              (metabot.suggested-prompts/delete-all-metabot-prompts id)
-              (metabot.suggested-prompts/generate-sample-prompts id))
-            (catch clojure.lang.ExceptionInfo e
-              (when-not (= "metabase_ai_managed_locked" (:error-code (ex-data e)))
-                (throw e))))))
+        ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
+        ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
+        (metabot.suggested-prompts-refresh/schedule-refresh! id))
       (t2/select-one :model/Metabot :id id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"

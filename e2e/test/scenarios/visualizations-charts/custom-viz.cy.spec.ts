@@ -576,6 +576,28 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
       // Default threshold from getDefault
       H.main().findByText("Threshold: 0").should("be.visible");
+
+      cy.findByTestId("demo-viz-measured-width")
+        .invoke("text")
+        .then((text) => {
+          const measuredWidth = Number(text.replace(/\D/g, ""));
+          expect(measuredWidth).to.be.within(197, 217);
+        });
+      cy.findByTestId("demo-viz-measured-height")
+        .invoke("text")
+        .then((text) => {
+          const measuredHeight = Number(text.replace(/\D/g, ""));
+          expect(measuredHeight).to.be.within(10, 15);
+        });
+      cy.findByTestId("demo-viz-brand-color")
+        .invoke("text")
+        .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|(rgb|hsl)a?\(.+\))$/);
+      cy.findByTestId("demo-viz-font-family").should("contain", "Lato");
+      cy.findByTestId("demo-viz-color-scheme").should(
+        "have.text",
+        "Color scheme: light",
+      );
+
       H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
       H.expectNoBadSnowplowEvents();
     });
@@ -601,6 +623,25 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("opens the column formatting popover from a field setting (metabase#78039)", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByTestId("settings-count")
+        .click();
+
+      cy.findByTestId("chart-settings-widget-popover-content").within(() => {
+        cy.findByText("Add a prefix").should("be.visible");
+        cy.findByPlaceholderText("$").type("foo").blur();
+      });
+
+      H.main()
+        .findByTestId("demo-viz-formatted-value")
+        .should("contain", "foo");
     });
 
     describe("errors", () => {
@@ -646,6 +687,39 @@ describe("admin > custom visualizations", () => {
         H.undoToastList()
           .findByText(/"demo-viz" visualization is currently unavailable/)
           .should("be.visible");
+      });
+
+      it("shows a single combined toast when multiple plugin bundles fail to load (metabase#GDGT-3076)", () => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitQuestion("@questionId");
+        cy.findByTestId("viz-type-button").click();
+        cy.wait([
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+        ]);
+
+        H.undoToastList()
+          .should("have.length", 1)
+          .findByText(
+            '4 visualizations are currently unavailable: "demo-viz", "demo-viz-2", "demo-viz-security", "demo-viz-security-component".',
+          )
+          .should("be.visible")
+          // The message must wrap instead of truncating, i.e. be taller than one line
+          .invoke("outerHeight")
+          .should("be.gt", 30);
+
+        // The message must not collapse to min-content
+        H.undoToastList().invoke("outerWidth").should("be.within", 300, 700);
       });
 
       it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
@@ -741,6 +815,49 @@ describe("admin > custom visualizations", () => {
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
+    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back and forth (metabase#GDGT-2218)", () => {
+      H.createQuestion(
+        {
+          name: "Custom Viz Drill Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { visitQuestion: true },
+      );
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.findByTestId("demo-viz-click-target").click();
+      cy.findByTestId("click-actions-view")
+        .findByText(/^Break out by/)
+        .click();
+      H.popover().findByText("Time").click();
+      H.popover().findByText("Created At").click();
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+
+      cy.go("back");
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.go("forward");
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+    });
+
     it("calls onHover and renders a tooltip", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -764,7 +881,7 @@ describe("admin > custom visualizations", () => {
 
       H.getPinnedSection().within(() => {
         cy.findByText("Custom Viz Question Test").should("be.visible");
-        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText("A question").should("be.visible");
       });
     });
 
@@ -1198,9 +1315,9 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
-      // Main question: pinned with preview hidden so the pinned card shows
-      // the plugin icon instead of the rendered viz. Also bookmarked, queried
-      // (for recents), and embedded in a document below.
+      // Main question: pinned, so the static pinned card shows the plugin
+      // icon. Also bookmarked, queried (for recents), and embedded in a
+      // document below.
       H.createQuestion(
         {
           name: ICON_QUESTION_NAME,
@@ -1216,7 +1333,6 @@ describe("admin > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((cardId) => {
         cy.request("PUT", `/api/card/${cardId}`, {
           collection_position: 1,
-          collection_preview: false,
         });
         cy.request("POST", `/api/card/${cardId}/query`);
         cy.request("POST", `/api/bookmark/card/${cardId}`);
@@ -1267,21 +1383,6 @@ describe("admin > custom visualizations", () => {
     });
 
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
-      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
-      // Call this before any nav-sidebar interaction so we open it only when
-      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
-      // it unconditionally would close an already-open sidebar.
-      const ensureNavigationSidebarOpen = () => {
-        cy.get("body").then(($body) => {
-          const visible = $body.find(
-            '[data-testid="main-navbar-root"]:visible',
-          ).length;
-          if (!visible) {
-            H.openNavigationSidebar();
-          }
-        });
-      };
-
       H.interceptPluginBundle();
 
       cy.visit("/collection/root");
@@ -1297,7 +1398,7 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      cy.log("Pinned section (collection_preview: false → icon, not viz)");
+      cy.log("Pinned section shows the plugin icon on the static card");
       H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
 
       cy.log("Navigate → question editor by clicking the pinned card title");
@@ -1332,7 +1433,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log('Navigate → home via the nav-sidebar "Home" link');
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
@@ -1344,7 +1445,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
         .click();
@@ -1362,7 +1463,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: /Cancel/i }).click();
 
       cy.log("Navigate → document via bookmark link");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DOC_NAME) })
         .click();
@@ -1413,22 +1514,24 @@ describe("admin > custom visualizations", () => {
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
 
+    before(() => {
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
+    });
+
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
-    });
 
-    before(() => {
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
-        timeout: TIMEOUT,
-      });
-
-      // Scaffold the boilerplate plugin using the init CLI command.
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
         `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
@@ -1436,27 +1539,6 @@ describe("admin > custom visualizations", () => {
           timeout: TIMEOUT,
         },
       );
-
-      // The scaffolded template requires Metabase >= 60.0, but the e2e runner may
-      // run an older version. Rewrite the manifest to a permissive range so the
-      // dev-only plugin is included in /api/ee/custom-viz-plugin/list and becomes
-      // selectable in the visualization picker.
-      cy.readFile(`${projectDir}/metabase-plugin.json`).then((manifest) => {
-        cy.writeFile(
-          `${projectDir}/metabase-plugin.json`,
-          JSON.stringify(
-            {
-              ...manifest,
-              metabase: {
-                ...(manifest?.metabase ?? {}),
-                version: "", // empty strings means compatibility with any version
-              },
-            },
-            null,
-            2,
-          ),
-        );
-      });
 
       // Use current version of the SDK in the plugin.
       cy.readFile(`${projectDir}/package.json`).then((pkg) => {
@@ -1478,7 +1560,7 @@ describe("admin > custom visualizations", () => {
 
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-      // Start the plugin dev server and keep it running
+
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
       }).then(({ pid }) => {
@@ -1486,12 +1568,11 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    after(() => {
-      if (devServerPid == null) {
-        return;
+    afterEach(() => {
+      if (devServerPid != null) {
+        cy.task("stopCustomVizDevServer", devServerPid);
+        devServerPid = null;
       }
-
-      cy.task("stopCustomVizDevServer", devServerPid);
     });
 
     it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {
@@ -2268,7 +2349,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      13,
+      25,
     );
   });
 
@@ -2374,7 +2455,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2394,12 +2474,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin read element id",
       "sandbox-decoy",
-    );
-
-    // The swap is reported to host console for diagnostics.
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
     );
 
     // The real host element was untouched.
@@ -2434,7 +2508,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2457,11 +2530,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin parentNode decoy:",
       "true",
-    );
-
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
     );
 
     cy.get("[data-plugin-sandbox]")
@@ -2495,7 +2563,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2517,9 +2584,10 @@ describe("sandbox", () => {
       doc.body.removeAttribute("data-mutation-probe-attr");
     });
 
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin observed mutations:",
+      0,
     );
   });
 

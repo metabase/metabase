@@ -10,7 +10,7 @@
   height: 1rem;
   background: linear-gradient(
     to bottom,
-    var(--mb-color-background-primary),
+    var(--mb-color-background_page-primary),
     transparent
   );
   pointer-events: none;

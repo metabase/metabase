@@ -2,7 +2,7 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

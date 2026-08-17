@@ -33,7 +33,7 @@ const Template: StoryFn<ModalContentProps> = (args) => {
     <div
       style={{
         width: 1200,
-        background: color("background-primary"),
+        background: color("background_page-primary"),
         border: "1px solid black",
       }}
     >

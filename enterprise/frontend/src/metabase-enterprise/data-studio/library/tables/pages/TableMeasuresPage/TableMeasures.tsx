@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
+import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import {
   EntityList,
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
-import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -36,6 +36,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
             ? {
                 label: t`New measure`,
                 trackClickEvent: () =>
+                  // Unjustified type cast. FIXME
                   trackMeasureCreateStarted(table.id as ConcreteTableId),
                 url: Urls.dataStudioPublishedTableMeasureNew(table.id),
               }

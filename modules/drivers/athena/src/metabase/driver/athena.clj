@@ -30,6 +30,17 @@
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
+(defmethod driver/host-carrying-parameters :athena
+  [_driver]
+  ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
+   "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"])
+
+(defmethod driver/non-host-parameters :athena
+  [_driver]
+  ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -40,6 +51,7 @@
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
@@ -60,6 +72,14 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+(defmethod driver/connection-hosts :athena
+  [_driver {:keys [hostname region]}]
+  (driver/hosts-from-details
+   {:host (if (str/blank? hostname)
+            (str "athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn"))
+            hostname)}
+   [:host]))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -151,8 +171,8 @@
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -165,8 +185,7 @@
         (try
           (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
-            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str t)
+            (log/warnf "Failed to construct ZonedDateTime using `%s` timezone."
                        (pr-str results-timezone))
             t))))))
 
@@ -332,7 +351,7 @@
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit
@@ -343,26 +362,26 @@
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query]
-  (log/infof "Running Athena query : '%s'..." query)
+  (log/info "Running Athena query...")
   (try
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+      (log/error (u/format-color 'red "Failed to execute query: %s" (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver (huh?)"
@@ -472,7 +491,7 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
+        (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
 
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns

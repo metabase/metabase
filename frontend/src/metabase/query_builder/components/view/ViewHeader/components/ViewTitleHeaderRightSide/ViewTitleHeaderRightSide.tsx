@@ -31,7 +31,7 @@ import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
-  result: Dataset;
+  result?: Dataset;
   queryBuilderMode: QueryBuilderMode;
   isBookmarked: boolean;
   isModelOrMetric: boolean;
@@ -215,7 +215,6 @@ export function ViewTitleHeaderRightSide({
             )}
             iconSize={16}
             onlyIcon
-            medium
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}

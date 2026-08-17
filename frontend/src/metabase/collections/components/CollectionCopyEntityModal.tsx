@@ -6,7 +6,7 @@ import {
   useCopyDashboardMutation,
   useCopyDocumentMutation,
 } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { entityTypeForObject } from "metabase/redux/store/entities";
 

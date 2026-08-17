@@ -7,6 +7,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
@@ -55,7 +56,24 @@
         (testing "can_access_db_details is true if a user has any details perms"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
             (is (partial= {:can_access_db_details true}
-                          (user-permissions :rasta)))))))))
+                          (user-permissions :rasta)))))
+        (testing "can_access_transforms requires the transforms permission, not just view-data"
+          (perms.test-util/with-data-analyst-role! (mt/user->id :rasta)
+            (testing "false when the user has view-data but no transforms permission on any database"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                             :create-queries :query-builder-and-native
+                                                             :transforms     :no}}
+                (is (partial= {:can_access_transforms false}
+                              (user-permissions :rasta)))))
+            (testing "true when the user has the transforms permission on a database"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                             :create-queries :query-builder-and-native
+                                                             :transforms     :yes}}
+                (is (partial= {:can_access_transforms true}
+                              (user-permissions :rasta)))))))
+        (testing "can_access_transforms is true for superusers regardless of the transforms permission"
+          (is (partial= {:can_access_transforms true}
+                        (user-permissions :crowberto))))))))
 
 (deftest current-user-query-permissions-published-table-test
   (testing "GET /api/user/current can_create_queries respects published tables"
@@ -104,6 +122,21 @@
                          :model/Database {db-id-2 :id} {}]
             (is (= :blocked (perm-value db-id-2)))))))))
 
+(deftest new-database-view-data-permission-levels-without-premium-features-test
+  (testing "A new database fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
+    (mt/with-temp [:model/Database         {db-id :id}    {}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/Table            {table-id :id} {:db_id db-id}
+                   :model/Sandbox          _              {:group_id group-id :table_id table-id}]
+      ;; New tables/databases must inherit an existing sandbox regardless of whether the sandboxes /
+      ;; advanced-permissions token features are currently readable -- otherwise a transient feature-check
+      ;; failure during sync leaks the new database to the sandboxed group.
+      (doseq [features [#{} #{:advanced-permissions} #{:sandboxes}]]
+        (testing (format "premium features = %s" (pr-str features))
+          (mt/with-premium-features features
+            (is (= {group-id :blocked}
+                   (advanced-permissions.common/new-database-view-data-permission-levels [group-id])))))))))
+
 (deftest new-table-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
@@ -132,6 +165,30 @@
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
+(deftest new-table-view-data-permission-levels-without-premium-features-test
+  (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
+    ;; This is the incident path: a table is discovered during sync while the sandboxes /
+    ;; advanced-permissions token features momentarily read as absent. The new-table default must still
+    ;; block the sandboxed group instead of defaulting it to :unrestricted (a silent, permanent leak).
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {db-id :id}      {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
+                   :model/Sandbox          _                {:group_id group-id :table_id table-id-1}]
+      (let [perm-value (fn [table-id] (t2/select-one-fn :perm_value
+                                                        :model/DataPermissions
+                                                        :db_id     db-id
+                                                        :group_id  group-id
+                                                        :table_id  table-id
+                                                        :perm_type :perms/view-data))]
+        (doseq [features [#{} #{:advanced-permissions} #{:sandboxes}]]
+          (testing (format "premium features = %s" (pr-str features))
+            (mt/with-premium-features features
+              (mt/with-temp [:model/Table {new-table-id :id} {:db_id db-id :schema "PUBLIC"}]
+                (is (nil? (perm-value nil))
+                    "No DB-level perm is written")
+                (is (= :blocked (perm-value new-table-id))
+                    "New table blocks the sandboxed group instead of leaking :unrestricted")))))))))
+
 (deftest new-group-view-data-permission-levels-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/Database {db-id :id} {}]
@@ -157,6 +214,21 @@
                                                         :card_id              card-id
                                                         :attribute_remappings {"foo" 1}}]
             (is (= {db-id :blocked} (advanced-permissions.common/new-group-view-data-permission-levels [db-id])))))))))
+
+(deftest new-group-view-data-permission-levels-without-premium-features-test
+  (testing "A new group fails CLOSED to :blocked when All Users has a sandbox even when premium features are unavailable (UXW-4927)"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Card     {card-id :id}  {}
+                   :model/Sandbox  _              {:table_id             table-id
+                                                   :group_id             (u/the-id (perms-group/all-users))
+                                                   :card_id              card-id
+                                                   :attribute_remappings {"foo" 1}}]
+      (doseq [features [#{} #{:advanced-permissions} #{:sandboxes}]]
+        (testing (format "premium features = %s" (pr-str features))
+          (mt/with-premium-features features
+            (is (= {db-id :blocked}
+                   (advanced-permissions.common/new-group-view-data-permission-levels [db-id])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Data model permission enforcement                                       |

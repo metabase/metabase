@@ -391,7 +391,9 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
-                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
+                        (when-not ((some-fn nil? map?) opts)
+                          (throw (ex-info "Attempted to normalize an MBQL 5 :field clause as MBQL 4"
+                                          {:clause x})))
                         ;; if someone accidentally nests `:field` clauses fix it for them
                         (if (and (sequential? id-or-name)
                                  ((some-fn keyword? string?) (first id-or-name))
@@ -1690,7 +1692,10 @@
 
   Map of template tag name -> template tag definition"
   [:and
-   [:map-of ::lib.schema.common/non-blank-string [:ref ::TemplateTag]]
+   [:map-of
+    {:decode/normalize #'lib.schema.template-tag/normalize-template-tag-map}
+    ::lib.schema.common/non-blank-string
+    [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
 (defn- remove-empty-keys [m {:keys [non-empty-keys non-nil-keys]}]
@@ -1749,9 +1754,9 @@
   "Schema for a valid value for a `:source-query`."
   [:and
    ;; normalize the keys in the map first so we can check for the presence of `:native` versus `:mbql` in the `:multi`
-   ;; schema below
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}]
+   ;; schema below. Carried on the `:and` rather than on a keyless `[:map ...]` sibling, which would declare no keys
+   ;; and so strip the whole query while decoding.
+   {:decode/normalize lib.schema.common/normalize-map}
    [:multi
     {:dispatch (fn [x]
                  (if ((every-pred map? :native) x)
@@ -1851,11 +1856,16 @@
      [:effective_type     {:optional true} ::lib.schema.common/base-type]
      [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
      [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; implicit-join provenance -- the FE renders "Orders → Category" from these, and drill-thru needs them to
+     ;; rebuild the `:source-field` option
+     [:fk_field_id        {:optional true} [:maybe ::lib.schema.id/field]]
+     [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
      ;; Fingerprint is required in order to use BINNING
      [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
      [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:settings           {:optional true} [:maybe [:map {:closed false}]]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
      [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
      [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
@@ -2081,9 +2091,10 @@
    ;;    {:aggregation "ROWS"} => {:aggregation nil}
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
+   ;; open: this only exists to run a second normalization pass, so it must not constrain (or strip) any keys
    [:schema
     {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
-    :map]
+    [:map {:closed false}]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -2192,8 +2203,9 @@
 
 (mr/def ::Query
   [:and
-   [:map
-    {:decode/normalize #'normalize-query}]
+   ;; carried here rather than on a keyless `[:map ...]` sibling, which would declare no keys and so strip the whole
+   ;; query while decoding
+   {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
    [:map

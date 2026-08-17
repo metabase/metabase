@@ -1,7 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSnippetMutation } from "metabase/api";
@@ -11,16 +9,17 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
-import { useToast } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -32,12 +31,8 @@ import S from "./NewSnippetPage.module.css";
 
 const SNIPPET_NAME_MAX_LENGTH = 254;
 
-type NewSnippetPageProps = {
-  route: Route;
-};
-
-export function NewSnippetPage({ route }: NewSnippetPageProps) {
-  const dispatch = useDispatch();
+export function NewSnippetPage() {
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const [name, setName] = useState(t`New SQL snippet`);
   const [description, setDescription] = useState("");
@@ -74,9 +69,9 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   useEffect(() => {
     if (savedSnippet) {
-      dispatch(push(Urls.dataStudioSnippet(savedSnippet.id)));
+      navigate(Urls.dataStudioSnippet(savedSnippet.id));
     }
-  }, [savedSnippet, dispatch]);
+  }, [savedSnippet, navigate]);
 
   const handleSave = async () => {
     if (!PLUGIN_SNIPPET_FOLDERS.isEnabled) {
@@ -87,7 +82,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    navigate(Urls.dataStudioLibrary());
   };
 
   const handleCollectionSelected = async (
@@ -167,10 +162,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
           </Stack>
         </Flex>
       </PageContainer>
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={!savedSnippet && !isSaving}
-      />
+      <LeaveRouteConfirmModal isEnabled={!savedSnippet && !isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}
         onSelect={handleCollectionSelected}

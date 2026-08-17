@@ -8,14 +8,26 @@ export const LINE_SIZE: Record<LineSize, number> = {
 
 export const Z_INDEXES = {
   brushMirror: 100,
-  // Note: timeline events use echarts' markline option, which has a fixed z
-  // value of 5.
   dataLabels: 8,
   goalLine: 7,
   trendLine: 7,
   lineAreaSeries: 7,
   series: 6, // Bars needs to have a lower z value than line/area series, see issue #40209
 };
+
+export const TIMELINE_EVENTS_BAND = {
+  chipWidth: 32,
+  chipHeight: 24,
+  bandPaddingY: 4,
+  marginY: 8,
+  chipGap: 2,
+};
+
+export const TIMELINE_BAND_HEIGHT =
+  TIMELINE_EVENTS_BAND.chipHeight + 2 * TIMELINE_EVENTS_BAND.bandPaddingY;
+
+const TIMELINE_BAND_RESERVED_HEIGHT =
+  TIMELINE_BAND_HEIGHT + 2 * TIMELINE_EVENTS_BAND.marginY;
 
 export const CHART_STYLE = {
   series: {
@@ -43,9 +55,10 @@ export const CHART_STYLE = {
   },
   symbolSize: 6,
   timelineEvents: {
-    height: 14,
-    minDistance: 16,
+    height: TIMELINE_BAND_RESERVED_HEIGHT,
+    minDistance: TIMELINE_EVENTS_BAND.chipWidth + TIMELINE_EVENTS_BAND.chipGap, // Min center-to-center distance before chips merge
     countLabelMargin: 4,
+    selectionLineWidth: 2,
   },
   goalLine: {
     label: {

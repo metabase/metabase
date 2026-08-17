@@ -10,16 +10,28 @@ import { Stack } from "metabase/ui";
 import S from "./MetabotQuestion.module.css";
 
 const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" && message.part.type === "navigate_to";
+  message.type === "data_part" &&
+  message.part.type === "data-generated_entity" &&
+  message.part.data.type === "card";
+
+const isHiddenInEmbedding = (message: MetabotChatMessage) =>
+  message.type === "chain_of_thought";
+
+const AGENT_ID = "omnibot";
 
 export function MetabotChatHistory() {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent(AGENT_ID);
   const { messages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = useMemo(
-    () => messages.filter((message) => !isQuestionNavigationMessage(message)),
+    () =>
+      messages.filter(
+        (message) =>
+          !isQuestionNavigationMessage(message) &&
+          !isHiddenInEmbedding(message),
+      ),
     [messages],
   );
 
@@ -48,12 +60,13 @@ export function MetabotChatHistory() {
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
           debug={metabot.debugMode}
+          conversationId={metabot.conversationId}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
       {metabot.isLongConversation && (
         <MetabotResetLongChatButton
-          onResetConversation={metabot.resetConversation}
+          onResetConversation={metabot.createNewConversation}
         />
       )}
     </Stack>

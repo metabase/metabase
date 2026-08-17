@@ -2,26 +2,38 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  useUpdateMetabotSettingsMutation,
-  useUpdateSettingsMutation,
-} from "metabase/api";
-import {
-  getErrorMessage,
-  useAdminSetting,
-  useAdminSettings,
-} from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Button, Flex, Group, Select, Stack, Text } from "metabase/ui";
+import {
+  useAdminSetting,
+  useAdminSettings,
+  useSetting,
+  useUpdateSettingsMutation,
+} from "metabase/settings";
+import {
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Group,
+  Loader,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
 import { AzureProviderFields } from "./AzureProviderFields";
 import { BedrockProviderFields } from "./BedrockProviderFields";
+import { GoogleProviderFields } from "./GoogleProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
   getProviderOptions,
@@ -29,13 +41,38 @@ import {
   parseProviderAndModel,
 } from "./utils";
 
-export function AIProviderConfigurationForm({
-  isModal = false,
-  onClose,
-}: {
+interface AIProviderConfigurationFormProps {
   isModal?: boolean;
-  onClose?: VoidFunction;
-}) {
+  defaultProvider?: MetabotProvider;
+  onClose?: (connectedProvider?: MetabotProvider) => void;
+  onSkip?: VoidFunction;
+}
+
+export function AIProviderConfigurationForm(
+  props: AIProviderConfigurationFormProps,
+) {
+  const { isLoading } = useAdminSetting("llm-metabot-provider");
+
+  // The saved provider loads asynchronously, and the form body computes its
+  // initial selection once at mount. Mounting before the value arrives would
+  // let `defaultProvider` win over an existing connection.
+  if (props.defaultProvider && isLoading) {
+    return (
+      <Center p="lg">
+        <Loader data-testid="loading-indicator" />
+      </Center>
+    );
+  }
+
+  return <AIProviderConfigurationFormBody {...props} />;
+}
+
+function AIProviderConfigurationFormBody({
+  isModal = false,
+  defaultProvider,
+  onClose,
+  onSkip,
+}: AIProviderConfigurationFormProps) {
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
   const [sendToast] = useToast();
@@ -57,14 +94,21 @@ export function AIProviderConfigurationForm({
   );
   const connectedProvider = isConfigured ? config?.provider : undefined;
   const connectedModel = isConfigured ? config?.model : undefined;
-  const [provider, setProvider] = useState<MetabotProvider | undefined>(
-    isModal ? undefined : connectedProvider,
-  );
+  // `defaultProvider` is only a suggestion for the unconfigured state — an
+  // existing connection always wins over it. A modal without a suggestion
+  // starts unselected on purpose, even when connected (the "switch provider"
+  // flow).
+  const [provider, setProvider] = useState<MetabotProvider | undefined>(() => {
+    if (!isModal) {
+      return connectedProvider;
+    }
+    return defaultProvider ? (connectedProvider ?? defaultProvider) : undefined;
+  });
 
   const isCurrentConfigured = connectedProvider === provider && isConfigured;
 
   useEffect(() => {
-    if (isModal) {
+    if (isModal || !connectedProvider) {
       return;
     }
     setProvider(connectedProvider);
@@ -74,11 +118,19 @@ export function AIProviderConfigurationForm({
   const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
-  const { details: providerApiKeyDetails } = useAdminSettings([
-    "llm-anthropic-api-key",
-    "llm-openai-api-key",
-    "llm-openrouter-api-key",
-  ] as const);
+  // Setting details come from a single admin endpoint, so one `isLoading`
+  // covers every provider. Gate the provider fields on it below: their forms
+  // use Formik `enableReinitialize`/hydrate-once effects that would wipe
+  // in-progress input if they rendered before the saved credentials arrived.
+  const { details: providerApiKeyDetails, isLoading: areDetailsLoading } =
+    useAdminSettings([
+      "llm-anthropic-api-key",
+      "llm-mistral-api-key",
+      "llm-moonshot-api-key",
+      "llm-openai-api-key",
+      "llm-openrouter-api-key",
+      "llm-zai-api-key",
+    ] as const);
 
   const disconnectProvider = useCallback(async () => {
     if (!connectedProvider) {
@@ -98,7 +150,8 @@ export function AIProviderConfigurationForm({
     if (
       connectedProvider !== "metabase" &&
       connectedProvider !== "bedrock" &&
-      connectedProvider !== "azure"
+      connectedProvider !== "azure" &&
+      connectedProvider !== "google"
     ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
@@ -109,8 +162,12 @@ export function AIProviderConfigurationForm({
     }
 
     try {
-      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
-        // Bedrock and Azure key material spans several settings; an explicit
+      if (
+        connectedProvider === "bedrock" ||
+        connectedProvider === "azure" ||
+        connectedProvider === "google"
+      ) {
+        // Bedrock, Azure, and Google key material spans several settings; an explicit
         // `credentials: null` clears them all in one call. It runs before the provider
         // is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
@@ -130,8 +187,10 @@ export function AIProviderConfigurationForm({
         sendToast({
           message,
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
         });
+      } else {
+        setProvider(undefined);
       }
     } catch (error) {
       const message = getErrorMessage(
@@ -142,7 +201,7 @@ export function AIProviderConfigurationForm({
       sendToast({
         message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
       });
     }
   }, [
@@ -234,12 +293,13 @@ export function AIProviderConfigurationForm({
               >
                 <Text
                   lh="1rem"
-                  c={option.disabled ? "text-tertiary" : undefined}
+                  c={option.disabled ? "text-disabled" : undefined}
                 >
                   {option.label}
                 </Text>
+                {/* Unjustified type cast. FIXME */}
                 {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-tertiary" lh="1rem" size="sm">
+                  <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
                 )}
@@ -248,46 +308,65 @@ export function AIProviderConfigurationForm({
           />
         )}
 
-        {match(provider)
-          .with("metabase", () => (
-            <MetabaseAIProviderSetup onConnect={onClose} />
-          ))
-          .with("azure", () => (
-            <AzureProviderFields
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with("bedrock", () => (
-            <BedrockProviderFields
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
-            <ApiKeyProviderFields
-              key={selectedProvider}
-              selectedProvider={selectedProvider}
-              connectedModel={connectedModel}
-              isCurrentConfigured={isCurrentConfigured}
-              isEnvSetting={isEnvSetting}
-            />
-          ))
-          .with(P.nullish, () => null)
-          .exhaustive()}
+        {areDetailsLoading
+          ? null
+          : match(provider)
+              .with("metabase", () => (
+                <MetabaseAIProviderSetup
+                  onConnect={() => onClose?.("metabase")}
+                />
+              ))
+              .with("azure", () => (
+                <AzureProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with("bedrock", () => (
+                <BedrockProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with("google", () => (
+                <GoogleProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
+              .with(
+                "anthropic",
+                "mistral",
+                "moonshot",
+                "openai",
+                "openrouter",
+                "zai",
+                (selectedProvider) => (
+                  <ApiKeyProviderFields
+                    key={selectedProvider}
+                    selectedProvider={selectedProvider}
+                    connectedModel={connectedModel}
+                    isCurrentConfigured={isCurrentConfigured}
+                    isEnvSetting={isEnvSetting}
+                  />
+                ),
+              )
+              .with(P.nullish, () => null)
+              .exhaustive()}
 
         {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-        <Flex justify="end">
+        <Flex justify={onSkip ? "flex-start" : "end"}>
           {match({ isCurrentConfigured, isConnectButtonEnabled, isModal })
             .with({ isModal: true, isCurrentConfigured: true }, () => (
               <Button
                 variant="filled"
                 loading={isMutating}
                 disabled={isMutating}
-                onClick={onClose}
+                onClick={() => onClose?.(provider)}
               >
                 {t`Done`}
               </Button>
@@ -296,7 +375,7 @@ export function AIProviderConfigurationForm({
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
               () => (
                 <Button
-                  c="danger"
+                  c="feedback-negative"
                   loading={isMutating}
                   disabled={isMutating}
                   onClick={handleDisconnect}
@@ -321,6 +400,24 @@ export function AIProviderConfigurationForm({
             )
             .exhaustive()}
         </Flex>
+
+        {onSkip && !isCurrentConfigured && (
+          <>
+            <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+            <Box>
+              <Button
+                onClick={onSkip}
+                variant="subtle"
+                px={0}
+                fw="normal"
+                disabled={isMutating}
+              >{t`I'll set this up later`}</Button>
+              <Text c="text-disabled" size="sm">
+                {t`You won't be able to use AI features until you connect a provider.`}
+              </Text>
+            </Box>
+          </>
+        )}
         <ConfirmModal
           opened={isDisconnectConfirmOpen}
           onClose={() => setIsDisconnectConfirmOpen(false)}

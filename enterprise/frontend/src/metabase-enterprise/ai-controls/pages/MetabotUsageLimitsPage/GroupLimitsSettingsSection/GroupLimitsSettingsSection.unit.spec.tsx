@@ -31,7 +31,9 @@ const defaultGroups = [adminGroup, allUsersGroup];
 function setup({
   useTenants = false,
   groups = defaultGroups,
+  // Unjustified type cast. FIXME
   groupLimits = [] as MetabotGroupLimit[],
+  // Unjustified type cast. FIXME
   instanceMaxUsage = null as number | null,
 } = {}) {
   setupGroupsEndpoint(groups);

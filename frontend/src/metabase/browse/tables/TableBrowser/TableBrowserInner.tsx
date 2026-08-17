@@ -58,6 +58,7 @@ export const TableBrowserInner = ({
   const canEditTables =
     !!database &&
     isAdmin &&
+    // Unjustified type cast. FIXME
     PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database as Database);
 
   return (
@@ -114,12 +115,14 @@ const TableBrowserItem = ({
       to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
       icon="table"
       title={table.display_name || table.name}
+      // Unjustified type cast. FIXME
       onClick={() => trackTableClick(table.id as ConcreteTableId)}
     >
       <>
-        {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
+        {isLoading && <Loader size="xs" />}
         {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
+            // Unjustified type cast. FIXME
             tableId={table.id as ConcreteTableId}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
@@ -157,7 +160,7 @@ const TableBrowserItemButtons = ({
             to={`/auto/dashboard/table/${tableId}`}
             size="sm"
             tooltip={t`X-ray this table`}
-            color="warning"
+            color="feedback-warning"
             aria-label={t`X-ray this table`}
             onClick={trackBrowseXRayClicked}
           >

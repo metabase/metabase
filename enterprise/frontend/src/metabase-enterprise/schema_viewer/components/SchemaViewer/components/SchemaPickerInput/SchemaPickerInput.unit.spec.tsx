@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -11,6 +10,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 import {
   createMockCollection,
@@ -73,21 +73,23 @@ function setup({ databaseId, schema }: SetupOpts) {
   setupCollectionByIdEndpoint({ collections: [ROOT_COLLECTION] });
 
   const onSchemaChange = jest.fn();
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
+    // Catch-all so the picker stays mounted after it navigates to select a
+    // schema; the test reopens it and checks the database list.
     <Route
-      path="/"
-      component={() => (
+      path="*"
+      element={
         <SchemaPickerInput
           databaseId={databaseId}
           schema={schema}
           onSchemaChange={onSchemaChange}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );
 
-  return { onSchemaChange, history };
+  return { onSchemaChange, router };
 }
 
 describe("SchemaPickerInput", () => {
@@ -135,7 +137,7 @@ describe("SchemaPickerInput", () => {
 
   describe("selection flow", () => {
     it("auto-selects a schema-less db, navigates with an empty schema, closes, and reopens at the database list", async () => {
-      const { onSchemaChange, history } = setup({
+      const { onSchemaChange, router } = setup({
         databaseId: undefined,
         schema: undefined,
       });
@@ -148,7 +150,7 @@ describe("SchemaPickerInput", () => {
       await waitFor(() => {
         expect(onSchemaChange).toHaveBeenCalled();
       });
-      const location = history?.getCurrentLocation();
+      const location = router?.location;
       const params = new URLSearchParams(location?.search);
       expect(params.get("database-id")).toBe("39");
       expect(params.get("schema")).toBe("");
@@ -165,7 +167,7 @@ describe("SchemaPickerInput", () => {
     });
 
     it("routes a named schema selection with the chosen schema and closes", async () => {
-      const { onSchemaChange, history } = setup({
+      const { onSchemaChange, router } = setup({
         databaseId: undefined,
         schema: undefined,
       });
@@ -176,7 +178,7 @@ describe("SchemaPickerInput", () => {
       await waitFor(() => {
         expect(onSchemaChange).toHaveBeenCalled();
       });
-      const location = history?.getCurrentLocation();
+      const location = router?.location;
       const params = new URLSearchParams(location?.search);
       expect(params.get("database-id")).toBe("40");
       expect(params.get("schema")).toBe("public");

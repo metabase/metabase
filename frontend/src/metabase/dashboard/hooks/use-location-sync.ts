@@ -1,10 +1,9 @@
-import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import { isNullOrUndefined } from "metabase/utils/types";
 
@@ -20,6 +19,7 @@ const getDefaultDisplayOption = <
   Key extends SYNCED_KEY,
 >(
   key: Key,
+  // Unjustified type cast. FIXME
 ): Value => DEFAULT_SYNCED_DASHBOARD_OPTIONS[key] as Value;
 
 const isEmptyOrDefault = <
@@ -44,9 +44,10 @@ export const useLocationSync = <
   onChange: (value: Value | null) => void;
   location: Location;
 }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
+  // Unjustified type cast. FIXME
   const hashValue = (hashOptions[key] ?? null) as Value | null;
 
   const defaultValue = getDefaultDisplayOption<Value, Key>(key);
@@ -78,16 +79,18 @@ export const useLocationSync = <
           };
 
       const hashString = stringifyHashOptions(updatedOptions);
+      const hash = hashString ? "#" + hashString : "";
 
-      dispatch(
-        replace({
-          ...location,
-          hash: hashString ? "#" + hashString : "",
-        }),
-      );
+      // The effect reads `location` and replaces it, so a replace that lands on
+      // the same URL would re-enter it through the resulting location change.
+      if (hash !== location.hash) {
+        navigate(
+          { ...location, hash },
+          { replace: true, state: location.state },
+        );
+      }
     }
   }, [
-    dispatch,
     hashOptions,
     key,
     latestValue,
@@ -95,5 +98,6 @@ export const useLocationSync = <
     onChange,
     previousValue,
     value,
+    navigate,
   ]);
 };

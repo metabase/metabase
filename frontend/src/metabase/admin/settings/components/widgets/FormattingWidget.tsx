@@ -3,19 +3,18 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
-  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
 } from "metabase/utils/formatting";
 import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/formatting";
-import type { FormattingSettings } from "metabase-types/api";
+} from "metabase/value-formatting";
+import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {
@@ -68,6 +67,7 @@ export function FormattingWidget() {
     localValue?.["type/Currency"] || {};
 
   const [currencyOptions, currencyStyleOptions] = useMemo(() => {
+    // Unjustified type cast. FIXME
     const currencyOptions = (
       getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
@@ -104,6 +104,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     date_style: newValue as string,
                   },
                 })
@@ -126,6 +127,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     date_abbreviate: checked as boolean,
                   },
                 })
@@ -147,6 +149,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     time_style: newValue as string,
                   },
                 })
@@ -171,6 +174,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Number": {
                     ...localValue?.["type/Number"],
+                    // Unjustified type cast. FIXME
                     number_separators: newValue as string,
                   },
                 })
@@ -190,6 +194,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
+                    // Unjustified type cast. FIXME
                     currency: newValue as string,
                   },
                 })
@@ -206,6 +211,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
+                    // Unjustified type cast. FIXME
                     currency_style: newValue as CurrencyStyle,
                   },
                 })

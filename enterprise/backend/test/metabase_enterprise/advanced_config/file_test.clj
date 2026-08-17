@@ -31,6 +31,12 @@
         (is (= mock-yaml
                (#'advanced-config.file/config-from-disk)))))))
 
+(deftest ^:parallel blank-config-file-path-test
+  (testing "A blank MB_CONFIG_FILE_PATH counts as unset (on JDK 25+ the empty path 'exists' as the current directory)"
+    (doseq [blank ["" "   "]]
+      (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :mb-config-file-path blank)]
+        (is (nil? (#'advanced-config.file/path)))))))
+
 (deftest ^:parallel validate-config-test
   (testing "Config should throw an error"
     (testing "if it is not a map"

@@ -1,4 +1,4 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -645,7 +645,10 @@ describe("getDependencyGroupTypeInfo", () => {
     },
     {
       groupType: "sandbox",
-      expected: { label: "Row and column security rule", color: "error" },
+      expected: {
+        label: "Row and column security rule",
+        color: "feedback-negative",
+      },
     },
   ])("should get type info for $groupType", ({ groupType, expected }) => {
     expect(getDependencyGroupTypeInfo(groupType)).toEqual(expected);

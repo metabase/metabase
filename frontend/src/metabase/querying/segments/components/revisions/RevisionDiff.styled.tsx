@@ -8,7 +8,7 @@ export const EditIcon = styled(Icon)`
 `;
 
 export const ErrorIcon = styled(Icon)`
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 `;
 
 export const SuccessIcon = styled(Icon)`

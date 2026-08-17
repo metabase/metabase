@@ -21,6 +21,13 @@ interface OutOfSyncOption {
   label: string;
 }
 
+/**
+ * Options that permanently destroy content: force-push wipes remote files that aren't here, discard
+ * throws away local changes. Everything else (merge, push, new branch) keeps all content. Used to split
+ * the choices into a safe and a destructive group.
+ */
+const DESTRUCTIVE_OPTIONS = new Set<OptionValue>(["force-push", "discard"]);
+
 export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
   const {
     currentBranch,
@@ -44,7 +51,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     const forcePushOption: OutOfSyncOption = {
       value: "force-push",
       label: c("{0} is the current GitHub branch name")
-        .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
+        .t`Force push to ${currentBranch}, discarding and overwriting everything (can’t be undone)`,
     };
     // Push merges and pushes the result; pull merges into local only (the push happens later).
     const mergeOption: OutOfSyncOption = {
@@ -80,24 +87,63 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     }
   }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge]);
 
+  const safeOptions = options.filter(
+    (option) => !DESTRUCTIVE_OPTIONS.has(option.value),
+  );
+  const destructiveOptions = options.filter((option) =>
+    DESTRUCTIVE_OPTIONS.has(option.value),
+  );
+
   return (
     <Box mt="xl">
       <Text fw="bold" mb="sm" pb="xs">{t`Choose how to proceed:`}</Text>
       <Radio.Group
+        // Unjustified type cast. FIXME
         onChange={(value) => handleOptionChange(value as OptionValue)}
         value={optionValue}
       >
-        <Stack gap="sm">
-          {options.map((option) => (
-            <Radio
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              pb="xs"
+        <Stack gap="lg">
+          {safeOptions.length > 0 && (
+            <OptionGroup title={t`Keep all changes`} options={safeOptions} />
+          )}
+          {destructiveOptions.length > 0 && (
+            <OptionGroup
+              title={t`Permanently lose changes (can’t be undone)`}
+              destructive
+              options={destructiveOptions}
             />
-          ))}
+          )}
         </Stack>
       </Radio.Group>
     </Box>
   );
 };
+
+interface OptionGroupProps {
+  title: string;
+  options: OutOfSyncOption[];
+  destructive?: boolean;
+}
+
+const OptionGroup = ({ title, options, destructive }: OptionGroupProps) => (
+  <Box>
+    <Text
+      size="sm"
+      fw="bold"
+      c={destructive ? "feedback-negative" : "text-secondary"}
+      mb="sm"
+    >
+      {title}
+    </Text>
+    <Stack gap="sm">
+      {options.map((option) => (
+        <Radio
+          key={option.value}
+          value={option.value}
+          label={option.label}
+          pb="xs"
+        />
+      ))}
+    </Stack>
+  </Box>
+);

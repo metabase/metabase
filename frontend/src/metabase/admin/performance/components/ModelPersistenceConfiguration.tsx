@@ -8,16 +8,20 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
+import {
+  useDisablePersistMutation,
+  useEnablePersistMutation,
+  useSetRefreshScheduleMutation,
+} from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { refreshSiteSettings } from "metabase/redux/settings";
+import { useDocsUrl, useToast } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { PersistedModelsApi } from "metabase/services";
+import { useSetting } from "metabase/settings";
 import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
@@ -69,14 +73,17 @@ export const ModelPersistenceConfiguration = () => {
     "persisted-model-refresh-cron-schedule",
   );
 
-  const dispatch = useDispatch();
   const [sendToast, removeToast] = useToast();
+  const [enablePersist] = useEnablePersistMutation();
+  const [disablePersist] = useDisablePersistMutation();
+  const [setRefreshSchedule] = useSetRefreshScheduleMutation();
 
   const showLoadingToast = async () => {
     const result = await sendToast({
       icon: "info",
       message: t`Loading...`,
     });
+    // Unjustified type cast. FIXME
     return result?.payload?.id as number;
   };
 
@@ -89,7 +96,7 @@ export const ModelPersistenceConfiguration = () => {
     } catch (e) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
     } finally {
@@ -105,10 +112,10 @@ export const ModelPersistenceConfiguration = () => {
     const shouldEnable = e.target.checked;
     setModelPersistenceEnabled(shouldEnable);
     const promise = shouldEnable
-      ? PersistedModelsApi.enablePersistence()
-      : PersistedModelsApi.disablePersistence();
+      ? enablePersist().unwrap()
+      : disablePersist().unwrap();
+    // The mutations invalidate session-properties, which refetches settings.
     await resolveWithToasts([promise]);
-    dispatch(refreshSiteSettings());
   };
 
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
@@ -158,10 +165,9 @@ export const ModelPersistenceConfiguration = () => {
             <ModelCachingScheduleWidget
               value={modelCachingSchedule}
               options={modelCachingOptions}
-              onChange={async (value: unknown) => {
+              onChange={async (value: string) => {
                 await resolveWithToasts([
-                  PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                  dispatch(refreshSiteSettings()),
+                  setRefreshSchedule({ cron: value }).unwrap(),
                 ]);
               }}
             />

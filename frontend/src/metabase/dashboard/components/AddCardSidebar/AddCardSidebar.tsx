@@ -15,6 +15,7 @@ export function AddCardSidebar() {
       if (dashboard) {
         addCardToDashboard({
           dashId: dashboard.id,
+          // Unjustified type cast. FIXME
           cardId: cardId as CardId,
           tabId: selectedTabId,
         });

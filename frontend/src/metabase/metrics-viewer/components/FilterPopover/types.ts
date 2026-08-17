@@ -17,10 +17,7 @@ export type SegmentListItem = {
 
 export type FilterItem = DimensionListItem | SegmentListItem;
 
-export type MetricGroupFilterSection = BaseSection<FilterItem> & {
-  /** True only for the metric's "main" (source-table) group. */
-  isSourceTable?: boolean;
-};
+export type MetricGroupFilterSection = BaseSection<FilterItem>;
 
 export type MetricGroup = {
   id: number;
@@ -34,4 +31,5 @@ export type MetricGroup = {
 };
 
 export const isSegmentListItem = (item: FilterItem): item is SegmentListItem =>
+  // Unjustified type cast. FIXME
   (item as SegmentListItem).segment != null;

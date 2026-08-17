@@ -1,6 +1,7 @@
 (ns metabase.plugins.core
   (:require
    [metabase.plugins.impl]
+   [metabase.plugins.initialize]
    [potemkin :as p]))
 
 (comment metabase.plugins.core/keep-me)
@@ -9,4 +10,6 @@
  [metabase.plugins.impl
   load-plugins!
   plugins-dir
-  plugins-dir-info])
+  plugins-dir-info]
+ [metabase.plugins.initialize
+  load-plugin!])

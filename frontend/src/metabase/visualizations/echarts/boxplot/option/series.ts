@@ -157,7 +157,7 @@ export const buildEChartsMeanSeries = (
         itemStyle: {
           color: meanColor,
           opacity: 1,
-          borderColor: renderingContext.getColor("background-primary"),
+          borderColor: renderingContext.getColor("background_page-primary"),
           borderWidth: 1,
         },
         emphasis: {
@@ -230,10 +230,14 @@ export const buildEChartsPointsSeries = (
             fontWeight: BOXPLOT_DATA_LABEL_STYLE.fontWeight,
             fontSize: BOXPLOT_DATA_LABEL_STYLE.fontSize,
             color: renderingContext.getColor("text-primary"),
-            textBorderColor: renderingContext.getColor("background-primary"),
+            textBorderColor: renderingContext.getColor(
+              "background_page-primary",
+            ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
+              // Unjustified type cast. FIXME
               const data = params.data as Record<string, unknown> | undefined;
+              // Unjustified type cast. FIXME
               const y = data?.[dataKey] as number | null | undefined;
               if (y == null || !Number.isFinite(y)) {
                 return "";
@@ -264,7 +268,7 @@ export const buildEChartsPointsSeries = (
         itemStyle: {
           color: seriesColor,
           opacity: CHART_STYLE.opacity.scatter,
-          borderColor: renderingContext.getColor("background-primary"),
+          borderColor: renderingContext.getColor("background_page-primary"),
           borderWidth: 1,
         },
         ...getOutlierLabelConfig(labelPosition),
@@ -295,7 +299,7 @@ export const buildEChartsPointsSeries = (
           itemStyle: {
             color: seriesColor,
             opacity: NON_OUTLIER_OPACITY,
-            borderColor: renderingContext.getColor("background-primary"),
+            borderColor: renderingContext.getColor("background_page-primary"),
             borderWidth: 1,
           },
           label: { show: false },
@@ -401,10 +405,14 @@ export const buildEChartsBoxPlotLabelsSeries = (
             fontWeight: BOXPLOT_DATA_LABEL_STYLE.fontWeight,
             fontSize: BOXPLOT_DATA_LABEL_STYLE.fontSize,
             color: renderingContext.getColor("text-primary"),
-            textBorderColor: renderingContext.getColor("background-primary"),
+            textBorderColor: renderingContext.getColor(
+              "background_page-primary",
+            ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
+              // Unjustified type cast. FIXME
               const data = params.data as Record<string, unknown>;
+              // Unjustified type cast. FIXME
               const yValue = data[statKey] as number | null;
               if (yValue == null || !Number.isFinite(yValue)) {
                 return "";

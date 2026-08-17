@@ -17,7 +17,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -28,6 +28,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Stack, Text } from "metabase/ui";
 import {
   type CustomOidcConfig,
@@ -246,6 +247,7 @@ export function SettingsOIDCForm() {
           provider: updateData,
         }).unwrap();
       } else {
+        // Unjustified type cast. FIXME
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
     },
@@ -260,6 +262,7 @@ export function SettingsOIDCForm() {
   );
 
   const { data: allGroupsData } = useListPermissionsGroupsQuery(undefined);
+  // Unjustified type cast. FIXME
   const allGroups = (allGroupsData ?? []) as Group[];
   const [deleteGroupMutation] = useDeletePermissionsGroupMutation();
   const [clearGroupMembershipMutation] = useClearGroupMembershipMutation();
@@ -488,7 +491,7 @@ export function SettingsOIDCForm() {
                         </Button>
                         <Button
                           variant="filled"
-                          color="danger"
+                          color="feedback-negative"
                           onClick={deleteModal.open}
                         >
                           {t`Delete configuration`}

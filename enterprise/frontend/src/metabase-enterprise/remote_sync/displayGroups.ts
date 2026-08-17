@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isLibraryCollection } from "metabase/collections/utils";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,

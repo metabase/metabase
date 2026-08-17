@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";
 import type { Database, RecentItem, SearchResult } from "metabase-types/api";
@@ -56,7 +56,7 @@ export const useBuildRecentsMenuItems = () => {
           iconUrl: iconData.iconUrl,
           label: getName(recent),
           id: recent.id,
-          model: recent.model as SuggestionModel,
+          model: recent.model,
           href: href || undefined,
           action: () => onSelect(recent),
         };

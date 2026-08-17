@@ -4,10 +4,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import { Radio } from "metabase/common/components/Radio";
-import { Toggle } from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Popover, UnstyledButton } from "metabase/ui";
+import { Popover, Radio, Stack, Switch, UnstyledButton } from "metabase/ui";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
@@ -52,11 +50,7 @@ export function FieldSettingsPopover({
           />
         </UnstyledButton>
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-        maw={400}
-      >
+      <Popover.Dropdown maw={400}>
         <FormCreatorPopoverBody
           fieldSettings={fieldSettings}
           onChange={onChange}
@@ -139,14 +133,20 @@ function InputTypeSelect({
   onChange: (newInputType: InputSettingType) => void;
 }) {
   const inputTypes = useMemo(getInputTypes, []);
+  const options = inputTypes[fieldType ?? "string"];
 
   return (
-    <Radio
-      vertical
+    <Radio.Group
       value={value}
-      options={inputTypes[fieldType ?? "string"]}
-      onChange={onChange}
-    />
+      // Mantine's radio uses broad `string` type for value even though we supply specifically InputSettingType
+      onChange={(newInputType) => onChange(newInputType as InputSettingType)}
+    >
+      <Stack gap="sm">
+        {options.map((option) => (
+          <Radio key={option.value} value={option.value} label={option.name} />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 }
 
@@ -202,10 +202,10 @@ function RequiredInput({
         <RequiredToggleLabel
           htmlFor={`${id}-required`}
         >{t`Required`}</RequiredToggleLabel>
-        <Toggle
+        <Switch
           id={`${id}-required`}
-          value={required}
-          onChange={onChangeRequired}
+          checked={required}
+          onChange={(e) => onChangeRequired(e.currentTarget.checked)}
         />
       </ToggleContainer>
       {required && (

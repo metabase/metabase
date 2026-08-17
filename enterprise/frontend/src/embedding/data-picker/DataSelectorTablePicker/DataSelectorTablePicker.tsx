@@ -12,8 +12,8 @@ import {
   TableInfoIcon,
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
@@ -22,7 +22,7 @@ import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
-import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
+import { DataSelectorSectionHeader } from "../DataSelectorSectionHeader";
 import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorTablePickerProps = {
@@ -32,11 +32,11 @@ type DataSelectorTablePickerProps = {
   isLoading?: boolean;
   minTablesToShowSearch?: number;
   schemas: Schema[];
-  selectedDatabase: Database;
-  selectedSchema?: Schema;
-  selectedTable?: Table;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  selectedTable?: Table | null;
   tables: Table[];
-  onBack?: () => void;
+  onBack?: (() => void) | null;
   onChangeTable: (table: Table) => void;
 };
 
@@ -48,10 +48,13 @@ type Item = {
 
 type HeaderProps = Pick<
   DataSelectorTablePickerProps,
-  "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
->;
+  "schemas" | "selectedSchema" | "onBack"
+> & {
+  // narrowed by the caller's early return; the header always has a database
+  selectedDatabase: Database;
+};
 
-const DataSelectorTablePicker = ({
+export const DataSelectorTablePicker = ({
   schemas,
   tables,
   selectedDatabase,
@@ -166,9 +169,9 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
     <Box
       p="md"
       ta="center"
-      bg={"background-secondary"}
+      bg={"background_page-secondary"}
       style={{
-        borderTop: "1px solid var(--mb-color-border)",
+        borderTop: "1px solid var(--mb-color-border-neutral)",
       }}
     >
       {t`Is a question missing?`}
@@ -193,7 +196,11 @@ const Header = ({
 
   return (
     <Flex align="center" wrap="wrap">
-      <Flex align="center" style={{ cursor: "pointer" }} onClick={onBack}>
+      <Flex
+        align="center"
+        style={{ cursor: "pointer" }}
+        onClick={onBack ?? undefined}
+      >
         {onBack && <Icon name="chevronleft" size={18} />}
         <Box component="span" ml="sm" data-testid="source-database">
           {tc(selectedDatabase.name)}
@@ -213,6 +220,3 @@ const Header = ({
     </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorTablePicker;

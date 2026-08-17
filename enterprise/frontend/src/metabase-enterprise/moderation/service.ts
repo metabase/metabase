@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { ModerationReviewApi } from "metabase/services";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -14,37 +13,6 @@ import type {
 import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";
-
-export function verifyItem({
-  text,
-  itemId,
-  itemType,
-}: {
-  text: string;
-  itemId: number;
-  itemType: string;
-}) {
-  return ModerationReviewApi.create({
-    status: "verified",
-    moderated_item_id: itemId,
-    moderated_item_type: itemType,
-    text,
-  });
-}
-
-export function removeReview({
-  itemId,
-  itemType,
-}: {
-  itemId: number;
-  itemType: string;
-}) {
-  return ModerationReviewApi.create({
-    status: null,
-    moderated_item_id: itemId,
-    moderated_item_type: itemType,
-  });
-}
 
 type NoIcon = Record<string, never>;
 
@@ -188,6 +156,7 @@ export function getModerationTimelineEvents(
 export const getQuestionIcon = (card: any) => {
   return (card.model === "dataset" || card.type === "model") &&
     card.moderated_status === "verified"
-    ? { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
+    ? // Unjustified type cast. FIXME
+      { icon: "model_with_badge" as IconName, tooltip: "Verified model" }
     : null;
 };

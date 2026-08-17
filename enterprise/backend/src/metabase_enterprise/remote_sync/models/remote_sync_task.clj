@@ -21,7 +21,8 @@
 (derive :model/RemoteSyncTask :metabase/model)
 
 (t2/deftransforms :model/RemoteSyncTask
-  {:conflicts mi/transform-json})
+  {:conflicts mi/transform-json
+   :outcome   mi/transform-json})
 
 (declare current-task)
 
@@ -83,6 +84,39 @@
               {:progress progress
                :last_progress_report_at (mi/now)}))
 
+(def ^:private default-progress-throttle-ms
+  "Minimum ms between throttled (non-boundary) progress writes."
+  10000)
+
+(defn make-progress-reporter
+  "Returns a stateful progress reporter for `task-id`.
+
+  Call the returned fn with a fraction in [0.0, 1.0]. It writes progress (and bumps
+  `last_progress_report_at`) at most once per throttle window and never moves the fraction backward.
+  Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries.
+
+  Options:
+   - :throttle-ms  minimum ms between throttled writes (default 10000)
+   - :now-fn       0-arg fn returning current millis (default `System/currentTimeMillis`)
+   - :write-fn     1-arg fn taking the clamped fraction (default `update-progress!` for `task-id`)"
+  ([task-id] (make-progress-reporter task-id nil))
+  ([task-id {:keys [throttle-ms now-fn write-fn]
+             :or   {throttle-ms default-progress-throttle-ms}}]
+   (let [now-fn        (or now-fn #(System/currentTimeMillis))
+         write-fn      (or write-fn (fn [f] (update-progress! task-id f)))
+         last-ms       (volatile! nil)
+         last-fraction (volatile! -1.0)]
+     (fn report!
+       ([fraction] (report! fraction nil))
+       ([fraction {:keys [force?]}]
+        (let [now (now-fn)
+              f   (-> (double fraction) (max 0.0) (min 1.0))]
+          (when (and (>= f @last-fraction)
+                     (or force? (nil? @last-ms) (>= (- now @last-ms) throttle-ms)))
+            (vreset! last-ms now)
+            (vreset! last-fraction f)
+            (write-fn f))))))))
+
 (defn set-version!
   "Sets the version value for a sync task.
 
@@ -96,13 +130,17 @@
 (defn complete-sync-task!
   "Marks a sync task as completed.
 
-  Takes the ID of the sync task to mark as completed.
+  Takes the ID of the sync task to mark as completed and an optional `outcome` map describing the result
+  (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
+  confirmation message; we store structured data rather than customer-facing copy.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:progress 1.0
-               :ended_at (mi/now)}))
+  ([task-id] (complete-sync-task! task-id nil))
+  ([task-id outcome]
+   (t2/update! :model/RemoteSyncTask task-id
+               {:progress 1.0
+                :ended_at (mi/now)
+                :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.

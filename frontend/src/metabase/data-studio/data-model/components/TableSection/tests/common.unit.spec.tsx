@@ -71,7 +71,7 @@ describe("TableSection", () => {
       );
 
       expect(
-        await screen.findByRole("menuitem", { name: /View Schema/ }),
+        await screen.findByRole("menuitem", { name: /View schema/ }),
       ).toBeInTheDocument();
     });
 
@@ -83,7 +83,7 @@ describe("TableSection", () => {
       // With no sync actions and no source replacement, the menu collapses to a
       // standalone schema viewer link rather than a "More actions" menu.
       expect(
-        screen.getByRole("link", { name: /View Schema/ }),
+        screen.getByRole("link", { name: /View schema/ }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "More actions" }),

@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -364,6 +365,44 @@
                       [-100.0 11345]
                       [-80.0  2275]]
                      (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))
+
+(deftest ^:parallel binning-with-source-card-with-explicit-joins-temporal-and-numeric-test
+  (testing "Temporal bucketing and numeric binning work on explicitly-joined columns off a source card (metabase#15446, metabase#16675, metabase#16693)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
+      (mt/dataset test-data
+        (let [mp0               (mt/metadata-provider)
+              field             (fn [t c] (lib.metadata/field mp0 (mt/id t c)))
+              base              (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+              people            (lib.metadata/table mp0 (mt/id :people))
+              products          (lib.metadata/table mp0 (mt/id :products))
+              people-join       (-> (lib/join-clause people (lib/suggested-join-conditions base people))
+                                    (lib/with-join-alias "People")
+                                    (lib/with-join-fields [(lib/with-temporal-bucket (field :people :birth_date) :default)]))
+              products-join     (-> (lib/join-clause products (lib/suggested-join-conditions base products))
+                                    (lib/with-join-alias "Products")
+                                    (lib/with-join-fields [(field :products :price)]))
+              source-card-query (-> base
+                                    (lib/join people-join)
+                                    (lib/join products-join)
+                                    (lib/with-fields [(field :orders :id)])
+                                    lib.convert/->legacy-MBQL)]
+          (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                            [source-card-query])
+            (let [query      (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
+                                 (lib/aggregate (lib/count)))
+                  birth-date (m/find-first #(= (:id %) (mt/id :people :birth_date))
+                                           (lib/breakoutable-columns query))
+                  price      (m/find-first #(= (:id %) (mt/id :products :price))
+                                           (lib/breakoutable-columns query))
+                  _          (is (some? birth-date))
+                  _          (is (some? price))
+                  query      (-> query
+                                 (lib/breakout (lib/with-temporal-bucket birth-date :year))
+                                 (lib/breakout (lib/with-binning price {:strategy :num-bins, :num-bins 50})))
+                  result     (qp/process-query query)]
+              (is (seq (mt/rows result)))
+              (is (= ["People → Birth Date: Year" "Products → Price: 50 bins"]
+                     (map :display_name (take 2 (mt/cols result))))))))))))
 
 (deftest ^:parallel breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.render.core :as channel.render]
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -50,6 +51,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
@@ -218,7 +220,7 @@
       [(qp.util/query-hash query)
        (qp.util/query-hash (assoc query :constraints (qp.constraints/default-query-constraints)))]
       (catch Throwable e
-        (log/errorf e "Error hashing query %s: %s" (pr-str query) (ex-message e))
+        (log/errorf "Error hashing query: %s" (ex-message e))
         nil))))
 
 (defn- dashcard->query-hashes
@@ -630,6 +632,49 @@
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
+(api.macros/defendpoint :post "/:id/pdf" :- :any
+  "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
+  back as a file download.
+
+  `parameters` are runtime parameter overrides -- the same shape the dashcard query endpoints accept: a sequence of
+  `{:id ... :value ...}` maps, or a JSON-encoded string of that sequence (the string form lets an HTML `<form>`
+  action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
+
+  `paper_size` is `\"a4\"` (default) or `\"letter\"`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [parameters paper_size]} :- [:map
+                                       [:parameters {:optional true} [:maybe [:or
+                                                                              [:sequential ::parameters.schema/parameter-with-value]
+                                                                              ;; JSON-string form for <form>-driven
+                                                                              ;; downloads, mirroring the dashcard
+                                                                              ;; export-format endpoint
+                                                                              ms/JSONString]]]
+                                       [:paper_size {:default "a4"} [:maybe [:enum "a4" "letter"]]]]
+   _request
+   respond
+   raise]
+  (try
+    (let [dashboard (api/read-check :model/Dashboard id)
+          params    (cond-> parameters
+                      (string? parameters) json/decode+kw)
+          ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
+          ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
+          _         (api/check-400 (mr/validate [:maybe [:sequential ::parameters.schema/parameter-with-value]] params))
+          pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
+                                                            (or params [])
+                                                            (keyword (or paper_size "a4")))
+          filename  (str (or (not-empty (u/slugify (:name dashboard)))
+                             (str "dashboard-" id))
+                         ".pdf")]
+      (respond {:status  200
+                :headers {"Content-Type"        "application/pdf"
+                          "Content-Disposition" (format "attachment; filename=\"%s\"" filename)}
+                :body    (java.io.ByteArrayInputStream. pdf-bytes)}))
+    (catch Throwable e
+      (raise e))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -801,23 +846,33 @@
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
-(defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
-  (when-let [card-ids (seq (concat
-                            (seq (keep :card_id to-create))
-                            (->> to-create
-                                 (mapcat :series)
-                                 (keep :id))))]
-    (api/check-400 (not (t2/exists? :model/Card
-                                    {:where [:and
-                                             [:not= :dashboard_id (u/the-id dashboard)]
-                                             [:not= :dashboard_id nil]
-                                             [:in :id (set card-ids)]]})))))
+(defn- dashcard-card-ids [dashcard]
+  (concat (when-let [card-id (:card_id dashcard)]
+            [card-id])
+          (keep :id (:series dashcard))))
+
+(defn- assert-dashcards-are-not-internal-to-other-dashboards
+  "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
+  dashboard already references (as a dashcard's card or series, per `existing-dashboard`'s hydrated
+  `:dashcards`) are grandfathered so that pre-existing associations never block saving the dashboard
+  (UXW-4870)."
+  [existing-dashboard new-dashcards]
+  (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
+    (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
+      (api/check-400 (not (t2/exists? :model/Card
+                                      {:where [:and
+                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
+                                               [:not= :dashboard_id nil]
+                                               [:in :id (set card-ids)]]}))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
-    (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
+    ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
+    ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
+    ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
+    (assert-dashcards-are-not-internal-to-other-dashboards dashboard (concat to-create to-update))
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)
@@ -828,20 +883,26 @@
 (def ^:private UpdatedDashboardCard
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id                                  int?]
-   [:size_x                              ms/PositiveInt]
-   [:size_y                              ms/PositiveInt]
-   [:row                                 ms/IntGreaterThanOrEqualToZero]
-   [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series             {:optional true} [:maybe [:sequential map?]]]])
+   [:id                                      int?]
+   [:size_x                                  ms/PositiveInt]
+   [:size_y                                  ms/PositiveInt]
+   [:row                                     ms/IntGreaterThanOrEqualToZero]
+   [:col                                     ms/IntGreaterThanOrEqualToZero]
+   [:card_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe int?]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+   [:series                 {:optional true} [:maybe [:sequential ms/Map]]]])
 
 (def ^:private UpdatedDashboardTab
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id   ms/Int]
-   [:name ms/NonBlankString]])
+   [:id       ms/Int]
+   [:name     ms/NonBlankString]
+   ;; tab order -- `metabase.dashboards.models.dashboard-tab/do-update-tabs!` writes it alongside `:name`
+   [:position {:optional true} ms/IntGreaterThanOrEqualToZero]])
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
@@ -917,7 +978,8 @@
                                      (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+      ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
+      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1068,6 +1130,7 @@
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
@@ -1330,34 +1393,22 @@
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
-;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
-;;; different?
-(def ParameterWithID
-  "Schema for a parameter map with an string `:id`."
-  (mu/with-api-error-message
-   [:and
-    [:map
-     [:id ms/NonBlankString]]
-    [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an ''id'' key")))
-
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/execute"
-  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+(api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/execute/values" :- [:map-of :string :any]
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
+
+  Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
   [{:keys [dashboard-id dashcard-id]} :- [:map
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
+   _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} ms/JSONString]]]
+                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
    (api/check-404 (actions/dashcard->action dashcard-id))
-   (json/decode parameters)))
+   parameters))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1393,14 +1444,14 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                body
-               {:dashboard-id dashboard-id
-                :card-id      card-id
-                :dashcard-id  dashcard-id}))))
+               {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+                :card      (api/check-404 (t2/select-one :model/Card card-id))
+                :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1423,16 +1474,16 @@
     pivot-results? :pivot_results}
    :- [:map
        [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
+                                                 [:sequential ::parameters.schema/parameter-with-value]
                                                  ;; support <form> encoded params for backwards compatibility... see
                                                  ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                  ms/JSONString]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard-id  dashboard-id
-             :card-id       card-id
-             :dashcard-id   dashcard-id
+            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+             :card          (api/check-404 (t2/select-one :model/Card card-id))
+             :dashcard      (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
              :export-format export-format
              :parameters    (cond-> parameters
                               (string? parameters) json/decode+kw)
@@ -1460,11 +1511,11 @@
                                                   [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+             {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+              :card      (api/check-404 (t2/select-one :model/Card card-id))
+              :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+              :qp        qp.pivot/run-pivot-query})))

@@ -12,14 +12,17 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
+import {
+  canCollectionCardBeUsed,
+  getCollectionItemsOptions,
+} from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
-import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Ellipsified,
@@ -158,7 +161,7 @@ function RootItemList() {
             setPath([
               {
                 model: "collection",
-                id: "root" as any, // cmon typescript, trust me
+                id: "root",
                 name: rootCollectionError ? t`Collections` : t`Our analytics`,
               },
             ]);
@@ -301,7 +304,7 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  const dbId = parent.model === "database" ? parent.id : parent.database_id!;
+  const dbId = parent.model === "database" ? parent.id : parent.database_id;
 
   const schemas = allSchemas?.filter((schema) => {
     return !isHidden({
@@ -420,11 +423,12 @@ function DatabaseItemList({
 }
 
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
-  const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isFolder, isHidden, models } =
+    useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
-    include_can_run_adhoc_query: true,
+    ...getCollectionItemsOptions({ models }),
   });
 
   const allItems: CollectionItem[] = (data?.data ?? []).filter(
@@ -499,6 +503,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
   ): SearchRequest => {
     const params: SearchRequest = {
       q: query,
+      // Unjustified type cast. FIXME
       models: models as SearchModel[],
       limit: 50,
       context: "data-picker",
@@ -605,7 +610,7 @@ export const MiniPickerListLoader = () => (
         height="1.5rem"
         width="100%"
         radius="0.5rem"
-        bg="background-secondary"
+        bg="background_page-secondary"
       />
     </Repeat>
   </Stack>

@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -86,19 +86,6 @@ describe("McpAppsSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show custom inline chart origins copy", async () => {
-    await setup();
-
-    expect(
-      await screen.findByText("Custom inline chart origins"),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Add custom origins for MCP clients that should display inline charts. Separate values with a space.",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("can toggle all MCP clients on", async () => {
     await setup();
 
@@ -132,11 +119,23 @@ describe("McpAppsSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("can update custom origins on blur", async () => {
-    await setup();
+  it("updates custom inline chart origins on blur", async () => {
+    await setup({ customOrigins: "https://librechat.example.com" });
 
     const input = await screen.findByPlaceholderText("https://*.example.com");
-    await userEvent.type(input, "https://my-app.example.com");
+
+    await waitFor(() => {
+      expect(input).toHaveValue("https://librechat.example.com");
+    });
+
+    await userEvent.clear(input);
+
+    // MCP client custom origins are separated by spaces
+    await userEvent.type(
+      input,
+      "https://librechat.example.com https://openwebui.example.com",
+    );
+
     await userEvent.tab();
 
     const puts = await findRequests("PUT");
@@ -144,7 +143,10 @@ describe("McpAppsSettings", () => {
 
     const [{ url, body }] = puts;
     expect(url).toContain("/setting/mcp-apps-cors-custom-origins");
-    expect(body).toEqual({ value: "https://my-app.example.com" });
+
+    expect(body).toEqual({
+      value: "https://librechat.example.com https://openwebui.example.com",
+    });
   });
 
   it("hides MCP client configuration when the MCP server is off", async () => {

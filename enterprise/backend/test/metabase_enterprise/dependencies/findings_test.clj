@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -302,3 +303,85 @@
                 (is (= {a-id false, b-id false}
                        (stale-map [a-id b-id]))
                     "both cycle members should be drained (re-analyzed, not stale)")))))))))
+
+(deftest ^:sequential unanalyzable-entity-records-terminal-error-test
+  (testing "A stale entity whose database can't be resolved records a terminal error finding instead of no-oping forever."
+    ;; Without the fix, instance-db-id -> nil makes upsert-analysis! no-op: the stale flag is never
+    ;; cleared, so the entity is re-selected and re-attempted on every run. The fix records a terminal
+    ;; error, clearing the flag.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
+                                         :database_id   (mt/id)}]
+          (let [cid (:id card)]
+            ;; seed a clean finding, mark it stale, then make its database unresolvable
+            (models.analysis-finding/upsert-analysis! :card cid true [])
+            (models.analysis-finding/mark-stale! :card [cid])
+            (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
+              (fn []
+                (lib-be/with-metadata-provider-cache
+                  (deps.findings/upsert-analysis! (t2/instance :model/Card card)))))
+            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                          :analyzed_entity_type :card :analyzed_entity_id cid))
+                "the stale flag is cleared, so the entity stops being re-selected forever")
+            (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
+                "an error finding is recorded explaining why the entity couldn't be analyzed")))))))
+
+(deftest ^:sequential unanalyzable-entity-rechecks-when-database-resolvable-again-test
+  (testing "After a no-DB terminal error, the entity is analyzed normally once its database resolves again."
+    ;; The terminal error finding is not sticky: it clears the stale flag but does not block future
+    ;; analysis. When the entity is next marked stale and its database now resolves, upsert-analysis!
+    ;; takes the normal path and replaces the terminal error with a real analysis result.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (let [mp       (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))]
+          (mt/with-temp [:model/Card card {:dataset_query (lib/query mp products)}]
+            (let [cid (:id card)]
+              ;; phase 1: database unresolvable -> terminal error recorded, stale cleared
+              (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
+                (fn []
+                  (lib-be/with-metadata-provider-cache
+                    (deps.findings/upsert-analysis! (t2/instance :model/Card card)))))
+              (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
+                  "phase 1: a terminal error is recorded while the database is unresolvable")
+              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                  "phase 1: stale flag cleared")
+              ;; phase 2: database resolvable again; re-trigger analysis (as an event/job would)
+              (models.analysis-finding/mark-stale! :card [cid])
+              (lib-be/with-metadata-provider-cache
+                (deps.findings/upsert-analysis! (t2/instance :model/Card card)))
+              (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))
+                  "phase 2: re-analyzed normally — the terminal db error is replaced by a clean result")
+              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                            :analyzed_entity_type :card :analyzed_entity_id cid))
+                  "phase 2: re-analysis cleared stale again"))))))))
+
+(deftest ^:sequential analyze-batch-shares-one-metadata-provider-test
+  (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches
+           a provider to its query, so selecting the batch outside the cache gives each entity a private one. Nothing
+           reads through those providers today -- upsert-analysis! builds its own from the database id and passes it
+           explicitly -- so this is a latent trap rather than a live leak: the moment an entity is analyzed through its
+           own query, a batch of 500 retains 500 providers' worth of fetched metadata. upsert-analysis! already throws
+           when no cache is bound, so the cache is meant to cover this work; only the select sat outside it."
+    (backfill-all-entity-analyses!)
+    (let [providers   (atom [])
+          native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
+                       :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
+          (let [wanted #{card1-id card2-id}
+                upsert-analysis! deps.findings/upsert-analysis!]
+            (with-redefs [deps.findings/upsert-analysis!
+                          (fn [instance]
+                            (when (wanted (:id instance))
+                              (swap! providers conj (:lib/metadata (:dataset_query instance))))
+                            (upsert-analysis! instance))]
+              (deps.findings/analyze-batch! :card 500)))
+          (testing "both cards were selected, so the assertion below is meaningful"
+            (is (= 2 (count @providers))))
+          (testing "and they carry the same provider instance"
+            ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
+            ;; satisfied by two separate caches and would not detect the regression.
+            (is (every? #(identical? (first @providers) %) @providers))))))))

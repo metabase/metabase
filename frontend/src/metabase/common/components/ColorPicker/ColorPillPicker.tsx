@@ -47,17 +47,13 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
   const [isOpened, { open, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={isOpened} onClose={close} position="bottom-start">
+    <Popover opened={isOpened} onDismiss={close} position="bottom-start">
       <Popover.Target>
         <Group {...props} ref={ref} wrap="nowrap">
           <ColorPill color={color} onClick={open} />
         </Group>
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-        className={S.ColorPillPicker}
-      >
+      <Popover.Dropdown className={S.ColorPillPicker}>
         <ColorPickerContent
           value={color}
           onChange={(nextColor) => {

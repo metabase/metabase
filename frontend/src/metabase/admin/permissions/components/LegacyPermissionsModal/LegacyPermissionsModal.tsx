@@ -1,6 +1,6 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";

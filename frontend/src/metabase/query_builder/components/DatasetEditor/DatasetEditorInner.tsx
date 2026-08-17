@@ -12,7 +12,6 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -29,6 +28,7 @@ import {
 } from "metabase/query_builder/actions";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
+import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -65,12 +65,16 @@ import type {
   Dataset,
   DatasetColumn,
   Field,
+  FieldId,
   NativeQuerySnippet,
   RawSeries,
   ResultsMetadata,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import { useListModelIndexesQuery } from "../../api/model-index";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
@@ -109,7 +113,8 @@ export type DatasetEditorInnerProps = {
   setDatasetEditorTab: (tab: DatasetEditorTab) => void;
   setMetadataDiff: (diff: {
     name: string;
-    changes: Partial<DatasetColumn>;
+    // id can be null when a native model column is unmapped from its database column
+    changes: Partial<Omit<DatasetColumn, "id">> & { id?: FieldId | null };
   }) => void;
   onSave: (
     q: Question,
@@ -160,7 +165,7 @@ function mapStateToProps(state: any) {
 const mapDispatchToProps = { setDatasetEditorTab, setTemplateTagConfig };
 
 function getSidebar(
-  props: DatasetEditorInnerProps & { modelIndexes?: unknown },
+  props: DatasetEditorInnerProps & { modelIndexes?: ModelIndex[] },
   {
     datasetEditorTab,
     isQueryError,
@@ -173,11 +178,11 @@ function getSidebar(
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
-    focusedField?: DatasetColumn;
+    focusedField?: FieldWithMaybeIndex;
     focusedFieldIndex: number;
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
-    onMappedDatabaseColumnChange: (value: number) => void;
+    onMappedDatabaseColumnChange: (value: FieldId | null) => void;
     onUpdateModelSettings: (settings: {
       display: ModelSettings["display"];
     }) => void;
@@ -248,13 +253,20 @@ function getSidebar(
       // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
       <TagEditorSidebar
         {...props}
+        // Unjustified type cast. FIXME
         query={question.legacyNativeQuery() as NativeQuery}
         onClose={toggleTemplateTagsEditor}
       />
     );
   }
   if (isShowingDataReference) {
-    return <DataReference {...props} onClose={toggleDataReference} />;
+    return (
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
+    );
   }
   if (isShowingSnippetSidebar) {
     return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;
@@ -264,13 +276,11 @@ function getSidebar(
 }
 
 function getColumnTabIndex(columnIndex: number, focusedFieldIndex: number) {
-  return Number(
-    columnIndex === focusedFieldIndex
-      ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
-      : columnIndex > focusedFieldIndex
-        ? EDITOR_TAB_INDEXES.NEXT_FIELDS
-        : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS,
-  );
+  return columnIndex === focusedFieldIndex
+    ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
+    : columnIndex > focusedFieldIndex
+      ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+      : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
 function getTempRawSeries(
@@ -281,6 +291,7 @@ function getTempRawSeries(
     return rawSeries;
   }
 
+  // Unjustified type cast. FIXME
   return [
     {
       ...rawSeries[0],
@@ -325,6 +336,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const fields = useMemo(
     () =>
       getSortedModelFields(
+        // Unjustified type cast. FIXME
         (resultsMetadata?.columns as unknown as Field[]) ?? [],
         visualizationSettings ?? {},
       ),
@@ -403,7 +415,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
-  const focusedField = fields[focusedFieldIndex] as unknown as DatasetColumn;
+  const focusedField = fields[focusedFieldIndex];
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
@@ -420,7 +432,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
-    (changes: { id: number } & Partial<DatasetColumn>) => {
+    (changes: { id: FieldId | null } & Partial<Omit<DatasetColumn, "id">>) => {
       const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
         mappedField && getWritableColumnProperties(mappedField, isNative);
@@ -434,18 +446,18 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       if (!focusedFieldName) {
         return;
       }
-      setMetadataDiff({ name: focusedFieldName!, changes: values });
+      setMetadataDiff({ name: focusedFieldName, changes: values });
     },
     [focusedFieldName, setMetadataDiff],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
-    (value: number) => {
+    (value: FieldId | null) => {
       if (!focusedFieldName) {
         return;
       }
       const changes = inheritMappedFieldProperties({ id: value });
-      setMetadataDiff({ name: focusedFieldName!, changes });
+      setMetadataDiff({ name: focusedFieldName, changes });
     },
     [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );
@@ -669,6 +681,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       <EditBar
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
+        // Unjustified type cast. FIXME
         title={question.displayName() as string}
         center={
           <EditorTabs

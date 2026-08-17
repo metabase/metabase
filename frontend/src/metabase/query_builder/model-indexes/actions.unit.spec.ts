@@ -15,7 +15,7 @@ import type { FieldWithMaybeIndex } from "./actions";
 import { cleanIndexFlags, updateModelIndexes } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
-  return createBaseMockField(options as Partial<Field>);
+  return createBaseMockField(options);
 };
 
 const createModelWithResultMetadata = (fields: Field[]) => {

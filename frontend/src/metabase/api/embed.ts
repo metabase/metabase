@@ -1,6 +1,21 @@
-import type { CardId, DashCardId, Dataset } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DashCardId,
+  Dashboard,
+  Dataset,
+} from "metabase-types/api";
 
 import { Api } from "./api";
+
+export type GetEmbedCardRequest = {
+  token: string;
+};
+
+export type GetEmbedDashboardRequest = {
+  token: string;
+  dashboard_load_id?: number;
+};
 
 export type EmbedCardQueryRequest = {
   token: string;
@@ -20,6 +35,21 @@ export type EmbedDashcardQueryRequest = {
 
 export const embedApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getEmbedCard: builder.query<Card, GetEmbedCardRequest>({
+      query: ({ token }) => ({
+        method: "GET",
+        url: `/api/embed/card/${token}`,
+      }),
+      keepUnusedDataFor: 0,
+    }),
+    getEmbedDashboard: builder.query<Dashboard, GetEmbedDashboardRequest>({
+      query: ({ token, ...params }) => ({
+        method: "GET",
+        url: `/api/embed/dashboard/${token}`,
+        params,
+      }),
+      keepUnusedDataFor: 0,
+    }),
     getEmbedCardQuery: builder.query<Dataset, EmbedCardQueryRequest>({
       // `/api/embed` is rewritten to `/api/preview_embed` by the request
       // middleware when running inside an embed preview.
@@ -61,6 +91,8 @@ export const embedApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetEmbedCardQuery,
+  useGetEmbedDashboardQuery,
   useGetEmbedCardQueryQuery,
   useGetEmbedCardQueryPivotQuery,
   useGetEmbedDashcardQueryQuery,

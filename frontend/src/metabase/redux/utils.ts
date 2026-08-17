@@ -21,11 +21,15 @@ export function createThunkAction<
   TArgs extends any[],
   TResult,
   TActionType extends string,
+  TState = State,
 >(
   actionType: TActionType,
   thunkCreator: (
     ...args: TArgs
-  ) => (dispatch: ThunkDispatch<any, any, any>, getState: GetState) => TResult,
+  ) => (
+    dispatch: ThunkDispatch<any, any, any>,
+    getState: () => TState,
+  ) => TResult,
 ): (
   ...args: TArgs
 ) => (
@@ -57,6 +61,7 @@ export function withAction<TArgs extends unknown[]>(actionType: string) {
         // thunk, return a new thunk
         return async (dispatch: Dispatch, getState: () => State) => {
           try {
+            // Unjustified type cast. FIXME
             const payload = await (payloadOrThunk as Thunk)(dispatch, getState);
             const dispatchValue = { type: actionType, payload: payload };
             dispatch(dispatchValue);
