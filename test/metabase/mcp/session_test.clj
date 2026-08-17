@@ -35,7 +35,7 @@
 
 (deftest create-returns-uuid-string-test
   (testing "create! returns a session id with a UUID correlator without writing to the database"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)]
       (is (string? session-id))
       (is (some? (parse-uuid (session-correlator session-id))))
       (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
@@ -56,14 +56,13 @@
           "Capability tracking should not materialize a core_session"))))
 
 (deftest create-session-id-length-test
-  (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column"
-    (is (<= (count (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})) 254)))
-  (testing "payload growth fails early in dev and tests"
-    (mt/with-dynamic-fn-redefs [mcp.session/encode-session-payload (fn [_payload]
-                                                                     (apply str (repeat 300 "x")))]
-      (is (thrown-with-msg? AssertionError
-                            #"MCP session id is too long"
-                            (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))))))
+  (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column (254)"
+    ;; Exhaustive, not a sample: the correlator is a fixed-width UUID and `create-session-id`
+    ;; collapses its argument to `(true? supports-mcp-ui?)`, so these three calls cover every
+    ;; payload the encoder can produce. Payload growth that breaks the column fails here.
+    (doseq [metadata [{:supports-mcp-ui? true} {:supports-mcp-ui? false} nil]]
+      (is (<= (count (mcp.session/create! (mt/user->id :crowberto) metadata)) 254)
+          (str "session id exceeds the column width for metadata " (pr-str metadata))))))
 
 (deftest legacy-session-ui-capability-test
   (testing "plain UUID sessions minted before capability hints keep the old tools/list behavior"
@@ -102,7 +101,7 @@
   (testing "derived key is UUID-formatted so it passes server.middleware.session/valid-session-key?"
     ;; If this regresses, the embedding SDK iframe will get 403s from /api when it sends the
     ;; derived key as X-Metabase-Session, because the middleware rejects non-UUID keys up-front.
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)
           key        (mcp.session/derive-embedding-session-key session-id)
           parsed     (parse-uuid key)]
       (is (some? parsed)
@@ -114,7 +113,7 @@
 
 (deftest ui-credential-validation-test
   (let [user-id    (mt/user->id :crowberto)
-        session-id (mcp.session/create! user-id)
+        session-id (mcp.session/create! user-id nil)
         credential (mcp.session/issue-ui-credential session-id user-id)]
     (testing "a fresh credential resolves to its user and MCP session"
       (is (=? {:uid user-id :sid session-id}
@@ -129,7 +128,7 @@
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           key        (mcp.session/get-or-create-session-key! session-id user-id)]
       (is (= (mcp.session/derive-embedding-session-key session-id) key))
       (is (not= session-id key)
@@ -143,7 +142,7 @@
 (deftest delete-test
   (testing "delete! removes the core_session if one was created"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
@@ -153,7 +152,7 @@
   (testing "delete! only removes sessions owned by the given user"
     (let [user-id    (mt/user->id :crowberto)
           other-id   (mt/user->id :rasta)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
@@ -165,26 +164,26 @@
 
 (deftest owned-by-user-test
   (testing "returns true when no core_session exists yet"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)]
       (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :crowberto))))
       (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :rasta))))))
   (testing "returns true for the owning user, false for others"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
       (is (true? (mcp.session/owned-by-user? session-id user-id)))
       (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
 
 (deftest delete-noop-without-session-test
   (testing "delete! is a no-op when no core_session was ever created"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)]
       ;; Should not throw — just a no-op delete
       (mcp.session/delete! session-id (mt/user->id :crowberto)))))
 
-(deftest store-and-read-handle-test
-  (testing "store-handle! returns a UUID handle that read-handle resolves to the encoded query"
+(deftest store-and-resolve-handle-test
+  (testing "store-handle! returns a UUID handle that resolve-query-handle resolves to the encoded query"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           h1         (mcp.session/store-handle! session-id user-id "first")
           h2         (mcp.session/store-handle! session-id user-id "second")]
       (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
@@ -192,32 +191,32 @@
       (is (not= h1 h2) "successive calls must produce distinct handles")
       (is (= session-id (t2/select-one-fn :mcp_session_id :model/McpQueryHandle :id h1))
           "store-handle! stores the full MCP session id, including capability hints")
-      (is (= "first"  (mcp.session/read-handle session-id user-id h1)))
-      (is (= "second" (mcp.session/read-handle session-id user-id h2)))
-      (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))
-          "read-handle returns nil for unknown handles"))))
+      (is (= "first"  (:encoded_query (mcp.session/resolve-query-handle session-id user-id h1))))
+      (is (= "second" (:encoded_query (mcp.session/resolve-query-handle session-id user-id h2))))
+      (is (nil? (mcp.session/resolve-query-handle session-id user-id (str (random-uuid))))
+          "resolve-query-handle returns nil for unknown handles"))))
 
-(deftest read-handle-falls-back-across-the-users-sessions-test
-  (testing "read-handle resolves a handle stored in one session when called from another session of the same user"
+(deftest resolve-query-handle-falls-back-across-the-users-sessions-test
+  (testing "resolve-query-handle resolves a handle stored in one session when called from another session of the same user"
     (let [user-id        (mt/user->id :crowberto)
-          owner-session  (mcp.session/create! user-id)
-          rotated-session (mcp.session/create! user-id)
+          owner-session  (mcp.session/create! user-id nil)
+          rotated-session (mcp.session/create! user-id nil)
           handle         (mcp.session/store-handle! owner-session user-id "payload")]
       (testing "same session → resolves"
-        (is (= "payload" (mcp.session/read-handle owner-session user-id handle))))
+        (is (= "payload" (:encoded_query (mcp.session/resolve-query-handle owner-session user-id handle)))))
       (testing "different session, same user → still resolves (cross-session fallback)"
-        (is (= "payload" (mcp.session/read-handle rotated-session user-id handle))))))
-  (testing "read-handle refuses to resolve handles owned by a different user"
+        (is (= "payload" (:encoded_query (mcp.session/resolve-query-handle rotated-session user-id handle)))))))
+  (testing "resolve-query-handle refuses to resolve handles owned by a different user"
     (let [owner-id    (mt/user->id :crowberto)
           attacker-id (mt/user->id :rasta)
-          session-id  (mcp.session/create! owner-id)
+          session-id  (mcp.session/create! owner-id nil)
           handle      (mcp.session/store-handle! session-id owner-id "payload")]
-      (is (nil? (mcp.session/read-handle session-id attacker-id handle))))))
+      (is (nil? (mcp.session/resolve-query-handle session-id attacker-id handle))))))
 
 (deftest resolve-query-handle-returns-encoded-query-and-prompt-test
   (testing "resolve-query-handle returns the stored query and prompt"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           handle     (mcp.session/store-handle! session-id user-id "encoded" "what was my question")]
       (is (= {:encoded_query "encoded" :prompt "what was my question"}
              (mcp.session/resolve-query-handle session-id user-id handle))))))
@@ -225,26 +224,26 @@
 (deftest store-handle-cascades-with-core-session-test
   (testing "deleting the backing core_session cascades to its handles"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           handle     (mcp.session/store-handle! session-id user-id "payload")]
-      (is (= "payload" (mcp.session/read-handle session-id user-id handle)))
+      (is (= "payload" (:encoded_query (mcp.session/resolve-query-handle session-id user-id handle))))
       (t2/delete! :core_session :key_hashed (derived-hash session-id))
-      (is (nil? (mcp.session/read-handle session-id user-id handle))
+      (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))
           "cascade should reap the handle when the core_session row goes"))))
 
 (deftest delete-removes-handles-test
   (testing "delete! removes handles for the session"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           handle     (mcp.session/store-handle! session-id user-id "payload")
           _          (mcp.session/delete! session-id user-id)]
-      (is (nil? (mcp.session/read-handle session-id user-id handle))))))
+      (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
     (let [login-events (atom [])
           user-id      (mt/user->id :crowberto)
-          session-id   (mcp.session/create! user-id)]
+          session-id   (mcp.session/create! user-id nil)]
       (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic payload]
                                                           (when (= topic :event/user-login)
                                                             (swap! login-events conj payload)))]

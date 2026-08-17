@@ -137,9 +137,7 @@
   server-created session id so later requests can make the same tools/list decision on any Metabase webserver without
   an in-memory cache or a DB row just for session metadata."
   [payload]
-  (-> (json/encode payload)
-      (.getBytes StandardCharsets/UTF_8)
-      (->> (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
+  (base64url-encode (json/encode payload)))
 
 (defn- decode-session-payload
   "Decode the optional client-capability hint from an `Mcp-Session-Id`.
@@ -147,11 +145,10 @@
   Invalid payloads return nil so the whole session id can be treated as invalid by [[session-parts]]."
   [encoded]
   (when-not (str/blank? encoded)
+    ;; The payload is client-supplied via the `Mcp-Session-Id` header, so a bad base64 body or
+    ;; non-JSON contents must read as an invalid session rather than propagate out of `valid-id?`.
     (try
-      (-> (Base64/getUrlDecoder)
-          (.decode ^String encoded)
-          (String. StandardCharsets/UTF_8)
-          json/decode+kw)
+      (json/decode+kw (base64url-decode encoded))
       (catch Exception _
         nil))))
 
@@ -163,38 +160,34 @@
   back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling deploy
   version skew does not invalidate the whole session."
   [payload]
-  (cond
-    (nil? payload)
-    {:extended false}
+  (let [decoded-payload (decode-session-payload payload)
+        version         (:v decoded-payload)]
+    (cond
+      (nil? payload)
+      {:extended false}
 
-    (str/blank? payload)
-    (do
-      (log/warn "MCP session id contains a blank capability payload")
-      nil)
+      (str/blank? payload)
+      (do
+        (log/warn "MCP session id contains a blank capability payload")
+        nil)
 
-    :else
-    (if-let [decoded-payload (decode-session-payload payload)]
-      (let [payload-map?         (map? decoded-payload)
-            payload-version      (when payload-map? (:v decoded-payload))
-            has-payload-version? (and payload-map? (contains? decoded-payload :v))
-            known-version?       (and (integer? payload-version)
-                                      (<= payload-version session-payload-version))
-            unknown-version?     (and (integer? payload-version)
-                                      (> payload-version session-payload-version))]
-        (cond
-          (and payload-map?
-               known-version?
-               (boolean? (:ui decoded-payload)))
-          {:extended true
-           :payload  decoded-payload}
+      (nil? decoded-payload)
+      (do
+        (log/warn "MCP session id contains an undecodable capability payload")
+        nil)
 
-          ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
-          ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
-          (and has-payload-version?
-               unknown-version?)
-          {:extended true
-           :payload  {:ui false}}))
-      (log/warn "MCP session id contains an undecodable capability payload"))))
+      (and (integer? version)
+           (<= version session-payload-version)
+           (boolean? (:ui decoded-payload)))
+      {:extended true
+       :payload  decoded-payload}
+
+      ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
+      ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
+      (and (integer? version)
+           (> version session-payload-version))
+      {:extended true
+       :payload  {:ui false}})))
 
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
@@ -218,13 +211,10 @@
   The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
   limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
   [{:keys [supports-mcp-ui?]}]
-  (let [session-id (str (UUID/randomUUID)
-                        "."
-                        (encode-session-payload {:v  session-payload-version
-                                                 :ui (true? supports-mcp-ui?)}))]
-    (assert (<= (count session-id) max-session-id-length)
-            "MCP session id is too long")
-    session-id))
+  (str (UUID/randomUUID)
+       "."
+       (encode-session-payload {:v  session-payload-version
+                                :ui (true? supports-mcp-ui?)})))
 
 (defn valid-id?
   "Return true if `session-id` has a UUID correlator (the format `create!` produces).
@@ -240,10 +230,8 @@
   `user-id` is accepted but not persisted: since MCP sessions are currently stateless (no server-side token store), we
   don't validate the user against future requests. This parameter exists so we can add durable, user-scoped sessions
   in the future without changing the call-site contract."
-  ([user-id]
-   (create! user-id nil))
-  ([_user-id metadata]
-   (create-session-id metadata)))
+  [_user-id metadata]
+  (create-session-id metadata))
 
 (defn supports-mcp-ui?
   "Return true if the client advertised MCP Apps UI support during initialize."
@@ -349,12 +337,6 @@
         (log/debugf "MCP handle %s resolved across sessions for user %s"
                     handle-id user-id))
       row)))
-
-(defn read-handle
-  "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
-  Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
-  [mcp-session-id user-id handle-id]
-  (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
 
 (defn resolve-query-handle
   "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
