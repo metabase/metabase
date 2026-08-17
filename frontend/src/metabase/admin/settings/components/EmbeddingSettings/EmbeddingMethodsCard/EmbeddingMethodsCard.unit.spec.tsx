@@ -24,31 +24,20 @@ const OSS_LABEL = "Enable embedding";
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
   hasFullAppEmbedding?: boolean;
-  envSettingKeys?: (keyof Settings)[];
-  showEmbedTerms?: boolean;
+  isPinnedToEnv?: boolean;
 } & Partial<
-  Pick<
-    Settings,
-    | "enable-embedding-simple"
-    | "enable-embedding-sdk"
-    | "enable-embedding-static"
-    | "enable-embedding-interactive"
-  >
+  Pick<Settings, "enable-embedding-modular" | "enable-embedding-interactive">
 >;
 
 async function setup({
   hasSimpleEmbedding = true,
   hasFullAppEmbedding = hasSimpleEmbedding,
-  envSettingKeys = [],
-  showEmbedTerms = false,
+  isPinnedToEnv = false,
   ...values
 }: SetupOpts = {}) {
   const settingValues = createMockSettings({
-    "enable-embedding-simple": false,
-    "enable-embedding-sdk": false,
-    "enable-embedding-static": false,
+    "enable-embedding-modular": false,
     "enable-embedding-interactive": false,
-    "show-simple-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
       embedding: hasFullAppEmbedding,
@@ -57,17 +46,12 @@ async function setup({
   });
 
   const definitions = (
-    [
-      "enable-embedding-simple",
-      "enable-embedding-sdk",
-      "enable-embedding-static",
-      "enable-embedding-interactive",
-    ] as const
+    ["enable-embedding-modular", "enable-embedding-interactive"] as const
   ).map((key) =>
     createMockSettingDefinition({
       key,
       value: settingValues[key],
-      is_env_setting: envSettingKeys.includes(key),
+      is_env_setting: isPinnedToEnv && key === "enable-embedding-modular",
     }),
   );
 
@@ -114,72 +98,37 @@ describe("EmbeddingMethodsCard", () => {
   });
 
   describe("the merged switch", () => {
-    it.each([
-      "enable-embedding-simple",
-      "enable-embedding-sdk",
-      "enable-embedding-static",
-    ] as const)("reads on when only %s is on", async (settingKey) => {
-      await setup({ [settingKey]: true });
+    it("reads on when the setting is on", async () => {
+      await setup({ "enable-embedding-modular": true });
 
       // The merged row comes first, full-app second.
       const [mergedSwitch] = await screen.findAllByRole("switch");
       expect(mergedSwitch).toBeChecked();
     });
 
-    it("reads off only when all three are off", async () => {
+    it("reads off when the setting is off", async () => {
       await setup();
 
-      const switches = await screen.findAllByRole("switch");
-      expect(switches[0]).not.toBeChecked();
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      expect(mergedSwitch).not.toBeChecked();
     });
 
-    it("writes all three settings at once", async () => {
+    it("writes the one setting the three methods now share", async () => {
       await setup();
 
-      const switches = await screen.findAllByRole("switch");
-      await userEvent.click(switches[0]);
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(mergedSwitch);
 
       await waitFor(async () => {
         expect(await findRequests("PUT")).toHaveLength(1);
       });
 
       const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({
-        "enable-embedding-simple": true,
-        "enable-embedding-sdk": true,
-        "enable-embedding-static": true,
-      });
+      expect(body).toEqual({ "enable-embedding-modular": true });
     });
 
-    // The terms modal intercepts the first enable, so it writes the settings
-    // that switch stands for rather than the switch's own handler.
-    it("writes all three from the terms modal on the first enable", async () => {
-      await setup({ showEmbedTerms: true });
-
-      const switches = await screen.findAllByRole("switch");
-      await userEvent.click(switches[0]);
-
-      expect(await findRequests("PUT")).toHaveLength(0);
-
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Agree" }),
-      );
-
-      await waitFor(async () => {
-        expect(await findRequests("PUT")).toHaveLength(1);
-      });
-
-      const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({
-        "enable-embedding-simple": true,
-        "enable-embedding-sdk": true,
-        "enable-embedding-static": true,
-        "show-simple-embed-terms": false,
-      });
-    });
-
-    it("locks the row when any of the three is pinned to an env var", async () => {
-      await setup({ envSettingKeys: ["enable-embedding-sdk"] });
+    it("locks the row when the setting is pinned to an env var", async () => {
+      await setup({ isPinnedToEnv: true });
 
       expect(
         await screen.findByText("Set via environment variable"),

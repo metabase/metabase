@@ -50,6 +50,17 @@
   :doc false
   :export? true)
 
+(defn- embedding-app-origin-set?
+  "Whether any authorized-origin setting names a real origin."
+  []
+  (boolean
+   (or (setting/get-value-of-type :string :embedding-app-origin)
+       (setting/get-value-of-type :string :embedding-app-origins-interactive)
+       (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
+         ;; Don't track "localhost:*" as a meaningful origin since it was
+         ;; the old default and may still exist in migrated instances
+         (and sdk-origins (not (str/blank? sdk-origins)) (not= "localhost:*" sdk-origins))))))
+
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
   [setting-key :- :keyword event-name :- :string]
@@ -62,13 +73,7 @@
             (embedding-secret-key! (u.random/secure-hex 32)))
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
-                                   :embedding-app-origin-set   (boolean
-                                                                (or (setting/get-value-of-type :string :embedding-app-origin)
-                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive)
-                                                                    (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
-                                                                      ;; Don't track "localhost:*" as a meaningful origin since it was
-                                                                      ;; the old default and may still exist in migrated instances
-                                                                      (and sdk-origins (not (str/blank? sdk-origins)) (not= "localhost:*" sdk-origins)))))
+                                   :embedding-app-origin-set   (embedding-app-origin-set?)
                                    :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                    :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
@@ -95,23 +100,76 @@
   :audit      :getter
   :encryption :no)
 
-(defsetting enable-embedding-sdk
+(defsetting ^:deprecated enable-embedding-sdk
   (deferred-tru "Allow admins to embed Metabase via the SDK?")
   :type       :boolean
   :default    false
   :visibility :authenticated
   :export?    false
   :audit      :getter
+  :deprecated "0.58.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
-(defsetting enable-embedding-simple
+(defsetting ^:deprecated enable-embedding-simple
   (deferred-tru "Allow admins to embed Metabase via modular embedding?")
   :type       :boolean
   :default    false
   :visibility :authenticated
   :export?    false
   :audit      :getter
+  :deprecated "0.58.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-simple "simple-embedding"))
+
+(defn- any-legacy-embedding-method-enabled?
+  "Whether any of the settings [[enable-embedding-modular]] replaces is on, read through the normal resolution order so
+  that a value set by env var counts."
+  []
+  (boolean
+   (some #(setting/get-value-of-type :boolean %)
+         [:enable-embedding-simple :enable-embedding-sdk :enable-embedding-static])))
+
+(defn- modular-embedding-enabled?
+  "The effective value of [[enable-embedding-modular]].
+
+  Until an admin sets it, it stands for whatever the three settings it replaces already say: any of them on means
+  embedding is on, so an upgrade cannot switch a live embed off. Reading the *source* rather than the value is what
+  separates \"nobody set this\" from \"an admin turned it off\" -- without that, turning it off would bounce back on
+  from a legacy value."
+  []
+  (if (= :default (setting/get-raw-value-source :enable-embedding-modular))
+    (any-legacy-embedding-method-enabled?)
+    (setting/get-value-of-type :boolean :enable-embedding-modular)))
+
+(defsetting enable-embedding-modular
+  (deferred-tru "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :getter     modular-embedding-enabled?
+  ;; A hand-rolled version of [[make-embedding-toggle-setter]]: it compares the stored value and guards the
+  ;; write on it, but the merged flag has to compare the effective value and write unconditionally, so an unset
+  ;; setting flips off its legacy fallback rather than reading through it.
+  :setter     (fn [new-value]
+                (u/prog1 new-value
+                  ;; Compared against the effective value, not the stored one: an unset setting reads as its `false`
+                  ;; default, so guarding the write on the stored value would make "turn it off" a no-op and leave the
+                  ;; legacy fallback answering for it.
+                  (let [old-value (modular-embedding-enabled?)]
+                    (setting/set-value-of-type! :boolean :enable-embedding-modular new-value)
+                    (when (not= new-value old-value)
+                      (when (and new-value (str/blank? (embedding-secret-key)))
+                        (embedding-secret-key! (u.random/secure-hex 32)))
+                      ;; The same `embed_share` event the other embedding toggles track. `modular-embedding` is not
+                      ;; in its enum, so Snowplow bad-rows it -- fine, Snowplow is being retired for Metaplow, which
+                      ;; takes the event name free-form.
+                      (analytics/track-event!
+                       :snowplow/embed_share
+                       {:event                      (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
+                        :embedding-app-origin-set   (embedding-app-origin-set?)
+                        :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                        :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -131,13 +189,14 @@
   :encryption :when-encryption-key-set
   :audit      :getter)
 
-(defsetting enable-embedding-static
+(defsetting ^:deprecated enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
   :type       :boolean
   :default    false
   :visibility :authenticated
   :export?    false
   :audit      :getter
+  :deprecated "0.58.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-static "static-embedding"))
 
 (mu/defn- ignore-localhost :- :string

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -275,3 +276,33 @@
           (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (embed.settings/embedding-app-origins-interactive)))))))))
+
+(deftest enable-embedding-modular-falls-back-to-the-settings-it-replaces-test
+  (testing "With nothing set, the merged setting stands for the three it replaces"
+    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-sdk :enable-embedding-static]]
+      (testing (str "on when only " legacy-setting " is on")
+        (mt/with-temporary-setting-values [enable-embedding-simple false
+                                           enable-embedding-sdk false
+                                           enable-embedding-static false]
+          (mt/with-temporary-setting-values [enable-embedding-modular nil]
+            (setting/set-value-of-type! :boolean legacy-setting true)
+            (is (true? (embed.settings/enable-embedding-modular))))))))
+  (testing "off when all three are off"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       enable-embedding-static false
+                                       enable-embedding-modular nil]
+      (is (false? (embed.settings/enable-embedding-modular)))))
+  (testing "an explicit value wins over the legacy fallback, so turning it off stays off"
+    (mt/with-temporary-setting-values [enable-embedding-simple true
+                                       enable-embedding-sdk true
+                                       enable-embedding-static true
+                                       enable-embedding-modular false]
+      (is (false? (embed.settings/enable-embedding-modular)))))
+  (testing "a legacy setting given by env var counts towards the fallback"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       enable-embedding-static false
+                                       enable-embedding-modular nil]
+      (mt/with-temp-env-var-value! [mb-enable-embedding-static "true"]
+        (is (true? (embed.settings/enable-embedding-modular)))))))

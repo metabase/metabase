@@ -15,12 +15,6 @@ type EmbeddingMethod = {
   title: string;
   description: ReactNode;
   settingKey: EmbeddingSettingKey;
-  /**
-   * The other settings this row's switch writes, so one row can present
-   * several embedding methods. Temporary: EMB-2257 gives the merged switch a
-   * single setting to read and write, and deletes the fan-out with it.
-   */
-  mergedSettingKeys?: EmbeddingSettingKey[];
 };
 
 /**
@@ -32,9 +26,9 @@ type EmbeddingMethod = {
  * controls the toggles, and guest is a property of modular embedding rather
  * than a method beside it. Full-app keeps its own.
  *
- * The merge is presentational for now -- the switch writes all three settings
- * and reads on when any is on, which is what the backend flag will do once
- * EMB-2257 replaces them with one.
+ * `enable-embedding-modular` is the one setting behind that switch. Until an
+ * admin sets it, it reads as the OR of the three deprecated settings it
+ * replaces, so an upgrade cannot switch a live embed off.
  *
  * Guest embeds is the only free method, so OSS keeps a guest-only row.
  */
@@ -45,14 +39,13 @@ export function EmbeddingMethodsCard() {
   const modularEmbedding: EmbeddingMethod = {
     title: t`Modular embedding and SDK for React`,
     description: t`Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data.`,
-    settingKey: "enable-embedding-simple",
-    mergedSettingKeys: ["enable-embedding-sdk", "enable-embedding-static"],
+    settingKey: "enable-embedding-modular",
   };
 
   const guestEmbeds: EmbeddingMethod = {
     title: t`Enable embedding`,
     description: t`Embed Metabase dashboards and questions into your application with modular embedding.`,
-    settingKey: "enable-embedding-static",
+    settingKey: "enable-embedding-modular",
   };
 
   const fullAppEmbedding: EmbeddingMethod = {
@@ -84,7 +77,6 @@ function EmbeddingMethodRow({
   title,
   description,
   settingKey,
-  mergedSettingKeys,
 }: EmbeddingMethod) {
   return (
     <Flex gap="xl" justify="space-between" align="flex-start">
@@ -97,11 +89,7 @@ function EmbeddingMethodRow({
         </Text>
       </Box>
 
-      <EmbeddingToggle
-        settingKey={settingKey}
-        mergedSettingKeys={mergedSettingKeys}
-        aria-label={`${title} toggle`}
-      />
+      <EmbeddingToggle settingKey={settingKey} aria-label={`${title} toggle`} />
     </Flex>
   );
 }
