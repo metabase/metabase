@@ -240,10 +240,7 @@ describe("scenarios > embedding > embedding hub > security", () => {
       H.updateSetting("enable-embedding-static", true);
       cy.visit("/embedding/security");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByText("Published guest embeds").should("be.visible");
-        cy.findByText("Published dashboard").should("be.visible");
-      });
+      assertPublishedDashboardIsListed();
 
       cy.log(
         "Turning guest embeds off is exactly when an admin needs to audit what is already out there",
@@ -251,10 +248,19 @@ describe("scenarios > embedding > embedding hub > security", () => {
       H.updateSetting("enable-embedding-static", false);
       cy.visit("/embedding/security");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByText("Published guest embeds").should("be.visible");
-        cy.findByText("Published dashboard").should("be.visible");
-      });
+      assertPublishedDashboardIsListed();
     });
   });
 });
+
+function assertPublishedDashboardIsListed() {
+  cy.findByTestId("embedding-hub-main").within(() => {
+    // The hub clips its content and scrolls it internally, so this card sits
+    // below the fold on a CI-sized viewport and Cypress reads it as hidden
+    // until it is scrolled in.
+    cy.findByText("Published guest embeds")
+      .scrollIntoView()
+      .should("be.visible");
+    cy.findByText("Published dashboard").should("be.visible");
+  });
+}
