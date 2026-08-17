@@ -107,7 +107,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
-  :deprecated "0.58.0"
+  :deprecated "0.65.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
 (defsetting ^:deprecated enable-embedding-simple
@@ -117,7 +117,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
-  :deprecated "0.58.0"
+  :deprecated "0.65.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-simple "simple-embedding"))
 
 (defn- any-legacy-embedding-method-enabled?
@@ -196,7 +196,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
-  :deprecated "0.58.0"
+  :deprecated "0.65.0"
   :setter     (make-embedding-toggle-setter :enable-embedding-static "static-embedding"))
 
 (mu/defn- ignore-localhost :- :string
