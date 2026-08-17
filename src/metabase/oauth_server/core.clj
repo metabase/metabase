@@ -25,61 +25,50 @@
 ;; after the operator corrects Site URL to https://).
 (defonce ^:private provider (atom nil))
 
-(defn all-agent-scopes
-  "All agent OAuth scopes derived from defendpoint metadata on the agent API,
-   plus scopes from MCP UI resources (e.g. visualize_query) and the v2 tool registry."
-  []
-  (mcp/all-scopes))
-
 (defn supported-scopes
-  "All OAuth scopes advertised in the server's discovery metadata (`scopes-supported`):
-   the agent/MCP scopes plus the opt-in MCP scopes (e.g. `agent:snippets:read`).
+  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
 
-   `mb:full` is deliberately absent. Advertising it here put a full-access grant in front of every
-   client that reads discovery metadata, and clients that request everything advertised would have
-   been rejected for it anyway — it is not in [[default-grant-scopes]], and a client may only
-   request scopes it registered with. A first-party client that needs it still registers with it
-   explicitly; registration does not consult this list."
+  `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
+  discovery metadata. A first-party client that needs it still registers with it explicitly; registration should not
+  consult this list."
   []
-  (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
+  (-> (sorted-set)
+      (into (mcp/all-scopes))
+      (into (mcp/opt-in-scopes))
+      vec))
 
 (defn protected-resource-scopes
-  "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata: the agent/MCP
-   scopes plus the opt-in MCP scopes (e.g. `agent:snippets:read`), so a client discovering scopes
-   via the resource doc can still learn about and request them. `mb:full` is intentionally omitted
-   — it is a first-party full-access scope, not specific to the MCP resource — and GHY-4226 removed
-   it from [[supported-scopes]] too, so it is now advertised nowhere.
-
-   Identical to [[supported-scopes]] today, deliberately: they answer different questions (what this
-   resource accepts vs. what the authorization server knows about) and are free to diverge again."
+  "The scopes advertised in the MCP resource's RFC 9728 protected-resource metadata so a client discovering scopes via
+  the resource doc can still learn about and request them. `mb:full` is intentionally omitted — it is a first-party
+  full-access scope, not specific to the MCP resource."
   []
-  (into (vec (all-agent-scopes)) (mcp/opt-in-scopes)))
+  (-> (sorted-set)
+      (into (mcp/all-scopes))
+      (into (mcp/opt-in-scopes))
+      vec))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource specifically. RFC 9728 metadata answers \"what does
-   *this* resource accept\", and the MCP surface accepts exactly the scopes its tool registry gates
-   on — the rationalized five — plus the resource scopes its UI tools render through.
-
-   [[protected-resource-scopes]] is deliberately wider: it also carries every scope declared by an
-   agent-API endpoint, because those resources do accept them. Advertising that union for MCP is
-   what makes a client's consent screen list per-entity scopes the MCP tools never use."
+  "The scopes advertised for the MCP resource specifically. RFC 9728 metadata answers \"what does *this* resource
+  accept\", and the MCP surface accepts exactly the scopes its tool registry gates on — the rationalized five — plus
+  the resource scopes its UI tools render through."
   []
-  (into (vec (mcp/v2-scopes)) (mcp/opt-in-scopes)))
+  (-> (sorted-set)
+      (into (mcp/v2-scopes))
+      (into (mcp/opt-in-scopes))
+      vec))
 
 (defn default-grant-scopes
-  "The scope set a dynamically-registered client is registered with when it sends no `scope` of its
-   own (RFC 7591 makes the parameter optional, and the major MCP clients omit it).
+  "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
+  the parameter optional, and the major MCP clients omit it).
 
-   This is a *ceiling*, not a grant: a client may later request any subset of it, and the token
-   carries only what was requested and consented to. Because it is a ceiling it must cover
-   everything any surface advertises — a client derives what to ask for from discovery metadata,
-   never from what it registered with, so a scope we advertise but do not register is one the
-   authorization request is rejected for outright. Hence the union of every advertised set rather
-   than a hand-maintained list.
+  This is a *ceiling*, not a grant, according to the RFC: a client may later request any subset of it, and the token
+  carries only what was requested and consented to. Because it is a ceiling it must cover everything any surface
+  advertises — a client derives what to ask for from discovery metadata, never from what it registered with, so a
+  scope we advertise but do not register is one the authorization request is rejected outright. Hence the union of
+  every advertised set rather than a hand-maintained list.
 
-   Narrowing this does not produce least privilege, it produces failed authorizations. The levers
-   that shrink an issued token are what each resource advertises, [[narrow-scope-to-resource]], and
-   the consent screen."
+  Narrowing this does not produce least privilege, it produces failed authorizations. The levers that shrink an issued
+  token are what each resource advertises, [[narrow-scope-to-resource]], and the consent screen."
   []
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (-> (sorted-set)
@@ -93,13 +82,12 @@
 (defn- canonical-resource-uri
   "Canonical form of a resource identifier, for comparing indicators that clients spell differently.
 
-   Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query
-   and fragment are dropped: the canonical form has neither, and ignoring them can only cause
-   narrowing, never widening. Returns nil for anything that is not an absolute URI, which then
-   matches nothing.
+  Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query and fragment are
+  dropped: the canonical form has neither, and ignoring them can only cause narrowing, never widening. Returns nil for
+  anything that is not an absolute URI, which then matches nothing.
 
-   Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path
-   is neither, so `/API/v2` deliberately does not canonicalize to `/api/v2`."
+  Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path is neither, so
+  `/API/v2` deliberately does not canonicalize to `/api/v2`."
   [s]
   (when s
     (try
@@ -120,27 +108,25 @@
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
-   `resources` are RFC 8707 resource indicators from the authorization request. When one names the
-   MCP resource — compared as [[canonical-resource-uri]], since clients disagree on trailing
-   slashes, case, and default ports — scopes that surface does not accept are dropped, so the
-   consent screen asks for what the token can actually be used for rather than everything the
-   client registered. Returns the scope unchanged when no indicator names a resource we narrow for,
-   and nil when nothing survives (callers should drop the parameter entirely rather than send an
-   empty one).
+  `resources` are RFC 8707 resource indicators from the authorization request. When one names the MCP resource —
+  compared as [[canonical-resource-uri]], since clients disagree on trailing slashes, case, and default ports — scopes
+  that surface does not accept are dropped, so the consent screen asks for what the token can actually be used for
+  rather than everything the client registered. Returns the scope unchanged when no indicator names a resource we
+  narrow for, and nil when nothing survives (callers should drop the parameter entirely rather than send an empty
+  one).
 
-   Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a
-   client that connected through an alias was handed that path as its resource identifier, and
-   narrowing has to recognize what it was told to send back.
+  Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a client that connected
+  through an alias was handed that path as its resource identifier, and narrowing has to recognize what it was told to
+  send back.
 
-   Only ever removes scopes, and runs after the provider has validated the request, so it can never
-   turn a valid authorization into a rejected one.
+  Only ever removes scopes, and runs after the provider has validated the request, so it can never turn a valid
+  authorization into a rejected one.
 
-   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming
-   the MCP resource is asking for a token to use against that surface — which accepts none of the
-   REST API that scope unlocks. A first-party client that genuinely wants full access should not be
-   naming the MCP resource. Note this only reaches clients that send a resource indicator: one
-   that omits it is not narrowed at all, so a register-time rule is still the only way to keep
-   `mb:full` off a dynamically-registered client entirely."
+  `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
+  asking for a token to use against that surface — which accepts none of the REST API that scope unlocks. A
+  first-party client that genuinely wants full access should not be naming the MCP resource. Note this only reaches
+  clients that send a resource indicator: one that omits it is not narrowed at all, so a register-time rule is still
+  the only way to keep `mb:full` off a dynamically-registered client entirely."
   [resources scope]
   (let [scope (some-> scope str str/trim not-empty)]
     (if-not (and scope
