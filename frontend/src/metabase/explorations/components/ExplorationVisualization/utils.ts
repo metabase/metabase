@@ -470,10 +470,15 @@ function clampTemporalBrushRange(
   const dateFormat = isDateWithoutTime(column)
     ? "YYYY-MM-DD"
     : "YYYY-MM-DDTHH:mm:ss";
-  const clampedStart = dayjs(start)
-    .add(1, unit)
-    .startOf(unit)
-    .format(dateFormat);
+  const startDate = dayjs(start);
+  const truncatedStart = startDate.startOf(unit);
+  // Same as Lib.updateTemporalFilter: if start is already the first instant of
+  // its unit (typical when it comes from a highlighted bar), keep it.
+  const clampedStart = (
+    startDate.isSame(truncatedStart)
+      ? truncatedStart
+      : startDate.add(1, unit).startOf(unit)
+  ).format(dateFormat);
   const clampedEnd = dayjs(end).startOf(unit).format(dateFormat);
   if (dayjs(clampedStart).isAfter(dayjs(clampedEnd))) {
     return null;
