@@ -389,6 +389,19 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
 
+(deftest with-field-defaults-normalizes-base-urls-test
+  (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
+    (is (= "https://api.mistral.ai/v1"
+           (:base-url (llm.provider/with-field-defaults "mistral" {:base-url "https://api.mistral.ai/v1/"}))))
+    (is (= "https://self-hosted.example"
+           (:base-url (llm.provider/with-field-defaults "anthropic" {:base-url " https://self-hosted.example// "}))))
+    (testing "including one supplied by the environment"
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key "sk-ant-db"})]]
+        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example/"]
+          (is (= "https://env.example"
+                 (:base-url (:credentials (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1"))))))))))
+
 (deftest resolve-model-ref-fills-in-field-defaults-test
   (testing "a connection that never set an optional field still resolves with the registry default, so the adapter
             never has to reach back into the single-provider settings for it"

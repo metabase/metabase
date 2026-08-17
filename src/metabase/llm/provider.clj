@@ -27,6 +27,12 @@
 
 ;;; ------------------------------------------------ Provider types ------------------------------------------------
 
+(defn- strip-trailing-slashes
+  "Trim whitespace and trailing slashes from an admin-entered base URL, so joining it with a `/path` cannot produce
+  a double slash. The URL is otherwise passed through as entered."
+  [value]
+  (str/replace (str/trim value) #"/+$" ""))
+
 (def ^:private aws-region-options
   (mapv (fn [region] {:value region :label region})
         (sort llm.settings/known-aws-regions)))
@@ -47,6 +53,7 @@
                      :prefix      "sk-ant-"
                      :docs-url    "https://console.anthropic.com/settings/keys"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -62,6 +69,7 @@
                      :prefix      "sk-"
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -77,6 +85,7 @@
                      :prefix      "sk-or-v1-"
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -92,6 +101,7 @@
                      :placeholder (deferred-tru "Enter your Mistral API key")
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -107,6 +117,7 @@
                      :placeholder (deferred-tru "Enter your Z.AI API key")
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -121,6 +132,7 @@
                      :placeholder "sk-..."
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -184,6 +196,7 @@
                      :placeholder "ya29..."
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
                     {:key       :base-url
+                     :normalize strip-trailing-slashes
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -203,6 +216,7 @@
                      :placeholder (deferred-tru "Enter your Azure API key")
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
+                     :normalize   strip-trailing-slashes
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -636,14 +650,19 @@
     model-ref))
 
 (defn with-field-defaults
-  "Fill in each field's registry `:default` wherever `config` left it blank, so a resolved connection carries
-  everything the adapter needs. Without this an adapter would have to reach back into the single-provider
-  settings for a missing base URL, which is how one connection ends up answering with another's configuration."
+  "Fill in each field's registry `:default` wherever `config` left it blank, and run each field's `:normalize` over
+  the value that results, so a resolved connection carries everything the adapter needs in the shape it needs it.
+  Normalizing here rather than on write covers every source of a value — the stored config, an environment
+  variable, and the default itself — so a base URL entered with a trailing slash cannot double up the `/` when a
+  path is joined onto it."
   [type-name config]
-  (reduce (fn [config {:keys [key default]}]
-            (cond-> config
-              (and default (not (u/trimmed-string (get config key))))
-              (assoc key default)))
+  (reduce (fn [config {:keys [key default normalize]}]
+            (let [config (cond-> config
+                           (and default (not (u/trimmed-string (get config key))))
+                           (assoc key default))]
+              (cond-> config
+                (and normalize (u/trimmed-string (get config key)))
+                (update key normalize))))
           (or config {})
           (:fields (provider-type type-name))))
 
