@@ -17,9 +17,7 @@ import { getArrayFromMapValues } from "../pie/util";
 export const TOOLTIP_POINTER_MARGIN = 10;
 export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
 
-// The embedding SDK mounts tooltips inside its portal root rather than the
-// document body; the provider is injected at registration time (see
-// register.ts) so this compute file stays free of app-config imports.
+// The embedding SDK sets this to its portal root, so tooltips render inside the embed instead of on document.body.
 let tooltipRootProvider: () => HTMLElement | null = () => document.body;
 
 export function setTooltipRootProvider(provider: () => HTMLElement | null) {

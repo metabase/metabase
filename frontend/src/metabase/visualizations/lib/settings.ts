@@ -19,9 +19,7 @@ type ComputedSettingsTransform = (
   extra: SettingsExtra,
 ) => ComputedVisualizationSettings;
 
-// The embedding SDK rewrites computed click behaviours; the transform is
-// injected at registration time (see register.ts) so this compute file stays
-// free of app-config imports.
+// The embedding SDK sets this to rewrite click behaviours in the computed settings.
 let computedSettingsTransform: ComputedSettingsTransform | null = null;
 
 export function setComputedSettingsTransform(
