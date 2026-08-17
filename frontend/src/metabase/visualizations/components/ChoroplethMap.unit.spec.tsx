@@ -1,9 +1,21 @@
+import fetchMock from "fetch-mock";
+
+import { renderWithProviders, waitFor } from "__support__/ui";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import { getMapUrl } from "metabase/visualizations/components/ChoroplethMap";
+import MetabaseSettings from "metabase/utils/settings";
+import {
+  ChoroplethMap,
+  getMapUrl,
+} from "metabase/visualizations/components/ChoroplethMap";
 import { buildFeatureClickObject } from "metabase/visualizations/components/ChoroplethMap.utils";
 import { getLegendTitles } from "metabase/visualizations/lib/choropleth";
-import type { ColumnSettings } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
+import type { ColumnSettings, RowValue } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 const currencyColumnSettings: ColumnSettings = {
   column: { base_type: "type/Float" },
@@ -36,12 +48,44 @@ describe("buildFeatureClickObject", () => {
 
   it("includes cardId and the row dimension for populated regions", () => {
     expect(
-      buildFeatureClickObject(["CA", 10], null, clickContext),
+      buildFeatureClickObject([["CA", 10]], null, clickContext),
     ).toMatchObject({
       cardId: 42,
       value: 10,
       column: countColumn,
       dimensions: [{ value: "CA", column: stateColumn }],
+    });
+  });
+
+  it("sums the metric of all rows mapped to the same region (metabase#69659)", () => {
+    const idColumn = createMockColumn({
+      name: "ID",
+      display_name: "ID",
+      source: "breakout",
+    });
+    const clickObject = buildFeatureClickObject(
+      [
+        ["CA", 1, 10],
+        ["CA", 2, 20],
+        ["ca", 3, 5],
+      ],
+      null,
+      {
+        ...clickContext,
+        cols: [stateColumn, idColumn, countColumn],
+        metricIndex: 2,
+      },
+    );
+
+    expect(clickObject).toMatchObject({
+      cardId: 42,
+      value: 35,
+      column: countColumn,
+      dimensions: [{ value: "CA", column: stateColumn }],
+      data: [
+        { key: "State", value: "CA", col: stateColumn },
+        { key: "Count", value: 35, col: countColumn },
+      ],
     });
   });
 
@@ -60,6 +104,105 @@ describe("buildFeatureClickObject", () => {
       cardId: 42,
       dimensions: [],
       data: [{ col: stateColumn, value: "CA" }],
+    });
+  });
+});
+
+describe("ChoroplethMap", () => {
+  const WORLD_GEOJSON_URL = "app/assets/geojson/world.json";
+
+  const setup = (rows: RowValue[][]) => {
+    jest.spyOn(MetabaseSettings, "get").mockImplementation((key: string) => {
+      if (key === "custom-geojson") {
+        return {
+          world_countries: {
+            name: "World",
+            url: WORLD_GEOJSON_URL,
+            region_key: "ISO_A2",
+            region_name: "NAME",
+            builtin: true,
+          },
+        };
+      }
+      return null;
+    });
+    fetchMock.get(`end:${WORLD_GEOJSON_URL}`, {
+      type: "FeatureCollection",
+      features: [],
+    });
+
+    const onRender = jest.fn();
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: "COUNTRY",
+                display_name: "Country",
+                semantic_type: "type/Country",
+              }),
+              createMockColumn({ name: "ID", display_name: "ID" }),
+              createMockColumn({ name: "count", display_name: "Count" }),
+            ],
+            rows,
+          }),
+        },
+      ),
+    ];
+    const props = createMockVisualizationProps({
+      series,
+      rawSeries: series,
+      data: series[0].data,
+      card: series[0].card,
+      settings: {
+        "map.type": "region",
+        "map.region": "world_countries",
+        "map.dimension": "COUNTRY",
+        "map.metric": "count",
+      },
+      onRender,
+    });
+
+    renderWithProviders(<ChoroplethMap {...props} />);
+
+    return { onRender };
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should report the unaggregated data warning when several rows map to the same region (metabase#69659)", async () => {
+    const { onRender } = setup([
+      ["DZ", 1, 1],
+      ["DZ", 2, 1],
+      ["US", 3, 1],
+    ]);
+
+    await waitFor(() => {
+      expect(onRender).toHaveBeenCalledWith({
+        warnings: [
+          '"Country" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed.',
+        ],
+      });
+    });
+  });
+
+  it("should not report the unaggregated data warning when regions are unique", async () => {
+    const { onRender } = setup([
+      ["DZ", 1, 1],
+      ["US", 3, 1],
+    ]);
+
+    await waitFor(() => {
+      expect(onRender).toHaveBeenCalledWith({ warnings: [] });
+    });
+    expect(onRender).not.toHaveBeenCalledWith({
+      warnings: expect.arrayContaining([
+        expect.stringContaining("unaggregated"),
+      ]),
     });
   });
 });
