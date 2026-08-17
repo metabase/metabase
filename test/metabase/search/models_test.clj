@@ -150,6 +150,19 @@
         (is (false? (t2/exists? :model/Action :id action-id)))
         (is (= 0 (indexed-count "action" action-id)))))))
 
+(deftest purge-cards-on-database-delete-test
+  (testing "deleting a database purges the cards it deletes without a row-level hook, and what it cascades away with them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}     {}
+                     :model/Card     {card-id :id}   {:name "Db Delete Model", :type :model, :database_id db-id}
+                     :model/Action   {action-id :id} {:name "Db Delete Action", :model_id card-id, :type :query}]
+        (is (= 1 (indexed-count "dataset" card-id)))
+        (is (= 1 (indexed-count "action" action-id)))
+        (t2/delete! :model/Database :id db-id)
+        (is (false? (t2/exists? :model/Card :id card-id)))
+        (is (= 0 (indexed-count "dataset" card-id)))
+        (is (= 0 (indexed-count "action" action-id)))))))
+
 (deftest unrelated-cascade-documents-are-not-purged-test
   (testing "deleting one model card purges its action and leaves another card's action alone"
     (search.tu/with-appdb-search-if-available-without-fallback
