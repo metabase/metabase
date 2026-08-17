@@ -11,7 +11,7 @@ import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabasePickerProps = {
@@ -21,9 +21,9 @@ type DataSelectorDatabasePickerProps = {
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  selectedDatabase?: Database;
-  selectedSchema?: Schema;
-  onBack?: () => void;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  onBack?: (() => void) | null;
   onChangeDatabase: (database: Database) => void;
 };
 
@@ -33,7 +33,7 @@ type Item = {
   database: Database;
 };
 
-const DataSelectorDatabasePicker = ({
+export const DataSelectorDatabasePicker = ({
   databases,
   selectedDatabase,
   onChangeDatabase,
@@ -88,7 +88,7 @@ const DataSelectorDatabasePicker = ({
       onChange={(item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(item) =>
-        selectedDatabase && item.database.id === selectedDatabase.id
+        selectedDatabase != null && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
         <Icon
@@ -102,6 +102,3 @@ const DataSelectorDatabasePicker = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDatabasePicker;

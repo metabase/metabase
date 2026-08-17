@@ -94,6 +94,8 @@ If you want to embed your question or dashboard as an iframe in a simple web pag
 
 To customize the appearance of your question or dashboard, you can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters).
 
+Nobody signs in to view a public link or public embed, so a question that uses a [custom visualization](../questions/visualizations/custom.md) falls back to the default visualization for its results. To render custom visualizations, you'll need an authenticated [modular embed](./modular-embedding.md) with the visualization on your [allowlist](./custom-visualizations.md).
+
 ## Public embed parameters
 
 To apply appearance or filter settings to your public embed, you can add parameters to the end of the link in your iframe's `src` attribute.
@@ -195,3 +197,4 @@ Admins can see all publicly shared questions, dashboards, documents, and actions
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Embedding introduction](../embedding/start.md).
+- [Custom visualizations in embeds](./custom-visualizations.md).

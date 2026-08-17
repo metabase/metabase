@@ -856,7 +856,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,
@@ -915,7 +915,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,

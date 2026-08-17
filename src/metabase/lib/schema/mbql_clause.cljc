@@ -18,7 +18,9 @@
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.
   `:mbql.clause/starts-with`."
   [tag]
-  (keyword "mbql.clause" (name tag)))
+  (if (qualified-keyword? tag)
+    tag
+    (keyword "mbql.clause" (name tag))))
 
 (defn registered-tags
   "Snapshot of every MBQL clause tag currently registered via [[define-mbql-clause]]
@@ -39,7 +41,7 @@
 
 (defn- clause-schema
   "Build the schema for `::clause`, a `:multi` schema that maps MBQL clause tag -> the schema
-  in [[clause-schema-registry]]."
+  in global schema registry in [[metabase.util.malli.registry/registry]]."
   []
   (into [:multi
          {:dispatch common/mbql-clause-tag
@@ -78,7 +80,7 @@
      [:= :is-null]
      ::common/options
      [:ref :metabase.lib.schema.expression/expression]])"
-  ([tag :- simple-keyword?
+  ([tag :- keyword?
     schema]
    (let [schema-name (tag->registered-schema-name tag)]
      (mr/def schema-name schema)
@@ -89,7 +91,7 @@
        (swap! tag-registry conj tag)))
    nil)
 
-  ([tag         :- simple-keyword?
+  ([tag         :- keyword?
     _arrow      :- [:= :-]
     return-type :- ::expression/base-type
     schema]

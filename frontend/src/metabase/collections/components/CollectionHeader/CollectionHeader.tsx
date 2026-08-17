@@ -1,16 +1,18 @@
+import { useUpdateCollectionMutation } from "metabase/api";
 import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
-import type { Collection } from "metabase-types/api";
+import { Flex } from "metabase/ui";
+import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
 import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
-import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
+import S from "./CollectionHeader.module.css";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
 import { CollectionPermissions } from "./CollectionPermissions";
@@ -21,25 +23,36 @@ export interface CollectionHeaderProps {
   collection: Collection;
   isAdmin: boolean;
   isBookmarked: boolean;
-  onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
   canUpload: boolean;
   uploadsEnabled: boolean;
-  saveFile: (file: File) => void;
+  onSaveFile: (file: File) => void;
 }
 
-const CollectionHeader = ({
+export const CollectionHeader = ({
   collection,
   isAdmin,
   isBookmarked,
-  onUpdateCollection,
   onCreateBookmark,
   onDeleteBookmark,
-  saveFile,
+  onSaveFile,
   canUpload,
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
+  const [updateCollection] = useUpdateCollectionMutation();
+
+  const handleUpdateCollection = (
+    collection: Collection,
+    values: Partial<Collection>,
+  ) =>
+    // Header edits (rename, description, official marker) only target concrete
+    // writable collections and send fields the update API accepts.
+    updateCollection({
+      id: collection.id,
+      ...values,
+    } as UpdateCollectionRequest);
+
   const isTrash = isTrashedCollection(collection);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
   const isSemanticLayer = isLibraryCollection(collection);
@@ -53,20 +66,31 @@ const CollectionHeader = ({
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
   return (
-    <HeaderRoot>
+    <Flex
+      justify="space-between"
+      direction={{ base: "column", sm: "row" }}
+      align={{ base: "stretch", sm: "center" }}
+      mb="xl"
+      pt={{ base: "xs", sm: "sm" }}
+    >
       <CollectionCaption
         collection={collection}
-        onUpdateCollection={onUpdateCollection}
+        onUpdateCollection={handleUpdateCollection}
       />
       {!isTrash && !isSemanticLayer && (
-        <HeaderActions data-testid="collection-menu">
+        <Flex
+          className={S.actions}
+          mt="sm"
+          gap="sm"
+          data-testid="collection-menu"
+        >
           {showNewButton && <CollectionNewButton />}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}
               uploadsEnabled={uploadsEnabled}
               isAdmin={isAdmin}
-              saveFile={saveFile}
+              onSaveFile={onSaveFile}
             />
           )}
           {showTimelinesButton && (
@@ -84,20 +108,17 @@ const CollectionHeader = ({
           />
           <CollectionInfoSidebarToggle
             collection={collection}
-            onUpdateCollection={onUpdateCollection}
+            onUpdateCollection={handleUpdateCollection}
           />
           {showCollectionMenu && (
             <CollectionMenu
               collection={collection}
               isAdmin={isAdmin}
-              onUpdateCollection={onUpdateCollection}
+              onUpdateCollection={handleUpdateCollection}
             />
           )}
-        </HeaderActions>
+        </Flex>
       )}
-    </HeaderRoot>
+    </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionHeader;

@@ -244,9 +244,12 @@ describe("issues 55617, 55618", () => {
     H.createSegment({
       name: "My segment",
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
       },
     }).then(({ body: segment }) => {
       cy.wrap(segment.id).as("segmentId");

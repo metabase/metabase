@@ -708,7 +708,7 @@
                 (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"\QYou do not have permissions to run this query.\E"
+                       #"You do not have permissions to view Card"
                        (qp/process-query query))))
                 (testing "Exception should NOT include the compiled native query"
                   (try
@@ -723,17 +723,16 @@
                              (is (not (re-find #"SELECT" form))))
                            form)
                          data)))))
-                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
-                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                (testing (str "Permissions for Card 2's Collection are not enough to run a native query referencing"
+                              " Card 2 while it references Card 1, which we still cannot read")
                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
                   ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
                   ;; gets rebound with the updated permissions. This will be fixed in #45001
                   (mt/with-test-user :rasta
-                    (is (= [[1 "Red Medicine"]
-                            [2 "Stout Burgers & Beers"]]
-                           (mt/formatted-rows
-                            [int str]
-                            (qp/process-query query))))))))))))))
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"You do not have permissions to view Card"
+                         (qp/process-query query)))))))))))))
 
 ;;; TODO (Cam 9/9/25) -- I added this in #61114 but I don't remember exactly what I was testing... I think this is a
 ;;; port of one of the Cypress e2e tests but I don't remember which one. Give this a better name.

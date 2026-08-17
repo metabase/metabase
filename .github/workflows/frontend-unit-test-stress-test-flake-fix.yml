@@ -19,19 +19,27 @@ on:
 jobs:
   workflow-summary:
     name: Stress test inputs
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SPEC: ${{ inputs.spec }}
+          BURN_IN: ${{ inputs.burn_in }}
+          GREP: ${{ inputs.grep }}
+          SENDER: ${{ github.event.sender.login }}
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          {
+            echo '**Inputs:**'
+            echo ''
+            echo "- \`branch\`: $BRANCH"
+            echo "- \`spec\`: $SPEC"
+            echo "- \`burn_in\`: $BURN_IN"
+            echo "- \`grep\`: \"$GREP\""
+            echo ''
+            echo "triggered by: @$SENDER"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-unit-test-stress-test-flake-fix:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -48,10 +56,9 @@ jobs:
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           for ((i=1; i<=BURN_IN; i++)); do
-            bun run jest --runInBand --ci --silent --no-cache \
+            if ! bun run jest --runInBand --ci --silent --no-cache \
               --testPathPatterns "${SPEC}" \
-              --testNamePattern "${GREP}"
-            if [[ "$?" != 0 ]]; then
+              --testNamePattern "${GREP}"; then
               echo "Failed after $i attempts" && break;
             fi
           done

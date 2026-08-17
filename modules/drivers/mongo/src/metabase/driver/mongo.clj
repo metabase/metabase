@@ -18,15 +18,20 @@
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
-   (com.mongodb MongoCommandException MongoSecurityException)
+   (com.mongodb ConnectionString MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
+   (com.mongodb.spi.dns DnsClient)
+   (javax.naming.directory Attribute Attributes InitialDirContext)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +52,63 @@
   (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
+
+(def ^DnsClient ^:private no-op-dns-client
+  ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
+  ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address
+  ;; ultimately goes through the guarded transport resolver.
+  (reify DnsClient
+    (getResourceRecordData [_ _ _] [])))
+
+(defn- srv-target-hosts
+  "Resolve the `_mongodb._tcp.<host>` SRV record that a `mongodb+srv://` connection string expands to, returning the
+  target hostnames. `mongodb+srv` puts a layer of caller-controlled DNS indirection in front of the real servers, so
+  checking only the SRV name itself would leave the hosts actually connected to unchecked.
+
+  Returns nil when this preflight lookup fails, unlike the parsing in [[driver/connection-hosts]], which fails closed.
+  The two differ because this is a live DNS query: it can fail for reasons that have nothing to do with the details
+  being validated, and failing closed would make a flaky resolver refuse every `mongodb+srv://` database. Nothing is
+  lost by being lenient here -- [[metabase.driver.mongo.connection]] installs an `InetAddressResolver` that checks
+  every SRV target against the same policy as the client connects."
+  [host]
+  (try
+    (let [^InitialDirContext context (InitialDirContext.)]
+      (try
+        (let [^Attributes attrs (.getAttributes context
+                                                ^String (str "dns:/_mongodb._tcp." host)
+                                                ^"[Ljava.lang.String;" (into-array String ["SRV"]))]
+          (when-let [^Attribute attr (.get attrs "SRV")]
+            (into []
+                  ;; each record reads "<priority> <weight> <port> <target>."
+                  (keep #(last (str/split (str (.get attr (int %))) #"\s+")))
+                  (range (.size attr)))))
+        (finally
+          (.close context))))
+    (catch Throwable _ nil)))
+
+(defmethod driver/routes-connection-through-ssh-tunnel? :mongo [_driver] true)
+
+(defmethod driver/connection-hosts :mongo
+  [_driver {:keys [use-conn-uri host] :as details}]
+  ;; Mongo takes its hosts from `:host` *or*, when `use-conn-uri` is set, from anywhere inside `:conn-uri` -- and
+  ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
+  ;; only way to be sure we see the same hosts it will connect to.
+  (if (and (not use-conn-uri) (str/blank? host))
+    ;; nothing to parse and nothing to connect to. `:write_data_details` and `:admin_details` are overlays merged on
+    ;; top of `:details`, so they arrive here as partial maps; one that carries no host of its own names no hosts,
+    ;; which is what the default implementation reports for the same input.
+    []
+    ;; Parsing failures are left to propagate. It is tempting to fall back to the `:host` field, since a connection
+    ;; string this cannot parse is one `db-details->mongo-client-settings` cannot parse either, so it connects
+    ;; nowhere -- but that reasoning holds only as long as both keep building the same `ConnectionString`, and the
+    ;; fallback would have us validate a host the driver may never use. Better to report that we cannot say what the
+    ;; hosts are, which [[metabase.driver.util/validate-connection-hosts!]] turns into a refusal.
+    (let [conn-string (mongo.connection/db-details->connection-string details)
+          hosts       (vec (.getHosts (ConnectionString. conn-string no-op-dns-client)))
+          hosts       (cond-> hosts
+                        (str/starts-with? conn-string "mongodb+srv://")
+                        (into (mapcat srv-target-hosts hosts)))]
+      (driver/hosts-from-details {:host (str/join "," hosts)} [:host]))))
 
 (defmethod driver/can-connect? :mongo
   [_ db-details]
@@ -124,14 +186,16 @@
        :semantic-version sanitized-version-array})))
 
 (defmethod driver/describe-database* :mongo
-  [_ database]
+  [_driver database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    {:tables (set (for [collection (mongo.util/list-collection-names db)
-                        :when (not (contains? #{"system.indexes" "system.views"} collection))]
-                    {:schema nil, :name collection}))}))
+    {:tables (into #{}
+                   (comp (remove #{"system.indexes" "system.views"})
+                         (map (fn [collection]
+                                {:schema nil, :name collection})))
+                   (mongo.util/list-collection-names db))}))
 
 (defmethod driver/describe-table-indexes :mongo
-  [_ database table]
+  [_driver database table]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     (let [collection (mongo.util/collection db (:name table))]
       (try
@@ -151,18 +215,21 @@
                       :value %}))
              set)
         (catch com.mongodb.MongoCommandException e
-          ;; com.mongodb.MongoCommandException: Command failed with error 166 (CommandNotSupportedOnView): 'Namespace test-data.orders_m is a view, not a collection' on server bee:27017. The full response is {"ok": 0.0, "errmsg": "Namespace test-data.orders_m is a view, not a collection", "code": 166, "codeName": "CommandNotSupportedOnView"}
+          ;; com.mongodb.MongoCommandException: Command failed with error 166 (CommandNotSupportedOnView): 'Namespace
+          ;; test-data.orders_m is a view, not a collection' on server bee:27017. The full response is {"ok":
+          ;; 0.0, "errmsg": "Namespace test-data.orders_m is a view, not a collection", "code":
+          ;; 166, "codeName": "CommandNotSupportedOnView"}
           (if (= (.getErrorCode e) 166)
             #{}
             (throw e)))))))
 
 ;; describe-table impl start
 
-(def describe-table-query-depth
-  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
-  fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
-  Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
-  have to execute."
+(def ^:private describe-table-query-depth
+  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return
+  the fields at the root level of the document. If set to K, the query will return fields at K levels of nesting
+  beyond that. Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but
+  the more queries we might have to execute."
   ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
   ;; seen on cloud are all <20 levels deep)
   ;; Case 2024-10-04: Sharded clusters seem to run into exponentially more work the bigger this is. Over 20 and this
@@ -173,9 +240,10 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
-(defn ^:dynamic *sample-stages*
+(mu/defn- ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
-  [collection-name sample-size]
+  [collection-name :- :string
+   sample-size     :- pos-int?]
   (let [start-n       (quot sample-size 2)
         end-n         (- sample-size start-n)]
     [{"$sort" {"_id" 1}}
@@ -411,7 +479,7 @@
     ([acc row]
      (conj! acc (zipmap [:path :type :indices] row)))))
 
-(defn- fetch-dbfields
+(mu/defn- fetch-dbfields
   "Fetch _dbfields_ from a mongo collection.
 
   Result is vector of maps as
@@ -419,15 +487,18 @@
 
   Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
   object."
-  [database table]
-  (let [pipeline (describe-table-pipeline {:collection-name (:name table)
-                                           :sample-size (* table-rows-sample/nested-field-sample-limit 2)
+  [database :- [:map
+                [:id ::lib.schema.id/database]]
+   table    :- [:map
+                [:name :string]]]
+  (let [pipeline (describe-table-pipeline {:collection-name       (:name table)
+                                           :sample-size           (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
-                                           :leaf-limit (driver.settings/sync-leaf-fields-limit)})
-        query {:database (:id database)
-               :type     "native"
-               :native   {:collection (:name table)
-                          :query      (json/encode pipeline)}}]
+                                           :leaf-limit            (driver.settings/sync-leaf-fields-limit)})
+        query    {:database (:id database)
+                  :type     "native"
+                  :native   {:collection (:name table)
+                             :query      (json/encode pipeline)}}]
     (driver-api/process-query query fetch-dbfields-rff)))
 
 (defmethod driver/describe-table :mongo
@@ -440,34 +511,34 @@
 
 ;; describe-table impl end
 
-(doseq [[feature supported?] {:basic-aggregations              true
-                              :expression-aggregations         true
-                              :expression-literals             true
-                              :inner-join                      true
-                              :left-join                       true
-                              :nested-fields                   true
-                              :native-parameter-card-reference false
-                              :native-parameters               true
-                              :nested-queries                  true
-                              :set-timezone                    true
-                              :standard-deviation-aggregations true
-                              :test/create-table-without-data  false
-                              :rename                          true
-                              :test/jvm-timezone-setting       false
-                              :identifiers-with-spaces         true
-                              :saved-question-sandboxing       false
-                              :expressions/date                true
-                              :expressions/text                true
-                              :expressions/datetime            true
-                              :expressions/today               true
-                              ;; Index sync is turned off across the application as it is not used ATM.
-                              :index-info                      false
-                              :python-transforms               true
-                              :transforms/python               true
-                              :database-routing                true}]
+(doseq [[feature supported?] {:basic-aggregations                   true
+                              :database-routing                     true
+                              :expression-aggregations              true
+                              :expression-literals                  true
+                              :expressions/date                     true
+                              :expressions/datetime                 true
+                              :expressions/text                     true
+                              :expressions/today                    true
+                              :identifiers-with-spaces              true
+                              :index-info                           false ; Index sync is turned off across the application as it is not used ATM.
+                              :inner-join                           true
+                              :left-join                            true
+                              :metadata/key-constraints             false
+                              :native-parameter-card-reference      false
+                              :native-parameters                    true
+                              :native-requires-specified-collection true
+                              :nested-fields                        true
+                              :nested-queries                       true
+                              :python-transforms                    true
+                              :rename                               true
+                              :saved-question-sandboxing            false
+                              :schemas                              false
+                              :set-timezone                         true
+                              :standard-deviation-aggregations      true
+                              :test/create-table-without-data       false
+                              :test/jvm-timezone-setting            false
+                              :transforms/python                    true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
-
-(defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
 (defn- dbms-version [database]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
@@ -508,16 +579,9 @@
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
-(defmethod driver/database-supports? [:mongo :native-requires-specified-collection]
-  [_driver _feature _db]
-  true)
-
-(defmethod driver/database-supports? [:mongo :metadata/key-constraints]
-  [_driver _feature _db]
-  false)
-
-(defmethod driver/mbql->native :mongo
-  [_ query]
+(mu/defmethod driver/mbql->native :mongo :- :metabase.query-processor.compile/compiled
+  [_driver :- :keyword
+   query   :- ::lib.schema/query]
   (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
@@ -527,8 +591,8 @@
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters-in-stage-method :mongo
-  [driver metadata-providerable stage]
-  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
+  [driver query stage-number]
+  (mongo.params/substitute-native-parameters driver query stage-number))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

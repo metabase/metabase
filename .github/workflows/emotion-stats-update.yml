@@ -11,7 +11,7 @@ on:
 jobs:
   emotion-stats:
     if: github.repository == 'metabase/metabase'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -40,9 +40,9 @@ jobs:
               | wc -l || true
           )
 
-          echo "$(($oss+$ee)) files importing @emotion/*"
+          echo "$((oss + ee)) files importing @emotion/*"
 
-          echo "EMOTION_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
+          echo "EMOTION_FILES=$((oss + ee))" >> "$GITHUB_OUTPUT"
       - name: Upload count to Stats
         uses: actions/github-script@v9
         env:

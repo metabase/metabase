@@ -230,8 +230,9 @@
                              [:lonField ::legacy-ref]]]
   (let [updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
-                       (qp/userland-query updated-query {:executed-by api/*current-user-id*
-                                                         :context     :map-tiles}))
+                       (qp/userland-query
+                        (assoc updated-query :info {:executed-by api/*current-user-id*
+                                                    :context     :map-tiles})))
         points        (result->points result lat-field lon-field)]
     (tiles-response result zoom points)))
 
