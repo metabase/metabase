@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [diehard.core :as dh]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -349,10 +350,10 @@
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (u/auto-retry 3
+              (dh/with-retry {:delay-ms    1000
+                              :max-retries 3}
                 (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
                   (when-not (contains? table-names mview-nm)
-                    (Thread/sleep 1000)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
                                     {:expected mview-nm :actual table-names})))
                   (is (contains? table-names mview-nm)))))))))))
