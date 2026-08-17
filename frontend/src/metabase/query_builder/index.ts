@@ -1,5 +1,7 @@
 // The module's public interface.
 // Names absent here are module-private on purpose — add them only when a real consumer needs them.
+// The directory is in rspack's SIDE_EFFECT_FREE_PATHS, so importing one name here links only to that file
+// and the pages stay in the chunk the routes' import() creates.
 
 export { queryBuilderReducer } from "./store/reducer";
 export type { QueryBuilderStoreState } from "./store/state";
@@ -26,6 +28,7 @@ export { getAdHocQuestionWithVizSettings } from "./utils/viz-settings";
 export type { UpdateQueryHookProps } from "./hooks/types";
 export { useBreakoutQueryHandlers } from "./hooks/use-breakout-query-handlers";
 
+export { QueryBuilder } from "./containers/QueryBuilder";
 export {
   type OnCreateOptions,
   useCreateQuestion,
@@ -34,6 +37,7 @@ export { useSaveQuestion } from "./containers/use-save-question";
 
 export { ChartTypeSettings } from "./components/chart-type-selector/ChartTypeSettings/ChartTypeSettings";
 export { useQuestionVisualizationState } from "./components/chart-type-selector/use-question-visualization-state";
+export { MetabotQueryBuilder } from "./components/MetabotQueryBuilder/MetabotQueryBuilder";
 export { PublicOrEmbeddedQuestionDownloadPopover } from "./components/QuestionDownloadPopover/QuestionDownloadPopover";
 export { QuestionHashRedirect } from "./components/QuestionHashRedirect";
 export { getBreakoutListItem } from "./components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util";
@@ -51,8 +55,3 @@ export { QueryBuilderBackButton } from "./components/view/ViewHeader/components/
 export type { DataSourcePart } from "./components/view/ViewHeader/components/QuestionDataSource/utils";
 export { QuestionFiltersHeader } from "./components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader";
 export { ViewHeading } from "./components/view/ViewSection";
-
-// The store imports this module on every page, so the pages themselves stay behind an import().
-export const loadQueryBuilder = () => import("./containers/QueryBuilder");
-export const loadMetabotQueryBuilder = () =>
-  import("./components/MetabotQueryBuilder/MetabotQueryBuilder");
