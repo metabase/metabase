@@ -451,7 +451,12 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
       QUERY_COMPLETED,
       (_state, action) => action.payload.card,
     )
-    .addCase(QUERY_ERRORED, () => null);
+    // a null payload is a cancelled run; the retained queryResults keep their
+    // producing card so consumers can tell what shape they have
+    .addCase<string, { type: string; payload: unknown }>(
+      QUERY_ERRORED,
+      (_state, action) => (action.payload ? null : undefined),
+    );
 });
 
 // The results of a query execution. optionally an error if the query fails to complete successfully.
