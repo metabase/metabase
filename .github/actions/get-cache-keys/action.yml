@@ -30,7 +30,7 @@ runs:
       id: keys-factory
       run: |
         M2_CACHE_PREFIX='M2'
-        NODE_CACHE_PREFIX='node-modules'
+        NODE_CACHE_PREFIX='bun-store'
         ESLINT_CACHE_PREFIX='eslint'
         CYPRESS_CACHE_PREFIX='cypress'
         WEEK_OF_YEAR=$(/bin/date "+%G-%V")

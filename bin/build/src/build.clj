@@ -11,7 +11,9 @@
    [environ.core :as env]
    [flatland.ordered.map :as ordered-map]
    [i18n.create-artifacts :as i18n]
-   [metabuild-common.core :as u]))
+   [metabuild-common.core :as u])
+  (:import
+   (java.util.concurrent ExecutionException)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +39,12 @@
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition
                      "EMIT_BUNDLE_STATS" (or (env/env :emit-bundle-stats) "false")
-                     "INSTRUMENT_COVERAGE" (or (env/env :instrument-coverage) "false")}}
+                     "INSTRUMENT_COVERAGE" (or (env/env :instrument-coverage) "false")
+                     ;; Whether to emit pre-compressed (.br/.gz) copies of every asset. Defaults to "true" to
+                     ;; match what a production bundle has always done; CI turns it off for PR builds, where
+                     ;; brotli-at-max-quality over the whole bundle is a lot of time to spend on files
+                     ;; `metabase.server.routes.static` will happily do without.
+                     "COMPRESSION" (or (env/env :compression) "true")}}
               "bun" "run" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
@@ -70,11 +77,32 @@
       (u/sh {:dir u/project-root-directory}
             "bun" "run" "generate-license-disclaimer"))))
 
-(defn- build-uberjar! [edition]
+(defn- build-frontend-async!
+  "Start [[build-frontend!]] on a background thread. Returns a function that blocks until it finishes, rethrowing
+  whatever it threw.
+
+  The frontend build reads the translations the `:translations` step produced and writes `resources/frontend_client`;
+  the Clojure AOT compilation in the `:uberjar` step reads neither (everything it does load out of
+  `resources/frontend_client` at compile time is checked in, not generated). So the two can overlap, which matters
+  because they are the two longest steps in the build by a wide margin."
+  [edition]
+  (let [timer (u/start-timer)
+        fut   (future (build-frontend! edition))]
+    (u/announce "Frontend build running in the background; the uberjar step will wait for it.")
+    (fn await-frontend! []
+      (u/step "Wait for the background frontend build"
+        (try
+          @fut
+          (catch ExecutionException e
+            (throw (or (ex-cause e) e))))
+        (u/announce "Background frontend build finished in %d ms." (u/since-ms timer))))))
+
+(defn- build-uberjar!
+  [edition {:keys [await-frontend!]}]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    (uberjar/uberjar {:edition edition})
+    (uberjar/uberjar {:edition edition, :await-frontend! await-frontend!})
     (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
@@ -94,7 +122,31 @@
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
    :uberjar      (fn [{:keys [edition]}]
-                   (build-uberjar! edition))))
+                   (build-uberjar! edition nil))))
+
+(defn- overlap-frontend-with-uberjar?
+  "Whether this build can run the `:frontend` step in the background while the `:uberjar` step AOT-compiles the
+  backend. Only when both steps are in the build and the frontend comes first -- i.e. the normal full build. Anything
+  else (a frontend-only build, an uberjar-only build, a hand-rolled `:steps` that inverts the two) runs sequentially,
+  since there would be nothing to overlap with or nobody left to wait for the background thread."
+  [step-names]
+  (let [position (into {} (map-indexed (fn [i step-name] [step-name i])) step-names)]
+    (boolean (when-let [frontend (:frontend position)]
+               (when-let [uberjar (:uberjar position)]
+                 (< frontend uberjar))))))
+
+(defn- steps-for-build
+  "The step fns to run for `step-names`. Usually just [[all-steps]], but for a full build we swap in `:frontend` and
+  `:uberjar` steps that overlap -- see [[build-frontend-async!]]."
+  [step-names]
+  (if-not (overlap-frontend-with-uberjar? step-names)
+    all-steps
+    (let [await-frontend! (atom nil)]
+      (assoc all-steps
+             :frontend (fn [{:keys [edition]}]
+                         (reset! await-frontend! (build-frontend-async! edition)))
+             :uberjar  (fn [{:keys [edition]}]
+                         (build-uberjar! edition {:await-frontend! @await-frontend!}))))))
 
 (defn build!
   "Programmatic entrypoint."
@@ -104,17 +156,19 @@
   ([{:keys [version edition steps]
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
-   (let [version (or version
-                     (version-properties/current-snapshot-version edition))
-         timer         (u/start-timer)]
+   (let [version    (or version
+                        (version-properties/current-snapshot-version edition))
+         step-names (mapv u/parse-as-keyword steps)
+         step-fns   (steps-for-build step-names)
+         timer      (u/start-timer)]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
                        :ee  "Enterprise Edition")
                      version
-                     (str/join ", " (map name steps)))
-       (doseq [step-name steps
-               :let      [step-fn (or (get all-steps (u/parse-as-keyword step-name))
+                     (str/join ", " (map name step-names)))
+       (doseq [step-name step-names
+               :let      [step-fn (or (get step-fns step-name)
                                       (throw (ex-info (format "Invalid step: %s" step-name)
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]

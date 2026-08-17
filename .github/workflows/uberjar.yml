@@ -128,6 +128,11 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      # Pre-compressed (.br/.gz) copies of every JS/CSS/SVG asset only matter for production serving --
+      # `metabase.server.routes.static` falls back to the plain file when they are missing. Brotli at max
+      # quality over the whole bundle is the most expensive single piece of the frontend build, and the
+      # extra files inflate the uberjar (and its upload), so skip them on PR builds.
+      COMPRESSION: ${{ github.event_name == 'pull_request' && 'false' || 'true' }}
       # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
       # (the bundle-size check reads them for both the PR head and its base ref).
       EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
@@ -140,6 +145,9 @@ jobs:
         uses: ./.github/actions/prepare-frontend
         with:
           node-version: "${{ needs.get-build-requirements.outputs.node_version || '22' }}"
+          # `prepare-backend` below restores a superset of the M2 cache under the same key, and nothing
+          # between here and there needs it, so restoring it twice is pure download time.
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:

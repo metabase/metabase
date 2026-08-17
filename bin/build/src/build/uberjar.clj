@@ -123,7 +123,13 @@
         (b/compile-clj {:basis      basis
                         :src-dirs   paths
                         :class-dir  class-dir
-                        :ns-compile ns-decls})
+                        :ns-compile ns-decls
+                        ;; `compile-clj` forks a JVM, which would otherwise default to a quarter of the machine's
+                        ;; RAM. Pin it instead: the full build runs this concurrently with shadow-cljs (see
+                        ;; [[build/build-frontend-async!]]), and two unbounded JVMs plus rspack is more than a
+                        ;; 16GB CI runner has to give. Measured on a clean `target/classes`, compiling under 2GB
+                        ;; is no slower than under 4GB.
+                        :java-opts  ["-Xmx2g"]})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (def ^:private resource-ignore-patterns
@@ -263,13 +269,19 @@
   "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:
 
     clojure -X:build:build/uberjar
-    clojure -X:build:build/uberjar :edition :ee"
-  [{:keys [edition], :or {edition :oss}}]
+    clojure -X:build:build/uberjar :edition :ee
+
+  `await-frontend!`, when given, is a function that blocks until an in-progress frontend build has finished. The
+  full build (see [[build/build!]]) uses it to run the frontend concurrently with [[compile-sources!]], which needs
+  nothing the frontend produces; we join just before [[copy-resources!]], which does."
+  [{:keys [edition await-frontend!], :or {edition :oss}}]
   (u/step (format "Build %s uberjar" edition)
     (with-duration-ms [duration-ms]
       (clean!)
       (let [basis (create-basis edition)]
         (compile-sources! basis)
+        (when await-frontend!
+          (await-frontend!))
         (copy-resources! basis)
         (create-uberjar! basis)
         (add-non-aot-driver-sources!)

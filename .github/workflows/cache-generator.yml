@@ -131,12 +131,10 @@ jobs:
           key: ${{ env.M2_CACHE_KEY }}
 
       # Frontend preparation and caches
-      # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
-      # It then (3) runs `bun install --frozen-lockfile` which ensures the local cache is fully populated.
-      # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
-      #   - upgrade a patched library
-      #   - change a patch
-      # Hence why we explicitly exclude patches from the cache (controlled by the `apply-patches` action input).
+      # `prepare-frontend` action (1) prepares Node.js and (2) fetches the bun store cache if it exists.
+      # It then (3) runs `bun install --frozen-lockfile` which ensures the local store is fully populated.
+      # Patches are applied to `node_modules`, never to the store, so there is nothing patch-shaped to leak
+      # into the cache -- but we still skip patching here because this job has no use for a patched tree.
       - name: Install front-end dependencies
         uses: ./.github/actions/prepare-frontend
         with:
@@ -157,12 +155,12 @@ jobs:
           bun run cypress verify
         shell: bash
 
-      - name: Update node_modules cache
+      # Only the bun store is cached. `prepare-frontend` rebuilds node_modules from it on every job, so
+      # shipping the tree itself around just costs download and extraction time everywhere it is restored.
+      - name: Update bun store cache
         uses: ./.github/actions/update-cache
         with:
-          path: |
-            ${{ steps.bun-cache.outputs.dir }}
-            node_modules
+          path: ${{ steps.bun-cache.outputs.dir }}
           key: ${{ env.NODE_CACHE_KEY }}
 
       - name: Update Cypress cache
