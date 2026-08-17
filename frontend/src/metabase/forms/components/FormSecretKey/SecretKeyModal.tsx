@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -36,12 +36,17 @@ export const SecretKeyModal = ({
   onClose,
 }: SecretKeyModalProps) => {
   const { sendErrorToast } = useMetadataToasts();
-  const [generateRandomToken, { data, isFetching }] =
-    useLazyGenerateRandomTokenQuery();
+  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
+
+  // Held locally rather than read from the query cache: the cached token is
+  // the one generated last time the modal was open, and showing it would let
+  // the user copy a key that is about to be replaced.
+  const [secretKey, setSecretKey] = useState("");
 
   const generateToken = useCallback(async () => {
     try {
-      await generateRandomToken().unwrap();
+      const { token } = await generateRandomToken().unwrap();
+      setSecretKey(token);
     } catch {
       sendErrorToast(t`Error generating secret key.`);
     }
@@ -50,8 +55,6 @@ export const SecretKeyModal = ({
   useMount(() => {
     void generateToken();
   });
-
-  const secretKey = data?.token ?? "";
 
   return (
     <Modal opened onClose={onClose} title={title}>
@@ -67,7 +70,7 @@ export const SecretKeyModal = ({
           classNames={{ input: S.secretKeyInput }}
           rightSectionPointerEvents="all"
           rightSection={
-            isFetching ? (
+            !secretKey ? (
               <Loader size="xs" />
             ) : (
               <CopyButton value={secretKey} timeout={2000}>

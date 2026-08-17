@@ -17,6 +17,7 @@ interface SetupOpts {
 }
 
 const GENERATED_TOKEN = "newly-generated-token-xyz";
+const REGENERATED_TOKEN = "second-generated-token-def";
 const EXISTING_VALUE = "my-super-secret-token-abc123";
 // obfuscateValue shows "**********" + last 2 chars
 const OBFUSCATED_EXISTING = "**********23";
@@ -137,6 +138,30 @@ describe("FormSecretKey", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("does not show the previously generated key when reopened", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await screen.findByRole("dialog", { name: "Create a secret key" });
+      await waitFor(() =>
+        expect(
+          screen.getByRole("textbox", { name: "New secret key" }),
+        ).toHaveValue(GENERATED_TOKEN),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      fetchMock.modifyRoute("generate-random-token", {
+        response: { token: REGENERATED_TOKEN },
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+
+      const keyInput = await screen.findByRole("textbox", {
+        name: "New secret key",
+      });
+      expect(keyInput).not.toHaveValue(GENERATED_TOKEN);
+      await waitFor(() => expect(keyInput).toHaveValue(REGENERATED_TOKEN));
+    });
+
     it("does not update the value after clicking 'Cancel'", async () => {
       setup({ initialValues: { secret: undefined } });
 
@@ -235,6 +260,27 @@ describe("FormSecretKey", () => {
           OBFUSCATED_GENERATED,
         );
       });
+    });
+
+    it("shows a freshly generated key, not the one from an earlier modal", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await waitFor(() =>
+        expect(
+          screen.getByRole("textbox", { name: "New secret key" }),
+        ).toHaveValue(GENERATED_TOKEN),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      fetchMock.modifyRoute("generate-random-token", {
+        response: { token: REGENERATED_TOKEN },
+      });
+      await regenerateKey();
+
+      const keyInput = screen.getByRole("textbox", { name: "New secret key" });
+      expect(keyInput).not.toHaveValue(GENERATED_TOKEN);
+      await waitFor(() => expect(keyInput).toHaveValue(REGENERATED_TOKEN));
     });
 
     it("does not offer to cancel out of storing the new key", async () => {
