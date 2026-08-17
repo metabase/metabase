@@ -12,12 +12,12 @@ import {
 import { b64hash_to_utf8 } from "metabase/utils/encoding";
 import { checkNotNull } from "metabase/utils/types";
 import type {
-  Card,
   CardId,
   CustomVizPlugin,
   DashboardId,
   DocumentContent,
   Parameter,
+  UnsavedCard,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -649,7 +649,7 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
 
       cy.location("hash").should((hash) => {
-        const card: Card = JSON.parse(b64hash_to_utf8(hash));
+        const card: UnsavedCard = JSON.parse(b64hash_to_utf8(hash));
         expect(card.display).to.eq(H.CUSTOM_VIZ_DISPLAY);
         expect(card.displayIsLocked).to.eq(true);
       });
