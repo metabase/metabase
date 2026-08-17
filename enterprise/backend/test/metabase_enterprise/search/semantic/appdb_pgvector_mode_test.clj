@@ -17,6 +17,7 @@
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.search.semantic.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.search.semantic.settings :as semantic.settings]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
    [metabase.search.embeddings.provider :as embeddings.provider]
@@ -135,6 +136,8 @@
                                            (semantic.tu/mock-documents))]
                   (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
                                                                (semantic.env/get-configured-embedding-model))
+                  (testing "activation records the schema, so a probe that later finds it gone knows it was lost"
+                    (is (true? (semantic.settings/pgvector-app-db-store-provisioned))))
                   (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
                   (testing "every module table lives inside the semantic_search schema"
                     (let [tables (tables-in-schema app-db "semantic_search")]
@@ -156,7 +159,10 @@
                   (testing "the application schema is untouched"
                     (is (= public-before (tables-in-schema app-db "public"))))))
               (finally
-                (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])))))))))
+                (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])
+                ;; The marker records that this app db has a store schema, and the drop above is what makes
+                ;; that false again.
+                (semantic.settings/pgvector-app-db-store-provisioned! false)))))))))
 
 (deftest ^:synchronized appdb-pgvector-in-process-embedder-round-trip-test
   (cond
@@ -218,4 +224,5 @@
                              first
                              (select-keys [:model :id])))))))
             (finally
-              (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"]))))))))
+              (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])
+              (semantic.settings/pgvector-app-db-store-provisioned! false))))))))

@@ -184,6 +184,21 @@
                                               "CREATE SCHEMA IF NOT EXISTS grants nothing on a schema already there")))]
                 (is (false? (check)))))))))))
 
+(deftest mark-app-db-store-provisioned-test
+  (mt/with-temporary-setting-values [pgvector-app-db-store-provisioned false]
+    (testing "the first call records the sighting"
+      (semantic.db.datasource/mark-app-db-store-provisioned!)
+      (is (true? (semantic.settings/pgvector-app-db-store-provisioned))))
+    (testing "later calls read the cache rather than writing again"
+      (mt/with-dynamic-fn-redefs [semantic.settings/pgvector-app-db-store-provisioned!
+                                  (fn [_] (throw (AssertionError. "already recorded")))]
+        (semantic.db.datasource/mark-app-db-store-provisioned!))))
+  (testing "a write that fails is logged, not raised: activation and the probe both have real work to finish"
+    (mt/with-temporary-setting-values [pgvector-app-db-store-provisioned false]
+      (mt/with-dynamic-fn-redefs [semantic.settings/pgvector-app-db-store-provisioned!
+                                  (fn [_] (throw (ex-info "app db said no" {})))]
+        (is (nil? (semantic.db.datasource/mark-app-db-store-provisioned!)))))))
+
 (deftest probe-app-db-store-test
   (testing "the readiness probe asks what the store has now, where the support check asks what it could have"
     (letfn [(probe [] (semantic.db.datasource/probe-app-db-store!))]
