@@ -1660,6 +1660,7 @@
   all-measure-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids
