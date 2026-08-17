@@ -41,6 +41,8 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
+;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
+;; deleting the connection they key off turns those features off. They should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list.
   Resolved late: [[metabase.llm.provider]] requires this namespace."
