@@ -16,13 +16,13 @@ To find the map settings:
 1. At the top right of the screen, click **grid** icon > **Admin** > **Settings**.
 2. Select `Maps` from the navigation on the left.
 
-![Map Settings](images/MapSettings.png)
-
 ## Map tile server
 
 By default, Metabase uses the [OpenStreetMap](https://www.openstreetmap.org) tile server for pin and grid maps. If your organization needs a different look or level of detail, you can point Metabase at a different tile server.
 
 The map tile server sets the background imagery for pin and grid maps. It's not the same as a [custom region map](#custom-region-maps), which uses a GeoJSON file to draw region shapes.
+
+![The same pin map with default tiles and with satellite tiles](../questions/images/map-tiles.png)
 
 To change the map tile server:
 
