@@ -22,7 +22,10 @@
   A dedicated URL always wins over the app-db fallback, so at most one can be available at a time."
   ["dedicated" "appdb"])
 
-(defonce ^:private ^{:doc "The last readiness probe, `{:storage :connected? :at}`, nil before the first.
+(defonce ^:private ^{:doc "The last readiness probe, `{:storage :backing :connected? :resolved? :at}`, nil
+  before the first.
+  `:storage` is what that probe found, nil when it found no store or couldn't tell; `:backing` is the last
+  storage this instance did establish, which outlives both and is what a switch is noticed against.
   Shared with [[pgvector-store-health-check]] so it doesn't probe again."}
   last-readiness-probe
   (atom nil))
@@ -119,8 +122,8 @@
   It is only ever written for the current storage, so the label left behind would otherwise sit at its final
   value for the life of the process, reading as a store that has not connected since.
   Losing the store is not a switch: that is precisely when the last known good timestamp is worth keeping."
-  [previous-storage storage]
-  (when (and previous-storage storage (not= previous-storage storage))
+  [previous-backing storage]
+  (when (and previous-backing storage (not= previous-backing storage))
     ;; Clearing takes every label with it, which is what we want here -- only one can ever hold a value.
     (analytics/clear! :metabase-pgvector/store-last-success-timestamp-seconds)))
 
@@ -129,7 +132,7 @@
   Ignores engine activation, so a pgvector rollout can be validated before enabling anything that uses it.
   Needs no lock of its own: [[request-pgvector-readiness-refresh!]] admits one probe at a time."
   []
-  (let [previous-storage (:storage @last-readiness-probe)
+  (let [previous-backing (:backing @last-readiness-probe)
         {:keys [mode connected? resolved?]} (probe-store)
         storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
         at               (.getEpochSecond (Instant/now))]
@@ -145,14 +148,17 @@
         (analytics/set-gauge! :metabase-pgvector/store-connected
                               {:storage candidate}
                               (if (and (= candidate storage) connected?) 1 0)))
-      (clear-stale-last-success! previous-storage storage)
+      (clear-stale-last-success! previous-backing storage)
       (when connected?
         (analytics/set-gauge! :metabase-pgvector/store-last-success-timestamp-seconds
                               {:storage storage}
                               at)))
-    (reset! last-readiness-probe {;; The last backing we did establish, so a probe that couldn't find out
-                                  ;; doesn't erase the storage a later switch has to be noticed against.
-                                  :storage    (if resolved? storage previous-storage)
+    (reset! last-readiness-probe {:storage    storage
+                                  ;; Kept apart from :storage because losing the store -- whether the probe
+                                  ;; said so or couldn't tell -- must not erase what a later switch has to be
+                                  ;; noticed against. Nulling it there is how the abandoned label survived
+                                  ;; beside its replacement.
+                                  :backing    (or storage previous-backing)
                                   :connected? connected?
                                   :resolved?  resolved?
                                   :at         at})))
