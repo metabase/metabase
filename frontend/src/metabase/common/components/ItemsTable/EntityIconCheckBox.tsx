@@ -4,12 +4,13 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
+import CS from "metabase/css/core/index.css";
 import { Checkbox, type IconProps } from "metabase/ui";
 
 import S from "./EntityIconCheckBox.module.css";
 
 type EntityIconCheckBoxProps = {
-  variant?: string;
+  variant?: "list" | "small";
   icon: IconProps | IconData;
   pinned?: boolean;
   selectable?: boolean;
@@ -19,7 +20,7 @@ type EntityIconCheckBoxProps = {
   onToggleSelected?: () => void;
 };
 export const EntityIconCheckBox = ({
-  variant,
+  variant = "list",
   icon,
   pinned,
   selectable,
@@ -27,9 +28,9 @@ export const EntityIconCheckBox = ({
   showCheckbox,
   disabled,
   onToggleSelected,
-  ...props
 }: EntityIconCheckBoxProps) => {
-  const iconSize = variant === "small" ? 12 : 16;
+  const isSmall = variant === "small";
+  const iconSize = isSmall ? 12 : 16;
   const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     onToggleSelected?.();
@@ -45,7 +46,6 @@ export const EntityIconCheckBox = ({
       })}
       onClick={selectable ? handleClick : () => {}}
       disabled={disabled}
-      {...props}
     >
       {selectable ? (
         <Swapper
@@ -59,9 +59,9 @@ export const EntityIconCheckBox = ({
           swappedElement={
             <Checkbox
               checked={selected}
-              size={iconSize === 12 ? "xs" : "sm"}
+              size={isSmall ? "xs" : "sm"}
               // Visual-only; clicks are handled by the wrapping button.
-              style={{ pointerEvents: "none" }}
+              className={CS.pointerEventsNone}
             />
           }
           isSwapped={selected || showCheckbox}

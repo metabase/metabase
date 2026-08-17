@@ -245,7 +245,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
             })}
             onClick={preventDefault}
           >
-            <EntityItemName name={metric.name} variant="list" id={headingId} />
+            <EntityItemName name={metric.name} id={headingId} />
           </Link>
         ) : (
           <SkeletonText />

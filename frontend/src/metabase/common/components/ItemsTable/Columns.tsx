@@ -172,7 +172,7 @@ export const Columns = {
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItemName name={tc(item.name)} variant="list" />
+            <EntityItemName name={tc(item.name)} />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}

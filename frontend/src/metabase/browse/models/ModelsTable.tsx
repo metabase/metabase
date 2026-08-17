@@ -208,7 +208,7 @@ function NameCell({ model }: { model?: ModelResult }) {
   const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
-  const name = <EntityItemName name={model?.name || ""} variant="list" />;
+  const name = <EntityItemName name={model?.name || ""} />;
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <Flex id={headingId} align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">

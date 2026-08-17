@@ -1,24 +1,17 @@
-import cx from "classnames";
-
 import CS from "metabase/css/core/index.css";
-import { Ellipsified } from "metabase/ui";
+import { Ellipsified, Text } from "metabase/ui";
 
-export function EntityItemName({
-  name,
-  variant,
-  ...props
-}: {
-  name: string;
-  variant?: string;
-} & React.HTMLAttributes<HTMLHeadingElement>) {
+export function EntityItemName({ name, id }: { name: string; id?: string }) {
   return (
-    <h3
-      className={cx(CS.overflowHidden, {
-        [CS.textList]: variant === "list",
-      })}
-      {...props}
+    <Text
+      component="h3"
+      fw="bold"
+      fz="inherit"
+      c="inherit"
+      className={CS.overflowHidden}
+      id={id}
     >
       <Ellipsified>{name}</Ellipsified>
-    </h3>
+    </Text>
   );
 }
