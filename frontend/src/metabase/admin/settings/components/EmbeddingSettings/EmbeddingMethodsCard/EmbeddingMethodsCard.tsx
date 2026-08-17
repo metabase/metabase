@@ -14,39 +14,37 @@ type EmbeddingMethod = {
   title: string;
   description: ReactNode;
   settingKey: EmbeddingSettingKey;
+  mergedSettingKeys?: EmbeddingSettingKey[];
 };
 
 /**
  * The embedding methods, as one card of rows rather than a card per method.
  *
- * Every method keeps its own toggle, one per backend setting. The design shows
- * a single "Modular embedding and SDK for React" switch that also folds in
- * guest embeds, but that merge is unconfirmed and is sequenced separately: it
- * decides what a merged switch reads on an instance already in a mixed state,
- * and which of two consent moments survives.
+ * Modular embedding, the SDK and guest embeds share one switch, per the design:
+ * separate switches add complexity without adding security, since whoever can
+ * embed also controls them, and guest is a property of modular rather than a
+ * method beside it. Full-app keeps its own.
  *
- * Guest embeds is the only free method. Modular embedding, the SDK and
- * full-app all need `embedding_simple`: the client only registers the modular
- * runtime when the token has it, so showing their toggles below the paywall
- * offers switches that turn nothing on. The settings themselves carry no
- * `:feature`, so nothing server-side stops an OSS admin writing them — see the
- * note in the tech doc.
+ * The merge is presentational for now -- the switch writes all three settings
+ * and reads on when any is on, which is what the backend flag will do once
+ * EMB-2257 replaces them with one.
+ *
+ * Guest embeds is the only free method, so OSS keeps a guest-only row. Modular
+ * embedding, the SDK and full-app all need `embedding_simple`: the client only
+ * registers the modular runtime when the token has it, so showing their toggles
+ * below the paywall offers switches that turn nothing on. The settings
+ * themselves carry no `:feature`, so nothing server-side stops an OSS admin
+ * writing them -- see the note in the tech doc.
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
-  const paidMethods: EmbeddingMethod[] = [
-    {
-      title: t`Modular embedding`,
-      description: t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components.`,
-      settingKey: "enable-embedding-simple",
-    },
-    {
-      title: t`Modular embedding SDK`,
-      description: t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`,
-      settingKey: "enable-embedding-sdk",
-    },
-  ];
+  const modularEmbedding: EmbeddingMethod = {
+    title: t`Modular embedding and SDK for React`,
+    description: t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components, or build a fully custom analytics experience with the SDK for React.`,
+    settingKey: "enable-embedding-simple",
+    mergedSettingKeys: ["enable-embedding-sdk", "enable-embedding-static"],
+  };
 
   const guestEmbeds: EmbeddingMethod = {
     title: t`Guest embeds`,
@@ -61,7 +59,7 @@ export function EmbeddingMethodsCard() {
   };
 
   const methods = hasSimpleEmbedding
-    ? [...paidMethods, guestEmbeds, fullApp]
+    ? [modularEmbedding, fullApp]
     : [guestEmbeds];
 
   return (
@@ -85,6 +83,7 @@ function EmbeddingMethodRow({
   title,
   description,
   settingKey,
+  mergedSettingKeys,
 }: EmbeddingMethod) {
   return (
     <Flex gap="xl" justify="space-between" align="flex-start">
@@ -97,7 +96,10 @@ function EmbeddingMethodRow({
         </Text>
       </Box>
 
-      <EmbeddingToggle settingKey={settingKey} />
+      <EmbeddingToggle
+        settingKey={settingKey}
+        mergedSettingKeys={mergedSettingKeys}
+      />
     </Flex>
   );
 }
