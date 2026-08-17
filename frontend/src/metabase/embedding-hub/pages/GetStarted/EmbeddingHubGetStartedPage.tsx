@@ -192,7 +192,9 @@ export function EmbeddingHubGetStartedPage() {
         <Box>
           <Title order={3} c="text-primary">{t`Create your first embed`}</Title>
           <Text c="text-secondary" mt={4}>
-            {t`If all you want is a simple embedded dashboard, these steps are all you need.`}
+            {hasSimpleEmbedding
+              ? t`If all you want is a simple embedded dashboard, these steps are all you need.`
+              : t`Start with the basics of Metabase embedding.`}
           </Text>
         </Box>
 

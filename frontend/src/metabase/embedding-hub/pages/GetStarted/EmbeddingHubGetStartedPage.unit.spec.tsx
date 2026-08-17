@@ -259,6 +259,26 @@ describe("EmbeddingHubGetStartedPage", () => {
     });
   });
 
+  describe("the first-embed blurb", () => {
+    it("promises a simple embedded dashboard on pro, where the fine-tune steps exist", async () => {
+      setup({ hasSimpleEmbedding: true });
+
+      expect(
+        await screen.findByText(
+          "If all you want is a simple embedded dashboard, these steps are all you need.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("promises only the basics on OSS, where AI is not part of a simple embed", async () => {
+      setup({ hasSimpleEmbedding: false });
+
+      expect(
+        await screen.findByText("Start with the basics of Metabase embedding."),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("the paywall banner", () => {
     it("replaces the Fine-tune subtitle rather than stacking with it", async () => {
       setup({ hasSimpleEmbedding: false });
