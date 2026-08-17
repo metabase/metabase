@@ -23,9 +23,7 @@ const SHARED_UTILS_LEVELS = [
   ["shared/redux"],
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U4 — the whitelabel seam: it owns PLUGIN_SELECTORS and its OSS defaults.
-  // This is its only legal seat: it composes plugins and settings at U3,
-  // and its lowest consumer is selectors at U5 (onboarding.ts reads getIsWhiteLabeling).
+  // U4 — whitelabel: PLUGIN_SELECTORS and its OSS defaults, over the registry and settings.
   ["shared/whitelabel"],
   // U5 — app services over the store and registry.
   [

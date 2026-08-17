@@ -1,8 +1,9 @@
 import { waitFor } from "@testing-library/react";
 
+import { reinitializePlugins } from "__support__/plugins";
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
-import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -77,7 +78,7 @@ function setupAppRoutes({
 describe("application routes", () => {
   afterEach(() => {
     mockRenderMonitorOutlet = false;
-    reinitialize();
+    reinitializePlugins();
   });
 
   describe("legacy Admin Tools redirects", () => {
