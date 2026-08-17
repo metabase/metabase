@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import type { DayOfWeekId } from "metabase-types/api";
 
-import dayjs from "./dayjs";
+import { dayjs } from "./dayjs";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6
 const getFirstDayOfWeekIndex = (): number => {

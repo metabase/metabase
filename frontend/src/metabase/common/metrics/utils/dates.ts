@@ -14,7 +14,7 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 

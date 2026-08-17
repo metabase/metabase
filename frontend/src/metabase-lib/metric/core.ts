@@ -2,7 +2,7 @@
 import type { Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,

@@ -1,4 +1,4 @@
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 
 type Props = {
   daysRemaining: number;

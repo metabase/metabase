@@ -12,7 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { SupportAccessGrant } from "metabase-types/api";
 import { createMockAccessGrant } from "metabase-types/api/mocks";
 

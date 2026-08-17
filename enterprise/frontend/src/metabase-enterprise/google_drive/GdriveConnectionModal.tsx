@@ -16,7 +16,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,

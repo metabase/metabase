@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { createMockAccessGrant } from "metabase-types/api/mocks";
 
 import { GrantAccessModal } from "./GrantAccessModal";

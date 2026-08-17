@@ -11,7 +11,7 @@ import {
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Button } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRangeWidgetProps = {

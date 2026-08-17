@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import {
   extractRemappings,
   getVisualizationTransformed,

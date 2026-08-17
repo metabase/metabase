@@ -8,7 +8,7 @@ import {
   createMockAdminState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,

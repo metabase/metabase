@@ -7,7 +7,7 @@ import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/column
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
 import { Route } from "metabase/router";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

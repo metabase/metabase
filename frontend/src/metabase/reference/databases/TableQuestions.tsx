@@ -11,7 +11,7 @@ import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { visualizations } from "metabase/visualizations";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";

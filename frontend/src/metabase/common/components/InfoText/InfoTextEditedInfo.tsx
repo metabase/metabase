@@ -3,7 +3,7 @@ import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
 import { Text, Tooltip } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type { SearchResult, UserListResult } from "metabase-types/api";

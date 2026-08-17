@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";

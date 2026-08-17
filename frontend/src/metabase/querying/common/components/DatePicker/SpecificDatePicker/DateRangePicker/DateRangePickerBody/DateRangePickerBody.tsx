@@ -10,7 +10,7 @@ import {
   Text,
   TimeInput,
 } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 
 import { setDatePart, setTimePart } from "../../utils";
 

@@ -2,7 +2,7 @@ import type { OpUnitType } from "dayjs";
 import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,

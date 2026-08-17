@@ -15,7 +15,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { TransformRunStatus } from "metabase-types/api";
 
 import S from "./RunInfo.module.css";

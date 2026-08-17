@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   Collection,
   Timeline,

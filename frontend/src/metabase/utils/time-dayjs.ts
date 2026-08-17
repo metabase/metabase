@@ -4,7 +4,7 @@ import { t } from "ttag";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
-import dayjs from "./dayjs";
+import { dayjs } from "./dayjs";
 
 const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
   minute: 0,

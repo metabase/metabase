@@ -1,4 +1,4 @@
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,

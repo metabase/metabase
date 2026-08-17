@@ -5,7 +5,7 @@ import type {
   DateFilterDisplayOpts,
   DateFilterValue,
 } from "metabase/querying/common/types";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { DEFAULT_TIME_STYLE } from "metabase/utils/formatting";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";

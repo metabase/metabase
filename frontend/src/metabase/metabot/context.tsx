@@ -18,7 +18,7 @@ import {
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,

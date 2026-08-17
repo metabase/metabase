@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";

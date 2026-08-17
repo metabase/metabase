@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Urls from "metabase/urls";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import {
   createMockCard,
   createMockDashboard,

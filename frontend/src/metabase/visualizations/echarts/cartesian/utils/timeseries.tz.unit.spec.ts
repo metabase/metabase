@@ -1,5 +1,5 @@
 import testAcrossTimezones from "__support__/timezones";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import { computeTimeseriesDataInterval } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 

@@ -3,7 +3,7 @@ import { TimeInput as MantineTimeInput } from "@mantine/dates";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useLayoutEffect, useState } from "react";
 
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 
 const TIME_FORMAT = "HH:mm";
 

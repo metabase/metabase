@@ -26,7 +26,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route, useLocation, useParams } from "metabase/router";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,

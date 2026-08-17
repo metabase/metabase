@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   RevisionDiffKey,
   Revision as RevisionType,

@@ -6,7 +6,7 @@ import { connect } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { NamedUser } from "metabase/utils/user";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";

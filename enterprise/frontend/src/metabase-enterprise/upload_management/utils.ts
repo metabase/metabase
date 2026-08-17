@@ -1,4 +1,4 @@
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 
 export function getDateDisplay(date: string) {
   const dateObj = dayjs(date);

@@ -1,5 +1,5 @@
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 
 const { H } = cy;
 

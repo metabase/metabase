@@ -9,7 +9,7 @@ import {
   getAllParamValues,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   AdminNotificationListParams,
   AdminNotificationSortColumn,

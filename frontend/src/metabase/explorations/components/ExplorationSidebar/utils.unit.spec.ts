@@ -6,7 +6,7 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type { ExplorationQueryStatus } from "metabase-types/api";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 

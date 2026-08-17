@@ -7,7 +7,7 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {

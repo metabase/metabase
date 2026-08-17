@@ -16,7 +16,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,

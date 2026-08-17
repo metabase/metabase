@@ -5,7 +5,7 @@ import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DayOfWeekId } from "metabase-types/api";
 
-import dayjs from "./dayjs";
+import { dayjs } from "./dayjs";
 
 export type LocaleDataWithLanguage = LocaleData & {
   headers: { language: string };

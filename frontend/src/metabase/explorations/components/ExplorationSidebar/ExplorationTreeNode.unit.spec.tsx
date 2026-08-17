@@ -11,7 +11,7 @@ import {
   createQuery,
 } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   ExplorationBlockNode,
   ExplorationQuery,

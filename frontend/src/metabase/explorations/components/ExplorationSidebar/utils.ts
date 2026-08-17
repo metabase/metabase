@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import type {
   Comment,
   Exploration,

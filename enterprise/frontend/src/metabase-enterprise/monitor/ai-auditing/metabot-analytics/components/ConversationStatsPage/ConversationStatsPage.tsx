@@ -18,7 +18,7 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import dayjs from "metabase/utils/dayjs";
+import { dayjs } from "metabase/utils/dayjs";
 import {
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
