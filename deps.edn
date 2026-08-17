@@ -600,36 +600,31 @@
     "modules/drivers/vertica/src"
     "modules/drivers/vertica/test"]}
 
-  ;; clojure -M:ee:drivers:check
+  ;; clojure -M:ee:drivers:load-namespaces
   ;;
-  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; checks that all the namespaces we actually ship can be loaded, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
-  :check
-  ;; TODO -- restore athos/clj-check (sha d997df866b2a04b7ce7b17533093ee0a2e2cb729) if this fix lands
-  ;; upstream. Upstream loads namespaces more than once and out of dependency order, which fails on
-  ;; protocol redefinition; the fork loads each namespace once, in dependency order. Fork diff:
-  ;; https://github.com/athos/clj-check/compare/d997df866b2a04b7ce7b17533093ee0a2e2cb729...bgrabow:clj-check:465a5f253328b94f103896b1877d3c00cdd14cc9
-  {:extra-deps {bgrabow/clj-check {:git/url "https://github.com/bgrabow/clj-check.git"
-                                   :sha     "465a5f253328b94f103896b1877d3c00cdd14cc9"}}
-   :main-opts  ["-m" "clj-check.check"
-                "src"
-                "enterprise/backend/src"
-                "modules/drivers/athena/src"
-                "modules/drivers/bigquery-cloud-sdk/src"
-                "modules/drivers/clickhouse/src"
-                "modules/drivers/databricks/src"
-                "modules/drivers/druid-jdbc/src"
-                "modules/drivers/hive-like/src"
-                "modules/drivers/mongo/src"
-                "modules/drivers/oracle/src"
-                "modules/drivers/presto-jdbc/src"
-                "modules/drivers/redshift/src"
-                "modules/drivers/snowflake/src"
-                "modules/drivers/sparksql/src"
-                "modules/drivers/sqlserver/src"
-                "modules/drivers/starburst/src"
-                "modules/drivers/vertica/src"]
-   :jvm-opts   ["-Dclojure.main.report=stderr"]}
+  :load-namespaces
+  {:extra-paths ["bin/load-namespaces/src"]
+   :main-opts   ["-m" "load-namespaces.core"
+                 "src"
+                 "enterprise/backend/src"
+                 "modules/drivers/athena/src"
+                 "modules/drivers/bigquery-cloud-sdk/src"
+                 "modules/drivers/clickhouse/src"
+                 "modules/drivers/databricks/src"
+                 "modules/drivers/druid-jdbc/src"
+                 "modules/drivers/hive-like/src"
+                 "modules/drivers/mongo/src"
+                 "modules/drivers/oracle/src"
+                 "modules/drivers/presto-jdbc/src"
+                 "modules/drivers/redshift/src"
+                 "modules/drivers/snowflake/src"
+                 "modules/drivers/sparksql/src"
+                 "modules/drivers/sqlserver/src"
+                 "modules/drivers/starburst/src"
+                 "modules/drivers/vertica/src"]
+   :jvm-opts    ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
