@@ -90,11 +90,13 @@ describe("executeAction", () => {
       ).rejects.toThrow("passed to `useAction` as a raw id");
     });
 
-    it("runs a raw id in the dev preview", async () => {
+    it("refuses a raw id in the dev preview, before it can reach production", async () => {
       EMBEDDING_SDK_CONFIG.isDataApp = true;
       EMBEDDING_SDK_CONFIG.isDataAppDev = true;
 
-      await expectExecuted(AUTHORED_ID, AUTHORED_ID);
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
     });
   });
 
