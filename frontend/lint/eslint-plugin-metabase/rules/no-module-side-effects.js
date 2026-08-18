@@ -1,21 +1,15 @@
 /**
- * @fileoverview Directories declared side-effect free for rspack (`sideEffects: false` in
- * frontend/build/shared/rspack/side-effect-free-modules.js) must not do work at import
- * time: production drops any file whose exports go unused, so an import-time effect in
- * one of them is silently lost. This walks module-scope statements only and reports the
- * ones that run at import: bare imports, calls, foreign member assignment, global writes,
- * control flow, and top-level await. Calls on an allowlisted pure callee, or annotated
- * `#__PURE__`, are fine. Which files are linted is decided by the config, not the rule.
+ * @fileoverview Files declared side-effect free (frontend/build/shared/rspack/side-effect-free-modules.js)
+ * are dropped from production bundles once their exports go unused, so anything they do at import time is silently lost.
+ * This reports module-scope code that does work at import.
+ * The config decides which files are linted, not the rule.
  */
 
 const path = require("path");
 
-// Callees known to be pure, so a module-scope call to them is allowed without an
-// annotation. `names` are the imported names, or the property called on any binding
-// from the module (`Button.extend`, `React.memo`). Mantine's `X.extend(input)` is the
-// identity config helper every *.config.ts calls. `Object.assign` is deliberately
-// absent: whether it mutates shared state depends on its first argument, which the
-// rule inspects, and any other use is annotated per site.
+// Callees known to be pure, so a module-scope call to them needs no annotation.
+// A name matches the imported binding or a property called on one (`memo`, `Button.extend`).
+// Mantine's `extend` is the identity config helper every *.config.ts calls.
 const DEFAULT_PURE_CALLEES = [
   {
     module: "react",
@@ -68,8 +62,7 @@ const DEFAULT_PURE_CALLEES = [
   { module: "underscore", names: ["compose", "memoize", "once"] },
 ];
 
-// Global helpers whose effect lands on their first argument, so the verdict follows
-// that argument: fine on a same-file object, a mutation of shared state otherwise.
+// These act on their first argument, so the verdict follows it: fine on a same-file object, a mutation otherwise.
 const FIRST_ARGUMENT_MUTATORS = new Set([
   "Object.assign",
   "Object.defineProperty",
@@ -194,8 +187,7 @@ module.exports = {
       );
     }
 
-    // Module-scope bindings, filled from the whole Program body before any statement
-    // is judged, so a function declared below its call site still counts as local.
+    // Collected over the whole file before any statement is judged, so a function declared below its call site still counts as local.
     const localNames = new Set();
     // local name -> { module, importedName }
     const importBindings = new Map();
@@ -255,10 +247,9 @@ module.exports = {
       });
     }
 
-    // A call is judged by what its callee is rooted in. In a statement the result is
-    // discarded, so every call not known pure is reported. In an initializer only a
-    // call into a package is reported, since a relative or in-repo alias import is our
-    // own code and trusted like a same-file call, and `new` builds a value like `new Map()`.
+    // A call in a statement exists only for its effect, so every call not known pure is reported.
+    // In an initializer the value is kept, so only calls into packages are reported.
+    // Our own code (relative or in-repo alias imports) and `new` are trusted there.
     function checkCall(node, outer, inStatement) {
       if (isPureAnnotated(node) || (outer !== node && isPureAnnotated(outer))) {
         return;
@@ -299,9 +290,8 @@ module.exports = {
       }
     }
 
-    // Walks an expression that is evaluated at import time. Function bodies are not
-    // entered, they run later. `inStatement` is true when the expression's own value
-    // is discarded, which is the whole reason a call there exists.
+    // Function bodies are not entered, they run later.
+    // `inStatement` means the expression's value is discarded.
     function checkExpression(node, inStatement) {
       if (node == null) {
         return;
@@ -545,8 +535,8 @@ function unwrap(node) {
   return current;
 }
 
-// The identifier an expression is ultimately rooted in: `a` for `a.b.c`, `a().b`,
-// `(a as X)!.b?.c` and `a\`\``. Null when there is none (a literal, `this`, an IIFE).
+// The identifier an expression starts from: `a` for `a.b.c`, `a().b` and `(a as X)!.b?.c`.
+// Null when there is none (a literal, `this`, an IIFE).
 function getRoot(node) {
   let current = unwrap(node);
   while (current != null) {
@@ -570,8 +560,7 @@ function getRoot(node) {
   return null;
 }
 
-// The root binding and the name that is called: `rem` for `rem(4)`, `extend` for
-// `Button.extend({})`, `t` for `c("ctx").t\`\``, `styled` for `styled(Icon)\`\``.
+// The root binding and the name called: `rem` for `rem(4)`, `extend` for `Button.extend({})`, `t` for `c("ctx").t\`\``.
 function getCalleeInfo(callee) {
   const inner = unwrap(callee);
   if (inner == null) {
@@ -596,7 +585,7 @@ function getCalleeInfo(callee) {
   return { root: getRoot(inner), name: null };
 }
 
-// `Object.assign` for a plain dotted member chain of identifiers, null otherwise.
+// The dotted name of a plain member chain (`Object.assign`), null for anything else.
 function getDottedPath(node) {
   const parts = [];
   let current = unwrap(node);
@@ -682,7 +671,7 @@ function statementKeyword(node) {
   }
 }
 
-// `@scope/name` or `name` for a bare specifier, so `metabase/lib/x` maps to `metabase`.
+// `metabase/lib/x` maps to `metabase`, `@scope/pkg/x` to `@scope/pkg`.
 function packageNameOf(source) {
   const segments = source.split("/");
   return source.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0];
@@ -696,7 +685,7 @@ function stripScriptExtension(file) {
   return file.replace(/\.[jt]sx?$/, "");
 }
 
-// A directory entry ends with a separator and allows every file under it.
+// A directory entry ends with a separator and covers every file under it.
 function normalizeSideEffectPaths(paths) {
   const files = new Set();
   const directories = [];

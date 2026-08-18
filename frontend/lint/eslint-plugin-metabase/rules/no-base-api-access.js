@@ -1,22 +1,14 @@
 /**
- * @fileoverview There is one RTK Query api object per backend (`Api`, and `EnterpriseApi`
- * built on it), because tag invalidation only works within one instance. Endpoints are
- * injected into it at import time by the file that owns them, which exports the hooks and
- * its api slice by name. So an endpoint exists on the base object only once the owner's
- * file has been evaluated, and code that reaches it there by name (`Api.endpoints.getX`,
- * `Api.util.upsertQueryEntries`) works only while something else imports the owner.
- * A side-effect-free api module lets production shake that owner away. This reports
- * member access on a base api binding that injects endpoints outside `allowInjectionIn`
- * (the api module and owner files), and access that reaches endpoints by name outside
- * `allowReachIn` (the api module and test support). Tag invalidation through the base
- * object is allowed: it is cross-owner by design and a no-op when no provider is
- * registered.
+ * @fileoverview Endpoints are injected into the shared `Api` at import time by the file that owns them,
+ * so an endpoint exists on the base object only once the owner's file has been evaluated.
+ * Reaching one there by name (`Api.endpoints.getX`, `Api.util.upsertQueryEntries`) works only while something else imports the owner,
+ * and a side-effect-free build can drop that owner.
+ * This reports injection outside owner files and reach-by-name outside the api module and test support.
  */
 
 const micromatch = require("micromatch");
 
-// The base api objects and where they are imported from. Anything else that
-// exposes `.endpoints` is an owner's slice, which is the intended way in.
+// The base api objects. An owner's slice (`cardApi.endpoints`) is the intended way in and is not tracked.
 const DEFAULT_BASE_APIS = [
   { module: "metabase/api", name: "Api" },
   { module: "metabase/api/api", name: "Api" },
@@ -24,7 +16,7 @@ const DEFAULT_BASE_APIS = [
   { module: "metabase-enterprise/api/api", name: "EnterpriseApi" },
 ];
 
-// `Api.util` members that neither reach an endpoint nor need one to exist
+// Cross-owner by design and a no-op when nothing is registered, so they never need the endpoint to exist.
 const ALLOWED_UTILS = new Set(["invalidateTags", "resetApiState"]);
 
 const INJECTORS = new Set(["injectEndpoints", "enhanceEndpoints"]);
@@ -156,8 +148,7 @@ module.exports = {
       }
     }
 
-    // `Api.util.<name>`: the utils that need the endpoint to exist are reported,
-    // a bare `Api.util` handed on is reported too since it cannot be judged.
+    // A bare `Api.util` handed on is reported too, since what it reaches cannot be seen here.
     function checkUtilAccess(utilAccess, apiName) {
       const outer = utilAccess.parent;
       if (
