@@ -19,6 +19,7 @@ import {
 import { EmbeddingMethodsCard } from "./EmbeddingMethodsCard";
 
 const MERGED_LABEL = "Modular embedding and SDK for React";
+const OSS_LABEL = "Enable embedding";
 
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
@@ -88,13 +89,13 @@ describe("EmbeddingMethodsCard", () => {
     expect(screen.getByText("Full-app embedding")).toBeInTheDocument();
 
     expect(screen.queryByText("Modular embedding SDK")).not.toBeInTheDocument();
-    expect(screen.queryByText("Guest embeds")).not.toBeInTheDocument();
+    expect(screen.queryByText(OSS_LABEL)).not.toBeInTheDocument();
   });
 
   it("shows only guest embeds on OSS, where the paid methods cannot run", async () => {
     await setup({ hasSimpleEmbedding: false });
 
-    expect(await screen.findByText("Guest embeds")).toBeInTheDocument();
+    expect(await screen.findByText(OSS_LABEL)).toBeInTheDocument();
     expect(screen.queryByText(MERGED_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText("Full-app embedding")).not.toBeInTheDocument();
   });
