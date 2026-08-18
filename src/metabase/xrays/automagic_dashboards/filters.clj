@@ -67,9 +67,9 @@
          (keep (fn [[_ [fk & fks]]]
                  ;; Bail out if there is more than one FK from the same table
                  (when (empty? fks)
-                   [(:table_id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
-         (into {(:table_id field) [:field (u/the-id field) nil]}))
-    (constantly [:field (:name field) {:base-type (:base_type field)}])))
+                   [(:table_id fk) [:field {:source-field (u/the-id fk)} (u/the-id field)]])))
+         (into {(:table_id field) [:field {} (u/the-id field)]}))
+    (constantly [:field {:base-type (:base_type field)} (:name field)])))
 
 (defn- filter-for-card
   [card field]

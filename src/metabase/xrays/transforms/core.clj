@@ -34,7 +34,7 @@
     [:field (field-name :guard string?) _]
     field-name
 
-    [:field (id :guard integer?) _]
+    [:field _ (id :guard integer?)]
     (t2/select-one-fn :name :model/Field :id id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings

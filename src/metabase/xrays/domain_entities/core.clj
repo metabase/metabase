@@ -2,8 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   ;; legacy usage, do not use legacy MBQL stuff in new code.
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -50,10 +49,9 @@
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
       (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
-        ;; legacy usage, do not use legacy MBQL stuff in new code.
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (cond-> field-clause
-          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
+        (if (= source table-or-dimension)
+          field-clause
+          (lib/update-options field-clause assoc :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (mu/defn resolve-dimension-clauses
@@ -71,8 +69,8 @@
   [{:keys [id name base_type]} :- [:map
                                    [:base_type ::lib.schema.common/base-type]]]
   (if id
-    [:field id nil]
-    [:field name {:base-type base_type}]))
+    [:field {:lib/uuid (str (random-uuid))} id]
+    [:field {:base-type base_type :lib/uuid (str (random-uuid))} name]))
 
 (mu/defn- has-attribute?
   [entity          :- SourceEntity

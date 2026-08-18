@@ -271,7 +271,7 @@
           (let [dashboard (magic/automagic-analysis card {})
                 ;; i'm not sure why category isn't picked here
                 expected-targets #{[:dimension
-                                    [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                    [:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
                                     {:stage-number 0}]}
                 actual-targets (into #{}
                                      (comp (mapcat :parameter_mappings)
@@ -830,7 +830,7 @@
         (is (vector? (-> (qp.card-test/run-query-for-card model-card) :data :results_metadata :columns)))
         (let [dashboard (magic/automagic-analysis model-card nil)
               parameter-mappings (eduction (comp (keep :parameter_mappings) cat) (:dashcards dashboard))
-              dimension? (mr/validator ::mbql.s/dimension)]
+              dimension? (mr/validator ::mbql.s/dimension)] 
           (is (every? (comp dimension? :target) parameter-mappings)))))))
 
 (deftest test-table-title-test

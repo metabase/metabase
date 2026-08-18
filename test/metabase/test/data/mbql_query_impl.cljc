@@ -25,7 +25,7 @@
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
 (def ^:dynamic *field-name-fn-symb*      `field-name)
 (def ^:dynamic *field-base-type-fn-symb* `field-base-type)
-(def ^:dynamic ^Long *mbql-version*      4)
+(def ^:dynamic ^Long *mbql-version*      5)
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
