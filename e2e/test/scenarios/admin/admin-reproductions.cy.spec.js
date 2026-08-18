@@ -256,21 +256,33 @@ describe("issue 45890", () => {
     cy.visit("/admin/performance/databases");
     H.main()
       .findByLabelText(/Edit policy for database 'Sample Database'/)
-      .findByText("No caching")
       .click();
 
-    // The strategy picker is a dropdown; its options render in a portal.
-    H.main().findByTestId("cache-strategy-select").click();
+    // The strategy form opens in a side panel; the picker options render in a portal.
+    cy.findByTestId("cache-policy-panel")
+      .findByTestId("cache-strategy-select")
+      .click();
     cy.findByRole("option", { name: /Schedule/ }).click();
 
-    H.main().button("Save changes").click();
+    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
+    cy.findByTestId("cache-policy-panel").button("Save").click();
+    cy.wait("@putCacheConfig");
   });
 
   it("should correctly reset caching schedule form when discarding changes", () => {
-    H.main().findByLabelText("Frequency").click();
+    cy.findByTestId("cache-policy-panel").findByLabelText("Frequency").click();
     H.popover().findByText("weekly").click();
 
-    H.main().button("Discard changes").click();
-    H.main().findByLabelText("Frequency").should("have.value", "hourly");
+    cy.log("Cancel the dirty form and confirm discarding the changes");
+    cy.findByTestId("cache-policy-panel").button("Cancel").click();
+    cy.findByTestId("confirm-modal").button("Discard").click();
+
+    cy.log("Reopening the form shows the saved schedule, not the draft");
+    H.main()
+      .findByLabelText(/Edit policy for database 'Sample Database'/)
+      .click();
+    cy.findByTestId("cache-policy-panel")
+      .findByLabelText("Frequency")
+      .should("have.value", "hourly");
   });
 });

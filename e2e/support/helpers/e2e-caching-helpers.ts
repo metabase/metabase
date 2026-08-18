@@ -3,7 +3,7 @@ export const cacheStrategySidesheet = () =>
 
 export const cacheStrategySelect = () =>
   cy
-    .findByRole("form", { name: "Select the cache invalidation policy" })
+    .findByRole("form", { name: "Cache invalidation policy" })
     .findByTestId("cache-strategy-select");
 
 /** Open the strategy dropdown and pick an option by its title (e.g. /Duration/).

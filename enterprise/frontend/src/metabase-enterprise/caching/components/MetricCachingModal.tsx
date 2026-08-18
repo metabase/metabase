@@ -73,7 +73,7 @@ export function MetricCachingModal({
           savedStrategy={savedStrategy}
           shouldAllowInvalidation
           shouldShowName={false}
-          onReset={handleClose}
+          onCancel={handleClose}
           layout="modal"
         />
       </DelayedLoadingAndErrorWrapper>

@@ -85,7 +85,7 @@ export const SidebarCacheForm = ({
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onReset={() =>
+            onCancel={() =>
               isStrategyFormDirty
                 ? askBeforeDiscardingChanges(onBack)
                 : onBack()

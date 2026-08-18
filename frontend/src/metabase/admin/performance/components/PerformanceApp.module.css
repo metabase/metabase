@@ -53,6 +53,6 @@
   padding-inline: 2.5rem;
 
   &.FormBoxSidebar {
-    padding-inline: 1rem;
+    padding-inline: 0;
   }
 }

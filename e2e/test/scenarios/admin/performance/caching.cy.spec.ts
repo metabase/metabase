@@ -10,7 +10,7 @@ const preemptiveCachingSwitch = () =>
 
 const saveCacheStrategyForm = () => {
   cy.intercept("PUT", "/api/cache").as("putCacheConfig");
-  cy.findByRole("form", { name: "Select the cache invalidation policy" })
+  cy.findByRole("form", { name: "Cache invalidation policy" })
     .button(/Save/)
     .click();
   cy.wait("@putCacheConfig");
@@ -57,7 +57,7 @@ const cancelConfirmationModal = () =>
  *   frontend/.../Schedule/{cron,Schedule}.unit.spec.{ts,tsx}.
  * - Strategy form input binding (typing into Min Duration / Multiplier),
  *   strategy-switch flows (Adaptive <-> Duration <-> No caching),
- *   strategy -> launcher-label mapping, policy-options counts,
+ *   strategy -> row-label mapping, policy-options counts,
  *   preemptive caching switch availability for root/database targets:
  *   frontend/.../StrategyEditorForDatabases.unit.spec.tsx and
  *   enterprise/.../caching/components/StrategyEditorForDatabases.unit.spec.tsx.
@@ -109,7 +109,7 @@ describe("scenarios > admin > performance > caching", () => {
       cy.button(/Clear cache for this database/).click();
 
       cy.log("Confirm in the dialog");
-      cy.findByRole("dialog")
+      cy.findByTestId("confirm-modal")
         .button(/Clear cache/)
         .click();
       cy.wait("@invalidateCacheForSampleDatabase");
