@@ -67,10 +67,12 @@ export function GoalEntityPickers({
 
       {isBrowseModalOpen && (
         <EntityPickerModal
-          isSelectableItem={(item: OmniPickerItem) =>
-            SELECTABLE_BROWSE_MODELS.includes(item.model) &&
-            typeof item.id === "number"
-          }
+          isSelectableItem={(item: OmniPickerItem) => {
+            return (
+              SELECTABLE_BROWSE_MODELS.includes(item.model) &&
+              typeof item.id === "number"
+            );
+          }}
           models={BROWSE_ALL_MODELS}
           options={{
             hasConfirmButtons: false,
@@ -78,9 +80,7 @@ export function GoalEntityPickers({
             disableSearchScope: true,
           }}
           title={t`Pick a measure, metric, or saved question`}
-          onChange={(item) =>
-            handleChange({ id: item.id, model: item.model, name: item.name })
-          }
+          onChange={handleChange}
           onClose={browseModal.close}
         />
       )}
