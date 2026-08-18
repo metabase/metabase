@@ -217,6 +217,30 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     });
   });
 
+  // Trashing the collection archives everything in it, and the app is served
+  // from those copies, so a sync that reports success has not actually recovered.
+  it("brings the app collection and its copies back out of the trash", () => {
+    syncOneQuery().then((card) => {
+      cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+        cy.request("PUT", `/api/collection/${app.resource_collection_id}`, {
+          archived: true,
+        });
+        cy.request(`/api/card/${card.id}`)
+          .its("body.archived")
+          .should("eq", true);
+
+        sync();
+
+        cy.request(`/api/collection/${app.resource_collection_id}`)
+          .its("body.archived")
+          .should("eq", false);
+        cy.request(`/api/card/${card.id}`)
+          .its("body.archived")
+          .should("eq", false);
+      });
+    });
+  });
+
   describe("the app's lifecycle", () => {
     it("takes the collection and the group with it when the app is removed", () => {
       syncOneQuery().then((card) => {
@@ -428,6 +452,29 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         })
           .its("status")
           .should("eq", 403);
+      });
+    });
+
+    // The app collection is server-owned, so each sync reasserts exclusive
+    // access — including over a grant an admin made deliberately.
+    it("takes back access an admin granted another group on the app collection", () => {
+      syncOneQuery().then((card) => {
+        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+          setDataAppCollectionAccess(app.resource_collection_id, "read");
+
+          cy.signInAsNormalUser();
+          cy.request(`/api/card/${card.id}`)
+            .its("body.id")
+            .should("eq", card.id);
+
+          cy.signInAsAdmin();
+          sync();
+
+          cy.signInAsNormalUser();
+          cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
+            .its("status")
+            .should("eq", 403);
+        });
       });
     });
 

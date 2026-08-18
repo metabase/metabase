@@ -76,6 +76,11 @@
                   {:name (resource-name app)})
       (t2/update! :model/Collection :id (:id collection)
                   {:name (resource-name app)})
+      ;; Trashing the collection archives every copy inside it, and the app is
+      ;; served from those copies, so restore both rather than reporting success
+      ;; over an app its viewers see nothing in.
+      (when (:archived collection)
+        (collection/archive-or-unarchive-collection! collection {:archived false}))
       (apply-resource-permissions! group collection)
       {:permission_group_id     (:id group)
        :resource_collection_id (:id collection)})))

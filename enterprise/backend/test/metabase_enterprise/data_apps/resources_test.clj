@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -93,3 +94,26 @@
              (select-keys (t2/select-one :model/DataApp :id (:id second-app)) (keys second-links))))
       (is (= first-links
              (select-keys (t2/select-one :model/DataApp :id (:id first-app)) (keys first-links)))))))
+
+(deftest ensure-resources-restores-a-trashed-collection-test
+  (testing "trashing the resource collection archives the copies the app is served from,
+            so ensure-resources! has to bring both back or a successful sync leaves the app blank"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [app (create-data-app! "sparrows")
+            {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+        ;; The app collection is readable by its own group alone, so only an admin
+        ;; can put the copy there.
+        (mt/with-test-user :crowberto
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id resource_collection_id}]
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id resource_collection_id)
+             {:archived true})
+            (is (true? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
+                "precondition: the collection is in the trash")
+            (is (true? (t2/select-one-fn :archived :model/Card :id card-id))
+                "precondition: trashing the collection archived the copy")
+            (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :id (:id app)))
+            (is (false? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
+                "the app collection is out of the trash")
+            (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
+                "the copy the app serves is readable again")))))))
