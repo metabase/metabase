@@ -33,6 +33,15 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
     steps:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
@@ -54,6 +63,19 @@ jobs:
       run: >-
         ./bin/test-agent --oss :only
         '[metabase.embeddings.embedder-plugin-artifact-test]'
+    - name: Run in-process semantic-search round trip
+      env:
+        MB_DB_TYPE: postgres
+        MB_DB_PORT: 5432
+        MB_DB_HOST: localhost
+        MB_DB_DBNAME: mb_test
+        MB_DB_USER: mb_test
+        MB_APPDB_PGVECTOR_MODE_TEST: "true"
+        MB_IN_PROCESS_EMBEDDER_SEMANTIC_SEARCH_TEST: "true"
+        MB_PLUGINS_DIR: modules/embedder/target
+      run: >-
+        ./bin/test-agent --drivers=postgres :only
+        '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
 
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
