@@ -108,7 +108,7 @@
    :semantic_type     transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
-   :fingerprint       transform-json-fingerprints
+   :fingerprint       (mi/transform-encrypted transform-json-fingerprints)
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 

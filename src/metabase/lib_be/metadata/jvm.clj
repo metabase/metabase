@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
@@ -208,10 +209,12 @@
        {:lib/internal-remap {:lib/type              :metadata.column.remapping/internal
                              :id                    (:dimension/id field)
                              :name                  (:dimension/name field)
+                             ;; joined columns skip the FieldValues model's transforms, so decrypt by hand
                              :values                (mi/json-out-with-keywordization
-                                                     (:values/values field))
+                                                     (encryption/maybe-decrypt (:values/values field)))
                              :human-readable-values (mi/json-out-without-keywordization
-                                                     (:values/human-readable-values field))}}))))
+                                                     (encryption/maybe-decrypt
+                                                      (:values/human-readable-values field)))}}))))
 
 ;;;
 ;;; Card

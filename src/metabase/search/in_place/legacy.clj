@@ -413,7 +413,6 @@
         [:dashboard.name :dashboard_name]
         :dashboard_id
         bookmark-col dashboardcard-count-col
-        :result_metadata
         [:display :display_type]))
 
 (defmethod columns-for-model "document"

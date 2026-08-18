@@ -16,8 +16,7 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
-   (java.nio ByteBuffer)
-   (org.postgresql.util PGobject)))
+   (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)
 
@@ -200,25 +199,9 @@
       (conj {:observation_type :low-cardinality
              :observation_value (str distinct-count)}))))
 
-(defn- decode-fingerprint
-  [value]
-  (cond
-    (map? value)
-    value
-
-    (instance? PGobject value)
-    (some-> ^PGobject value .getValue json/decode+kw)
-
-    (string? value)
-    (json/decode+kw value)
-
-    :else
-    nil))
-
 (defn- field-fingerprint
   [field-id]
-  (some-> (t2/select-one-fn :fingerprint :metabase_field :id field-id)
-          decode-fingerprint))
+  (t2/select-one-fn :fingerprint :model/Field :id field-id))
 
 (defn- profile-rows-for-dimensions
   [bucket-date dimension-rows]
