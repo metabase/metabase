@@ -1057,16 +1057,23 @@
                                                  :collection_id       (u/the-id collection)
                                                  :collection_position 1}
                    :model/Collection _          {:name     "Child collection"
-                                                 :location (collection/children-location collection)}]
+                                                 :location (collection/children-location collection)}
+                   :model/Timeline   _          {:name "Timeline" :collection_id (u/the-id collection)}]
       (let [url (str "collection/" (u/the-id collection) "/items/metadata")]
-        (testing "returns every visible model and the item count, pinned included"
-          (is (= {:available_models ["card" "collection" "dashboard" "metric"]
-                  :total            4}
+        (testing "counts every model by default"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
                  (mt/user-http-request :crowberto :get 200 url))))
-        (testing "ignores model and search query params"
+        (testing "counts only the requested models, so hidden types stay out of the list metadata"
           (is (= {:available_models ["card" "collection" "dashboard" "metric"]
-                  :total            4}
-                 (mt/user-http-request :crowberto :get 200 url :models "card" :q "zzz"))))))
+                  :total_items      4}
+                 (mt/user-http-request :crowberto :get 200 url
+                                       :models "card" :models "dataset" :models "metric"
+                                       :models "dashboard" :models "collection"))))
+        (testing "ignores search text"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
+                 (mt/user-http-request :crowberto :get 200 url :q "zzz"))))))
     (testing "requires read access to the collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}]
@@ -1080,14 +1087,22 @@
       (let [{:keys [available_models] :as response}
             (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")]
         (is (=? {:available_models sequential?
-                 :total            nat-int?}
+                 :total_items      nat-int?}
                 response))
         (is (every? string? available_models))))
-    (testing "restricts other namespaces to collections"
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           "collection/root/items/metadata"
-                                           :namespace "snippets")]
-        (is (every? #{"collection"} (:available_models response)))))))
+    (testing "restricts a user without root read permission to collections, like the items list"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Card       _                  {:name "Root question"}
+                       :model/Collection visible-collection {}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
+          (let [response (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
+                                               :models "card" :models "collection")]
+            (is (= ["collection"] (:available_models response)))
+            (is (= 1 (:total_items response))))
+          (testing "and reports nothing when only other models are requested"
+            (is (= {:available_models [] :total_items 0}
+                   (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
+                                         :models "card")))))))))
 
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"

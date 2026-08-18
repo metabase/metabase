@@ -1283,17 +1283,21 @@
 (mr/def ::ItemsMetadata
   [:map
    [:available_models [:sequential :string]]
-   [:total ms/IntGreaterThanOrEqualToZero]])
+   ;; Named apart from the `total` of a paged, filtered items response: this is the size of the whole list.
+   [:total_items ms/IntGreaterThanOrEqualToZero]])
 
 (mu/defn- collection-items-metadata :- ::ItemsMetadata
-  "Metadata about the items list of `collection`, all of it independent of the model and search filters that the
-  items endpoints accept: the models with at least one visible item and the total number of items, pinned included."
-  [collection restrict-models options]
+  "Metadata about the items list of `collection`, independent of the search filter that the items endpoints accept:
+  the models with at least one visible item and the number of items in the whole list, pinned included. When present,
+  `restrict-models` limits both to those models, so the metadata describes the list a client actually shows."
+  [collection      :- collection/CollectionWithLocationAndIDOrRoot
+   restrict-models :- [:maybe [:set :keyword]]
+   options         :- CollectionChildrenOptions]
   (let [count-options (cond-> (dissoc options :models :search-text)
                         (seq restrict-models) (assoc :models restrict-models))]
     (assoc (collection-filter-metadata collection restrict-models options)
-           :total (request/with-limit-and-offset 0 0
-                    (:total (collection-children collection count-options))))))
+           :total_items (request/with-limit-and-offset 0 0
+                          (:total (collection-children collection count-options))))))
 
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -1537,17 +1541,18 @@
       (merge (collection-filter-metadata root-collection restrict-models options)))))
 
 (api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata
-  "Metadata about the Root Collection's items list: the models with at least one visible item plus the unfiltered
-  item count. Unlike `GET /api/collection/root/items`, the result does not depend on model or search filters."
+  "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
+  Pass the same `models` as `GET /api/collection/root/items` so the metadata describes the list being shown; unlike
+  that endpoint, the result does not depend on search text."
   [_route-params
-   {:keys [namespace show-dashboard-questions include-library]} :- [:map
-                                                                    [:namespace                {:optional true} [:maybe ms/NonBlankString]]
-                                                                    [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]
-                                                                    [:include-library          {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models namespace show-dashboard-questions include-library]} :- [:map
+                                                                           [:models                   {:optional true} [:maybe Models]]
+                                                                           [:namespace                {:optional true} [:maybe ms/NonBlankString]]
+                                                                           [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]
+                                                                           [:include-library          {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
-        restrict-models (when (or (not (contains? namespaces-holding-non-collection-types namespace))
-                                  (not (mi/can-read? root-collection)))
-                          #{:collection})]
+        model-set       (set (map keyword (u/one-or-many models)))
+        restrict-models (visible-model-kwds root-collection model-set)]
     (collection-items-metadata root-collection restrict-models
                                {:archived?                 false
                                 :show-dashboard-questions? (boolean show-dashboard-questions)
@@ -1859,15 +1864,17 @@
     children))
 
 (api.macros/defendpoint :get "/:id/items/metadata" :- ::ItemsMetadata
-  "Metadata about the collection's items list: the models with at least one visible item plus the unfiltered item
-  count. Unlike `GET /api/collection/:id/items`, the result does not depend on model or search filters."
+  "Metadata about the collection's items list: the models with at least one visible item plus the item count. Pass
+  the same `models` as `GET /api/collection/:id/items` so the metadata describes the list being shown; unlike that
+  endpoint, the result does not depend on search text."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [show-dashboard-questions]} :- [:map
-                                          [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models show-dashboard-questions]} :- [:map
+                                                 [:models                   {:optional true} [:maybe Models]]
+                                                 [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         collection  (api/read-check :model/Collection resolved-id)]
-    (collection-items-metadata collection nil
+    (collection-items-metadata collection (set (map keyword (u/one-or-many models)))
                                {:archived?                 (or (:archived collection) (collection/is-trash? collection))
                                 :show-dashboard-questions? show-dashboard-questions
                                 :include-library?          true

@@ -25,6 +25,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
+import { ALL_MODELS } from "./constants";
 
 const collection = createMockCollection({ id: 1, can_write: false });
 
@@ -231,6 +232,28 @@ describe("CollectionItemsTable", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("ignores item types the list never shows when deciding to show the filters", async () => {
+    setup({
+      collectionItems: [
+        createMockCollectionItem({
+          id: 300,
+          collection_id: collection.id,
+          model: "collection",
+          name: "Visible child",
+        }),
+        // Transforms are a model the backend can list, but the collection page never asks for.
+        ...createFillerItems(10, { model: "transform" }),
+      ],
+    });
+
+    expect(await screen.findByText("Visible child")).toBeInTheDocument();
+    const metadataParams = new URL(getMetadataCalls()[0].url).searchParams;
+    expect(metadataParams.getAll("models")).toEqual(ALL_MODELS);
+    expect(
+      screen.queryByTestId("collection-items-toolbar"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the search input and type filter once the list exceeds 10 items, counting pinned ones", async () => {
     const pinnedDashboards = [1, 2].map((position) =>
       createMockCollectionItem({
@@ -282,7 +305,7 @@ describe("CollectionItemsTable", () => {
     fetchMock.modifyRoute(`collection-${collection.id}-items-metadata`, {
       response: {
         available_models: ["dashboard", "card", "dataset"],
-        total: 3,
+        total_items: 3,
       },
     });
     act(() => {
@@ -727,7 +750,8 @@ describe("CollectionItemsTable", () => {
       expect(getMetadataCalls()).toHaveLength(1);
     });
     const metadataParams = new URL(getMetadataCalls()[0].url).searchParams;
-    expect(metadataParams.has("models")).toBe(false);
+    // The list's full model set, never the user's type selection.
+    expect(metadataParams.getAll("models")).toEqual(ALL_MODELS);
     expect(metadataParams.has("q")).toBe(false);
 
     await user.click(
@@ -938,6 +962,50 @@ describe("CollectionItemsTable", () => {
 
     advanceSearchDebounce();
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
+  });
+
+  it("does not show the previous collection's toolbar while a smaller collection loads", async () => {
+    const nextCollection = createMockCollection({ id: 2, can_write: false });
+    setupCollectionItemsEndpoint({ collection, collectionItems });
+    setupCollectionItemsEndpoint({
+      collection: nextCollection,
+      collectionItems: createFillerItems(3, {
+        collection_id: nextCollection.id,
+      }),
+    });
+    let resolveMetadata: (() => void) | undefined;
+    const metadataGate = new Promise<void>((resolve) => {
+      resolveMetadata = resolve;
+    });
+    fetchMock.modifyRoute(`collection-${nextCollection.id}-items-metadata`, {
+      response: async () => {
+        await metadataGate;
+        return { available_models: ["card"], total_items: 3 };
+      },
+    });
+    renderWithProviders(
+      <CollectionNavigationTest nextCollection={nextCollection} />,
+      { withRouter: true, withDND: true },
+    );
+    expect(
+      await screen.findByTestId("collection-items-toolbar"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open next collection" }),
+    );
+
+    expect(await screen.findByText("Extra card 1")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("collection-items-toolbar"),
+    ).not.toBeInTheDocument();
+    await act(async () => {
+      resolveMetadata?.();
+      await fetchMock.callHistory.flush();
+    });
+    expect(
+      screen.queryByTestId("collection-items-toolbar"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the existing empty state without a toolbar for a truly empty collection", async () => {

@@ -189,6 +189,7 @@ export type ListCollectionItemsResponse = {
 
 export type GetCollectionItemsMetadataRequest = {
   id: CollectionId;
+  models?: CollectionItemModel[];
   "show-dashboard-questions"?: boolean;
   namespace?: CollectionNamespace;
   "include-library"?: boolean;
@@ -196,7 +197,8 @@ export type GetCollectionItemsMetadataRequest = {
 
 export type CollectionItemsMetadata = {
   available_models: string[];
-  total: number;
+  // The size of the whole list, unlike the `total` of a paged, filtered items response.
+  total_items: number;
 };
 
 export interface UpdateCollectionRequest {

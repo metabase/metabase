@@ -217,19 +217,21 @@ export const CollectionItemsTable = ({
     (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
     showDashboardQuestions;
 
-  const { data: itemsMetadata } = useGetCollectionItemsMetadataQuery(
+  // `currentData` is per collection, so a previous collection's metadata never drives this one's toolbar.
+  const { currentData: itemsMetadata } = useGetCollectionItemsMetadataQuery(
     collectionId === undefined || !showFilterBar
       ? skipToken
       : {
           id: collectionId,
+          models,
           "show-dashboard-questions": showDashboardQuestionsInList,
         },
   );
   const availableModels = itemsMetadata?.available_models ?? [];
-  const itemsTotal = itemsMetadata?.total ?? 0;
+  const totalItems = itemsMetadata?.total_items ?? 0;
 
   const showToolbar =
-    Boolean(showFilterBar) && itemsTotal > FILTERS_VISIBILITY_THRESHOLD;
+    Boolean(showFilterBar) && totalItems > FILTERS_VISIBILITY_THRESHOLD;
   // The toolbar can disappear while a search or type filter is active, e.g. after
   // archiving items; ignore the leftover selection rather than filtering a bare list.
   const appliedSearchText = showToolbar ? trimmedSearchText : "";
@@ -333,13 +335,15 @@ const CollectionItemsTableContent = ({
   const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
 
   const items = data?.data ?? [];
-  const total = data?.total;
+  const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
   );
 
-  const hasPagination: boolean = total ? total > pageSize : false;
+  const hasPagination: boolean = totalMatchingItems
+    ? totalMatchingItems > pageSize
+    : false;
 
   const unselected = getIsSelected
     ? items.filter((item) => !getIsSelected(item))
@@ -413,7 +417,7 @@ const CollectionItemsTableContent = ({
                 showTotal
                 page={page}
                 pageSize={pageSize}
-                total={total}
+                total={totalMatchingItems}
                 itemsLength={items.length}
                 onNextPage={onNextPage}
                 onPreviousPage={onPreviousPage}
