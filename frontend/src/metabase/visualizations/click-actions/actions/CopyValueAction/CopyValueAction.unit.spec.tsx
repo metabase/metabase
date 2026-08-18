@@ -37,10 +37,16 @@ describe("CopyValueAction", () => {
 
   it("returns a copy-value action for a cell with a value", () => {
     const actions = setup({ column, value: "hello" });
+    const [action] = actions;
 
     expect(actions).toHaveLength(1);
-    expect(actions[0].name).toBe("copy-value");
-    expect(actions[0].section).toBe("copy");
+
+    if (!isCustomClickAction(action)) {
+      throw new Error("expected a custom click action");
+    }
+
+    expect(action.name).toBe("copy-value");
+    expect(action.section).toBe("copy");
   });
 
   it("returns an action for falsy but present values (0, false, empty string)", () => {

@@ -30,7 +30,7 @@ export const CopyValueAction: LegacyDrill = ({ clicked, settings }) => {
   return [
     {
       name: "copy-value",
-      section: "details",
+      section: "copy",
       title: t`Copy value`,
       buttonType: "horizontal",
       icon: "copy",

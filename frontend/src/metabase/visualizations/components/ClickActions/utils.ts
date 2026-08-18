@@ -27,6 +27,7 @@ export const SECTIONS: Record<ClickActionSection, Section> = {
   "auto-popover": {},
   info: {},
   details: {},
+  copy: {},
   filter: {},
   custom: {},
   "new-column": {},
