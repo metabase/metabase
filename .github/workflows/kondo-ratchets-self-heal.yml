@@ -37,6 +37,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: false
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Lower ignore budgets to match the source tree
         run: ./bin/mage fix-kondo-ratchets
       - name: Check for changes

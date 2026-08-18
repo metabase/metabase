@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
@@ -28,10 +27,13 @@ import {
 } from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
 
+import { useUpdateMetabotSettingsMutation } from "../../api";
+
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
 import { AzureProviderFields } from "./AzureProviderFields";
 import { BedrockProviderFields } from "./BedrockProviderFields";
+import { GoogleProviderFields } from "./GoogleProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
   getProviderOptions,
@@ -124,6 +126,7 @@ function AIProviderConfigurationFormBody({
     useAdminSettings([
       "llm-anthropic-api-key",
       "llm-mistral-api-key",
+      "llm-moonshot-api-key",
       "llm-openai-api-key",
       "llm-openrouter-api-key",
       "llm-zai-api-key",
@@ -147,7 +150,8 @@ function AIProviderConfigurationFormBody({
     if (
       connectedProvider !== "metabase" &&
       connectedProvider !== "bedrock" &&
-      connectedProvider !== "azure"
+      connectedProvider !== "azure" &&
+      connectedProvider !== "google"
     ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
@@ -158,8 +162,12 @@ function AIProviderConfigurationFormBody({
     }
 
     try {
-      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
-        // Bedrock and Azure key material spans several settings; an explicit
+      if (
+        connectedProvider === "bedrock" ||
+        connectedProvider === "azure" ||
+        connectedProvider === "google"
+      ) {
+        // Bedrock, Azure, and Google key material spans several settings; an explicit
         // `credentials: null` clears them all in one call. It runs before the provider
         // is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
@@ -322,9 +330,17 @@ function AIProviderConfigurationFormBody({
                   isEnvSetting={isEnvSetting}
                 />
               ))
+              .with("google", () => (
+                <GoogleProviderFields
+                  connectedModel={connectedModel}
+                  isCurrentConfigured={isCurrentConfigured}
+                  isEnvSetting={isEnvSetting}
+                />
+              ))
               .with(
                 "anthropic",
                 "mistral",
+                "moonshot",
                 "openai",
                 "openrouter",
                 "zai",

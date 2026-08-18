@@ -10,6 +10,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -41,6 +42,10 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["table"]));
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

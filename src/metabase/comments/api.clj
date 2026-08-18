@@ -58,16 +58,18 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map]]
+    ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CommentContext
-  "Validation for comment context - expects JSON map"
+  "Context stored alongside a comment: a JSON blob whose shape depends on what was commented on. Only `timeline_id` is
+  read back, by [[metabase.comments.models.comment]] when building an exploration comment URL."
   (mu/with-api-error-message
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map]]
+    [:map {:closed false}
+     [:timeline_id {:optional true} ms/PositiveInt]]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
@@ -148,11 +150,11 @@
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     {:where [:in :id ^:allow-subquery {:from   [:comment]
+                                                        :select [:creator_id]
+                                                        :where  [:or
+                                                                 [:= :id parent_comment_id]
+                                                                 [:= :parent_comment_id parent_comment_id]]}]}
                      ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
                      {:where [:= :id (:creator_id entity)]})
         mentions   (comment/mentions (:content comment))

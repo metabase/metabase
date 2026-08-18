@@ -313,3 +313,14 @@
              clojure.lang.ExceptionInfo
              #"Mistral API key expired or invalid"
              (mistral/list-models)))))))
+
+(deftest list-models-malformed-catalog-throws-test
+  (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
+    ;; Failing open here would let admin Connect succeed against a base URL we never reached,
+    ;; leaving an empty model picker with no diagnostic.
+    (mt/with-temporary-setting-values [llm.settings/llm-mistral-api-key "mistral-key-test"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Mistral returned an unexpected model list response"
+             (mistral/list-models)))))))

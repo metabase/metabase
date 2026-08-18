@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
+import { canAccessSettings, getUser } from "metabase/current-user";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
@@ -10,7 +11,6 @@ import {
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
 import { getNotificationHandlersGroupedByTypes } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,

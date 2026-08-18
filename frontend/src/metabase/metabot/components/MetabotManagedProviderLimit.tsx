@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import {
   Button,
   Flex,

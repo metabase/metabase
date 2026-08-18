@@ -94,9 +94,10 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows.
+If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -331,13 +332,6 @@ When using the default binning strategy for a field of type Coordinate (such as 
 - [Configuration file name](./config-file.md): `breakout-bins-num`
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
-
-### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
-
-- Type: integer
-- Default: `250`
-
-Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
 
 ### `MB_CHECK_FOR_UPDATES`
 
@@ -784,6 +778,13 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 - [Configuration file name](./config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
+
+### `MB_EXPLORATIONS_WORKER_COUNT`
+
+- Type: integer
+- Default: `2`
+
+How many exploration queries a single Metabase node runs at once.
 
 ### `MB_FINGERPRINT_MAX_FIELDS_PER_TABLE`
 
@@ -1364,10 +1365,50 @@ The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
 ### `MB_LLM_CONNECTION_TIMEOUT_MS`
 
 - Type: integer
-- Default: `5000`
+- Default: `10000`
 - [Configuration file name](./config-file.md): `llm-connection-timeout-ms`
 
-Connection timeout in milliseconds for LLM API requests.
+TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
+
+### `MB_LLM_GOOGLE_API_BASE_URL`
+
+- Type: string
+- Default: `https://aiplatform.googleapis.com`
+- [Configuration file name](./config-file.md): `llm-google-api-base-url`
+
+The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.
+
+### `MB_LLM_GOOGLE_LOCATION`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-location`
+
+The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.
+
+### `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-oauth-access-token`
+
+A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.
+
+### `MB_LLM_GOOGLE_PROJECT_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-project-id`
+
+The Google Cloud project ID for the Gemini Enterprise Agent Platform.
+
+### `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-google-service-account-key`
+
+A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
 
 ### `MB_LLM_MAX_TOKENS`
 
@@ -1383,7 +1424,7 @@ Maximum tokens for LLM responses.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
@@ -1400,6 +1441,22 @@ The Mistral API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-mistral-api-key`
 
 The Mistral API Key.
+
+### `MB_LLM_MOONSHOT_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.moonshot.ai/v1`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-base-url`
+
+The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
+
+### `MB_LLM_MOONSHOT_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-key`
+
+The Moonshot AI API Key.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
@@ -1460,10 +1517,10 @@ Maximum SQL generation requests per user per minute.
 ### `MB_LLM_REQUEST_TIMEOUT_MS`
 
 - Type: integer
-- Default: `60000`
+- Default: `120000`
 - [Configuration file name](./config-file.md): `llm-request-timeout-ms`
 
-Socket timeout in milliseconds for LLM API requests.
+Socket (inter-byte read) timeout in milliseconds for LLM API requests. For streaming responses this bounds the gap between successive chunks, NOT the total response time. Picked generously: extended thinking can pause for tens of seconds between chunks. Without it, a hung read inside the stream blocks the worker indefinitely — observed in production when an upstream proxy held the connection open without sending data.
 
 ### `MB_LLM_ZAI_API_BASE_URL`
 
@@ -1549,6 +1606,28 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
 
+### `MB_METABOT_ADVANCED_PERMISSIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-advanced-permissions`.
+- [Configuration file name](./config-file.md): `metabot-advanced-permissions`
+
+Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-chat-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-chat-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the chat experience (the AI sidebar and embedded Metabot).
+
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
@@ -1558,12 +1637,89 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_ICON`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-icon`.
+- [Configuration file name](./config-file.md): `metabot-icon`
+
+The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).
+
+### `MB_METABOT_LIMIT_RESET_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `monthly`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-reset-rate`.
+- [Configuration file name](./config-file.md): `metabot-limit-reset-rate`
+
+How often Metabot usage limits reset: `daily`, `weekly`, or `monthly`.
+
+### `MB_METABOT_LIMIT_UNIT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `tokens`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-unit`.
+- [Configuration file name](./config-file.md): `metabot-limit-unit`
+
+The unit used for Metabot usage limits: `tokens` or `messages`.
+
+### `MB_METABOT_NAME`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `Metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-name`.
+- [Configuration file name](./config-file.md): `metabot-name`
+
+The display name for Metabot, shown throughout the Metabase UI.
+
+### `MB_METABOT_NLQ_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-nlq-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-nlq-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the natural language query (AI exploration) experience.
+
+### `MB_METABOT_QUOTA_REACHED_MESSAGE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `You have reached your AI usage limit for the current period. Please contact your administrator.`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-quota-reached-message`.
+- [Configuration file name](./config-file.md): `metabot-quota-reached-message`
+
+The message shown to users when they reach their usage quota.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
 - Default: `true`
 
 Whether the user's recently viewed items are included in the Metabot system prompt.
+
+### `MB_METABOT_SHOW_ILLUSTRATIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-show-illustrations`.
+- [Configuration file name](./config-file.md): `metabot-show-illustrations`
+
+Whether to show Metabot illustrations in the UI.
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
@@ -1572,6 +1728,17 @@ Whether the user's recently viewed items are included in the Metabot system prom
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-sql-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-sql-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the SQL generation experience.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
@@ -2212,7 +2379,7 @@ See [Embedding Metabase in a different domain](../embedding/full-app-embedding.m
 ### `MB_SESSION_COOKIES`
 
 - Type: boolean
-- Default: `null`
+- Default: `false`
 - [Configuration file name](./config-file.md): `session-cookies`
 
 When set, enforces the use of session cookies for all users which expire when the browser is closed.
@@ -2660,6 +2827,19 @@ When enabled, run pivot queries as a single native GROUPING SETS query on driver
 
 Note: Sandboxed users will never see suggestions.
 
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
+
 ## Other environment variables
 
 The following environment variables can only be set via the environment. They cannot be set by the configuration file.
@@ -2930,7 +3110,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Application logs](../monitor/application-logs.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 

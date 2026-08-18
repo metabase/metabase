@@ -2,16 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import {
-  useRefreshTokenStatusMutation,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/api";
+import { useRefreshTokenStatusMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useAIProviderConfigurationContext } from "metabase/metabot";
+import { getUserIsAdmin } from "metabase/current-user";
+import {
+  useAIProviderConfigurationContext,
+  useUpdateMetabotSettingsMutation,
+} from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   Anchor,

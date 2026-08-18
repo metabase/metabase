@@ -302,13 +302,32 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
+(def ^:private keywordize-declared-map-keys-transformer
+  (mtx/transformer
+   {:name :keywordize-declared-map-keys
+    :decoders {:map {:compile (fn [schema _]
+                                (let [keyword-keys (into #{}
+                                                         (comp (filter keyword?)
+                                                               (map u/qualified-name))
+                                                         (malli.util/keys schema))]
+                                  (mtx/-transform-map-keys keyword-keys mtx/-string->keyword)))}}}))
+
 (def ^:private decode-transformer
   (mtx/transformer
    (mtx/string-transformer)
    (mtx/json-transformer)
+   keywordize-declared-map-keys-transformer
    (mtx/default-value-transformer)
    {:name :api}
-   {:name :normalize}))
+   {:name :normalize}
+   ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
+   ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
+   ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
+   ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
+   ;;
+   ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
+   ;; them before they are recognized.
+   (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer
   (mtx/transformer
@@ -360,7 +379,11 @@
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
       (update :value redact-files)
-      (update :errors (partial mapv #(update % :value redact-files)))
+      ;; `:in` and `:path` come back lazy for some schemas (`:multi`, for one) and spell checking `peek`s them
+      (update :errors (partial mapv #(-> %
+                                         (update :value redact-files)
+                                         (m/update-existing :in vec)
+                                         (m/update-existing :path vec))))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
@@ -381,7 +404,9 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
+           (assoc-in m error-path (if nested-schema
+                                    (umd/describe nested-schema)
+                                    "unexpected key"))))))
    {}
    (:errors explanation)))
 

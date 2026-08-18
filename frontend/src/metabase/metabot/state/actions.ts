@@ -13,8 +13,8 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
+import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
@@ -22,7 +22,6 @@ import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { navigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
@@ -37,6 +36,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
+import { metabotApi } from "../api";
 import {
   METABOT_ERR_MSG,
   type MetabotProfileId,

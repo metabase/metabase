@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { type Table, isConcreteTableId } from "metabase-types/api";
 
-import { Breadcrumb } from "./Breadcrumb";
 import { Separator } from "./Separator";
 
 interface Props extends GroupProps {
@@ -25,7 +25,11 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
 
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
-      <Breadcrumb href={`/browse/databases/${table.db_id}`} icon="database">
+      <Breadcrumb
+        icon="database"
+        to={Urls.browseDatabase(table.db)}
+        showTooltip
+      >
         {table.db.name}
       </Breadcrumb>
 
@@ -34,7 +38,11 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
           <Separator />
 
           <Breadcrumb
-            href={`/browse/databases/${table.db_id}/schema/${encodeURIComponent(table.schema)}`}
+            to={Urls.browseSchemaBySlug(
+              Urls.databaseSlug(table.db),
+              table.schema,
+            )}
+            showTooltip
           >
             {table.schema}
           </Breadcrumb>
@@ -44,11 +52,12 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
       <Separator />
 
       <Breadcrumb
-        href={
+        to={
           isConcreteTableId(table.id)
             ? Urls.table({ id: table.id, name: table.display_name })
             : Urls.tableRowsQuery(table.db_id, table.id)
         }
+        showTooltip
       >
         {table.display_name}
       </Breadcrumb>
@@ -57,7 +66,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
         <>
           <Separator />
 
-          <Breadcrumb>{rowName}</Breadcrumb>
+          <Breadcrumb showTooltip>{rowName}</Breadcrumb>
         </>
       )}
     </Group>

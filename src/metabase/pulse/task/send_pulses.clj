@@ -112,10 +112,11 @@
                               (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
                                                        {:where [:and
                                                                 [:= :pulse_id pulse-id]
-                                                                [:not [:exists {:select [1]
-                                                                                :from   [:pulse_channel_recipient]
-                                                                                :where  [:= :pulse_channel_recipient.pulse_channel_id
-                                                                                         :pulse_channel.id]}]]]})
+                                                                [:not [:exists ^:allow-subquery
+                                                                       {:select [1]
+                                                                        :from   [:pulse_channel_recipient]
+                                                                        :where  [:= :pulse_channel_recipient.pulse_channel_id
+                                                                                 :pulse_channel.id]}]]]})
                                     :when  (case (:channel_type channel)
                                              :email
                                              (empty? (get-in channel [:details :emails]))

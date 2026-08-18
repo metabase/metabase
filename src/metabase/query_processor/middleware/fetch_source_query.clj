@@ -25,22 +25,30 @@
 
 ;;; TODO -- consider whether [[normalize-card-query]] should be moved into [[metabase.lib.card]], seems like it would
 ;;; make sense but it would involve teasing out some QP-specific stuff to make it work.
-(defn- fix-mongodb-first-stage
+(mu/defn- fix-mongodb-first-stage :- ::lib.schema/stages
   "MongoDB native queries consist of a collection and a pipelne (query).
 
   TODO -- it's not great that this code lives here. This should be part of the MongoDB driver. We should NOT be
   hardcoding driver-specific behavior in generic QP middleware."
-  [[first-stage & more]]
-  (let [first-stage (cond-> first-stage
-                      (and (= driver/*driver* :mongo)
-                           (= (:lib/type first-stage) :mbql.stage/native))
-                      (update :native (fn [x]
-                                        (if (map? x)
-                                          x
-                                          {:collection  (:collection first-stage)
-                                           :projections (:projections first-stage)
-                                           :query       x}))))]
-    (cons first-stage more)))
+  [stages :- ::lib.schema/stages]
+  (letfn [(update-first-stage [first-stage]
+            (cond-> first-stage
+              (and (= driver/*driver* :mongo)
+                   (= (:lib/type first-stage) :mbql.stage/native))
+              (update :native (fn [x]
+                                (if (map? x)
+                                  x
+                                  {:collection  (:collection first-stage)
+                                   :projections (:projections first-stage)
+                                   :query       x})))))]
+    (update (vec stages) 0 update-first-stage)))
+
+(def ^:private qp-owned-stage-keys
+  [:persisted-info/native
+   :qp/stage-is-from-source-card
+   :qp/stage-had-source-card
+   :source-query/model?
+   :source-query/native-model?])
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."
@@ -53,7 +61,11 @@
                  card-id
                  (ddl.i/schema-name {:id (:database-id card)} (system/site-uuid))
                  (:table-name persisted-info)))
-    (letfn [(update-stages [stages]
+    (letfn [(clear-qp-owned-keys [query]
+              (lib.walk/walk query
+                             (fn [_query _path-type _path stage-or-join]
+                               (apply dissoc stage-or-join qp-owned-stage-keys))))
+            (update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
                                     ;; This is for detecting circular refs below, and is later used as part of
@@ -80,6 +92,7 @@
                   ;; a card getting joined twice creates duplicate UUID errors!
                   ;; This safely re-rolls all the `:lib/uuid`s on the card's query so they won't collide.
                   lib.util/fresh-uuids-preserving-aggregation-refs
+                  clear-qp-owned-keys
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 

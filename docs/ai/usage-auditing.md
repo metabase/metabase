@@ -7,22 +7,22 @@ summary: "See token and message counts, chat logs, and more."
 
 {% include plans-blockquote.html feature="AI usage auditing" %}
 
-_Admin > AI > Usage auditing_
+_Monitor > AI auditing_
 
 Admins can get an overview of human-robot interactions across Metabase, from high-level stats like total token counts down to visibility into actual conversations. These interactions include the in-product Metabot chat sidebar, Metabot conversations in [Documents](../documents/start.md), [Slack chats](./metabot-slack.md), and [inline SQL editing](./metabot.md#inline-sql-editing).
 
 The usage auditing section includes:
 
-- [Stats](#stats): aggregate charts across all Metabot activity.
+- [Usage stats](#usage-stats): aggregate charts across all Metabot activity.
 - [Conversations](#conversations): a filterable list of every conversation, with a detail view for each.
 
 You can also build your own questions on top of the [Usage Analytics views](#building-custom-reports) that back these reports.
 
-## Stats
+## Usage stats
 
-_Admin > AI > Usage auditing > Stats_
+_Monitor > Usage stats_
 
-The Stats page shows aggregate Metabot activity over a date range you choose, defaulting to the previous 30 days.
+The Usage stats page shows aggregate Metabot activity over a date range you choose, defaulting to the previous 30 days.
 
 ### Filters
 
@@ -56,11 +56,11 @@ You can drill through in the **By day**, **Groups with most ...**, **Users with 
 
 They often line up (a conversation that started in Slack is handled by the Slackbot profile), but they don't have to. A conversation started from the Metabot chat sidebar might be handled by the **Internal**, **NLQ**, or **SQL** profile depending on what the person asked.
 
-The Conversations admin page only shows **Profile**. Source is visible in the **Stats** charts and in the [Usage Analytics models](#building-custom-reports) used to build custom reports.
+The Conversations admin page only shows **Profile**. Source is visible in the **Usage stats** charts and in the [Usage Analytics models](#building-custom-reports) used to build custom reports.
 
 ### Sources
 
-Each conversation is tagged with a source, i.e. where in Metabase the conversation took place. The **By source** chart in [Stats](#stats) groups conversations by a human-readable `source_name`, and the [AI Usage Log](#building-custom-reports) model exposes both `source_name` and a raw `source` ID (e.g. `metabot_agent`, `oss-sql-gen`, `document_generate_content`) for custom reports. Conversations Metabase couldn't classify show up as `(empty)` on the chart.
+Each conversation is tagged with a source (where in Metabase the conversation took place). The **By source** chart in [Usage stats](#usage-stats) groups conversations by a human-readable `source_name`, and the [AI Usage Log](#building-custom-reports) model exposes both `source_name` and a raw `source` ID (like `metabot_agent`, `oss-sql-gen`, `document_generate_content`) for custom reports. Conversations Metabase couldn't classify show up as `(empty)` on the chart.
 
 | Source name         | Where it comes from                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -73,7 +73,7 @@ Each conversation is tagged with a source, i.e. where in Metabase the conversati
 
 ### Profiles
 
-A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page, the **By profile** chart in [Stats](#stats), and the **Metabot Conversations** model (see [Building custom reports](#building-custom-reports)) all show the human-readable profile name. The [AI Usage Log](#building-custom-reports) model exposes the raw `profile_id` instead (e.g. `internal`, `transforms_codegen`, `embedding_next`).
+A profile is the configuration Metabot uses for a conversation: which prompt, which tools, and what it's allowed to do. The Conversations admin page, the **By profile** chart in [Usage stats](#usage-stats), and the **Metabot Conversations** model (see [Building custom reports](#building-custom-reports)) all show the human-readable profile name. The [AI Usage Log](#building-custom-reports) model exposes the raw `profile_id` instead (e.g. `internal`, `transforms_codegen`, `embedding_next`).
 
 | Profile              | What it does                                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -87,13 +87,13 @@ A profile is the configuration Metabot uses for a conversation: which prompt, wh
 
 ## Conversations
 
-_Admin > AI > Usage auditing > Conversations_
+_Monitor > Conversations_
 
 The Conversations page lists every Metabot conversation Metabase has on file, newest first.
 
 ### Filters
 
-- **Date range**, **User**, **Group**, **Tenant**: same as the [Stats filters](#filters).
+- **Date range**, **User**, **Group**, **Tenant**: same as the [Usage stats filters](#filters).
 
 ### Columns
 
