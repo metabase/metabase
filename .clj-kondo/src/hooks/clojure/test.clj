@@ -153,6 +153,7 @@
          "build."
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
+         "load-namespaces." ; bin/load-namespaces
          "mage."
          "main-test" ; bin/release-list
          "metabase.deps-edn-test"
