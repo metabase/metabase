@@ -120,6 +120,32 @@
             (is (true? (t2/select-one-fn :archived :model/Collection :id ancestor-id))
                 "the ancestor is left where the admin put it")))))))
 
+(deftest reconcile-resources-restores-a-trashed-collection-test
+  (testing "a repository import reaches resource reconciliation from a scheduled task, with no
+            user bound — it still has to bring a trashed app collection back, rather than
+            reconcile successfully over an app that serves nothing"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [app (create-data-app! "finches")
+            {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)
+            linked (t2/select-one :model/DataApp :id (:id app))
+            card-id (mt/with-test-user :crowberto
+                      (t2/insert-returning-pk! :model/Card
+                                               (merge (mt/with-temp-defaults :model/Card)
+                                                      {:collection_id resource_collection_id})))]
+        (mt/with-test-user :crowberto
+          (collection/archive-or-unarchive-collection!
+           (t2/select-one :model/Collection :id resource_collection_id)
+           {:archived true}))
+        (is (true? (t2/select-one-fn :archived :model/Card :id card-id))
+            "precondition: the copy went into the trash with its collection")
+        (data-app.resources/reconcile-resources!
+         linked
+         (data-app.resources/resource-entity-ids linked))
+        (is (false? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
+            "the app collection is usable again")
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
+            "and so is the copy the app serves")))))
+
 (deftest ensure-resources-restores-a-trashed-collection-test
   (testing "trashing the resource collection archives the copies the app is served from,
             so ensure-resources! has to bring both back or a successful sync leaves the app blank"
