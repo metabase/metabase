@@ -61,8 +61,8 @@ jobs:
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
-    # PR / merge queue: lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    # Lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
