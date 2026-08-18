@@ -5,9 +5,7 @@ import _ from "underscore";
  *
  * @inline
  */
-export type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
-};
+export type { DeepPartial } from "metabase-types/utils/types";
 
 export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
