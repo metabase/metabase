@@ -11,7 +11,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
-      && github.event.pull_request.head.repo.full_name != github.repository
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -50,6 +50,7 @@ jobs:
   ai-benchmark:
     needs: announce
     uses: ./.github/workflows/ai-benchmark.yml
+    secrets: inherit
     with:
       scope: smoke
       sample: 5
@@ -64,7 +65,7 @@ jobs:
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
-      DISPATCH_RESULT: ${{ needs.smoke.result }}
+      DISPATCH_RESULT: ${{ needs.ai-benchmark.result }}
     steps:
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9

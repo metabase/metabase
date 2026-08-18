@@ -107,7 +107,7 @@ jobs:
       - name: Dispatch eval-run
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          EVALS_BRANCH: ${{ github.event.inputs.evals_branch || 'main' }}
+          EVALS_BRANCH: ${{ inputs.evals_branch || 'main' }}
           PR: ${{ inputs.pr || github.event.pull_request.number }}
           REF: ${{ needs.resolve.outputs.sha }}
           SCOPE: ${{ inputs.scope }}
