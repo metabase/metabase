@@ -184,8 +184,12 @@ describe("Embed JS modal display", () => {
   });
 
   describe("when the user has a paid instance", () => {
-    it("should open Embed JS modal with the `enable simple embedding` card", () => {
+    it("should open Embed JS modal with the `enable modular embedding` card", () => {
       H.activateToken("pro-self-hosted");
+
+      // The snapshot leaves embedding on, and the card only shows while it is
+      // off, so the merged setting has to start from off.
+      H.updateSetting("enable-embedding-modular", false);
       H.visitDashboard("@dashboardId");
 
       H.openSharingMenu("Embed");
