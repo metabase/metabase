@@ -419,8 +419,8 @@
    skipped-drivers
    updated]
   (cond
-    ;; Priority 1: Global force-run. Every driver runs and gates; the remote skip list is not
-    ;; consulted at all, so a stray entry there can't silently disable a driver's tests.
+    ;; Priority 1: Global force-run. Every driver runs; the remote skip list is not consulted at
+    ;; all, so a stray entry there can't silently disable a driver's tests.
     force-run
     {:should-run true
      :reason "force-run (master/release branch or ci:run-all label)"}
