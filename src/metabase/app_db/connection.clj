@@ -217,9 +217,13 @@
                         ;; whether the rollback was requested or caused by an exception
                         (when after-count  (discard-callbacks-after! *after-commit-callbacks*  after-count))
                         (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
-                        (.rollback connection savepoint)
-                        (when state-snapshot
-                          (reset! *transaction-state* state-snapshot)))
+                        ;; restored even when the rollback throws, to match the callbacks discarded above -- an
+                        ;; outer scope that catches the error and commits must not see the failed scope's state
+                        (try
+                          (.rollback connection savepoint)
+                          (finally
+                            (when state-snapshot
+                              (reset! *transaction-state* state-snapshot)))))
                       (rollback-after-error! [txn-e]
                         (try
                           (rollback!)
