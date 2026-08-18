@@ -238,6 +238,14 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
+      - name: Upload field-strip audit log
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: field-strip-audit-${{ inputs.name }}-${{ inputs.edition }}
+          path: ./logs/field-strip-audit.jsonl
+          if-no-files-found: ignore
+
       - name: Upload Failed Tests
         uses: actions/upload-artifact@v7
         if: |

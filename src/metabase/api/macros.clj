@@ -28,6 +28,7 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.field-strip-audit :as field-strip-audit]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
@@ -329,6 +330,24 @@
    ;; them before they are recognized.
    (mtx/strip-extra-keys-transformer)))
 
+;; Pre-hardening decode semantics for the field-strip audit: live transformer minus
+;; keywordize-declared-map-keys and strip-extra-keys. :normalize still runs, so key
+;; renames cancel in the residual.
+(def ^:private reference-decode-transformer
+  (mtx/transformer
+   (mtx/string-transformer)
+   (mtx/json-transformer)
+   (mtx/default-value-transformer)
+   {:name :api}
+   {:name :normalize}))
+
+(def ^:dynamic *current-endpoint*
+  "Bound around each [[defendpoint]] handler to `{:method keyword, :path string}`
+  (full route template, e.g. `{:method :put, :path \"/api/card/:id\"}`). Diagnostic
+  for the field-strip audit probe; nil when [[decode-and-validate-params]] is called
+  outside a handler."
+  nil)
+
 (def ^:private encode-transformer
   (mtx/transformer
    (mtx/default-value-transformer)
@@ -336,6 +355,9 @@
 
 (defn- decoder [schema]
   (mr/cached ::decoder schema #(mc/decoder schema decode-transformer)))
+
+(defn- reference-decoder [schema]
+  (mr/cached ::reference-decoder schema #(mc/decoder schema reference-decode-transformer)))
 
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
@@ -417,18 +439,30 @@
    params]
   (let [params  (or params {})
         decoded ((decoder schema) params)]
+    (try
+      (field-strip-audit/log-decode-diff!
+       *current-endpoint*
+       params-type
+       ((reference-decoder schema) params)
+       decoded)
+      (catch Throwable e
+        (log/error e "field-strip-audit decode differ failed")))
     (when-not (mr/validate schema decoded)
-      (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route   "route parameters"
-                                             :query   "query parameters"
-                                             :body    "body"
-                                             :request "request"
-                                             ;; fall back to the keyword name for any other validated
-                                             ;; params-type so we never throw "No matching clause" here
-                                             (name params-type)))
-                      (let [explanation     (mr/explain schema decoded)
-                            specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors explanation)]
+      (let [explanation     (mr/explain schema decoded)
+            specific-errors (invalid-params-specific-errors explanation)
+            errors          (invalid-params-errors explanation)]
+        (try
+          (field-strip-audit/log-rejection! *current-endpoint* params-type explanation)
+          (catch Throwable e
+            (log/error e "field-strip-audit rejection logger failed")))
+        (throw (ex-info (format "Invalid %s" (case params-type
+                                               :route   "route parameters"
+                                               :query   "query parameters"
+                                               :body    "body"
+                                               :request "request"
+                                               ;; fall back to the keyword name for any other validated
+                                               ;; params-type so we never throw "No matching clause" here
+                                               (name params-type)))
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
                                              :schema      (mc/form schema)
@@ -503,13 +537,17 @@
              [(get-in args [:params :respond :binding])
               (get-in args [:params :raise :binding])])
          ~route-params ~query-params ~body-params ~request]
-        (let [~(params-binding args :route)   ~(decode-and-validate-params-form args :route   route-params)
-              ~(params-binding args :query)   ~(decode-and-validate-params-form args :query   query-params)
-              ~(params-binding args :body)    ~(decode-and-validate-params-form args :body    body-params)
-              ~(params-binding args :request) ~(decode-and-validate-params-form args :request request)]
-          ~@(if response-schema
-              `[(validate-and-encode-response ~response-schema (do ~@body))]
-              body))))))
+        (binding [*current-endpoint* {:method ~(:method args)
+                                      :path   (field-strip-audit/full-path
+                                               ~(get-in args [:route :path])
+                                               (get ~request :uri))}]
+          (let [~(params-binding args :route)   ~(decode-and-validate-params-form args :route   route-params)
+                ~(params-binding args :query)   ~(decode-and-validate-params-form args :query   query-params)
+                ~(params-binding args :body)    ~(decode-and-validate-params-form args :body    body-params)
+                ~(params-binding args :request) ~(decode-and-validate-params-form args :request request)]
+            ~@(if response-schema
+                `[(validate-and-encode-response ~response-schema (do ~@body))]
+                body)))))))
 
 (defn validate-schema
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
