@@ -74,8 +74,12 @@
 
 (def data-sources
   "Permitted values of `data_source`.
-  `:human` means the content was approved by a person, not that a person authored it: an admin editing a
-  generated blob through the CRUD API approves it, and the generation job never overwrites a `:human` row."
+  `:human` means the content currently in the row was approved by a person, not that a person authored it:
+  an admin editing a generated blob through the CRUD API approves it.
+  It describes the stored content, so only a write moves it — the generation job flips a row to `:metabot`
+  when it rewrites the content, never when a rewrite is merely requested. The job leaves a `:human` row
+  alone unless `rewrite_requested_at` is later than `generated_at`, which is an admin asking for the
+  rewrite explicitly."
   #{:human :metabot})
 
 (def DataSource

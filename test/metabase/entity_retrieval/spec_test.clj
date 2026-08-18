@@ -101,7 +101,11 @@
                                                           (assoc valid :basis [])))))
        (testing "define-projection before define-source throws"
          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No source declared"
-                               (spec/register-projection! :osi-context :model/SpecTestNoSource valid))))))))
+                               (spec/register-projection! :osi-context :model/SpecTestNoSource valid))))
+       (testing "a membership declaring neither :where nor :via-parent throws — it would select every row"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"selects every row"
+                               (spec/register-projection! :osi-context :model/SpecTestFake
+                                                          (assoc valid :membership {})))))))))
 
 (deftest doc-id-test
   (testing "equal (entity_type, entity_local_id, doc_type, doc_text) tuples hash equal"
@@ -368,3 +372,34 @@
     (mt/with-premium-features #{:library}
       (collections.tu/with-library [{library :library}]
         (is (contains? (set (#'spec/library-collection-ids)) (:id library)))))))
+
+(deftest table-field-names-hydration-test
+  (testing "the table :field-names hydration sorts by name and drops inactive/sensitive/retired fields —
+           it feeds the prompt and the stored basis, so it has to be deterministic and safe to hand out"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    _ {:table_id table-id :name "zeta"      :active true}
+                   :model/Field    _ {:table_id table-id :name "alpha"     :active true}
+                   :model/Field    _ {:table_id table-id :name "secret"    :active true :visibility_type :sensitive}
+                   :model/Field    _ {:table_id table-id :name "old"       :active true :visibility_type :retired}
+                   :model/Field    _ {:table_id table-id :name "dropped"   :active false}]
+      (let [entity {:entity_type "table" :entity_local_id table-id :id table-id}]
+        (is (= ["alpha" "zeta"]
+               (:field-names (first (spec/hydrate :osi-context [entity])))))))))
+
+(deftest via-parent-without-parent-projection-test
+  (testing "a via-parent model whose parent declares no projection has no members: member-entity agrees
+           with member-entities instead of degenerating to 'a parent row with this id exists'"
+    (mt/with-premium-features #{:library}
+      (collections.tu/with-library [_]
+        (let [venues (mt/id :venues)]
+          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   venues
+                                                          :name       "spec-test segment"
+                                                          :definition {:source-table venues
+                                                                       :filter [:> [:field (mt/id :venues :price) nil] 1]}}]
+            (testing "baseline: venues is not a library table, so its segment is not a member"
+              (is (nil? (spec/member-entity :library-index "segment" segment-id))))
+            (do-with-registry-snapshot
+             (fn []
+               (swap! (var-get #'spec/declarations) update-in [:projections :library-index] dissoc :model/Table)
+               (is (nil? (spec/member-entity :library-index "segment" segment-id)))))))))))
