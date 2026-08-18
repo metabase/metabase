@@ -30,15 +30,12 @@
   osi-ai-context/AiContext)
 
 (def ^:private AiContextResponse
-  "Lenient read shape for forward-compatible imports and rows created before the closed API write boundary.
-  One unknown key must not fail an entire list response during an upgrade.
+  "Lenient read schema for legacy and forward-compatible rows.
 
-  The write caps and item types are deliberately absent, mirroring the tolerance the index reader already
-  applies (see [[metabase.entity-retrieval.spec/ai-context-by-entity]]). A row can predate a cap, arrive by
-  serdes, or be written straight to the appdb, and every other read path copes: instructions are truncated
-  on read, and index docs skip values they cannot use. Asserting the write limits here would fail the whole
-  response instead, so one legacy row could break a list for every other entity. [[AiContext]] is the shape
-  a client should send; this is only what we promise to hand back."
+  The map is open and deliberately omits write-time length and item constraints, so one row imported by
+  SerDes, written directly, or produced by a newer version cannot fail an entire list response. Read
+  consumers already truncate instructions and ignore unusable index values. Clients should continue to
+  write the closed [[AiContext]] schema."
   [:map
    [:instructions {:optional true} [:maybe :string]]
    [:synonyms     {:optional true} [:maybe [:sequential :any]]]
@@ -172,27 +169,19 @@
   (check-writable-entity-type! entity-type)
   (let [conditions {:entity_type     (entity-retrieval/normalize-entity-type entity-type)
                     :entity_local_id entity-local-id}]
-    ;; Compare-and-swap on `updated_at` — the same selection token the generator's write-back uses. The
-    ;; candidacy test is `rewrite_requested_at` STRICTLY after `generated_at`, so the stamp has to outrank
-    ;; the row's CURRENT generated_at. Read-then-write is a race: a generator run that advances
-    ;; generated_at between our read and write would leave the stamp behind it, so the 200 would lie and no
-    ;; rewrite would happen. Guard the write on the observed `updated_at`; on a losing race, refetch and
-    ;; recompute against the newer generated_at.
+    ;; A rewrite is pending only when `rewrite_requested_at` is later than `generated_at`. The generator may
+    ;; advance `generated_at` between our read and write, so update with a compare-and-swap on `updated_at`.
+    ;; On conflict, refetch the row and recompute a stamp that outranks its current `generated_at`.
     (loop [attempt 0]
       (let [entry (api/check-404 (get-entry entity-type entity-local-id))
             now   (t/offset-date-time)
-            ;; Later of now() and one tick past the stored generated_at, so a truncated or clock-skewed
-            ;; now() can't land <= a fresh generated_at. `basis` is left intact — it is real prompt input;
-            ;; the request lives in its own column rather than being encoded by destroying data. Neither
-            ;; column feeds an index doc, so there is nothing to nudge (regenerate-does-not-nudge-test).
+            ;; Use the later of now and one millisecond after `generated_at`, protecting against clock skew
+            ;; and timestamp truncation. Keep `basis`: it remains valid prompt history, while the request has
+            ;; its own column.
             stamp (rewrite-request-stamp now (:generated_at entry))]
         (cond
-          ;; `data_source` is deliberately untouched: it describes the content sitting in the row, and that
-          ;; content does not change until the job actually rewrites it. Flipping it here would revoke the
-          ;; human approval that [[entity-retrieval/ai-context-instructions]] gates on, so the entity's
-          ;; instructions would stop reaching the agent the moment a rewrite was *requested* — the opposite
-          ;; of what this endpoint promises. The generator reads the request from `rewrite_requested_at`
-          ;; and flips `data_source` when it writes.
+          ;; Keep `data_source` unchanged until generated content actually replaces the row. Changing it when
+          ;; the rewrite is merely requested would immediately hide human-approved instructions from the agent.
           (pos? (t2/update! :model/OsiAiContext
                             (assoc conditions :updated_at (:updated_at entry))
                             {:rewrite_requested_at stamp}))

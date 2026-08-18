@@ -88,17 +88,15 @@
   (semantic.util/quote-table (meta-table)))
 
 (def schema-version
-  "Canonical version of the persisted index contract — the metadata and vectors table schemas plus the
-  doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
-  It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
-  the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
-  format. Bump on ANY compatibility-affecting change in the doc derivation — [[metabase.entity-retrieval.spec]]
-  and the four per-model `:library-index` declarations it registers — or either table schema: a column/type
-  change, a new or renamed doc_type, a changed doc_text source, or a changed doc_id / dedup / key scheme —
-  anything that makes old rows incomparable to newly derived desired docs. A bump forces a full re-embed of
-  the library on every instance at upgrade, so do it only when the format truly moved, never as a refresh
-  convenience. Manual by design: deriving this from declaration source would silently rebuild the index for
-  unrelated edits."
+  "Version of the index document format: the metadata and vectors table schemas plus the document
+  derivation contract (`doc_id`, `doc_type`, `doc_text`, deduplication, and key rules).
+
+  This participates in [[model-identity]]. Bumping it makes [[ensure-tables!]] rebuild the vectors table,
+  which the startup reconcile then repopulates and re-embeds.
+
+  Bump it whenever a schema or derivation change makes existing rows incompatible with newly derived
+  documents. Do not bump it for unrelated declaration edits or as a refresh mechanism. The version is
+  manual so source-only changes do not trigger unnecessary full rebuilds."
   ;; v1 — initial schema; v2 — immutable embedding-space identity.
   2)
 

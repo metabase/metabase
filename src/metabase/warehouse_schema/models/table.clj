@@ -711,26 +711,24 @@
   500)
 
 (defn- field-path
-  "The dotted path the prompt names a field by: a nested field's `nfc_path` ancestors plus its own name, a
-  plain column just its name.
-  Bare leaf names go ambiguous as soon as a table has nested fields, since a JSON column holding `user.id`
-  and `item.id` yields two fields both named `id`, and the path is also what has to be written to address
-  the column.
-  Mongo-style nesting (a `parent_id` with no `nfc_path`) still falls back to the bare leaf name and stays
-  ambiguous. Resolving it means walking ancestors, which needs a whole table's fields in memory at once and
-  so gives up the incremental cap in [[keep-first-names]]."
+  "Return the field name used in the generation prompt. Nested fields use their `nfc_path` ancestors plus
+  their leaf name; ordinary columns use the leaf name alone.
+
+  Mongo-style fields with a `parent_id` but no `nfc_path` currently fall back to the leaf name and may be
+  ambiguous. Resolving those paths would require ancestor lookup and is intentionally outside this bounded
+  hydration pass."
   [{field-name :name, :keys [nfc_path]}]
   (if (seq nfc_path)
     (str/join "." (conj (vec nfc_path) field-name))
     field-name))
 
 (defn- keep-first-names
-  "Reducing fn over one table's field names, accumulating into a sorted set capped at [[max-field-names]].
-  Dropping the largest as it goes means a wide table never materializes more than the cap, and the
-  survivors are the alphabetically-first names rather than whichever ones the database happened to return
-  — a set that shifted between runs would stamp a new `basis` every time and regenerate forever.
-  Repeated names (nested fields sharing a leaf name under different parents) collapse; a duplicate tells
-  the prompt nothing."
+  "Reducing function that retains at most [[max-field-names]] lexicographically smallest distinct field
+  paths for one table.
+
+  The bound keeps memory use stable, while deterministic selection prevents unordered database results
+  from producing a different `basis` on each run. Exact duplicate paths collapse. When [[field-path]] must
+  fall back to a bare leaf name, distinct Mongo-style fields with the same leaf may also collapse."
   [acc field-name]
   (let [acc (conj acc field-name)]
     (if (> (count acc) max-field-names)

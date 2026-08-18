@@ -497,7 +497,7 @@
    (prometheus/gauge :metabase-entity-retrieval/index-entities
                      {:description "Number of distinct entities in the library entity index, as of the last full reconcile."})
    (prometheus/gauge :metabase-entity-retrieval/index-degraded-entities
-                     {:description "Number of library entities indexed by name and description alone because their stored ai_context is unusable, as of the last full reconcile. Nonzero needs a person to repair the row: no reconcile can clear it, which is why it is not reported as index staleness."})
+                     {:description "Number of library entities indexed only by name and description because their stored ai_context is unusable, as of the last full reconcile. A nonzero value requires source-row repair; reconciliation alone cannot clear it. Reported separately from index staleness."})
    ;; Search-index health, one series per logical index. Implementations publish these through
    ;; metabase.search.index-health; labels identify stable logical indexes, never physical table names.
    (prometheus/gauge :metabase-search/index-coverage-ratio
