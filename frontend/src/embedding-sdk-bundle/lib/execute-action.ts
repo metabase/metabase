@@ -67,7 +67,9 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
     return input;
   }
 
-  if (isDataAppDev()) {
+  // Only a data app runs copies. In the dev preview they do not exist yet, and
+  // outside a data app they never do, so the authored action is the one to run.
+  if (isDataAppDev() || !isDataApp()) {
     return input.action.id;
   }
 
