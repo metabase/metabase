@@ -116,11 +116,19 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (match/replace stage
-    [#{:field :expression}
-     (opts :guard (= (:temporal-unit opts) temporal-unit))
-     (id-or-name :guard (= id-or-name target-column))]
-    (lib/with-temporal-bucket &match new-unit)))
+  ;; only rewrite clauses in :breakout and :order-by, clauses elsewhere
+  ;; (like a :join) should keep their original bucketing (#80098)
+  (let [update-clauses (fn [clauses]
+                         (match/replace clauses
+                           [#{:field :expression}
+                            (opts :guard (= (:temporal-unit opts) temporal-unit))
+                            (id-or-name :guard (= id-or-name target-column))]
+                           (lib/with-temporal-bucket &match new-unit)))]
+    (reduce (fn [stage k]
+              (cond-> stage
+                (seq (get stage k)) (update k update-clauses)))
+            stage
+            [:breakout :order-by])))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage
   [metadata-providerable  :- ::lib.schema.metadata/metadata-providerable
@@ -175,6 +183,7 @@
 
         (= (:type param) :temporal-unit)
         (let [stage' (update-breakout-unit query stage (assoc param :value param-value))]
+          (tap> stage')
           (recur stage' more-params))
 
         :else
@@ -182,3 +191,48 @@
                                 (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str (:id param))))
               stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))
+
+(comment
+
+  {:aggregation [[:count #:lib{:uuid "6d3c5948-9bc8-4d36-bdac-6d250bafba31"}]],
+   :lib/type :mbql.stage/mbql,
+   :source-table 2510,
+   :joins
+   [{:lib/type :mbql/join,
+     :alias "Products",
+     :strategy :left-join,
+     :conditions
+     [[:=
+       #:lib{:uuid "c480e372-0d04-4153-92ab-534fd6307562"}
+       [:field
+        {:base-type :type/DateTime,
+         :temporal-unit :week,
+         :lib/uuid "a9891bfc-9b5f-497a-84e5-63f83d931fee",
+         :effective-type :type/DateTime,
+         :lib/original-effective-type :type/DateTime}
+        18330]
+       [:field
+        {:base-type :type/DateTime,
+         :temporal-unit :day,
+         :join-alias "Products",
+         :lib/uuid "21435582-80a7-4b60-8c65-4dce24084764",
+         :effective-type :type/DateTime}
+        18352]]],
+     :stages [{:lib/type :mbql.stage/mbql, :source-table 2512}],
+     :lib/options {"lib/uuid" "621650ff-b4e2-488b-9b1a-87ecbcb0c607"}}],
+   :breakout
+   [[:field
+     {:base-type :type/DateTime,
+      :temporal-unit :week,
+      :lib/uuid "917557d9-a2e9-4063-8d73-ae0ed705b29e",
+      :effective-type :type/DateTime,
+      :lib/original-effective-type :type/DateTime}
+     18330]],
+   :parameters
+   [{:type :temporal-unit,
+     :value "week",
+     :id "80098aaa",
+     :target
+     [:dimension
+      [:field 18330 {:base-type :type/DateTime, :temporal-unit :day}]
+      {:stage-number 0}]}]})
