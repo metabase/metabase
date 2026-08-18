@@ -85,6 +85,15 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "shared", name: "metrics-ui", pattern }),
   ),
+  // Data-studio UI shared by the metrics and data-studio features. Only the
+  // components are carved out: they import querying/nav/metabot/upsells, which
+  // must not become edges of shared/common. The sibling analytics and
+  // collection utils stay in common (common files import them).
+  createElement({
+    type: "shared",
+    name: "data-studio-ui",
+    pattern: "frontend/src/metabase/common/data-studio/components/**",
+  }),
   createElement({
     type: "shared",
     name: "upsells",
