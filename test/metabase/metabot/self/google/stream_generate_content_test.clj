@@ -515,6 +515,56 @@
       (is (apply distinct? (map :id tools))
           "each generated toolCallId is unique"))))
 
+(deftest ^:parallel function-call-requires-stop-before-execution-test
+  (let [function-event {:responseId "r-tool"
+                        :candidates [{:content {:role "model"
+                                                :parts [{:functionCall {:name "mutate" :args {}}}]}}]}
+        run-events     (fn [events]
+                         (let [invoked? (atom false)
+                               tools    {"mutate" {:fn     (fn [_]
+                                                             (reset! invoked? true)
+                                                             {:output "ok"})
+                                                   :doc    "Run only after STOP"
+                                                   :schema [:=> [:cat :map] :any]}}
+                               parts    (into []
+                                              (comp (sgc/->aisdk-chunks-xf)
+                                                    (self.core/tool-executor-xf tools)
+                                                    (self.core/aisdk-xf))
+                                              events)]
+                           [parts @invoked?]))]
+    (testing "STOP releases and executes the buffered call"
+      (let [[parts invoked?] (run-events [(assoc-in function-event [:candidates 0 :finishReason] "STOP")])]
+        (is invoked?)
+        (is (some #(= :tool-input (:type %)) parts))))
+    (doseq [[label events]
+            [["clean EOF" [function-event]]
+             ["non-STOP finish"
+              [(assoc-in function-event [:candidates 0 :finishReason] "MAX_TOKENS")]]
+             ["error envelope"
+              [function-event {:error {:code 503 :message "failed"}}]]
+             ["interruption"
+              [function-event self.core/interrupted-stream-event]]]]
+      (testing (str label " discards the provisional call")
+        (let [[parts invoked?] (run-events events)]
+          (is (false? invoked?))
+          (is (not-any? #(= :tool-input (:type %)) parts)))))))
+
+(deftest ^:parallel failed-tool-response-keeps-later-partial-text-test
+  (testing "non-STOP finish drops the tool but closes and returns later buffered text"
+    (let [parts (into []
+                      (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf))
+                      [{:responseId "r-tool-text"
+                        :candidates [{:content {:role  "model"
+                                                :parts [{:functionCall {:name "mutate" :args {}}}
+                                                        {:text "safe partial text"}]}
+                                      :finishReason "MAX_TOKENS"}]}])]
+      ;; MAX_TOKENS reports itself as a "length" finish reason on the usage chunk rather than an :error part,
+      ;; so the truncation is visible without a second failure message.
+      (is (= [:start :text :usage] (mapv :type parts)))
+      (is (= "safe partial text" (:text (second parts))))
+      (is (= "length" (:finish-reason (last parts))))
+      (is (not-any? #(= :tool-input (:type %)) parts)))))
+
 (deftest ^:parallel text-then-tool-call-closes-text-test
   (testing "a functionCall closes the open text block before the tool chunks"
     (let [events [{:responseId "r4"
@@ -901,3 +951,27 @@
                         (if @cancelled? (reduced acc) acc)))]
       (transduce (sgc/->aisdk-chunks-xf) rf [event event event])
       (is (= [:start :text-start "a" :text-end] @seen)))))
+
+(deftest ^:parallel provisional-tool-failure-preserves-following-reasoning-test
+  (let [events [{:responseId "r"
+                 :candidates [{:content {:parts [{:functionCall {:name "search", :args {}}
+                                                  :thoughtSignature "signed"}
+                                                 {:thought true, :text "thinking"}
+                                                 {:text "partial"}]}
+                               :finishReason "MAX_TOKENS"}]}]
+        chunks (into [] (sgc/->aisdk-chunks-xf) events)]
+    (is (not-any? #(#{:tool-input-start :tool-input-delta :tool-input-available} (:type %)) chunks))
+    (is (= [:start :reasoning-start :reasoning-delta :reasoning-end :text-start :text-delta :text-end :usage]
+           (mapv :type chunks)))
+    (is (= "thinking" (:delta (nth chunks 2))))
+    (is (= "partial" (:delta (nth chunks 5))))))
+
+(deftest ^:parallel provisional-tool-interruption-preserves-reasoning-and-usage-test
+  (let [events [{:responseId "r", :usageMetadata {:promptTokenCount 7}
+                 :candidates [{:content {:parts [{:functionCall {:name "search", :args {}}}
+                                                 {:thought true, :text "thinking"}]}}]}
+                self.core/interrupted-stream-event]
+        chunks (into [] (sgc/->aisdk-chunks-xf) events)]
+    (is (not-any? #(#{:tool-input-start :tool-input-delta :tool-input-available} (:type %)) chunks))
+    (is (= "thinking" (:delta (first (filter #(= :reasoning-delta (:type %)) chunks)))))
+    (is (= 7 (get-in (first (filter #(= :usage (:type %)) chunks)) [:usage :promptTokens])))))

@@ -120,7 +120,8 @@
 
   Any write here is an approval: the row's `data_source` becomes `human`, and generated content is never
   overwritten again without an explicit regenerate.
-  `updated_at` records the human edit; `generated_at` stays unchanged."
+  `updated_at` records the human edit; `generated_at` stays unchanged. A pending regenerate request is
+  cleared because it predates this newly approved content."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
    ;; Accept the object as-is (a map-of is open) so unknown keys reach the handler: the api layer strips keys a

@@ -364,19 +364,28 @@
 ;;; ------------------------------------------------- Streaming --------------------------------------------------
 
 (defn io-guarded
-  "Wrap a stream `reducible` so an `IOException` raised while *consuming* it surfaces as `(ex-fn e)` rather
-  than raw. An adapter's own `try` covers only establishing the request; the body is read long after that
-  returns.
-
-  Goes inside `core/reducible-with-api-errors`, never outside: an adapter's IO translation tags `:api-error
-  true`, which `core/rethrow-api-error!` rethrows unchanged, so this wins for IO."
+  "Translate source IO failures through `ex-fn`, preserving consumer failures unchanged."
   [reducible ex-fn]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (try
-        (.reduce ^clojure.lang.IReduceInit reducible rf init)
-        (catch IOException e
-          (throw (ex-fn e)))))))
+      (let [consumer-error (volatile! nil)
+            guarded-rf (fn
+                         ([result]
+                          (try (rf result)
+                               (catch Throwable error
+                                 (vreset! consumer-error error)
+                                 (throw error))))
+                         ([result input]
+                          (try (rf result input)
+                               (catch Throwable error
+                                 (vreset! consumer-error error)
+                                 (throw error)))))]
+        (try
+          (.reduce ^clojure.lang.IReduceInit reducible guarded-rf init)
+          (catch IOException error
+            (if (identical? error @consumer-error)
+              (throw error)
+              (throw (ex-fn error)))))))))
 
 (mu/defn stream!
   "Open a provider's streaming request and return a reducible over its raw SSE events.

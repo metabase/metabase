@@ -51,7 +51,7 @@
   (app-db/update-or-insert! :model/OsiAiContext
                             {:entity_type     entity-type
                              :entity_local_id entity-local-id}
-                            (constantly {:ai_context ai-context, :data_source :human})))
+                            (constantly {:ai_context ai-context, :data_source :human, :rewrite_requested_at nil})))
 
 (mu/defn update-if-unchanged!
   "Update an entity if its last update timestamp still matches."

@@ -292,7 +292,7 @@
   chunks contiguous and in arrival order. That tolerates servers that send a call's
   `id` late, repeat it on every chunk, put several calls in one delta, or interleave
   the deltas of parallel calls; the cost is that no tool call is emitted before the
-  response's `finish_reason` (or the end of the stream).
+  response's successful `finish_reason`. An interrupted stream or EOF without a finish reason discards them.
 
   Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
   \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
@@ -336,9 +336,13 @@
                             (vreset! tool-calls no-calls)))]
        (fn
          ([result]
-          (rf (unreduced (finish! result))))
+          (vreset! tool-calls no-calls)
+          (rf (unreduced (close! result))))
 
-         ([result {:keys [id model choices usage error] :as _chunk}]
+         ([result {:keys [id model choices usage error] :as chunk}]
+          (if (= chunk core/interrupted-stream-event)
+            (do (vreset! tool-calls no-calls)
+                result)
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
@@ -415,7 +419,11 @@
               ;; Emitting a tool call runs it, so drop the calls an error cuts off
               error-text                                       (u/prog1
                                                                  (vreset! tool-calls no-calls))
-              ;; Finish reason — close whatever is open, then emit the assembled tool calls
+              (and (some? finish-reason)
+                   (not (contains? #{"stop" "tool-calls"}
+                                   (core/stop-reason->finish-reason stop-reasons finish-reason))))
+              (u/prog1 (vreset! tool-calls no-calls))
+              ;; Finish reason — close whatever is open, then emit only successful tool calls
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
                                                                    (finish!))
@@ -429,7 +437,7 @@
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
               error-text                                       (-> (close!)
-                                                                   (rf (error-chunk error error-text)))))))))))
+                                                                   (rf (error-chunk error error-text))))))))))))
 
 ;;; Request body
 

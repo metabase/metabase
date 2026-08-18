@@ -349,4 +349,4 @@
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply openrouter-raw args)]
-    (eduction (openrouter->aisdk-chunks-xf) (chat-completions/usage-once raw))))
+    (core/completion-safe-eduction (openrouter->aisdk-chunks-xf) (chat-completions/usage-once raw))))
