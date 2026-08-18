@@ -46,6 +46,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
+      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "serves the managed connection through the wire family the model names"
@@ -68,6 +70,7 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
+    (is (fn? (#'self/resolve-adapter "deepseek")))
     (is (fn? (#'self/resolve-adapter "google"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"

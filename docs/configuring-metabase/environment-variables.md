@@ -1406,6 +1406,26 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
 
+### `MB_LLM_DEEPSEEK_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.deepseek.com`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-base-url`
+
+The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_DEEPSEEK_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-key`
+
+The DeepSeek API Key.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_GOOGLE_API_BASE_URL`
 
 - Type: string
