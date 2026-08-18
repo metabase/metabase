@@ -20,12 +20,13 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
     steps:
       - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
         with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
+          # Everything files-changed needs — the action and the filter config —
+          # lives under .github, and paths-filter diffs refs, not the worktree.
+          sparse-checkout: .github
+      - name: Test which files changed
+        id: changes
+        uses: ./.github/actions/files-changed
 
   fe-chromatic:
     needs: files-changed

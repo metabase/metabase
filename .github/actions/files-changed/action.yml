@@ -1,0 +1,452 @@
+name: Files changed
+description: >
+  Work out which parts of the repo a commit touches, using dorny/paths-filter
+  against .github/file-paths.yaml.
+
+  Checks the repository out when it needs to, then memoises the answer in the
+  Actions cache under a key derived from the commit under test and the filter
+  configuration. A commit that has already been filtered — by an earlier
+  workflow in the same push, or by a re-run — short-circuits to the cached
+  result and skips both the checkout and the diff.
+
+inputs:
+  filters:
+    description: "Path to the paths-filter configuration, relative to the repo root."
+    required: false
+    default: .github/file-paths.yaml
+  list-files:
+    description: >
+      Format for the `<filter>_files` outputs: none, csv, shell, json or escape.
+      `none` (the default) skips them, which keeps the outputs small.
+    required: false
+    default: none
+  base:
+    description: >
+      Git ref to diff against. Leave empty to let paths-filter decide: the PR
+      base for pull requests, the pushed-over commit for pushes.
+    required: false
+    default: ""
+  token:
+    description: "Token used to read the changed file list from the API. Defaults to github.token."
+    required: false
+    default: ""
+  checkout:
+    description: >
+      `auto` (the default) checks the repository out only when the filter file
+      isn't already in the workspace, so a job that has already checked out — or
+      that sparse-checked-out `.github` just to reach this action — doesn't pay
+      for a second clone. `true` always checks out, `false` never does.
+    required: false
+    default: auto
+  fetch-depth:
+    description: "fetch-depth for the checkout this action performs, when it performs one."
+    required: false
+    default: "1"
+  cache:
+    description: "Set to false to always recompute, reading from and writing to no cache."
+    required: false
+    default: "true"
+
+outputs:
+  all_changed:
+    description: "'true' when the commit touches a file matched by the `all_changed` filter."
+    value: ${{ steps.filter.outputs.all_changed || steps.hydrate.outputs.all_changed }}
+  all_changed_files:
+    description: "Files matched by the `all_changed` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.all_changed_files || steps.hydrate.outputs.all_changed_files }}
+  default:
+    description: "'true' when the commit touches a file matched by the `default` filter."
+    value: ${{ steps.filter.outputs.default || steps.hydrate.outputs.default }}
+  default_files:
+    description: "Files matched by the `default` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.default_files || steps.hydrate.outputs.default_files }}
+  actionlint:
+    description: "'true' when the commit touches a file matched by the `actionlint` filter."
+    value: ${{ steps.filter.outputs.actionlint || steps.hydrate.outputs.actionlint }}
+  actionlint_files:
+    description: "Files matched by the `actionlint` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.actionlint_files || steps.hydrate.outputs.actionlint_files }}
+  shared_sources:
+    description: "'true' when the commit touches a file matched by the `shared_sources` filter."
+    value: ${{ steps.filter.outputs.shared_sources || steps.hydrate.outputs.shared_sources }}
+  shared_sources_files:
+    description: "Files matched by the `shared_sources` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.shared_sources_files || steps.hydrate.outputs.shared_sources_files }}
+  shared_specs:
+    description: "'true' when the commit touches a file matched by the `shared_specs` filter."
+    value: ${{ steps.filter.outputs.shared_specs || steps.hydrate.outputs.shared_specs }}
+  shared_specs_files:
+    description: "Files matched by the `shared_specs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.shared_specs_files || steps.hydrate.outputs.shared_specs_files }}
+  shared_ci:
+    description: "'true' when the commit touches a file matched by the `shared_ci` filter."
+    value: ${{ steps.filter.outputs.shared_ci || steps.hydrate.outputs.shared_ci }}
+  shared_ci_files:
+    description: "Files matched by the `shared_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.shared_ci_files || steps.hydrate.outputs.shared_ci_files }}
+  shared_e2e:
+    description: "'true' when the commit touches a file matched by the `shared_e2e` filter."
+    value: ${{ steps.filter.outputs.shared_e2e || steps.hydrate.outputs.shared_e2e }}
+  shared_e2e_files:
+    description: "Files matched by the `shared_e2e` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.shared_e2e_files || steps.hydrate.outputs.shared_e2e_files }}
+  frontend_ci:
+    description: "'true' when the commit touches a file matched by the `frontend_ci` filter."
+    value: ${{ steps.filter.outputs.frontend_ci || steps.hydrate.outputs.frontend_ci }}
+  frontend_ci_files:
+    description: "Files matched by the `frontend_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_ci_files || steps.hydrate.outputs.frontend_ci_files }}
+  frontend_configs:
+    description: "'true' when the commit touches a file matched by the `frontend_configs` filter."
+    value: ${{ steps.filter.outputs.frontend_configs || steps.hydrate.outputs.frontend_configs }}
+  frontend_configs_files:
+    description: "Files matched by the `frontend_configs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_configs_files || steps.hydrate.outputs.frontend_configs_files }}
+  frontend_sources:
+    description: "'true' when the commit touches a file matched by the `frontend_sources` filter."
+    value: ${{ steps.filter.outputs.frontend_sources || steps.hydrate.outputs.frontend_sources }}
+  frontend_sources_files:
+    description: "Files matched by the `frontend_sources` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_sources_files || steps.hydrate.outputs.frontend_sources_files }}
+  frontend_embedding_sdk_package_sources:
+    description: "'true' when the commit touches a file matched by the `frontend_embedding_sdk_package_sources` filter."
+    value: ${{ steps.filter.outputs.frontend_embedding_sdk_package_sources || steps.hydrate.outputs.frontend_embedding_sdk_package_sources }}
+  frontend_embedding_sdk_package_sources_files:
+    description: "Files matched by the `frontend_embedding_sdk_package_sources` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_embedding_sdk_package_sources_files || steps.hydrate.outputs.frontend_embedding_sdk_package_sources_files }}
+  frontend_specs:
+    description: "'true' when the commit touches a file matched by the `frontend_specs` filter."
+    value: ${{ steps.filter.outputs.frontend_specs || steps.hydrate.outputs.frontend_specs }}
+  frontend_specs_files:
+    description: "Files matched by the `frontend_specs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_specs_files || steps.hydrate.outputs.frontend_specs_files }}
+  release_source:
+    description: "'true' when the commit touches a file matched by the `release_source` filter."
+    value: ${{ steps.filter.outputs.release_source || steps.hydrate.outputs.release_source }}
+  release_source_files:
+    description: "Files matched by the `release_source` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.release_source_files || steps.hydrate.outputs.release_source_files }}
+  frontend_all:
+    description: "'true' when the commit touches a file matched by the `frontend_all` filter."
+    value: ${{ steps.filter.outputs.frontend_all || steps.hydrate.outputs.frontend_all }}
+  frontend_all_files:
+    description: "Files matched by the `frontend_all` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_all_files || steps.hydrate.outputs.frontend_all_files }}
+  frontend_loki_ci:
+    description: "'true' when the commit touches a file matched by the `frontend_loki_ci` filter."
+    value: ${{ steps.filter.outputs.frontend_loki_ci || steps.hydrate.outputs.frontend_loki_ci }}
+  frontend_loki_ci_files:
+    description: "Files matched by the `frontend_loki_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_loki_ci_files || steps.hydrate.outputs.frontend_loki_ci_files }}
+  frontend_unit_infra:
+    description: "'true' when the commit touches a file matched by the `frontend_unit_infra` filter."
+    value: ${{ steps.filter.outputs.frontend_unit_infra || steps.hydrate.outputs.frontend_unit_infra }}
+  frontend_unit_infra_files:
+    description: "Files matched by the `frontend_unit_infra` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_unit_infra_files || steps.hydrate.outputs.frontend_unit_infra_files }}
+  frontend_loki_infra:
+    description: "'true' when the commit touches a file matched by the `frontend_loki_infra` filter."
+    value: ${{ steps.filter.outputs.frontend_loki_infra || steps.hydrate.outputs.frontend_loki_infra }}
+  frontend_loki_infra_files:
+    description: "Files matched by the `frontend_loki_infra` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.frontend_loki_infra_files || steps.hydrate.outputs.frontend_loki_infra_files }}
+  e2e_infra:
+    description: "'true' when the commit touches a file matched by the `e2e_infra` filter."
+    value: ${{ steps.filter.outputs.e2e_infra || steps.hydrate.outputs.e2e_infra }}
+  e2e_infra_files:
+    description: "Files matched by the `e2e_infra` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.e2e_infra_files || steps.hydrate.outputs.e2e_infra_files }}
+  backend_ci:
+    description: "'true' when the commit touches a file matched by the `backend_ci` filter."
+    value: ${{ steps.filter.outputs.backend_ci || steps.hydrate.outputs.backend_ci }}
+  backend_ci_files:
+    description: "Files matched by the `backend_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.backend_ci_files || steps.hydrate.outputs.backend_ci_files }}
+  backend_sources:
+    description: "'true' when the commit touches a file matched by the `backend_sources` filter."
+    value: ${{ steps.filter.outputs.backend_sources || steps.hydrate.outputs.backend_sources }}
+  backend_sources_files:
+    description: "Files matched by the `backend_sources` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.backend_sources_files || steps.hydrate.outputs.backend_sources_files }}
+  backend_specs:
+    description: "'true' when the commit touches a file matched by the `backend_specs` filter."
+    value: ${{ steps.filter.outputs.backend_specs || steps.hydrate.outputs.backend_specs }}
+  backend_specs_files:
+    description: "Files matched by the `backend_specs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.backend_specs_files || steps.hydrate.outputs.backend_specs_files }}
+  backend_all:
+    description: "'true' when the commit touches a file matched by the `backend_all` filter."
+    value: ${{ steps.filter.outputs.backend_all || steps.hydrate.outputs.backend_all }}
+  backend_all_files:
+    description: "Files matched by the `backend_all` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.backend_all_files || steps.hydrate.outputs.backend_all_files }}
+  sources:
+    description: "'true' when the commit touches a file matched by the `sources` filter."
+    value: ${{ steps.filter.outputs.sources || steps.hydrate.outputs.sources }}
+  sources_files:
+    description: "Files matched by the `sources` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.sources_files || steps.hydrate.outputs.sources_files }}
+  custom_viz_all:
+    description: "'true' when the commit touches a file matched by the `custom_viz_all` filter."
+    value: ${{ steps.filter.outputs.custom_viz_all || steps.hydrate.outputs.custom_viz_all }}
+  custom_viz_all_files:
+    description: "Files matched by the `custom_viz_all` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.custom_viz_all_files || steps.hydrate.outputs.custom_viz_all_files }}
+  e2e_ci:
+    description: "'true' when the commit touches a file matched by the `e2e_ci` filter."
+    value: ${{ steps.filter.outputs.e2e_ci || steps.hydrate.outputs.e2e_ci }}
+  e2e_ci_files:
+    description: "Files matched by the `e2e_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.e2e_ci_files || steps.hydrate.outputs.e2e_ci_files }}
+  e2e_specs:
+    description: "'true' when the commit touches a file matched by the `e2e_specs` filter."
+    value: ${{ steps.filter.outputs.e2e_specs || steps.hydrate.outputs.e2e_specs }}
+  e2e_specs_files:
+    description: "Files matched by the `e2e_specs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.e2e_specs_files || steps.hydrate.outputs.e2e_specs_files }}
+  embedding_sdk_ci:
+    description: "'true' when the commit touches a file matched by the `embedding_sdk_ci` filter."
+    value: ${{ steps.filter.outputs.embedding_sdk_ci || steps.hydrate.outputs.embedding_sdk_ci }}
+  embedding_sdk_ci_files:
+    description: "Files matched by the `embedding_sdk_ci` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.embedding_sdk_ci_files || steps.hydrate.outputs.embedding_sdk_ci_files }}
+  embedding_sdk_components:
+    description: "'true' when the commit touches a file matched by the `embedding_sdk_components` filter."
+    value: ${{ steps.filter.outputs.embedding_sdk_components || steps.hydrate.outputs.embedding_sdk_components }}
+  embedding_sdk_components_files:
+    description: "Files matched by the `embedding_sdk_components` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.embedding_sdk_components_files || steps.hydrate.outputs.embedding_sdk_components_files }}
+  embedding_sdk_host_sample_apps:
+    description: "'true' when the commit touches a file matched by the `embedding_sdk_host_sample_apps` filter."
+    value: ${{ steps.filter.outputs.embedding_sdk_host_sample_apps || steps.hydrate.outputs.embedding_sdk_host_sample_apps }}
+  embedding_sdk_host_sample_apps_files:
+    description: "Files matched by the `embedding_sdk_host_sample_apps` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.embedding_sdk_host_sample_apps_files || steps.hydrate.outputs.embedding_sdk_host_sample_apps_files }}
+  snowplow:
+    description: "'true' when the commit touches a file matched by the `snowplow` filter."
+    value: ${{ steps.filter.outputs.snowplow || steps.hydrate.outputs.snowplow }}
+  snowplow_files:
+    description: "Files matched by the `snowplow` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.snowplow_files || steps.hydrate.outputs.snowplow_files }}
+  e2e_all:
+    description: "'true' when the commit touches a file matched by the `e2e_all` filter."
+    value: ${{ steps.filter.outputs.e2e_all || steps.hydrate.outputs.e2e_all }}
+  e2e_all_files:
+    description: "Files matched by the `e2e_all` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.e2e_all_files || steps.hydrate.outputs.e2e_all_files }}
+  documentation:
+    description: "'true' when the commit touches a file matched by the `documentation` filter."
+    value: ${{ steps.filter.outputs.documentation || steps.hydrate.outputs.documentation }}
+  documentation_files:
+    description: "Files matched by the `documentation` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.documentation_files || steps.hydrate.outputs.documentation_files }}
+  docs:
+    description: "'true' when the commit touches a file matched by the `docs` filter."
+    value: ${{ steps.filter.outputs.docs || steps.hydrate.outputs.docs }}
+  docs_files:
+    description: "Files matched by the `docs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.docs_files || steps.hydrate.outputs.docs_files }}
+  embedding_documentation:
+    description: "'true' when the commit touches a file matched by the `embedding_documentation` filter."
+    value: ${{ steps.filter.outputs.embedding_documentation || steps.hydrate.outputs.embedding_documentation }}
+  embedding_documentation_files:
+    description: "Files matched by the `embedding_documentation` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.embedding_documentation_files || steps.hydrate.outputs.embedding_documentation_files }}
+  yaml:
+    description: "'true' when the commit touches a file matched by the `yaml` filter."
+    value: ${{ steps.filter.outputs.yaml || steps.hydrate.outputs.yaml }}
+  yaml_files:
+    description: "Files matched by the `yaml` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.yaml_files || steps.hydrate.outputs.yaml_files }}
+  codeql:
+    description: "'true' when the commit touches a file matched by the `codeql` filter."
+    value: ${{ steps.filter.outputs.codeql || steps.hydrate.outputs.codeql }}
+  codeql_files:
+    description: "Files matched by the `codeql` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.codeql_files || steps.hydrate.outputs.codeql_files }}
+  i18n:
+    description: "'true' when the commit touches a file matched by the `i18n` filter."
+    value: ${{ steps.filter.outputs.i18n || steps.hydrate.outputs.i18n }}
+  i18n_files:
+    description: "Files matched by the `i18n` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.i18n_files || steps.hydrate.outputs.i18n_files }}
+  cljs:
+    description: "'true' when the commit touches a file matched by the `cljs` filter."
+    value: ${{ steps.filter.outputs.cljs || steps.hydrate.outputs.cljs }}
+  cljs_files:
+    description: "Files matched by the `cljs` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.cljs_files || steps.hydrate.outputs.cljs_files }}
+  serialization_baseline:
+    description: "'true' when the commit touches a file matched by the `serialization_baseline` filter."
+    value: ${{ steps.filter.outputs.serialization_baseline || steps.hydrate.outputs.serialization_baseline }}
+  serialization_baseline_files:
+    description: "Files matched by the `serialization_baseline` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.serialization_baseline_files || steps.hydrate.outputs.serialization_baseline_files }}
+  openapi:
+    description: "'true' when the commit touches a file matched by the `openapi` filter."
+    value: ${{ steps.filter.outputs.openapi || steps.hydrate.outputs.openapi }}
+  openapi_files:
+    description: "Files matched by the `openapi` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.openapi_files || steps.hydrate.outputs.openapi_files }}
+  static_viz:
+    description: "'true' when the commit touches a file matched by the `static_viz` filter of .github/static-viz-sources.yaml."
+    value: ${{ steps.filter.outputs.static_viz || steps.hydrate.outputs.static_viz }}
+  static_viz_files:
+    description: "Files matched by the `static_viz` filter, formatted per `list-files`. Empty when `list-files` is `none`."
+    value: ${{ steps.filter.outputs.static_viz_files || steps.hydrate.outputs.static_viz_files }}
+  changes:
+    description: "JSON array of the filter names that matched, as emitted by paths-filter."
+    value: ${{ steps.filter.outputs.changes || steps.hydrate.outputs.changes }}
+  results:
+    description: >
+      Every paths-filter output as a JSON object. An escape hatch for filters
+      added to file-paths.yaml but not yet declared as outputs above — read them
+      with fromJSON(steps.<id>.outputs.results).<filter>.
+    value: ${{ steps.hydrate.outputs.results || toJSON(steps.filter.outputs) }}
+  cache-hit:
+    description: "'true' when the results were reused from a previous run on this commit."
+    value: ${{ steps.hydrate.outputs.cached || 'false' }}
+
+runs:
+  using: composite
+  steps:
+    # The cache key has to pin everything the answer depends on: which commit we
+    # are filtering, what we are filtering it against, and the filter config
+    # itself. The config is covered by the commit — for a pull_request, GITHUB_SHA
+    # is the merge commit, so it moves whenever either the head or the base does.
+    - name: Work out the cache key
+      id: key
+      shell: bash
+      env:
+        FILTERS: ${{ inputs.filters }}
+        LIST_FILES: ${{ inputs.list-files }}
+        BASE: ${{ inputs.base }}
+        CHECKOUT: ${{ inputs.checkout }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        PUSH_BEFORE_SHA: ${{ github.event.before }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: |
+        set -euo pipefail
+
+        # Cache keys may not contain commas, and we want them readable, so fold
+        # anything that isn't key-safe into a dash.
+        slug() { printf '%s' "$1" | tr -c '[:alnum:]._-' '-'; }
+
+        base_sha="${PR_BASE_SHA:-}"
+        [ -n "$base_sha" ] || base_sha="${MERGE_GROUP_BASE_SHA:-}"
+        [ -n "$base_sha" ] || base_sha="${PUSH_BEFORE_SHA:-}"
+        [ -n "$base_sha" ] || base_sha="none"
+
+        key="files-changed-v1"
+        key="$key-$(slug "$GITHUB_EVENT_NAME")"
+        key="$key-$(slug "$FILTERS")"
+        key="$key-$(slug "$LIST_FILES")"
+        key="$key-$(slug "${BASE:-auto}")"
+        key="$key-$base_sha-${HEAD_SHA}-${GITHUB_SHA}"
+
+        echo "key=$key" >> "$GITHUB_OUTPUT"
+        echo "file=$RUNNER_TEMP/files-changed/$key.txt" >> "$GITHUB_OUTPUT"
+
+        # `auto` means: only clone if the filter config isn't already here. A job
+        # that checked the repo out to reach this action in the first place has
+        # nothing to gain from doing it twice.
+        case "$CHECKOUT" in
+          true|false) needed="$CHECKOUT" ;;
+          auto) if [ -f "$FILTERS" ]; then needed=false; else needed=true; fi ;;
+          *) echo "::error::checkout must be one of auto, true, false (got '$CHECKOUT')"; exit 1 ;;
+        esac
+        echo "checkout=$needed" >> "$GITHUB_OUTPUT"
+
+    - name: Look for results from an earlier run on this commit
+      id: restore
+      if: inputs.cache == 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.key.outputs.file }}
+        key: ${{ steps.key.outputs.key }}
+
+    # The cached file is already in $GITHUB_OUTPUT's own format, so replaying it
+    # needs no parser — which means the fast path can't fail on a missing tool.
+    # `cached=true` is written last, so its presence on the final line proves the
+    # file was written completely.
+    - name: Replay the cached results
+      id: hydrate
+      if: steps.restore.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        FILE: ${{ steps.key.outputs.file }}
+      run: |
+        set -euo pipefail
+        if [ ! -s "$FILE" ] || [ "$(tail -n 1 "$FILE")" != "cached=true" ]; then
+          echo "Cache entry is truncated or malformed; filtering from scratch."
+          exit 0
+        fi
+        cat "$FILE" >> "$GITHUB_OUTPUT"
+        echo "Reused paths-filter results cached for this commit."
+
+    - name: Checkout repository
+      if: steps.hydrate.outputs.cached != 'true' && steps.key.outputs.checkout == 'true'
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+
+    - name: Test which files changed
+      id: filter
+      if: steps.hydrate.outputs.cached != 'true'
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ inputs.token || github.token }}
+        filters: ${{ inputs.filters }}
+        list-files: ${{ inputs.list-files }}
+        base: ${{ inputs.base }}
+
+    - name: Cache the results for the rest of this commit's workflows
+      if: steps.hydrate.outputs.cached != 'true' && inputs.cache == 'true'
+      shell: bash
+      env:
+        FILE: ${{ steps.key.outputs.file }}
+        OUTPUTS: ${{ toJSON(steps.filter.outputs) }}
+      run: |
+        set -euo pipefail
+
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "::warning::jq is not on this runner, so the files-changed results can't be cached."
+          exit 0
+        fi
+
+        # Filters live in file-paths.yaml but have to be declared as outputs here
+        # to be readable by name, so a new filter is easy to add and easy to
+        # forget — and a forgotten one reads as an empty string, silently
+        # skipping whatever job depends on it. Say so loudly.
+        declared=$(awk '/^outputs:/ {inside=1; next} /^[a-z]/ {inside=0} inside && /^  [A-Za-z_]/ {gsub(/[ :]/, ""); print}' "$GITHUB_ACTION_PATH/action.yml")
+        undeclared=""
+        if [ -n "$declared" ]; then
+          undeclared=$(printf '%s' "$OUTPUTS" | jq -r 'keys[]' | grep -vxF "$declared" || true)
+        fi
+        if [ -n "$undeclared" ]; then
+          echo "::error::These paths-filter outputs are missing from .github/actions/files-changed/action.yml, so callers can't read them by name (use the 'results' output until they're added): $(echo "$undeclared" | tr '\n' ' ')"
+        fi
+
+        mkdir -p "$(dirname "$FILE")"
+
+        # A random delimiter so a file list can never terminate its own heredoc.
+        delim="ghadelim-$RANDOM$RANDOM$RANDOM-$$"
+        if ! printf '%s' "$OUTPUTS" | jq -r --arg d "$delim" '
+              to_entries[] | "\(.key)<<\($d)\n\(.value | tostring)\n\($d)"' > "$FILE"; then
+          echo "::warning::Could not serialise the paths-filter results; skipping the cache."
+          rm -f "$FILE"
+          exit 0
+        fi
+        printf 'results<<%s\n%s\n%s\n' "$delim" "$(printf '%s' "$OUTPUTS" | jq -c .)" "$delim" >> "$FILE"
+        printf 'cached=true\n' >> "$FILE"
+
+    # Losing this race against a sibling workflow on the same commit is fine:
+    # whoever got there first cached the same answer.
+    - name: Save the results
+      if: steps.hydrate.outputs.cached != 'true' && inputs.cache == 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ steps.key.outputs.file }}
+        key: ${{ steps.key.outputs.key }}

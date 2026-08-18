@@ -73,13 +73,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
+        uses: ./.github/actions/files-changed
         with:
-          token: ${{ github.token }}
           # comma separated list of files
           list-files: csv
-          filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
         if: ${{ github.event_name == 'pull_request' }}
@@ -174,10 +172,9 @@ jobs:
         env:
           MB_EDITION: ee
       - name: Check for static viz changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
+        uses: ./.github/actions/files-changed
         with:
-          token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
 
   backend-tests:
