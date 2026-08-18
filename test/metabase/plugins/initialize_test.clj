@@ -26,6 +26,7 @@
                                     init-steps/do-init-steps!                       #(swap! calls conj [:init %])
                                     lazy-loaded-driver/register-lazy-loaded-driver! #(swap! calls conj [:driver %])]
           (is (= :ok (initialize/register-plugin-with-info! plugin)))
+          (is (true? (plugins/registered? plugin-name)))
           (is (empty? @calls) "registration does not load plugin code")
           (is (= :ok (plugins/load-plugin! plugin-name)))
           (is (= :ok (plugins/load-plugin! plugin-name)) "loading is idempotent"))
@@ -207,6 +208,7 @@
 
 (deftest load-plugin-requires-registered-plugin-test
   (let [plugin-name (str "test missing plugin " (random-uuid))]
+    (is (false? (plugins/registered? plugin-name)))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"is not registered"
                           (plugins/load-plugin! plugin-name)))))
