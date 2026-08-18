@@ -4,38 +4,36 @@ import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
 
 export type StaticGoalValueInputProps = {
+  "aria-label"?: string;
   id: string;
-  value: GoalValue | null;
-  placeholder?: string;
-  ariaLabel?: string;
-  onCommit: (value: number | null) => void;
-  rightSection?: ReactNode;
   inputRef?: Ref<HTMLInputElement>;
+  placeholder?: string;
+  rightSection?: ReactNode;
+  value: GoalValue | null;
+  onCommit: (value: number | null) => void;
 };
 
 export function StaticGoalValueInput({
+  "aria-label": ariaLabel,
   id,
-  value,
-  placeholder,
-  ariaLabel,
-  onCommit,
-  rightSection,
   inputRef,
+  placeholder,
+  rightSection,
+  value,
+  onCommit,
 }: StaticGoalValueInputProps) {
-  // A reference we can't render here (e.g. its column disappeared from the
-  // results) still shows an empty input; committing on blur would delete it.
   const numericValue = typeof value === "number" ? value : null;
 
   return (
     <NumberInput
+      aria-label={ariaLabel}
       id={id}
       ref={inputRef}
-      aria-label={ariaLabel}
       placeholder={placeholder}
-      w="100%"
-      value={numericValue ?? ""}
       rightSection={rightSection}
       rightSectionPointerEvents="all"
+      value={numericValue ?? ""}
+      w="100%"
       onBlur={(event) => {
         const rawValue = event.target.value;
         const newValue = rawValue === "" ? null : parseFloat(rawValue);

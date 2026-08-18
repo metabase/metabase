@@ -51,11 +51,11 @@ const setup = (
   const onChange = jest.fn();
   renderWithProviders(
     <GoalValueInput
+      aria-label="Min"
+      data={data}
       id="goal-value"
-      ariaLabel="Min"
       value={0}
       onChange={onChange}
-      data={data}
       {...props}
     />,
   );
@@ -226,11 +226,11 @@ describe("GoalValueInput", () => {
       const [value, setValue] = useState<GoalValue | null>("sum");
       return (
         <GoalValueInput
+          aria-label="Min"
+          data={DATA}
           id="goal-value"
-          ariaLabel="Min"
           value={value}
           onChange={setValue}
-          data={DATA}
         />
       );
     };

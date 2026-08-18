@@ -32,7 +32,7 @@ export function SegmentBoundInput({
     <Box flex={1} miw={0}>
       {data == null ? (
         <StaticGoalValueInput
-          ariaLabel={ariaLabel}
+          aria-label={ariaLabel}
           id={id}
           placeholder={placeholder}
           value={value}
@@ -40,7 +40,7 @@ export function SegmentBoundInput({
         />
       ) : (
         <GoalValueInput
-          ariaLabel={ariaLabel}
+          aria-label={ariaLabel}
           data={data}
           id={id}
           placeholder={placeholder}

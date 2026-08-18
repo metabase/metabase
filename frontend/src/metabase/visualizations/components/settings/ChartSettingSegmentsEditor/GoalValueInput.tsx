@@ -61,6 +61,7 @@ const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "card",
   "dataset",
 ];
+
 const SELECTABLE_BROWSE_MODELS: Array<OmniPickerItem["model"]> = [
   "metric",
   "measure",
@@ -76,24 +77,27 @@ type PickedEntity = {
   name: string;
 };
 
-type ColumnOption = { name: string; label: string };
+type ColumnOption = {
+  name: string;
+  label: string;
+};
 
 export type GoalValueInputProps = {
+  "aria-label"?: string;
+  data: DatasetData;
   id: string;
+  placeholder?: string;
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
-  data: DatasetData;
-  placeholder?: string;
-  ariaLabel?: string;
 };
 
 export const GoalValueInput = ({
+  "aria-label": ariaLabel,
+  data,
   id,
+  placeholder,
   value,
   onChange,
-  data,
-  placeholder,
-  ariaLabel,
 }: GoalValueInputProps) => {
   const [isMenuOpen, menu] = useDisclosure(false);
   const [menuLevel, setMenuLevel] = useState<MenuLevel>("root");
@@ -350,11 +354,11 @@ export const GoalValueInput = ({
           ) : (
             <Box>
               <StaticGoalValueInput
+                aria-label={ariaLabel}
                 id={id}
                 inputRef={numberInputRef}
                 value={value}
                 placeholder={placeholder}
-                ariaLabel={ariaLabel}
                 onCommit={onChange}
                 rightSection={
                   <ActionIcon
