@@ -111,7 +111,7 @@ jobs:
   uberjar:
     needs: [ci-decision, create-test-plan]
     if: |
-      !cancelled() &&
+      !cancelled() && needs.ci-decision.outputs.verdict != 'force-skip' &&
       (needs.ci-decision.outputs.verdict == 'force-run' ||
       !(needs.create-test-plan.outputs.documentation == 'true' &&
         needs.create-test-plan.outputs.backend_all == 'false' &&
