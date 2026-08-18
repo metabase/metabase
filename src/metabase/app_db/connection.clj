@@ -248,10 +248,25 @@
                       (try
                         (rollback!)
                         (catch Exception rollback-e
-                          ;; the writes are still here, so nothing up the tree may commit them, however far
-                          ;; this error gets caught before it reaches the outermost scope
-                          (some-> *rollback-required* (reset! true))
-                          (throw (ex-info "Error rolling back a rollback-only transaction" {} rollback-e))))
+                          (if (= *transaction-depth* 1)
+                            ;; The savepoint is usually gone because a statement in the body committed the
+                            ;; transaction under us -- DDL does that implicitly on H2 and MySQL, and once it has,
+                            ;; those writes are durable and no rollback can take them back. Discard whatever is
+                            ;; still pending and say where it happened, rather than fail on work already on disk.
+                            (do
+                              (log/warnf (str "Could not roll back a rollback-only transaction (%s). Something in"
+                                              " it committed the transaction -- DDL commits implicitly on H2 and"
+                                              " MySQL -- so its writes up to that point are already durable.")
+                                         (ex-message rollback-e))
+                              (try
+                                (.rollback connection)
+                                (catch Throwable t
+                                  (log/warnf "Failed to roll back transaction: %s" (ex-message t)))))
+                            ;; Nested: the enclosing scope's work is still pending, so nothing up the tree may
+                            ;; commit it, however far this error gets caught before reaching the outermost scope.
+                            (do
+                              (some-> *rollback-required* (reset! true))
+                              (throw (ex-info "Error rolling back a rollback-only transaction" {} rollback-e))))))
                       [result false])
 
                     (and (= *transaction-depth* 1) (some-> *rollback-required* deref))
