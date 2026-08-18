@@ -80,6 +80,13 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     value: "google/google/gemini-3.5-flash",
     models: [],
   },
+  deepseek: {
+    value: "deepseek/deepseek-v4-flash",
+    models: [
+      { id: "deepseek-v4-flash", display_name: "DeepSeek V4 Flash" },
+      { id: "deepseek-v4-pro", display_name: "DeepSeek V4 Pro" },
+    ],
+  },
   bedrock: {
     value: "bedrock/anthropic.claude-haiku-4-5",
     models: [
@@ -151,6 +158,7 @@ type MetabotSettingKey =
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | "llm-deepseek-api-key"
   | GoogleSettingKey
   | "llm-mistral-api-key"
   | "llm-moonshot-api-key"
@@ -166,6 +174,7 @@ const API_KEY_SETTING_BY_PROVIDER: Partial<
   Record<MetabotProvider, MetabotSettingKey>
 > = {
   anthropic: "llm-anthropic-api-key",
+  deepseek: "llm-deepseek-api-key",
   mistral: "llm-mistral-api-key",
   moonshot: "llm-moonshot-api-key",
   openai: "llm-openai-api-key",
@@ -316,6 +325,7 @@ async function setup({
     anthropic: "**********45",
     azure: null,
     bedrock: null,
+    deepseek: null,
     mistral: null,
     moonshot: null,
     openai: null,
@@ -381,6 +391,10 @@ async function setup({
       googleOauthTokenValue,
       googleLocationValue,
       googleEnvSettings,
+    }),
+    "llm-deepseek-api-key": createMockSettingDefinition({
+      key: "llm-deepseek-api-key",
+      value: mergedApiKeyValues.deepseek ?? undefined,
     }),
     "llm-mistral-api-key": createMockSettingDefinition({
       key: "llm-mistral-api-key",

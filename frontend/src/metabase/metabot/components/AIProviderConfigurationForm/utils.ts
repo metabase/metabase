@@ -62,6 +62,14 @@ export function getProviderOptions(
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
     },
+    deepseek: {
+      value: "deepseek",
+      label: "DeepSeek",
+      apiKey: {
+        placeholder: "sk-...",
+        addKeyUrl: "https://platform.deepseek.com/api_keys",
+      },
+    },
     google: {
       value: "google",
       label: "Gemini Enterprise Agent Platform",
@@ -127,6 +135,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "anthropic" ||
     provider === "azure" ||
     provider === "bedrock" ||
+    provider === "deepseek" ||
     provider === "google" ||
     provider === "metabase" ||
     provider === "mistral" ||
@@ -140,6 +149,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
   | "llm-anthropic-api-key"
+  | "llm-deepseek-api-key"
   | "llm-mistral-api-key"
   | "llm-moonshot-api-key"
   | "llm-openai-api-key"
@@ -147,6 +157,7 @@ export const API_KEY_SETTING_BY_PROVIDER: Record<
   | "llm-zai-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  deepseek: "llm-deepseek-api-key",
   mistral: "llm-mistral-api-key",
   moonshot: "llm-moonshot-api-key",
   openai: "llm-openai-api-key",

@@ -196,6 +196,7 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "deepseek"
   | "google"
   | "mistral"
   | "moonshot"

@@ -125,6 +125,10 @@ const setup = async ({
       key: "llm-moonshot-api-key",
       value: undefined,
     }),
+    createMockSettingDefinition({
+      key: "llm-deepseek-api-key",
+      value: undefined,
+    }),
   ]);
   setupUpdateSettingEndpoint();
   setupCollectionByIdEndpoint({ collections });

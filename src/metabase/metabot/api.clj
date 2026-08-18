@@ -490,6 +490,7 @@
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "deepseek"   :llm-deepseek-api-key
     "mistral"    :llm-mistral-api-key
     "moonshot"   :llm-moonshot-api-key
     "openai"     :llm-openai-api-key

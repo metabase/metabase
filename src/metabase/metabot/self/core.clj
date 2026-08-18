@@ -45,11 +45,15 @@
     :tool_choice      - \"auto\" or \"required\"
     :temperature      - Sampling temperature
     :max-tokens       - Maximum tokens in the response
-    :schema           - JSON Schema map for structured output; each provider forces a
-                        tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :schema           - JSON Schema map for structured output; every provider forces a
+                        tool call carrying the schema
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
+    :thinking-config  - Explicit `thinking` block for an Anthropic-dialect adapter re-hosting
+                        a non-Claude model, where the model-derived config does not apply.
+                        When set it wins over both the derived config and the suppression
+                        rules, and :reasoning parts survive into the replayed input.
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
@@ -63,6 +67,7 @@
    [:schema           {:optional true} :any]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:thinking-config  {:optional true} [:maybe :map]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid

@@ -221,6 +221,25 @@
   :export?    false
   :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
 
+;;; ------------------------------------------------- DeepSeek --------------------------------------------------
+
+(defsetting llm-deepseek-api-base-url
+  (deferred-tru "The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.deepseek.com"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-deepseek-api-base-url))
+
+(defsetting llm-deepseek-api-key
+  (deferred-tru "The DeepSeek API Key.")
+  ;; DeepSeek keys carry the same `sk-` prefix OpenAI uses, so prefix validation would accept an
+  ;; OpenAI key while rejecting nothing useful.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-deepseek-api-key))
+
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
 ;;; project ID is necessary. The location is optional and defaults to `global`.

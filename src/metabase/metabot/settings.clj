@@ -4,6 +4,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.openai :as openai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -100,7 +101,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "google" "mistral" "moonshot" "openai" "openrouter" "zai"})
+  #{"anthropic" "azure" "bedrock" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -109,6 +110,11 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-deepseek-llm-metabot-model
+  "Default DeepSeek model used for Metabot when no explicit model is selected.
+  Flash rather than pro: it is the model the adapter was validated against, and the cheaper of the two."
+  "deepseek-v4-flash")
 
 (def ^:private default-google-llm-metabot-model
   "Default Google model used for Metabot when no explicit model is selected.
@@ -149,6 +155,7 @@
   `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "deepseek"                             default-deepseek-llm-metabot-model
    "google"                               default-google-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
    "moonshot"                             default-moonshot-llm-metabot-model
@@ -326,6 +333,7 @@
                               :region            (non-blank (llm.settings/llm-bedrock-region))}]
                    (when (provider-credentials-complete? "bedrock" creds)
                      creds))
+    "deepseek"   (configured-api-key-credentials (llm.settings/llm-deepseek-api-key))
     "google"     (let [creds {:service-account-key (non-blank (llm.settings/llm-google-service-account-key))
                               :oauth-access-token  (non-blank (llm.settings/llm-google-oauth-access-token))
                               :project-id          (non-blank (llm.settings/llm-google-project-id))
@@ -366,6 +374,7 @@
   (let [model (provider-util/provider-and-model->model provider-and-model)]
     (case (provider-util/provider-and-model->provider provider-and-model)
       "anthropic" (claude/reasoning-model? model)
+      "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
       false)))
 
