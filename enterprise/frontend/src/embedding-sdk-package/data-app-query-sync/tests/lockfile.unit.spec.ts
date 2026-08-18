@@ -68,26 +68,6 @@ describe("resource lockfile", () => {
     });
   });
 
-  it("migrates direct metric copies from the dependency lockfile", () => {
-    const appRoot = makeApp();
-    write(appRoot, {
-      queries: [],
-      models: [],
-      dependencies: [
-        {
-          sourceCardId: 251,
-          copiedCardId: 404,
-          type: "metric",
-          hash: FAKE_HASH,
-        },
-      ],
-    });
-
-    expect(readResourceLockfile(appRoot).metrics).toEqual([
-      { sourceMetricId: 251, copiedMetricId: 404, hash: FAKE_HASH },
-    ]);
-  });
-
   // A lockfile is an ownership record: every rejection below is a file that
   // would otherwise let synchronization mutate content it cannot prove it owns.
   it.each([

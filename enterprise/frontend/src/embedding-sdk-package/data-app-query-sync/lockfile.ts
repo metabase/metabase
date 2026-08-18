@@ -60,45 +60,25 @@ function parseMetrics(value: unknown): MetricLockEntry[] {
   if (value === undefined) {
     return [];
   }
+
   if (
     !Array.isArray(value) ||
     value.some((entry) => !isMetricLockEntry(entry))
   ) {
     throw new Error(`${RESOURCE_LOCKFILE} contains an invalid metric entry.`);
   }
+
   assertUnique(
     value.map((entry) => entry.sourceMetricId),
     "source metric ID",
   );
+
   assertUnique(
     value.map((entry) => entry.copiedMetricId),
     "copied metric ID",
   );
-  return value;
-}
 
-function legacyMetrics(value: unknown): MetricLockEntry[] | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  return value.flatMap((entry) =>
-    isRecord(entry) &&
-    entry.type === "metric" &&
-    isPositiveInteger(entry.sourceCardId) &&
-    isPositiveInteger(entry.copiedCardId) &&
-    isHash(entry.hash)
-      ? [
-          {
-            sourceMetricId: entry.sourceCardId,
-            copiedMetricId: entry.copiedCardId,
-            hash: entry.hash,
-          },
-        ]
-      : [],
-  );
+  return value;
 }
 
 function assertUnique(ids: number[], subject: string) {
@@ -194,7 +174,7 @@ export function readResourceLockfile(appRoot: string): ResourceLockfile {
       : { collectionId: value.collectionId }),
     queries: parseQueries(value.queries ?? []),
     models: parseModels(value.models),
-    metrics: parseMetrics(value.metrics ?? legacyMetrics(value.dependencies)),
+    metrics: parseMetrics(value.metrics),
   };
 }
 
