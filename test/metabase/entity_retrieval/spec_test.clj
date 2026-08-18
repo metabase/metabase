@@ -382,9 +382,14 @@
                    :model/Field    _ {:table_id table-id :name "alpha"     :active true}
                    :model/Field    _ {:table_id table-id :name "secret"    :active true :visibility_type :sensitive}
                    :model/Field    _ {:table_id table-id :name "old"       :active true :visibility_type :retired}
-                   :model/Field    _ {:table_id table-id :name "dropped"   :active false}]
+                   :model/Field    _ {:table_id table-id :name "dropped"   :active false}
+                   ;; a nested field, named the way sql-jdbc names one. Covers the nfc_path read
+                   ;; transform end to end: a path that came back as raw JSON rather than a vector would
+                   ;; silently produce a garbage field path here.
+                   :model/Field    _ {:table_id table-id :name "payload → user → id" :active true
+                                      :nfc_path ["payload" "user" "id"]}]
       (let [entity {:entity_type "table" :entity_local_id table-id :id table-id}]
-        (is (= ["alpha" "zeta"]
+        (is (= ["alpha" "payload.user.id" "zeta"]
                (:field-names (first (spec/hydrate :osi-context [entity])))))))))
 
 (deftest via-parent-without-parent-projection-test
