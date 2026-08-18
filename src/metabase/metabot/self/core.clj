@@ -258,19 +258,22 @@
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
-  optional `:title-fn`. A throwing title-fn leaves the part untitled."
+  optional `:title-fn`, which sees the same arguments the tool will run with:
+  the tool's `:decode` is applied first, when it has one. A throwing title-fn
+  or decode leaves the part untitled."
   [tools]
   (map (fn [part]
-         (if-let [title-fn (and (= :tool-input (:type part))
-                                (:title-fn (get tools (:function part))))]
-           (let [title (try
-                         (title-fn (:arguments part))
-                         (catch Throwable e
-                           (log/debug e "tool title-fn failed" {:tool (:function part)})
-                           nil))]
-             (cond-> part
-               (string? title) (assoc :title title)))
-           part))))
+         (let [{:keys [title-fn decode]} (when (= :tool-input (:type part))
+                                           (get tools (:function part)))]
+           (if title-fn
+             (let [title (try
+                           (title-fn (cond-> (:arguments part) decode decode))
+                           (catch Throwable e
+                             (log/debug e "tool title-fn failed" {:tool (:function part)})
+                             nil))]
+               (cond-> part
+                 (string? title) (assoc :title title)))
+             part)))))
 
 ;;; AI SDK SSE Output
 ;;

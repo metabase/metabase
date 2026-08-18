@@ -25,6 +25,22 @@
   (testing "no queries -> nil"
     (is (nil? (#'search/search-display {})))))
 
+(deftest ^:parallel decode-search-args-test
+  (testing "a bare string becomes a one-element list, so it is searched (and displayed) as a phrase"
+    (is (= {:keyword_queries ["metabot byok"]}
+           (#'search/decode-search-args {:keyword_queries "metabot byok"})))
+    (is (= "metabot byok"
+           (#'search/search-display (#'search/decode-search-args {:keyword_queries "metabot byok"})))))
+  (testing "semantic_queries and entity_types are wrapped the same way"
+    (is (= {:semantic_queries ["monthly revenue"] :entity_types ["table"]}
+           (#'search/decode-search-args {:semantic_queries "monthly revenue" :entity_types "table"}))))
+  (testing "lists, nils and missing keys are left alone"
+    (is (= {:keyword_queries ["orders" "revenue"] :semantic_queries nil :limit 10}
+           (#'search/decode-search-args {:keyword_queries ["orders" "revenue"]
+                                         :semantic_queries nil
+                                         :limit 10})))
+    (is (= {} (#'search/decode-search-args {})))))
+
 (deftest ^:parallel search-result->item-test
   (testing "trims a result to the fields the results card renders, nesting collection id+name"
     (is (= {:id 1 :type "table" :name "orders" :display_name "Orders"
@@ -452,6 +468,19 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest tool-decoded-string-query-test
+  (testing "a query the model sent as a bare string is searched as one phrase, not one search per character"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (let [captured (atom [])]
+          (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                           (swap! captured conj (:search-string context))
+                                                           {:data []})]
+            (search/search-tool (#'search/decode-search-args {:keyword_queries "metabot byok"})))
+          (is (= ["metabot byok"] @captured)))))))
 
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"

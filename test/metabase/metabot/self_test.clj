@@ -839,10 +839,16 @@
                                 :arguments {} :title "Inspecting [Orders](metabase://dashboard/5)"}]))))))
 
 (deftest ^:parallel stamp-tool-titles-xf-test
-  (let [tools {"greet" {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
-               "boom"  {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
-               "num"   {:tool-name "num"   :title-fn (fn [_] 42)}
-               "plain" {:tool-name "plain"}}
+  (let [tools {"greet"   {:tool-name "greet" :title-fn (fn [{:keys [who]}] (str "Greeting " who))}
+               "boom"    {:tool-name "boom"  :title-fn (fn [_] (throw (ex-info "nope" {})))}
+               "num"     {:tool-name "num"   :title-fn (fn [_] 42)}
+               "plain"   {:tool-name "plain"}
+               "decoded" {:tool-name "decoded"
+                          :decode    (fn [args] (update args :who (fn [who] (if (string? who) [who] who))))
+                          :title-fn  (fn [{:keys [who]}] (str "Greeting " (str/join ", " who)))}
+               "badcode" {:tool-name "badcode"
+                          :decode    (fn [_] (throw (ex-info "nope" {})))
+                          :title-fn  (fn [_] "never")}}
         stamp #(into [] (self.core/stamp-tool-titles-xf tools) [%])]
     (testing "title-fn result becomes :title"
       (is (= [{:type :tool-input :id "c1" :function "greet" :arguments {:who "Sam"}
@@ -857,6 +863,13 @@
     (testing "a tool without a title-fn is untouched"
       (is (= [{:type :tool-input :id "c4" :function "plain" :arguments {}}]
              (stamp {:type :tool-input :id "c4" :function "plain" :arguments {}}))))
+    (testing "the tool's :decode runs first, so the title describes the arguments the tool will run with"
+      (is (= [{:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}
+               :title "Greeting Sam"}]
+             (stamp {:type :tool-input :id "c5" :function "decoded" :arguments {:who "Sam"}}))))
+    (testing "a throwing :decode leaves the part untitled"
+      (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
+             (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))

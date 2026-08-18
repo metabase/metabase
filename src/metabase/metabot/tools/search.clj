@@ -586,8 +586,21 @@
       ;; ("Searching for …" while active, "Searched for …" once finished)
       (str/join ", " queries))))
 
+(defn- listify
+  [x]
+  (if (or (nil? x) (sequential? x))
+    x
+    [x]))
+
+(defn- decode-search-args
+  [args]
+  (reduce #(m/update-existing %1 %2 listify)
+          args
+          [:keyword_queries :semantic_queries :entity_types]))
+
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
+           :decode     decode-search-args
            :title-fn   search-display}
   search-tool
   "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
@@ -605,6 +618,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
+           :decode     decode-search-args
            :title-fn   search-display}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
@@ -622,6 +636,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
+           :decode     decode-search-args
            :title-fn   search-display}
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
@@ -643,6 +658,7 @@
 
 (mu/defn ^{:tool-name  "search"
            :scope      scope/agent-search
+           :decode     decode-search-args
            :title-fn   search-display}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
