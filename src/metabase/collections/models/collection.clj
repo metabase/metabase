@@ -672,7 +672,7 @@
             (or (user->existing-personal-collection user-or-id)
                 (throw e)))))))
 
-(def ^:private ^{:arglists '([user-id])} cached-user->personal-collection-id
+(def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
   Collection cannot be deleted, the ID will not change; thus it is safe to cache, saving a DB call. It is also
   required to calculate the Current User's permissions set, which is done for every API call; thus it is cached to
@@ -686,14 +686,6 @@
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
    :ttl/threshold (* 60 60 1000)))
-
-(defn- user->personal-collection-id
-  [user-id]
-  ;; A Personal Collection created inside a transaction is not durable, so the "cannot be deleted, safe to cache"
-  ;; premise above does not hold there: a rollback would leave the cache pointing at an id that never existed.
-  (if (mdb/in-transaction?)
-    (some-> user-id user->personal-collection u/the-id)
-    (cached-user->personal-collection-id user-id)))
 
 (mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
   "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants

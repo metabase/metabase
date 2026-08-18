@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -435,6 +436,19 @@
   [model explicit-attributes f]
   (binding [pgm/*allow-direct-deletion* true]
     (next-method model explicit-attributes f)))
+
+;; A temporary User's Personal Collection is deleted with the User (or rolled back with the outer
+;; with-temp transaction), invalidating the production cache's "Personal Collections cannot be deleted"
+;; premise. Evict only that User's test-created entry when its scope ends.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
+  [model explicit-attributes f]
+  (next-method model explicit-attributes
+               (fn [user]
+                 (try
+                   (f user)
+                   (finally
+                     (memoize/memo-clear! @#'collection/user->personal-collection-id
+                                          [(mdb/unique-identifier) (:id user)]))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
