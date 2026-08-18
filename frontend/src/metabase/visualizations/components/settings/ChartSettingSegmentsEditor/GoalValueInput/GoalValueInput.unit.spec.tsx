@@ -28,8 +28,9 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 
+import { SegmentBoundInput } from "../SegmentBoundInput";
+
 import { GoalValueInput, type GoalValueInputProps } from "./GoalValueInput";
-import { SegmentBoundInput } from "./SegmentBoundInput";
 
 const DATA = createMockDatasetData({
   cols: [

@@ -1,0 +1,95 @@
+import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
+
+import {
+  EntityPickerModal,
+  MiniPicker,
+  type OmniPickerItem,
+} from "metabase/common/components/Pickers";
+
+import { useEntityPickerSearch } from "./use-entity-picker-search";
+
+const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
+  "metric",
+  "measure",
+  "table",
+  "card",
+  "dataset",
+];
+
+const SELECTABLE_BROWSE_MODELS: Array<OmniPickerItem["model"]> = [
+  "metric",
+  "measure",
+  "card",
+  "dataset",
+];
+
+export type PickedItem = {
+  id: number | string;
+  model: string;
+  name: string;
+};
+
+type Props = {
+  hasOpened: boolean;
+  opened: boolean;
+  onChange: (item: PickedItem) => void;
+  onClose: () => void;
+};
+
+/** The quick entity picker plus the browse-all modal it can escalate to. */
+export function GoalEntityPickers({
+  hasOpened,
+  opened,
+  onChange,
+  onClose,
+}: Props) {
+  const [isBrowseModalOpen, browseModal] = useDisclosure(false);
+  const { models, getSearchParams } = useEntityPickerSearch(hasOpened);
+
+  const handleChange = (item: PickedItem) => {
+    onClose();
+    browseModal.close();
+    onChange(item);
+  };
+
+  return (
+    <>
+      <MiniPicker
+        forceSearch
+        menuProps={{ position: "bottom-start" }}
+        models={models}
+        opened={opened}
+        searchInputPlaceholder={t`Search…`}
+        searchParams={getSearchParams}
+        showSearchInput
+        onBrowseAll={() => {
+          onClose();
+          browseModal.open();
+        }}
+        onChange={handleChange}
+        onClose={onClose}
+      />
+
+      {isBrowseModalOpen && (
+        <EntityPickerModal
+          isSelectableItem={(item: OmniPickerItem) =>
+            SELECTABLE_BROWSE_MODELS.includes(item.model) &&
+            typeof item.id === "number"
+          }
+          models={BROWSE_ALL_MODELS}
+          options={{
+            hasConfirmButtons: false,
+            hasDatabases: true,
+            disableSearchScope: true,
+          }}
+          title={t`Pick a measure, metric, or saved question`}
+          onChange={(item) =>
+            handleChange({ id: item.id, model: item.model, name: item.name })
+          }
+          onClose={browseModal.close}
+        />
+      )}
+    </>
+  );
+}

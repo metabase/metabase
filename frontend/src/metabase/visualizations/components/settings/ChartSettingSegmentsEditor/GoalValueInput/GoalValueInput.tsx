@@ -3,39 +3,22 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetCardQueryQuery,
-  useGetMeasureQuery,
-  useLazyGetCardQuery,
-  useLazyGetMeasureQuery,
-} from "metabase/api";
-import {
-  EntityPickerModal,
-  MiniPicker,
-  type OmniPickerItem,
-} from "metabase/common/components/Pickers";
+import { useLazyGetCardQuery, useLazyGetMeasureQuery } from "metabase/api";
 import {
   ActionIcon,
   Box,
-  Ellipsified,
   Group,
   Icon,
   Loader,
   Menu,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
-import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetData,
@@ -47,43 +30,24 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
+import { StaticGoalValueInput } from "../StaticGoalValueInput";
+import { useResolvedGoalValue } from "../use-resolved-goal-value";
+
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
+import { GoalEntityPickers, type PickedItem } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
-import { StaticGoalValueInput } from "./StaticGoalValueInput";
-import { useEntityPickerSearch } from "./use-entity-picker-search";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
+import { GoalValuePill } from "./GoalValuePill";
+import { ICON_BUTTON_SIZE } from "./constants";
+import type { ColumnOption, GoalEntityRef } from "./types";
+import { useEntityColumnValues } from "./use-entity-column-values";
+import { useReferencedEntity } from "./use-referenced-entity";
 
 const ROOT_MENU_MIN_WIDTH = 225;
 const COLUMN_MENU_MIN_WIDTH = 256;
-const ICON_BUTTON_SIZE = 24;
-
-const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
-  "metric",
-  "measure",
-  "table",
-  "card",
-  "dataset",
-];
-
-const SELECTABLE_BROWSE_MODELS: Array<OmniPickerItem["model"]> = [
-  "metric",
-  "measure",
-  "card",
-  "dataset",
-];
 
 type MenuLevel = "root" | "self" | "entity";
 
-type PickedEntity = {
-  type: ReferencedEntityType;
-  id: number;
-  name: string;
-};
-
-type ColumnOption = {
-  name: string;
-  label: string;
-};
+type PickedEntity = GoalEntityRef & { name: string };
 
 export type GoalValueInputProps = {
   "aria-label"?: string;
@@ -105,16 +69,11 @@ export const GoalValueInput = ({
   const [isMenuOpen, menu] = useDisclosure(false);
   const [menuLevel, setMenuLevel] = useState<MenuLevel>("root");
   const [isEntityPickerOpen, entityPicker] = useDisclosure(false);
-  const [isBrowseModalOpen, browseModal] = useDisclosure(false);
   const [pickedEntity, setPickedEntity] = useState<PickedEntity | null>(null);
   const [hasOpenedEntityPicker, setHasOpenedEntityPicker] = useState(false);
   const [fetchCard] = useLazyGetCardQuery();
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const numberInputRef = useRef<HTMLInputElement>(null);
-
-  const { models: entityPickerModels, getSearchParams } = useEntityPickerSearch(
-    hasOpenedEntityPicker,
-  );
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
   const selfColumns: ColumnOption[] = data.cols
@@ -128,71 +87,13 @@ export const GoalValueInput = ({
     selfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
 
-  const entity: Pick<PickedEntity, "type" | "id"> | null =
-    pickedEntity ?? foreignRef;
-  const { data: entityCard, isError: isCardError } = useGetCardQuery(
-    entity?.type === "card" ? { id: entity.id } : skipToken,
-  );
-  const { data: entityMeasure, isError: isMeasureError } = useGetMeasureQuery(
-    entity?.type === "measure" ? entity.id : skipToken,
-  );
-  const hasEntityMetadataError =
-    entity != null && (entity.type === "card" ? isCardError : isMeasureError);
-  const isEntityMetadataLoading =
-    entity != null &&
-    !hasEntityMetadataError &&
-    (entity.type === "card" ? entityCard == null : entityMeasure == null);
-
-  const entityName =
-    (entity?.type === "card" ? entityCard?.name : entityMeasure?.name) ??
-    pickedEntity?.name;
-  const entityColumns: ColumnOption[] = useMemo(() => {
-    if (entity?.type === "card") {
-      return (entityCard?.result_metadata ?? [])
-        .filter(isNumeric)
-        .map((field) => ({
-          name: field.name,
-          label: field.display_name || field.name,
-        }));
-    }
-    if (entityMeasure?.result_column_name) {
-      return [
-        { name: entityMeasure.result_column_name, label: entityMeasure.name },
-      ];
-    }
-    return [];
-  }, [entity?.type, entityCard, entityMeasure]);
-
-  // referenced_entities only carries already-referenced columns; a fresh run of
-  // the entity's query previews the values of all of them
-  const { data: entityDataset } = useGetCardQueryQuery(
-    menuLevel === "entity" && entity?.type === "card" && entityCard != null
-      ? { cardId: entity.id }
-      : skipToken,
-  );
-  const entityColumnValues = useMemo(() => {
-    const { cols = [], rows = [] } = entityDataset?.data ?? {};
-    const row = rows[0] ?? [];
-    return new Map(
-      cols.map((column, index): [string, number | null] => {
-        const raw = row[index];
-        return [
-          column.name,
-          typeof raw === "number" && Number.isFinite(raw) ? raw : null,
-        ];
-      }),
-    );
-  }, [entityDataset]);
-
-  const resolveEntityColumnValue = (columnName: string): number | null =>
-    entityColumnValues.get(columnName) ??
-    (entity != null
-      ? resolveGoalValue(data, {
-          type: entity.type,
-          id: entity.id,
-          column: columnName,
-        }).value
-      : null);
+  const entity: GoalEntityRef | null = pickedEntity ?? foreignRef;
+  const entityInfo = useReferencedEntity(entity);
+  const entityName = entityInfo.name ?? pickedEntity?.name;
+  const resolveEntityColumnValue = useEntityColumnValues(data, entity, {
+    enabled:
+      menuLevel === "entity" && !entityInfo.isLoading && !entityInfo.hasError,
+  });
 
   const resolved = useResolvedGoalValue(data, value);
   const selfColumnLabel = isSelfRef
@@ -200,7 +101,7 @@ export const GoalValueInput = ({
       String(value))
     : null;
   const foreignColumnLabel = foreignRef
-    ? (entityColumns.find((column) => column.name === foreignRef.column)
+    ? (entityInfo.columns.find((column) => column.name === foreignRef.column)
         ?.label ?? foreignRef.column)
     : null;
   const pillTooltip = foreignRef
@@ -255,7 +156,9 @@ export const GoalValueInput = ({
       // Until the entity's metadata lands we don't know its column count, so
       // open the column list - it renders a loader while we wait.
       setMenuLevel(
-        isEntityMetadataLoading || entityColumns.length > 1 ? "entity" : "root",
+        entityInfo.isLoading || entityInfo.columns.length > 1
+          ? "entity"
+          : "root",
       );
     }
     menu.open();
@@ -296,19 +199,13 @@ export const GoalValueInput = ({
 
   // Committing here rather than from an effect on `pickedEntity` keeps the
   // settings update out of React's nested-update chain.
-  const handleEntityPicked = async (item: {
-    id: number | string;
-    model: string;
-    name: string;
-  }) => {
+  const handleEntityPicked = async (item: PickedItem) => {
     if (typeof item.id !== "number") {
       return;
     }
     const type: ReferencedEntityType =
       item.model === "measure" ? "measure" : "card";
     const pickToken = ++pickTokenRef.current;
-    entityPicker.close();
-    browseModal.close();
 
     // Resolving the column before touching the menu keeps a single-column pick
     // from flashing a column list open and immediately shut.
@@ -349,63 +246,15 @@ export const GoalValueInput = ({
       >
         <Menu.Target>
           {hasRef ? (
-            // bg and 40px height match Mantine's md inputs, so both bound inputs look alike
-            <Group
+            <GoalValuePill
               aria-label={ariaLabel}
-              bdrs="sm"
-              bg="background_page-primary"
-              className={S.refShell}
-              gap="sm"
-              h={40}
-              px="sm"
-              role="group"
-              tabIndex={0}
-              wrap="nowrap"
+              isMenuOpen={isMenuOpen}
+              resolved={resolved}
+              tooltip={pillTooltip}
               onKeyDown={handleShellKeyDown}
-            >
-              <Tooltip disabled={pillTooltip == null} label={pillTooltip}>
-                {/* min-width lets the value ellipsize instead of pushing the remove button out of the shell */}
-                <UnstyledButton
-                  aria-label={t`Change value source`}
-                  bdrs="1rem"
-                  className={S.pill}
-                  display="flex"
-                  miw={0}
-                  pl="0.75rem"
-                  pr="0.5rem"
-                  py="0.25rem"
-                  onClick={openMenuFromPill}
-                >
-                  <Icon
-                    c="text-secondary"
-                    flex="0 0 auto"
-                    name="hexagon"
-                    size={12}
-                  />
-                  {resolved.isResolving ? (
-                    <Loader size="xs" />
-                  ) : (
-                    <Ellipsified fw={500} showTooltip={false}>
-                      {resolved.value != null
-                        ? formatValue(resolved.value)
-                        : EMPTY_CELL_PLACEHOLDER}
-                    </Ellipsified>
-                  )}
-                </UnstyledButton>
-              </Tooltip>
-              <Tooltip label={t`Remove value source`}>
-                <ActionIcon
-                  aria-label={t`Remove value source`}
-                  className={S.trigger}
-                  data-open={isMenuOpen}
-                  ml="auto"
-                  size={ICON_BUTTON_SIZE}
-                  onClick={() => commitValue(null)}
-                >
-                  <Icon name="close" size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
+              onOpenMenu={openMenuFromPill}
+              onRemove={() => commitValue(null)}
+            />
           ) : (
             <Box>
               <StaticGoalValueInput
@@ -490,14 +339,14 @@ export const GoalValueInput = ({
                 {entityName ?? t`Value from another question`}
               </Menu.Item>
               <Menu.Divider />
-              {hasEntityMetadataError ? (
+              {entityInfo.hasError ? (
                 <Menu.Item disabled>{t`Couldn't load this source`}</Menu.Item>
-              ) : isEntityMetadataLoading ? (
+              ) : entityInfo.isLoading ? (
                 <Group justify="center" p="md">
                   <Loader size="sm" />
                 </Group>
-              ) : entityColumns.length > 0 ? (
-                entityColumns.map((column) => (
+              ) : entityInfo.columns.length > 0 ? (
+                entityInfo.columns.map((column) => (
                   <GoalColumnMenuItem
                     key={column.name}
                     isSelected={foreignRef?.column === column.name}
@@ -514,45 +363,12 @@ export const GoalValueInput = ({
         </Menu.Dropdown>
       </Menu>
 
-      <MiniPicker
-        forceSearch
-        menuProps={{ position: "bottom-start" }}
-        models={entityPickerModels}
+      <GoalEntityPickers
+        hasOpened={hasOpenedEntityPicker}
         opened={isEntityPickerOpen}
-        searchInputPlaceholder={t`Search…`}
-        searchParams={getSearchParams}
-        showSearchInput
-        onBrowseAll={() => {
-          entityPicker.close();
-          browseModal.open();
-        }}
         onChange={handleEntityPicked}
         onClose={entityPicker.close}
       />
-
-      {isBrowseModalOpen && (
-        <EntityPickerModal
-          isSelectableItem={(item: OmniPickerItem) =>
-            SELECTABLE_BROWSE_MODELS.includes(item.model) &&
-            typeof item.id === "number"
-          }
-          models={BROWSE_ALL_MODELS}
-          options={{
-            hasConfirmButtons: false,
-            hasDatabases: true,
-            disableSearchScope: true,
-          }}
-          title={t`Pick a measure, metric, or saved question`}
-          onChange={(item) =>
-            handleEntityPicked({
-              id: item.id,
-              model: item.model,
-              name: item.name,
-            })
-          }
-          onClose={browseModal.close}
-        />
-      )}
     </Box>
   );
 };
