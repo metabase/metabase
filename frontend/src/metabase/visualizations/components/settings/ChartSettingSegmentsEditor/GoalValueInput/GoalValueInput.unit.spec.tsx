@@ -30,7 +30,7 @@ import {
 
 import { SegmentBoundInput } from "../SegmentBoundInput";
 
-import { GoalValueInput, type GoalValueInputProps } from "./GoalValueInput";
+import { GoalValueInput } from "./GoalValueInput";
 
 const DATA = createMockDatasetData({
   cols: [
@@ -48,19 +48,20 @@ const DATA = createMockDatasetData({
   rows: [[10, 42]],
 });
 
-const setup = (
-  props: Partial<GoalValueInputProps> = {},
-  { data = DATA }: { data?: DatasetData } = {},
-) => {
+type SetupOpts = {
+  data?: DatasetData;
+  value?: GoalValue | null;
+};
+
+const setup = ({ data = DATA, value = 0 }: SetupOpts = {}) => {
   const onChange = jest.fn();
   renderWithProviders(
     <GoalValueInput
       aria-label="Min"
       data={data}
       id="goal-value"
-      value={0}
+      value={value}
       onChange={onChange}
-      {...props}
     />,
   );
   return { onChange };
@@ -115,7 +116,7 @@ describe("GoalValueInput", () => {
   });
 
   it("hides the self-columns option when the question has no numeric columns", async () => {
-    setup({}, { data: createMockDatasetData({ cols: [], rows: [] }) });
+    setup({ data: createMockDatasetData({ cols: [], rows: [] }) });
 
     await openMenu();
 
@@ -142,21 +143,18 @@ describe("GoalValueInput", () => {
   });
 
   it("selects the sole numeric column directly from the root menu", async () => {
-    const { onChange } = setup(
-      {},
-      {
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({
-              name: "count",
-              display_name: "Count",
-              base_type: "type/Integer",
-            }),
-          ],
-          rows: [[7]],
-        }),
-      },
-    );
+    const { onChange } = setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            base_type: "type/Integer",
+          }),
+        ],
+        rows: [[7]],
+      }),
+    });
 
     await openMenu();
     await userEvent.click(
@@ -175,25 +173,23 @@ describe("GoalValueInput", () => {
 
   it("renders a foreign reference pill with the value from referenced_entities", () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setup(
-      { value: { type: "card", id: 9, column: "total" } },
-      {
-        data: createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
               },
             },
           },
-        }),
-      },
-    );
+        },
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
 
     const pill = screen.getByRole("button", { name: "Change value source" });
     expect(within(pill).getByText("250")).toBeInTheDocument();
@@ -220,25 +216,23 @@ describe("GoalValueInput", () => {
         ],
       }),
     );
-    setup(
-      { value: { type: "card", id: 9, column: "avg" } },
-      {
-        data: createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
               },
             },
           },
-        }),
-      },
-    );
+        },
+      }),
+      value: { type: "card", id: 9, column: "avg" },
+    });
 
     await userEvent.hover(
       screen.getByRole("button", { name: "Change value source" }),
@@ -346,21 +340,19 @@ describe("GoalValueInput", () => {
   });
 
   it("opens the root menu when clicking the pill of a single-column source", async () => {
-    setup(
-      { value: "count" },
-      {
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({
-              name: "count",
-              display_name: "Count",
-              base_type: "type/Integer",
-            }),
-          ],
-          rows: [[7]],
-        }),
-      },
-    );
+    setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            base_type: "type/Integer",
+          }),
+        ],
+        rows: [[7]],
+      }),
+      value: "count",
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Change value source" }),
@@ -381,25 +373,23 @@ describe("GoalValueInput", () => {
         result_column_name: "revenue",
       }),
     );
-    setup(
-      { value: { type: "measure", id: 4, column: "revenue" } },
-      {
-        data: createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            measure: {
-              4: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "revenue" })],
-                  rows: [[999]],
-                },
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          measure: {
+            4: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "revenue" })],
+                rows: [[999]],
               },
             },
           },
-        }),
-      },
-    );
+        },
+      }),
+      value: { type: "measure", id: 4, column: "revenue" },
+    });
 
     const pill = screen.getByRole("button", { name: "Change value source" });
     expect(within(pill).getByText("999")).toBeInTheDocument();
@@ -447,25 +437,23 @@ describe("GoalValueInput", () => {
         }),
       }),
     );
-    setup(
-      { value: { type: "card", id: 9, column: "total" } },
-      {
-        data: createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
               },
             },
           },
-        }),
-      },
-    );
+        },
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Change value source" }),
@@ -547,26 +535,24 @@ describe("GoalValueInput", () => {
         }),
       }),
     );
-    setup(
-      { value: { type: "card", id: 9, column: "total" } },
-      {
-        // the dataset carries a value for the referenced column only
-        data: createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
+    setup({
+      // the dataset carries a value for the referenced column only
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
               },
             },
           },
-        }),
-      },
-    );
+        },
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Change value source" }),
@@ -580,10 +566,10 @@ describe("GoalValueInput", () => {
   });
 
   it("offers another question as a source when this question has no numeric columns", async () => {
-    setup(
-      { value: 5 },
-      { data: createMockDatasetData({ cols: [], rows: [] }) },
-    );
+    setup({
+      data: createMockDatasetData({ cols: [], rows: [] }),
+      value: 5,
+    });
 
     await openMenu();
 
@@ -593,21 +579,19 @@ describe("GoalValueInput", () => {
   });
 
   it("does not clear a reference it cannot render when the static input is blurred", () => {
-    const { onChange } = setup(
-      { value: "gone" },
-      {
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({
-              name: "count",
-              display_name: "Count",
-              base_type: "type/Integer",
-            }),
-          ],
-          rows: [[10]],
-        }),
-      },
-    );
+    const { onChange } = setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            base_type: "type/Integer",
+          }),
+        ],
+        rows: [[10]],
+      }),
+      value: "gone",
+    });
 
     const input = screen.getByRole("textbox", { name: "Min" });
     expect(input).toHaveValue("");
@@ -619,21 +603,19 @@ describe("GoalValueInput", () => {
   });
 
   it("still commits a typed value over a reference it cannot render", () => {
-    const { onChange } = setup(
-      { value: "gone" },
-      {
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({
-              name: "count",
-              display_name: "Count",
-              base_type: "type/Integer",
-            }),
-          ],
-          rows: [[10]],
-        }),
-      },
-    );
+    const { onChange } = setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            base_type: "type/Integer",
+          }),
+        ],
+        rows: [[10]],
+      }),
+      value: "gone",
+    });
 
     const input = screen.getByRole("textbox", { name: "Min" });
     fireEvent.change(input, { target: { value: "7" } });
