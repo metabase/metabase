@@ -1,4 +1,4 @@
-import { useAction } from "@metabase/embedding-sdk-react/data-app";
+import { useAction } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
 import { CreateScore } from "../actions/orders.action";

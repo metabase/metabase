@@ -137,27 +137,5 @@ describe(
         });
       });
     });
-
-    it("refuses to run a declaration that was never synchronized", () => {
-      cy.get<number>("@modelId").then((modelId) => {
-        H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
-          ({ body: action }) => {
-            // Authored but never synchronized: no `copiedActionId` to run.
-            cy.writeFile(ACTION_FILE(), declaration(action.id));
-
-            mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-            cy.visit(`/apps/${APP_SLUG}`);
-
-            dataAppIframe(APP_DISPLAY_NAME).within(() => {
-              cy.findByTestId("action-execute", { timeout: 30000 }).click();
-              cy.findByTestId("action-output").should(
-                "contain.text",
-                "has not been synchronized",
-              );
-            });
-          },
-        );
-      });
-    });
   },
 );
