@@ -108,7 +108,7 @@
    [:collection_id          [:maybe ms/PositiveInt]]
    [:dataset_query          ms/Map]
    [:database_id            ms/PositiveInt]
-   [:display                [:maybe :string]]
+   [:display                [:maybe [:or :keyword :string]]]
    [:visualization_settings [:maybe ms/Map]]
    [:description            [:maybe :string]]])
 
