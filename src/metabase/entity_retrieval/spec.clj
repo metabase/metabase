@@ -262,12 +262,15 @@
         (into [] cat (concat (map root-results (filter root? models)) via-results))))))
 
 (defn member-entity
-  "The entity map for one entity if it is currently a library member under `projection-key`, else nil.
-  Same membership truth as [[member-entities]], via the same per-model selects.
-  `entity-type` may be any Card flavor (question/metric/model/card); the returned entity carries the
-  entity's *stored* type, so a metric<->model relabel keeps derived `doc_id`s stable.
-  A `:via-parent` entity (measure/segment) is a member only when its parent row is.
-  Throws on an unknown projection key; nil means not a member, never \"no such projection\"."
+  "The entity map for one entity when it is a library member under `projection-key`; nil otherwise.
+  Uses the same per-model membership selects as [[member-entities]].
+
+  `entity-type` may be any Card flavor (`question`, `metric`, `model`, or `card`). The returned entity
+  carries the Card's current database type. Card flavors share an entity class, so hydration and
+  reconciliation continue to match the entity across relabels.
+
+  A `:via-parent` entity is a member only when its parent is. Throws for an unknown projection key; nil
+  always means \"not a member\", never \"unknown projection\"."
   [projection-key entity-type entity-local-id]
   (assert-projection-key! projection-key)
   (when-let [model (entity-type->model entity-type)]
@@ -368,14 +371,14 @@
       :else                       (recur (ex-cause e)))))
 
 (defn hydrate
-  "Apply `projection-key`'s declared `:hydrate` batch fns to a COLLECTION of entities, returning them with
-  every declared hydration key present (nil when the batch fn had no value for an entity).
-  Batched by contract: one batch-fn call — and so one query — per hydration key, never one per entity.
-  Callers pass the whole collection; mapping this over single entities turns the generation sweep into
-  N+1 over `metabase_field`, which is the one way this design gets expensive.
-  A batch fn takes the sub-collection of entities whose model declares it and returns a map of
-  [[hydration-key]] -> value.
-  Split from [[member-entities]] so cheap callers (membership keys) skip the hydration selects."
+  "Apply `projection-key`'s batch hydrations to a collection of entities.
+
+  Each distinct `[hydration-key batch-fn]` pair is invoked once with all entities whose model declares it.
+  The batch fn returns a map of [[hydration-key]] to value and may issue multiple chunked queries. Every
+  declared hydration key is added to each entity, using nil when the batch result has no entry.
+
+  Call this with the whole collection: repeatedly hydrating individual entities defeats batching and can
+  create N+1 queries. Split from [[member-entities]] so membership-only callers avoid hydration."
   [projection-key entities]
   (let [entities (vec entities)]
     (if (empty? entities)
@@ -439,13 +442,14 @@
     (update :description u.str/limit-chars max-osi-description-len)))
 
 (defn project
-  "Apply `projection-key`'s `:project` var to one hydrated `entity`.
-  `[doc]` for `:library-index` (see [[library-index-docs]]); the prompt-input map for `:osi-context`.
-  Pure over an already-hydrated entity — loads nothing, and throws when a declared hydration key is
-  absent, so a caller can't silently project an unhydrated entity.
-  Safe to call per entity inside a batch loop: any failure — including one thrown by the model's
-  `:project` var — raises an ex-info carrying the entity identity, so one malformed entity is countable
-  and skippable rather than fatal to the run."
+  "Apply `projection-key`'s `:project` var to one hydrated entity.
+
+  For `:library-index`, returns a realized vector of documents; for `:osi-context`, returns the prompt-input
+  map. The function performs no hydration itself and throws when a declared hydration key is absent.
+
+  Sequential results are realized inside the entity-scoped error handler. Any projection failure is
+  rethrown as ex-info carrying the entity identity, allowing batch callers to count and isolate one bad
+  entity."
   [projection-key entity]
   (try
     (let [entity (normalize-projection-entity projection-key entity)
