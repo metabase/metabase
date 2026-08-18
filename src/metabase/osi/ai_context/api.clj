@@ -125,9 +125,8 @@
   upsert keep two concurrent writers from racing in a duplicate row.
 
   Any write here is an approval: the row's `data_source` becomes `human`, and generated content is never
-  overwritten again without an explicit regenerate. The generation timestamps and `basis` are left exactly as
-  they were — `updated_at` records the human edit, and a `generated_at` that moved on it would make \"last
-  generated\" a lie."
+  overwritten again without an explicit regenerate.
+  `updated_at` records the human edit; `generated_at` stays unchanged."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
    ;; Accept the object as-is (`ms/Map` is open) so unknown keys reach the handler: the api layer strips keys a
@@ -141,6 +140,7 @@
     ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row.
     ;; update-or-insert! handles the compound key, the no-op re-PUT, and the concurrent-create race
     ;; (savepoint + single retry) centrally.
+    ;; Leave `basis` untouched because it describes the generator's last write.
     (let [stored-type (entity-retrieval/normalize-entity-type entity-type)]
       (app-db/update-or-insert! :model/OsiAiContext
                                 {:entity_type     stored-type
@@ -164,8 +164,10 @@
   (check-writable-entity-type! entity-type)
   (let [conditions {:entity_type     (entity-retrieval/normalize-entity-type entity-type)
                     :entity_local_id entity-local-id}]
-    ;; A rewrite is pending only when `rewrite_requested_at` is later than `generated_at`. The generator may
-    ;; advance `generated_at` between our read and write, so update with a compare-and-swap on `updated_at`.
+    ;; A rewrite is pending only when `rewrite_requested_at` is later than `generated_at`.
+    ;; The generator may advance `generated_at` between our read and write.
+    ;; The model's `:hook/timestamped?` hook bumps `updated_at` on every write.
+    ;; Compare and swap on that timestamp to detect the generator's write-back.
     ;; On conflict, refetch the row and recompute a stamp that outranks its current `generated_at`.
     (loop [attempt 0]
       (let [entry (api/check-404 (get-entry entity-type entity-local-id))

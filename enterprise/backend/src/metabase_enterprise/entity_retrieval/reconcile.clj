@@ -264,8 +264,8 @@
    :unchanged (- (count desired) (count to-insert))})
 
 (defn- index-size
-  "Total document and distinct-entity counts in the index, for the size gauges. Cheap aggregate, run once
-  per full reconcile under the lock."
+  "Total document and distinct-entity counts in the index, for the size gauges. Runs once per full reconcile
+  under the lock."
   [conn]
   (let [{:keys [documents entities]}
         (jdbc/execute-one! conn
@@ -281,14 +281,14 @@
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 ;; Scalability — targeted writes, full-diff backstop.
-;; The full diff is O(total index size) per run, not O(changes). Embeddings — the only expensive resource —
-;; are already change-scoped (only a new doc_text is embedded; an idle run embeds nothing), and the O(total)
-;; metadata read is cheap over the *library* (a bounded tier), so a full run stays comfortable
-;; into the tens of thousands of docs. The write path no longer pays it on every edit: an `osi_ai_context`
-;; write drives [[reconcile-entity!]] (one entity's slice), and [[reconcile!]] runs only on a slow schedule
-;; and from the force-reconcile API as the backstop for membership / name / description changes that aren't
-;; hooked. Mark-and-sweep (stamp a generation, DELETE WHERE gen < current) would be a net loss for the full
-;; path: it trades the cheap full read for a full write every run (WAL, dead tuples, vacuum pressure).
+;; The full diff is O(total index size) per run, not O(changes). Embeddings are change-scoped because only a
+;; new `doc_text` reaches [[insert-batch!]]; an idle run embeds nothing. The remaining O(total) metadata read
+;; is over the bounded library tier and stays comfortable into the tens of thousands of documents.
+;; The write path avoids that full read on every edit: an `osi_ai_context` write drives [[reconcile-entity!]]
+;; for one entity's slice, while [[reconcile!]] runs only on a slow schedule and from the force-reconcile API
+;; as the backstop for membership, name, and description changes that are not hooked.
+;; Mark-and-sweep (stamp a generation, DELETE WHERE gen < current) would replace the full read with a full
+;; write every run, producing WAL, dead tuples, and vacuum work.
 
 (defn- reconcile-against-appdb!
   "The full diff body — assumes the reconcile advisory lock is held on `conn`. See the namespace docstring."
@@ -325,13 +325,14 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
-    ;; Advance freshness only when no retryable failure left stale documents behind. Insert failures
-    ;; (`@failed`) and unforeseen projection failures (`projection-failed`) may succeed on a later run, so
-    ;; either one blocks the watermark.
+    ;; Advance freshness only when no failure remains that a later run could repair by itself.
+    ;; Insert failures (`@failed`) and unforeseen projection failures (`projection-failed`) may succeed on a
+    ;; later run, so either one blocks the watermark.
     ;;
     ;; Do not gate on the number inserted: the embedding layer may permanently skip an oversized item.
-    ;; A malformed `ai_context` also does not block; its current base documents are indexed and the missing
-    ;; enrichment is reported by the degraded-entity gauge.
+    ;; An unusable stored `ai_context` cannot self-heal, so blocking on it would report the index as stale
+    ;; when no run can fix it. That entity is degraded instead: its base documents are indexed, and the
+    ;; degraded-entity gauge reports the missing enrichment.
     ;;
     ;; Store the watermark captured before the source read so changes made during this reconcile remain newer
     ;; than the snapshot.
