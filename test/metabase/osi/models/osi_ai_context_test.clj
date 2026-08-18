@@ -42,9 +42,9 @@
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context "Use for revenue questions.")]
       (is (= {:instructions "Use for revenue questions."} (:ai_context (by-key entity)))))))
 
-(deftest model-writes-do-not-nudge-test
-  (testing "plain t2 insert/update/delete have no index side effects — the model has no write hooks, and
-           a writer that wants the index refreshed promptly nudges it itself"
+(deftest model-writes-nudge-the-index-test
+  (testing "the nudge hangs off the model, so a writer with nowhere obvious to call one from — a serdes
+           import, a direct t2 write — still gets its change indexed without the periodic reconcile"
     (let [nudges (atom [])]
       (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [entity-type entity-local-id]
                                                                 (swap! nudges conj [entity-type entity-local-id])
@@ -53,8 +53,16 @@
           (t2/insert! :model/OsiAiContext (assoc entity :ai_context ai-context))
           (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42
                       {:ai_context {:instructions "changed"}})
+          (is (= [["table" 42] ["table" 42]] @nudges)
+              "an insert and an ai_context update each nudge once")
+          (reset! nudges [])
+          (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42
+                      {:generator_version "v1"})
+          (is (= [] @nudges)
+              "a write touching only generation metadata feeds no index doc, so it nudges nothing")
+          (reset! nudges [])
           (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)
-          (is (= [] @nudges) "no model write nudges; the CRUD API's call sites do")
+          (is (= [["table" 42]] @nudges) "a delete nudges so the entity's docs are collected")
           (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))))
 
 (deftest card-flavors-share-one-canonical-key-test
