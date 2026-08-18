@@ -41,15 +41,28 @@
                         {:error-type :configuration-error}))
         {}))))
 
+(def ^:private connection-timeout-ms
+  "Cap on establishing a TCP connection to the runner. A hung connect means the runner is unreachable; without a
+  bound the calling (Jetty request) thread blocks indefinitely."
+  (* 10 1000))
+
+(def ^:private socket-timeout-ms
+  "Read timeout for the short runner calls (logs, cancel). /execute allows this much read time *beyond* the runner's
+  own execution deadline, so a wedged runner can hold a Jetty thread for at most the run timeout plus this."
+  (* 60 1000))
+
 (defn- python-runner-request
-  "Helper function for making HTTP requests to the python runner service."
+  "Helper function for making HTTP requests to the python runner service. Every request is bounded by a connection
+  and read timeout so a slow or unreachable runner can never pin the calling thread indefinitely."
   [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
-        base-options {:content-type     :json
-                      :accept           :json
-                      :throw-exceptions false
-                      :as               :json
-                      :headers          (authorization-headers)}]
+        base-options {:content-type       :json
+                      :accept             :json
+                      :throw-exceptions   false
+                      :as                 :json
+                      :connection-timeout connection-timeout-ms
+                      :socket-timeout     socket-timeout-ms
+                      :headers            (authorization-headers)}]
     (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn root-type
@@ -210,9 +223,10 @@
         table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
                                                  [alias (url-for-path [:table table_id :manifest])]))
                                        source-tables)
+        run-timeout-secs         (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :timeout             run-timeout-secs
                                   :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
@@ -220,7 +234,15 @@
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
         response                 (with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+                                   (try
+                                     (python-runner-request server-url :post "/execute"
+                                                            {:body           (json/encode payload)
+                                                             :socket-timeout (+ (* run-timeout-secs 1000)
+                                                                                socket-timeout-ms)})
+                                     ;; connect/read timed out -- surface it as a runner timeout so callers get the
+                                     ;; normal timed-out result instead of a 500, and the Jetty thread is freed.
+                                     (catch java.io.InterruptedIOException _
+                                       {:status 408 :body {:timeout true}})))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
