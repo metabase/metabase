@@ -81,13 +81,21 @@
   margin-right: var(--mantine-spacing-xs);
 }
 
-.markdownRoot :where(code) {
-  font-family: var(--mb-default-monospace-font-family, monospace);
-  font-size: 0.875em;
-  background-color: var(--markdown-surface-color);
-  border: 1px solid var(--markdown-border-color);
-  border-radius: var(--mantine-radius-xs);
-  padding: 0.125rem 0.25rem;
+.markdownRoot:where(:not([data-custom-code])) {
+  :where(code) {
+    font-family: var(--mb-default-monospace-font-family, monospace);
+    font-size: 0.875em;
+    background-color: var(--markdown-surface-color);
+    border: 1px solid var(--markdown-border-color);
+    border-radius: var(--mantine-radius-xs);
+    padding: 0.125rem 0.25rem;
+  }
+
+  :where(pre code) {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+  }
 }
 
 .markdownRoot :where(pre) {
@@ -97,12 +105,6 @@
   background-color: var(--markdown-surface-color);
   border: 1px solid var(--markdown-border-color);
   border-radius: var(--mantine-radius-sm);
-}
-
-.markdownRoot :where(pre code) {
-  background-color: transparent;
-  border: none;
-  padding: 0;
 }
 
 .markdownRoot :where(blockquote) {

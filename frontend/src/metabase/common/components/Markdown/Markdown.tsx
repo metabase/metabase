@@ -8,6 +8,7 @@ import type {
 import { useMemo } from "react";
 import ReactMarkdown, {
   type Components,
+  type ExtraProps,
   defaultUrlTransform,
 } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,7 +25,10 @@ const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
 
-const MarkdownTable = (props: TableHTMLAttributes<HTMLTableElement>) => (
+const MarkdownTable = ({
+  node,
+  ...props
+}: TableHTMLAttributes<HTMLTableElement> & ExtraProps) => (
   <div className={S.tableScroll}>
     <table {...props} />
   </div>
@@ -102,6 +106,7 @@ export const Markdown = ({
       data-dark={dark || undefined}
       data-unstyle-links={unstyleLinks || undefined}
       data-compact={compact || undefined}
+      data-custom-code={!!components?.code || undefined}
     >
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}

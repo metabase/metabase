@@ -129,6 +129,7 @@
 .aiMarkdown pre code {
   font-size: 0.6875rem;
   line-height: 1.5;
+  padding: 0;
 }
 
 .aiMarkdown h1,
