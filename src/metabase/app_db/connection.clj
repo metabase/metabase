@@ -253,6 +253,14 @@
                             ;; transaction under us -- DDL does that implicitly on H2 and MySQL, and once it has,
                             ;; those writes are durable and no rollback can take them back. Discard whatever is
                             ;; still pending and say where it happened, rather than fail on work already on disk.
+                            ;; TODO (Chris 2026-08-18) -- consider rejecting the DDL instead of tolerating the
+                            ;; damage here, and fixing each site. [[metabase.app-db.honeysql-guard]] already hooks
+                            ;; the t2 pipeline and is the place to catch it, though raw SQL strings would slip
+                            ;; past. Two things to settle first: savepoints are invalidated for any nested
+                            ;; transaction, not just rollback-only ones, so scope the check to the hazard rather
+                            ;; than to this branch; and not every site is a test -- search's drop-table! runs DDL
+                            ;; on the ambient connection, and moving it to its own risks blocking on locks the
+                            ;; caller's transaction holds.
                             (do
                               (log/warnf (str "Could not roll back a rollback-only transaction (%s). Something in"
                                               " it committed the transaction -- DDL commits implicitly on H2 and"
