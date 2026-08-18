@@ -963,14 +963,15 @@
                :contextTokens 1550}}
              finish)))))
 
-(deftest ^:parallel context-window-tokens-test
-  (are [model window] (= window (self/context-window-tokens model))
-    "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
-    "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
-    "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
-    "azure/openai/my-deployment"           nil     ; unmatched deployment
-    "anthropic/some-future-model"          nil     ; unknown model
-    "unknown"                              nil))   ; unknown provider
+(deftest context-window-tokens-test
+  (llm.tu/with-default-connections
+    (are [model window] (= window (self/context-window-tokens model))
+      "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
+      "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
+      "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
+      "azure/openai/my-deployment"           nil     ; unmatched deployment
+      "anthropic/some-future-model"          nil     ; unknown model
+      "unknown"                              nil)))  ; no such connection
 
 ;;; ===================== Retry Logic Tests =====================
 

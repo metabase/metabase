@@ -65,9 +65,10 @@ export function MetabotChatHistory() {
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.longChatNotice && (
+      {metabot.longChatNotice && !metabot.isDoingScience && (
         <MetabotLongChatNotice
           variant={metabot.longChatNotice}
+          className={hasMessages ? S.longChatNotice : undefined}
           onNewChat={metabot.createNewConversation}
         />
       )}
