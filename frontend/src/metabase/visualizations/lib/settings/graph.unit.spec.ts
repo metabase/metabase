@@ -563,6 +563,132 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
       expect(isHidden).toBe(true);
     });
   });
+
+  describe("graph.stack_value_format", () => {
+    const getHidden = checkNotNull(
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.stack_value_format"]?.getHidden,
+    );
+    const getDefault = checkNotNull(
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.stack_value_format"]?.getDefault,
+    );
+
+    it("should be hidden on non-stacked charts", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": null,
+          "graph.show_values": true,
+          "graph.show_stack_values": "series",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden when show_values is false", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": false,
+          "graph.show_stack_values": "series",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden when show_stack_values is 'total'", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+          "graph.show_stack_values": "total",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden when conditions are met with 'series'", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+          "graph.show_stack_values": "series",
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should not be hidden when show_stack_values is 'all'", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+          "graph.show_stack_values": "all",
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should not be hidden on normalized stacks regardless of show_stack_values", () => {
+      const isHidden = getHidden(
+        [
+          createMockSingleSeries({ display: "bar" }),
+          createMockSingleSeries({ display: "bar" }),
+        ],
+        {
+          series: (series) => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+          "graph.show_values": true,
+          "graph.show_stack_values": "total",
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should default to 'value'", () => {
+      expect(getDefault([], {})).toBe("value");
+    });
+
+    it("should offer Values and Percentages options", () => {
+      const getProps = checkNotNull(
+        GRAPH_DISPLAY_VALUES_SETTINGS["graph.stack_value_format"]?.getProps,
+      );
+
+      expect(getProps([], {}, jest.fn(), {}, jest.fn()).options).toEqual([
+        { name: "Values", value: "value" },
+        { name: "Percentages", value: "percentage" },
+      ]);
+    });
+  });
 });
 
 describe("graph.tooltip_columns", () => {
