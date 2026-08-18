@@ -9,11 +9,21 @@ import type { CodeEditorProps } from "./CodeEditor";
 // Nothing renders while it loads. The chunk is shared and cached after its first
 // use, so only the first editor in a session waits, and showing the code
 // uncoloured for that moment reads as a glitch rather than as progress.
-const LazyCodeEditor = lazy(() =>
+const importCodeEditor = () =>
   import(
     /* webpackChunkName: "code-editor" */
     "./CodeEditor"
-  ).then(({ CodeEditor }) => ({ default: CodeEditor })),
+  );
+
+/**
+ * The editor's chunk, for a caller that wants it in hand before it renders.
+ * A `route.lazy` loader can await this so its page or modal only appears once
+ * the editor is ready, rather than appearing with an empty editor area.
+ */
+export const loadCodeEditor = () => importCodeEditor();
+
+const LazyCodeEditor = lazy(() =>
+  importCodeEditor().then(({ CodeEditor }) => ({ default: CodeEditor })),
 );
 
 export function CodeEditor(props: CodeEditorProps) {

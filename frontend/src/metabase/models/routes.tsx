@@ -1,17 +1,20 @@
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import { lazyModalRouteElement } from "metabase/common/components/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
+import { loadActionCreator } from "metabase/querying/action-creator";
 import { Route, redirect } from "metabase/router";
 import {
   type ModalProps,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
 
-import ActionCreatorModal from "./containers/ActionCreatorModal/ActionCreatorModal";
+// The action editor is a separate chunk. The loader awaits it so the modal only
+// opens once the editor is ready, instead of opening around a loading state.
+const actionCreatorModal = () =>
+  Promise.all([
+    import("./containers/ActionCreatorModal/ActionCreatorModal"),
+    loadActionCreator(),
+  ]).then(([{ default: ActionCreatorModal }]) => ActionCreatorModal);
 
-/**
- * The action pages stay eager: `modalRoute` takes a component rather than a
- * loader, so deferring them needs more than a route change.
- */
 const modelDetailPage = () =>
   import(
     /* webpackChunkName: "model-detail" */ "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage"
@@ -25,8 +28,8 @@ export const getRoutes = () => {
   return (
     <Route path="/model/:slug/detail">
       <Route path="actions" element={<ModelActions />}>
-        {modalRoute("new", ActionCreatorModal, { modalProps })}
-        {modalRoute(":actionId", ActionCreatorModal, { modalProps })}
+        {lazyModalRouteElement("new", actionCreatorModal, { modalProps })}
+        {lazyModalRouteElement(":actionId", actionCreatorModal, { modalProps })}
       </Route>
       <Route path=":rowId" lazy={modelDetailPage} />
       <Route index element={redirect("actions")} />

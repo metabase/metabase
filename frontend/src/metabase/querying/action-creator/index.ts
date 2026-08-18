@@ -1,2 +1,2 @@
-export { ActionCreator } from "./lazy";
+export { ActionCreator, loadActionCreator } from "./lazy";
 export type { ActionCreatorProps } from "./ActionCreator";

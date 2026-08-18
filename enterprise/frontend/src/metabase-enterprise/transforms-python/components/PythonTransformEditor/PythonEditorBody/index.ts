@@ -1,2 +1,2 @@
-export { PythonEditorBody } from "./lazy";
+export { PythonEditorBody } from "./PythonEditorBody";
 export type { PythonEditorBodyProps } from "./PythonEditorBody";

@@ -1,7 +1,7 @@
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { PythonTransformEditor } from "./components/PythonTransformEditor";
+import { PythonTransformEditor } from "./components/PythonTransformEditor/lazy";
 import { SHARED_LIB_IMPORT_PATH } from "./constants";
 import { PythonRunnerSettingsPage } from "./pages/PythonRunnerSettingsPage";
 import { getPythonTransformsRoutes, getPythonUpsellRoutes } from "./routes";

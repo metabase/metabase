@@ -1,21 +1,28 @@
 import { Suspense, lazy } from "react";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-
 import type { ActionCreatorProps } from "./ActionCreator";
 
 // The action editor carries the native query editor and its CodeMirror
-// extensions. Every consumer opens it as a modal, and one of them is mounted
+// extensions. Every consumer opens it inside a modal, and one of them is mounted
 // with the app shell, so it loads on demand.
+const importActionCreator = () => import("./ActionCreator");
+
+/**
+ * The editor's chunk, for a caller that wants it in hand before it renders. A
+ * `route.lazy` loader awaits this so the modal opens complete, rather than
+ * opening around an empty area that fills in a moment later.
+ */
+export const loadActionCreator = () => importActionCreator();
+
 const LazyActionCreator = lazy(() =>
-  import("./ActionCreator").then(({ ActionCreator }) => ({
+  importActionCreator().then(({ ActionCreator }) => ({
     default: ActionCreator,
   })),
 );
 
 export function ActionCreator(props: ActionCreatorProps) {
   return (
-    <Suspense fallback={<LoadingAndErrorWrapper loading />}>
+    <Suspense fallback={null}>
       <LazyActionCreator {...props} />
     </Suspense>
   );
