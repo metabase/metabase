@@ -30,7 +30,7 @@ describe("RunInfo", () => {
     expect(
       screen.getByText("Failed at Oct 15, 2023 2:30 PM, with this error"),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue(message)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(message)).toBeInTheDocument();
   });
 
   it("should show the error message when there is no date", async () => {
@@ -41,6 +41,6 @@ describe("RunInfo", () => {
     await userEvent.click(button);
 
     expect(screen.getByText("Failed with this error")).toBeInTheDocument();
-    expect(screen.getByDisplayValue(message)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(message)).toBeInTheDocument();
   });
 });
