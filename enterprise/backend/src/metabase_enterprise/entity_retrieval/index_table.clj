@@ -52,7 +52,7 @@
    :meta    (str index-schema ".library_entity_index_meta")})
 
 (def legacy-tables
-  "The unqualified names used before [[index-schema]] existed. [[adopt-legacy-tables!]] moves them."
+  "The unqualified names used before [[index-schema]] and immutable embedding-space identities existed."
   {:vectors "library_entity_index"
    :meta    "library_entity_index_meta"})
 
@@ -215,25 +215,20 @@
                         e))))))
 
 ;; TODO (Chris 2026-08-17) -- delete this once no supported upgrade can start from the bare names.
-(defn- adopt-legacy-tables!
-  "Move an index built before [[index-schema]] existed into it, preserving its rows.
-  Without this, the qualified tables would be created empty beside the old ones and the whole library
-  would be re-embedded. A no-op once moved: the unqualified name no longer resolves.
+(defn- drop-legacy-tables!
+  "Drop an index built before [[index-schema]] and immutable embedding-space identities existed.
 
-  A dedicated store only. The bare names date from when this index was dedicated-only, so nothing in an
-  app db can be an old index of ours -- but [[table-exists?]] resolves an unqualified name on the search
-  path, where an application table that happens to share the name would answer, and get moved."
+  Its vectors have no trustworthy space identity, so they must be rebuilt rather than moved into the
+  current schema. A dedicated store only: an app db may contain unrelated application tables with these
+  names. Qualify the old names with `public` so a customized search path cannot resolve the new tables."
   [tx]
   (when (and (= default-tables (tables))
              (semantic.db.datasource/dedicated-url-configured?))
     (doseq [k [:vectors :meta]]
-      (let [legacy (k legacy-tables)]
-        (when (and (table-exists? tx legacy)
-                   (not (table-exists? tx (k default-tables))))
-          (log/infof "Moving %s into the %s schema" legacy index-schema)
-          (jdbc/execute! tx [(format "ALTER TABLE %s SET SCHEMA %s"
-                                     (semantic.util/quote-ident legacy)
-                                     (semantic.util/quote-ident index-schema))]))))))
+      (let [legacy (str "public." (k legacy-tables))]
+        (when (table-exists? tx legacy)
+          (log/infof "Dropping incompatible legacy library entity index table %s" legacy)
+          (jdbc/execute! tx [(format "DROP TABLE %s" (semantic.util/quote-table legacy))]))))))
 
 (defn vectors-table-exists?
   "Whether the configured entity-retrieval vectors table exists."
@@ -345,9 +340,8 @@
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (ensure-schema! tx)
-    ;; Before any CREATE below: those are IF NOT EXISTS, so creating first would leave an empty qualified
-    ;; table for the move to refuse, and the whole library would be re-embedded.
-    (adopt-legacy-tables! tx)
+    ;; Before any CREATE below: remove the pre-embedding-space tables whose vectors cannot be trusted.
+    (drop-legacy-tables! tx)
     (jdbc/execute! tx (create-meta-table-sql))
     ;; CREATE TABLE IF NOT EXISTS does not add columns to an existing table. Upgrade when this role owns it;
     ;; grant-only roles keep reconciling without the optional freshness timestamp.
