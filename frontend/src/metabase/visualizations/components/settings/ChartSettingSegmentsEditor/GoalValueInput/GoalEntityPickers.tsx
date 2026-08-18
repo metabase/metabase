@@ -51,7 +51,9 @@ export function GoalEntityPickers({
     <>
       <MiniPicker
         forceSearch
-        menuProps={{ position: "bottom-start" }}
+        menuProps={{
+          position: "bottom-start",
+        }}
         models={models}
         opened={opened}
         searchInputPlaceholder={t`Search…`}
