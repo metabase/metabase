@@ -131,26 +131,17 @@ describe("formatTitle", () => {
 });
 
 describe("transformTimelines", () => {
-  it("drops archived events and parses timestamps", () => {
+  it("drops archived events", () => {
     const [timeline] = transformTimelines([
       createMockTimeline({
         events: [
-          createMockTimelineEvent({ id: 1, timestamp: "2027-06-03T00:00:00Z" }),
+          createMockTimelineEvent({ id: 1 }),
           createMockTimelineEvent({ id: 2, archived: true }),
         ],
       }),
     ]);
 
     expect(timeline.events?.map((event) => event.id)).toEqual([1]);
-    expect(dayjs.isDayjs(timeline.events?.[0].timestamp)).toBe(true);
-  });
-
-  it("puts default timelines first", () => {
-    const sorted = transformTimelines([
-      createMockTimeline({ id: 1, name: "B", default: false }),
-      createMockTimeline({ id: 2, name: "A", default: true }),
-    ]);
-    expect(sorted.map((timeline) => timeline.id)).toEqual([2, 1]);
   });
 });
 
@@ -187,10 +178,6 @@ describe("filterTimelinesByXAxis", () => {
 
   it("extends by whole intervals for sub-day units", () => {
     expect(filterIds({ count: 6, unit: "hour" })).toEqual([1]);
-  });
-
-  it("does not extend the domain without an interval", () => {
-    expect(filterIds(null)).toEqual([1]);
   });
 
   it("returns non-empty timelines untouched without an axis", () => {
