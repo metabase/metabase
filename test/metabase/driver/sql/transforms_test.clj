@@ -348,3 +348,19 @@
           (finally
             ;; with-transform-cleanup! has dropped the table by now, so the schema is empty
             (execute! (str "DROP SCHEMA IF EXISTS " quoted-schema))))))))
+
+(deftest rename-table-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "renaming a table to a name with special characters keeps it as a single queryable table"
+        (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+              src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))
+              dst    "rnq_a`b\\"]
+          (try
+            (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                  {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+            (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+            (is (= 0 (warehouse-row-count schema dst)))
+            (finally
+              (transforms.tu/drop-target! {:type :table :schema schema :name dst})
+              (transforms.tu/drop-target! {:type :table :schema schema :name src}))))))))
