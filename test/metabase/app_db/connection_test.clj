@@ -279,6 +279,25 @@
              (t2/with-transaction [conn nil {:rollback-only true}]
                (t2/with-transaction [_ conn {:nested-transaction-rule :ignore :rollback-only true}]))))))))
 
+(deftest failed-savepoint-rollback-still-restores-transaction-state-test
+  (testing "a nested scope whose savepoint rollback throws must not leave its state visible to the outer scope"
+    (let [mock-conn (reify Connection
+                      (rollback [_ _savepoint]
+                        (throw (ex-info "Rollback error" {})))
+                      (rollback [_])
+                      (setAutoCommit [_ _])
+                      (getAutoCommit [_] true)
+                      (setSavepoint [_])
+                      (commit [_]))]
+      (binding [t2.connection/*current-connectable* mock-conn]
+        (t2/with-transaction [conn]
+          (swap! mdb.connection/*transaction-state* assoc :outer "kept")
+          (is (thrown? Exception
+                       (t2/with-transaction [_ conn]
+                         (swap! mdb.connection/*transaction-state* assoc :nested "discarded")
+                         (throw (ex-info "Original error" {})))))
+          (is (= {:outer "kept"} @mdb.connection/*transaction-state*)))))))
+
 (deftest failed-rollback-only-rollback-discards-the-transaction-test
   (testing "a requested rollback that fails discards the transaction rather than letting autocommit commit it"
     (let [calls     (atom [])
