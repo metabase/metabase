@@ -14,13 +14,23 @@ Build it with `./bin/build-embedder-plugin.sh`, then place the jar in Metabase's
 discovered from the jar manifest at startup; each model's DJL runtime is loaded lazily on first inference, and only
 the models a consumer actually asks for are ever loaded.
 
-Consumers select the provider through their own settings:
+Consumers select the provider through their own settings. Semantic search and Library retrieval must also override
+the model and dimensions because their defaults describe the larger Arctic Embed model used by the AI service:
 
-- semantic search and Library retrieval: `MB_EE_EMBEDDING_PROVIDER=in-process`
-- data complexity score: `MB_DATA_COMPLEXITY_SCORING_SYNONYM_EMBEDDING_PROVIDER=in-process`
+```text
+MB_EE_EMBEDDING_PROVIDER=in-process
+MB_EE_EMBEDDING_MODEL=Snowflake/snowflake-arctic-embed-xs
+MB_EE_EMBEDDING_MODEL_DIMENSIONS=384
+```
 
-Each consumer's model setting picks which bundled model it gets, and a model the plugin does not bundle fails
-readiness rather than falling back to another one.
+The data complexity score's default model and dimensions already match the bundled MiniLM model, so it only needs:
+
+```text
+MB_DATA_COMPLEXITY_SCORING_SYNONYM_EMBEDDING_PROVIDER=in-process
+```
+
+A model the plugin does not bundle, or configured dimensions that do not match it, fails readiness rather than
+falling back to another model.
 
 The artifact contains pinned ARM64 and x86-64/AVX2 ONNX exports. The supported runtime combinations are glibc 2.34
 or newer on Linux, on either architecture, and Apple Silicon macOS. Intel macOS is unsupported because the tokenizer
