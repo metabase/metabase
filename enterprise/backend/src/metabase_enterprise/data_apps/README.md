@@ -25,6 +25,18 @@ data_apps/
 plus two optional fields: a one-line `description` shown beside the name in the admin UI, and the
 origins the sandboxed bundle may `fetch`/XHR. See `config.clj` for the format and its validation.
 
+It can also declare the 21-character entity IDs of the app-owned collection and permissions group:
+
+```yaml
+name: Sales
+path: dist/index.js
+resource_collection_entity_id: resourcecollectionid1
+permission_group_entity_id: permissiongroupid0001
+```
+
+Remote sync resolves these portable IDs to local AppDB records. The `data_app` row retains the
+local numeric foreign keys, so the same manifest works across instances.
+
 **The directory name is the slug.** Nothing in the config declares it. This is what makes slug
 collisions structurally impossible — a repo can't hold two `data_apps/sales` directories, and
 discovery takes at most one config per directory.

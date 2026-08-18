@@ -27,18 +27,19 @@ Admin → Embedding → Embedded analytics SDK → CORS.
 ## Ship
 
 ```bash
-npm run build                         # produces a single dist/index.js
+npm run build                         # adds resource entity IDs and produces dist/index.js
 ```
 
-Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
-source. The app appears at `/apps/<slug>` after Metabase's next remote-sync
-import (manual "Pull changes", auto-import, or startup).
+The build adds missing server-issued resource entity IDs to `data_app.yaml`.
+It preserves IDs already in the manifest. Commit the manifest, `dist/index.js`
+(the `path` declared in `data_app.yaml`), and your source. The app appears at
+`/apps/<slug>` after Metabase's next remote-sync import.
 
 ## What's in the box
 
 ```
 .
-├── data_app.yaml           ← manifest: name, bundle path, allowed_hosts
+├── data_app.yaml           ← manifest: name, bundle path, resource entity IDs, allowed_hosts
 ├── package.json            ← @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
 ├── vite.config.ts          ← one-liner: `export default dataAppConfig()`
 ├── tsconfig.json

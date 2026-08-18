@@ -73,6 +73,12 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
+(def ^:private DraftDataAppResponse
+  "Draft returns resource entity ids to populate in data_app.yaml."
+  (into DataAppResponse
+        [[:resource_collection_entity_id ms/NonBlankString]
+         [:permission_group_entity_id ms/NonBlankString]]))
+
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
    [:name         ms/NonBlankString]
@@ -217,14 +223,15 @@
     {:database_id database-id
      :dataset_query query}))
 
-(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
+(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
   "Create or reuse a data app draft before its first repository import."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (data-app.config/valid-slug? slug)
                  "Data app draft slugs must use lowercase letters, numbers, and dashes.")
   (data-app.sync/ensure-draft! slug)
-  (data-apps.db/non-blob-data-app-by-slug slug))
+  (let [app (data-apps.db/non-blob-data-app-by-slug slug)]
+    (merge app (data-app.resources/resource-entity-ids app))))
 
 (api.macros/defendpoint :put ["/:slug/query-sync/permissions" :slug slug-regex] :- DataAppResponse
   "Reconcile the database view-data permissions required by a data app's queries."
