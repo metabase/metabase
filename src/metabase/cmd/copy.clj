@@ -215,6 +215,10 @@
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
 
+    :model/DataPermissions
+    ;; unique_perms_helper is a computed/generated column
+    (map #(dissoc % :unique_perms_helper))
+
     ;; else
     identity))
 

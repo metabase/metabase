@@ -40,6 +40,15 @@
 ;; `:postgres` (see `metabase.driver.postgres`).
 (driver/register! :redshift, :parent :postgres)
 
+(defmethod driver/host-carrying-parameters :redshift
+  [_driver]
+  ["host" "PGHOST" "endpointurl" "stsendpointurl"])
+
+(defmethod driver/non-host-parameters :redshift
+  [_driver]
+  ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
+   "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
