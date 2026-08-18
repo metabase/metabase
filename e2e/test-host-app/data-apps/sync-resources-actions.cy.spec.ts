@@ -484,6 +484,15 @@ describe(
     describe("refusals", () => {
       // `GET /api/action/:id` filters archived actions out, so an archived source
       // is unreadable rather than readable-and-flagged.
+      it("copies nothing when the action's model is in the trash", () => {
+        declareOneAction().then(({ modelId }) => {
+          cy.request("PUT", `/api/card/${modelId}`, { archived: true });
+
+          syncExpectingRefusal(`references an action on model ${modelId}`);
+          copiedModels().should("have.length", 0);
+        });
+      });
+
       it("copies nothing when a declared action is archived and cannot be read", () => {
         declareOneAction().then(({ action }) => {
           cy.request("PUT", `/api/action/${action.id}`, { archived: true });

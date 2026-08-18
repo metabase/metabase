@@ -137,6 +137,15 @@ async function fetchSourceModels(
         );
       }
 
+      // A trashed action reads as a 404 and stops the run; a trashed model is
+      // still readable, so refuse it here rather than copying from something
+      // its author deleted.
+      if (card.archived === true) {
+        throw new Error(
+          `${location} references an action on model ${id}, which is in the trash. Restore the model or remove the declaration, then run sync-resources again.`,
+        );
+      }
+
       return [id, card] as const;
     }),
   );
