@@ -63,7 +63,9 @@
   []
   (mdb/memoize-for-application-db
    (fn [driver]
-     (u/the-id (get-or-create-default-dataset! driver)))))
+     ;; the id is memoized for the whole app db, so the Database has to outlive whatever scope first asked for it --
+     ;; created inside a test's `:rollback-only` `with-temp` it would be rolled back while the memo kept its id
+     (mdb/do-outside-transaction #(u/the-id (get-or-create-default-dataset! driver))))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -395,7 +397,9 @@
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb/memoize-for-application-db
                            (fn [driver]
-                             (let [db (get-or-create-database! driver dbdef)]
+                             ;; memoized for the whole app db, so it must not be rolled back with the scope that
+                             ;; happened to ask for it first -- see [[make-memoized-test-database-id-fn]]
+                             (let [db (mdb/do-outside-transaction #(get-or-create-database! driver dbdef))]
                                (assert db)
                                (assert (pos-int? (:id db)))
                                db)))

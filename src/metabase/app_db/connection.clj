@@ -158,6 +158,20 @@
   []
   *transaction-state*)
 
+(defn do-outside-transaction
+  "Run `thunk` detached from any surrounding transaction: on its own connection, at depth zero, and with its own
+  callback and state bindings. Writes it makes commit on their own, so they survive a rollback of the enclosing
+  scope. For work whose durability must not depend on the caller's transaction — global setup a caller happens to
+  trigger from inside a `:rollback-only` scope, which would otherwise be undone while something outside records it
+  as done."
+  [thunk]
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *before-commit-callbacks*     nil
+            *after-commit-callbacks*      nil
+            *transaction-state*           nil]
+    (thunk)))
+
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
   open, so any DB writes it makes commit atomically with it, and a throw from it rolls the whole
