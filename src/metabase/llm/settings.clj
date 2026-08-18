@@ -387,6 +387,34 @@
   :setter     (connection-field-setter :llm-azure-deployment-name)
   :doc        "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
+;;; --------------------------------------------------- vLLM ----------------------------------------------------
+
+(defsetting llm-vllm-api-base-url
+  (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-base-url)
+  :setter     (connection-field-setter :llm-vllm-api-base-url)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-api-key
+  (deferred-tru "The API key for your vLLM server. Only needed when the server was started with `--api-key`.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-key)
+  :setter     (connection-field-setter :llm-vllm-api-key)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware; the shared 60s default is too short.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
@@ -406,39 +434,6 @@
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
-
-;;; --------------------------------------------------- vLLM ----------------------------------------------------
-
-(defsetting llm-vllm-api-base-url
-  (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
-  :encryption :no
-  :visibility :settings-manager
-  :export?    false
-  :setter     (partial set-normalized-base-url! :llm-vllm-api-base-url))
-
-(defsetting llm-vllm-api-key
-  (deferred-tru "The API key for your vLLM server. Only needed when the server was started with `--api-key`.")
-  :sensitive? true
-  :visibility :settings-manager
-  :export?    false
-  :setter     (partial set-trimmed-string! :llm-vllm-api-key))
-
-(defsetting llm-vllm-model-reasoning?
-  "Whether the connected vLLM model streams reasoning, as observed by the connect-time contract
-  probe. Nothing else can answer it: the model catalog carries no such field."
-  :type       :boolean
-  :default    false
-  :visibility :internal
-  :export?    false
-  :doc        false)
-
-(defsetting llm-vllm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
-  ;; Self-hosted TTFT is bounded by the operator's hardware; the shared 60s default is too short.
-  :type       :integer
-  :default    300000
-  :visibility :settings-manager
-  :export?    false)
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

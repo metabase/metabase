@@ -12,7 +12,6 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -57,16 +56,28 @@
       500 (tru "vLLM returned an internal server error")
       (tru "vLLM API error (HTTP {0})" status))))
 
+(def reasoning-config-key
+  "The connection `:config` key [[preflight!]]'s reasoning observation is recorded under. It is not an
+  admin-entered field: whether a served model reasons depends on the operator's `--reasoning-parser`
+  as much as on the model, so only the probe can answer it."
+  :model-reasoning)
+
+(defn reasoning-connection?
+  "Whether the connection carrying `credentials` was observed streaming its reasoning. A hand-written
+  `llm-providers` can hold a JSON boolean where the API stores the string it round-trips."
+  [credentials]
+  (let [recorded (get credentials reasoning-config-key)]
+    (or (true? recorded) (= "true" recorded))))
+
 (defn- vllm-auth
-  "Auth map for a vLLM request. The map is never nil, so `core/resolve-auth` cannot reach its
-  `missing-api-key-ex` branch — a keyless server is a complete configuration."
+  "Auth map for a vLLM request, built from the connection's credentials alone. The map is never nil, so
+  `core/resolve-auth` cannot reach its `missing-api-key-ex` branch — a keyless server is a complete
+  configuration."
   [credentials ai-proxy?]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (let [base-url (or (not-empty (:base-url credentials))
-                     (not-empty (llm/llm-vllm-api-base-url)))
-        api-key  (or (not-empty (:api-key credentials))
-                     (not-empty (llm/llm-vllm-api-key)))]
+  (let [base-url (not-empty (:base-url credentials))
+        api-key  (not-empty (:api-key credentials))]
     (when-not base-url
       (throw (missing-base-url-ex)))
     (core/resolve-auth "vllm" "vLLM"
@@ -297,56 +308,64 @@
     (catch ExecutionException e
       (throw (or (ex-cause e) e)))))
 
+(defn- run-probes!
+  "Run both contract probes against `model` and return whether it streamed reasoning.
+
+  They run concurrently; deref order fixes the verdict, tool calling being the more actionable
+  diagnosis when a server fails both. The loser is cancelled rather than left generating against the
+  operator's server long after anyone is listening."
+  [auth model]
+  (try
+    (let [tool-calling (future (check-tool-calling! auth model))
+          structured   (future (check-structured-output! auth model))]
+      (try
+        (let [reasoning? (await-probe! tool-calling)]
+          (await-probe! structured)
+          (boolean reasoning?))
+        (finally
+          (future-cancel tool-calling)
+          (future-cancel structured))))
+    (catch SocketTimeoutException _
+      (throw (preflight-ex
+              (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
+                   (str (:socket-timeout (probe-timeouts)))))))
+    (catch Exception e
+      (core/rethrow-api-error! "vllm" vllm-error-msg e))))
+
 (defn- preflight!
   "Exercise the contract the agent loop depends on, against the model that will actually be used, and
-  return that model's id. The connect path must adopt exactly this value rather than re-deriving it
-  from the listing, which agrees only while `decorate-provider-models` leaves vLLM's order alone.
+  return `{:model id :reasoning? bool}`. The connect path must adopt exactly this model rather than
+  re-deriving it from the listing, which agrees only while nothing reorders the catalog.
 
-  The probes run concurrently; deref order fixes the verdict, tool calling being the more actionable
-  diagnosis when a server fails both. The loser is cancelled rather than left generating against the
-  operator's server long after anyone is listening.
-
-  On success, records whether the probed model reasons in `llm-vllm-model-reasoning?` — only the
-  probe can answer that, and the answer drives which renderer the frontend picks."
+  `:reasoning?` reports whether the probed model streamed reasoning. Only the probe can answer that,
+  and the answer drives which renderer the frontend picks, so the connection records it (see
+  [[reasoning-config-key]])."
   [auth entries requested-model]
   (let [entry (probe-target entries requested-model)
         model (:id entry)]
     (check-context-budget! entry)
-    (try
-      (let [tool-calling (future (check-tool-calling! auth model))
-            structured   (future (check-structured-output! auth model))]
-        (try
-          (let [reasoning? (await-probe! tool-calling)]
-            (await-probe! structured)
-            (setting/set! :llm-vllm-model-reasoning? (boolean reasoning?)))
-          (finally
-            (future-cancel tool-calling)
-            (future-cancel structured))))
-      (catch SocketTimeoutException _
-        (throw (preflight-ex
-                (tru "The vLLM server did not answer the connection test within {0}ms. Check that it is not overloaded — a server this slow to answer a trivial prompt cannot drive Metabot."
-                     (str (:socket-timeout (probe-timeouts)))))))
-      (catch Exception e
-        (core/rethrow-api-error! "vllm" vllm-error-msg e)))
-    model))
+    {:model      model
+     :reasoning? (run-probes! auth model)}))
 
 (defn list-models
-  "List the models the configured vLLM server is serving. Pass-through: there is nothing to
+  "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
   whitelist, and `display_name` falls back to the served id.
 
-  `:probe?` additionally runs [[preflight!]] and returns the model it probed as `:probed-model`, for
-  the connect path to adopt. Reserved for the `PUT` settings path — a tool-call probe on every `GET`
-  would stall the admin model dropdown behind a full prefill."
+  `:probe?` additionally runs [[preflight!]], and reports the model it exercised as `:probed-model`
+  for the connect path to adopt, along with the `:learned-config` the probe determined. Reserved for
+  the connect and edit paths — a tool-call probe on every model listing would stall the admin picker
+  behind a full prefill."
   ([] (list-models {}))
   ([{:keys [credentials ai-proxy? model probe?]}]
-   (let [auth         (vllm-auth credentials ai-proxy?)
-         entries      (list-all-models auth)
-         probed-model (when probe?
-                        (preflight! auth entries model))]
+   (let [auth    (vllm-auth credentials ai-proxy?)
+         entries (list-all-models auth)
+         probed  (when probe?
+                   (preflight! auth entries model))]
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
-       probed-model (assoc :probed-model probed-model)))))
+       probed (assoc :probed-model   (:model probed)
+                     :learned-config {reasoning-config-key (str (:reasoning? probed))})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
@@ -359,13 +378,13 @@
   [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
   `temperature` falls back to [[default-temperature]]. All three stay adapter-local rather than
   moving into the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
-  [{:keys [max-tokens temperature schema tool_choice] :as opts} :- core/LLMRequestOpts]
+  [{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts]
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
     (assoc (chat-completions/request-body (cond-> opts
                                             (nil? temperature) (assoc :temperature default-temperature)))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
-                         forced?                         (max forced-tool-call-token-floor)
-                         (llm/llm-vllm-model-reasoning?) (max reasoning-model-token-floor)))))
+                         forced?                             (max forced-tool-call-token-floor)
+                         (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
 
 (defn- stream-io-ex
   "The vLLM error for a transport failure while *consuming* a response stream. Tagged
@@ -422,8 +441,10 @@
 
 (mu/defn vllm-raw
   "Perform a streaming request to a vLLM server's Chat Completions API.
+  Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
+  request, and throws without a base URL.
   `:ai-proxy?` is not supported for vLLM and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  [{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (when (str/blank? model)
@@ -436,7 +457,7 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [auth     (vllm-auth nil ai-proxy?)
+        (let [auth     (vllm-auth credentials ai-proxy?)
               response (core/request auth
                                      (merge {:method  :post
                                              :url     "/chat/completions"
@@ -453,7 +474,7 @@
         ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
         ;; cannot swallow one `vllm-error-msg` would have translated.
         (catch IOException e
-          (throw (request-io-ex e (llm/llm-vllm-api-base-url) timeout-ms)))
+          (throw (request-io-ex e (:base-url credentials) timeout-ms)))
         (catch Exception e
           (core/rethrow-api-error! "vllm" vllm-error-msg e))))))
 

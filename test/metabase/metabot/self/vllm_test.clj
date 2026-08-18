@@ -19,6 +19,18 @@
 
 (def ^:private base-url "http://vllm.internal:8000/v1")
 
+(def ^:private credentials
+  "What a resolved vLLM connection hands the adapter: adapters read credentials only, never settings."
+  {:base-url base-url})
+
+(def ^:private keyed-credentials
+  "A connection to a server started with --api-key."
+  (assoc credentials :api-key "local-dev-key"))
+
+(def ^:private reasoning-credentials
+  "A connection whose connect-time probe found the served model streaming its reasoning."
+  (assoc credentials vllm/reasoning-config-key "true"))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; vllm-request-body
 ;;; ──────────────────────────────────────────────────────────────────
@@ -69,35 +81,35 @@
                                                  :tool_choice "auto"
                                                  :max-tokens  128}))))))
 
-(deftest request-body-raises-max-tokens-for-a-reasoning-model-test
+(deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
   (testing "the agent path forces nothing and supplies no ceiling, so a reasoning model would otherwise get
            the shared 4096 default for thinking, answer, and tool call combined"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
-      (is (= 16384
-             (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
-                                                   :input [{:role :user :content "hi"}]})))))
+    (is (= 16384
+           (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :credentials reasoning-credentials}))))
     (testing "and a model the probe found does not reason keeps the default"
-      (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
-        (is (= (llm.settings/llm-max-tokens)
-               (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
-                                                     :input [{:role :user :content "hi"}]}))))))))
+      (is (= (llm.settings/llm-max-tokens)
+             (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :credentials credentials})))))))
 
-(deftest request-body-reasoning-floor-outranks-the-forced-tool-call-floor-test
+(deftest ^:parallel request-body-reasoning-floor-outranks-the-forced-tool-call-floor-test
   (testing "a reasoning model has to clear its thinking before the forced call, so the higher floor wins"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
-      (is (= 16384
-             (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
-                                                   :input      [{:role :user :content "hi"}]
-                                                   :schema     {:type "object"}
-                                                   :max-tokens 128})))))))
+    (is (= 16384
+           (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :schema      {:type "object"}
+                                                 :max-tokens  128
+                                                 :credentials reasoning-credentials}))))))
 
-(deftest request-body-reasoning-floor-never-lowers-a-ceiling-test
+(deftest ^:parallel request-body-reasoning-floor-never-lowers-a-ceiling-test
   (testing "a caller asking for more than the floor is left alone"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
-      (is (= 32000
-             (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
-                                                   :input      [{:role :user :content "hi"}]
-                                                   :max-tokens 32000})))))))
+    (is (= 32000
+           (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :max-tokens  32000
+                                                 :credentials reasoning-credentials}))))))
 
 (deftest ^:parallel request-body-no-default-model-test
   (testing "the model is never defaulted — a vLLM server's model name is whatever the operator loaded"
@@ -409,105 +421,108 @@
     @captured))
 
 (deftest vllm-auth-sends-bearer-token-when-configured-test
-  (testing "a configured API key becomes an Authorization header against the configured base URL"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url
-                                       llm.settings/llm-vllm-api-key      "local-dev-key"]
-      (is (=? {:method  :post
-               :url     "http://vllm.internal:8000/v1/chat/completions"
-               :headers {"Authorization" "Bearer local-dev-key"}
-               :body    string?}
-              (captured-chat-request! {:model "vllm-test" :input [{:role :user :content "hi"}]}))))))
+  (testing "the connection's API key becomes an Authorization header against its base URL"
+    (is (=? {:method  :post
+             :url     "http://vllm.internal:8000/v1/chat/completions"
+             :headers {"Authorization" "Bearer local-dev-key"}
+             :body    string?}
+            (captured-chat-request! {:model       "vllm-test"
+                                     :input       [{:role :user :content "hi"}]
+                                     :credentials keyed-credentials})))))
 
 (deftest vllm-auth-omits-authorization-without-a-key-test
   (testing "a keyless server is a complete configuration — no Authorization header, and no missing-key error"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url
-                                       llm.settings/llm-vllm-api-key      nil]
-      (let [req (captured-chat-request! {:model "vllm-test" :input [{:role :user :content "hi"}]})]
-        (is (= "http://vllm.internal:8000/v1/chat/completions" (:url req)))
-        (is (not (contains? (:headers req) "Authorization")))))))
+    (let [req (captured-chat-request! {:model       "vllm-test"
+                                       :input       [{:role :user :content "hi"}]
+                                       :credentials credentials})]
+      (is (= "http://vllm.internal:8000/v1/chat/completions" (:url req)))
+      (is (not (contains? (:headers req) "Authorization"))))))
 
 (deftest vllm-sets-a-socket-timeout-test
   (testing "generation requests carry the vLLM socket timeout and the shared connection timeout"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
-                                       llm.settings/llm-vllm-request-timeout-ms  300000]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-request-timeout-ms 300000]
       (is (=? {:socket-timeout     300000
                :connection-timeout (llm.settings/llm-connection-timeout-ms)}
-              (captured-chat-request! {:model "vllm-test" :input [{:role :user :content "hi"}]}))))))
+              (captured-chat-request! {:model       "vllm-test"
+                                       :input       [{:role :user :content "hi"}]
+                                       :credentials credentials}))))))
 
 (deftest vllm-auth-missing-base-url-test
-  (testing "an unset base URL fails with a message naming vLLM, not a clj-http error about a relative URL"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url nil
-                                       llm.settings/llm-vllm-api-key      "local-dev-key"]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"No vLLM base URL is set"
-             (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})))
-        (is (= :base-url-missing
-               (:error-code (try (vllm/list-models)
-                                 (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))
+  (testing "a connection carrying no base URL fails with a message naming vLLM, not a clj-http error about a
+           relative URL"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No vLLM base URL is set"
+           (vllm/vllm-raw {:model       "vllm-test"
+                           :input       [{:role :user :content "hi"}]
+                           :credentials {:api-key "local-dev-key"}})))
+      (is (= :base-url-missing
+             (:error-code (try (vllm/list-models {:credentials {:api-key "local-dev-key"}})
+                               (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
 
 (deftest vllm-missing-model-test
   (testing "a blank model fails with a vLLM-specific message before any request is made"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"No vLLM model is set"
-             (vllm/vllm-raw {:input [{:role :user :content "hi"}]})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No vLLM model is set"
+           (vllm/vllm-raw {:input [{:role :user :content "hi"}] :credentials credentials}))))))
 
 (deftest vllm-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url nil]
-      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for vLLM"
-             (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}] :ai-proxy? true})))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not supported for vLLM"
-             (vllm/list-models {:ai-proxy? true})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for vLLM"
+           (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}] :ai-proxy? true})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for vLLM"
+           (vllm/list-models {:ai-proxy? true}))))))
 
 (deftest vllm-stream-socket-timeout-is-not-retryable-test
   (testing "a socket timeout while consuming the stream surfaces as a tagged vLLM error, not a raw SocketTimeoutException"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (with-redefs [self.core/sse-reducible (fn [_]
-                                              (reify clojure.lang.IReduceInit
-                                                (reduce [_ _rf _init]
-                                                  (throw (SocketTimeoutException. "Read timed out")))))
-                    debug/capture-stream    (fn [r _] r)
-                    http/request            (fn [_] {:body nil})]
-        (let [e (try (into [] (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]}))
-                     (catch clojure.lang.ExceptionInfo e e))]
-          (is (= :vllm-timeout (:error-code (ex-data e))))
-          (is (re-find #"stopped responding" (ex-message e)))
-          (testing "and is not retryable"
-            (is (false? (#'self/retryable-error? e)))))))))
+    (with-redefs [self.core/sse-reducible (fn [_]
+                                            (reify clojure.lang.IReduceInit
+                                              (reduce [_ _rf _init]
+                                                (throw (SocketTimeoutException. "Read timed out")))))
+                  debug/capture-stream    (fn [r _] r)
+                  http/request            (fn [_] {:body nil})]
+      (let [e (try (into [] (vllm/vllm-raw {:model       "vllm-test"
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials credentials}))
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :vllm-timeout (:error-code (ex-data e))))
+        (is (re-find #"stopped responding" (ex-message e)))
+        (testing "and is not retryable"
+          (is (false? (#'self/retryable-error? e))))))))
 
 (deftest vllm-stream-connection-failure-is-not-retryable-test
   (testing "a stream severed mid-body surfaces as a tagged vLLM error, not a raw IOException"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (with-redefs [self.core/sse-reducible (fn [_]
-                                              (reify clojure.lang.IReduceInit
-                                                (reduce [_ _rf _init]
-                                                  (throw (java.io.IOException. "Connection reset")))))
-                    debug/capture-stream    (fn [r _] r)
-                    http/request            (fn [_] {:body nil})]
-        (let [e (try (into [] (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]}))
-                     (catch clojure.lang.ExceptionInfo e e))]
-          (is (= :vllm-stream-interrupted (:error-code (ex-data e))))
-          (is (re-find #"interrupted before the response finished" (ex-message e)))
-          (testing "and is not retryable"
-            (is (false? (#'self/retryable-error? e)))))))))
+    (with-redefs [self.core/sse-reducible (fn [_]
+                                            (reify clojure.lang.IReduceInit
+                                              (reduce [_ _rf _init]
+                                                (throw (java.io.IOException. "Connection reset")))))
+                  debug/capture-stream    (fn [r _] r)
+                  http/request            (fn [_] {:body nil})]
+      (let [e (try (into [] (vllm/vllm-raw {:model       "vllm-test"
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials credentials}))
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :vllm-stream-interrupted (:error-code (ex-data e))))
+        (is (re-find #"interrupted before the response finished" (ex-message e)))
+        (testing "and is not retryable"
+          (is (false? (#'self/retryable-error? e))))))))
 
 (deftest vllm-request-timeout-names-vllm-and-its-setting-test
   (testing "a timeout while establishing the request gets the same treatment the preflight already gives it,
            rather than `rethrow-api-error!`'s \"vllm API request failed: Read timed out\""
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
-                                       llm.settings/llm-vllm-request-timeout-ms 300000]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-request-timeout-ms 300000]
       (with-redefs [http/request (fn [_] (throw (SocketTimeoutException. "Read timed out")))]
-        (let [e (try (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})
+        (let [e (try (vllm/vllm-raw {:model       "vllm-test"
+                                     :input       [{:role :user :content "hi"}]
+                                     :credentials credentials})
                      (catch clojure.lang.ExceptionInfo e e))]
           (is (= :vllm-timeout (:error-code (ex-data e))))
           (is (re-find #"did not respond within 300000ms" (ex-message e)))
@@ -517,24 +532,26 @@
 
 (deftest vllm-unreachable-server-names-the-base-url-test
   (testing "a refused connection is the base URL being wrong or the server being down — say which URL failed"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (with-redefs [http/request (fn [_] (throw (ConnectException. "Connection refused")))]
-        (let [e (try (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})
-                     (catch clojure.lang.ExceptionInfo e e))]
-          (is (= :vllm-unreachable (:error-code (ex-data e))))
-          (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e)))
-          (testing "and is not retryable"
-            (is (false? (#'self/retryable-error? e)))))))))
+    (with-redefs [http/request (fn [_] (throw (ConnectException. "Connection refused")))]
+      (let [e (try (vllm/vllm-raw {:model       "vllm-test"
+                                   :input       [{:role :user :content "hi"}]
+                                   :credentials credentials})
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :vllm-unreachable (:error-code (ex-data e))))
+        (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e)))
+        (testing "and is not retryable"
+          (is (false? (#'self/retryable-error? e))))))))
 
 (deftest vllm-http-errors-still-reach-the-status-specific-message-test
   (testing "the IOException catch runs first, so a non-2xx must still be translated by `vllm-error-msg`"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (with-redefs [http/request (fn [_] (throw (ex-info "clj-http: status 401"
-                                                         {:status 401 :body "{\"message\":\"Unauthorized\"}"})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"vLLM API key expired or invalid"
-             (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})))))))
+    (with-redefs [http/request (fn [_] (throw (ex-info "clj-http: status 401"
+                                                       {:status 401 :body "{\"message\":\"Unauthorized\"}"})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"vLLM API key expired or invalid"
+           (vllm/vllm-raw {:model       "vllm-test"
+                           :input       [{:role :user :content "hi"}]
+                           :credentials credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models
@@ -555,18 +572,16 @@
 
 (deftest list-models-passes-the-catalog-through-test
   (testing "every served model is offered — there is no whitelist — in the order the server lists them"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url
-                                       llm.settings/llm-vllm-api-key      "local-dev-key"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :url     "http://vllm.internal:8000/v1/models"
-                                                          :headers {"Authorization" "Bearer local-dev-key"}}
-                                                         req))
-                                                 {:status 200 :body {:data recorded-multi-model-catalog}})]
-        (is (= {:models [{:id "vllm-test"       :display_name "vllm-test"}
-                         {:id "vllm-test-alias" :display_name "vllm-test-alias"}
-                         {:id "qwen3-14b"       :display_name "qwen3-14b"}]}
-               (vllm/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :url     "http://vllm.internal:8000/v1/models"
+                                                        :headers {"Authorization" "Bearer local-dev-key"}}
+                                                       req))
+                                               {:status 200 :body {:data recorded-multi-model-catalog}})]
+      (is (= {:models [{:id "vllm-test"       :display_name "vllm-test"}
+                       {:id "vllm-test-alias" :display_name "vllm-test-alias"}
+                       {:id "qwen3-14b"       :display_name "qwen3-14b"}]}
+             (vllm/list-models {:credentials keyed-credentials}))))))
 
 ;;; Recorded from the same server started **without** `--served-model-name` (BOT-1930 L-10), which is
 ;;; how an operator who does not rename their deployment sees it: the catalog id is the Hugging Face
@@ -578,23 +593,22 @@
 (deftest list-models-keeps-slashes-in-a-served-model-id-test
   (testing "a Hugging Face repo id survives the listing intact — `llm-metabot-provider` stores it as
            `vllm/{id}`, so the model segment is the only one allowed to keep its slashes"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data recorded-no-alias-catalog}})]
-        (is (= {:models [{:id "mlx-community/Qwen3-14B-4bit" :display_name "mlx-community/Qwen3-14B-4bit"}]}
-               (vllm/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data recorded-no-alias-catalog}})]
+      (is (= {:models [{:id "mlx-community/Qwen3-14B-4bit" :display_name "mlx-community/Qwen3-14B-4bit"}]}
+             (vllm/list-models {:credentials credentials}))))))
 
 (deftest list-models-display-name-falls-back-to-the-served-id-test
   (testing "a `name` is honoured when present, though no vLLM build emits one — the tolerance is for the
            other OpenAI-compatible servers the same UI copy invites"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 {:status 200
-                                                  :body   {:data [{:id "some-finetune" :name "Some Finetune"}]}})]
-        (is (= {:models [{:id "some-finetune" :display_name "Some Finetune"}]}
-               (vllm/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200
+                                                :body   {:data [{:id "some-finetune" :name "Some Finetune"}]}})]
+      (is (= {:models [{:id "some-finetune" :display_name "Some Finetune"}]}
+             (vllm/list-models {:credentials credentials}))))))
 
-(deftest list-models-credentials-override-the-settings-test
-  (testing "a passed-in base URL and key are used over the configured ones"
+(deftest list-models-does-not-fall-back-to-the-single-provider-settings-test
+  (testing "the connection's credentials are the only source — a setting configuring another connection
+           is not a fallback"
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url "http://saved:8000/v1"
                                        llm.settings/llm-vllm-api-key      "saved-key"]
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
@@ -604,63 +618,62 @@
                                                  {:status 200 :body {:data []}})]
         (is (= {:models []}
                (vllm/list-models {:credentials {:base-url "http://explicit:8000/v1"
-                                                :api-key  "explicit-key"}})))))))
+                                                :api-key  "explicit-key"}}))))
+      (testing "and a connection without a base URL fails rather than borrowing the setting's"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"No vLLM base URL is set"
+             (vllm/list-models {:credentials {:api-key "explicit-key"}})))))))
 
 (deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
   (testing "a 2xx whose body carries no model list throws, naming the base URL"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
-        (testing (str "body " (pr-str body))
-          (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
-                 (vllm/list-models))))))))
+    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
+      (testing (str "body " (pr-str body))
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
+               (vllm/list-models {:credentials credentials})))))))
   (testing "a well-formed but empty catalog lists nothing and gets its own distinct message"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list" :data []}})]
-        (is (= {:models []} (vllm/list-models)))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"reachable but is not serving any models"
-             (vllm/list-models {:probe? true})))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list" :data []}})]
+      (is (= {:models []} (vllm/list-models {:credentials credentials})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"reachable but is not serving any models"
+           (vllm/list-models {:credentials credentials :probe? true}))))))
 
 (deftest list-models-fails-closed-before-probing-test
   (testing "a malformed catalog throws without issuing a probe request"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [chat-requests (atom 0)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                   (when-not (re-find #"/models$" (str url))
-                                                     (swap! chat-requests inc))
-                                                   {:status 200 :body {:status "ok"}})]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"vLLM returned an unexpected model list response"
-               (vllm/list-models {:probe? true})))
-          (is (zero? @chat-requests)))))))
+    (let [chat-requests (atom 0)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (when-not (re-find #"/models$" (str url))
+                                                   (swap! chat-requests inc))
+                                                 {:status 200 :body {:status "ok"}})]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"vLLM returned an unexpected model list response"
+             (vllm/list-models {:credentials credentials :probe? true})))
+        (is (zero? @chat-requests))))))
 
 (deftest list-models-401-maps-to-invalid-key-message-test
   (testing "a 401 surfaces as the canonical message naming --api-key"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url
-                                       llm.settings/llm-vllm-api-key      "wrong-key"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 (throw (ex-info "clj-http: status 401"
-                                                                 {:status 401
-                                                                  :body   "{\"message\":\"Unauthorized\"}"})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"vLLM API key expired or invalid"
-             (vllm/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               (throw (ex-info "clj-http: status 401"
+                                                               {:status 401
+                                                                :body   "{\"message\":\"Unauthorized\"}"})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"vLLM API key expired or invalid"
+           (vllm/list-models {:credentials (assoc credentials :api-key "wrong-key")}))))))
 
 (deftest list-models-404-points-at-the-base-url-test
   (testing "a 404 tells the admin the base URL should end in /v1"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url "http://vllm.internal:8000"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 (throw (ex-info "clj-http: status 404" {:status 404 :body "not found"})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"base URL should end in /v1"
-             (vllm/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               (throw (ex-info "clj-http: status 404" {:status 404 :body "not found"})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"base URL should end in /v1"
+           (vllm/list-models {:credentials {:base-url "http://vllm.internal:8000"}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Preflight
@@ -692,10 +705,9 @@
   ([models chat-choice]
    (probe-choice! models chat-choice chat-choice))
   ([models auto-choice required-choice]
-   (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-     (mt/with-dynamic-fn-redefs [http/request (probing-server models {"auto"     auto-choice
-                                                                      "required" required-choice})]
-       (vllm/list-models {:probe? true})))))
+   (mt/with-dynamic-fn-redefs [http/request (probing-server models {"auto"     auto-choice
+                                                                    "required" required-choice})]
+     (vllm/list-models {:credentials credentials :probe? true}))))
 
 (defn- probe!
   "[[probe-choice!]] for a server that runs to a natural stop, where only the message shape matters."
@@ -704,8 +716,9 @@
 
 (deftest preflight-passes-on-a-correctly-configured-server-test
   (testing "a server that returns a well-formed tool call passes and still lists its models"
-    (is (= {:models       [{:id "vllm-test" :display_name "vllm-test"}]
-            :probed-model "vllm-test"}
+    (is (= {:models         [{:id "vllm-test" :display_name "vllm-test"}]
+            :probed-model   "vllm-test"
+            :learned-config {vllm/reasoning-config-key "false"}}
            (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
 
 (deftest preflight-reports-the-model-it-probed-test
@@ -718,47 +731,45 @@
       (is (= "mlx-community/Qwen3-14B-4bit"
              (:probed-model (probe! recorded-no-alias-catalog tool-calling-message))))))
   (testing "and a listing that did not probe reports nothing"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data [{:id "vllm-test"}]}})]
-        (is (not (contains? (vllm/list-models) :probed-model)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data [{:id "vllm-test"}]}})]
+      (is (= [:models] (keys (vllm/list-models {:credentials credentials})))))))
 
 (deftest preflight-skips-lora-adapters-when-picking-a-default-test
   (testing "an adapter registered with --lora-modules carries `parent`; adopting one would point Metabot
            at an adapter the admin never chose"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [probed (atom nil)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200
-                                                      :body   {:data [{:id     "sql-lora"
-                                                                       :parent "vllm-test"
-                                                                       :max_model_len 32768}
-                                                                      {:id     "vllm-test"
-                                                                       :parent nil
-                                                                       :max_model_len 32768}]}}
-                                                     (do (reset! probed (:model (json/decode+kw (str body))))
-                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (is (= "vllm-test" (:probed-model (vllm/list-models {:probe? true}))))
-          (is (= "vllm-test" @probed))))))
-  (testing "an explicitly requested adapter is still honoured — the filter only picks the default"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
                                                  (if (re-find #"/models$" (str url))
                                                    {:status 200
-                                                    :body   {:data [{:id "sql-lora" :parent "vllm-test" :max_model_len 32768}
-                                                                    {:id "vllm-test" :max_model_len 32768}]}}
-                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}))]
-        (is (= "sql-lora" (:probed-model (vllm/list-models {:probe? true :model "sql-lora"}))))))))
+                                                    :body   {:data [{:id     "sql-lora"
+                                                                     :parent "vllm-test"
+                                                                     :max_model_len 32768}
+                                                                    {:id     "vllm-test"
+                                                                     :parent nil
+                                                                     :max_model_len 32768}]}}
+                                                   (do (reset! probed (:model (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (= "vllm-test" (:probed-model (vllm/list-models {:credentials credentials :probe? true}))))
+        (is (= "vllm-test" @probed)))))
+  (testing "an explicitly requested adapter is still honoured — the filter only picks the default"
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                               (if (re-find #"/models$" (str url))
+                                                 {:status 200
+                                                  :body   {:data [{:id "sql-lora" :parent "vllm-test" :max_model_len 32768}
+                                                                  {:id "vllm-test" :max_model_len 32768}]}}
+                                                 {:status 200 :body {:choices [{:message tool-calling-message}]}}))]
+      (is (= "sql-lora" (:probed-model (vllm/list-models {:credentials credentials
+                                                          :probe?      true
+                                                          :model       "sql-lora"})))))))
 
 (deftest preflight-skipped-without-probe-flag-test
-  (testing "without :probe? no generation request is made at all — GET /settings must stay cheap"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                 (when-not (re-find #"/models$" (str url))
-                                                   (throw (ex-info "preflight must not run on a plain listing" {})))
-                                                 {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}})]
-        (is (= {:models [{:id "vllm-test" :display_name "vllm-test"}]}
-               (vllm/list-models)))))))
+  (testing "without :probe? no generation request is made at all — listing models must stay cheap"
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                               (when-not (re-find #"/models$" (str url))
+                                                 (throw (ex-info "preflight must not run on a plain listing" {})))
+                                               {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}})]
+      (is (= {:models [{:id "vllm-test" :display_name "vllm-test"}]}
+             (vllm/list-models {:credentials credentials}))))))
 
 (deftest preflight-rejects-a-prose-answer-test
   (testing "a server that answers with text instead of a tool call names the two flags that cause it"
@@ -803,33 +814,31 @@
 
 (deftest preflight-probes-the-requested-model-test
   (testing "the probe targets the requested model, not merely the first one served"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [probed (atom nil)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200 :body {:data [{:id "first" :max_model_len 32768}
-                                                                                {:id "second" :max_model_len 32768}]}}
-                                                     (do (reset! probed (re-find #"second" (str body)))
-                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (vllm/list-models {:probe? true :model "second"})
-          (is (= "second" @probed)))))))
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "first" :max_model_len 32768}
+                                                                              {:id "second" :max_model_len 32768}]}}
+                                                   (do (reset! probed (re-find #"second" (str body)))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (vllm/list-models {:credentials credentials :probe? true :model "second"})
+        (is (= "second" @probed))))))
 
 (deftest preflight-rejects-a-model-the-server-does-not-serve-test
   (testing "a requested model absent from the catalog fails and names what is served, rather than probing something else"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [generated? (atom false)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200 :body {:data [{:id "served-a" :max_model_len 32768}
-                                                                                {:id "served-b" :max_model_len 32768}]}}
-                                                     (do (reset! generated? true)
-                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"not serving missing-model. It is serving: served-a, served-b"
-               (vllm/list-models {:probe? true :model "missing-model"})))
-          (is (false? @generated?)
-              "no generation request is issued for a model the server cannot run"))))))
+    (let [generated? (atom false)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "served-a" :max_model_len 32768}
+                                                                              {:id "served-b" :max_model_len 32768}]}}
+                                                   (do (reset! generated? true)
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"not serving missing-model. It is serving: served-a, served-b"
+             (vllm/list-models {:credentials credentials :probe? true :model "missing-model"})))
+        (is (false? @generated?)
+            "no generation request is issued for a model the server cannot run")))))
 
 (deftest preflight-reports-a-thinking-budget-overrun-test
   (testing "a reasoning model that never stops thinking is named as such, not as a server missing tool-calling flags"
@@ -872,73 +881,74 @@
 
 (deftest preflight-probe-timeout-is-capped-test
   (testing "a probe runs on its own budget, capped below the inference timeout"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url        base-url
-                                       llm.settings/llm-vllm-request-timeout-ms 600000]
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-request-timeout-ms 600000]
       (let [socket-timeouts (atom [])]
         (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url socket-timeout]}]
                                                    (if (re-find #"/models$" (str url))
                                                      {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
                                                      (do (swap! socket-timeouts conj socket-timeout)
                                                          {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (vllm/list-models {:probe? true})
+          (vllm/list-models {:credentials credentials :probe? true})
           (is (= #{120000} (set @socket-timeouts))))))))
 
 (deftest preflight-surfaces-a-probe-timeout-test
   (testing "a probe that times out says the server is too slow, not that the request failed"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                 (if (re-find #"/models$" (str url))
-                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
-                                                   (throw (SocketTimeoutException. "Read timed out"))))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"did not answer the connection test"
-             (vllm/list-models {:probe? true})))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                               (if (re-find #"/models$" (str url))
+                                                 {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                 (throw (SocketTimeoutException. "Read timed out"))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"did not answer the connection test"
+           (vllm/list-models {:credentials credentials :probe? true}))))))
 
 (deftest preflight-probes-run-concurrently-test
   (testing "both probes are in flight at once, so a slow server costs one probe budget rather than two"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [arrived (CountDownLatch. 2)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
-                                                     (do (.countDown arrived)
-                                                         ;; Only satisfiable if the other probe is
-                                                         ;; already in flight.
-                                                         (is (.await arrived 10 TimeUnit/SECONDS))
-                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (vllm/list-models {:probe? true}))))))
+    (let [arrived (CountDownLatch. 2)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                   (do (.countDown arrived)
+                                                       ;; Only satisfiable if the other probe is
+                                                       ;; already in flight.
+                                                       (is (.await arrived 10 TimeUnit/SECONDS))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (vllm/list-models {:credentials credentials :probe? true})))))
 
-(deftest preflight-records-whether-the-probed-model-reasons-test
-  (testing "the probe is the only place this is knowable — /v1/models carries no reasoning field"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
-      ;; Recorded shape: vLLM 0.26 puts it on the non-streaming message under `reasoning`.
-      (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
-                     {:message       (assoc tool-calling-message
-                                            :reasoning "\nOkay, the user wants me to record \"orders\".")
-                      :finish_reason "tool_calls"})
-      (is (true? (llm.settings/llm-vllm-model-reasoning?)))))
+(deftest preflight-reports-whether-the-probed-model-reasons-test
+  (testing "the probe is the only place this is knowable — /v1/models carries no reasoning field, so what it
+           saw is reported back for the connection to record"
+    ;; Recorded shape: vLLM 0.26 puts it on the non-streaming message under `reasoning`.
+    (is (= {vllm/reasoning-config-key "true"}
+           (:learned-config
+            (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                           {:message       (assoc tool-calling-message
+                                                  :reasoning "\nOkay, the user wants me to record \"orders\".")
+                            :finish_reason "tool_calls"})))))
   (testing "and under the deprecated spelling older servers still use"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? false]
-      (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
-                     {:message       (assoc tool-calling-message
-                                            :reasoning_content "Older vLLM builds spell it this way.")
-                      :finish_reason "tool_calls"})
-      (is (true? (llm.settings/llm-vllm-model-reasoning?)))))
-  (testing "a model that answers without reasoning records false"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
-      (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)
-      (is (false? (llm.settings/llm-vllm-model-reasoning?))))))
+    (is (= {vllm/reasoning-config-key "true"}
+           (:learned-config
+            (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                           {:message       (assoc tool-calling-message
+                                                  :reasoning_content "Older vLLM builds spell it this way.")
+                            :finish_reason "tool_calls"})))))
+  (testing "a model that answers without reasoning reports false"
+    (is (= {vllm/reasoning-config-key "false"}
+           (:learned-config (probe! [{:id "vllm-test" :max_model_len 32768}] tool-calling-message)))))
+  (testing "and a connection carrying the flag is what the request body reads it from"
+    (is (true? (vllm/reasoning-connection? {vllm/reasoning-config-key "true"})))
+    (is (false? (vllm/reasoning-connection? {vllm/reasoning-config-key "false"})))
+    (is (false? (vllm/reasoning-connection? {})))
+    (testing "including the JSON boolean a hand-written llm-providers can hold"
+      (is (true? (vllm/reasoning-connection? {vllm/reasoning-config-key true}))))))
 
-(deftest preflight-does-not-record-reasoning-when-it-fails-test
-  (testing "a failed probe leaves the previously recorded value alone rather than writing a guess"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-model-reasoning? true]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"--enable-auto-tool-choice"
-           (probe! [{:id "vllm-test" :max_model_len 32768}]
-                   {:content "I'll record the table name orders for you." :tool_calls []})))
-      (is (true? (llm.settings/llm-vllm-model-reasoning?))))))
+(deftest preflight-reports-nothing-when-it-fails-test
+  (testing "a failed probe throws rather than reporting a guess, so the connection records nothing"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"--enable-auto-tool-choice"
+         (probe! [{:id "vllm-test" :max_model_len 32768}]
+                 {:content "I'll record the table name orders for you." :tool_calls []})))))
 
 (deftest preflight-failures-are-surfaced-as-client-errors-test
   (testing "a preflight failure is tagged 400 so the admin sees the message instead of a 500"
@@ -972,75 +982,73 @@
 (deftest preflight-cancels-the-sibling-probe-on-failure-test
   (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
            keep generating against the operator's server after the admin already has a 400"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [interrupted (promise)
-            never       (CountDownLatch. 1)]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
-                                                     (case (:tool_choice (json/decode+kw (str body)))
-                                                       "auto"     {:status 200
-                                                                   :body   {:choices [{:message {:content    "I'll record orders."
-                                                                                                 :tool_calls []}}]}}
-                                                       "required" (try
-                                                                    (.await never 10 TimeUnit/SECONDS)
-                                                                    (deliver interrupted false)
-                                                                    {:status 200 :body {:choices [{:message tool-calling-message}]}}
-                                                                    (catch InterruptedException _
-                                                                      (deliver interrupted true)
-                                                                      (throw (SocketTimeoutException. "interrupted")))))))]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"--enable-auto-tool-choice"
-               (vllm/list-models {:probe? true})))
-          (is (true? (deref interrupted 10000 :never-cancelled))))))))
+    (let [interrupted (promise)
+          never       (CountDownLatch. 1)]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                   (case (:tool_choice (json/decode+kw (str body)))
+                                                     "auto"     {:status 200
+                                                                 :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                               :tool_calls []}}]}}
+                                                     "required" (try
+                                                                  (.await never 10 TimeUnit/SECONDS)
+                                                                  (deliver interrupted false)
+                                                                  {:status 200 :body {:choices [{:message tool-calling-message}]}}
+                                                                  (catch InterruptedException _
+                                                                    (deliver interrupted true)
+                                                                    (throw (SocketTimeoutException. "interrupted")))))))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"--enable-auto-tool-choice"
+             (vllm/list-models {:credentials credentials :probe? true})))
+        (is (true? (deref interrupted 10000 :never-cancelled)))))))
 
 (deftest preflight-probe-request-shape-test
   (testing "both probes ask for the same trivial completion, non-streaming and deterministic — the ceiling
            is the one a forced tool call is guaranteed to be given at request time"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (let [requests (atom [])]
-        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body] :as req}]
-                                                   (if (re-find #"/models$" (str url))
-                                                     {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
-                                                     (do (swap! requests conj (assoc req :decoded (json/decode+kw (str body))))
-                                                         {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
-          (vllm/list-models {:probe? true})
-          (is (= 2 (count @requests)))
-          (is (= #{"auto" "required"} (set (map #(-> % :decoded :tool_choice) @requests))))
-          (doseq [{:keys [decoded] :as req} @requests]
-            (is (= :post (:method req)))
-            (is (= "http://vllm.internal:8000/v1/chat/completions" (:url req)))
-            (is (= :json (:as req))
-                "a probe reads a whole response; :stream would leave the verdict unreadable")
-            (is (nil? (:stream decoded)))
-            (is (= 0 (:temperature decoded)))
-            (is (= 2048 (:max_tokens decoded))
-                "must not drift from the floor a forced tool call is raised to — the preflight's promise is
-                 that a model which connected can already clear the budget it will be run at")
-            (is (= 1 (count (:tools decoded))))
-            (is (= "record_table_name" (-> decoded :tools first :function :name)))))))))
+    (let [requests (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body] :as req}]
+                                                 (if (re-find #"/models$" (str url))
+                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                   (do (swap! requests conj (assoc req :decoded (json/decode+kw (str body))))
+                                                       {:status 200 :body {:choices [{:message tool-calling-message}]}})))]
+        (vllm/list-models {:credentials credentials :probe? true})
+        (is (= 2 (count @requests)))
+        (is (= #{"auto" "required"} (set (map #(-> % :decoded :tool_choice) @requests))))
+        (doseq [{:keys [decoded] :as req} @requests]
+          (is (= :post (:method req)))
+          (is (= "http://vllm.internal:8000/v1/chat/completions" (:url req)))
+          (is (= :json (:as req))
+              "a probe reads a whole response; :stream would leave the verdict unreadable")
+          (is (nil? (:stream decoded)))
+          (is (= 0 (:temperature decoded)))
+          (is (= 2048 (:max_tokens decoded))
+              "must not drift from the floor a forced tool call is raised to — the preflight's promise is
+               that a model which connected can already clear the budget it will be run at")
+          (is (= 1 (count (:tools decoded))))
+          (is (= "record_table_name" (-> decoded :tools first :function :name))))))))
 
 (deftest preflight-surfaces-an-http-error-as-a-provider-error-test
   (testing "a 400 from /chat/completions is the server rejecting the request, not a contract failure —
            it must keep vLLM's own status text rather than being reworded as a preflight verdict"
-    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
-      (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
-                                                 (if (re-find #"/models$" (str url))
-                                                   {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
-                                                   (throw (ex-info "clj-http: status 400"
-                                                                   {:status 400
-                                                                    :body   "{\"message\":\"cannot compile grammar\"}"}))))]
-        (let [e (try (vllm/list-models {:probe? true})
-                     (catch clojure.lang.ExceptionInfo e e))]
-          (is (re-find #"vLLM rejected the request" (ex-message e)))
-          (is (= :provider-api-error (:error-code (ex-data e)))))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                               (if (re-find #"/models$" (str url))
+                                                 {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
+                                                 (throw (ex-info "clj-http: status 400"
+                                                                 {:status 400
+                                                                  :body   "{\"message\":\"cannot compile grammar\"}"}))))]
+      (let [e (try (vllm/list-models {:credentials credentials :probe? true})
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (re-find #"vLLM rejected the request" (ex-message e)))
+        (is (= :provider-api-error (:error-code (ex-data e))))))))
 
 (deftest preflight-accepts-a-catalog-without-a-context-window-test
   (testing "`max_model_len` is vLLM's own field: Ollama, LM Studio, and TGI omit it. The floor is
            best-effort, so a catalog without it connects rather than being rejected on a missing field"
-    (is (= {:models       [{:id "vllm-test" :display_name "vllm-test"}]
-            :probed-model "vllm-test"}
+    (is (= {:models         [{:id "vllm-test" :display_name "vllm-test"}]
+            :probed-model   "vllm-test"
+            :learned-config {vllm/reasoning-config-key "false"}}
            (probe! [{:id "vllm-test"}] tool-calling-message)))))
 
 (deftest preflight-does-not-leak-the-context-window-to-the-client-test

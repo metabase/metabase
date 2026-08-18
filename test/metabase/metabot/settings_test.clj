@@ -195,6 +195,39 @@
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
+(deftest metabot-supports-reasoning-vllm-test
+  (testing "vLLM answers from what the connect-time probe recorded on the connection, since neither its catalog
+           nor its model names carry a reasoning field"
+    (doseq [recorded ["true" "false"]]
+      (testing (str "recorded " recorded)
+        (with-connections [(connection "vllm" "vllm" {:base-url        "http://vllm.internal:8000/v1"
+                                                      :model-reasoning recorded})]
+          (with-selected-model "vllm/vllm-test"
+            (is (= (= "true" recorded) (metabot.settings/llm-metabot-supports-reasoning?))))))))
+  (testing "an unprobed server defaults to the non-reasoning renderer rather than guessing"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+
+(deftest metabot-configured-with-a-keyless-vllm-connection-test
+  (testing "a vLLM server started without --api-key is a complete configuration: the base URL is the credential"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (true? (metabot.settings/llm-metabot-configured?))))))
+  (testing "and a connection carrying only a key is not"
+    (with-connections [(connection "vllm" "vllm" {:api-key "local-dev-key"})]
+      (with-selected-model "vllm/vllm-test"
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+
+(deftest metabot-provider-keeps-slashes-in-a-vllm-model-test
+  (testing "a served model named after its Hugging Face repo keeps its slashes — everything after the first
+           segment is the model"
+    (with-connections [(connection "vllm" "vllm" {:base-url "http://vllm.internal:8000/v1"})]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        (metabot.settings/llm-metabot-provider! "vllm/mlx-community/Qwen3-14B-4bit")
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit"}
+                (#'metabot.self/parse-provider-model (metabot.settings/llm-metabot-provider))))))))
+
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
 
