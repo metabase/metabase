@@ -1,10 +1,13 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import { ExpressionWidget } from "../../../components/expressions/ExpressionWidget";
+import {
+  ExpressionWidget,
+  prefetchExpressionWidget,
+} from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -18,6 +21,13 @@ export const ExpressionStep = ({
 }: NotebookStepProps): JSX.Element => {
   const { query, stageIndex } = step;
   const tc = useTranslateContent();
+
+  // The widget is a separate chunk and this step renders long before anyone
+  // opens it, so fetching it here means the popover opens with the editor
+  // already in place rather than filling in a moment later.
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
   const expressions = useMemo(
     () => Lib.expressions(query, stageIndex),
     [query, stageIndex],
