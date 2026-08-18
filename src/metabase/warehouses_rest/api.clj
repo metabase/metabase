@@ -921,7 +921,7 @@
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
-       [:details           ms/KeywordizedMap]
+       [:details           ms/Map]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
@@ -986,7 +986,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details ms/KeywordizedMap]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1082,8 +1082,8 @@
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/KeywordizedMap]]
-       [:write_data_details {:optional true} [:maybe ms/KeywordizedMap]]
+       [:details            {:optional true} [:maybe ms/Map]]
+       [:write_data_details {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -1093,7 +1093,7 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/KeywordizedMap]]
+       [:settings           {:optional true} [:maybe ms/Map]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")

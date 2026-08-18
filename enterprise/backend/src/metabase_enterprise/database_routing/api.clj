@@ -35,7 +35,7 @@
                                                   [:sequential
                                                    [:map
                                                     [:name               ms/NonBlankString]
-                                                    [:details            ms/KeywordizedMap]]]]]]
+                                                    [:details            ms/Map]]]]]]
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
   (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
