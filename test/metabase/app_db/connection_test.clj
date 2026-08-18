@@ -263,14 +263,47 @@
     (let [e (is (thrown?
                  clojure.lang.ExceptionInfo
                  (t2/with-transaction [_ conn {:read-only true}])))]
-      (is (= "Unsupported application database transaction options" (ex-message e)))
+      (is (= "Unsupported transaction options: [:read-only]" (ex-message e)))
       (is (= [:read-only] (:unsupported-options (ex-data e)))))))
+
+(deftest rollback-only-with-ignored-nesting-is-rejected-test
+  (testing ":ignore skips the savepoint :rollback-only needs, so the pair is rejected at every depth"
+    (let [msg #"Cannot combine :rollback-only with :nested-transaction-rule :ignore"]
+      (testing "outside a transaction"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo msg
+             (t2/with-transaction [_ nil {:nested-transaction-rule :ignore :rollback-only true}]))))
+      (testing "inside a transaction"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo msg
+             (t2/with-transaction [conn nil {:rollback-only true}]
+               (t2/with-transaction [_ conn {:nested-transaction-rule :ignore :rollback-only true}]))))))))
+
+(deftest failed-rollback-only-rollback-discards-the-transaction-test
+  (testing "a requested rollback that fails discards the transaction rather than letting autocommit commit it"
+    (let [calls     (atom [])
+          mock-conn (reify Connection
+                      (rollback [_ _savepoint]
+                        (throw (ex-info "Savepoint rollback error" {})))
+                      (rollback [_] (swap! calls conj :rollback))
+                      (commit [_] (swap! calls conj :commit))
+                      (setAutoCommit [_ _])
+                      (getAutoCommit [_] true)
+                      (setSavepoint [_]))]
+      (binding [t2.connection/*current-connectable* mock-conn]
+        (let [e (is (thrown? Exception
+                             (t2/with-transaction [_ nil {:rollback-only true}] :result)))]
+          (is (= "Error rolling back a rollback-only transaction" (ex-message e)))
+          (is (= "Savepoint rollback error" (-> e ex-cause ex-message)))))
+      (is (= [:rollback] @calls)
+          "the connection is rolled back outright, never committed"))))
 
 (deftest rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection
                       (rollback [_ _savepoint]
                         (throw (ex-info "Rollback error" {})))
+                      (rollback [_])
                       (setAutoCommit [_ _])
                       (getAutoCommit [_] true)
                       (setSavepoint [_])
