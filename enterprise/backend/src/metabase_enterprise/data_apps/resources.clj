@@ -78,9 +78,12 @@
                   {:name (resource-name app)})
       ;; Trashing the collection archives every copy inside it, and the app is
       ;; served from those copies, so restore both rather than reporting success
-      ;; over an app its viewers see nothing in.
+      ;; over an app its viewers see nothing in. It goes back to the root, where
+      ;; the app created it: restoring in place fails outright when the
+      ;; collection was archived through an ancestor that is still in the trash.
       (when (:archived collection)
-        (collection/archive-or-unarchive-collection! collection {:archived false}))
+        (collection/archive-or-unarchive-collection! collection
+                                                     {:archived false, :parent_id nil}))
       (apply-resource-permissions! group collection)
       {:permission_group_id     (:id group)
        :resource_collection_id (:id collection)})))

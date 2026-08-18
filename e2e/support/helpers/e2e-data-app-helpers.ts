@@ -360,7 +360,7 @@ export function addUserToDataAppGroup(groupId: number, email: string) {
       const user = body.data.find((candidate) => candidate.email === email);
       expect(user, `user ${email}`).to.exist;
 
-      cy.request("POST", "/api/permissions/membership", {
+      return cy.request("POST", "/api/permissions/membership", {
         group_id: groupId,
         user_id: user?.id,
       });

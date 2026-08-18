@@ -95,6 +95,31 @@
       (is (= first-links
              (select-keys (t2/select-one :model/DataApp :id (:id first-app)) (keys first-links)))))))
 
+(deftest ensure-resources-restores-a-collection-trashed-through-an-ancestor-test
+  (testing "an app collection filed under another collection is archived indirectly when that
+            ancestor is trashed, and the ancestor stays there — so it is restored to the root
+            rather than to a parent that would reject it"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-test-user :crowberto
+        (mt/with-temp [:model/Collection {ancestor-id :id} {:name "Filed under" :location "/"}]
+          (let [app (create-data-app! "wrens")
+                {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+            (collection/move-collection!
+             (t2/select-one :model/Collection :id resource_collection_id)
+             (collection/children-location (t2/select-one :model/Collection :id ancestor-id)))
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id ancestor-id)
+             {:archived true})
+            (is (true? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
+                "precondition: the ancestor took the app collection with it")
+            (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :id (:id app)))
+            (is (false? (t2/select-one-fn :archived :model/Collection :id resource_collection_id))
+                "the app collection is usable again")
+            (is (= "/" (t2/select-one-fn :location :model/Collection :id resource_collection_id))
+                "and sits at the root, not under the ancestor still in the trash")
+            (is (true? (t2/select-one-fn :archived :model/Collection :id ancestor-id))
+                "the ancestor is left where the admin put it")))))))
+
 (deftest ensure-resources-restores-a-trashed-collection-test
   (testing "trashing the resource collection archives the copies the app is served from,
             so ensure-resources! has to bring both back or a successful sync leaves the app blank"
