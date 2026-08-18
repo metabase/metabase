@@ -49,6 +49,21 @@
   "The model to use when the request does not name one."
   "google/gemini-3.5-flash")
 
+(def ^:private model-context-windows
+  "Input context windows for known Google Gemini models, keyed by publisher-qualified model id.
+  Values:
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash"
+  {"google/gemini-3.5-flash" 1048576
+   "google/gemini-3.6-flash" 1048576
+   "google/gemini-3.7-flash" 1048576})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get model-context-windows model))
+
 ;;; Auth / HTTP plumbing
 
 (def ^:private cloud-platform-scope

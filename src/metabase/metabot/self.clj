@@ -91,6 +91,7 @@
     "anthropic"  claude/context-window-tokens
     "azure"      azure/context-window-tokens
     "bedrock"    bedrock/context-window-tokens
+    "google"     google/context-window-tokens
     "mistral"    mistral/context-window-tokens
     "moonshot"   moonshot/context-window-tokens
     "openai"     openai/context-window-tokens
