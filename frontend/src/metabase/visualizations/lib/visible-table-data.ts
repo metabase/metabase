@@ -29,10 +29,12 @@ export function getVisibleTableData({
   series,
   settings,
   isShowingDetailsOnlyColumns = false,
+  isShowingDisabledColumns = isShowingDetailsOnlyColumns,
 }: {
   series: RawSeries;
   settings: ComputedVisualizationSettings;
   isShowingDetailsOnlyColumns?: boolean;
+  isShowingDisabledColumns?: boolean;
 }): VisibleTableData {
   const [{ data }] = series;
 
@@ -54,12 +56,12 @@ export function getVisibleTableData({
     if (columnIndex < 0) {
       return false;
     }
-    if (isShowingDetailsOnlyColumns) {
-      return true;
-    }
     const isDetailsOnlyColumn =
       cols[columnIndex].visibility_type === "details-only";
-    return !isDetailsOnlyColumn && columnSettings[settingIndex].enabled;
+    if (isDetailsOnlyColumn && !isShowingDetailsOnlyColumns) {
+      return false;
+    }
+    return isShowingDisabledColumns || columnSettings[settingIndex].enabled;
   };
 
   const columnIndexes = findColumnIndexesForColumnSettings(

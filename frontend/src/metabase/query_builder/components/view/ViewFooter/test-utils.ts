@@ -175,6 +175,40 @@ export const createSparseClassicPivotResult = (size: number) =>
     },
   });
 
+// Cardinality high enough that the table renders flat instead of auto-pivoting.
+// Unique column names: the column-cardinality cache is module-global, name-keyed
+export const createSparseAggregateResult = (size: number) =>
+  createMockDataset({
+    data: {
+      cols: [
+        createMockColumn({
+          name: "AUTOPIVOT_DIM_A",
+          display_name: "Dim A",
+          base_type: "type/Text",
+          source: "breakout",
+        }),
+        createMockColumn({
+          name: "AUTOPIVOT_DIM_B",
+          display_name: "Dim B",
+          base_type: "type/Text",
+          source: "breakout",
+        }),
+        createMockColumn({
+          name: "AUTOPIVOT_COUNT",
+          display_name: "Count",
+          base_type: "type/Integer",
+          semantic_type: "type/Quantity",
+          source: "aggregation",
+        }),
+      ],
+      rows: Array.from({ length: size }, (_, index) => [
+        `a-${index}`,
+        `b-${index}`,
+        1,
+      ]),
+    },
+  });
+
 export const ALL_HIDDEN_TABLE_CARD = createMockCard({
   display: "table",
   dataset_query: testDatasetQuery(),
@@ -199,6 +233,30 @@ export const SCALAR_CARD = createMockCard({
 export const OBJECT_CARD = createMockCard({
   display: "object",
   dataset_query: testDatasetQuery(),
+});
+
+export const OBJECT_CARD_WITH_HIDDEN_COLUMN = createMockCard({
+  display: "object",
+  dataset_query: testDatasetQuery(),
+  visualization_settings: {
+    "table.columns": [
+      { name: "NAME", enabled: false },
+      { name: "TOTAL", enabled: true },
+      { name: "RAW_JSON", enabled: true },
+    ],
+  },
+});
+
+export const ALL_HIDDEN_OBJECT_CARD = createMockCard({
+  display: "object",
+  dataset_query: testDatasetQuery(),
+  visualization_settings: {
+    "table.columns": [
+      { name: "NAME", enabled: false },
+      { name: "TOTAL", enabled: false },
+      { name: "RAW_JSON", enabled: false },
+    ],
+  },
 });
 
 export const createViewFooterState = ({

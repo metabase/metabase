@@ -9,17 +9,20 @@ import { createMockDataset } from "metabase-types/api/mocks";
 
 import { ViewFooterCopyWidget } from "./ViewFooterCopyWidget";
 import {
+  ALL_HIDDEN_OBJECT_CARD,
   ALL_HIDDEN_TABLE_CARD,
   CLASSIC_PIVOT_CARD,
   CLASSIC_PIVOT_RESULT,
   DETAILS_TABLE_RESULT,
   LINE_CARD,
   OBJECT_CARD,
+  OBJECT_CARD_WITH_HIDDEN_COLUMN,
   PIVOT_CARD,
   PIVOT_RESULT,
   SCALAR_CARD,
   TABLE_CARD,
   TABLE_RESULT,
+  createSparseAggregateResult,
   createSparseClassicPivotResult,
   createSparsePivotResult,
   createViewFooterState,
@@ -60,6 +63,28 @@ const readBlob = (blob: Blob) =>
 const mockClipboardWrite = () => {
   Object.assign(window, { ClipboardItem: FakeClipboardItem });
   const write = jest.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { clipboard: { write } });
+  return write;
+};
+
+// Reads the item's parts the way the Clipboard spec does: a rejected part
+// rejects the write with the browser's own DOMException, not the original error
+const mockClipboardWriteReadingParts = () => {
+  Object.assign(window, { ClipboardItem: FakeClipboardItem });
+  const write = jest
+    .fn()
+    .mockImplementation(async (items: FakeClipboardItem[]) => {
+      for (const part of Object.values(items[0].parts)) {
+        try {
+          await part;
+        } catch {
+          throw new DOMException(
+            "Cannot write to clipboard",
+            "NotAllowedError",
+          );
+        }
+      }
+    });
   Object.assign(navigator, { clipboard: { write } });
   return write;
 };
@@ -231,6 +256,40 @@ describe("ViewFooterCopyWidget", () => {
     },
   );
 
+  it("skips columns hidden in the object detail view", async () => {
+    const writeText = mockClipboardWriteText();
+
+    setup({
+      card: OBJECT_CARD_WITH_HIDDEN_COLUMN,
+      result: DETAILS_TABLE_RESULT,
+    });
+
+    await userEvent.click(
+      screen.getByLabelText("Copy these results to clipboard"),
+    );
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith("Total\tRaw JSON\n10.5\t{}"),
+    );
+  });
+
+  it("disables copy when every object detail column is hidden", async () => {
+    const writeText = mockClipboardWriteText();
+
+    setup({ card: ALL_HIDDEN_OBJECT_CARD, result: DETAILS_TABLE_RESULT });
+
+    const button = screen.getByLabelText("Copy these results to clipboard");
+    expect(button).toHaveAttribute("data-disabled", "true");
+    await userEvent.hover(button);
+    expect(
+      await screen.findByText(
+        "All columns are hidden, so there's nothing to copy",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(button);
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
   it("disables copy for a pivot the renderer rejected as truncated", async () => {
     const writeText = mockClipboardWriteText();
     const truncated = createMockDataset({
@@ -275,6 +334,33 @@ describe("ViewFooterCopyWidget", () => {
     expect(writeText).not.toHaveBeenCalled();
   });
 
+  it.each([[false], [true]])(
+    "disables copy for a pivot result with only total rows (raw view: %s)",
+    async (isShowingRawTable) => {
+      const writeText = mockClipboardWriteText();
+      const totalsOnly = createMockDataset({
+        data: {
+          ...PIVOT_RESULT.data,
+          rows: [
+            [null, "Alpha", 30, 1],
+            [null, null, 30, 3],
+          ],
+        },
+      });
+
+      setup({ card: PIVOT_CARD, result: totalsOnly, isShowingRawTable });
+
+      const button = screen.getByLabelText("Copy these results to clipboard");
+      expect(button).toHaveAttribute("data-disabled", "true");
+      await userEvent.hover(button);
+      expect(
+        await screen.findByText("There are no results to copy"),
+      ).toBeInTheDocument();
+      await userEvent.click(button);
+      expect(writeText).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     ["pivot", PIVOT_CARD, createSparsePivotResult(2000)],
     ["classic pivot", CLASSIC_PIVOT_CARD, createSparseClassicPivotResult(2000)],
@@ -295,6 +381,19 @@ describe("ViewFooterCopyWidget", () => {
       expect(writeText).not.toHaveBeenCalled();
     },
   );
+
+  it("keeps copy enabled for a high-cardinality aggregate that renders flat", async () => {
+    const writeText = mockClipboardWriteText();
+
+    setup({ card: TABLE_CARD, result: createSparseAggregateResult(2000) });
+
+    const button = screen.getByLabelText("Copy these results to clipboard");
+    expect(button).not.toHaveAttribute("data-disabled");
+    await userEvent.click(button);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0].split("\n")).toHaveLength(2001);
+  });
 
   it("shows the too-large toast when serialized text passes the size limit", async () => {
     const writeText = mockClipboardWriteText();
@@ -319,6 +418,30 @@ describe("ViewFooterCopyWidget", () => {
       );
     });
     expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("says the results are too large when the rich clipboard write fails on size", async () => {
+    mockClipboardWriteReadingParts();
+    const huge = createMockDataset({
+      data: {
+        ...TABLE_RESULT.data,
+        rows: [["x".repeat(21_000_000), 1]],
+      },
+    });
+
+    const { store } = setup({ card: TABLE_CARD, result: huge });
+
+    await userEvent.click(
+      screen.getByLabelText("Copy these results to clipboard"),
+    );
+
+    await waitFor(() => {
+      expect(store.getState().undo).toContainEqual(
+        expect.objectContaining({
+          message: "These results are too large to copy",
+        }),
+      );
+    });
   });
 
   it("disables chart copy when there are no results to render", async () => {

@@ -142,6 +142,7 @@ describe("getResultsClipboardContent", () => {
         ["\0=1+2", 2],
         ["＝1+2", 3],
         ["－2+3", 4],
+        [`+1${" ".repeat(64)}x`, 6],
       ],
     });
 
@@ -157,6 +158,7 @@ describe("getResultsClipboardContent", () => {
         "'\0=1+2\t2",
         "'＝1+2\t3",
         "'－2+3\t4",
+        `'+1${" ".repeat(64)}x\t6`,
       ].join("\n"),
     );
     expect(html).toContain("<td>'=1+2</td><td>-1,234.5</td>");

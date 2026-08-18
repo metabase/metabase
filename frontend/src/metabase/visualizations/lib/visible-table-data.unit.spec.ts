@@ -31,6 +31,46 @@ describe("getVisibleTableData", () => {
     expect(rows).toEqual([[]]);
   });
 
+  it("keeps details-only columns while honoring hidden ones when the flags split", () => {
+    const series: RawSeries = [
+      {
+        card: createMockCard({ display: "table" }),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "NAME", display_name: "Name" }),
+            createMockColumn({
+              name: "DETAIL",
+              display_name: "Detail",
+              visibility_type: "details-only",
+            }),
+          ],
+          rows: [["Widget", "d"]],
+        }),
+      },
+    ];
+    const settings = {
+      "table.columns": [
+        { name: "NAME", enabled: false },
+        { name: "DETAIL", enabled: true },
+      ],
+    };
+
+    const split = getVisibleTableData({
+      series,
+      settings,
+      isShowingDetailsOnlyColumns: true,
+      isShowingDisabledColumns: false,
+    });
+    expect(split.cols.map((col) => col.name)).toEqual(["DETAIL"]);
+
+    const tied = getVisibleTableData({
+      series,
+      settings,
+      isShowingDetailsOnlyColumns: true,
+    });
+    expect(tied.cols.map((col) => col.name)).toEqual(["NAME", "DETAIL"]);
+  });
+
   it("keeps the results timezone when pivoting", () => {
     const series: RawSeries = [
       {

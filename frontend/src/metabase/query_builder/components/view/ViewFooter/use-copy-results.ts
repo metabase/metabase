@@ -14,6 +14,7 @@ import { getTokenFeature } from "metabase/settings";
 import { canSavePng, extractRemappedColumns } from "metabase/visualizations";
 import { multiLevelPivot } from "metabase/visualizations/lib/data_grid";
 import { getChartSelector } from "metabase/visualizations/lib/image-exports";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   MAX_COPY_CELLS,
   ResultsTooLargeError,
@@ -60,9 +61,8 @@ const getTooLargeReason = () => t`These results are too large to copy`;
 const countDistinctValues = (rows: RowValues[], columnIndex: number) =>
   new Set(rows.map((row) => row[columnIndex])).size;
 
-// A sparse pivot's logical grid grows quadratically with its source rows
-// (2,000 diagonal observations make a 2,000×2,000 body), so the geometry is
-// measured before anything expands
+// multiLevelPivot returns the grid's dimensions plus a getRowSection accessor,
+// so its size can be measured without fetching any cells
 const getPivotGridSizeReason = (
   card: Card,
   data: DatasetData,
@@ -101,8 +101,12 @@ export const getCopyIneligibleReason = (
   isPivotResult: boolean,
   pivotedCopyEnabled: boolean,
 ): string | null => {
-  // The renderer shows the "No results" message instead of a grid or chart here
-  if (datasetContainsNoResults(result.data)) {
+  // A pivot result keeps its grand-total rows even when nothing matched, so
+  // the plain row-count check misses it
+  const noResults = isPivotResult
+    ? hasNoResults(result.data)
+    : datasetContainsNoResults(result.data);
+  if (noResults) {
     return t`There are no results to copy`;
   }
 
@@ -137,10 +141,8 @@ export const getCopyIneligibleReason = (
     question.display() === "table"
       ? question.card()
       : question.setDisplay("table").card();
-  // Column visibility never reads rows, so this render-path check works on an
-  // empty row set instead of remapping every cell of a large result
   const series: RawSeries = [
-    { card, data: extractRemappedColumns({ ...result.data, rows: [] }) },
+    { card, data: extractRemappedColumns(result.data) },
   ];
   const settings = getComputedSettingsForSeries(series);
 
@@ -160,6 +162,7 @@ export const getCopyIneligibleReason = (
     series: flatSeries,
     settings,
     isShowingDetailsOnlyColumns: question.display() === "object",
+    isShowingDisabledColumns: false,
   });
 
   if (cols.length === 0) {
@@ -198,6 +201,7 @@ export const useCopyResults = ({
       return;
     }
 
+    let serializationError: unknown;
     try {
       if (getCopyMode(question) === "chart") {
         await copyChartImage(question, !isWhitelabeled);
@@ -214,16 +218,23 @@ export const useCopyResults = ({
 
       // Safari only accepts a clipboard write started inside the click, so the spinner
       // paints first and the serialized content goes in as a promise
-      const content = waitUntilNextFramePainted().then(() =>
-        getResultsClipboardContent({
-          card,
-          data: result.data,
-          pivoted: copiesPivotGrid,
-          isPivotResult,
-          isShowingDetailsOnlyColumns: question.display() === "object",
-          translate,
-        }),
-      );
+      const content = waitUntilNextFramePainted()
+        .then(() =>
+          getResultsClipboardContent({
+            card,
+            data: result.data,
+            pivoted: copiesPivotGrid,
+            isPivotResult,
+            isShowingDetailsOnlyColumns: question.display() === "object",
+            translate,
+          }),
+        )
+        // clipboard.write() reports a rejected content promise as its own
+        // DOMException, so the typed error is kept aside for the toast
+        .catch((error) => {
+          serializationError = error;
+          throw error;
+        });
       await writeResultsToClipboard(content);
 
       const { rowCount, isPivotGrid } = await content;
@@ -236,11 +247,12 @@ export const useCopyResults = ({
       });
       dispatch(addUndo({ message }));
     } catch (error) {
+      const cause = serializationError ?? error;
       dispatch(
         addUndo({
           icon: "warning",
           message:
-            error instanceof ResultsTooLargeError
+            cause instanceof ResultsTooLargeError
               ? getTooLargeReason()
               : t`Couldn't copy to clipboard`,
         }),
@@ -301,6 +313,7 @@ function copyChartImage(question: Question, includeBranding: boolean) {
       }
       return blob;
     });
+  void blob.catch(() => {});
 
   return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
@@ -310,15 +323,18 @@ async function writeResultsToClipboard(
   content: Promise<{ text: string; html: string }>,
 ) {
   if (canWriteRichClipboard()) {
+    const textBlob = content.then(
+      ({ text }) => new Blob([text], { type: "text/plain" }),
+    );
+    const htmlBlob = content.then(
+      ({ html }) => new Blob([html], { type: "text/html" }),
+    );
+    // the browser stops reading at the first rejected flavor; the other one
+    // would surface as an unhandled rejection without a handler of its own
+    void textBlob.catch(() => {});
+    void htmlBlob.catch(() => {});
     await navigator.clipboard.write([
-      new ClipboardItem({
-        "text/plain": content.then(
-          ({ text }) => new Blob([text], { type: "text/plain" }),
-        ),
-        "text/html": content.then(
-          ({ html }) => new Blob([html], { type: "text/html" }),
-        ),
-      }),
+      new ClipboardItem({ "text/plain": textBlob, "text/html": htmlBlob }),
     ]);
   } else {
     const { text } = await content;

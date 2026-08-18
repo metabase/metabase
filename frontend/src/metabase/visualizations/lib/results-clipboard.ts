@@ -85,6 +85,7 @@ export function getResultsClipboardContent({
     series: flatSeries,
     settings,
     isShowingDetailsOnlyColumns,
+    isShowingDisabledColumns: false,
   });
   const { cols, rows } = visibleData;
 
@@ -195,7 +196,7 @@ function cellTextNeedsClicked(columnSettings?: ColumnSettings): boolean {
 // full-width forms some locales produce.
 const FORMULA_TRIGGER_PATTERN = /^[=+\-@\t\r\n\0＝＋－＠]/;
 const NUMERIC_LITERAL_PATTERN =
-  /^[+-]?[\p{Sc}\d.,\s]*\d\s*(?:[eE][+-]?\d+)?\s*%?$/u;
+  /^[+-]?[\p{Sc}\d.,\s]*\d(?:\s*[eE][+-]?\d+)?\s*%?$/u;
 
 function escapeSpreadsheetFormula(text: string): string {
   const isFormulaLike =
@@ -209,13 +210,11 @@ export class ResultsTooLargeError extends Error {
   }
 }
 
-// A sparse pivot expands far beyond its source rows (2,000 diagonal
-// observations make a 2,000×2,000 grid), so callers check the logical cell
-// count against this before materializing anything
+// Guards against e.g. pivots with many unique row and column keys.
+// e.g. building a 2000x2000 pivot grid takes >2s, 36MB of HTML and 900MB of memory.
 export const MAX_COPY_CELLS = 1_000_000;
 
-// Keeps a pathological result (a few huge text cells) from allocating
-// hundred-megabyte clipboard strings
+// Guards against a small grid of huge text cells.
 const MAX_COPY_TEXT_LENGTH = 20_000_000;
 
 function serializeLines(lines: string[][]) {
