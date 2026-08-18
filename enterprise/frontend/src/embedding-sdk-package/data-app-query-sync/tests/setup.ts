@@ -23,6 +23,10 @@ export function makeApp() {
   trackedAppRoots?.push(appRoot);
 
   fs.mkdirSync(path.join(appRoot, "queries"));
+  fs.writeFileSync(
+    path.join(appRoot, "data_app.yaml"),
+    "name: Test data app\npath: dist/index.js\n",
+  );
 
   const packageRoot = path.join(
     appRoot,
@@ -56,7 +60,18 @@ export function writeQuery(appRoot: string, body: string) {
 }
 
 export function jsonResponse(body: unknown, status = 200) {
-  return new Response(status === 204 ? null : JSON.stringify(body), {
+  const responseBody =
+    typeof body === "object" &&
+    body !== null &&
+    "resource_collection_id" in body
+      ? {
+          resource_collection_entity_id: "resourcecollectionid1",
+          permission_group_entity_id: "permissiongroupid0001",
+          ...body,
+        }
+      : body;
+
+  return new Response(status === 204 ? null : JSON.stringify(responseBody), {
     status,
     headers: { "content-type": "application/json" },
   });

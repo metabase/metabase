@@ -1,4 +1,8 @@
-import type { DataAppMetadata, MetabaseCard } from "./types";
+import type {
+  DataAppMetadata,
+  DraftDataAppMetadata,
+  MetabaseCard,
+} from "./types";
 
 export class MetabaseApiError extends Error {
   constructor(
@@ -47,7 +51,7 @@ export class MetabaseClient {
   }
 
   ensureDraft(slug: string) {
-    return this.request<DataAppMetadata>(
+    return this.request<DraftDataAppMetadata>(
       `apps/${encodeURIComponent(slug)}/draft`,
       { method: "POST" },
     );

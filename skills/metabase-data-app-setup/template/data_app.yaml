@@ -4,6 +4,8 @@ description: A summary of what this app does
 
 path: ./dist/index.js
 
+# `npm run build` adds the required server-issued resource entity IDs.
+
 # Origins this app may call with fetch/XHR. Everything else is blocked — both in
 # `npm run dev` (via the dev server's CSP) and inside Metabase (the sandbox).
 # The Metabase instance itself is reached through the SDK, not listed here.

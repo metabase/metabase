@@ -24,6 +24,7 @@ describe("scenarios > data apps > repo sync", () => {
   it("materializes each app per its config/bundle, isolating the broken ones", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
+    H.provisionSyncedDataAppResources();
     H.commitToRepo("Add data apps with mixed config/bundle states");
 
     H.configureGitAndPullChanges("read-write");
@@ -99,6 +100,7 @@ describe("scenarios > data apps > repo sync", () => {
   it("prunes an app whose directory is removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
+    H.provisionSyncedDataAppResources();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 

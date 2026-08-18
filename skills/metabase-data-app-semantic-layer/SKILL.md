@@ -13,6 +13,7 @@ Keep the semantic layer and presentation layer separate.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Never remove, edit, or copy a generated `savedQuestionSourceId`, even if it appears unused. Preserve it during refactors; use `npm run sync-queries` to repair or replace generated IDs.
+- Treat `resource_collection_entity_id` and `permission_group_entity_id` as server-issued manifest identities. Let `npm run sync-queries` add missing values. Preserve existing values unless the user intentionally changes the linked resources. Never invent either ID.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
@@ -113,13 +114,13 @@ import schema from "../src/metabase.data";
 export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
-Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"` and `"build": "npm run sync-queries && vite build"`. After adding, changing, renaming, or removing a query definition, run `npm run build`; it synchronizes before bundling. Use `npm run sync-queries` directly only when generated query state must be inspected before a build. The synchronization command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"` and `"build": "npm run sync-queries && vite build"`. After adding, changing, renaming, or removing a query definition, run `npm run build`; it synchronizes before bundling. Use `npm run sync-queries` directly only when generated query state must be inspected before a build. The synchronization command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`. It prepares the data app and adds missing server-issued resource entity IDs to `data_app.yaml`. It preserves entity IDs already in the manifest. It then creates or reconciles saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
 
 Before synchronization, verify every named `defineQuery(...)` export is under the root-level `queries/` directory and that none remain under `src/queries/`. Discovery supports `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts` files. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
 
 Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
 
-Do not test or hand off the app until `npm run build` succeeds, every live definition contains a positive `savedQuestionSourceId`, and `queries_metadata.json` contains its matching entry. Commit both generated changes. The build stops before bundling when synchronization fails.
+Do not test or hand off the app until `npm run build` succeeds. Confirm that `data_app.yaml` contains both resource entity IDs. Confirm that every live definition contains a positive `savedQuestionSourceId` and that `queries_metadata.json` contains its matching entry. Commit all generated changes. The build stops before bundling when synchronization fails.
 
 Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't apply the same clauses again outside it.
 
@@ -657,6 +658,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
 - Search touched files for `row[0]`, `row[1]`, `row.orderedAt`, `row.orderDate`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, result-key guesses, entity `<select>` filters, and unsupported business-field interpretations.
 - Verify every date preset bar includes Custom last unless explicitly omitted, every visible date filter affects the current page, and no page shows duplicate date filters for one scope.
+- Verify `data_app.yaml` contains 21-character `resource_collection_entity_id` and `permission_group_entity_id` values.
 - Verify `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
 - For every visible filter, verify "All" maps to no filter, selected values come from runtime query results, and each non-All option changes every card it claims to affect.
 
@@ -665,6 +667,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Creating or searching for Metabase content during app building.
 - Importing older hooks instead of `useMetabaseQuery`.
 - Copying raw numeric IDs into constants instead of using generated schema objects.
+- Inventing resource entity IDs instead of using the values returned by the data app draft.
 - Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.
 - Passing raw strings for table fields.
 - Adding lookup helpers instead of using keyed generated schema objects.
