@@ -3,10 +3,10 @@ import path from "node:path";
 
 import { addResourceEntityIdsToManifest } from "../manifest";
 
-import { makeApp, setupQuerySyncTests } from "./setup";
+import { makeApp, setupResourceSyncTests } from "./setup";
 
 describe("data app manifest resource IDs", () => {
-  setupQuerySyncTests();
+  setupResourceSyncTests();
 
   it("adds both server-issued entity IDs without rewriting the manifest", () => {
     const appRoot = makeApp();

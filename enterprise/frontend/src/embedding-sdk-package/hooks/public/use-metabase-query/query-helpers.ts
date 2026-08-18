@@ -1,4 +1,5 @@
 import { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { TemporalUnit } from "metabase-types/api";
 
 import type { SchemaColumn } from "../data-schema";
 
