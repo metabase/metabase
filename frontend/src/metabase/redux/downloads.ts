@@ -9,8 +9,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api/dataset";
-import { exportFormatPng } from "metabase/common/types/export";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -22,6 +20,7 @@ import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
+import { waitUntilNextFramePainted } from "metabase/utils/wait-until-next-frame-paints";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
@@ -37,6 +36,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import { exportFormatPng } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";

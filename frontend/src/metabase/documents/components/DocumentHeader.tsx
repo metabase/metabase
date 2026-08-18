@@ -8,7 +8,6 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
@@ -29,6 +28,7 @@ import {
   type TransitionProps,
 } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
+import { waitUntilNextFramePainted } from "metabase/utils/wait-until-next-frame-paints";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
