@@ -123,10 +123,10 @@
       (doseq [dialect ["snowflake" "postgres" "mysql"]]
         (testing dialect
           (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT id FROM public.users"
-                                                                        dialect dialect)]
+                                                                         dialect dialect)]
             (is (= :success status))
             (is (some? transpiled-sql))
-            (is (not (str/includes? transpiled-sql "\"")))))))))
+            (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]

@@ -117,7 +117,7 @@
 ;; database itself would have resolved (BOT-1013). Identifiers keep the quoting they were
 ;; written with, in both fold directions.
 
-(defn- transpiled [dialect sql]
+(defn- transpiled-sql [dialect sql]
   (:transpiled-sql (metabot.tools.sql.validation/validate-sql dialect sql)))
 
 (def ^:private quoting-cases
@@ -137,7 +137,7 @@
 (deftest ^:parallel quoting-preservation-test
   (doseq [{:keys [context dialect expected sql]} quoting-cases]
     (testing context
-      (is (= expected (transpiled dialect sql))))))
+      (is (= expected (transpiled-sql dialect sql))))))
 
 (deftest ^:parallel transpiled-sql-resolves-test
   (testing "transpiled SQL must resolve against the folded-case names the warehouse reports;
@@ -155,4 +155,4 @@
               "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]]]
       (testing sql
         (is (= "ok" (:status (sql-parsing/validate-query
-                              dialect (transpiled dialect sql) default-schema sqlglot-schema))))))))
+                              dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
