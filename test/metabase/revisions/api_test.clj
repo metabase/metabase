@@ -146,8 +146,9 @@
                 :has_multiple_changes false}]
               (get-revisions :card id))))))
 
-(deftest transform-revisions-do-not-disclose-prior-source-test
-  (testing "revisions of a Transform do not disclose a prior :source read from a database the caller cannot query (SEC-696)"
+(deftest transform-revisions-guard-prior-source-per-entitlement-test
+  (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers
+            entitled to the database it read from"
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Database {x-db-id :id} {}
                      :model/Database {y-db-id :id} {}

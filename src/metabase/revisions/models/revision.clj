@@ -67,6 +67,17 @@
   [model o1 o2]
   (diff-strings* (name model) o1 o2))
 
+(defmulti revision-readable?
+  "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
+  who can read an object's current row can read its whole revision history. Models whose snapshots carry
+  data-permission-sensitive definitions override this to authorize each snapshot on its own terms."
+  {:arglists '([model object])}
+  mi/dispatch-on-model)
+
+(defmethod revision-readable? :default
+  [_model _object]
+  true)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
@@ -180,11 +191,13 @@
     (t2/select :model/Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
-  "Fetch `revisions` for `model` with `id` and add details."
+  "Fetch `revisions` for `model` with `id` that the current user may see, and add details. Diffs and descriptions
+  are computed between consecutive *visible* revisions, so a snapshot the caller is not entitled to never leaks
+  through an adjacent revision's diff."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
-    (loop [acc [], [r1 r2 & more] revisions]
+    (loop [acc [], [r1 r2 & more] (filterv #(revision-readable? model (:object %)) revisions)]
       (if-not r2
         (conj acc (add-revision-details model r1 nil))
         (recur (conj acc (add-revision-details model r1 r2))
