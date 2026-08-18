@@ -329,7 +329,7 @@ async function writeResultsToClipboard(
     const htmlBlob = content.then(
       ({ html }) => new Blob([html], { type: "text/html" }),
     );
-    // the browser stops reading at the first rejected flavor; the other one
+    // The browser stops reading at the first rejected flavor; the other one
     // would surface as an unhandled rejection without a handler of its own
     void textBlob.catch(() => {});
     void htmlBlob.catch(() => {});

@@ -5,7 +5,7 @@ import { queryErrored } from "metabase/query_builder/actions/querying";
 import * as SaveChartImage from "metabase/visualizations/lib/save-chart-image";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
-import { createMockDataset } from "metabase-types/api/mocks";
+import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 
 import { ViewFooterCopyWidget } from "./ViewFooterCopyWidget";
 import {
@@ -36,6 +36,9 @@ jest.mock("metabase/visualizations/lib/save-chart-image", () => ({
 }));
 
 registerVisualizations();
+
+// One shared row instance keeps the over-limit fixture cheap to build
+const WIDE_ROW = Array.from({ length: 501 }, () => 1);
 
 const ORIGINAL_CLIPBOARD = navigator.clipboard;
 const ORIGINAL_CLIPBOARD_ITEM = window.ClipboardItem;
@@ -341,10 +344,7 @@ describe("ViewFooterCopyWidget", () => {
       const totalsOnly = createMockDataset({
         data: {
           ...PIVOT_RESULT.data,
-          rows: [
-            [null, "Alpha", 30, 1],
-            [null, null, 30, 3],
-          ],
+          rows: [[null, null, 0, 3]],
         },
       });
 
@@ -395,6 +395,33 @@ describe("ViewFooterCopyWidget", () => {
     expect(writeText.mock.calls[0][0].split("\n")).toHaveLength(2001);
   });
 
+  it("disables copy for a flat table with more cells than the copy limit", async () => {
+    const writeText = mockClipboardWriteText();
+    const wide = createMockDataset({
+      data: {
+        cols: Array.from({ length: 501 }, (_, index) =>
+          createMockColumn({
+            name: `WIDE_${index}`,
+            display_name: `Wide ${index}`,
+            base_type: "type/Integer",
+          }),
+        ),
+        rows: Array.from({ length: 2000 }, () => WIDE_ROW),
+      },
+    });
+
+    setup({ card: TABLE_CARD, result: wide });
+
+    const button = screen.getByLabelText("Copy these results to clipboard");
+    expect(button).toHaveAttribute("data-disabled", "true");
+    await userEvent.hover(button);
+    expect(
+      await screen.findByText("These results are too large to copy"),
+    ).toBeInTheDocument();
+    await userEvent.click(button);
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
   it("shows the too-large toast when serialized text passes the size limit", async () => {
     const writeText = mockClipboardWriteText();
     const huge = createMockDataset({
@@ -421,7 +448,7 @@ describe("ViewFooterCopyWidget", () => {
   });
 
   it("says the results are too large when the rich clipboard write fails on size", async () => {
-    mockClipboardWriteReadingParts();
+    const write = mockClipboardWriteReadingParts();
     const huge = createMockDataset({
       data: {
         ...TABLE_RESULT.data,
@@ -442,6 +469,7 @@ describe("ViewFooterCopyWidget", () => {
         }),
       );
     });
+    expect(write).toHaveBeenCalledTimes(1);
   });
 
   it("disables chart copy when there are no results to render", async () => {

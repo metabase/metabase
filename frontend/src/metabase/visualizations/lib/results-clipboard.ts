@@ -210,11 +210,13 @@ export class ResultsTooLargeError extends Error {
   }
 }
 
-// Guards against e.g. pivots with many unique row and column keys.
-// e.g. building a 2000x2000 pivot grid takes >2s, 36MB of HTML and 900MB of memory.
+// Enforced by callers before anything materializes: a sparse pivot with 2,000
+// unique row and column keys expands to a 2,000×2,000 grid, which costs >2s of
+// synchronous work, 36MB of HTML and 900MB of memory.
 export const MAX_COPY_CELLS = 1_000_000;
 
-// Guards against a small grid of huge text cells.
+// Raw cell characters, checked after formatting; guards a small grid of huge
+// text cells that stays under the cell cap.
 const MAX_COPY_TEXT_LENGTH = 20_000_000;
 
 function serializeLines(lines: string[][]) {
