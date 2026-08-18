@@ -81,11 +81,6 @@
         event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error]]
     {:engine engine, :event event}))
 
-(defmethod analytics.core/known-labels :metabase-search/reindex-lease-held-duration-ms
-  [_]
-  (for [engine (map name (search.engine/known-engines))]
-    {:engine engine}))
-
 (defmethod analytics.core/known-labels :metabase-search/engine-default
   [_]
   (analytics.core/known-labels :metabase-search/engine-active))
@@ -113,11 +108,11 @@
 
 (defn- with-engine-lease
   [engine operation thunk]
-  (let [{:keys [acquired? result] :as outcome}
+  (let [{:keys [acquired?] :as outcome}
         (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
     (when-not acquired?
       (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
-    (assoc outcome :result result)))
+    outcome))
 
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
@@ -199,7 +194,9 @@
               (when acquired?
                 (log/info "Found existing search index, and using it."))))
           (catch Exception e
-            (analytics/inc! :metabase-search/index-error)
+            (if (search.lease/expected-abort? e)
+              (log/infof "Search initialization stopped safely: %s" (ex-message e))
+              (analytics/inc! :metabase-search/index-error))
             (throw e)))))))
 
 (defn- reindex-logic! [opts]
@@ -225,7 +222,9 @@
               (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report)))
             report)
           (catch Exception e
-            (analytics/inc! :metabase-search/index-error)
+            (if (search.lease/expected-abort? e)
+              (log/infof "Search reindex stopped safely: %s" (ex-message e))
+              (analytics/inc! :metabase-search/index-error))
             (throw e)))))))
 
 (defn reindex!
@@ -239,8 +238,11 @@
             (try
               (reindex-logic! opts)
               (catch Exception e
-                (log/errorf "Reindex failed: %s" (ex-message e))
-                (analytics/inc! :metabase-search/index-error)
+                (if (search.lease/expected-abort? e)
+                  (log/infof "Reindex stopped safely: %s" (ex-message e))
+                  (do
+                    (log/errorf "Reindex failed: %s" (ex-message e))
+                    (analytics/inc! :metabase-search/index-error)))
                 (throw e))))]
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))

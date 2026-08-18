@@ -190,26 +190,56 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
-  ;; even when already running in a transaction
-  (t2/with-transaction [_ (mdb/app-db)]
-    (-> (sql.helpers/create-table table-name)
-        (sql.helpers/with-columns (specialization/table-schema base-schema))
-        t2/query)
-    (let [table-name (name table-name)]
-      (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (t2/query stmt)))))
+  ;; Use an explicit mutation connection: this may run while the source stream or its caller owns an ambient Toucan
+  ;; transaction. PostgreSQL also needs the post-create indexes committed before returning.
+  (mdb/with-unshared-connection [conn]
+    (search.lease/do-in-fenced-transaction!
+     conn
+     (fn []
+       (-> (sql.helpers/create-table table-name)
+           (sql.helpers/with-columns (specialization/table-schema base-schema))
+           t2/query)
+       (let [table-name (name table-name)]
+         (doseq [stmt (specialization/post-create-statements table-name table-name)]
+           (t2/query stmt)))))))
+
+(defn- create-fresh-leased-pending!
+  []
+  (let [table-name (gen-table-name)]
+    (log/infof "Creating owner-isolated pending index %s for lang %s" table-name (i18n/site-locale-string))
+    (try
+      (create-table! table-name)
+      (mdb/with-unshared-connection [conn]
+        (search.lease/do-in-fenced-transaction!
+         conn
+         #(search-index-metadata/replace-pending-on-current-connection!
+           :appdb (search.spec/index-version-hash) table-name)))
+      (sync-tracking-atoms!)
+      table-name
+      (catch Throwable e
+        ;; A table created just before ownership was lost is deliberately left unreferenced and will be collected by
+        ;; the ordinary orphan cleanup. Never let a stale owner delete a table a replacement may have adopted.
+        (sync-tracking-atoms!)
+        (throw e)))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
   (locking *indexes*
-    (if *mocking-tables*
+    (cond
+      *mocking-tables*
       ;; In a test where the atoms are the source of truth, create a new table if necessary.
       (or (pending-table)
           (let [table-name (gen-table-name)]
             (create-table! table-name)
             (swap! *indexes* assoc :pending table-name) table-name))
+
+      (search.lease/leased?)
+      ;; Never reuse a crashed or replaced owner's partially populated table. A stale worker captured its own table
+      ;; name and transactional fencing prevents it from mutating or promoting this replacement.
+      (create-fresh-leased-pending!)
+
+      :else
       ;; The database is the source of truth
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (or pending
@@ -258,10 +288,12 @@
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
-          (let [active (keyword (search-index-metadata/active-pending!
-                                 :appdb
-                                 (search.spec/index-version-hash)
-                                 search.lease/assert-current-in-transaction!))]
+          (let [active (mdb/with-unshared-connection [conn]
+                         (search.lease/do-in-fenced-transaction!
+                          conn
+                          #(some-> (search-index-metadata/active-pending-on-current-connection!
+                                    :appdb (search.spec/index-version-hash) pending)
+                                   keyword)))]
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
@@ -370,6 +402,7 @@
         (swap! *indexes* assoc :pending nil))))
 
   (let [reindexing? (some? reindex-table)
+        leased?     (search.lease/leased?)
         do-writes   (fn []
                       ;; Outside a leased rebuild this is a cheap no-op. During all rebuild modes (including in-place
                       ;; and force-sync) it stops a stale owner at the next batch boundary.
@@ -387,14 +420,19 @@
                                         (or active-updated pending-updated)))]
                         (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
-                            (when reindexing?
-                              (t2/query ["commit"]))
                             (log/trace "indexed documents for " <>)))))]
-    (if reindexing?
-      ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
-      (t2/with-connection [_conn (mdb/data-source)]
-        (do-writes))
+    (if leased?
+      ;; Reuse the batch writer for both the ownership fence and write. This covers staged, force-sync, and in-place
+      ;; rebuilds without acquiring a third connection alongside the streaming reader and batch writer.
+      (mdb/with-unshared-connection [conn]
+        (search.lease/do-in-fenced-transaction! conn do-writes))
       (do-writes))))
+
+(defn clear-active-table!
+  "Delete the active table's contents in a fenced transaction."
+  [table]
+  (mdb/with-unshared-connection [conn]
+    (search.lease/do-in-fenced-transaction! conn #(t2/delete! table))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.

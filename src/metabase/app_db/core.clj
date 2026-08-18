@@ -47,7 +47,8 @@
   transaction-state
   with-unshared-connection]
  [mdb.connection-pool-setup
-  recent-activity?]
+  recent-activity?
+  single-connection-pool-data-source]
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env

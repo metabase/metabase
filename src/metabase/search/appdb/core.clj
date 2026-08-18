@@ -293,12 +293,14 @@
     (if in-place?
       (when-let [table (search.index/active-table)]
         ;; keep the current table, just delete its contents
-        (t2/delete! table))
+        (search.index/clear-active-table! table))
       (search.index/maybe-create-pending!))
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/errorf "Error during reindexing: %s" (ex-message e))
+      (if (search.lease/expected-abort? e)
+        (log/infof "App-db reindex stopped safely: %s" (ex-message e))
+        (log/errorf "Error during reindexing: %s" (ex-message e)))
       (throw e))))
 
 (events/derive! :event/setting-update ::settings-changed-event)
