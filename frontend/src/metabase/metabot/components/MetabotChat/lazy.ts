@@ -8,13 +8,23 @@ const importMetabotChat = () => import("./MetabotChat");
 
 // Start downloading the chunk before the user asks for the sidebar, so the
 // sidebar still opens at once. rspack de-duplicates the request, so this shares
-// the same chunk as the lazy component below.
+// the same chunk as the lazy component below. A failed prefetch is forgotten:
+// rspack drops the chunk from its registry, so the render asks again and can
+// show the error where the user is looking.
 export const prefetchMetabotChat = () => {
-  void importMetabotChat();
+  importMetabotChat().catch(() => undefined);
 };
 
-export const LazyMetabotChat = lazy(() =>
-  importMetabotChat().then(({ MetabotChat }) => ({
-    default: MetabotChat,
-  })),
-);
+/**
+ * A new lazy component on every call.
+ *
+ * `React.lazy` remembers a rejected import and re-throws it on every later
+ * render, so a component that failed to fetch can never recover. Retrying needs
+ * a component that has not failed yet.
+ */
+export const createLazyMetabotChat = () =>
+  lazy(() =>
+    importMetabotChat().then(({ MetabotChat }) => ({
+      default: MetabotChat,
+    })),
+  );

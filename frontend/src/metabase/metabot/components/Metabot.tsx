@@ -30,7 +30,7 @@ import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
 import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
-import { LazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
+import { createLazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
 
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
@@ -124,9 +124,15 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const agentId = config?.agentId ?? "omnibot";
   const { visible, setVisible } = useMetabotAgent(agentId);
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
+  const [MetabotChat, setMetabotChat] = useState(createLazyMetabotChat);
   const isFullPageMetabot = useIsFullPageMetabot();
 
-  const handleRetry = () => setErrorBoundaryKey((prev) => prev + 1);
+  const handleRetry = () => {
+    // A failed fetch is one of the errors the boundary catches, and the panel
+    // that failed can never load, so retry with a fresh one.
+    setMetabotChat(createLazyMetabotChat());
+    setErrorBoundaryKey((prev) => prev + 1);
+  };
 
   useEffect(() => {
     return tinykeys(window, {
@@ -177,7 +183,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
           width="30rem"
           aria-hidden={!visible}
         >
-          <LazyMetabotChat
+          <MetabotChat
             config={config}
             headerActions={<MetabotSidebarActions agentId={agentId} />}
           />
