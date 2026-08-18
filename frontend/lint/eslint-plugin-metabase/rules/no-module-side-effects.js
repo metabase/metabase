@@ -69,12 +69,6 @@ const FIRST_ARGUMENT_MUTATORS = new Set([
   "Object.defineProperties",
   "Object.freeze",
   "Object.seal",
-  "Object.preventExtensions",
-  "Object.setPrototypeOf",
-  "Reflect.set",
-  "Reflect.defineProperty",
-  "Reflect.deleteProperty",
-  "Reflect.setPrototypeOf",
 ]);
 
 const CONTROL_FLOW_STATEMENTS = new Set([
@@ -90,6 +84,21 @@ const CONTROL_FLOW_STATEMENTS = new Set([
   "LabeledStatement",
   "BlockStatement",
   "DebuggerStatement",
+]);
+
+// An expression under one of these is not judged.
+// Function bodies run later, class bodies are not inspected,
+// and a control-flow statement is reported once as a whole.
+const NOT_MODULE_SCOPE = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+  "TSDeclareFunction",
+  "MethodDefinition",
+  "PropertyDefinition",
+  "AccessorProperty",
+  "StaticBlock",
+  ...CONTROL_FLOW_STATEMENTS,
 ]);
 
 const EXPRESSION_WRAPPERS = new Set([
@@ -187,7 +196,7 @@ module.exports = {
       );
     }
 
-    // Collected over the whole file before any statement is judged, so a function declared below its call site still counts as local.
+    // Collected over the whole file before any expression is judged, so a function declared below its call site still counts as local.
     const localNames = new Set();
     // local name -> { module, importedName }
     const importBindings = new Map();
@@ -205,12 +214,18 @@ module.exports = {
       return "global";
     }
 
+    // The annotation may sit on the call or on a wrapper around it (`/* #__PURE__ */ foo()!`).
     function isPureAnnotated(node) {
-      const comments = sourceCode.getCommentsBefore(node);
-      return (
-        comments.length > 0 &&
-        PURE_ANNOTATION.test(comments[comments.length - 1].value)
-      );
+      for (const current of wrapperChain(node)) {
+        const comments = sourceCode.getCommentsBefore(current);
+        if (
+          comments.length > 0 &&
+          PURE_ANNOTATION.test(comments[comments.length - 1].value)
+        ) {
+          return true;
+        }
+      }
+      return false;
     }
 
     function isAllowlistedCallee(callee) {
@@ -250,8 +265,8 @@ module.exports = {
     // A call in a statement exists only for its effect, so every call not known pure is reported.
     // In an initializer the value is kept, so only calls into packages are reported.
     // Our own code (relative or in-repo alias imports) and `new` are trusted there.
-    function checkCall(node, outer, inStatement) {
-      if (isPureAnnotated(node) || (outer !== node && isPureAnnotated(outer))) {
+    function checkCall(node, inStatement) {
+      if (isPureAnnotated(node)) {
         return;
       }
       const callee =
@@ -290,125 +305,26 @@ module.exports = {
       }
     }
 
-    // Function bodies are not entered, they run later.
-    // `inStatement` means the expression's value is discarded.
-    function checkExpression(node, inStatement) {
-      if (node == null) {
-        return;
-      }
-      const inner = unwrap(node);
-      switch (inner.type) {
-        case "CallExpression":
-        case "NewExpression":
-        case "TaggedTemplateExpression":
-          checkCall(inner, node, inStatement);
-          checkExpression(
-            inner.type === "TaggedTemplateExpression"
-              ? inner.tag
-              : inner.callee,
-            false,
-          );
-          for (const argument of inner.arguments || []) {
-            checkExpression(argument, false);
-          }
-          if (inner.quasi) {
-            checkExpression(inner.quasi, false);
-          }
-          return;
-        case "ImportExpression":
+    function checkAssignment(node) {
+      if (node.left.type === "Identifier") {
+        if (classifyRoot(node.left) === "global") {
           context.report({
-            node: inner,
-            messageId: "callAtModuleScope",
-            data: { callee: "import()" },
+            node,
+            messageId: "assignToGlobal",
+            data: { target: display(node.left) },
           });
-          return;
-        case "AwaitExpression":
-          context.report({ node: inner, messageId: "topLevelAwait" });
-          checkExpression(inner.argument, false);
-          return;
-        case "AssignmentExpression":
-          if (inner.left.type === "Identifier") {
-            if (classifyRoot(inner.left) === "global") {
-              context.report({
-                node: inner,
-                messageId: "assignToGlobal",
-                data: { target: display(inner.left) },
-              });
-            }
-          } else if (inner.left.type === "MemberExpression") {
-            reportMutationOf(inner.left, inner);
-          }
-          checkExpression(inner.right, false);
-          return;
-        case "UpdateExpression":
-          if (
-            inner.argument.type === "MemberExpression" ||
-            classifyRoot(inner.argument) === "global"
-          ) {
-            reportMutationOf(inner.argument, inner);
-          }
-          return;
-        case "UnaryExpression":
-          if (inner.operator === "delete") {
-            reportMutationOf(inner.argument, inner);
-          } else {
-            checkExpression(inner.argument, false);
-          }
-          return;
-        case "MemberExpression":
-          checkExpression(inner.object, false);
-          if (inner.computed) {
-            checkExpression(inner.property, false);
-          }
-          return;
-        case "SequenceExpression":
-          for (const expression of inner.expressions) {
-            checkExpression(expression, inStatement);
-          }
-          return;
-        case "ConditionalExpression":
-          checkExpression(inner.test, false);
-          checkExpression(inner.consequent, inStatement);
-          checkExpression(inner.alternate, inStatement);
-          return;
-        case "LogicalExpression":
-          checkExpression(inner.left, false);
-          checkExpression(inner.right, inStatement);
-          return;
-        case "BinaryExpression":
-          checkExpression(inner.left, false);
-          checkExpression(inner.right, false);
-          return;
-        case "SpreadElement":
-          checkExpression(inner.argument, false);
-          return;
-        case "ArrayExpression":
-          for (const element of inner.elements) {
-            checkExpression(element, false);
-          }
-          return;
-        case "ObjectExpression":
-          for (const property of inner.properties) {
-            if (property.type === "SpreadElement") {
-              checkExpression(property.argument, false);
-            } else {
-              if (property.computed) {
-                checkExpression(property.key, false);
-              }
-              checkExpression(property.value, false);
-            }
-          }
-          return;
-        case "TemplateLiteral":
-          for (const expression of inner.expressions) {
-            checkExpression(expression, false);
-          }
-          return;
-        case "ClassExpression":
-          checkExpression(inner.superClass, false);
-          return;
-        default:
-          return;
+        }
+      } else if (node.left.type === "MemberExpression") {
+        reportMutationOf(node.left, node);
+      }
+    }
+
+    function checkUpdate(node) {
+      if (
+        node.argument.type === "MemberExpression" ||
+        classifyRoot(node.argument) === "global"
+      ) {
+        reportMutationOf(node.argument, node);
       }
     }
 
@@ -423,55 +339,15 @@ module.exports = {
       context.report({ node, messageId: "bareImport", data: { source } });
     }
 
-    function checkVariableDeclaration(node) {
-      for (const declarator of node.declarations) {
-        checkExpression(declarator.init, false);
-      }
-    }
-
-    function checkStatement(node) {
-      switch (node.type) {
-        case "ImportDeclaration":
-          if (node.specifiers.length === 0) {
-            checkBareImport(node);
-          }
-          return;
-        case "ExpressionStatement":
-          if (!isDirective(node)) {
-            checkExpression(node.expression, true);
-          }
-          return;
-        case "VariableDeclaration":
-          checkVariableDeclaration(node);
-          return;
-        case "ExportNamedDeclaration":
-          if (node.declaration != null) {
-            checkStatement(node.declaration);
-          }
-          return;
-        case "ExportDefaultDeclaration":
-          if (
-            node.declaration.type !== "FunctionDeclaration" &&
-            node.declaration.type !== "ClassDeclaration" &&
-            node.declaration.type !== "TSInterfaceDeclaration"
-          ) {
-            checkExpression(node.declaration, false);
-          }
-          return;
-        case "TSExportAssignment":
-          checkExpression(node.expression, false);
-          return;
-        case "ClassDeclaration":
-          checkExpression(node.superClass, false);
-          return;
-        default:
-          if (CONTROL_FLOW_STATEMENTS.has(node.type)) {
-            context.report({
-              node,
-              messageId: "controlFlow",
-              data: { kind: statementKeyword(node) },
-            });
-          }
+    function checkTopLevelStatement(node) {
+      if (node.type === "ImportDeclaration" && node.specifiers.length === 0) {
+        checkBareImport(node);
+      } else if (CONTROL_FLOW_STATEMENTS.has(node.type)) {
+        context.report({
+          node,
+          messageId: "controlFlow",
+          data: { kind: statementKeyword(node) },
+        });
       }
     }
 
@@ -514,18 +390,93 @@ module.exports = {
       }
     }
 
+    // Runs `check` on the node when it is evaluated at module scope.
+    // The Program visitor has already collected the bindings by then.
+    function atModuleScope(check) {
+      return (node) => {
+        const placement = placementOf(node);
+        if (placement !== "skipped") {
+          check(node, placement === "statement");
+        }
+      };
+    }
+
     return {
       Program(program) {
         for (const statement of program.body) {
           collectBindings(statement);
         }
         for (const statement of program.body) {
-          checkStatement(statement);
+          checkTopLevelStatement(statement);
         }
       },
+      CallExpression: atModuleScope(checkCall),
+      NewExpression: atModuleScope(checkCall),
+      TaggedTemplateExpression: atModuleScope(checkCall),
+      ImportExpression: atModuleScope((node) => {
+        context.report({
+          node,
+          messageId: "callAtModuleScope",
+          data: { callee: "import()" },
+        });
+      }),
+      AwaitExpression: atModuleScope((node) => {
+        context.report({ node, messageId: "topLevelAwait" });
+      }),
+      AssignmentExpression: atModuleScope(checkAssignment),
+      UpdateExpression: atModuleScope(checkUpdate),
+      UnaryExpression: atModuleScope((node) => {
+        if (node.operator === "delete") {
+          reportMutationOf(node.argument, node);
+        }
+      }),
     };
   },
 };
+
+// Where an expression's value goes: "skipped" under a function, a class body or a control-flow statement,
+// "statement" when it is discarded, "value" when it is kept.
+function placementOf(node) {
+  let placement = null;
+  for (let current = node; current.parent != null; current = current.parent) {
+    const { parent } = current;
+    if (NOT_MODULE_SCOPE.has(parent.type)) {
+      return "skipped";
+    }
+    if (placement == null && !discardsValueOf(parent, current)) {
+      placement = parent.type === "ExpressionStatement" ? "statement" : "value";
+    }
+  }
+  return placement ?? "value";
+}
+
+// Whether `parent` hands `child`'s value on unused, so an expression statement above still discards it.
+function discardsValueOf(parent, child) {
+  switch (parent.type) {
+    case "SequenceExpression":
+      return true;
+    case "ConditionalExpression":
+      return child !== parent.test;
+    case "LogicalExpression":
+      return child === parent.right;
+    default:
+      return EXPRESSION_WRAPPERS.has(parent.type);
+  }
+}
+
+// The node and every TS wrapper or optional chain around it, innermost first.
+function wrapperChain(node) {
+  const chain = [node];
+  let current = node;
+  while (
+    current.parent != null &&
+    EXPRESSION_WRAPPERS.has(current.parent.type)
+  ) {
+    current = current.parent;
+    chain.push(current);
+  }
+  return chain;
+}
 
 function unwrap(node) {
   let current = node;
@@ -637,14 +588,6 @@ function patternNames(pattern) {
     default:
       return [];
   }
-}
-
-function isDirective(node) {
-  return (
-    node.directive != null ||
-    (node.expression.type === "Literal" &&
-      typeof node.expression.value === "string")
-  );
 }
 
 function statementKeyword(node) {

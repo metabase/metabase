@@ -154,6 +154,13 @@ const VALID_CASES = [
     `,
   },
   {
+    name: "annotated call on a package through a cast",
+    code: `
+      import { registerThing } from "some-registry";
+      export const thing = /* #__PURE__ */ registerThing() as unknown;
+    `,
+  },
+  {
     name: "annotated statement",
     code: `
       import { registerThing } from "./registry";
@@ -507,6 +514,31 @@ const INVALID_CASES = [
       export const things = { thing: registerThing(), list: [registerThing()] };
     `,
     errors: [{ messageId: "callOnImport" }, { messageId: "callOnImport" }],
+  },
+  {
+    name: "package call nested in an object inside an array initializer",
+    code: `
+      import { registerThing } from "some-registry";
+      export const things = [{ thing: registerThing() }];
+    `,
+    errors: [{ messageId: "callOnImport" }],
+  },
+  {
+    name: "package call in a jsx attribute",
+    code: `
+      import { registerThing } from "some-registry";
+      export const DEFAULT = <div onClick={registerThing()} />;
+    `,
+    errors: [{ messageId: "callOnImport" }],
+  },
+  {
+    name: "delete inside a sequence",
+    code: `
+      import { registry } from "./registry";
+      let step = 0;
+      (step = 1, delete registry.entry);
+    `,
+    errors: [{ messageId: "assignToImport" }],
   },
   {
     name: "package call in a spread",
