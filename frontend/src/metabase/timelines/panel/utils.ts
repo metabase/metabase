@@ -20,10 +20,6 @@ import type {
 } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
-/**
- * Sorts timelines, parses event timestamps and drops archived events, so the
- * result is ready for filtering and rendering.
- */
 export const transformTimelines = (timelines: Timeline[]): Timeline[] =>
   getSortedTimelines(
     timelines.map((timeline) =>
@@ -47,11 +43,6 @@ const filterTimelineEvents = (
     }))
     .filter((timeline) => timeline.events.length > 0);
 
-/**
- * When looking at, say, count of orders over years, the last x value is
- * Jan 1, 2024. Filtering events up until that point would drop everything that
- * happened later in 2024, so the domain is extended by one data interval.
- */
 const extendDomainToLastInterval = (
   [start, end]: DateRange,
   interval: TimeSeriesInterval | null,
@@ -64,10 +55,6 @@ const extendDomainToLastInterval = (
   return [start, isSubDayUnit ? extendedEnd : extendedEnd.subtract(1, "day")];
 };
 
-/**
- * Keeps only the events within the chart's x domain and drops timelines that
- * end up empty. Without a domain only empty timelines are dropped.
- */
 export const filterTimelinesByXAxis = (
   timelines: Timeline[],
   xAxis: TimeseriesXAxis | null,
@@ -126,10 +113,6 @@ export const getEventsXDomain = (
 const isPeriodUnit = (unit: DateTimeAbsoluteUnit) =>
   unit === "week" || unit === "month" || unit === "quarter" || unit === "year";
 
-/**
- * With a unit the dates are bucketed like the chart's x axis ("Events in
- * June 2027"); without one they are shown as exact dates.
- */
 export const formatTitle = (
   xDomain?: DateRange,
   unit?: CartesianChartDateTimeAbsoluteUnit,
