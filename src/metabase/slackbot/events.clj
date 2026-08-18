@@ -52,9 +52,28 @@
   "Malli schema for Slack event_callback event"
   [:map
    [:type [:= "event_callback"]]
+   [:event_id {:optional true} :string]
+   [:team_id  {:optional true} :string]
    [:event [:map
-            [:type :string]
-            [:event_ts :string]]]])
+            [:type                          :string]
+            [:event_ts                      :string]
+            [:user         {:optional true} :string]
+            [:channel      {:optional true} :string]
+            [:channel_type {:optional true} :string]
+            [:subtype      {:optional true} :string]
+            [:ts           {:optional true} :string]
+            [:thread_ts    {:optional true} [:maybe :string]]
+            [:text         {:optional true} [:maybe :string]]
+            [:bot_id       {:optional true} [:maybe :string]]
+            [:reaction     {:optional true} :string]
+            [:edited       {:optional true} [:map
+                                             [:user {:optional true} :string]
+                                             [:ts   {:optional true} :string]]]
+            [:files        {:optional true} [:sequential SlackFile]]
+            [:item         {:optional true} [:map
+                                             [:type    {:optional true} :string]
+                                             [:channel {:optional true} :string]
+                                             [:ts      {:optional true} :string]]]]]])
 
 (defn user-message?
   "Check if event is from a user (not a bot)."

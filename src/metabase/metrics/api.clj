@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
@@ -33,9 +34,9 @@
   [:merge
    ::Metric
    [:map
-    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
-    [:dataset_query        {:optional true} :map]
+    [:dimensions           {:optional true} [:maybe [:sequential ms/Map]]]
+    [:dimension_mappings   {:optional true} [:maybe [:sequential ms/Map]]]
+    [:dataset_query        {:optional true} ::lib-be.schema/maybe-legacy-query]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 

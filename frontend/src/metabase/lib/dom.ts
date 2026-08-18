@@ -9,8 +9,6 @@ import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 import { isObject } from "metabase-types/guards";
 
-import { checkNotNull } from "./types";
-
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = (): number =>
   typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
@@ -122,9 +120,20 @@ export function elementIsInView(
   });
 }
 
+// site-url is null on instances where it was never set, and GlobalStyles calls this above any error
+// boundary, so throwing here white-screens the whole app. The sub-path is cosmetic; fall back to the root.
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 function isMetabaseUrl(url: string): boolean {

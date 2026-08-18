@@ -19,7 +19,7 @@ const DATE_COLUMN_INDEX = 0;
 const METRIC_COLUMN_INDEX = 1;
 
 export function AboutVisualization({ card }: AboutVisualizationProps) {
-  const { data, isLoading } = useCardQueryData(card);
+  const { data, isLoading, error } = useCardQueryData(card);
   const trendData = useTrendData(data, DATE_COLUMN_INDEX, METRIC_COLUMN_INDEX);
 
   const lineCard = useMemo(
@@ -38,6 +38,7 @@ export function AboutVisualization({ card }: AboutVisualizationProps) {
         card={lineCard}
         data={data}
         isLoading={isLoading}
+        error={error}
         className={S.innerVisualization}
       />
     </Stack>

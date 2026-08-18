@@ -8,6 +8,22 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
+(defenterprise remove-impersonation-keys
+  "Pre-processing middleware. Removes the `:impersonation/role` key [[apply-impersonation]] sets on the query once it
+  has worked out which database role the query should run under.
+
+  It is an ordinary namespaced keyword on the top-level query, so it rides in from the JSON request body untouched:
+  keywordization, the endpoint schema and MBQL normalization all leave it alone. And it is only `assoc`ed when the
+  server computes a role, so when it doesn't, a caller-supplied value is simply left in place -- letting a non-admin
+  choose the database role their query runs as, overriding the configured one.
+
+  Lives here, next to the only code that sets the key, so the two can't drift apart. `:feature :none` so that
+  stripping never depends on the token: a key the user should not be able to set is not something to start honouring
+  because a licence lapsed."
+  :feature :none
+  [query]
+  (dissoc query :impersonation/role))
+
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
   and adds an impersonation role key to the query for non-admin users. Currently used solely for caching."

@@ -116,8 +116,10 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                                      ;; don't want default constraints overriding anything that's already there
-                                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                                      ;; The userland caller's :constraints/:middleware carry the row-limit cap;
+                                      ;; wipe whatever the stored Card query carries so it cannot defeat that cap
+                                      ;; (e.g. a stored :middleware {:disable-max-results? true}).
+                                      (dissoc :constraints :middleware)
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters
                                                                               filter-stage-added? add-stage-to-temporal-unit-parameters))
@@ -207,6 +209,21 @@
      [:template-tag tag-name]
      (name tag-name))))
 
+(defn- target-template-tag-name
+  "The name of the template tag a parameter's `:target` routes its value to, or nil when the target names no tag.
+
+  Request parameters are matched to template tags purely by `:target` at run time (see
+  [[metabase.query-processor.parameters.values]]), so validation must key on the tag the target points at -- not
+  the caller-supplied `:name`. Keying on `:name` lets a caller borrow a permissive widget's name to launder a
+  permissive operator (`:string/contains`, `:number/between`, ...) onto an exact-match Field Filter it targets.
+  Handles both target forms: `[:template-tag \"name\"]` and the by-id `[:template-tag {:id \"...\"}]`."
+  [tag-id->name target]
+  (lib.util.match/match-lite target
+    [:template-tag (tag-name :guard string?)]
+    tag-name
+    [:template-tag (tag-ref :guard map?)]
+    (get tag-id->name (:id tag-ref))))
+
 (mu/defn- validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in `dataset-query` (the query for the Card with `card-id`)."
@@ -214,9 +231,15 @@
    dataset-query :- [:maybe ::lib.schema/query]
    parameters    :- [:maybe [:ref ::lib.schema.parameter/parameters]]]
   (when-not *allow-arbitrary-mbql-parameters*
-    (let [template-tags (card-template-tag-parameters dataset-query)]
+    (let [template-tags (card-template-tag-parameters dataset-query)
+          tag-id->name  (into {} (map (fn [[nm tag]] [(:id tag) nm]))
+                              (lib/all-template-tags-map dataset-query))]
       (doseq [request-parameter parameters
-              :let              [parameter-name (infer-parameter-name request-parameter)]]
+              ;; Key the widget-type check on the tag the value is actually routed to (its `:target`); fall back to
+              ;; the caller-supplied `:name` only when the request names no template tag via its target. Trusting
+              ;; `:name` here lets a caller launder a permissive operator onto an exact-match Field Filter.
+              :let              [parameter-name (or (target-template-tag-name tag-id->name (:target request-parameter))
+                                                    (infer-parameter-name request-parameter))]]
         (let [matching-widget-type (or (get template-tags parameter-name)
                                        (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
                                                             card-id
@@ -269,13 +292,31 @@
           template-tag-parameters)))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
-  "Allow the FE to omit type and target for parameters by adding them from the card."
+  "Allow the FE to omit type and target for parameters by adding them from the card.
+
+  A parameter's `:target` says which column its value filters, so it comes from the Card: its own declared parameter,
+  matched by `:id`, or failing that the template tag the request's target names -- a Card can have a tag it declares
+  no parameter for, e.g. a `:temporal-unit` tag. A request that sent a target the Card accounts for neither way picked
+  a column of its own, so the parameter is dropped rather than filtered on; one that sent no target at all is left for
+  [[validate-card-parameters]] to reject. [[*allow-arbitrary-mbql-parameters*]] opts out, for
+  [[metabase.query-processor.dashboard]], which resolves targets from the dashcard's parameter mappings itself."
   [parameters      :- [:maybe ::parameters.schema/parameters-with-optional-types]
    card-parameters :- [:maybe ::parameters.schema/parameters]]
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
                             (m/index-by :id))]
-    (mapv #(merge (-> % :id id->card-param) %) parameters)))
+    (into []
+          (keep (fn [parameter]
+                  (let [card-param (get id->card-param (:id parameter))
+                        enriched   (merge card-param parameter)
+                        target     (:target card-param)]
+                    (if *allow-arbitrary-mbql-parameters*
+                      enriched
+                      (when (or target (not (:target parameter)))
+                        (-> enriched
+                            (dissoc :target)
+                            (m/assoc-some :target target)))))))
+          parameters)))
 
 (defn- card-read-context
   "The context to use for tracking the view. Return nil if the view should not be tracked"
