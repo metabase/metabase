@@ -41,14 +41,14 @@ export function EmbeddingMethodsCard() {
 
   const modularEmbedding: EmbeddingMethod = {
     title: t`Modular embedding and SDK for React`,
-    description: t`The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components, or build a fully custom analytics experience with the SDK for React.`,
+    description: t`Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data.`,
     settingKey: "enable-embedding-simple",
     mergedSettingKeys: ["enable-embedding-sdk", "enable-embedding-static"],
   };
 
   const guestEmbeds: EmbeddingMethod = {
-    title: t`Guest embeds`,
-    description: t`A secure way to embed charts and dashboards, without single sign-on, when you don't want to offer ad-hoc querying or chart drill-through.`,
+    title: t`Enable embedding`,
+    description: t`Embed Metabase dashboards and questions into your application with modular embedding.`,
     settingKey: "enable-embedding-static",
   };
 
