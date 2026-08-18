@@ -9,7 +9,7 @@ import type { DatasetData, GoalValue } from "metabase-types/api";
 import { GoalValueInput } from "./GoalValueInput";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 
-export type SegmentBoundInputProps = {
+type Props = {
   "aria-label"?: string;
   data: DatasetData | undefined;
   id: string;
@@ -25,7 +25,7 @@ export function SegmentBoundInput({
   placeholder,
   value,
   onChange,
-}: SegmentBoundInputProps) {
+}: Props) {
   const error = data != null ? resolveGoalValue(data, value).error : undefined;
 
   return (

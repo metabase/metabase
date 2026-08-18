@@ -3,7 +3,7 @@ import type { ReactNode, Ref } from "react";
 import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
 
-export type StaticGoalValueInputProps = {
+type Props = {
   "aria-label"?: string;
   id: string;
   inputRef?: Ref<HTMLInputElement>;
@@ -21,7 +21,7 @@ export function StaticGoalValueInput({
   rightSection,
   value,
   onChange,
-}: StaticGoalValueInputProps) {
+}: Props) {
   const numericValue = typeof value === "number" ? value : null;
 
   return (
