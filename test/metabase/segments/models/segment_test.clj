@@ -116,7 +116,7 @@
       (is (= "Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate segment :definition_description)))))))
 
-(deftest ^:synchronized definition-description-invalid-query-test
+(deftest ^{:parallel false} definition-description-invalid-query-test
   (testing "Should return `nil` if query is invalid"
     (mt/with-temp [:model/Segment {id :id} {:name "Expensive BBQ Spots"
                                             :definition (:query (mt/mbql-query venues

@@ -904,7 +904,7 @@
     :used-underscored-binding                             {:level :warning}
     :keyword-binding                                      {:level :warning}
     :shadowed-var                                         {:level :warning}
-    :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}
+    :metabase/deftest-not-marked-parallel-or-nonparallel {:level :warning}
 
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.

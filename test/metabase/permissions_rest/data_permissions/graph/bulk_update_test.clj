@@ -296,7 +296,7 @@
 
 ;;; ================================ N+1 regression ================================
 
-(deftest ^:synchronized update-data-perms-graph-query-count-regression-test
+(deftest ^{:parallel false} update-data-perms-graph-query-count-regression-test
   (testing "update-data-perms-graph!* uses a constant number of queries regardless of input size"
     ;; 3 groups × 3 databases × 2 schemas each × 3 tables per schema = 18 tables per db
     ;; Permissions set across multiple perm types at mixed granularity.

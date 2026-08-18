@@ -88,7 +88,7 @@
        (lib/order-by (meta/field-metadata :orders :tax) :asc)
        (lib/order-by (meta/field-metadata :orders :discount) :desc))))
 
-(deftest ^:synchronized swap-clauses-not-found-test
+(deftest ^{:parallel false} swap-clauses-not-found-test
   (testing "swap-clauses emits a warning if a clause is not found"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/aggregate (lib/count))
@@ -100,7 +100,7 @@
         (is (=? [{:level :warn, :message #"No matching clause in swap-clauses"}]
                 (messages)))))))
 
-(deftest ^:synchronized swap-clauses-ambiguous-test
+(deftest ^{:parallel false} swap-clauses-ambiguous-test
   (testing "swap-clauses emits a warning if multiple matching clauses are found"
     ;; This isn't really possible to do by accident, but anyway.
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

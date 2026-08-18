@@ -28,11 +28,11 @@
     (walk form)))
 
 (defn- deftest-check-parallel
-  "1. Check if test is marked ^:parallel / ^:synchronized correctly.
+  "1. Check if test is marked `^:parallel` / `^{:parallel false}` correctly.
    2. Make sure disallowed forms are not used in ^:parallel tests.
-   3. Disallow ^:parallel tests in namespaces marked ^:synchronous -- the
-      ns marker is the author's blanket promise that nothing inside runs
-      in parallel, so an individual ^:parallel deftest contradicts it."
+   3. Disallow `^:parallel` tests in namespaces marked `^{:parallel false}` --
+      the ns marker is the author's blanket promise that nothing inside runs
+      in parallel, so an individual `^:parallel` deftest contradicts it."
   [{[_ test-name & body] :children, :as _node} ns-sym config]
   (let [test-metadata     (:meta test-name)
         metadata-sexprs   (map hooks/sexpr test-metadata)
@@ -44,29 +44,36 @@
                            (completing merge)
                            {}
                            metadata-sexprs)
-        parallel?     (:parallel combined-metadata)
-        synchronized? (:synchronized combined-metadata)
-        ns-synchronous? (boolean (:synchronous (meta ns-sym)))]
-    (when (and parallel? synchronized?)
+        parallel?             (true? (:parallel combined-metadata))
+        explicitly-nonparallel?    (and (contains? combined-metadata :parallel)
+                                        (false? (:parallel combined-metadata)))
+        legacy-nonparallel-marker? (some combined-metadata [:synchronized :sequential])
+        ns-explicitly-nonparallel? (and (contains? (meta ns-sym) :parallel)
+                                        (false? (:parallel (meta ns-sym))))]
+    (when legacy-nonparallel-marker?
       (hooks/reg-finding! (assoc (meta test-name)
-                                 :message "Test should not be marked both ^:parallel and ^:synchronized"
+                                 :message (str "Use `^{:parallel false}` to mark this test explicitly non-parallel; "
+                                               "`^:synchronized` and `^:sequential` are ignored by Hawk. "
+                                               "[:metabase/validate-deftest]")
                                  :type :metabase/validate-deftest)))
-    (when (and parallel? ns-synchronous?)
+    (when (and parallel? ns-explicitly-nonparallel?)
       (hooks/reg-finding!
        (assoc (meta test-name)
-              :message (str "Test should not be marked ^:parallel in a namespace marked ^:synchronous -- "
+              :message (str "Test should not be marked `^:parallel` in a namespace marked "
+                            "`^{:parallel false}` -- "
                             "the ns marker promises no parallel execution. "
-                            "Drop ^:parallel from the deftest, or drop ^:synchronous from the ns. "
+                            "Drop `^:parallel` from the deftest, or drop `^{:parallel false}` from the ns. "
                             "[:metabase/validate-deftest]")
               :type :metabase/validate-deftest)))
-    ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are
-    ;; not explicitly marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything
-    ;; `^:parallel` in places like `metabase.lib` tests unless there is a really good reason not to.
-    (when-not (or parallel? synchronized?)
+    ;; Only when the custom `:metabase/deftest-not-marked-parallel-or-nonparallel` is enabled:
+    ;; complain if tests are not explicitly marked `^:parallel` or `^{:parallel false}`. This is
+    ;; mostly to encourage people to mark everything `^:parallel` in places like `metabase.lib`
+    ;; tests unless there is a really good reason not to.
+    (when-not (or parallel? explicitly-nonparallel?)
       (hooks/reg-finding!
        (assoc (meta test-name)
-              :message "Test should be marked either ^:parallel or ^:synchronized"
-              :type :metabase/deftest-not-marked-parallel-or-synchronized)))
+              :message "Test should be marked either `^:parallel` or `^{:parallel false}`"
+              :type :metabase/deftest-not-marked-parallel-or-nonparallel)))
     (when parallel?
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form config)))))
@@ -233,18 +240,19 @@
 
 (defn use-fixtures
   "Flag `:parallel/unsafe` forms inside fixtures. Skipped when the surrounding
-  namespace is marked `^:synchronous` -- the ns marker is the author's
+  namespace is marked `^{:parallel false}` -- the ns marker is the author's
   explicit opt-in to a single-threaded test ns where destructive setup is
   safe. Without that opt-in, kondo can't know whether sibling deftests will
   be `^:parallel`, so the conservative default is to flag.
 
   Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
-  tests inside a `^:synchronous` ns, so the two checks together form a
-  coherent opt-in: either the whole ns is synchronous (fixtures can be
+  tests inside a `^{:parallel false}` ns, so the two checks together form a
+  coherent opt-in: either the whole ns is explicitly non-parallel (fixtures can be
   anything; no parallel tests allowed) or it isn't (fixtures must be
   parallel-safe)."
   [{:keys [node config], ns-sym :ns, :as input}]
-  (when-not (:synchronous (meta ns-sym))
+  (when-not (and (contains? (meta ns-sym) :parallel)
+                 (false? (:parallel (meta ns-sym))))
     (let [linter-config (get-in config [:linters :metabase/validate-deftest])]
       (doseq [form (rest (:children node))]
         (warn-about-disallowed-parallel-forms form linter-config))))

@@ -125,7 +125,7 @@
                               [:map-of :any :any]]]]
                 (mt/user-http-request :crowberto :get 200 "task/info")))))
 
-(deftest ^:synchronized single-filter-test
+(deftest ^{:parallel false} single-filter-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
     (let [now (t/zoned-date-time)]
@@ -178,7 +178,7 @@
           (task-test-filtering-response "started")
           (task-test-filtering-response "failed"))))))
 
-(deftest ^:synchronized combined-filter-test
+(deftest ^{:parallel false} combined-filter-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
     (let [now (t/zoned-date-time)]
@@ -215,7 +215,7 @@
               (testing "No results returned for too strict combined filter"
                 (is (empty? (-> response :data)))))))))))
 
-(deftest ^:synchronized multi-results-combined-filter-test
+(deftest ^{:parallel false} multi-results-combined-filter-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
     (let [now (t/zoned-date-time)]
@@ -270,7 +270,7 @@
             (is (some (comp #{"b"} :task) (-> response :data)))
             (is (some (comp #{"a"} :task) (-> response :data)))))))))
 
-(deftest ^:synchronized unique-tasks-test
+(deftest ^{:parallel false} unique-tasks-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
     (testing "Empty vector is returned for empty task list"
@@ -321,7 +321,7 @@
           (is (= ["a" "b" "c"]
                  (mt/user-http-request :crowberto :get 200 "task/unique-tasks"))))))))
 
-(deftest ^:synchronized unknown-task-status-test
+(deftest ^{:parallel false} unknown-task-status-test
   (testing "Filtering for unknown status works as expected"
     (t2/delete! :model/TaskHistory)
     (let [now (t/zoned-date-time)]
@@ -350,7 +350,7 @@
           (is (= 1 (-> response :data count)))
           (is (= "unknown" (-> response :data first :status))))))))
 
-(deftest ^:synchronized filtered-tasks-count-test
+(deftest ^{:parallel false} filtered-tasks-count-test
   (testing "Count respects filtering"
     (t2/delete! :model/TaskHistory)
     (let [now (t/zoned-date-time)]
@@ -497,7 +497,7 @@
           (is (=? [{:duration 10000}]
                   (-> response :data vec))))))))
 
-(deftest ^:synchronized sort-tasks-by-task-and-status-test
+(deftest ^{:parallel false} sort-tasks-by-task-and-status-test
   (t2/delete! :model/TaskHistory)
   (let [now       (t/zoned-date-time)
         ;; shared random token as prefix (so rows are unique / filterable) with ordered a<b<c suffixes
@@ -520,7 +520,7 @@
           (is (= ["failed" "started" "success"] (map :status (rows :sort_column :status :sort_direction :asc))))
           (is (= ["success" "started" "failed"] (map :status (rows :sort_column :status :sort_direction :desc)))))))))
 
-(deftest ^:synchronized sort-tasks-by-db-test
+(deftest ^{:parallel false} sort-tasks-by-db-test
   (t2/delete! :model/TaskHistory)
   (let [now (t/zoned-date-time)]
     (mt/with-temp [:model/Database db-a {:name "Albatross DB"}
@@ -567,7 +567,7 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/runs")))))
 
-(deftest ^:synchronized runs-list-test
+(deftest ^{:parallel false} runs-list-test
   (t2/delete! :model/TaskRun)
   (testing "Superusers can list TaskRuns"
     (mt/with-temp [:model/Database db {:name "Test DB"}
@@ -590,7 +590,7 @@
         (testing "entity_name is hydrated"
           (is (= "Test DB" (-> response :data first :entity_name))))))))
 
-(deftest ^:synchronized runs-filter-test
+(deftest ^{:parallel false} runs-filter-test
   (t2/delete! :model/TaskRun)
   (mt/with-temp [:model/Database db1 {:name "DB1"}
                  :model/Database db2 {:name "DB2"}
@@ -675,7 +675,7 @@
                                  :run-type "sync"
                                  :started-at "past30days")))))
 
-(deftest ^:synchronized runs-task-counts-test
+(deftest ^{:parallel false} runs-task-counts-test
   (t2/delete! :model/TaskRun)
   (t2/delete! :model/TaskHistory)
   (testing "task counts are hydrated correctly"
@@ -707,7 +707,7 @@
         (is (= 2 (:success_count run-data)))
         (is (= 1 (:failed_count run-data)))))))
 
-(deftest ^:synchronized runs-entities-test
+(deftest ^{:parallel false} runs-entities-test
   (t2/delete! :model/TaskRun)
   (testing "returns distinct entities for run type with hydrated names"
     (mt/with-temp [:model/Database db1 {:name "DB1"}
@@ -749,7 +749,7 @@
           (is (= "dashboard" (-> response first :entity_type)))
           (is (= "My Dashboard" (-> response first :entity_name))))))))
 
-(deftest ^:synchronized runs-started-at-filter-test
+(deftest ^{:parallel false} runs-started-at-filter-test
   (t2/delete! :model/TaskRun)
   (testing "filtering by started-at date range"
     (let [now (t/zoned-date-time)
@@ -789,7 +789,7 @@
                                                :started-at (str start-date "~" end-date))]
             (is (= 2 (:total response)))))))))
 
-(deftest ^:synchronized runs-started-at-combined-filters-test
+(deftest ^{:parallel false} runs-started-at-combined-filters-test
   (t2/delete! :model/TaskRun)
   (testing "combining started-at with other filters"
     (let [now (t/zoned-date-time)
@@ -836,7 +836,7 @@
     (is (re-matches #"Failed to parse datetime value.*"
                     (mt/user-http-request :crowberto :get 400 "task/runs" :started-at "invalid-date")))))
 
-(deftest ^:synchronized runs-entities-started-at-filter-test
+(deftest ^{:parallel false} runs-entities-started-at-filter-test
   (t2/delete! :model/TaskRun)
   (testing "/runs/entities with started-at filter"
     (let [now (t/zoned-date-time)
@@ -873,7 +873,7 @@
             (is (= 1 (count response)))
             (is (= "DB2" (-> response first :entity_name)))))))))
 
-(deftest ^:synchronized runs-sort-test
+(deftest ^{:parallel false} runs-sort-test
   (t2/delete! :model/TaskRun)
   (t2/delete! :model/TaskHistory)
   (let [now (t/zoned-date-time)]
@@ -925,7 +925,7 @@
           (is (=? {:errors {:sort-column some?}}
                   (mt/user-http-request :crowberto :get 400 "task/runs" :sort-column :bogus))))))))
 
-(deftest ^:synchronized runs-filter-with-sort-test
+(deftest ^{:parallel false} runs-filter-with-sort-test
   ;; the entity_name/task_count sorts add joins, so filter columns must stay unambiguous. Notably `report_card` and
   ;; `report_dashboard` have their own `entity_id` column.
   (t2/delete! :model/TaskRun)

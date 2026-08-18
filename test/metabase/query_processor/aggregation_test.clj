@@ -233,7 +233,7 @@
   [_driver _feature _database]
   true)
 
-(deftest ^:synchronized complex-distinct-aggregation-test
+(deftest ^{:parallel false} complex-distinct-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::complex-distinct-aggregation-test)
     (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
       (every?

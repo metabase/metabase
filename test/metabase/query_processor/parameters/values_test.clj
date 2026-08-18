@@ -432,7 +432,7 @@
                    :card-id      1}
                   []))))))))
 
-(deftest ^:synchronized card-query-test-3
+(deftest ^{:parallel false} card-query-test-3
   (mt/with-test-user :rasta
     (testing "Persisted Models are substituted"
       ;; legacy test -- don't hardcode driver names in new tests going forward.
@@ -534,7 +534,7 @@
           (is (= tag
                  (:tag exc-data))))))))
 
-(deftest ^:synchronized card-query-permissions-test
+(deftest ^{:parallel false} card-query-permissions-test
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db

@@ -11,7 +11,7 @@
     (let [mp (metric-jvm/metadata-provider)]
       (is (nil? (lib.metadata.protocols/database mp))))))
 
-(deftest ^:synchronized metadatas-fetches-metrics-test
+(deftest ^{:parallel false} metadatas-fetches-metrics-test
   (testing "metadatas should fetch metrics from the database"
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Test Metric"
@@ -27,7 +27,7 @@
         (is (= "Test Metric" (:name (first metrics))))
         (is (= :metadata/metric (:lib/type (first metrics))))))))
 
-(deftest ^:synchronized metadatas-fetches-metrics-by-table-id-test
+(deftest ^{:parallel false} metadatas-fetches-metrics-by-table-id-test
   (testing "metadatas should fetch metrics by table-id"
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Table Metric"
@@ -42,7 +42,7 @@
         (is (some #(= (:id metric) (:id %)) metrics))
         (is (every? #(= (mt/id :orders) (:table-id %)) metrics))))))
 
-(deftest ^:synchronized metadatas-excludes-archived-metrics-test
+(deftest ^{:parallel false} metadatas-excludes-archived-metrics-test
   (testing "metadatas should exclude archived metrics when not filtering by ID"
     (mt/with-temp [:model/Card active-metric   {:type         :metric
                                                 :name         "Active Metric"
@@ -67,7 +67,7 @@
         (is (some #(= (:id active-metric) (:id %)) metrics))
         (is (not-any? #(= (:id archived-metric) (:id %)) metrics))))))
 
-(deftest ^:synchronized metadatas-includes-archived-when-filtering-by-id-test
+(deftest ^{:parallel false} metadatas-includes-archived-when-filtering-by-id-test
   (testing "metadatas should include archived metrics when filtering by ID"
     (mt/with-temp [:model/Card archived-metric {:type         :metric
                                                 :name         "Archived Metric"
@@ -108,7 +108,7 @@
     (let [mp (metric-jvm/metadata-provider)]
       (is (lib.metadata.protocols/has-cache? mp)))))
 
-(deftest ^:synchronized cross-database-table-routing-test
+(deftest ^{:parallel false} cross-database-table-routing-test
   (testing "metadatas should route table requests to correct database providers"
     (let [mp (metric-jvm/metadata-provider)
           ;; Try to fetch tables from multiple databases (if available)

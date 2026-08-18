@@ -257,7 +257,7 @@
   (testing "a nil initial page reduces to an empty result instead of NPEing (#47339)"
     (is (= [] (into [] (#'bigquery/reducible-bigquery-results nil nil (constantly nil) (constantly nil)))))))
 
-(deftest ^:synchronized adaptive-sample-next-page-test
+(deftest ^{:parallel false} adaptive-sample-next-page-test
   (let [requested (atom [])
         next-size  (fn [budget max-rows rows]
                      (reset! requested [])
@@ -825,7 +825,7 @@
               (finally
                 (drop-table-if-exists! table-name)))))))))
 
-(deftest ^:synchronized sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
+(deftest ^{:parallel false} sync-fields-grouped-by-table!-on-partitioned-bigquery-table-test
   (testing "Partitioned BigQuery tables that require a partition filter can't go through
             run-distinct-batch directly (it bypasses the metadata-from-qp middleware that
             injects the partition filter). sync-fields-grouped-by-table! should detect this

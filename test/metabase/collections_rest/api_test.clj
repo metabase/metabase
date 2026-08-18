@@ -2440,7 +2440,7 @@
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id))))))
 
-(deftest ^:synchronized fetch-root-items-limit-and-offset-test
+(deftest ^{:parallel false} fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
     (with-some-children-of-collection! nil
       (letfn [(items [limit offset]

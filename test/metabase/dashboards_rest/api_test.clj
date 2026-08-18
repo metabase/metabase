@@ -5053,7 +5053,7 @@
     (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
-(deftest ^:synchronized dashboard-query-metadata-cached-test
+(deftest ^{:parallel false} dashboard-query-metadata-cached-test
   (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
@@ -5096,7 +5096,7 @@
             ;; It's needed to compute the query hashes, which is needed for the average duration mechanism.
             (is (= {(mt/id) 1} @provider-counts))))))))
 
-(deftest ^:synchronized dashboard-table-prefetch-test
+(deftest ^{:parallel false} dashboard-table-prefetch-test
   (mt/with-temp
     [:model/Dashboard     d   {:name "D"}
      :model/Card          c1  {:name "C1"

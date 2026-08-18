@@ -21,6 +21,45 @@
                                             #{:athena}}}}})
     (mapv :message @(:findings clj-kondo.impl.utils/*ctx*))))
 
+(defn- parallel-metadata-findings
+  ([form]
+   (parallel-metadata-findings form 'example.test))
+  ([form ns-sym]
+   (let [linters {:metabase/deftest-not-marked-parallel-or-nonparallel {:level :warning}
+                  :metabase/validate-deftest                            {:level :warning}}]
+     (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters linters}
+                                           :ignores    (atom nil)
+                                           :findings   (atom [])
+                                           :namespaces (atom {})}]
+       (hooks.clojure.test/deftest {:node   (api/parse-string form)
+                                    :lang   :clj
+                                    :ns     ns-sym
+                                    :config {:linters {:metabase/validate-deftest {}}}})
+       @(:findings clj-kondo.impl.utils/*ctx*)))))
+
+(deftest ^:parallel explicit-nonparallel-metadata-test
+  (testing "Hawk's supported test markers satisfy the explicit metadata linter"
+    (are [metadata] (empty? (parallel-metadata-findings
+                             (format "(deftest %s example-test (is true))" metadata)))
+      "^:parallel"
+      "^{:parallel false}"))
+  (testing "an unmarked test still gets the opt-in linter's guidance"
+    (is (=? [{:type    :metabase/deftest-not-marked-parallel-or-nonparallel
+              :message "Test should be marked either `^:parallel` or `^{:parallel false}`"}]
+            (parallel-metadata-findings "(deftest example-test (is true))"))))
+  (testing "legacy markers explain that Hawk ignores them"
+    (doseq [metadata ["^:synchronized" "^:sequential"]]
+      (is (some #(and (= (:type %) :metabase/validate-deftest)
+                      (re-find #"ignored by Hawk" (:message %)))
+                (parallel-metadata-findings
+                 (format "(deftest %s example-test (is true))" metadata))))))
+  (testing "a namespace-level non-parallel promise rejects parallel tests"
+    (is (=? [{:type    :metabase/validate-deftest
+              :message #(re-find #"namespace marked.*`\^\{:parallel false\}`" %)}]
+            (parallel-metadata-findings
+             "(deftest ^:parallel example-test (is true))"
+             (with-meta 'example.test {:parallel false}))))))
+
 (deftest ^:parallel disallow-hardcoded-driver-names-in-tests-test
   (is (= []
          (deftest-warnings

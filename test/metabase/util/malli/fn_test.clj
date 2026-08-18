@@ -412,7 +412,7 @@
                         &input-schema-0-a [:maybe :map]])
                 (take 2 expansion)))))))
 
-(deftest ^:synchronized pre-post-conditions-test-2-include-test-variants
+(deftest ^{:parallel false} pre-post-conditions-test-2-include-test-variants
   (testing ":test/pre and :test/post conditions"
     (testing "single arity"
       (let [form '(metabase.util.malli.fn/fn [{:keys [a]}]

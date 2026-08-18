@@ -880,7 +880,7 @@
                                  (lib/join (meta/table-metadata :venues))
                                  lib/available-aggregation-operators))))))))
 
-(deftest ^:synchronized selected-aggregation-operators-skip-marking-columns-for-non-refs-test
+(deftest ^{:parallel false} selected-aggregation-operators-skip-marking-columns-for-non-refs-test
   (testing "when the aggregation's argument is not a column ref, don't try to mark selected columns"
     ;; See https://metaboat.slack.com/archives/C05MPF0TM3L/p1702039952166409 for details.
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

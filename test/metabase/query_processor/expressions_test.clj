@@ -385,7 +385,7 @@
 (def ^:private weekdays-spanish
   ["lunes" "martes" "miércoles" "jueves" "viernes" "sábado" "domingo"])
 
-(deftest ^:synchronized weekday-numbers-and-names-test
+(deftest ^{:parallel false} weekday-numbers-and-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (doseq [first-day                [:sunday :monday :saturday]
             ;; Adjusting the site locale to get different languages and first day of the week. It should be ignored!

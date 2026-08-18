@@ -15,7 +15,7 @@
 (defn- diagnose-row! [search-context model id]
   (semantic.index/diagnose-row (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index search-context model id))
 
-(deftest ^:synchronized semantic-diagnose-test
+(deftest ^{:parallel false} semantic-diagnose-test
   (mt/with-premium-features #{:semantic-search}
     (mt/as-admin
       (semantic.tu/with-test-db! {:mode :mock-indexed}
@@ -34,7 +34,7 @@
             (is (=? {:type :missing-from-index}
                     (diagnose-row! (assoc all :search-string "puppy") "card" Integer/MAX_VALUE)))))))))
 
-(deftest ^:synchronized semantic-not-permitted-test
+(deftest ^{:parallel false} semantic-not-permitted-test
   (testing "permissions are checked before structural filters, so an unreadable row reports :permissions even when
             a structural filter would also drop it"
     (mt/with-premium-features #{:semantic-search}

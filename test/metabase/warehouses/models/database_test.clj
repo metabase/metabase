@@ -71,7 +71,7 @@
     (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
-(deftest ^:synchronized delete-empty-database-does-not-run-field-delete-test
+(deftest ^{:parallel false} delete-empty-database-does-not-run-field-delete-test
   (testing "Deleting a Database with no Fields avoids the locking bulk-delete query"
     (mt/with-temp [:model/Database {db-id :id} {}]
       (let [original-query-one @#'t2/query-one

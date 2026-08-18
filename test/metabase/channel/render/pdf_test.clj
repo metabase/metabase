@@ -51,7 +51,7 @@
 
 ;; not ^:parallel: exercises the real PDFBox rendering path (PDDocument + font loading + drawing),
 ;; which the deftest linter treats as side-effecting
-(deftest ^:synchronized link-annotations-test
+(deftest ^{:parallel false} link-annotations-test
   (testing "markdown links become PDF URI link annotations (http/https/mailto only)"
     (with-open [doc (PDDocument.)]
       (let [page (PDPage. PDRectangle/A4)]
@@ -97,7 +97,7 @@
 
 ;; not ^:parallel: exercises the real PDFBox rendering path (font registry + content-stream text and
 ;; SVG-vector logo), which the deftest linter treats as side-effecting
-(deftest ^:synchronized branding-badge-render-smoke-test
+(deftest ^{:parallel false} branding-badge-render-smoke-test
   (testing "draw-brand-badge! draws the localized prefix (body face) + SVG-vector logo into a saveable PDF"
     (with-open [doc (PDDocument.)]
       (binding [font/*fonts* (#'font/load-fonts! doc)]
@@ -110,7 +110,7 @@
             (.save doc baos)
             (is (pos? (count (.toByteArray baos))))))))))
 
-(deftest ^:synchronized include-branding?-test
+(deftest ^{:parallel false} include-branding?-test
   (testing "the 'Made with Metabase' badge is included only for OSS instances (no :whitelabel feature)"
     (with-redefs [premium-features/enable-whitelabeling? (constantly false)]
       (is (true? (#'pdf/include-branding?)) "OSS: branding included"))
@@ -119,7 +119,7 @@
 
 ;; not ^:parallel: exercises the real PDFBox content-stream + font registry, which the deftest linter treats as
 ;; side-effecting
-(deftest ^:synchronized header-branding-gated-on-whitelabel-test
+(deftest ^{:parallel false} header-branding-gated-on-whitelabel-test
   (testing "draw-header! draws the branding badge only when the instance lacks the :whitelabel feature"
     (doseq [[whitelabel? expected-badge?] [[false true] [true false]]]
       (let [badge-drawn? (atom false)]
@@ -145,7 +145,7 @@
 
 ;; not ^:parallel: exercises the real PDFBox content-stream + font registry, which the deftest linter treats as
 ;; side-effecting
-(deftest ^:synchronized header-tab-title-color-test
+(deftest ^{:parallel false} header-tab-title-color-test
   (testing "the tab title is drawn in black, not the gray left over from the parameter values above it"
     (with-open [doc (PDDocument.)]
       (binding [font/*fonts*     (#'font/load-fonts! doc)
@@ -536,7 +536,7 @@
       (render!))
     @calls))
 
-(deftest ^:synchronized text-layout-characterization-test
+(deftest ^{:parallel false} text-layout-characterization-test
   (with-open [doc (PDDocument.)]
     (let [page (PDPage. PDRectangle/A4)
           _    (.addPage doc page)
@@ -638,7 +638,7 @@
         (is (nil? (#'pdf/text-card-align-h (mk {}))))
         (is (= :top (#'pdf/text-card-align-v (mk {}))))))))
 
-(deftest ^:synchronized text-card-alignment-render-test
+(deftest ^{:parallel false} text-card-alignment-render-test
   (testing "horizontal & vertical alignment position text within the cell (UXW-4703)"
     (with-open [doc (PDDocument.)]
       (let [page (PDPage. PDRectangle/A4)
@@ -668,7 +668,7 @@
       (is (= "" (#'font/normalize-ws (str vs16))) "a lone selector leaves nothing")
       (is (= "a b" (#'font/normalize-ws "a\tb")) "control chars still normalize to a space"))))
 
-(deftest ^:synchronized emoji-font-fallback-test
+(deftest ^{:parallel false} emoji-font-fallback-test
   (testing "emoji codepoints resolve to a font glyph instead of the '?' placeholder (UXW-4704)"
     (with-open [doc (PDDocument.)]
       (binding [font/*fonts* (#'font/load-fonts! doc)]
@@ -680,7 +680,7 @@
               "every emoji survived font resolution (none replaced by '?')")
           (is (not (str/includes? drawn "?"))))))))
 
-(deftest ^:synchronized em-width-memoization-test
+(deftest ^{:parallel false} em-width-memoization-test
   (with-open [doc (PDDocument.)]
     (binding [font/*fonts* (#'font/load-fonts! doc)]
       (let [reg   (#'font/face :regular)
@@ -784,7 +784,7 @@
     (<= (* ss (- px-w cell-fill-slack-px)) width (* ss px-w))))
 
 ;; not ^:parallel: exercises the real CSSBox HTML rendering path
-(deftest ^:synchronized table-body-png-sizing-test
+(deftest ^{:parallel false} table-body-png-sizing-test
   (let [data               {:cols [{:name         "n"
                                     :display_name "N"
                                     :base_type    :type/Integer}]
@@ -802,7 +802,7 @@
       (is (<= 1 (.getHeight img) (* ss px-h))))))
 
 ;; not ^:parallel: exercises the real CSSBox HTML rendering path for object-detail through the framed table path
-(deftest ^:synchronized object-detail-body-png-test
+(deftest ^{:parallel false} object-detail-body-png-test
   (testing "an object-detail card renders through the framed table path: width-filled and height-bounded"
     (let [data               {:cols [{:name "id" :display_name "ID" :base_type :type/Integer}
                                      {:name "name" :display_name "Name" :base_type :type/Text}]
@@ -818,7 +818,7 @@
       (is (<= 1 (.getHeight img) (* ss px-h))))))
 
 ;; not ^:parallel: exercises the real CSSBox HTML rendering path for the pivot's fill-the-cell framing
-(deftest ^:synchronized pivot-body-png-test
+(deftest ^{:parallel false} pivot-body-png-test
   (let [px-h      400
         assembled {:card     {:display                :pivot
                               :visualization_settings {:pivot_table.column_split {:rows ["R"] :columns ["C"] :values ["m"]}}}
@@ -857,7 +857,7 @@
             (format "display %s should route through the framed table path" display))))))
 
 ;; not ^:parallel: exercises the real CSSBox/PDFBox rendering path (font loading + the no-results HTML->PNG asset)
-(deftest ^:synchronized no-results-card-render-test
+(deftest ^{:parallel false} no-results-card-render-test
   (testing "a card whose query returns no rows renders the centered no-results placeholder, not a failing chart"
     (let [data {:cols [{:name "x" :display_name "X" :base_type :type/Integer}
                        {:name "y" :display_name "Y" :base_type :type/Integer}]
@@ -891,7 +891,7 @@
         rf     ((temp-storage/notification-rff {:budget budget}) {:cols cols})]
     (get-in (rf (reduce rf (rf) rows)) [:data :rows])))
 
-(deftest ^:synchronized disk-spilled-rows-realized-test
+(deftest ^{:parallel false} disk-spilled-rows-realized-test
   (testing "a card whose large result spilled to disk is realized before rendering, instead of crashing on the handle"
     ;; UXW-4614 regression: large subscription queries stream rows to a StreamingTempFileStorage; the PDF path must
     ;; realize them (like the email/Slack/HTTP channels) so the renderer sees an ordinary `:rows` collection.

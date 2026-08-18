@@ -79,7 +79,7 @@
     (testing "The realtime events are processed in order"
       (mt/ordered-subset? realtime-events processed))))
 
-(deftest ^:synchronized take-batch-test
+(deftest ^{:parallel false} take-batch-test
   (let [q           (queue/delay-queue)
         n           5
         first-delay 300

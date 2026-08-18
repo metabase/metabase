@@ -213,7 +213,7 @@
           (is (= [["Quentin Sören" "2014-10-03T17:30:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest ^:synchronized grouping-with-timezone-test
+(deftest ^{:parallel false} grouping-with-timezone-test
   (mt/test-driver :mongo
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
@@ -454,7 +454,7 @@
 
 ;;; TODO: I don't think MongoDB syncs its version, or at least we're not USING the synced version info. If we used it
 ;;; then we could use a mock Database here and parallelize this test.
-(deftest ^:synchronized temporal-arithmetic-test
+(deftest ^{:parallel false} temporal-arithmetic-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
@@ -488,7 +488,7 @@
                                        (lib/interval -1 :week)
                                        86400000))))))))))))
 
-(deftest ^:synchronized temporal-arithmetic-mongo-4-test
+(deftest ^{:parallel false} temporal-arithmetic-mongo-4-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"

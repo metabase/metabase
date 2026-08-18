@@ -222,7 +222,7 @@
            (lib/normalize query)))))
 
 #?(:clj
-   (deftest ^:synchronized normalize-error-containment-test
+   (deftest ^{:parallel false} normalize-error-containment-test
      (testing "an AssertionError from the coercer is contained (wrapped), not propagated"
        (with-redefs-fn {#'lib.normalize/coercer (fn [_schema] (fn [_x] (throw (AssertionError. "boom"))))}
          (fn []
