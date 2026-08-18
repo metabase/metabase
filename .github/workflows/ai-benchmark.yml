@@ -50,7 +50,7 @@ on:
           action so it can modify the comment according to its result.
 
 concurrency:
-  group: evals-dispatch-${{ (github.event.label.name == 'evals/smoke' && github.event.pull_request.number) || github.run_id }}
+  group: evals-dispatch-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
