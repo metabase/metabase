@@ -62,16 +62,18 @@
 
 (deftest incompatible-legacy-tables-are-dropped-test
   (let [statements (atom [])
-        located    (atom {"library_entity_index"      "legacy.library_entity_index"
-                          "library_entity_index_meta" "legacy.library_entity_index_meta"})]
+        located    (atom {"library_entity_index"      {:schema-name "legacy.with.dot"
+                                                       :table-name  "library_entity_index"}
+                          "library_entity_index_meta" {:schema-name "legacy.with.dot"
+                                                       :table-name  "library_entity_index_meta"}})]
     (with-redefs-fn {#'index-table/legacy-table-in-search-path (fn [_ table] (get @located table))
                      #'jdbc/execute!                           (fn [_ sql] (swap! statements conj (first sql)) nil)
                      #'semantic.db.datasource/db-url           "jdbc:postgresql://stub"}
       (fn []
         (testing "an index built before immutable space identity is discarded"
           (#'index-table/drop-legacy-tables! ::tx)
-          (is (= ["DROP TABLE \"legacy\".\"library_entity_index\""
-                  "DROP TABLE \"legacy\".\"library_entity_index_meta\""]
+          (is (= ["DROP TABLE \"legacy.with.dot\".\"library_entity_index\""
+                  "DROP TABLE \"legacy.with.dot\".\"library_entity_index_meta\""]
                  @statements)))
         (testing "there is nothing to do after the legacy tables are gone"
           (reset! statements [])
@@ -80,8 +82,10 @@
           (is (empty? @statements)))
         (testing "same-named app db tables are never dropped"
           (reset! statements [])
-          (reset! located {"library_entity_index"      "public.library_entity_index"
-                           "library_entity_index_meta" "public.library_entity_index_meta"})
+          (reset! located {"library_entity_index"      {:schema-name "public"
+                                                        :table-name  "library_entity_index"}
+                           "library_entity_index_meta" {:schema-name "public"
+                                                        :table-name  "library_entity_index_meta"}})
           (with-redefs [semantic.db.datasource/db-url nil]
             (#'index-table/drop-legacy-tables! ::tx))
           (is (empty? @statements)
@@ -95,8 +99,8 @@
         (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)]
           (jdbc/execute! pgvector ["CREATE EXTENSION IF NOT EXISTS vector"])
           (jdbc/with-transaction [tx pgvector]
-            (jdbc/execute! tx ["CREATE SCHEMA legacy_retrieval"])
-            (jdbc/execute! tx ["SET LOCAL search_path TO legacy_retrieval, public"])
+            (jdbc/execute! tx ["CREATE SCHEMA \"legacy.retrieval\""])
+            (jdbc/execute! tx ["SET LOCAL search_path TO \"legacy.retrieval\", public"])
             ;; both bare names and the metadata shape the index carried before immutable space identity
             (jdbc/execute! tx ["CREATE TABLE library_entity_index
                                 (doc_id text primary key, entity_type text, entity_local_id bigint,

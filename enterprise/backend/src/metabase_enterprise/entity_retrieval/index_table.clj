@@ -218,18 +218,18 @@
 (defn- legacy-table-in-search-path
   "The first table named `table-name` on the effective search path, excluding the current index schema."
   [tx table-name]
-  (some-> (jdbc/execute-one!
-           tx
-           [(str "SELECT n.nspname AS schema_name"
-                 " FROM unnest(current_schemas(true)) WITH ORDINALITY AS p(schema_name, search_order)"
-                 " JOIN pg_namespace n ON n.nspname = p.schema_name"
-                 " JOIN pg_class c ON c.relnamespace = n.oid"
-                 " WHERE c.relname = ? AND c.relkind IN ('r', 'p') AND n.nspname <> ?"
-                 " ORDER BY p.search_order LIMIT 1")
-            table-name index-schema]
-           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-          :schema_name
-          (str "." table-name)))
+  (when-let [schema-name (:schema_name
+                          (jdbc/execute-one!
+                           tx
+                           [(str "SELECT n.nspname AS schema_name"
+                                 " FROM unnest(current_schemas(true)) WITH ORDINALITY AS p(schema_name, search_order)"
+                                 " JOIN pg_namespace n ON n.nspname = p.schema_name"
+                                 " JOIN pg_class c ON c.relnamespace = n.oid"
+                                 " WHERE c.relname = ? AND c.relkind IN ('r', 'p') AND n.nspname <> ?"
+                                 " ORDER BY p.search_order LIMIT 1")
+                            table-name index-schema]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+    {:schema-name schema-name :table-name table-name}))
 
 (defn- drop-legacy-tables!
   "Drop an index built before [[index-schema]] and immutable embedding-space identities existed.
@@ -242,9 +242,12 @@
   (when (and (= default-tables (tables))
              (semantic.db.datasource/dedicated-url-configured?))
     (doseq [k [:vectors :meta]]
-      (when-let [legacy (legacy-table-in-search-path tx (k legacy-tables))]
-        (log/infof "Dropping incompatible legacy library entity index table %s" legacy)
-        (jdbc/execute! tx [(format "DROP TABLE %s" (semantic.util/quote-table legacy))])))))
+      (when-let [{:keys [schema-name table-name]} (legacy-table-in-search-path tx (k legacy-tables))]
+        (let [legacy-sql (format "%s.%s"
+                                 (semantic.util/quote-ident schema-name)
+                                 (semantic.util/quote-ident table-name))]
+          (log/infof "Dropping incompatible legacy library entity index table %s.%s" schema-name table-name)
+          (jdbc/execute! tx [(format "DROP TABLE %s" legacy-sql)]))))))
 
 (defn vectors-table-exists?
   "Whether the configured entity-retrieval vectors table exists."
