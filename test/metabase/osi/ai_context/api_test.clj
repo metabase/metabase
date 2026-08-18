@@ -6,6 +6,7 @@
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.osi.ai-context.api :as osi.api]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -170,6 +171,22 @@
               (mt/user-http-request :crowberto :put 200 "osi/ai-context/table/991"
                                     {:ai_context {:instructions "new"}})))
       (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 991)))))
+
+(deftest read-tolerates-rows-that-bypassed-the-write-caps-test
+  (testing "a row that predates the caps (or arrived by serdes or a direct write) still reads back: the
+           write limits are not asserted on responses, or one legacy row would break the list for every
+           other entity"
+    (with-test-entry [_ {}]
+      (t2/query {:update :osi_ai_context
+                 :set    {:ai_context (json/encode
+                                       {:instructions (apply str (repeat (* 2 entity-retrieval/max-instructions-len) "x"))
+                                        :synonyms     (mapv str (range (* 2 entity-retrieval/max-list-len)))
+                                        :examples     [(apply str (repeat (* 2 entity-retrieval/max-item-len) "y"))]})}
+                 :where  [:and [:= :entity_type "table"] [:= :entity_local_id 1]]})
+      (is (= (* 2 entity-retrieval/max-list-len)
+             (count (:synonyms (:ai_context (mt/user-http-request :crowberto :get 200 "osi/ai-context/table/1"))))))
+      (is (has-entity? (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/")) "table" 1)
+          "and it does not take the whole list down with it"))))
 
 (deftest read-exposes-generation-metadata-test
   (testing "reads carry the generation timestamps and never the basis blob"

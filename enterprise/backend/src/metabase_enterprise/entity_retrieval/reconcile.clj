@@ -98,10 +98,13 @@
 ;;; Those selects are headless by construction (no permission filtering) — see the spec namespace.
 
 (defn library-entity
-  "The `{:entity_type :entity_local_id :name :description}` map for one entity if it is currently a library
-  member, else nil. Shares [[library-entity-keys]]' membership truth via the per-model spec declarations.
-  The hook may pass either Card label; the returned map carries the entity's *stored* type, so a
-  metric↔model relabel keeps `doc_id`s stable."
+  "The `{:entity_type :entity_local_id :name :description}` summary for an entity when it is a current
+  library member; nil otherwise. Uses the same per-model membership declarations as
+  [[library-entity-keys]].
+
+  `entity-type` may be any Card flavor. The returned summary carries the Card's current database type;
+  Card flavors share an entity class so reconciliation can replace the previous flavor's documents after
+  a relabel."
   [entity-type entity-local-id]
   (some-> (spec/member-entity :library-index entity-type entity-local-id)
           spec/entity-summary))
@@ -129,16 +132,16 @@
   (into [] (m/distinct-by :doc_id) docs))
 
 (defn- desired-docs
-  "The full desired document set, plus the entity classes whose projection failed, split by whether a later
-  run could fix them by itself.
+  "Build the full desired index state as
+  `{:docs [...], :failed #{entity-class ...}, :degraded #{entity-class ...}}`.
 
-  `:failed` — an unforeseen error. We do not know the entity's desired set, so its existing rows are kept
-  out of the orphan sweep and the run does not count as converged.
+  `:failed` contains entities whose projection raised an unforeseen error. Their desired documents are
+  unknown, so existing documents are retained and the run does not count as converged.
 
-  `:degraded` — an unusable stored `ai_context` ([[spec/data-defect?]]). That stays broken until a person
-  repairs the row, so waiting for it to heal means waiting forever. The entity is indexed from
-  [[spec/base-index-docs]] instead, its stale enrichment docs are allowed to GC like any other absent doc,
-  and it is counted for the gauge rather than held against the run."
+  `:degraded` contains entities with unusable stored `ai_context`. These entities are indexed from
+  [[spec/base-index-docs]], while stale enrichment documents are garbage-collected. Because another
+  reconcile cannot repair the source row, degradation is reported by a gauge rather than blocking the
+  freshness watermark."
   []
   (let [entities (spec/hydrate :library-index (spec/member-entities :library-index))
         result   (reduce (fn [acc entity]
@@ -322,22 +325,16 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
-    ;; Record freshness when the run converged as far as it can. The gate is whether a later run could fix
-    ;; what went wrong by itself: an insert-batch failure (@failed) or an unforeseen projection failure
-    ;; (`projection-failed`) leaves an entity's stale docs in place for a retry, so advancing past either
-    ;; would report a fresh, converged index over one that is still stale.
+    ;; Advance freshness only when no retryable failure left stale documents behind. Insert failures
+    ;; (`@failed`) and unforeseen projection failures (`projection-failed`) may succeed on a later run, so
+    ;; either one blocks the watermark.
     ;;
-    ;; Two shortfalls deliberately do NOT block, because no later run fixes them and blocking on them
-    ;; would freeze reconciled_at forever -- the staleness check would sit at critical while every
-    ;; reconcile was doing all it can, which is exactly the alarm being asked for here. A doc dropped for
-    ;; exceeding the per-item token limit is a permanent, expected shortfall (`inserted` < `(count
-    ;; to-insert)` forever), which is why the gate isn't the insert count. A `degraded` entity is the same
-    ;; shape: its ai_context blob stays unusable until a person repairs the row, and it is indexed from
-    ;; its name and description meanwhile, so nothing about membership or naming has gone undetected.
-    ;; It rides the gauge instead (see record-run!).
+    ;; Do not gate on the number inserted: the embedding layer may permanently skip an oversized item.
+    ;; A malformed `ai_context` also does not block; its current base documents are indexed and the missing
+    ;; enrichment is reported by the degraded-entity gauge.
     ;;
-    ;; Persist the pre-read watermark so changes made during a long reconcile never look newer than the
-    ;; source snapshot.
+    ;; Store the watermark captured before the source read so changes made during this reconcile remain newer
+    ;; than the snapshot.
     (when (and (empty? @failed) (empty? projection-failed))
       (index-table/touch-reconciled-at! conn reconciled-at))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
