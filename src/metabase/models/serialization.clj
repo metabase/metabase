@@ -1272,6 +1272,7 @@
     (m :guard map?)
     (import-mbql-map m)))
 
+;; Unfortunately, settings depend on ser
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)
@@ -1280,11 +1281,7 @@
   "Throws when `query` is a full MBQL 5 query that this instance's query schema rejects. Anything else - bare refs,
   the MBQL fragments inside visualization settings, legacy MBQL 4 queries - is left alone."
   [query]
-  ;; the point of checking at all: a shape this version has no representation for normalizes without complaint and
-  ;; is then stored, breaking the card on read. `validate` before `explain` - explain is much slower, and this runs
-  ;; on every imported query.
   (when (and (= (:lib/type query) :mbql/query)
-             (not *skip-schema-validation?*)
              (not (mr/validate ::lib.schema/query query)))
     (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
       ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
@@ -1296,30 +1293,22 @@
                            "for the whole import.")
                       ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
                       ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
-                      {:schema-errors errors})))))
+                      {:schema-errors errors}))))
+  query)
 
 (defn- normalize-imported
-  "Normalizes ingested MBQL into this instance's representation, returning `x` unchanged if normalization fails.
-  Throws when the normalized result is a query [[validate-imported-query!]] rejects."
+  "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization
+  fails."
   [x]
   (when x
-    ;; normalization failures stay non-fatal because they fire on content this instance produced itself - pivot
-    ;; column refs in visualization settings raise `:malli.core/invalid-schema` - so promoting them would reject
-    ;; legitimate imports. The sentinel keeps `validate-imported-query!` outside the `catch`, so its refusal
-    ;; propagates instead of being swallowed as a normalization failure; returning `x` from the catch would put it
-    ;; inside.
-    (let [normalized (try
-                       (if (mbql-ref? x)
-                         (normalize-mbql-ref x)
-                         (lib/normalize x))
-                       (catch Throwable e
-                         (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
-                         ::normalize-failed))]
-      (if (= normalized ::normalize-failed)
-        x
-        (do
-          (validate-imported-query! normalized)
-          normalized)))))
+    (try
+      (if (mbql-ref? x)
+        (normalize-mbql-ref x)
+        (lib/normalize x))
+      (catch Throwable e
+        (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
+        ;; many structures will fail normalization, but that is expected
+        x))))
 
 (defn- import-mbql*
   [x]
@@ -1353,12 +1342,16 @@
     x))
 
 (defn import-mbql
-  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
+  "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
+  IDs embedded, convert the IDs back to raw numeric IDs.
+
+  Throws if an MBQL 5 expression doesn't match the schema."
   [x]
-  (-> x
-      import-mbql*
-      normalize-imported
-      repair-card-template-tag-names))
+  (some-> x
+          import-mbql*
+          normalize-imported
+          (cond-> (not *skip-schema-validation?*) validate-imported-query!)
+          repair-card-template-tag-names))
 
 (declare ^:private mbql-deps-map)
 
