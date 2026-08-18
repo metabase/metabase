@@ -19,11 +19,6 @@ export interface TimeseriesXAxis {
   interval: TimeSeriesInterval | null;
 }
 
-/**
- * Domain and data interval of a time series x axis, derived from the raw x
- * values the way the legacy renderer does it. Returns null for charts whose x
- * axis is not a time series.
- */
 export const getTimeseriesXAxis = (
   series: Series,
   settings: ComputedVisualizationSettings,
