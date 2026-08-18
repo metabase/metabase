@@ -2,24 +2,20 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
+import EditEventModal from "metabase/timelines/panel/containers/EditEventModal";
+import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
+import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
+import TimelinePanel from "metabase/timelines/panel/containers/TimelinePanel";
 import { Box, Button, Icon, Modal } from "metabase/ui";
-import { formatDateTimeWithUnit } from "metabase/value-formatting";
-import type {
-  CartesianChartDateTimeAbsoluteUnit,
-  TimeSeriesInterval,
-} from "metabase/viz-core";
-import type {
-  CollectionId,
-  DatetimeUnit,
-  Timeline,
-  TimelineEvent,
-} from "metabase-types/api";
+import type { DateRange, TimeSeriesInterval } from "metabase/viz-core";
+import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
+
+import {
+  formatTitle,
+  getEventsXDomain,
+  getFocusedTimelines,
+} from "../../utils";
 
 type InternalModal =
   | { type: "new-event" }
@@ -33,7 +29,7 @@ export interface TimelineSidebarProps {
   selectedTimelineEventIds: number[];
   focusedTimelineEventIds?: number[] | null;
   dataInterval?: TimeSeriesInterval | null;
-  xDomain?: [Dayjs, Dayjs];
+  xDomain?: DateRange;
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
@@ -78,7 +74,7 @@ export const TimelineSidebar = ({
   );
 
   const title = focusedXDomain
-    ? formatTitle(focusedXDomain, toDatetimeUnit(dataInterval?.unit))
+    ? formatTitle(focusedXDomain, dataInterval?.unit)
     : formatTitle(xDomain);
 
   const handleShowAllEvents = useCallback(() => {
@@ -202,69 +198,4 @@ export const TimelineSidebar = ({
       )}
     </SidebarContent>
   );
-};
-
-export const getFocusedTimelines = (
-  timelines: Timeline[],
-  focusedTimelineEventIds: number[] | null,
-): Timeline[] => {
-  if (focusedTimelineEventIds == null) {
-    return timelines;
-  }
-  const focusedIds = new Set(focusedTimelineEventIds);
-  return timelines
-    .map((timeline) => ({
-      ...timeline,
-      events: (timeline.events ?? []).filter((event) =>
-        focusedIds.has(event.id),
-      ),
-    }))
-    .filter((timeline) => timeline.events.length > 0);
-};
-
-export const getEventsXDomain = (
-  timelines: Timeline[],
-): [Dayjs, Dayjs] | undefined => {
-  const timestamps = timelines
-    .flatMap((timeline) => timeline.events ?? [])
-    .map((event) => dayjs.utc(event.timestamp));
-
-  if (timestamps.length === 0) {
-    return undefined;
-  }
-
-  const min = timestamps.reduce((a, b) => (b.isBefore(a) ? b : a));
-  const max = timestamps.reduce((a, b) => (b.isAfter(a) ? b : a));
-  return [min, max];
-};
-
-const toDatetimeUnit = (
-  unit?: CartesianChartDateTimeAbsoluteUnit,
-): DatetimeUnit | undefined =>
-  unit == null || unit === "second" || unit === "ms" ? undefined : unit;
-
-const isPeriodUnit = (unit?: DatetimeUnit) =>
-  unit === "week" || unit === "month" || unit === "quarter" || unit === "year";
-
-export const formatTitle = (xDomain?: [Dayjs, Dayjs], unit?: DatetimeUnit) => {
-  if (!xDomain) {
-    return t`Events`;
-  }
-  const startLabel = formatDate(xDomain[0], unit);
-  const endLabel = formatDate(xDomain[1], unit);
-  if (startLabel !== endLabel) {
-    return t`Events between ${startLabel} and ${endLabel}`;
-  }
-
-  return isPeriodUnit(unit)
-    ? t`Events in ${startLabel}`
-    : t`Events on ${startLabel}`;
-};
-
-const formatDate = (date: Dayjs, unit?: DatetimeUnit) => {
-  if (unit == null) {
-    return date.format("ll");
-  }
-  // Unjustified type cast. FIXME
-  return formatDateTimeWithUnit(date.startOf(unit as OpUnitType), unit);
 };

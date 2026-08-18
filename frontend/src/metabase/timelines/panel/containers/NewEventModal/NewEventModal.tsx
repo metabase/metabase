@@ -17,16 +17,19 @@ import type {
   CreateTimelineEventRequest,
   CreateTimelineRequest,
   TimelineEvent,
+  TimelineEventSource,
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: CollectionId | null;
+  source?: TimelineEventSource;
   onClose?: () => void;
 }
 
 function NewEventModalContainer({
   collectionId,
+  source = "question",
   onClose,
 }: NewEventModalContainerProps) {
   const dispatch = useDispatch();
@@ -60,7 +63,7 @@ function NewEventModalContainer({
 
   return (
     <NewEventModal
-      source="question"
+      source={source}
       timelines={timelines}
       collection={collection}
       onSubmit={onSubmit}

@@ -56,6 +56,7 @@ export type {
   CartesianChartModel,
   ChartDataset,
   DataKey,
+  DateRange,
   Datum,
   DimensionModel,
   LegendItem,

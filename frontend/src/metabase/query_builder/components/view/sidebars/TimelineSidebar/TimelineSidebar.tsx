@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import {
   TimelineSidebar as SharedTimelineSidebar,
   type TimelineSidebarProps as SharedTimelineSidebarProps,
-} from "metabase/timelines/questions/components/TimelineSidebar";
+} from "metabase/timelines/panel/components/TimelineSidebar";
 
 import { onOpenTimelines } from "../../../../store/actions";
 import {
