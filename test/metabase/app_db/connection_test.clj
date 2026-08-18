@@ -208,6 +208,64 @@
       (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
     (is (= [:a :nested-from-a :b] @calls))))
 
+(deftest rollback-only-transaction-rolls-back-and-discards-callbacks-test
+  (let [email (mt/random-email)
+        calls (atom [])]
+    (try
+      (is (= :result
+             (t2/with-transaction [_conn nil {:rollback-only true}]
+               (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+               (mdb.connection/do-before-commit (fn [] (swap! calls conj :before)))
+               (mdb.connection/do-after-commit (fn [] (swap! calls conj :after)))
+               :result))
+          "a requested rollback returns the transaction body's result")
+      (is (not (t2/exists? :model/User :email email))
+          "a successful rollback-only transaction does not commit its writes")
+      (is (= [] @calls)
+          "neither before- nor after-commit callbacks run when no commit occurs")
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest with-temp-rollback-boundary-discards-after-commit-callback-test
+  (let [calls (atom [])]
+    (mt/with-temp [:model/User _user]
+      (mdb.connection/do-after-commit (fn [] (swap! calls conj :after))))
+    (is (= [] @calls)
+        "with-temp exits through rollback-only, so its deferred callback must not run")))
+
+(deftest nested-rollback-only-transaction-restores-savepoint-state-test
+  (let [email (mt/random-email)
+        calls (atom [])]
+    (try
+      (t2/with-transaction [conn]
+        (swap! mdb.connection/*transaction-state* assoc :outer "kept")
+        (mdb.connection/do-before-commit (fn [] (swap! calls conj :outer-before)))
+        (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer-after)))
+        (is (= :nested-result
+               (t2/with-transaction [_ conn {:rollback-only true}]
+                 (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+                 (swap! mdb.connection/*transaction-state* assoc :nested "discarded")
+                 (mdb.connection/do-before-commit (fn [] (swap! calls conj :nested-before)))
+                 (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-after)))
+                 :nested-result)))
+        (is (not (t2/exists? :model/User :email email))
+            "the nested write is rolled back to its savepoint")
+        (is (= {:outer "kept"} @mdb.connection/*transaction-state*)
+            "transaction state is restored to its pre-savepoint value"))
+      (is (= [:outer-before :outer-after] @calls)
+          "only callbacks registered outside the rolled-back nested transaction run")
+      (is (not (t2/exists? :model/User :email email)))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest unsupported-transaction-options-are-rejected-test
+  (t2/with-connection [conn]
+    (let [e (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (t2/with-transaction [_ conn {:read-only true}])))]
+      (is (= "Unsupported application database transaction options" (ex-message e)))
+      (is (= [:read-only] (:unsupported-options (ex-data e)))))))
+
 (deftest rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection

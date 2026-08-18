@@ -205,45 +205,57 @@
              ;; captured closures) through the backing array until the outer transaction finishes
              (into [] (subvec cbs 0 (min n (count cbs))))))))
 
-(defn- do-transaction [^java.sql.Connection connection f]
+(defn- do-transaction [^java.sql.Connection connection rollback-only? f]
   (letfn [(thunk []
             (let [savepoint      (.setSavepoint connection)
                   before-count   (some-> *before-commit-callbacks* deref count)
                   after-count    (some-> *after-commit-callbacks* deref count)
                   state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
                                    @*transaction-state*)]
-              (try
-                (let [result (f connection)]
-                  (when (= *transaction-depth* 1)
-                    ;; top-level transaction. Run before-commit callbacks first, while the transaction is
-                    ;; still open, so their writes commit atomically with it. They are NOT wrapped in
-                    ;; try/catch — a throwing callback must propagate to the catch below and roll back.
-                    (loop []
-                      (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
-                        (doseq [cb callbacks] (cb))
-                        ;; a before-commit callback may register more (before- or after-commit); run those too
-                        (recur)))
-                    ;; commit; after-commit side effects run after the transaction bindings unwind
-                    (.commit connection))
-                  result)
-                (catch Throwable txn-e
-                  ;; the nested body failed, so its before-/after-commit callbacks must never fire — discard
-                  ;; those it registered before rolling back, otherwise a throwing .rollback would leave them
-                  ;; in the shared accumulators to run at outer-commit time for data that was rolled back
-                  (when after-count  (discard-callbacks-after! *after-commit-callbacks*  after-count))
-                  (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
-                  (try
-                    (.rollback connection savepoint)
-                    ;; restore transaction-state to its pre-savepoint value so data the rolled-back
-                    ;; sub-transaction stashed is discarded and not seen by the outer commit
-                    (when state-snapshot
-                      (reset! *transaction-state* state-snapshot))
-                    (catch Exception rollback-e
-                      (throw (ex-info
-                              (str "Error rolling back after previous error: " (ex-message txn-e))
-                              {:rollback-error rollback-e}
-                              txn-e))))
-                  (throw txn-e)))))]
+              (letfn [(rollback! []
+                        ;; callbacks and transaction state follow the same savepoint boundary as the DB writes,
+                        ;; whether the rollback was requested or caused by an exception
+                        (when after-count  (discard-callbacks-after! *after-commit-callbacks*  after-count))
+                        (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
+                        (.rollback connection savepoint)
+                        (when state-snapshot
+                          (reset! *transaction-state* state-snapshot)))
+                      (rollback-after-error! [txn-e]
+                        (try
+                          (rollback!)
+                          (catch Exception rollback-e
+                            (throw (ex-info
+                                    (str "Error rolling back after previous error: " (ex-message txn-e))
+                                    {:rollback-error rollback-e}
+                                    txn-e))))
+                        (throw txn-e))]
+                (let [result (try
+                               (f connection)
+                               (catch Throwable txn-e
+                                 (rollback-after-error! txn-e)))]
+                  (cond
+                    rollback-only?
+                    (do
+                      (rollback!)
+                      [result false])
+
+                    (= *transaction-depth* 1)
+                    (try
+                      ;; top-level transaction. Run before-commit callbacks first, while the transaction is
+                      ;; still open, so their writes commit atomically with it. They are NOT wrapped in
+                      ;; try/catch — a throwing callback must roll the whole transaction back.
+                      (loop []
+                        (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
+                          (doseq [cb callbacks] (cb))
+                          ;; a before-commit callback may register more (before- or after-commit); run those too
+                          (recur)))
+                      (.commit connection)
+                      [result true]
+                      (catch Throwable txn-e
+                        (rollback-after-error! txn-e)))
+
+                    :else
+                    [result false])))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try
@@ -256,6 +268,9 @@
             (catch Throwable t
               (log/warnf "Failed to reset the connection's autocommit flag to true: %s" (ex-message t))))))
       (thunk))))
+
+(def ^:private supported-transaction-options
+  #{:nested-transaction-rule :rollback-only})
 
 (comment
   ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
@@ -274,8 +289,17 @@
       other transactions have made,
     - in the presence of unsynchronized concurrent threads running nested transactions, the effects of rollback
       are not well defined - a rollback will undo all work done by other transactions in the same tree that
-      started later."
-  [^java.sql.Connection connection {:keys [nested-transaction-rule] :or {nested-transaction-rule :allow} :as options} f]
+      started later.
+
+  `:rollback-only true` rolls a successful scope back to its savepoint and discards the callbacks and transaction state
+  it registered. Other JDBC transaction options are rejected rather than silently treated as ordinary writable
+  transactions."
+  [^java.sql.Connection connection
+   {:keys [nested-transaction-rule rollback-only] :or {nested-transaction-rule :allow} :as options}
+   f]
+  (when-let [unsupported-options (seq (remove supported-transaction-options (keys options)))]
+    (throw (ex-info "Unsupported application database transaction options"
+                    {:unsupported-options (vec unsupported-options)})))
   (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
   (cond
     (and (pos? *transaction-depth*)
@@ -290,13 +314,14 @@
     :else
     (let [outermost? (zero? *transaction-depth*)
           callbacks  (if outermost? (atom []) *after-commit-callbacks*)
-          result     (binding [*transaction-depth*       (inc *transaction-depth*)
-                               ;; one set of accumulators + state for the whole tree, created at the outermost txn
-                               *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
-                               *transaction-state*       (if outermost? (atom {}) *transaction-state*)
-                               *after-commit-callbacks*  callbacks]
-                       (do-transaction connection f))]
-      (when outermost?
+          [result committed?]
+          (binding [*transaction-depth*       (inc *transaction-depth*)
+                    ;; one set of accumulators + state for the whole tree, created at the outermost txn
+                    *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
+                    *transaction-state*       (if outermost? (atom {}) *transaction-state*)
+                    *after-commit-callbacks*  callbacks]
+            (do-transaction connection rollback-only f))]
+      (when (and outermost? committed?)
         (run-after-commit-callbacks! callbacks))
       result)))
 
