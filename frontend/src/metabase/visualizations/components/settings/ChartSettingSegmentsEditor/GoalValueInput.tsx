@@ -302,7 +302,7 @@ export const GoalValueInput = ({
   };
 
   return (
-    <Box className={S.root}>
+    <Box className={S.root} pos="relative">
       <Menu
         closeOnItemClick={false}
         opened={isMenuOpen}
@@ -317,20 +317,39 @@ export const GoalValueInput = ({
       >
         <Menu.Target>
           {hasRef ? (
-            <div
+            // bg and 40px height match Mantine's md inputs, so both bound inputs look alike
+            <Group
               aria-label={ariaLabel}
+              bdrs="sm"
+              bg="background_page-primary"
               className={S.refShell}
+              gap="sm"
+              h={40}
+              px="sm"
               role="group"
               tabIndex={0}
+              wrap="nowrap"
               onKeyDown={handleShellKeyDown}
             >
               <Tooltip disabled={pillTooltip == null} label={pillTooltip}>
+                {/* min-width lets the value ellipsize instead of pushing the remove button out of the shell */}
                 <UnstyledButton
                   aria-label={t`Change value source`}
+                  bdrs="1rem"
                   className={S.pill}
+                  display="flex"
+                  miw={0}
+                  pl="0.75rem"
+                  pr="0.5rem"
+                  py="0.25rem"
                   onClick={openMenuFromPill}
                 >
-                  <Icon c="text-secondary" name="hexagon" size={12} />
+                  <Icon
+                    c="text-secondary"
+                    flex="0 0 auto"
+                    name="hexagon"
+                    size={12}
+                  />
                   {resolved.isResolving ? (
                     <Loader size="xs" />
                   ) : (
@@ -354,7 +373,7 @@ export const GoalValueInput = ({
                   <Icon name="close" size={16} />
                 </ActionIcon>
               </Tooltip>
-            </div>
+            </Group>
           ) : (
             <Box>
               <StaticGoalValueInput

@@ -1,7 +1,3 @@
-.root {
-  position: relative;
-}
-
 .trigger {
   visibility: hidden;
 }
@@ -13,17 +9,8 @@
 }
 
 .refShell {
-  align-items: center;
-  /* the same surface Mantine's inputs use, so both bound inputs match */
-  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-sm);
   cursor: default;
-  display: flex;
-  gap: var(--mantine-spacing-sm);
-  /* matches --input-height-md, which Mantine only exposes inside its wrapper */
-  height: 40px;
-  padding: 0 var(--mantine-spacing-sm);
 
   &:focus-within,
   &:focus {
@@ -35,24 +22,11 @@
 .pill {
   align-items: center;
   background-color: var(--mb-color-background-primary);
-  border-radius: 1rem;
   box-shadow: var(--mantine-shadow-xs);
   cursor: pointer;
-  display: flex;
   gap: 6px;
-  /* lets the value ellipsize instead of pushing the remove button out of the shell */
-  min-width: 0;
-  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
 
   &:hover {
     background-color: var(--mb-color-background-hover);
   }
-}
-
-.pill svg {
-  flex-shrink: 0;
-}
-
-.selectedItem {
-  background-color: var(--mb-color-background-selected);
 }
