@@ -42,3 +42,12 @@ export function convertSlackChatMessage(
     .with({ role: "agent", type: "turn_in_progress" }, (m) => m)
     .exhaustive();
 }
+
+/**
+ * Slack-authored conversations store their text in Slack's mrkdwn rather than
+ * standard markdown, so readers must convert it before rendering. The profile is
+ * recorded per message; `profile_id` on a conversation is the last one's.
+ */
+export function isSlackProfile(profileId?: string | null): boolean {
+  return profileId === "slackbot" || profileId === "slack";
+}

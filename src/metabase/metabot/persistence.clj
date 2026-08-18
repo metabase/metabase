@@ -804,6 +804,10 @@
        :created_at                  (:created_at conv)
        :title                       (:title conv)
        :user_id                     (:user_id conv)
+       ;; Taken from the last live message, matching how the list endpoint reports it, so both
+       ;; endpoints name the same profile for a conversation. Readers use it to tell a Slack-authored
+       ;; conversation -- whose text is stored in Slack's mrkdwn -- from a web-authored one.
+       :profile_id                  (:profile_id (last messages))
        :forked_from_conversation_id (:forked_from_conversation_id conv)
        :state                       (conversation-state messages)
        :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]

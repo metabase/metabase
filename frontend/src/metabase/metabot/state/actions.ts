@@ -43,6 +43,7 @@ import {
   isHistoryEnabledProfile,
 } from "../constants";
 import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
+import { isSlackProfile } from "../utils/slack-mrkdwn";
 
 import { metabot } from "./reducer";
 import {
@@ -927,7 +928,9 @@ export const loadConversation = createAsyncThunk(
         title: detail.title ?? undefined,
         forkedFromConversationId:
           detail.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(detail.messages),
+        messages: normalizeFetchedChatMessages(detail.messages, {
+          isSlack: isSlackProfile(detail.profile_id),
+        }),
         state: detail.state,
         activeToolCalls: [],
       }),
@@ -959,7 +962,9 @@ export const forkConversation = createAsyncThunk(
         title: conversation.title ?? undefined,
         forkedFromConversationId:
           conversation.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(conversation.messages),
+        messages: normalizeFetchedChatMessages(conversation.messages, {
+          isSlack: isSlackProfile(conversation.profile_id),
+        }),
         state: conversation.state,
         activeToolCalls: [],
       }),

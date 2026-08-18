@@ -1,4 +1,4 @@
-import { slackMrkdwnToMarkdown } from "./slack-mrkdwn";
+import { isSlackProfile, slackMrkdwnToMarkdown } from "./slack-mrkdwn";
 
 describe("slackMrkdwnToMarkdown", () => {
   it("converts <url|label> to [label](url)", () => {
@@ -51,9 +51,35 @@ describe("slackMrkdwnToMarkdown", () => {
     );
   });
 
+  // The shape that broke the web conversation page: a table link whose URL carries
+  // a base64 `#` fragment. Parsed as CommonMark the raw form is an autolink, so the
+  // label vanished and `|LABEL` was swallowed into the href, corrupting the hash.
+  it("converts a link whose url has a base64 hash fragment, without leaking the label into the url", () => {
+    const url =
+      "https://metabase.example.com/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoicXVlcnkiLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjF9fX0=";
+
+    const converted = slackMrkdwnToMarkdown(`## 1. <${url}|PEOPLE>`);
+
+    expect(converted).toBe(`## 1. [PEOPLE](${url})`);
+    expect(converted).not.toContain("|PEOPLE");
+  });
+
   it("leaves plain text unchanged", () => {
     expect(slackMrkdwnToMarkdown("just normal text *with stars*")).toBe(
       "just normal text *with stars*",
     );
   });
+});
+
+describe("isSlackProfile", () => {
+  it.each(["slackbot", "slack"])("recognizes %s", (profileId) => {
+    expect(isSlackProfile(profileId)).toBe(true);
+  });
+
+  it.each([undefined, null, "", "default", "embedding"])(
+    "does not treat %p as slack",
+    (profileId) => {
+      expect(isSlackProfile(profileId)).toBe(false);
+    },
+  );
 });

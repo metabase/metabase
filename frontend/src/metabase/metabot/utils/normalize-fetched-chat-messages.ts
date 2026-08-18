@@ -19,6 +19,8 @@ export type MetabotConversationDetail = {
   created_at: string;
   title: string | null;
   user_id: number | null;
+  /** Profile of the conversation's last message; see `isSlackProfile`. */
+  profile_id?: string | null;
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
   messages: FetchedChatMessage[];

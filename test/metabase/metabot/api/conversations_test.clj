@@ -155,6 +155,31 @@
           (is (= user-id (:user_id response)))
           (is (= 1 (count (:messages response)))))))))
 
+(deftest get-conversation-returns-last-live-message-profile-test
+  (testing "GET /api/metabot/conversations/:id reports the last live message's profile_id"
+    (let [user-id (mt/user->id :rasta)
+          detail  (fn [convo-id]
+                    (:profile_id (mt/user-http-request :rasta :get 200
+                                                       (str "metabot/conversations/" convo-id))))]
+      (testing "the latest message wins, matching how the list endpoint reports it"
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ (message-row convo-id user-id (seconds-ago 60)
+                                                            :profile_id "default")
+                       :model/MetabotMessage _ (message-row convo-id user-id (seconds-ago 30)
+                                                            :profile_id "slackbot")]
+          (is (= "slackbot" (detail convo-id)))))
+      (testing "deleted messages are ignored"
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ (message-row convo-id user-id (seconds-ago 60)
+                                                            :profile_id "slackbot")
+                       :model/MetabotMessage _ (message-row convo-id user-id (seconds-ago 30)
+                                                            :profile_id "default"
+                                                            :deleted_at (seconds-ago 10))]
+          (is (= "slackbot" (detail convo-id)))))
+      (testing "nil when the conversation has no live messages"
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}]
+          (is (nil? (detail convo-id))))))))
+
 (deftest get-conversation-second-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id is readable by any participant, not just the originator"
     (let [originator-id (mt/user->id :rasta)
