@@ -19,9 +19,30 @@ permissions:
   security-events: write
 
 jobs:
+  # `force-run` and `force-skip` are global overrides; `defer` means this
+  # job has no opinion and every downstream gate behaves as it always has.
+  ci-decision:
+    name: Decide CI scope
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      verdict: ${{ steps.decide.outputs.verdict }}
+    steps:
+      - name: Decide
+        id: decide
+        # Precedence matters for the conditions below.
+        env:
+          VERDICT: >-
+            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
+            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+            || 'defer' }}
+        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+
   create-test-plan:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    needs: ci-decision
     name: Create test plan
+    if: ${{ needs.ci-decision.outputs.verdict == 'defer' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -54,7 +75,7 @@ jobs:
           filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
-        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+        if: ${{ github.event_name == 'pull_request' }}
         uses: ./.github/actions/create-test-plan
         with:
           changed-files: ${{ steps.changes.outputs.all_changed_files }}
@@ -67,14 +88,19 @@ jobs:
 
   upload-affected-tests-stats:
     needs: create-test-plan
-    # Only land rows for the upstream repo so forks don't pollute the table.
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && (github.event.pull_request.head.repo.full_name == 'metabase/metabase' || (github.event_name == 'push' && github.repository == 'metabase/metabase')) }}
+    # Only land rows for the upstream repo so forks don't pollute the table: a
+    # PR branch from the upstream repo, or a push to the upstream repo itself.
+    if: |
+      !cancelled() &&
+      needs.create-test-plan.result == 'success' &&
+      (github.event.pull_request.head.repo.full_name == 'metabase/metabase' ||
+       (github.event_name == 'push' && github.repository == 'metabase/metabase'))
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Upload affected tests stats
         # On push (merge to master) there is no PR context, so fall back to the
         # commit SHAs and a 0 PR number.
@@ -88,8 +114,14 @@ jobs:
         run: node .github/scripts/upload-affected-tests-stats.js
 
   uberjar:
-    needs: [create-test-plan]
-    if: ${{ !cancelled() && !(needs.create-test-plan.outputs.documentation == 'true' && needs.create-test-plan.outputs.backend_all == 'false' && needs.create-test-plan.outputs.frontend_all == 'false' && needs.create-test-plan.outputs.e2e_all == 'false') }}
+    needs: [ci-decision, create-test-plan]
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      !(needs.create-test-plan.outputs.documentation == 'true' &&
+        needs.create-test-plan.outputs.backend_all == 'false' &&
+        needs.create-test-plan.outputs.frontend_all == 'false' &&
+        needs.create-test-plan.outputs.e2e_all == 'false'))
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
@@ -97,8 +129,12 @@ jobs:
   # The compile is doesn't depend on MB_EDITION
   e2e-cljs:
     name: Compile CLJS for e2e
-    needs: [create-test-plan]
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.e2e_all == 'true' }}
+    needs: [ci-decision, create-test-plan]
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      (needs.create-test-plan.result == 'success' &&
+       needs.create-test-plan.outputs.e2e_all == 'true'))
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -121,7 +157,9 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    needs: ci-decision
+    # Its only consumer is the backend skip gate, which a force-run overrides.
+    if: ${{ needs.ci-decision.outputs.verdict == 'defer' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -144,46 +182,83 @@ jobs:
           filters: .github/static-viz-sources.yaml
 
   backend-tests:
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
-    needs: [create-test-plan, static-viz-files-changed]
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.result == 'success')
+    needs: [ci-decision, create-test-plan, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.backend_all != 'true' &&
+        needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      force-run: ${{ needs.ci-decision.outputs.verdict == 'force-run' }}
 
   semantic-search-tests:
-    needs: create-test-plan
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.result == 'success')
+    needs: [ci-decision, create-test-plan]
     uses: ./.github/workflows/semantic-search.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.backend_all != 'true' }}
 
   app-db-tests:
-    needs: create-test-plan
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.result == 'success')
+    needs: [ci-decision, create-test-plan]
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.backend_all != 'true' }}
+      force-run: ${{ needs.ci-decision.outputs.verdict == 'force-run' }}
 
   driver-tests:
-    needs: create-test-plan
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.result == 'success')
+    needs: [ci-decision, create-test-plan]
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.backend_all != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.backend_all != 'true' }}
+      force-run: ${{ needs.ci-decision.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [create-test-plan]
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
+    needs: [ci-decision, create-test-plan]
+    if: |
+      !cancelled() &&
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.result == 'success')
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.frontend_all != 'true' }}
-      skip-lint: ${{ needs.create-test-plan.outputs.frontend_all != 'true' && needs.create-test-plan.outputs.e2e_all != 'true' }}
-      skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.frontend_all != 'true' }}
+      skip-lint: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.frontend_all != 'true' &&
+        needs.create-test-plan.outputs.e2e_all != 'true' }}
+      skip-custom-viz: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.custom_viz_all != 'true' }}
 
   e2e-tests:
-    needs: [create-test-plan, uberjar]
+    needs: [ci-decision, create-test-plan, uberjar]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -194,27 +269,35 @@ jobs:
     # branch protection blocks the merge as pending.
     if: |
       always() && !cancelled() &&
-      needs.create-test-plan.result == 'success' &&
+      (needs.ci-decision.outputs.verdict == 'force-run' || needs.create-test-plan.result == 'success') &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
-      skip: ${{ needs.create-test-plan.outputs.e2e_all != 'true' }}
+      skip: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        needs.create-test-plan.outputs.e2e_all != 'true' }}
       # here we pass the list of changed files
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
       # list of changed specs files, then only specs are changed and we can run only those specs.
-      # Only narrow to changed specs on pull requests. On push to master/release branches (and the
-      # merge queue) the paths-filter still computes these file lists, so without this guard a push
-      # that touched only specs would silently run a narrowed suite — we always want the full suite there.
-      specs: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
+      # Only narrow to changed specs on pull requests that haven't been forced to run everything.
+      # On push to master/release branches (and the merge queue) the paths-filter still computes
+      # these file lists, so without this guard a run that touched only specs would silently run a
+      # narrowed suite — we always want the full suite there.
+      specs: >-
+        ${{ needs.ci-decision.outputs.verdict != 'force-run' &&
+        github.event_name == 'pull_request' &&
+        needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files &&
+        needs.create-test-plan.outputs.e2e_specs_files || '' }}
 
   embedding-sdk-package:
-    needs: [create-test-plan]
+    needs: [ci-decision, create-test-plan]
     if: |
       !cancelled() &&
-      (needs.create-test-plan.outputs.embedding_sdk_components == 'true' ||
+      (needs.ci-decision.outputs.verdict == 'force-run' ||
+      needs.create-test-plan.outputs.embedding_sdk_components == 'true' ||
       needs.create-test-plan.outputs.frontend_sources == 'true' ||
       needs.create-test-plan.outputs.embedding_documentation == 'true' ||
       needs.create-test-plan.outputs.embedding_sdk_ci == 'true' ||
@@ -223,17 +306,29 @@ jobs:
     secrets: inherit
 
   sdk-tests:
-    needs: [uberjar, embedding-sdk-package, create-test-plan]
+    needs: [ci-decision, uberjar, embedding-sdk-package, create-test-plan]
     if: always() && !cancelled()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      cli-snippets-type-check: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
-      docs-snippets-type-check: ${{ needs.create-test-plan.outputs.embedding_documentation == 'true' }}
-      documentation-validation: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
-      component-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_components == 'true' }}
-      host-sample-apps-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_host_sample_apps == 'true' }}
-      skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}
+      cli-snippets-type-check: >-
+        ${{ needs.ci-decision.outputs.verdict == 'force-run' ||
+        needs.create-test-plan.outputs.frontend_sources == 'true' }}
+      docs-snippets-type-check: >-
+        ${{ needs.ci-decision.outputs.verdict == 'force-run' ||
+        needs.create-test-plan.outputs.embedding_documentation == 'true' }}
+      documentation-validation: >-
+        ${{ needs.ci-decision.outputs.verdict == 'force-run' ||
+        needs.create-test-plan.outputs.frontend_sources == 'true' }}
+      component-tests: >-
+        ${{ needs.ci-decision.outputs.verdict == 'force-run' ||
+        needs.create-test-plan.outputs.embedding_sdk_components == 'true' }}
+      host-sample-apps-tests: >-
+        ${{ needs.ci-decision.outputs.verdict == 'force-run' ||
+        needs.create-test-plan.outputs.embedding_sdk_host_sample_apps == 'true' }}
+      skip: >-
+        ${{ needs.embedding-sdk-package.result != 'success' ||
+        needs.uberjar.result != 'success' }}
 
   bundle-size:
     needs: [uberjar, create-test-plan]
