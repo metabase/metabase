@@ -85,7 +85,7 @@
 
 (def ^:private transpilation-cases
   "Testing _context_ describe a test case. Apart from that, pretty formatting is checked by comparisons of raw output
-  stirngs in `:transpiled-sql`."
+  strings in `:transpiled-sql`."
   [{:context "Snowflake identifiers keep the quoting they were written with"
     :dialect "snowflake" :sql "SELECT id FROM PUBLIC.users"
     :expected {:valid? true :transpiled-sql "SELECT\n  id\nFROM PUBLIC.users"}}
