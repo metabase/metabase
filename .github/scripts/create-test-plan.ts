@@ -29,6 +29,7 @@ const STORY_GLOBS = [
 function listFiles(roots: string[], globs: string[]): string[] {
   const tracked = execFileSync("git", ["ls-files", "--", ...roots], {
     encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024,
   })
     .split("\n")
     .map((line) => line.trim())
