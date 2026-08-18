@@ -130,7 +130,7 @@ describe("EmbeddingHubSecurityPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText("Authorized origins"),
+          screen.queryByText("Authorized origins for full-app embedding"),
         ).not.toBeInTheDocument();
       });
     });
@@ -138,7 +138,9 @@ describe("EmbeddingHubSecurityPage", () => {
     it("is shown when full-app embedding is on", async () => {
       setup({ hasSimpleEmbedding: true, isFullAppEmbeddingEnabled: true });
 
-      expect(await screen.findByText("Authorized origins")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Authorized origins for full-app embedding"),
+      ).toBeInTheDocument();
     });
   });
 });
