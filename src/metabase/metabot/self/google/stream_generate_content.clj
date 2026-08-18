@@ -303,7 +303,7 @@
 
   Unlike Claude, there are no content-block start and stop events. Text streams as consecutive parts, and one open
   text block holds them all. Each functionCall part arrives with complete args, thus its start, delta, and available
-  chunks go out together. Parts with `:thought true` are the thought summaries that [[request-body]] asks for; they
+  chunks are buffered until a successful finish. Parts with `:thought true` are the thought summaries that [[request-body]] asks for; they
   stream as reasoning blocks the same way text does, and a thought/text transition closes the one block kind and
   opens the other. A `thoughtSignature` on a thought or text part is dropped: replaying one is optional, per the
   \"Signatures in non-functionCall Parts\" section of
@@ -320,25 +320,48 @@
           reasoning-id     (volatile! nil) ; Non-nil while a reasoning block is open.
           usage-acc        (volatile! nil)
           stop-reason      (volatile! nil)
+          pending-chunks   (volatile! [])
+          emit!            (fn [result tool-chunk? chunk]
+                             (cond
+                               (reduced? result) result
+                               (or tool-chunk? (seq @pending-chunks))
+                               (u/prog1 result (vswap! pending-chunks conj [tool-chunk? chunk]))
+                               :else (rf result chunk)))
+          emit-rf!         (fn [result chunk]
+                             (if (reduced? result) result (rf result chunk)))
+          resolve-tools!   (fn [result successful?]
+                             (let [result (u/reduce-preserving-reduced
+                                           (fn [result [tool-chunk? chunk]]
+                                             (if (or successful? (not tool-chunk?))
+                                               (rf result chunk)
+                                               result))
+                                           result @pending-chunks)]
+                               (vreset! pending-chunks [])
+                               result))
+          usage-part       (fn []
+                             {:type  :usage
+                              :usage @usage-acc
+                              :id    @message-id
+                              :model @model-name})
           close-text!      (fn [result]
                              (if-let [id @text-id]
                                (do (vreset! text-id nil)
-                                   (rf result {:type :text-end :id id}))
+                                   (emit! result false {:type :text-end :id id}))
                                result))
           close-reasoning! (fn [result]
                              (if-let [id @reasoning-id]
                                (do (vreset! reasoning-id nil)
-                                   (rf result {:type :reasoning-end :id id}))
+                                   (emit! result false {:type :reasoning-end :id id}))
                                result))
           close-blocks!    (fn [result]
                              (-> result close-text! close-reasoning!))
-          finish!          (fn [result reason]
+          finish!          (fn [result reason successful?]
                              (vreset! stop-reason reason)
                              (when-not (= reason finish-reason-completed)
                                (log/info "Gemini stopped early" {:finishReason reason}))
-                             (let [result (close-blocks! result)]
+                             (let [result (-> result close-blocks! (resolve-tools! successful?))]
                                (if-let [error-text (finish-reason-error reason)]
-                                 (rf result {:type :error :errorText error-text})
+                                 (emit-rf! result {:type :error :errorText error-text})
                                  result)))
           emit-part        (fn [result {:keys [text functionCall thought thoughtSignature]}]
                              (cond
@@ -353,11 +376,11 @@
                                                (assoc :providerMetadata
                                                       {:google {:thoughtSignature thoughtSignature}}))]
                                  (-> (close-blocks! result)
-                                     (rf start)
-                                     (rf {:type           :tool-input-delta
+                                     (emit! true start)
+                                     (emit! true {:type           :tool-input-delta
                                           :toolCallId     tool-id
                                           :inputTextDelta (json/encode (or (:args functionCall) {}))})
-                                     (rf (merge {:type :tool-input-available} ids))))
+                                     (emit! true (merge {:type :tool-input-available} ids))))
 
                                ;; Thought and text share one block discipline: open a block only for
                                ;; text that is not empty, thus an empty part between tool calls does
@@ -368,68 +391,71 @@
                                thought
                                (if-let [id @reasoning-id]
                                  (if (some? text)
-                                   (rf result {:type :reasoning-delta :id id :delta text})
+                                   (emit! result false {:type :reasoning-delta :id id :delta text})
                                    result)
                                  (if (empty? text)
                                    result
                                    (let [id (core/mkid)]
                                      (vreset! reasoning-id id)
                                      (-> (close-text! result)
-                                         (rf {:type :reasoning-start :id id})
-                                         (rf {:type :reasoning-delta :id id :delta text})))))
+                                         (emit! false {:type :reasoning-start :id id})
+                                         (emit! false {:type :reasoning-delta :id id :delta text})))))
 
                                (some? text)
                                (if-let [id @text-id]
-                                 (rf result {:type :text-delta :id id :delta text})
+                                 (emit! result false {:type :text-delta :id id :delta text})
                                  (if (empty? text)
                                    result
                                    (let [id (core/mkid)]
                                      (vreset! text-id id)
                                      (-> (close-reasoning! result)
-                                         (rf {:type :text-start :id id})
-                                         (rf {:type :text-delta :id id :delta text})))))
+                                         (emit! false {:type :text-start :id id})
+                                         (emit! false {:type :text-delta :id id :delta text})))))
 
                                :else
                                result))]
       (fn
         ([result]
-         ;; An early stop that emits no :error chunk still needs a :usage chunk when the stream carried no
-         ;; usageMetadata, so a truncated or filtered turn is never misinterpreted as a complete answer. The
-         ;; reasons that do emit an :error chunk already say what went wrong, so they get no synthetic usage.
+         ;; Some early stops need a synthetic usage marker even without token counts.
          (let [reason @stop-reason
                usage  (or @usage-acc
                           (when (early-stops-without-error reason)
-                            (usage->aisdk-usage nil)))]
+                            (usage->aisdk-usage nil)))
+               result (-> result close-blocks! (resolve-tools! false))
+               result (cond-> result
+                        usage (emit-rf! (cond-> {:type  :usage
+                                                 :usage usage
+                                                 :id    @message-id
+                                                 :model @model-name}
+                                          reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
+                                                        :raw-finish-reason reason))))]
+           (if (reduced? result) result (rf result))))
+        ([result event]
+         (if (= event core/interrupted-stream-event)
+           ;; An interruption cannot close a partial block or release provisional tools.
            (-> result
-               (close-blocks!)
-               (cond-> usage
-                 (rf (cond-> {:type  :usage
-                              :usage usage
-                              :id    @message-id
-                              :model @model-name}
-                       reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
-                                     :raw-finish-reason reason))))
-               (rf))))
-        ([result {:keys [candidates usageMetadata responseId modelVersion promptFeedback error] :as _event}]
-         (when (some? usageMetadata)
-           (vreset! usage-acc (usage->aisdk-usage usageMetadata)))
-         ;; modelVersion can appear on any event. Keep the last one for the :usage chunk.
-         (when (some? modelVersion)
-           (vreset! model-name modelVersion))
-         (let [{:keys [content finishReason]} (first candidates)
-               block-reason                   (:blockReason promptFeedback)]
-           (cond-> result
-             ;; Emit :start on the first event.
-             (not @message-id)    (-> (u/prog1
-                                        (vreset! message-id (or responseId (core/mkid))))
-                                      (rf {:type :start :messageId @message-id}))
-             (seq (:parts content)) (as-> res (u/reduce-preserving-reduced emit-part res (:parts content)))
-             (some? finishReason) (finish! finishReason)
-             ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
-             (some? block-reason) (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (str "Prompt blocked by Google: " block-reason)}))
-             ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
-             (some? error)        (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (or (:message error) (pr-str error))})))))))))
+               (resolve-tools! false)
+               (cond-> @usage-acc (emit-rf! (usage-part))))
+           (let [{:keys [candidates usageMetadata responseId modelVersion promptFeedback error]} event]
+             (when (some? usageMetadata)
+               (vreset! usage-acc (usage->aisdk-usage usageMetadata)))
+             (when (some? modelVersion)
+               (vreset! model-name modelVersion))
+             (let [{:keys [content finishReason]} (first candidates)
+                   block-reason                   (:blockReason promptFeedback)]
+               (cond-> result
+                 (not @message-id)      (-> (u/prog1
+                                              (vreset! message-id (or responseId (core/mkid))))
+                                            (emit-rf! {:type :start :messageId @message-id}))
+                 (seq (:parts content)) (as-> res (u/reduce-preserving-reduced emit-part res (:parts content)))
+                 (some? finishReason)   (finish! finishReason (and (= finishReason finish-reason-completed)
+                                                                   (not block-reason)
+                                                                   (not error)))
+                 (some? block-reason)   (-> close-blocks!
+                                            (resolve-tools! false)
+                                            (emit-rf! {:type      :error
+                                                       :errorText (str "Prompt blocked by Google: " block-reason)}))
+                 (some? error)          (-> close-blocks!
+                                            (resolve-tools! false)
+                                            (emit-rf! {:type      :error
+                                                       :errorText (or (:message error) (pr-str error))})))))))))))
