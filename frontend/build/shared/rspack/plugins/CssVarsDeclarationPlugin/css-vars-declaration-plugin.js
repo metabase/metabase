@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-env node */
 const fs = require("fs");
 const path = require("path");
 
@@ -254,13 +253,13 @@ class CssVarsDeclarationPlugin {
       expr.getKindName() === "AsExpression"
     ) {
       if (expr.getKindName() === "SatisfiesExpression") {
-        expr = /** @type {import('ts-morph').SatisfiesExpression} */ (
-          expr
-        ).getExpression();
+        expr =
+          /** @type {import('ts-morph').SatisfiesExpression} */ (
+            expr
+          ).getExpression();
       } else if (expr.getKindName() === "AsExpression") {
-        expr = /** @type {import('ts-morph').AsExpression} */ (
-          expr
-        ).getExpression();
+        expr =
+          /** @type {import('ts-morph').AsExpression} */ (expr).getExpression();
       }
     }
 

@@ -1,9 +1,9 @@
 import type { StoryFn } from "@storybook/react";
+import { MetabotQuestion } from "embedding-sdk-package";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import { MetabotQuestion } from "embedding-sdk-package";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider";
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {

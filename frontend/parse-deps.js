@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* eslint-disable import/no-commonjs, no-undef, no-console */
+/* eslint-disable import/no-commonjs, no-console */
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");

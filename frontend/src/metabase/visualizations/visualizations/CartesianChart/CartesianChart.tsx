@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
+import React, {
   type MouseEvent,
   useCallback,
   useEffect,
@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import React from "react";
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/utils/browser";

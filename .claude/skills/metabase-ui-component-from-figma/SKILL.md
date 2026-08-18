@@ -172,7 +172,7 @@ export const OverviewStory = {
 - **Scope controls per story.** A static matrix should hide knobs it ignores: `parameters.controls = { include: [...] }` (or `{ disable: true }`). Wire any kept knob (e.g. `children`) through to the cells so it does something.
 - `loki.config.js` has a `storiesFilter`; check it before renaming a story that's already covered.
 
-Validate: `bun run lint-eslint-pure -- <files>` and `bun run type-check-pure`.
+Validate: `bun run lint-oxlint <files>` and `bun run type-check-pure`.
 
 ### Optional: verify in the browser yourself
 
@@ -217,7 +217,7 @@ General gotchas when extending Mantine components — adapt per component:
 - **Built-in icons use `currentColor`**, so they inherit the slot's text color.
 - For text on a brand fill, follow the existing convention (`text-primary-inverse`) unless the user wants pure white; flag the dark-theme implication.
 
-After edits: `npx stylelint <css>`, `LINT_CSS_MODULES=true bun run lint-eslint-pure -- <files>`, `bun run type-check-pure`.
+After edits: `npx stylelint <css>`, `bun run lint-oxlint <files>`, `bun run type-check-pure`.
 
 ## Phase 5 — Iterate with the user
 

@@ -6,8 +6,7 @@ import {
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
-import type * as LibMetric from "metabase-lib/metric";
-import * as LibMetricModule from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import { MetricsSegmentFilterPillPopover } from "./MetricsSegmentFilterPillPopover";
 
@@ -50,7 +49,7 @@ jest.mock("../FilterPopover/FilterPopoverContent", () => ({
 }));
 
 // Unjustified type cast. FIXME
-const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
+const mockLibMetric = LibMetric as jest.Mocked<typeof LibMetric>;
 // Unjustified type cast. FIXME
 const mockTrackEdited = trackMetricsViewerFilterEdited as jest.MockedFunction<
   typeof trackMetricsViewerFilterEdited

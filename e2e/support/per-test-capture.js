@@ -196,23 +196,25 @@ if (isInstrumented) {
     recordPage(win.location.href);
 
     const originalFetch = win.fetch;
-    win.fetch = function (input, init) {
+    win.fetch = function (...args) {
+      const [input, init] = args;
       try {
         recordFetchArgs(win, input, init);
       } catch {
         // Recording must never break the app's request.
       }
-      return originalFetch.apply(this, arguments);
+      return originalFetch.apply(this, args);
     };
 
     const originalOpen = win.XMLHttpRequest.prototype.open;
-    win.XMLHttpRequest.prototype.open = function (method, url) {
+    win.XMLHttpRequest.prototype.open = function (...args) {
+      const [method, url] = args;
       try {
         recordRoute(method, String(url));
       } catch {
         // Recording must never break the app's request.
       }
-      return originalOpen.apply(this, arguments);
+      return originalOpen.apply(this, args);
     };
   });
 

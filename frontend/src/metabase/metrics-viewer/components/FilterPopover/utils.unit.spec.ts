@@ -1,10 +1,9 @@
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
-import type * as LibMetric from "metabase-lib/metric";
 import type {
   DimensionDisplayInfo,
   SegmentDisplayInfo,
 } from "metabase-lib/metric";
-import * as LibMetricModule from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 
 import { filterDisplayGroupsBySearch, getMetricGroups } from "./utils";
 
@@ -22,7 +21,7 @@ jest.mock("metabase/metrics-viewer/utils/definition-sources", () => ({
 }));
 
 // Unjustified type cast. FIXME
-const mockLibMetric = LibMetricModule as jest.Mocked<typeof LibMetric>;
+const mockLibMetric = LibMetric as jest.Mocked<typeof LibMetric>;
 
 type TestItem = { name: string };
 

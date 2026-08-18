@@ -16,8 +16,8 @@ import {
   diagnoseAndCompile,
   format,
   getClauseDefinition,
+  tokenAtPos,
 } from "metabase/querying/expressions";
-import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -17,7 +17,6 @@ function ct(): ColumnTypes {
   const api = window.__METABASE_VIZ_API__;
   if (!api) {
     throw new Error(
-      // eslint-disable-next-line metabase/no-literal-metabase-strings
       "Metabase Viz API not initialized. Column type functions can only be called inside a running Metabase instance.",
     );
   }

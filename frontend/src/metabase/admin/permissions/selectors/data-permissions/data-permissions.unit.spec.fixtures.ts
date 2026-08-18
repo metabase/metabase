@@ -124,9 +124,7 @@ export const normalizedMetadata = {
       db_id: 3,
     },
   },
-  fields: {
-    /* stripped out */
-  },
+  fields: {/* stripped out */},
   snippets: {},
   revisions: {},
   databasesList: [2, 3, 4],
