@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 
 import {
   type EmbeddingSettingKey,
@@ -14,17 +14,22 @@ type EmbeddingMethod = {
   title: string;
   description: ReactNode;
   settingKey: EmbeddingSettingKey;
+  /**
+   * The other settings this row's switch writes, so one row can present
+   * several embedding methods. Temporary: EMB-2257 gives the merged switch a
+   * single setting to read and write, and deletes the fan-out with it.
+   */
   mergedSettingKeys?: EmbeddingSettingKey[];
 };
 
 /**
  * The embedding methods, as one card of rows rather than a card per method.
  *
- * Modular embedding, the SDK and guest embeds share one switch. Alessio's call
- * in the Embedding Settings Reorganization thread, carried by EMB-2257:
- * individual toggles add complexity without adding security, since whoever can
- * embed also controls the toggles, and guest is a property of modular embedding
- * rather than a method beside it. Full-app keeps its own.
+ * Modular embedding, the SDK and guest embeds share one switch, agreed for the
+ * embedding settings reorganization and carried by EMB-2257: individual
+ * toggles add complexity without adding security, since whoever can embed also
+ * controls the toggles, and guest is a property of modular embedding rather
+ * than a method beside it. Full-app keeps its own.
  *
  * The merge is presentational for now -- the switch writes all three settings
  * and reads on when any is on, which is what the backend flag will do once
@@ -59,18 +64,13 @@ export function EmbeddingMethodsCard() {
     : [guestEmbeds];
 
   return (
-    <SettingsSection>
-      <Stack gap="lg">
-        {/* A heading over a single row says nothing the row does not. It earns
-            its place only once the card is a list to choose from. */}
-        {methods.length > 1 && (
-          <Title order={4}>{t`Availability of embedding methods`}</Title>
-        )}
-
-        {methods.map((method) => (
-          <EmbeddingMethodRow key={method.settingKey} {...method} />
-        ))}
-      </Stack>
+    <SettingsSection
+      title={methods.length > 1 ? t`Availability of embedding methods` : null}
+      titleProps={{ order: 4 }}
+    >
+      {methods.map((method) => (
+        <EmbeddingMethodRow key={method.settingKey} {...method} />
+      ))}
     </SettingsSection>
   );
 }
@@ -95,6 +95,7 @@ function EmbeddingMethodRow({
       <EmbeddingToggle
         settingKey={settingKey}
         mergedSettingKeys={mergedSettingKeys}
+        aria-label={`${title} toggle`}
       />
     </Flex>
   );
