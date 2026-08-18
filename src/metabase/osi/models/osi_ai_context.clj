@@ -52,7 +52,8 @@
   (if (string? ai-context) {:instructions ai-context} ai-context))
 
 (def AiContext
-  "Closed, bounded OSI ai_context schema for API and generated writes."
+  "Closed OSI ai_context schema for API and generated writes; its limits come from
+  [[entity-retrieval/AiContext]]."
   entity-retrieval/AiContext)
 
 (def ^:private StoredAiContext
@@ -74,12 +75,15 @@
 
 (def data-sources
   "Permitted values of `data_source`.
-  `:human` means the content currently in the row was approved by a person, not that a person authored it:
-  an admin editing a generated blob through the CRUD API approves it.
-  It describes the stored content, so only a write moves it — the generation job flips a row to `:metabot`
-  when it rewrites the content, never when a rewrite is merely requested. The job leaves a `:human` row
-  alone unless `rewrite_requested_at` is later than `generated_at`, which is an admin asking for the
-  rewrite explicitly."
+  The value describes the content currently stored in the row, not an intent:
+  - `:human` means a person approved the current content, not that a person authored it. An admin editing a
+    generated blob through the CRUD API approves it.
+  - `:metabot` means generation wrote the current content.
+
+  Only a content write moves the value. The generation job sets it to `:metabot` when it rewrites the
+  content, never when a rewrite is merely requested.
+  The job leaves a `:human` row alone unless `rewrite_requested_at` is later than `generated_at`, which is
+  an admin asking for the rewrite explicitly."
   #{:human :metabot})
 
 (def DataSource
@@ -100,8 +104,8 @@
 
 (def api-columns
   "Columns the CRUD API selects — every column except `basis`.
-  `basis` is an unbounded generation input with no reader outside the generation job, so it never rides a
-  read response."
+  `basis` is stored in a text column with no size cap and has no reader outside the generation job, so it
+  never rides a read response."
   [:entity_type :entity_local_id :ai_context :data_source
    :generated_at :invalidated_at :basis_invalidated_at :rewrite_requested_at :generator_version
    :created_at :updated_at])
@@ -148,8 +152,10 @@
 ;;; obvious to call a nudge from, so without a hook an imported synonym stayed unsearchable until the next
 ;;; full reconcile.
 ;;;
-;;; A burst is already cheap. `request-entity-sync!` only adds to a dirty set, and the enterprise scheduler
-;;; keeps at most one pending run, so N writes drain in one run rather than starting N of them.
+;;; A burst costs one drain rather than N runs: `request-entity-sync!` only adds to a dirty set, and the
+;;; enterprise scheduler keeps at most one pending run.
+;;; The drain still reconciles each dirty entity separately, so an import touching N entities performs N
+;;; entity reconciles in one pass. Embeddings are content-addressed, so batching would not change their cost.
 ;;;
 ;;; Updates nudge only when `ai_context` changed (see the before-update hook) — it is the one column an
 ;;; index doc is derived from.

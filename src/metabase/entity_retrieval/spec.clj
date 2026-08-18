@@ -146,7 +146,7 @@
   - `:hydrate` (optional) — `{key batch-fn-var}`; see [[hydrate]] for the batch contract.
   - `:basis` (optional, `:osi-context` only) — the field/hydration keys whose change schedules
     regeneration; each must be a declared source field or hydration key. Deterministic, bounded values
-    only — an unstable basis input makes every entity perpetually dirty at LLM prices."
+    only — an unstable basis input schedules every entity for regeneration on every run."
   [projection-key model decl]
   `(register-projection! ~projection-key ~model ~decl))
 
@@ -298,8 +298,9 @@
 
 (def hydration-query-chunk-size
   "IDs per `:in` clause in a hydration query, shared by every batch hydration fn so none of them can put an
-  unbounded id list into one statement. Well under the app db's bind-parameter ceiling (Postgres: 65,535),
-  and low enough that a chunk's result set is a bounded amount of memory rather than the whole library's."
+  unbounded id list into one statement. Well under the app db's bind-parameter ceiling (Postgres: 65,535).
+  Keeping this at 500 also bounds how many entities' hydrated values are accumulated at once; a hydration
+  with many child rows must stream them and bound each entity's value separately."
   500)
 
 (defn- raw-ai-context-rows
@@ -486,8 +487,7 @@
   JSON-native scalars (nil, strings, booleans, integers, finite doubles) pass through; maps must have
   keyword keys and become sorted maps; sequential collections become vectors. Everything else — sets,
   keyword or date values, non-finite doubles, ratios — throws: a value that would not survive a JSON
-  encode/decode round-trip `=`-unchanged makes every run report a phantom diff, and re-enriches the
-  library at LLM prices forever."
+  encode/decode round-trip `=`-unchanged makes every run report a phantom diff and pay to regenerate the entity."
   [ctx path v]
   (let [fail (fn [reason]
                (throw (ex-info (str "Basis value at " (pr-str path) " is not JSON-native: " reason)
@@ -542,9 +542,9 @@
   nil is the empty diff: the generation job restamps and skips the LLM on it; a non-nil map names the
   changed keys with before/after values for the prompt.
   Keys absent from `new` are ignored — shrinking or renaming a `:basis` declaration must not regenerate
-  the library at LLM prices; keys new in `new` count as changed.
-  Never called with a nil `old`: a row with no stored basis is a tier-1 candidate carrying `:diff nil`
-  (the fresh-generation framing), not an everything-changed diff."
+  the library; keys new in `new` count as changed.
+  Never called with a nil `old`: a row with no stored basis carries `:diff nil` for fresh generation, not
+  an everything-changed diff."
   [old new]
   (let [changed (into (sorted-set)
                       (keep (fn [[k new-value]]
