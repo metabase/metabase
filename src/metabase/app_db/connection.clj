@@ -221,6 +221,9 @@
                                  (catch Throwable rollback-e
                                    ;; only matters when we were relying on this to discard pending writes --
                                    ;; if the savepoint rollback already succeeded there is nothing left to commit
+                                   ;; TODO (Chris 2026-08-18) -- a caller-supplied connection goes back to its
+                                   ;; owner still holding these writes. Ours cannot commit them: the flag stops
+                                   ;; autocommit being restored.
                                    (when (some-> *rollback-required* deref)
                                      (vreset! discard-failed? true))
                                    (log/warnf "Failed to roll back transaction: %s"

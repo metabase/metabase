@@ -442,14 +442,20 @@
 ;; enough: a committed user's collection is created lazily on its first permission check, which often
 ;; lands inside somebody else's with-temp, and no User scope ends to clear it. Key off the rollback
 ;; instead of the user, and drop whatever the scope may have cached.
-(methodical/defmethod t2.with-temp/do-with-temp* :around :default
-  [model explicit-attributes f]
-  (next-method model explicit-attributes
-               (fn [temp-object]
-                 (try
-                   (f temp-object)
-                   (finally
-                     (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
+;; Registered with a unique key rather than `defmethod`: metabase.test.redefs already holds
+;; `:around :default` on this multifn, and two methods sharing a key overwrite each other instead of
+;; composing -- whichever loaded last would win, silently dropping either this eviction or the
+;; rollback-only transaction wrapper.
+(methodical/add-aux-method-with-unique-key!
+ #'t2.with-temp/do-with-temp* :around :default
+ (fn [next-method model explicit-attributes f]
+   (next-method model explicit-attributes
+                (fn [temp-object]
+                  (try
+                    (f temp-object)
+                    (finally
+                      (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
+ ::evict-personal-collection-cache)
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
