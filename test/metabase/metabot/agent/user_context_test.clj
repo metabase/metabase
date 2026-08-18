@@ -6,8 +6,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (deftest ^:parallel format-current-time-test
@@ -473,6 +476,45 @@
           (is (string? text))
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
+
+(deftest format-transform-source-permission-checks-database-test
+  (let [source (fn [db-id]
+                 {:type                  "query"
+                  :transform-source-type :query
+                  :query                 {:database db-id
+                                          :type     :query
+                                          :query    {:source-table (mt/id :venues)}}})]
+    (testing "renders the query when the user can query its database"
+      (mt/with-test-user :crowberto
+        (is (str/includes? (user-context/format-transform-source (source (mt/id)))
+                           "source-table"))))
+    (testing "omits the query when the user cannot query its database"
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (is (not (str/includes? (user-context/format-transform-source (source db-id))
+                                    "source-table")))))))))
+
+(deftest format-transform-source-omits-unanalyzable-native-query-test
+  (testing "a native query whose tables cannot be analyzed is withheld, not exported unchecked"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
+                                   :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [source    {:type                  "query"
+                         :transform-source-type :native
+                         :query                 {:database (mt/id)
+                                                 :type     :native
+                                                 :native   {:query "SELECT * FROM VENUES"}}}
+              exported? #(str/includes? (user-context/format-transform-source source) "VENUES")]
+          (is (not (exported?))
+              "the analyzer resolves VENUES, which this user cannot query")
+          (doseq [analysis [(fn [& _] (throw (ex-info "analysis blew up" {})))
+                            (constantly :query-analysis.error/driver-not-supported)
+                            (constantly {:error :query-analysis.error/driver-not-supported})]]
+            (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native analysis]
+              (is (not (exported?))))))))))
 
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
