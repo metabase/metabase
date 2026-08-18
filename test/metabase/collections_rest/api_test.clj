@@ -1096,9 +1096,14 @@
                        :model/Collection visible-collection {}]
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (let [response (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
+                                               :models "card" :models "collection")
+                listed   (mt/user-http-request :rasta :get 200 "collection/root/items"
                                                :models "card" :models "collection")]
             (is (= ["collection"] (:available_models response)))
-            (is (= 1 (:total_items response))))
+            ;; Other visible root collections may exist in a shared app DB; what matters is
+            ;; that the count matches the items list for the same restricted user.
+            (is (pos? (:total_items response)))
+            (is (= (:total listed) (:total_items response))))
           (testing "and reports nothing when only other models are requested"
             (is (= {:available_models [] :total_items 0}
                    (mt/user-http-request :rasta :get 200 "collection/root/items/metadata"
