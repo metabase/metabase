@@ -6,16 +6,19 @@ const { H } = cy;
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 /**
- * The embedding hub's Get started tab at `/embedding/get-started`.
+ * The embedding hub at `/embedding` -- the tabbed section, not the older
+ * onboarding checklist that `onboarding/embedding-homepage.cy.spec.ts` covers.
+ * One describe per tab; each tab adds its own as it lands.
  *
  * Deliberately thin: card copy, the upsell banner and the AI card's done states
  * are unit-tested next to their components. What is here is what needs a real
  * browser or a real backend -- routing, the two step orderings, and completion
  * coming back from the checklist endpoint.
  *
- * Both blocks are `@EE`, because the steps themselves are: tenants, SSO and data
- * segregation only exist on an enterprise build. The unlicensed case is that same
- * build with no token activated, which is what the locked states are about.
+ * Get started's blocks are both `@EE`, because the steps themselves are: tenants,
+ * SSO and data segregation only exist on an enterprise build. The unlicensed case
+ * is that same build with no token activated, which is what the locked states are
+ * about.
  */
 
 const CARD = "embedding-hub-checklist-card";
