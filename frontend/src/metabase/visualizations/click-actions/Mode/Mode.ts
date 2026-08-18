@@ -44,10 +44,10 @@ export class Mode implements ClickActionsMode {
     const props = { question, settings, clicked, extraData };
 
     let actions = [
-      ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
       ...(mode.hasDrills
         ? queryDrill(question, clicked, this.isDrillEnabled)
         : []),
+      ...(mode.clickActions?.flatMap((drill) => drill(props)) ?? []),
     ];
 
     if (!actions.length && mode.fallback) {

@@ -45,7 +45,6 @@ export const ClickActionsView = ({
         );
         const withBottomDivider =
           sectionKey === "records" && !hasOnlyOneSection;
-        const withTopDivider = sectionKey === "details" && !hasOnlyOneSection;
 
         return (
           <ClickActionsViewSection
@@ -54,7 +53,6 @@ export const ClickActionsView = ({
             title={sectionTitle}
             contentDirection={contentDirection}
           >
-            {withTopDivider && <Divider mx="-lg" my="sm" />}
             {actions.map((action) => (
               <ClickActionControl
                 key={action.name}
