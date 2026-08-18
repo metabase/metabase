@@ -53,7 +53,7 @@ type SetupOpts = {
   value?: GoalValue | null;
 };
 
-const setup = ({ data = DATA, value = 0 }: SetupOpts = {}) => {
+function setup({ data = DATA, value = 0 }: SetupOpts = {}) {
   const onChange = jest.fn();
   renderWithProviders(
     <GoalValueInput
@@ -65,29 +65,7 @@ const setup = ({ data = DATA, value = 0 }: SetupOpts = {}) => {
     />,
   );
   return { onChange };
-};
-
-const openMenu = async () => {
-  await userEvent.click(
-    screen.getByRole("button", { name: "Pick a dynamic value" }),
-  );
-};
-
-const setupEntityPicker = (searchResults: SearchResult[]) => {
-  mockGetBoundingClientRect(); // for virtualization
-  setupSearchEndpoints(searchResults);
-  setupRecentViewsAndSelectionsEndpoints([]);
-};
-
-/** Walks the picker from an already-open menu to a committed entity pick. */
-const pickEntity = async (name: string) => {
-  await userEvent.click(
-    await screen.findByRole("menuitem", {
-      name: /Value from another question/,
-    }),
-  );
-  await userEvent.click(await screen.findByText(name));
-};
+}
 
 describe("GoalValueInput", () => {
   it("commits a typed static value on blur", () => {
@@ -645,3 +623,24 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 });
+
+async function openMenu() {
+  await userEvent.click(
+    screen.getByRole("button", { name: "Pick a dynamic value" }),
+  );
+}
+
+function setupEntityPicker(searchResults: SearchResult[]) {
+  mockGetBoundingClientRect();
+  setupSearchEndpoints(searchResults);
+  setupRecentViewsAndSelectionsEndpoints([]);
+}
+
+async function pickEntity(name: string) {
+  await userEvent.click(
+    await screen.findByRole("menuitem", {
+      name: /Value from another question/,
+    }),
+  );
+  await userEvent.click(await screen.findByText(name));
+}
