@@ -69,8 +69,9 @@
                   (jobs/of-type OsiAiContextGeneration)
                   (jobs/store-durably)
                   (jobs/with-identity osi-generation/generation-job-key))
-        ;; Weekly, Sunday 03:00 UTC with a per-instance random minute so a fleet does not hit the
-        ;; LLM provider in the same instant (precedent: security_center's SyncAdvisories).
+        ;; Weekly, Sunday 03:00 UTC with a random minute chosen when the trigger is first created and
+        ;; then persisted, so a fleet does not hit the LLM provider in the same instant (precedent:
+        ;; security_center's SyncAdvisories).
         cron-str (format "0 %d 3 ? * 1 *" (rand-int 60))
         trigger  (triggers/build
                   (triggers/with-identity generation-trigger-key)
@@ -82,4 +83,11 @@
                     (cron/in-time-zone (java.util.TimeZone/getTimeZone "UTC"))
                     ;; a missed weekly run should run late, not skip a week
                     (cron/with-misfire-handling-instruction-fire-and-proceed))))]
-    (task/schedule-task! job trigger)))
+    ;; Keep the persisted trigger on restart so Quartz can apply its fire-and-proceed policy to a
+    ;; past-due firing. `schedule-task!` reschedules an existing trigger and would replace that missed
+    ;; firing with this new trigger's next weekly time. Refresh the durable job definition separately;
+    ;; only create a trigger when none exists yet.
+    (if (and (task/job-exists? osi-generation/generation-job-key)
+             (seq (task/existing-triggers osi-generation/generation-job-key generation-trigger-key)))
+      (task/add-job! job)
+      (task/schedule-task! job trigger))))

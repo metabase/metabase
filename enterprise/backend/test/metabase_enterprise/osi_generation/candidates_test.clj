@@ -14,10 +14,14 @@
 (deftest row-tier-state-machine-test
   (let [tier @#'candidates/tier]
     (is (nil? (tier {:data_source :human})))
+    (is (nil? (tier {:data_source :human, :generated_at t1, :rewrite_requested_at t0})))
+    (is (nil? (tier {:data_source :human, :generated_at t1, :rewrite_requested_at t1})))
     (is (nil? (tier {:data_source :future-owner, :basis nil})))
+    (is (nil? (tier {:data_source :future-owner, :generated_at t0, :rewrite_requested_at t1})))
     (is (= 1 (tier nil)))
     (is (= 1 (tier {:data_source :metabot, :basis nil})))
     (is (= 1 (tier {:data_source :metabot, :basis {}, :generated_at t0, :rewrite_requested_at t1})))
+    (is (= 1 (tier {:data_source :human, :basis {}, :generated_at t0, :rewrite_requested_at t1})))
     (is (= 2 (tier {:data_source :metabot, :basis {}, :basis_invalidated_at t0, :invalidated_at t1})))
     (is (= 3 (tier {:data_source :metabot, :basis {}, :basis_invalidated_at t1, :invalidated_at t1})))))
 
@@ -165,8 +169,8 @@
            (:where @query)))
     (is (= "card" (get-in selected [0 :existing-context :entity_type])))))
 
-(deftest explicit-rewrite-is-carried-onto-the-candidate-test
-  (let [row {:entity_type "table", :entity_local_id 1, :data_source :metabot
+(deftest explicit-human-rewrite-is-selected-and-carried-onto-the-candidate-test
+  (let [row {:entity_type "table", :entity_local_id 1, :data_source :human
              :ai_context {}, :basis {:name "Same"}
              :generated_at t0, :rewrite_requested_at t1}
         selected (mt/with-dynamic-fn-redefs

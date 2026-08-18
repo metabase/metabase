@@ -314,6 +314,4 @@
   [& [{:keys [model] :or {model default-model}} :as args]]
   (let [raw   (apply bedrock-raw args)
         xform (model->aisdk-chunks-xf model)]
-    (if (= :anthropic (model->family model))
-      (core/completion-safe-eduction xform raw)
-      (eduction xform raw))))
+    (core/completion-safe-eduction xform raw)))

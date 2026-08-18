@@ -148,4 +148,4 @@
   "Call the Z.AI Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply zai-raw args)]
-    (eduction (zai->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (zai->aisdk-chunks-xf) raw)))

@@ -4,9 +4,10 @@
   Input is the spec layer's membership plus ONE batched hydrate over the whole membership
   (`spec/hydrate` issues one query per hydration key, never one per entity — a per-entity hydrate is
   the one way this design gets expensive). Selection is diff-driven across three tiers; the diff, not
-  the scan, is what gates the LLM. Only absent rows and `data_source :metabot` rows are eligible;
-  human or unknown future ownership states fail closed. An entity that has left the library is never a
-  candidate (its metadata is kept, never regenerated)."
+  the scan, is what gates the LLM. Absent rows and `data_source :metabot` rows are eligible; a human row
+  is eligible only when its `rewrite_requested_at` is later than `generated_at`. Unknown future
+  ownership states fail closed. An entity that has left the library is never a candidate (its metadata
+  is kept, never regenerated)."
   (:require
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.spec :as spec]
@@ -54,8 +55,9 @@
                               (update :ai_context decode-ai-context)
                               (update :basis #(cond-> % (string? %) json/decode+kw)))}
                     (catch Exception e
-                      ;; Keep the independently decoded approval state. Corrupt metabot rows become
-                      ;; isolated candidate errors; human and unknown ownership states remain excluded.
+                      ;; Keep the independently decoded approval state. Corrupt eligible rows become
+                      ;; isolated candidate errors; human rows without a pending rewrite and unknown
+                      ;; ownership states remain excluded.
                       {:row       row
                        :row-error (ex-info "Malformed osi_ai_context generation state"
                                            {:entity-type entity_type :entity-local-id entity_local_id}
@@ -85,16 +87,23 @@
   "Cheap, row-only tier for one member entity's stored `row` (nil when none):
   1 forced (no row, NULL `basis`, or rewrite requested since last generation), 2 timestamp mismatch
   (empty in v1 — nothing writes `invalidated_at` yet), 3 sweep (candidacy still needs the diff),
-  nil for rows not owned by `:metabot`, including unknown future ownership states. All comparisons
+  nil for human rows without a pending rewrite and unknown future ownership states. All comparisons
   null-safe: both timestamps start NULL and NULL = NULL is converged, not a candidate."
   [row]
   (cond
-    (and row (not= :metabot (:data_source row)))
+    (nil? row)
+    1
+
+    (not (#{:human :metabot} (:data_source row)))
     nil
 
-    (or (nil? row)
-        (nil? (:basis row))
-        (after? (:rewrite_requested_at row) (:generated_at row)))
+    (after? (:rewrite_requested_at row) (:generated_at row))
+    1
+
+    (not= :metabot (:data_source row))
+    nil
+
+    (nil? (:basis row))
     1
 
     (not (same-instant? (:basis_invalidated_at row) (:invalidated_at row)))

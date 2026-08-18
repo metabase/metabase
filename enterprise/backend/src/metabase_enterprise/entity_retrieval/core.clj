@@ -228,7 +228,8 @@
 ;;; Two independent two-slot coalescing schedules, both mutated only under run-lock and both serialized on
 ;;; the appdb side by reconcile's pg advisory lock so they never race on the index:
 ;;;   - full-*     drives full reconciles (force-reconcile API, periodic backstop, startup); blocking.
-;;;   - targeted-* drives the per-entity write path; fire-and-forget, draining `dirty-entities`.
+;;;   - targeted-* drives the per-entity write path; fire-and-forget, draining `dirty-entities`, a map from
+;;;     entity key to the embedding-request source captured from the write that dirtied it.
 ;;; Each is the "current run + one queued follow-up" pattern: a caller never joins the in-flight run (it may
 ;;; predate the caller's write); it starts a run when idle, or queues (or joins) the single follow-up, which
 ;;; begins only after the in-flight run finishes. So every write is covered by a run that starts after it,
@@ -238,9 +239,11 @@
 (defonce ^:private run-lock (Object.))
 (defonce ^:private full-current (atom nil))
 (defonce ^:private full-next (atom nil))
+(defonce ^:private full-current-source (atom nil))
+(defonce ^:private full-next-source (atom nil))
 (defonce ^:private targeted-current (atom nil))
 (defonce ^:private targeted-next (atom nil))
-(defonce ^:private dirty-entities (atom #{}))
+(defonce ^:private dirty-entities (atom {}))
 
 (defn- record-run!
   "Emit metrics and a log line for one completed reconcile. `scope` is \"full\" or \"targeted\"; the index
@@ -264,18 +267,23 @@
   "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call
   `(work scheduled-timer)`, then promote the queued follow-up. Returns `work`'s value (the full path's
   result map; nil for the targeted path)."
-  [cur nxt predecessor work]
-  (future
-    (let [scheduled (u/start-timer)]
-      (when predecessor
-        ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
-        (try @predecessor (catch Throwable _ nil)))
-      (try
-        (work scheduled)
-        (finally
-          (locking run-lock
-            (reset! cur @nxt)
-            (reset! nxt nil)))))))
+  ([cur nxt predecessor work]
+   (run-loop cur nxt predecessor work nil nil))
+  ([cur nxt predecessor work cur-source nxt-source]
+   (future
+     (let [scheduled (u/start-timer)]
+       (when predecessor
+         ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
+         (try @predecessor (catch Throwable _ nil)))
+       (try
+         (work scheduled)
+         (finally
+           (locking run-lock
+             (reset! cur @nxt)
+             (reset! nxt nil)
+             (when cur-source
+               (reset! cur-source @nxt-source)
+               (reset! nxt-source nil)))))))))
 
 (defn- schedule!
   "Schedule (or join) a run of `work` on the `cur`/`nxt` two-slot schedule, returning its future. Must be
@@ -286,6 +294,37 @@
     (nil? @nxt) (let [f (run-loop cur nxt @cur work)] (reset! nxt f) f)
     :else       @nxt))
 
+(declare do-full-run)
+
+(defn- schedule-full!
+  "Schedule a full reconcile while retaining the highest-priority request source of every caller that
+  coalesces onto its queued follow-up. Must be called holding [[run-lock]]."
+  []
+  (let [incoming-source embedding/*embedding-request-source*]
+    (cond
+      (nil? @full-current)
+      (let [source (atom incoming-source)
+            f      (run-loop full-current full-next nil
+                             #(do-full-run % @source)
+                             full-current-source full-next-source)]
+        (reset! full-current-source source)
+        (reset! full-current f)
+        f)
+
+      (nil? @full-next)
+      (let [source (atom incoming-source)
+            f      (run-loop full-current full-next @full-current
+                             #(do-full-run % @source)
+                             full-current-source full-next-source)]
+        (reset! full-next-source source)
+        (reset! full-next f)
+        f)
+
+      :else
+      (do
+        (swap! @full-next-source embedding/merge-embedding-request-sources incoming-source)
+        @full-next))))
+
 (defn- elapsed-ms ^long [timer]
   (Math/round ^double (u/since-ms timer)))
 
@@ -293,12 +332,11 @@
   "Run a full reconcile, record its metrics, and return {:index {...} :execution {...}}. The model is
   resolved under the reconcile lock (see [[reconcile/reconcile!]]), so a run that waited out a concurrent
   node uses the current model rather than one captured before the wait."
-  [scheduled]
+  [scheduled source]
   (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
         waited-ms (elapsed-ms scheduled)
         started   (u/start-timer)
-        diff      (binding [embedding/*embedding-request-source*
-                            (or embedding/*embedding-request-source* "reconcile")]
+        diff      (binding [embedding/*embedding-request-source* (or source "reconcile")]
                     (reconcile/reconcile! ds resolved-configured-model))
         ran-ms    (elapsed-ms started)]
     (record-run! "full" diff ran-ms)
@@ -307,33 +345,39 @@
 
 (defn- do-targeted-run
   "Targeted-reconcile each currently-dirty entity, recording per-entity metrics.
-  The datasource is resolved *before* the dirty set is snapshot-and-cleared, so a datasource failure leaves
-  the entries in place for the next run rather than dropping them. Clearing the set up front (vs after the
+  The datasource is resolved *before* the dirty map is snapshot-and-cleared, so a datasource failure leaves
+  the entries in place for the next run rather than dropping them. Clearing the map up front (vs after the
   loop) means a write arriving mid-run re-dirties and is picked up by the next run. A per-entity reconcile
-  failure re-dirties that entity, so a later run (or the periodic backstop) retries it instead of losing
-  the write to the slow backstop."
+  failure re-dirties that entity with its request source intact, so a later run (or the periodic backstop)
+  retries it instead of losing the write to the slow backstop.
+
+  Source attribution is exact for writes coalesced before the dirty-map snapshot. A write committed while
+  an entity reconcile is active is queued with its own source for the follow-up, but the active appdb read
+  may already observe that newer value; making that boundary exact would require a shared appdb snapshot
+  across the asynchronous pgvector operation."
   [_scheduled]
   (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
-        dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))]
-    (doseq [[entity-type entity-local-id :as entity-key] dirty]
+        dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities {}) d))]
+    (doseq [[[entity-type entity-local-id :as entity-key] source] dirty]
       (try
         (let [started (u/start-timer)
               diff    (binding [embedding/*embedding-request-source*
-                                (or embedding/*embedding-request-source* "reconcile")]
+                                (or source "reconcile")]
                         (reconcile/reconcile-entity! ds resolved-configured-model
                                                      entity-type entity-local-id))]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
           (log/error "library entity index: targeted reconcile failed; re-queuing"
                      entity-type entity-local-id (ex-message e))
-          (locking run-lock (swap! dirty-entities conj entity-key)))))))
+          (locking run-lock
+            (swap! dirty-entities update entity-key embedding/merge-embedding-request-sources source)))))))
 
 (defn reconcile-full-coalesced!
   "Run a full reconcile through the full-reconcile schedule, blocking until a run covering this call
   finishes; returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}}.
   Used by the force-reconcile API and the periodic backstop job. Callers must have checked [[available?]]."
   []
-  @(locking run-lock (schedule! full-current full-next do-full-run)))
+  @(locking run-lock (schedule-full!)))
 
 (defenterprise force-reconcile!
   "Force a full reconcile of the `library_entity_index` against the appdb, blocking until a run covering
@@ -349,13 +393,16 @@
   "Mark one library entity dirty and ensure the targeted write path reconciles its index slice soon.
   Fire-and-forget: never blocks, throws, or does embedding/pgvector work on the calling (appdb-write)
   thread — the reconcile runs later on a future. Covers `osi_ai_context` edits; membership / name /
-  description changes to the underlying entity are caught by the periodic full reconcile."
+  description changes to the underlying entity are caught by the periodic full reconcile. Sources are
+  priority-coalesced before a drain and preserved for a follow-up when a write races an active drain; see
+  [[do-targeted-run]] for the remaining appdb-read race."
   :feature :library-retrieval
   [entity-type entity-local-id]
   (when (available?)
     (try
       (locking run-lock
-        (swap! dirty-entities conj [entity-type entity-local-id])
+        (swap! dirty-entities update [entity-type entity-local-id]
+               embedding/merge-embedding-request-sources embedding/*embedding-request-source*)
         (schedule! targeted-current targeted-next do-targeted-run))
       (catch Throwable _ nil))
     nil))

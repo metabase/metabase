@@ -7,6 +7,7 @@
    [metabase-enterprise.osi-generation.metrics :as metrics]
    [metabase-enterprise.osi-generation.settings :as settings]
    [metabase-enterprise.osi-generation.throttle :as throttle]
+   [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.entity-retrieval.spec :as spec]
@@ -44,14 +45,18 @@
                   #'core/insert-new! (fn [entity-type entity-local-id stamp]
                                        (swap! events conj [:insert (merge stamp
                                                                           {:entity_type entity-type
-                                                                           :entity_local_id entity-local-id})])
+                                                                           :entity_local_id entity-local-id})
+                                                           embedding/*embedding-request-source*])
                                        :generated)
                   #'mirror/request-entity-sync! (fn [& args] (swap! events conj [:nudge (vec args)]) nil)
-                  #'entity-retrieval/force-reconcile! (fn [] (swap! events conj [:reconcile]) :reconciled)}]
+                  #'entity-retrieval/force-reconcile! (fn []
+                                                        (swap! events conj
+                                                               [:reconcile embedding/*embedding-request-source*])
+                                                        :reconciled)}]
     {:result (with-redefs-fn (merge defaults overrides) core/run-generation!)
      :events events}))
 
-(deftest generated-write-is-stamped-and-reconciled-once-test
+(deftest generated-write-and-reconcile-carry-embedding-source-test
   (let [{:keys [result events]} (run-with! [(candidate 1)] {})
         stored (second (first @events))]
     (is (= {:generated  1
@@ -70,8 +75,9 @@
             :generator_version    "v-test"
             :rewrite_requested_at nil}
            (dissoc stored :entity_type :entity_local_id :generated_at)))
-    (testing "the batch's only index touch is one trailing reconcile — no per-row nudges"
-      (is (= [:insert :reconcile] (mapv first @events))))))
+    (testing "the write and trailing reconcile both inherit the generation attribution"
+      (is (= [[:insert "osi-generation"] [:reconcile "osi-generation"]]
+             (mapv (juxt first last) @events))))))
 
 (deftest existing-row-write-is-a-full-selection-token-cas-test
   (let [selected-at (java.time.OffsetDateTime/parse "2026-01-02T03:04:05Z")
@@ -90,6 +96,67 @@
     (is (nil? (:reconcile result)))
     (is (= selected-at (:updated_at @where)))
     (is (= :metabot (:data_source @where)))))
+
+(deftest explicit-human-rewrite-flips-ownership-on-write-test
+  (let [selected-at (java.time.OffsetDateTime/parse "2026-01-02T03:04:05Z")
+        update       (atom nil)
+        existing     {:entity_type          "table"
+                      :entity_local_id      1
+                      :data_source          :human
+                      :updated_at           selected-at
+                      :generated_at         (.minusDays ^java.time.OffsetDateTime selected-at 1)
+                      :rewrite_requested_at selected-at
+                      :basis                {:name "Old"}}
+        c            (assoc (candidate 1 existing) :rewrite-requested? true)
+        {:keys [result]} (run-with! [c]
+                                    {#'t2/update! (fn [_model clause stamp]
+                                                    (reset! update [clause stamp])
+                                                    1)})
+        [where stamp] @update]
+    (is (= 1 (:generated result)))
+    (is (= :human (:data_source where))
+        "the CAS matches the ownership that was selected")
+    (is (= selected-at (:updated_at where)))
+    (is (= selected-at (:rewrite_requested_at where))
+        "the CAS matches the rewrite request that authorized the human overwrite")
+    (is (= :metabot (:data_source stamp))
+        "generated content becomes Metabot-owned")
+    (is (nil? (:rewrite_requested_at stamp))
+        "the fulfilled request is cleared")))
+
+(deftest cleared-human-rewrite-request-prevents-writeback-test
+  (let [selected-at (java.time.OffsetDateTime/parse "2026-01-02T03:04:05Z")
+        where       (atom nil)
+        existing    {:entity_type          "table"
+                     :entity_local_id      1
+                     :data_source          :human
+                     :updated_at           selected-at
+                     :generated_at         (.minusDays ^java.time.OffsetDateTime selected-at 1)
+                     :rewrite_requested_at selected-at
+                     :basis                {:name "Old"}}
+        c           (assoc (candidate 1 existing) :rewrite-requested? true)
+        {:keys [result]} (run-with! [c]
+                                    {#'t2/update! (fn [_model clause _stamp]
+                                                    (reset! where clause)
+                                                    ;; Simulate a newer approval clearing the request through a
+                                                    ;; direct path that retained the selected updated_at.
+                                                    0)})]
+    (is (= 1 (:skipped result)))
+    (is (= selected-at (:updated_at @where)))
+    (is (= selected-at (:rewrite_requested_at @where)))
+    (is (nil? (:reconcile result)))))
+
+(deftest human-row-without-pending-rewrite-is-not-overwritten-test
+  (let [existing {:entity_type     "table"
+                  :entity_local_id 1
+                  :data_source     :human
+                  :updated_at      (java.time.OffsetDateTime/parse "2026-01-02T03:04:05Z")
+                  :basis           {:name "Old"}}
+        {:keys [result]} (run-with! [(candidate 1 existing)]
+                                    {#'t2/update! (fn [& _]
+                                                    (throw (AssertionError. "human row overwritten")))})]
+    (is (= 1 (:skipped result)))
+    (is (nil? (:reconcile result)))))
 
 (deftest source-change-during-generation-skips-stale-write-test
   (let [{:keys [result]} (run-with! [(candidate 1)]

@@ -139,6 +139,19 @@
              {:provider "ollama" :model "mxbai-embed-large" :source "osi-generation"}]]
            @increments))))
 
+(deftest merge-embedding-request-sources-test
+  (testing "known sources win by priority regardless of arrival order"
+    (is (= "osi-generation" (embedding/merge-embedding-request-sources "reconcile" "osi-generation")))
+    (is (= "osi-generation" (embedding/merge-embedding-request-sources "osi-generation" "reconcile"))))
+  (testing "a listed source outranks an unlisted source"
+    (is (= "reconcile" (embedding/merge-embedding-request-sources "custom" "reconcile")))
+    (is (= "reconcile" (embedding/merge-embedding-request-sources "reconcile" "custom"))))
+  (testing "any source outranks nil"
+    (is (= "custom" (embedding/merge-embedding-request-sources nil "custom")))
+    (is (= "custom" (embedding/merge-embedding-request-sources "custom" nil))))
+  (testing "equal-priority unlisted sources retain the queued source"
+    (is (= "first" (embedding/merge-embedding-request-sources "first" "second")))))
+
 (deftest failed-ollama-embedding-still-counts-the-request-test
   (let [increments (atom [])
         model      {:provider "ollama" :model-name "mxbai-embed-large" :vector-dimensions 3}]

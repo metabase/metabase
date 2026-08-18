@@ -287,7 +287,77 @@
             (last @parts))
         "completion flushes the billed prompt usage before the stream exception escapes")))
 
-(deftest ^:parallel interrupted-tool-stream-never-executes-partial-tool-test
+(deftest ^:parallel clean-eof-during-tool-input-discards-partial-call-test
+  (let [events [{:type "message_start"
+                 :message {:id "msg-tool" :model "claude-haiku-4-5"
+                           :usage {:input_tokens 41 :output_tokens 0}}}
+                {:type "content_block_start"
+                 :index 0
+                 :content_block {:type "tool_use" :id "tool-1" :name "mutate"}}
+                {:type "content_block_delta"
+                 :index 0
+                 :delta {:type "input_json_delta" :partial_json "{\"x\":"}}]
+        parts  (into []
+                     (comp (claude/claude->aisdk-chunks-xf)
+                           (self.core/aisdk-xf))
+                     events)]
+    (is (not-any? #(= :tool-input (:type %)) parts))
+    (is (=? {:type :usage :usage {:promptTokens 41 :completionTokens 0}}
+            (last parts)))))
+
+(deftest ^:parallel unsuccessful-message-finish-discards-closed-tool-call-test
+  (doseq [stop-reason ["max_tokens" "refusal"]]
+    (testing (str stop-reason " cannot expose or execute a syntactically closed tool call")
+      (let [invoked? (atom false)
+            tools    {"mutate" {:fn     (fn [_] (reset! invoked? true))
+                                :doc    "Must run only after a successful tool-use finish"
+                                :schema [:=> [:cat :map] :any]}}
+            events   [{:type "message_start"
+                       :message {:id "msg-tool" :model "claude-haiku-4-5"
+                                 :usage {:input_tokens 41 :output_tokens 0}}}
+                      {:type "content_block_start" :index 0
+                       :content_block {:type "tool_use" :id "tool-1" :name "mutate"}}
+                      {:type "content_block_delta" :index 0
+                       :delta {:type "input_json_delta" :partial_json "{\"x\": true}"}}
+                      {:type "content_block_stop" :index 0}
+                      {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                      {:type "content_block_delta" :index 1
+                       :delta {:type "text_delta" :text "safe partial text"}}
+                      {:type "message_delta" :delta {:stop_reason stop-reason}
+                       :usage {:output_tokens 7}}
+                      {:type "message_stop"}]
+            parts    (into []
+                           (comp (claude/claude->aisdk-chunks-xf)
+                                 (self.core/tool-executor-xf tools)
+                                 (self.core/aisdk-xf))
+                           events)]
+        (is (false? @invoked?))
+        (is (not-any? #(= :tool-input (:type %)) parts))
+        (is (some #(= {:type :text :id "1" :text "safe partial text"} %) parts))
+        (is (=? {:type :usage :raw-finish-reason stop-reason}
+                (last parts)))))))
+
+(deftest ^:parallel provisional-tool-preserves-later-text-order-test
+  (let [events [{:type "message_start" :message {:id "msg-tool" :model "claude-haiku-4-5"}}
+                {:type "content_block_start" :index 0
+                 :content_block {:type "tool_use" :id "tool-1" :name "search"}}
+                {:type "content_block_delta" :index 0
+                 :delta {:type "input_json_delta" :partial_json "{}"}}
+                {:type "content_block_stop" :index 0}
+                {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                {:type "content_block_delta" :index 1
+                 :delta {:type "text_delta" :text "after"}}
+                {:type "content_block_stop" :index 1}
+                {:type "message_delta" :delta {:stop_reason "tool_use"}}
+                {:type "message_stop"}]
+        parts  (into []
+                     (comp (claude/claude->aisdk-chunks-xf)
+                           (self.core/aisdk-xf))
+                     events)]
+    (is (= [:start :tool-input :text]
+           (mapv :type parts)))))
+
+(deftest ^:parallel interrupted-tool-stream-never-exposes-or-executes-partial-tool-test
   (let [invoked? (atom false)
         parts    (atom [])
         tools    {"mutate" {:fn     (fn [_] (reset! invoked? true))
@@ -308,11 +378,15 @@
                      (throw (ex-info "stream interrupted" {}))))
         stream   (->> raw
                       (#'claude/completion-safe-eduction (claude/claude->aisdk-chunks-xf))
-                      (eduction (self.core/tool-executor-xf tools)))]
+                      (eduction (comp (self.core/tool-executor-xf tools)
+                                      ;; This is the same aggregation path used by call-llm. The
+                                      ;; interruption usage chunk must not flush its partial tool buffer.
+                                      (self.core/lite-aisdk-xf))))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted"
                           (reduce (fn [acc part] (swap! parts conj part) acc) nil stream)))
     (is (false? @invoked?) "an interrupted tool block is never submitted for execution")
-    (is (not-any? #(= :tool-input-available (:type %)) @parts))
+    (is (not-any? #(= :tool-input (:type %)) @parts)
+        "an interrupted tool block is not exposed as a downstream tool invocation")
     (is (=? {:type :usage :usage {:promptTokens 41 :completionTokens 0}}
             (last @parts))
         "usage still flushes through the non-completing interruption path")))

@@ -71,8 +71,30 @@
 
 (deftest weekly-trigger-is-explicitly-utc-test
   (let [scheduled (atom nil)]
-    (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [job trigger]
+    (mt/with-dynamic-fn-redefs [task/job-exists? (constantly false)
+                                task/existing-triggers (fn [& _]
+                                                         (throw (AssertionError. "fresh registration queried triggers")))
+                                task/schedule-task! (fn [job trigger]
                                                       (reset! scheduled [job trigger]))]
       (task/init! ::task.generate/OsiAiContextGeneration)
       (let [^CronTrigger trigger (second @scheduled)]
         (is (= "UTC" (.getID (.getTimeZone trigger))))))))
+
+(deftest startup-preserves-persisted-trigger-for-misfire-recovery-test
+  (testing "a restart refreshes the job without replacing the trigger whose missed firing Quartz must recover"
+    (let [existing [{:key "metabase-enterprise.osi-generation.generate.trigger"
+                     :next-fire-time (java.util.Date. 0)}]
+          added    (atom nil)]
+      (mt/with-dynamic-fn-redefs [task/job-exists? (fn [job-key]
+                                                     (is (= core/generation-job-key job-key))
+                                                     true)
+                                  task/existing-triggers (fn [job-key trigger-key]
+                                                           (is (= core/generation-job-key job-key))
+                                                           (is (= "metabase-enterprise.osi-generation.generate.trigger"
+                                                                  (.getName trigger-key)))
+                                                           existing)
+                                  task/add-job! (fn [job] (reset! added job))
+                                  task/schedule-task! (fn [& _]
+                                                        (throw (AssertionError. "persisted trigger replaced")))]
+        (task/init! ::task.generate/OsiAiContextGeneration)
+        (is (some? @added))))))
