@@ -8,16 +8,16 @@ jobs:
 
   # Check whether workflow can be started.
   supported:
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.label.name == 'evals/smoke'
-      && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.label.name == 'evals/smoke'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - run: |
+      - name: Reject fork PRs
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
           echo "::error::evals/smoke only runs on same-repo PRs; this PR's head is on a fork"
           exit 1
+      - run: echo "evals/smoke on ${{ github.repository }}#${{ github.event.pull_request.number }}"
 
   # Write a comment into the PR that was labeled.
   announce:
