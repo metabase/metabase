@@ -3,7 +3,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -182,6 +184,17 @@
                                          :current_time    ""
                                          :recent_views    ""}
                                         "Hi")))))
+
+(deftest slackbot-template-includes-custom-instructions-test
+  (testing (str "Metabot in Slack uses the slackbot.selmer template, which -- unlike internal.selmer -- was "
+                "missing the {{custom_instructions}} block, so the admin-configured 'Metabot chat' system "
+                "prompt was silently dropped for Slack conversations even though it was being computed and "
+                "passed in the template context the whole time (metabase#79593)")
+    (mt/with-premium-features #{:ai-controls}
+      (mt/with-temporary-setting-values [metabot.settings/metabot-chat-system-prompt "Always begin every reply with the word BANANA."]
+        (let [profile {:prompt-template "slackbot.selmer"}
+              content (prompts/build-system-message-content profile {} {} [])]
+          (is (str/includes? content "Always begin every reply with the word BANANA.")))))))
 
 (deftest ^:parallel build-system-message-content-test-8
   (testing "builds exploration system message"

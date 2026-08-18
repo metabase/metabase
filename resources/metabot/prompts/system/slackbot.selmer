@@ -403,3 +403,9 @@ Where:
 
 </csv_uploads>
 {% endif %}
+{% if custom_instructions %}
+
+# Custom Instructions
+
+{{ custom_instructions|safe }}
+{% endif %}
