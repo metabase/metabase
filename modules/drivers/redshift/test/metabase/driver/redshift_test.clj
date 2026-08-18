@@ -3,10 +3,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [diehard.core :as dh]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -137,35 +137,39 @@
 ;; table properties ('numRows'='172000');
 ;;
 (deftest ^:parallel test-external-table
-  (mt/test-driver :redshift
-    (testing "expects spectrum schema to exist"
-      (is (=? [{:table_id        (mt/id :extsales)
-                :name            "buyerid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :buyerid) nil]
-                :id              (mt/id :extsales :buyerid)
-                :visibility_type :normal
-                :display_name    "Buyerid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}
-               {:table_id        (mt/id :extsales)
-                :name            "salesid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :salesid) nil]
-                :id              (mt/id :extsales :salesid)
-                :visibility_type :normal
-                :display_name    "Salesid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}]
-              ;; in different Redshift instances, the fingerprint on these columns is different.
-              (map #(dissoc % :fingerprint)
-                   (get-in (qp/process-query (mt/mbql-query extsales
-                                               {:limit    1
-                                                :fields   [$buyerid $salesid]
-                                                :order-by [[:asc $buyerid]
-                                                           [:asc $salesid]]
-                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                           [:data :cols])))))))
+  ;; The extsales table is an AWS Redshift Spectrum external table that only exists in the real
+  ;; Redshift database - it's not part of our test data definitions. Skip this test when using
+  ;; fake sync since the table won't be synced.
+  (when (tx/on-master-or-release-branch?)
+    (mt/test-driver :redshift
+      (testing "expects spectrum schema to exist"
+        (is (=? [{:table_id        (mt/id :extsales)
+                  :name            "buyerid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                  :id              (mt/id :extsales :buyerid)
+                  :visibility_type :normal
+                  :display_name    "Buyerid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}
+                 {:table_id        (mt/id :extsales)
+                  :name            "salesid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :salesid) nil]
+                  :id              (mt/id :extsales :salesid)
+                  :visibility_type :normal
+                  :display_name    "Salesid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}]
+                ;; in different Redshift instances, the fingerprint on these columns is different.
+                (map #(dissoc % :fingerprint)
+                     (get-in (qp/process-query (mt/mbql-query extsales
+                                                 {:limit    1
+                                                  :fields   [$buyerid $salesid]
+                                                  :order-by [[:asc $buyerid]
+                                                             [:asc $salesid]]
+                                                  :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                             [:data :cols]))))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -345,17 +349,20 @@
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (u/auto-retry 3
-              (let [table-names (into #{} (map :name) (:tables (sql-jdbc.describe-database/describe-database :redshift database)))]
-                (when-not (contains? table-names mview-nm)
-                  (Thread/sleep 1000)
-                  (throw (ex-info "Materialized view not yet visible in describe-database results"
-                                  {:expected mview-nm :actual table-names})))
-                (is (contains? table-names mview-nm))))))))))
+            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+              (dh/with-retry {:delay-ms    1000
+                              :max-retries 3}
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                  (when-not (contains? table-names mview-nm)
+                    (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                    {:expected mview-nm :actual table-names})))
+                  (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
+  ;; `:effective-type` is what fake sync uses for `base_type` when `:base-type` is a native type; without it the Field
+  ;; row gets `:type/*` and the UNIX coercion below silently compiles to no cast at all.
   [["timestamps"
-    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [{:field-name "timestamp", :base-type {:native "numeric"}, :effective-type :type/Decimal}]
     [[1642704550656]]]])
 
 (deftest unix-timestamp-test
