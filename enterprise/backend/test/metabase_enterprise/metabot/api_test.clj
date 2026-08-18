@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot.api :as ee.metabot.api]
    [metabase-enterprise.metabot.settings :as ee.metabot.settings]
    [metabase-enterprise.metabot.usage :as ee.metabot.usage]
    [metabase.config.core :as config]
@@ -60,9 +61,10 @@
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}
-    (with-redefs [premium-features/token-status (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value      12345
-                                                                                                           :meter-free-units 1337
-                                                                                                           :meter-updated-at "2026-04-02T19:29:12Z"}}})]
+    (with-redefs [premium-features/token-status (constantly {:meters {(keyword (#'ee.metabot.api/default-metabase-meter-key))
+                                                                      {:meter-value      12345
+                                                                       :meter-free-units 1337
+                                                                       :meter-updated-at "2026-04-02T19:29:12Z"}}})]
       (is (= {:tokens       12345
               :free_tokens  1337
               :updated_at   "2026-04-02T19:29:12Z"

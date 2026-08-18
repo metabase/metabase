@@ -6,12 +6,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as metabot.example-question-generator]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -276,31 +275,27 @@
 (deftest metabot-prompt-regenerate-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/dataset test-data
     (let [model-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}]
-      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                         "metabase/anthropic/claude-sonnet-4-6"]
-        (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
-                       :model/Card {card-id :id} {:name "Test Model Card"
-                                                  :type :model
-                                                  :dataset_query model-query}
-                       :model/MetabotPrompt {prompt-id :id} {:metabot_id metabot-id
-                                                             :prompt "existing prompt"
-                                                             :model :model
-                                                             :card_id card-id}]
-          (mt/with-dynamic-fn-redefs [premium-features/token-status
-                                      (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                                                 :is-locked   true}}})
-                                      metabot.suggested-prompts/delete-all-metabot-prompts
-                                      (fn [& _]
-                                        (throw (ex-info "should not delete prompts" {})))
-                                      metabot.suggested-prompts/generate-sample-prompts
-                                      (fn [& _]
-                                        (throw (ex-info "should not generate prompts" {})))]
-            (let [response (mt/user-http-request :crowberto :post 402
-                                                 (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))]
-              (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
-                     (:message response))))
-            (is (= #{prompt-id}
-                   (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)))))))))
+      (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
+                     :model/Card {card-id :id} {:name "Test Model Card"
+                                                :type :model
+                                                :dataset_query model-query}
+                     :model/MetabotPrompt {prompt-id :id} {:metabot_id metabot-id
+                                                           :prompt "existing prompt"
+                                                           :model :model
+                                                           :card_id card-id}]
+        (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)
+                                    metabot.suggested-prompts/delete-all-metabot-prompts
+                                    (fn [& _]
+                                      (throw (ex-info "should not delete prompts" {})))
+                                    metabot.suggested-prompts/generate-sample-prompts
+                                    (fn [& _]
+                                      (throw (ex-info "should not generate prompts" {})))]
+          (let [response (mt/user-http-request :crowberto :post 402
+                                               (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id))]
+            (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+                   (:message response))))
+          (is (= #{prompt-id}
+                 (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id))))))))
 
 (deftest metabot-prompt-regenerate-empty-states-test
   (testing "POST /prompt-suggestions/regenerate returns a structured outcome so the UI can"

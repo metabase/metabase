@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.settings :as metabot.settings]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.test :as mt]))
 
 (deftest analyze-chart-test
@@ -20,19 +19,15 @@
                response))))))
 
 (deftest analyze-chart-returns-free-trial-limit-error-when-managed-provider-is-locked-test
-  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                     "metabase/anthropic/claude-sonnet-4-6"]
-    (mt/with-dynamic-fn-redefs [premium-features/token-status
-                                (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                                           :is-locked   true}}})
-                                metabot/analyze-chart
-                                (fn [& _]
-                                  (throw (ex-info "should not call analyze-chart" {})))]
-      (let [response (mt/user-http-request :rasta :post 402 "ai-entity-analysis/analyze-chart"
-                                           {:image_base64 "base64encodedimage"
-                                            :name         "Sales Trend"
-                                            :description  "Quarterly sales data"})]
-        (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
-               (if (map? response)
-                 (:message response)
-                 response)))))))
+  (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)
+                              metabot/analyze-chart
+                              (fn [& _]
+                                (throw (ex-info "should not call analyze-chart" {})))]
+    (let [response (mt/user-http-request :rasta :post 402 "ai-entity-analysis/analyze-chart"
+                                         {:image_base64 "base64encodedimage"
+                                          :name         "Sales Trend"
+                                          :description  "Quarterly sales data"})]
+      (is (= "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+             (if (map? response)
+               (:message response)
+               response))))))
