@@ -8,13 +8,13 @@
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
   library membership and serves the `retrieve_library_entities` Metabot tool's similarity search.
-  Writes here have no index side effects: a writer that wants the index refreshed promptly calls
-  `mirror/request-entity-sync!` itself (the CRUD API does), and the periodic full reconcile is the
-  guarantee for everyone else — a forgotten nudge costs freshness until the next reconcile, never
-  correctness."
+  Every write nudges that index (see the hooks below), so no writer has to remember to; the periodic full
+  reconcile is the backstop, and a missed nudge costs freshness until it runs, never correctness."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -106,6 +106,13 @@
    :generated_at :invalidated_at :basis_invalidated_at :rewrite_requested_at :generator_version
    :created_at :updated_at])
 
+(defn- nudge-index!
+  "Ask the enterprise index to reconcile this entity's slice once the surrounding transaction commits.
+  Outside a transaction the thunk runs immediately. Fire-and-forget: no-op without the feature, never
+  throws, and does no embedding or pgvector work on this thread."
+  [entity-type entity-local-id]
+  (app-db/do-after-commit #(mirror/request-entity-sync! entity-type entity-local-id)))
+
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
   ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
@@ -129,12 +136,34 @@
 
 (t2/define-before-update :model/OsiAiContext
   [row]
-  (-> (t2/changes row) validate-data-source! validate-ai-context!)
+  (let [changes (-> (t2/changes row) validate-data-source! validate-ai-context!)]
+    ;; `ai_context` is the only column an index doc is derived from, so a write that touches just the
+    ;; generation metadata (a regenerate request, a basis stamp) has nothing to reconcile.
+    (when (contains? changes :ai_context)
+      (nudge-index! (:entity_type row) (:entity_local_id row))))
   row)
 
-;;; No write hooks, deliberately: the nudge is an ordinary call the writer makes, so a batch writer
-;;; (the generation job) writes N rows with no per-row reconcile cascade and runs one coalesced
-;;; reconcile itself. Reconciliation is the guarantee, nudges are latency.
+;;; Every write nudges the targeted index reconcile, rather than leaving each writer to remember. Serdes
+;;; import is the case that proves the point: it writes through Toucan like anything else and has nowhere
+;;; obvious to call a nudge from, so without a hook an imported synonym stayed unsearchable until the next
+;;; full reconcile.
+;;;
+;;; A burst is already cheap. `request-entity-sync!` only adds to a dirty set, and the enterprise scheduler
+;;; keeps at most one pending run, so N writes drain in one run rather than starting N of them.
+;;;
+;;; Updates nudge only when `ai_context` changed (see the before-update hook) — it is the one column an
+;;; index doc is derived from.
+(t2/define-after-insert :model/OsiAiContext
+  [row]
+  (nudge-index! (:entity_type row) (:entity_local_id row))
+  row)
+
+;; before-delete, since Toucan has no after-delete; the nudge defers to commit either way, so it never
+;; fires for a delete that rolls back.
+(t2/define-before-delete :model/OsiAiContext
+  [row]
+  (nudge-index! (:entity_type row) (:entity_local_id row))
+  row)
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;

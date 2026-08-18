@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.request.core :as request]
    [metabase.util.malli.registry :as mr]
@@ -148,10 +147,6 @@
                                  :entity_local_id entity-local-id}
                                 (constantly {:ai_context  ai-context
                                              :data_source :human}))
-      ;; The model has no write hooks: each writer that wants the index refreshed promptly nudges it
-      ;; itself. Deferred until after the surrounding transaction commits so the reconcile future reads
-      ;; committed state; outside a transaction the thunk runs immediately.
-      (app-db/do-after-commit #(mirror/request-entity-sync! stored-type entity-local-id))
       (get-entry entity-type entity-local-id))))
 
 (api.macros/defendpoint :post "/:entity-type/:entity-local-id/regenerate"
@@ -226,8 +221,7 @@
    _query-params]
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
-  (let [stored-type (entity-retrieval/normalize-entity-type entity-type)]
-    (t2/delete! :model/OsiAiContext :entity_type stored-type :entity_local_id entity-local-id)
-    ;; see the PUT: writers nudge themselves now the model has no hooks
-    (app-db/do-after-commit #(mirror/request-entity-sync! stored-type entity-local-id))
-    api/generic-204-no-content))
+  (t2/delete! :model/OsiAiContext
+              :entity_type (entity-retrieval/normalize-entity-type entity-type)
+              :entity_local_id entity-local-id)
+  api/generic-204-no-content)
