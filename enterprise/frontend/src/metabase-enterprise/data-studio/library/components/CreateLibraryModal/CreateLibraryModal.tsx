@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CreateLibraryModalProps } from "metabase/plugins";
 import {
   Box,
