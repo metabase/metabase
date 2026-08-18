@@ -31,6 +31,7 @@ import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
+import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
@@ -43,7 +44,6 @@ import {
   RouterProvider,
   createLocationMirror,
 } from "metabase/router";
-import { getUserId } from "metabase/selectors/user";
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";

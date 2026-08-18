@@ -11,14 +11,14 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { dayjs } from "metabase/dayjs";
-import { useStore } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
   getUserIsAdmin,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,

@@ -20,7 +20,7 @@ import {
   type RegisterShortcutProps,
   useRegisterShortcut,
 } from "metabase/palette/hooks/useRegisterShortcut";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
@@ -38,6 +38,7 @@ function hasBlockingOverlay() {
 type CollectionBulkActionsProps = {
   selected: CollectionItem[];
   collection: Collection;
+  bookmarks?: Bookmark[];
   selectedItems: CollectionItem[] | null;
   setSelectedItems: (items: CollectionItem[] | null) => void;
   selectedAction: string | null;
@@ -49,6 +50,7 @@ export const CollectionBulkActions = memo(
   ({
     selected,
     collection,
+    bookmarks,
     selectedItems,
     setSelectedItems,
     selectedAction,
@@ -210,6 +212,10 @@ export const CollectionBulkActions = memo(
             />
           ) : (
             <UnarchivedBulkActions
+              selected={selected}
+              collection={collection}
+              bookmarks={bookmarks ?? []}
+              clearSelected={clearSelected}
               onRequestMove={canMove ? handleBulkMoveStart : undefined}
               onRequestTrash={canArchive ? openTrashConfirm : undefined}
             />

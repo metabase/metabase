@@ -7,6 +7,7 @@ import { useState } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
@@ -33,6 +34,10 @@ import {
 } from "./pivot-table-test-mocks";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["pivot"]));
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

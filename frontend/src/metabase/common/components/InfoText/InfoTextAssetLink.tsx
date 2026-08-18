@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
-import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { Box, Icon, Text } from "metabase/ui";
 import {
   browseDatabase,
@@ -9,8 +9,11 @@ import {
   tableRowsQuery,
   table as tableUrl,
 } from "metabase/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
-import { type SearchResult, isConcreteTableId } from "metabase-types/api";
+import {
+  type Database,
+  type SearchResult,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
@@ -44,9 +47,9 @@ export const InfoTextTableLink = ({
     data: table,
     isLoading,
     error,
-  } = useTableQuery({
-    id: result.table_id,
-  });
+  } = useGetTableQuery(
+    result.table_id != null ? { id: result.table_id } : skipToken,
+  );
 
   if (error) {
     return null;
@@ -101,9 +104,9 @@ export const InfoTextTablePath = ({
     data: database,
     isLoading: isDatabaseLoading,
     error: databaseError,
-  } = useDatabaseQuery({
-    id: result.database_id,
-  });
+  } = useGetDatabaseQuery(
+    result.database_id != null ? { id: result.database_id } : skipToken,
+  );
 
   if (databaseError) {
     return null;

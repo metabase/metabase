@@ -2,9 +2,9 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { getUser } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { connect } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { NamedUser } from "metabase/utils/user";

@@ -40,12 +40,11 @@
               ["Brite Spot Family Restaurant"]]
              (mt/rows
               (qp/process-query
-               (qp/userland-query-with-default-constraints
-                {:database    (mt/id)
-                 :type        :native
-                 :native      (native-query)
-                 :constraints {:max-results 5}}
-                {:context :question}))))))))
+               (-> {:database (mt/id)
+                    :type     :native
+                    :native   (native-query)}
+                   (qp/userland-query-with-default-constraints {:context :question})
+                   (assoc :constraints {:max-results 5})))))))))
 
 (deftest ^:parallel override-limit-test
   (mt/test-drivers (mt/normal-drivers)

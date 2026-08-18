@@ -5,7 +5,6 @@ import {
   setupCollectionByIdEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionItem } from "metabase-types/api";
@@ -45,11 +44,7 @@ function setup(collection: Collection | CollectionItem) {
       onSave={onSave}
     />,
     {
-      storeInitialState: createMockState({
-        entities: createMockEntitiesState({
-          collections: [parentCollection, itemParentCollection],
-        }),
-      }),
+      storeInitialState: createMockState({}),
     },
   );
 

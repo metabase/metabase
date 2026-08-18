@@ -10,13 +10,13 @@ import {
 import { t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import {
   getDefaultExplorationName,
   isInterestingDimension,
 } from "metabase/explorations/constants";
 import type { ExplorationCollection } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationDimensionGroup,

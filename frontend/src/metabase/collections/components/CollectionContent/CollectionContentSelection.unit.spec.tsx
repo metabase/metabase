@@ -336,6 +336,49 @@ describe("CollectionContent selection", () => {
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
   });
 
+  it("should adapt the bulk action bar to the selection composition", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Unpin all" }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+    expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "More actions" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(
+      await screen.findByRole("button", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Move" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Pin all" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should open a row menu without selecting on shift+click", async () => {
     await setup();
     const row = screen.getByRole("row", {

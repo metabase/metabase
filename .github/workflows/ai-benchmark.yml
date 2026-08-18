@@ -38,7 +38,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
       && github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - run: |
@@ -50,7 +50,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
       && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       comment_id: ${{ steps.post.outputs.comment_id }}
@@ -89,7 +89,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
       && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
@@ -116,7 +116,7 @@ jobs:
     # failure verdict instead of a comment stuck at "building the image…".
     needs: [announce, uberjar, smoke]
     if: always() && needs.announce.result == 'success' && needs.smoke.result != 'success'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
@@ -151,7 +151,7 @@ jobs:
 
   dispatch:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Dispatch eval-run

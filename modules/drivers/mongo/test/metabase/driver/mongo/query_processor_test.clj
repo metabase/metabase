@@ -10,6 +10,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.compile :as qp.compile]
@@ -18,27 +20,34 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(defn- query->collection-name
+  [query]
+  (#'mongo.qp/query->collection-name
+   (lib/query meta/metadata-provider (merge {:database (meta/id), :type :query} query))))
 
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
     (testing "should be able to extract :collection from :source-query"
       (is (= "checkins"
-             (#'mongo.qp/query->collection-name {:query {:source-query
-                                                         {:collection "checkins"
-                                                          :native     []}}}))))
+             (query->collection-name {:query {:source-query
+                                              {:collection "checkins"
+                                               :native     []}}}))))
     (testing "should work for nested-nested queries"
       (is (= "checkins"
-             (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
-                                                                        {:collection "checkins"
-                                                                         :native     []}}}}))))
+             (query->collection-name {:query {:source-query {:source-query
+                                                             {:collection "checkins"
+                                                              :native     []}}}}))))
     (testing "should ignore :joins"
       (is (= nil
-             (#'mongo.qp/query->collection-name {:query {:source-query
-                                                         {:native []}
-                                                         :joins [{:source-query "wow"}]}}))))))
+             (query->collection-name {:query {:source-query
+                                              {:native []}
+                                              :joins [{:source-query {:source-table 1, :collection "wow"}
+                                                       :condition    [:= 1 2]}]}}))))))
 
 (deftest ^:parallel order-postprocessing-test
   (is (= [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
@@ -51,42 +60,54 @@
            [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
             {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
 
-(deftest ^:parallel relative-datetime-test
+(deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
       (mt/with-clock #t "2021-02-17T10:36:00-08:00[US/Pacific]"
-        (mt/dataset attempted-murders
-          (is (= {:projections ["count"]
-                  :query       [{"$match"
-                                 {"$and"
-                                  [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                   {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                {"$sort" {"_id" 1}}
-                                {"$project" {"_id" false, "count" true}}]
-                  :collection  "attempts"
-                  :mbql?       true}
-                 (qp.compile/compile
-                  (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $datetime :last :month]})))))))))
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
+          (mt/dataset attempted-murders
+            (is (= {:projections ["count"]
+                    :query       [{"$match"
+                                   {"$and"
+                                    [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                     {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                  {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                  {"$sort" {"_id" 1}}
+                                  {"$project" {"_id" false, "count" true}}]
+                    :collection  "attempts"
+                    :mbql?       true}
+                   (qp.compile/compile
+                    (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
+
+(mu/defn- compile-filter [filter-clause :- ::lib.schema.mbql-clause/clause]
+  (mongo.qp/compile-filter
+   (lib/native-query meta/metadata-provider "[]")
+   -1
+   filter-clause))
 
 (deftest ^:parallel absolute-datetime-test
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
-      (testing "Make sure absolute-datetime are compiled correctly"
-        (doseq [[expected date]
+      (testing "Make sure :absolute-datetime and :time clauses are compiled correctly"
+        (doseq [[expected t]
                 [["2014-01-01"        (t/local-date "2014-01-01")]
                  ["10:00"             (t/local-time "10:00:00")]
                  ["2014-01-01T10:00"  (t/local-date-time "2014-01-01T10:00")]
                  ["03:00Z"            (t/offset-time "10:00:00+07:00")]
                  ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
                  ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
-          (testing (format "with %s" (type date))
+          (testing (format "with %s" (type t))
             (is (= {"$expr" {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
-                   (mongo.qp/compile-filter [:<
-                                             [:field "date-field"]
-                                             [:absolute-datetime date]])))))))))
+                   (compile-filter (lib/<
+                                    (lib/ref {:lib/type  :metadata/column
+                                              :base-type :type/Date
+                                              :name      "date-field"})
+                                    (let [f (if ((some-fn t/local-time? t/offset-time?) t)
+                                              lib/time
+                                              lib/absolute-datetime)]
+                                      (f t :default))))))))))))
 
 (defn- date-arithmetic-supported? []
   (driver/database-supports? :mongo :date-arithmetics (mt/db)))
@@ -197,27 +218,27 @@
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
         (testing "Querying in UTC works"
-          (mt/with-system-timezone-id! "UTC"
+          (mt/with-temporary-setting-values [report-timezone "UTC"]
             (is (= [["2019-11-20T20:00:00Z" 1]
                     ["2019-11-19T00:00:00Z" 1]
                     ["2019-11-18T20:00:00Z" 1]
                     ["2019-11-17T14:00:00Z" 1]]
                    (mt/rows (mt/run-mbql-query attempts
                               {:aggregation [[:count]]
-                               :breakout [[:field %datetime {:temporal-unit :hour}]]
-                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                               :limit 4}))))))
+                               :breakout    [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit       4}))))))
         (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id! "Asia/Kathmandu"
+          (mt/with-temporary-setting-values [report-timezone "Asia/Kathmandu"]
             (is (= [["2019-11-21T01:00:00+05:45" 1]
                     ["2019-11-19T06:00:00+05:45" 1]
                     ["2019-11-19T02:00:00+05:45" 1]
                     ["2019-11-17T19:00:00+05:45" 1]]
                    (mt/rows (mt/run-mbql-query attempts
                               {:aggregation [[:count]]
-                               :breakout [[:field %datetime {:temporal-unit :hour}]]
-                               :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
-                               :limit 4}))))))))))
+                               :breakout    [[:field %datetime {:temporal-unit :hour}]]
+                               :order-by    [[:desc [:field %datetime {:temporal-unit :hour}]]]
+                               :limit       4}))))))))))
 
 (deftest ^:parallel nested-columns-test
   (mt/test-driver :mongo
@@ -248,10 +269,12 @@
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
           (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
-            (let [query (mt/mbql-query tips
-                          {:joins [{:alias "Tips"
-                                    :source-table $$tips
-                                    :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
+            (let [query (lib/query
+                         (mt/metadata-provider)
+                         (mt/mbql-query tips
+                           {:joins [{:alias        "Tips"
+                                     :source-table $$tips
+                                     :condition    [:= $tips.source.categories &Tips.$tips.source.categories]}]}))
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
               (is (and (not (str/includes? let-lhs "."))
@@ -451,16 +474,19 @@
                                           :unit :week
                                           :amount -1}}
                         86400000]}]}}
-                   (mongo.qp/compile-filter [:<
-                                             [:+
-                                              [:interval 1 :year]
-                                              [:field "date-field"]
-                                              3600000
-                                              [:interval -1 :month]]
-                                             [:-
-                                              [:absolute-datetime (t/local-date "2008-05-31")]
-                                              [:interval -1 :week]
-                                              86400000]])))))))))
+                   (mu/disable-enforcement
+                     (compile-filter (lib/<
+                                      (lib/+
+                                       (lib/interval 1 :year)
+                                       (lib/ref {:lib/type  :metadata/column
+                                                 :base-type :type/Date
+                                                 :name      "date-field"})
+                                       3600000 ; technically this is not valid MBQL
+                                       (lib/interval -1 :month))
+                                      (lib/-
+                                       (lib/absolute-datetime (t/local-date "2008-05-31") :default)
+                                       (lib/interval -1 :week)
+                                       86400000))))))))))))
 
 (deftest ^:synchronized temporal-arithmetic-mongo-4-test
   (mt/test-driver :mongo
@@ -470,11 +496,13 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Date arithmetic not supported in versions before 5"
-               (mongo.qp/compile-filter [:<
-                                         [:+
-                                          [:interval 1 :year]
-                                          [:field "date-field"]]
-                                         [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
+               (compile-filter (lib/<
+                                (lib/+
+                                 (lib/interval 1 :year)
+                                 (lib/ref {:lib/type  :metadata/column
+                                           :base-type :type/Date
+                                           :name      "date-field"}))
+                                (lib/absolute-datetime (t/local-date "2008-05-31") :default))))))))))
 
 (deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
@@ -588,13 +616,18 @@
                                              :condition [:= &People.people.id $orders.user_id]
                                              :fields :all}]}})
             compiled (qp.compile/compile query)
-            indices (reduce (fn [acc lookup-stage]
+            indices (reduce (fn [seen lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                     ;; Following expression ensures index is an integer.
-                                    index (parse-long (re-find #"\d+$" let-var-name))]
+                                    index (some->> let-var-name (re-find #"\d+$") parse-long)]
+                                (testing (format "lookup stage =\n%s\n" (pr-str lookup-stage))
+                                  (is (some? index)
+                                      "Should have an index in the :let expression in $lookup stage"))
                                 ;; Following expression tests that index is unique.
-                                (is (not (contains? acc index)))
-                                (conj acc index)))
+                                (is (not (contains? seen index))
+                                    "Index number should not have been seen yet")
+                                (cond-> seen
+                                  (some? index) (conj index))))
                             #{}
                             (filter #(contains? % "$lookup") (:query compiled)))]
         (is (= #{1 2 3 4} indices))))))

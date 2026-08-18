@@ -84,9 +84,9 @@ describe("SavedEntityPicker", () => {
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
 
-    expect(
-      screen.getAllByTestId("tree-item-name").map((node) => node.textContent),
-    ).toEqual([
+    const treeItems = await screen.findAllByTestId("tree-item-name");
+
+    expect(treeItems.map((node) => node.textContent)).toEqual([
       "Our analytics",
       "Your personal collection",
       "Regular collection",

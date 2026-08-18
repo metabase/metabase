@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { getHasDatabaseWithJsonEngine } from "metabase/databases/utils/predicates";
-import { useSelector } from "metabase/redux";
-import type { NewQuestionOption } from "metabase/rich_text_editing/tiptap/extensions/Command/types";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { getHasDatabaseWithJsonEngine } from "metabase/databases/utils/predicates";
+import { useSelector } from "metabase/redux";
+import type { NewQuestionOption } from "metabase/rich_text_editing/tiptap/extensions/Command/types";
 
 export const useNewQuestionOptions = (): NewQuestionOption[] => {
   const { data } = useListDatabasesQuery();

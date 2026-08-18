@@ -22,6 +22,8 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
+  getItemBookmarkType,
+  isItemBookmarked,
   isItemPinned,
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -36,8 +38,12 @@ import {
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  Database,
+} from "metabase-types/api";
 
 import S from "./ActionMenu.module.css";
 
@@ -57,23 +63,6 @@ export interface ActionMenuProps {
 
 interface ActionMenuStateProps {
   isXrayEnabled: boolean;
-}
-
-function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
-  const normalizedItemModel = normalizeItemModel(item);
-
-  return bookmarks.some(
-    (bookmark) =>
-      bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
-  );
-}
-
-// If item.model is `dataset`, that is, this is a Model in a product sense,
-// let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
-function normalizeItemModel(item: CollectionItem) {
-  return item.model === "dataset" || item.model === "metric"
-    ? "card"
-    : item.model;
 }
 
 function mapStateToProps(state: State): ActionMenuStateProps {
@@ -100,7 +89,7 @@ function ActionMenuInner({
   const deleteItem = useDeleteItem();
   const setPinned = useSetPinned();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
-  const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const isBookmarked = bookmarks && isItemBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
   const canPin = canPinItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -141,8 +130,7 @@ function ActionMenuInner({
       if (!isBookmarked) {
         trackCollectionItemBookmarked(item);
       }
-      const normalizedModel = normalizeItemModel(item);
-      toggleBookmark?.({ id: item.id, type: normalizedModel });
+      toggleBookmark?.({ id: item.id, type: getItemBookmarkType(item) });
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);

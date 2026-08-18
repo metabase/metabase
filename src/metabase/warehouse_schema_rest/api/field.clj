@@ -80,6 +80,13 @@
     (api/checkp (= (:source_db_id result) (:target_db_id result))
                 param-name "Target field must belong to the same database")))
 
+(defn- check-can-point-at-field!
+  [source-field-id target-field-id current-target-field-id param-name]
+  (when target-field-id
+    (check-field-in-same-database! source-field-id target-field-id param-name)
+    (when (not= target-field-id current-target-field-id)
+      (api/write-check :model/Field target-field-id))))
+
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
     (when (and dimension-id (= :external dimension-type))
@@ -178,8 +185,7 @@
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database
-    (when fk-target-field-id
-      (check-field-in-same-database! id fk-target-field-id :fk_target_field_id))
+    (check-can-point-at-field! id fk-target-field-id (:fk_target_field_id field) :fk_target_field_id)
     (when (and display-name
                (not removed-fk?)
                (not= (:display_name field) display-name))
@@ -249,18 +255,20 @@
                  (and (= dimension-type "external")
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (when human-readable-field-id
-    (check-field-in-same-database! id human-readable-field-id :human_readable_field_id))
-  (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
-    (t2/update! :model/Dimension (u/the-id dimension)
-                {:type                    dimension-type
-                 :name                    dimension-name
-                 :human_readable_field_id human-readable-field-id})
-    (t2/insert! :model/Dimension
-                {:field_id                id
-                 :type                    dimension-type
-                 :name                    dimension-name
-                 :human_readable_field_id human-readable-field-id}))
+  (let [existing-dimension (t2/select-one :model/Dimension :field_id id)]
+    (check-can-point-at-field! id human-readable-field-id
+                               (:human_readable_field_id existing-dimension)
+                               :human_readable_field_id)
+    (if-let [dimension existing-dimension]
+      (t2/update! :model/Dimension (u/the-id dimension)
+                  {:type                    dimension-type
+                   :name                    dimension-name
+                   :human_readable_field_id human-readable-field-id})
+      (t2/insert! :model/Dimension
+                  {:field_id                id
+                   :type                    dimension-type
+                   :name                    dimension-name
+                   :human_readable_field_id human-readable-field-id})))
   (t2/select-one :model/Dimension :field_id id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

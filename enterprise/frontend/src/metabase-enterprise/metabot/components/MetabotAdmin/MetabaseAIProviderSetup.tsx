@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 
 import { useRefreshTokenStatusMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   useAIProviderConfigurationContext,
   useUpdateMetabotSettingsMutation,
@@ -11,7 +12,6 @@ import {
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   Anchor,
