@@ -123,7 +123,6 @@ export const useMetabot = (): UseMetabotResult => {
     isProcessing: agent.isDoingScience,
     contextWindowPercentUsage: agent.contextWindowPercentUsage,
     isContextWindowFull: agent.isContextWindowFull,
-    canSubmitPrompt: agent.canSubmitPrompt,
 
     CurrentChart,
   };

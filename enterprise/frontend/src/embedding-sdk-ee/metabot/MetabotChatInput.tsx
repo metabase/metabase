@@ -51,7 +51,7 @@ export function MetabotChatInput() {
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
-        readOnly={!metabot.canSubmitPrompt}
+        readOnly={metabot.isDoingScience}
         placeholder={placeholder}
         onChange={(e) => metabot.setPrompt(e.target.value)}
         classNames={{ input: S.chatInput }}
@@ -67,9 +67,7 @@ export function MetabotChatInput() {
           if (e.key === "Enter" && !isModifiedKeyPress) {
             e.preventDefault();
             e.stopPropagation();
-            if (metabot.canSubmitPrompt) {
-              metabot.submitInput(metabot.prompt, { focusInput: true });
-            }
+            metabot.submitInput(metabot.prompt, { focusInput: true });
           }
         }}
       />

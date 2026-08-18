@@ -160,13 +160,13 @@ const DevopsDemo = () => {
   }, []);
 
   const handleSubmit = () => {
-    if (inputValue.trim() && metabot.canSubmitPrompt) {
+    if (inputValue.trim() && !metabot.isProcessing) {
       metabot.submitMessage(inputValue.trim());
       setInputValue("");
     }
   };
 
-  const canSend = inputValue.trim().length > 0 && metabot.canSubmitPrompt;
+  const canSend = inputValue.trim().length > 0 && !metabot.isProcessing;
 
   return (
     <div
@@ -309,7 +309,7 @@ const DevopsDemo = () => {
                     <div
                       key={prompt}
                       onClick={() => {
-                        if (metabot.canSubmitPrompt) {
+                        if (!metabot.isProcessing) {
                           metabot.submitMessage(prompt);
                         }
                       }}
