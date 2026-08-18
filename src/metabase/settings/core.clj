@@ -115,6 +115,7 @@
   set-value-of-type!
   setting-env-map-name
   string->boolean
+  unreadable-user-settings-key
   user-facing-value
   user-readable-values-map
   uuid-nonce-base
