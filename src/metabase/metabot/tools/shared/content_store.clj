@@ -18,8 +18,10 @@
   refusal."
   (:require
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,3 +74,48 @@
   "[[default-store]] with `-by-id` refusals audited too. For a query the client supplied rather
   than one loaded from the app DB, where the numeric ids in it are the caller's own."
   (read-checked resolve.mp/unchecked-app-db-content-store true))
+
+;;; The stores gate the content *inside* an export. Exporting also resolves table and field ids to
+;;; names through an unfiltered provider, so the query's database needs its own gate first. Same
+;;; quiet/audited split as the stores, for the same reason.
+
+(defn- resolve-effective-database
+  "`query` with `:database` resolved to the id the export really uses: the virtual id `-1337`
+  resolves through the source card, so gating on the raw value would check an id the export
+  never touches. Nil when it can't be resolved."
+  [query]
+  (when (map? query)
+    (try
+      (lib-be/resolve-database query)
+      (catch Exception _ nil))))
+
+(defn query-database-readable?
+  "Whether the current user can read the database `query` is exported against. Unaudited; for
+  queries out of our own state. Audited counterpart: [[query-if-database-readable]], same
+  contract: a database that no longer exists passes (there is no metadata behind it to leak),
+  one we can't resolve does not."
+  [query]
+  (if-not (and (map? query) (:database query))
+    true
+    (if-let [database-id (:database (resolve-effective-database query))]
+      (boolean (or (not (t2/exists? :model/Database :id database-id))
+                   (mi/can-read? :model/Database database-id)))
+      false)))
+
+(defn query-if-database-readable
+  "`query` with its database resolved, when the current user can read that database, else nil.
+  Audited; for client-supplied queries, where the id is the caller's own. Quiet counterpart:
+  [[query-database-readable?]]. A database that no longer exists passes, since there is no
+  metadata behind it to leak; one we can't resolve does not."
+  [query]
+  (if-not (and (map? query) (:database query))
+    query
+    (when-let [resolved (resolve-effective-database query)]
+      (try
+        (api/read-check :model/Database (:database resolved))
+        resolved
+        (catch clojure.lang.ExceptionInfo e
+          (condp = (:status-code (ex-data e))
+            403 nil
+            404 resolved
+            (throw e)))))))

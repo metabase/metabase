@@ -42,6 +42,14 @@
   []
   (get-in (current-memory) [:state :charts] {}))
 
+(defn current-client-ids
+  "Ids of the queries and charts seeded into state from the client's viewing context, as
+  opposed to written by the agent's own tools. A refusal to present one of these is a real
+  access attempt and gets the audited treatment; see
+  `metabase.metabot.tools.shared.content-store`."
+  []
+  (get-in (current-memory) [:state :client-ids] #{}))
+
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.
   Chart configs contain pre-materialized series data from the frontend viewing context."

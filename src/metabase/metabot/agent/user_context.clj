@@ -5,7 +5,6 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -234,24 +233,10 @@
 ;;; Viewing Context Formatting
 
 (defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider.
-  The check is audited for the same reason the query's card ids get the audited store: the
-  database id is client-supplied, so a refusal is a real access attempt. Queries with
-  no :database only ever pprint (no name resolution), so they pass through, as does a
-  nonexistent id: there is no metadata behind it to leak."
+  "The client-supplied adhoc query, only when the current user can read its database. Audited for
+  the same reason its card ids get the audited store: the id is the caller's own."
   [query]
-  (let [database-id (and (map? query) (:database query))]
-    (if-not database-id
-      query
-      (try
-        (api/read-check :model/Database database-id)
-        query
-        (catch clojure.lang.ExceptionInfo e
-          (case (:status-code (ex-data e))
-            403 nil
-            404 query
-            (throw e)))))))
+  (shared.content-store/query-if-database-readable query))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
@@ -350,10 +335,11 @@
 
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing
-  context, so it gets the audited client-supplied store."
+  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
+  as client-supplied as the adhoc query above, so it gets the same audited gate and store on
+  top of the table/field-level check."
   [source]
-  (let [query (:query source)]
+  (when-let [query (query-if-database-readable (:query source))]
     (when (or (not (and (map? query) (:database query)))
               (queryable-normalized-query query))
       (llm-shape/export-query-for-llm query shared.content-store/audited-store))))

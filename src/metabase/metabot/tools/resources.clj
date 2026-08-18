@@ -752,26 +752,33 @@
                           (str/join "\n" (map-indexed document-block-line blocks)))
                      "The document is empty.")})))
 
-(defn- query-database-readable?
-  "Whether the current user can read the database a conversation-state query names, checked
-  without the audit side effects: these lookups are routine presentation of state already
-  in the conversation, the same contract as the unaudited card lookups inside the export."
-  [query]
-  (let [database-id (and (map? query) (:database query))]
-    (or (not database-id)
-        (mi/can-read? :model/Database database-id))))
+(def ^:private query-withheld-message
+  "Names no particular grant: the body is withheld for an unreadable database and for a 403 on a
+  card, measure or segment inside the query, and a deleted database looks the same as either."
+  "The query is hidden because it references content the user cannot read.")
+
+(defn- export-state-query
+  "Export a conversation-state query for presentation, nil when the user may not see it.
+  `query-id` picks the treatment: an id seeded from the client's viewing context carries
+  ids that are the caller's own, so its refusals are audited; one the agent's tools wrote
+  is routine presentation and stays quiet."
+  [query-id query]
+  (if (contains? (shared/current-client-ids) query-id)
+    (some-> (shared.content-store/query-if-database-readable query)
+            (llm-shape/export-query-for-llm shared.content-store/audited-store))
+    (when (shared.content-store/query-database-readable? query)
+      (llm-shape/export-query-for-llm query shared.content-store/default-store))))
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
-  as a chart mention). An unreadable database withholds the query body."
+  as a chart mention). A query the user may not see is withheld."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
     (entity-result
      {:type        "conversation-query"
       :id          query-id
-      :description (or (when (query-database-readable? query)
-                         (llm-shape/export-query-for-llm query shared.content-store/default-store))
-                       "The query is hidden because the user cannot read its database.")})
+      :description (or (export-state-query query-id query)
+                       query-withheld-message)})
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -781,10 +788,10 @@
   pasted as a mention). Falls back to the queries state when the id is actually a query id."
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
-    (let [query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))
-          query-text (when (and query (query-database-readable? query))
-                       (llm-shape/export-query-for-llm query shared.content-store/default-store))]
+    (let [[query-id query] (if-let [q (first (:queries chart))]
+                             [chart-id q]
+                             [(:query_id chart) (get (shared/current-queries-state) (:query_id chart))])
+          query-text (when query (export-state-query query-id query))]
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
@@ -794,7 +801,7 @@
                           (cond
                             (nil? query) "\nNo query is attached to this chart."
                             query-text   (str "\nQuery:\n" query-text)
-                            :else        "\nThe query is hidden because the user cannot read its database."))}))
+                            :else        (str "\n" query-withheld-message)))}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----
