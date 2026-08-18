@@ -6,6 +6,7 @@ import type {
   DatetimeUnit,
   FieldId,
   FieldValuesType,
+  JoinConditionOperator,
   RowValue,
   SchemaId,
   TableId,
