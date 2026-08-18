@@ -24,6 +24,9 @@ export type EmbeddingToggleProps = {
    * Settings this switch stands in for, rather than depends on. One switch
    * presents several embedding methods: it reads on when any of them is on and
    * writes all of them at once.
+   *
+   * Temporary: EMB-2257 gives the merged switch a single setting to read and
+   * write, and deletes this prop with the fan-out.
    */
   mergedSettingKeys?: EmbeddingSettingKey[];
 } & Omit<SwitchProps, "onChange">;
