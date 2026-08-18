@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type HTMLAttributes, forwardRef } from "react";
 import { t } from "ttag";
 
@@ -28,7 +29,15 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 
 export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
   function GoalValuePill(
-    { isMenuOpen, resolved, tooltip, onOpenMenu, onRemove, ...divProps },
+    {
+      className,
+      isMenuOpen,
+      resolved,
+      tooltip,
+      onOpenMenu,
+      onRemove,
+      ...divProps
+    },
     ref,
   ) {
     return (
@@ -37,7 +46,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         bdrs="sm"
         bg="background_page-primary"
-        className={S.refShell}
+        className={cx(S.refShell, className)}
         gap="sm"
         h={40}
         px="sm"
