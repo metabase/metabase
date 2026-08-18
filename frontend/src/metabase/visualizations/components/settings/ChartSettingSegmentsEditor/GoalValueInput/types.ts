@@ -9,3 +9,9 @@ export type ColumnOption = {
   name: string;
   label: string;
 };
+
+export type PickedItem = {
+  id: number | string;
+  model: string;
+  name: string;
+};

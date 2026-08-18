@@ -34,11 +34,11 @@ import { StaticGoalValueInput } from "../StaticGoalValueInput";
 import { useResolvedGoalValue } from "../use-resolved-goal-value";
 
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
-import { GoalEntityPickers, type PickedItem } from "./GoalEntityPickers";
+import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { ICON_BUTTON_SIZE } from "./constants";
-import type { ColumnOption, GoalEntityRef } from "./types";
+import type { ColumnOption, GoalEntityRef, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 

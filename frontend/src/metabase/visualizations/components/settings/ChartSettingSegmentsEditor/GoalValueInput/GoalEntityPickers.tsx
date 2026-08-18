@@ -7,6 +7,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 
+import type { PickedItem } from "./types";
 import { useEntityPickerSearch } from "./use-entity-picker-search";
 
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
@@ -24,12 +25,6 @@ const SELECTABLE_BROWSE_MODELS: Array<OmniPickerItem["model"]> = [
   "dataset",
 ];
 
-export type PickedItem = {
-  id: number | string;
-  model: string;
-  name: string;
-};
-
 type Props = {
   hasOpened: boolean;
   opened: boolean;
@@ -37,7 +32,6 @@ type Props = {
   onClose: () => void;
 };
 
-/** The quick entity picker plus the browse-all modal it can escalate to. */
 export function GoalEntityPickers({
   hasOpened,
   opened,
