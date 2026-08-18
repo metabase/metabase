@@ -80,7 +80,7 @@ describe("EmbeddingHubSecurityPage", () => {
     it("hides the card when nothing is published, even with guest embeds on", async () => {
       setup({ isGuestEmbedsEnabled: true });
 
-      await screen.findByText("Embedding secret key");
+      await screen.findByText("Secret key for guest embeds");
 
       await waitFor(() => {
         expect(
@@ -104,7 +104,7 @@ describe("EmbeddingHubSecurityPage", () => {
     it("is hidden on an instance whose only embedding method is guest", async () => {
       setup({ hasSimpleEmbedding: false });
 
-      await screen.findByText("Embedding secret key");
+      await screen.findByText("Secret key for guest embeds");
 
       await waitFor(() => {
         expect(
@@ -126,7 +126,7 @@ describe("EmbeddingHubSecurityPage", () => {
     it("is hidden when full-app embedding is off", async () => {
       setup({ hasSimpleEmbedding: true, isFullAppEmbeddingEnabled: false });
 
-      await screen.findByText("Embedding secret key");
+      await screen.findByText("Secret key for guest embeds");
 
       await waitFor(() => {
         expect(
