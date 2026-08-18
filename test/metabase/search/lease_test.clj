@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.lease :as lease]
@@ -64,7 +66,7 @@
       (finally
         (delete-coordinate! coordinate)))))
 
-(deftest acquisition-cleans-up-unrelated-expired-leases-test
+(deftest acquisition-does-not-sweep-unrelated-expired-leases-test
   (let [expired-coordinate (coordinate)
         new-coordinate     (coordinate)]
     (try
@@ -75,10 +77,11 @@
                      :lang_code (:lang_code expired-claim)}
                     {:expires_at (t/minus (t/offset-date-time) (t/minutes 1))})
         (is (some? (lease/try-acquire! new-coordinate)))
-        (is (nil? (t2/select-one :search_index_lease
-                                 :engine (:engine expired-coordinate)
-                                 :version (:version expired-coordinate)
-                                 :lang_code (:lang-code expired-coordinate)))))
+        (is (some? (t2/select-one :search_index_lease
+                                  :engine (:engine expired-coordinate)
+                                  :version (:version expired-coordinate)
+                                  :lang_code (:lang-code expired-coordinate)))
+            "acquiring an unrelated coordinate does not create a cross-coordinate locking sweep"))
       (finally
         (delete-coordinate! expired-coordinate)
         (delete-coordinate! new-coordinate)))))
@@ -97,13 +100,58 @@
         (let [claim (lease/try-acquire! coordinate)
               ran?  (atom false)]
           (is (= {:acquired? false}
-                 (lease/do-with-lease coordinate #(reset! ran? true))))
+                 (lease/do-with-lease coordinate #(reset! ran? true) {:wait? false})))
           (is (false? @ran?))
           (lease/release! claim)))
       (testing "the lease is released when the body throws"
         (is (thrown-with-msg? Exception #"boom"
                               (lease/do-with-lease coordinate #(throw (Exception. "boom")))))
         (is (some? (lease/try-acquire! coordinate))))
+      (finally
+        (delete-coordinate! coordinate)))))
+
+(deftest busy-lease-waits-without-skipping-work-test
+  (let [coordinate (coordinate)
+        first-claim (lease/try-acquire! coordinate)
+        ran?        (promise)
+        waiter      (binding [lease/*acquire-retry-interval-ms* 5]
+                      (future (lease/do-with-lease coordinate (fn [] (deliver ran? true) true))))]
+    (try
+      (is (= ::waiting (deref ran? 50 ::waiting)))
+      (lease/release! first-claim)
+      (is (= {:acquired? true, :result true} (deref waiter 5000 ::timed-out)))
+      (finally
+        (future-cancel waiter)
+        (delete-coordinate! coordinate)))))
+
+(deftest persistent-heartbeat-errors-eventually-stop-local-work-test
+  (let [coordinate (coordinate)]
+    (try
+      (binding [lease/*lease-duration* (t/millis 40)
+                lease/*heartbeat-interval-ms* 5]
+        (mt/with-dynamic-fn-redefs [lease/renew! (fn [_claim] (throw (Exception. "db unavailable")))]
+          (is (thrown-with-msg?
+               Exception
+               #"lease was lost"
+               (lease/do-with-lease
+                coordinate
+                (fn []
+                  (Thread/sleep 80)
+                  (lease/throw-if-lost!)))))))
+      (finally
+        (delete-coordinate! coordinate)))))
+
+(deftest analytics-failure-cannot-leak-lease-test
+  (let [coordinate (coordinate)]
+    (try
+      (mt/with-dynamic-fn-redefs [analytics/inc! (fn [& _] (throw (Exception. "metrics unavailable")))
+                                  analytics/observe! (fn [& _] (throw (Exception. "metrics unavailable")))]
+        (is (= {:acquired? true, :result :done}
+               (lease/do-with-lease coordinate (constantly :done)))))
+      (is (nil? (t2/select-one :search_index_lease
+                               :engine (:engine coordinate)
+                               :version (:version coordinate)
+                               :lang_code (:lang-code coordinate))))
       (finally
         (delete-coordinate! coordinate)))))
 
@@ -133,6 +181,22 @@
       (finally
         (delete-coordinate! coordinate)))))
 
+(deftest release-commits-independently-of-caller-transaction-test
+  (let [coordinate (coordinate)
+        claim      (lease/try-acquire! coordinate)]
+    (try
+      (is (thrown-with-msg? Exception #"roll back caller"
+                            (t2/with-transaction [_conn]
+                              (is (true? (lease/release! claim)))
+                              (throw (Exception. "roll back caller")))))
+      (is (nil? (t2/select-one :search_index_lease
+                               :engine (:engine coordinate)
+                               :version (:version coordinate)
+                               :lang_code (:lang-code coordinate)))
+          "release remains committed when the caller's ambient transaction rolls back")
+      (finally
+        (delete-coordinate! coordinate)))))
+
 (deftest lease-holds-locale-stable-test
   (let [coordinate (assoc (coordinate) :lang-code "en")]
     (try
@@ -144,7 +208,7 @@
 
 (deftest obsolete-locale-coordinate-is-fenced-test
   (let [wrong-locale (if (= "zz" (i18n/site-locale-string)) "yy" "zz")
-        coordinate   (assoc (coordinate) :lang-code wrong-locale)]
+        coordinate   (assoc (coordinate) :site-locale wrong-locale)]
     (try
       (is (thrown-with-msg?
            Exception
@@ -192,8 +256,11 @@
                 (t2/update! :search_index_lease
                             {:engine engine, :version version, :lang_code lang_code}
                             {:owner (str (random-uuid))}))
-              (search-index-metadata/active-pending!
-               :appdb version lease/assert-current-in-transaction!)))))
+              (mdb/with-unshared-connection [conn]
+                (lease/do-in-fenced-transaction!
+                 conn
+                 #(search-index-metadata/active-pending-on-current-connection!
+                   :appdb version index-name)))))))
       (is (= :pending
              (t2/select-one-fn :status :model/SearchIndexMetadata
                                :engine :appdb :version version :index_name index-name))
@@ -225,19 +292,21 @@
 (deftest initialization-and-reindex-use-the-same-lease-coordinate-test
   (let [coordinates (atom [])
         operations  (atom [])]
-    (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
-                  search.engine/log-resolution! (constantly nil)
-                  search.engine/init! (fn [_engine _opts]
-                                        (swap! operations conj :init)
-                                        {:card 1})
-                  search.engine/reindex! (fn [_engine _opts]
-                                           (swap! operations conj :reindex)
-                                           {:card 1})
-                  lease/do-with-lease (fn [coordinate thunk]
-                                        (swap! coordinates conj coordinate)
-                                        {:acquired? true, :result (thunk)})]
-      (search/init-index!)
-      @(search/reindex! {:async? false})
-      (is (= [:init :reindex] @operations))
-      (is (= 2 (count @coordinates)))
-      (is (apply = @coordinates)))))
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                                search.engine/log-resolution! (constantly nil)
+                                lease/do-with-lease (fn [coordinate thunk]
+                                                      (swap! coordinates conj coordinate)
+                                                      {:acquired? true, :result (thunk)})]
+      ;; These are multimethods, so dynamic-fn redefs cannot replace them.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [search.engine/init! (fn [_engine _opts]
+                                          (swap! operations conj :init)
+                                          {:card 1})
+                    search.engine/reindex! (fn [_engine _opts]
+                                             (swap! operations conj :reindex)
+                                             {:card 1})]
+        (search/init-index!)
+        @(search/reindex! {:async? false})
+        (is (= [:init :reindex] @operations))
+        (is (= 2 (count @coordinates)))
+        (is (apply = @coordinates))))))

@@ -73,20 +73,35 @@
               :index_name (name index-name)
               :status :pending))
 
-(defn active-pending!
-  "If there is a pending index, make it active and return the active index name.
+(defn replace-pending-on-current-connection!
+  "Replace any pending metadata for this coordinate with `index-name` on the caller's current transaction."
+  [engine version index-name]
+  (let [coordinate {:engine engine, :version version, :lang_code (i18n/site-locale-string)}]
+    (apply t2/delete! :model/SearchIndexMetadata (mapcat identity (assoc coordinate :status :pending)))
+    (t2/insert! :model/SearchIndexMetadata
+                (assoc coordinate :status :pending, :index_name (name index-name)))
+    true))
 
-  When supplied, `before-activate!` runs inside the same transaction immediately before the metadata rotation. Search
-  reindex uses this hook to fence activation against its lease row."
-  [engine version & [before-activate!]]
+(defn active-pending-on-current-connection!
+  "Promote `expected-index-name` on the caller's current transaction and return the active index name.
+
+  Passing the expected name prevents an old worker from promoting a replacement owner's pending table."
+  [engine version expected-index-name]
+  (let [coordinate {:engine engine, :version version, :lang_code (i18n/site-locale-string)}
+        pending    (cond-> (assoc coordinate :status :pending)
+                     expected-index-name (assoc :index_name (name expected-index-name)))]
+    (when (apply t2/exists? :model/SearchIndexMetadata (mapcat identity pending))
+      (apply t2/delete! :model/SearchIndexMetadata (mapcat identity (assoc coordinate :status :retired)))
+      (t2/update! :model/SearchIndexMetadata (assoc coordinate :status :active) {:status :retired})
+      (t2/update! :model/SearchIndexMetadata pending {:status :active}))
+    (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                      :engine engine :version version :lang_code (:lang_code coordinate) :status :active)))
+
+(defn active-pending!
+  "If there is a pending index, make it active and return the active index name."
+  [engine version]
   (t2/with-transaction [_conn]
-    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :pending)
-      (when before-activate!
-        (before-activate!))
-      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :retired)
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
-    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :active)))
+    (active-pending-on-current-connection! engine version nil)))
 
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.

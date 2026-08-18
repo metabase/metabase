@@ -1,11 +1,10 @@
 (ns metabase.search.lease
-  "A short-transaction, app-db-backed lease for full search reindexes.
+  "An app-db-backed lease for full search reindexes.
 
-  Unlike a cluster lock, no transaction or connection is held while the reindex runs. Each lease is scoped to an
-  engine/index-version/locale coordinate and guarded by a unique owner token, so an expired lease can be reclaimed
-  without letting the previous owner renew or release the replacement owner's lease."
+  Lease lifecycle operations are short autocommit statements. When a caller already owns an ambient app-db
+  transaction they use a lazy, isolated one-connection pool; otherwise they use the ordinary app-db connection path.
+  Protected mutations fence ownership on their own connection, in the same transaction as the mutation."
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
@@ -13,9 +12,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection SQLException Savepoint)))
+   (com.mchange.v2.c3p0 DataSources PoolBackedDataSource)
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,30 +28,82 @@
   "How often an acquired lease is renewed while its reindex is running."
   60000)
 
+(def ^:dynamic *acquire-retry-interval-ms*
+  "How often a waiting caller retries a busy lease."
+  1000)
+
 (def ^:dynamic *lease-context*
-  "The claim and local lost flag for the reindex running on this thread. Nil outside a leased reindex."
+  "The claim and local lost state for the reindex running on this thread. Nil outside a leased reindex."
   nil)
 
+(defn leased?
+  "Whether the current thread is executing inside [[do-with-lease]]."
+  []
+  (some? *lease-context*))
+
+(defonce ^:private coordination-pool (atom nil))
+
+(defn- configured-site-locale []
+  (binding [i18n/*site-locale-override* nil]
+    (i18n/site-locale-string)))
+
 (defn coordinates
-  "The serialization coordinate for `engine` at the current search specification and site locale."
+  "The serialization coordinate for `engine` at the current search specification and effective site locale."
   [engine]
-  {:engine    (name engine)
-   :version   (search.spec/index-version-hash)
-   :lang-code (i18n/site-locale-string)})
-
-(defn- app-db-now []
-  ;; Base expiry calculations on the app DB's clock. This avoids allowing clock skew between Metabase nodes to make
-  ;; one node's lease appear prematurely stale to another.
-  (-> (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})
-      :now
-      t/offset-date-time))
-
-(defn- expires-at [now]
-  (t/plus now *lease-duration*))
+  {:engine      (name engine)
+   :version     (search.spec/index-version-hash)
+   :lang-code   (i18n/site-locale-string)
+   ;; Keep the configured locale separately so an intentional outer locale override is not mistaken for a setting
+   ;; change while the rebuild is running.
+   :site-locale (configured-site-locale)})
 
 (defn- where-coordinate [{:keys [engine version lang-code lang_code]}]
-  ;; Public coordinates use kebab-case; persisted claims use the raw column key so they can be inserted directly.
   {:engine engine, :version version, :lang_code (or lang-code lang_code)})
+
+(defn- coordination-data-source
+  "Return the isolated one-slot pool for the currently bound application database."
+  []
+  (let [app-db-id (mdb/unique-identifier)]
+    (locking coordination-pool
+      (let [{cached-id :app-db-id, ^PoolBackedDataSource cached-pool :pool} @coordination-pool]
+        (if (= cached-id app-db-id)
+          cached-pool
+          (let [pool (mdb/single-connection-pool-data-source (mdb/db-type) (mdb/data-source))]
+            (reset! coordination-pool {:app-db-id app-db-id, :pool pool})
+            (when cached-pool
+              (try
+                (DataSources/destroy cached-pool)
+                (catch Throwable e
+                  (log/warnf "Failed to destroy the previous search lease connection pool: %s" (ex-message e)))))
+            pool))))))
+
+(defn- do-with-lifecycle-connection
+  "Run a short autocommit lease lifecycle operation.
+
+  An ambient app-db transaction already owns a main-pool connection, so use the isolated pool in that case. All SQL
+  inside `f` resolves to the explicitly checked-out connection."
+  [f]
+  (let [connectable (when (mdb/in-transaction?)
+                      (coordination-data-source))]
+    ;; A nil connectable reuses this thread's current connection, or the normal app-db pool when there is none.
+    (t2/with-connection [^Connection conn connectable]
+      (when-not (.getAutoCommit conn)
+        (throw (ex-info "Search lease lifecycle connection unexpectedly has auto-commit disabled"
+                        {:type ::non-autocommit-lifecycle-connection})))
+      (f conn))))
+
+(defn- db-times
+  "Read the app database's current time and the corresponding lease expiry without converting JDBC time types."
+  []
+  (let [millis (.toMillis ^java.time.Duration *lease-duration*)]
+    (t2/query-one
+     (case (mdb/db-type)
+       :postgres ["SELECT CURRENT_TIMESTAMP AS now, CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') AS expires_at"
+                  millis]
+       :mysql    ["SELECT CURRENT_TIMESTAMP AS now, TIMESTAMPADD(MICROSECOND, ?, CURRENT_TIMESTAMP) AS expires_at"
+                  (* millis 1000)]
+       :h2       ["SELECT CURRENT_TIMESTAMP AS now, DATEADD('MILLISECOND', ?, CURRENT_TIMESTAMP) AS expires_at"
+                  millis]))))
 
 (defn- duplicate-key-violation?
   [error]
@@ -59,80 +112,58 @@
       (nil? error)
       false
 
-      (and (instance? SQLException error)
-           (some-> ^SQLException error .getSQLState (str/starts-with? "23")))
-      true
+      (instance? SQLException error)
+      (let [^SQLException sql-error error]
+        (or (= "23505" (.getSQLState sql-error))
+            ;; MySQL and MariaDB use the generic integrity-constraint state and vendor code 1062 for duplicate keys.
+            (and (= "23000" (.getSQLState sql-error))
+                 (= 1062 (.getErrorCode sql-error)))
+            (recur (ex-cause error))))
 
       :else
       (recur (ex-cause error)))))
 
-(defn- do-in-short-transaction
-  "Run `f` on a fresh app-db connection and commit before returning.
-
-  This deliberately does not join an ambient Toucan transaction: callers of search reindex can themselves be inside
-  one, but lease ownership must become visible to the rest of the cluster before the long-running work begins."
-  [f]
-  (t2/with-connection [^Connection conn (mdb/app-db)]
-    (let [auto-commit? (.getAutoCommit conn)]
-      (try
-        (.setAutoCommit conn false)
-        (let [result (f conn)]
-          (.commit conn)
-          result)
-        (catch Throwable e
-          (try
-            (.rollback conn)
-            (catch Throwable rollback-error
-              (log/warnf "Failed to roll back a search lease transaction: %s" (ex-message rollback-error))))
-          (throw e))
-        (finally
-          (.setAutoCommit conn auto-commit?))))))
-
 (defn- try-insert-claim!
-  "Insert `claim`, rolling back only the INSERT if another contender won the primary-key race.
-
-  PostgreSQL aborts a transaction after a constraint violation, so the savepoint is required before the caller can
-  safely commit the losing acquisition attempt."
-  [^Connection conn claim]
-  (let [^Savepoint savepoint (.setSavepoint conn)]
-    (try
-      (t2/insert! :search_index_lease claim)
-      (.releaseSavepoint conn savepoint)
-      true
-      (catch Exception e
-        (if (duplicate-key-violation? e)
-          (do
-            (.rollback conn savepoint)
-            false)
-          (throw e))))))
+  [claim]
+  (try
+    (t2/insert! :search_index_lease
+                (select-keys claim [:engine :version :lang_code :owner
+                                    :acquired_at :last_renewed_at :expires_at]))
+    true
+    (catch Exception e
+      (if (duplicate-key-violation? e)
+        false
+        (throw e)))))
 
 (defn try-acquire!
-  "Try to acquire the lease for `coordinate` and return its claim, or nil when a live owner already holds it.
+  "Try to acquire `coordinate`, returning its owner claim or nil when a live owner already holds it.
 
-  Acquisition first atomically steals an expired row. If no row exists, it inserts one; the coordinate's primary key
-  elects a single winner between concurrent inserters. Both paths commit before this function returns."
+  The expired-owner update and absent-row insert are individually atomic autocommit statements. A conditional update
+  elects one expired-row taker; the coordinate primary key elects one concurrent inserter."
   [coordinate]
-  (do-in-short-transaction
-   (fn [conn]
-     (let [now        (app-db-now)
-           owner      (str (random-uuid))
-           coordinate (where-coordinate coordinate)
-           claim      (assoc coordinate
-                             :owner owner
-                             :acquired_at now
-                             :last_renewed_at now
-                             :expires_at (expires-at now))
-           stolen?    (pos? (t2/update! :search_index_lease
-                                        (assoc coordinate :expires_at [:<= now])
-                                        (select-keys claim [:owner :acquired_at :last_renewed_at :expires_at])))
-           ;; Crashed owners normally disappear through takeover. This also bounds rows for coordinates that will never
-           ;; be requested again after an index-version or locale change.
-           _           (t2/delete! :search_index_lease :expires_at [:<= now] :owner [:!= owner])]
+  (do-with-lifecycle-connection
+   (fn [_conn]
+     (let [attempt-start-ns (System/nanoTime)
+           owner            (str (random-uuid))
+           input-coordinate coordinate
+           coordinate       (where-coordinate input-coordinate)
+           {:keys [now expires_at]} (db-times)
+           claim            (assoc coordinate
+                                   :owner owner
+                                   :site-locale (or (:site-locale input-coordinate) (configured-site-locale))
+                                   :acquired_at now
+                                   :last_renewed_at now
+                                   :expires_at expires_at
+                                   :last-renewal-start-ns attempt-start-ns)
+           stolen?          (pos? (t2/update! :search_index_lease
+                                              (assoc coordinate :expires_at [:<= now])
+                                              (select-keys claim [:owner :acquired_at
+                                                                  :last_renewed_at :expires_at])))]
        (cond
          stolen?
          (assoc claim :taken-over? true)
 
-         (try-insert-claim! conn claim)
+         (try-insert-claim! claim)
          claim
 
          :else
@@ -140,24 +171,21 @@
 
 (defn- renew-on-current-connection!
   [{:keys [owner] :as claim}]
-  (let [now        (app-db-now)
-        coordinate (where-coordinate claim)]
+  (let [{:keys [now expires_at]} (db-times)
+        coordinate              (where-coordinate claim)]
     (pos? (t2/update! :search_index_lease
                       (assoc coordinate :owner owner :expires_at [:> now])
-                      {:last_renewed_at now, :expires_at (expires-at now)}))))
+                      {:last_renewed_at now, :expires_at expires_at}))))
 
 (defn renew!
-  "Renew `claim` if it is still live and still belongs to this owner. Returns true on success.
-
-  An already-expired claim is not revived: another node is entitled to take it once its TTL passes, even if that node
-  has not done so yet."
+  "Renew `claim` with a short autocommit operation. Returns false if it expired or changed owner."
   [claim]
-  (do-in-short-transaction (fn [_conn] (renew-on-current-connection! claim))))
+  (do-with-lifecycle-connection (fn [_conn] (renew-on-current-connection! claim))))
 
 (defn release!
-  "Release `claim` only if the persisted lease still belongs to its owner. Returns true when a row was deleted."
+  "Release `claim` with a short autocommit operation, only if it still belongs to this owner."
   [{:keys [owner] :as claim}]
-  (do-in-short-transaction
+  (do-with-lifecycle-connection
    (fn [_conn]
      (let [{:keys [engine version lang_code]} (where-coordinate claim)]
        (pos? (t2/delete! :search_index_lease
@@ -167,7 +195,18 @@
   {:engine (:engine claim), :event event})
 
 (defn- record-event! [claim event]
-  (analytics/inc! :metabase-search/reindex-lease-events (labels claim event)))
+  (try
+    (analytics/inc! :metabase-search/reindex-lease-events (labels claim event))
+    (catch Throwable e
+      (log/warnf "Failed to record search lease event %s: %s" event (ex-message e)))))
+
+(defn- observe-held-duration! [claim timer]
+  (try
+    (analytics/observe! :metabase-search/reindex-lease-held-duration-ms
+                        {:engine (:engine claim)}
+                        (u/since-ms timer))
+    (catch Throwable e
+      (log/warnf "Failed to record search lease duration: %s" (ex-message e)))))
 
 (defn- mark-lost!
   [{:keys [claim lost?]}]
@@ -183,35 +222,32 @@
              :lease (select-keys claim [:engine :version :lang_code :owner])}
             cause)))
 
+(defn expected-abort?
+  "Whether `error` represents an expected lease safety abort rather than an index implementation failure."
+  [error]
+  (contains? #{::lease-lost ::coordinate-obsolete} (:type (ex-data error))))
+
 (defn throw-if-lost!
-  "Abort the current leased operation if a heartbeat has established that ownership was lost. No-op outside a lease."
+  "Abort the current leased operation if its owner has been established as stale."
   []
   (when (some-> *lease-context* :lost? deref)
     (throw (lost-ex (:claim *lease-context*)))))
 
 (defn assert-coordinate-current!
-  "Abort if the site locale changed after the current lease was acquired. No-op outside a lease.
-
-  Locale is part of the lease key, so a locale-change rebuild can run alongside the old coordinate. The old worker
-  must not subsequently publish its index or overwrite process-local tracking for the new locale."
+  "Abort if the configured site locale changed after the current lease was acquired."
   []
   (when-let [{:keys [claim]} *lease-context*]
-    (let [current-locale (binding [i18n/*site-locale-override* nil]
-                           (i18n/site-locale-string))]
-      (when-not (= (:lang_code claim) current-locale)
+    (let [current-locale (configured-site-locale)]
+      (when-not (= (:site-locale claim) current-locale)
         (record-event! claim :coordinate-obsolete)
         (throw (ex-info "Search reindex coordinate became obsolete after the site locale changed"
                         {:type ::coordinate-obsolete
-                         :lease-locale (:lang_code claim)
+                         :lease-site-locale (:site-locale claim)
                          :site-locale current-locale})))))
   true)
 
 (defn assert-current-in-transaction!
-  "Fence a commit or promotion by proving ownership on the caller's current app-db transaction.
-
-  The guarded renewal locks the lease row until the surrounding transaction commits. A stale owner therefore cannot
-  promote after a replacement owner has acquired the lease, and a contender cannot take over between this check and
-  that commit. No-op when low-level engine code is invoked outside [[do-with-lease]]."
+  "Fence the caller's current mutation transaction by renewing and locking its lease row."
   []
   (when-let [{:keys [claim] :as context} *lease-context*]
     (throw-if-lost!)
@@ -227,70 +263,129 @@
           (throw (lost-ex claim e))))))
   true)
 
+(defn do-in-fenced-transaction!
+  "Run `thunk` in a short transaction on the explicit mutation `conn`, fencing lease ownership before mutation.
+
+  This deliberately uses JDBC transaction control instead of Toucan's transaction macro: a streaming source query can
+  make the current thread appear transaction-bound even though `conn` is the independent batch-write connection."
+  [^Connection conn thunk]
+  (let [auto-commit? (.getAutoCommit conn)]
+    (when-not auto-commit?
+      (throw (ex-info "Search lease mutation connection unexpectedly has auto-commit disabled"
+                      {:type ::non-autocommit-mutation-connection})))
+    (try
+      (.setAutoCommit conn false)
+      (let [result (t2/with-connection [_ conn]
+                     (assert-current-in-transaction!)
+                     (thunk))]
+        (.commit conn)
+        result)
+      (catch Throwable e
+        (try
+          (.rollback conn)
+          (catch Throwable rollback-error
+            (log/warnf "Failed to roll back a fenced search mutation: %s" (ex-message rollback-error))))
+        (throw e))
+      (finally
+        (.setAutoCommit conn auto-commit?)))))
+
 (defn assert-current!
-  "Prove that the current operation still owns its lease in a new short transaction. No-op outside a lease."
+  "Prove current ownership with a short lifecycle operation. Used only where no protected DB mutation follows."
   []
   (if *lease-context*
-    (do-in-short-transaction (fn [_conn] (assert-current-in-transaction!)))
+    (do-with-lifecycle-connection (fn [_conn] (assert-current-in-transaction!)))
     true))
 
+(defn- lease-duration-nanos []
+  (.toNanos ^java.time.Duration *lease-duration*))
+
 (defn- heartbeat-loop!
-  [context stopped]
-  (let [{:keys [claim]} context]
-    (loop []
-      (when-not (deref stopped *heartbeat-interval-ms* false)
-        (let [continue?
-              (try
-                (if (renew! claim)
-                  true
+  [{:keys [claim last-renewal-start-ns] :as context} stopped]
+  (loop []
+    (when-not (deref stopped *heartbeat-interval-ms* false)
+      (let [attempt-start-ns (System/nanoTime)
+            continue?
+            (try
+              (if (renew! claim)
+                (do
+                  ;; Record the start, not the response time, so the local fail-safe never extends ownership beyond
+                  ;; the database expiry established by this request.
+                  (reset! last-renewal-start-ns attempt-start-ns)
+                  true)
+                (do
+                  (mark-lost! context)
+                  (log/errorf "Search reindex lease expired or was lost for %s"
+                              (select-keys claim [:engine :version :lang_code]))
+                  false))
+              (catch Throwable e
+                (record-event! claim :heartbeat-error)
+                (if (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos))
                   (do
+                    ;; Database time remains authoritative. This monotonic deadline only stops local work once we can
+                    ;; no longer prove that the last successful database renewal could still be live.
                     (mark-lost! context)
-                    (log/errorf "Search reindex lease expired or was lost for %s"
-                                (select-keys claim [:engine :version :lang_code]))
-                    false))
-                (catch Throwable e
-                  ;; A transient heartbeat failure does not immediately abandon a still-live lease. Keep trying until its
-                  ;; TTL; if the outage lasts beyond that, a later renewal fails the owner/expiry guard and stops this loop.
-                  (record-event! claim :heartbeat-error)
-                  (log/warnf "Failed to heartbeat search reindex lease for %s: %s"
-                             (select-keys claim [:engine :version :lang_code])
-                             (ex-message e))
-                  true))]
-          (when continue?
-            (recur)))))))
+                    (log/errorf "Search reindex lease could not be renewed for a full lease duration: %s"
+                                (ex-message e))
+                    false)
+                  (do
+                    (log/warnf "Failed to heartbeat search reindex lease for %s: %s"
+                               (select-keys claim [:engine :version :lang_code])
+                               (ex-message e))
+                    true))))]
+        (when continue?
+          (recur))))))
+
+(defn- wait-for-claim
+  [coordinate wait?]
+  (loop [reported-busy? false]
+    (if-let [claim (try-acquire! coordinate)]
+      claim
+      (do
+        (when-not reported-busy?
+          (record-event! (where-coordinate coordinate) :busy))
+        (when wait?
+          (try
+            (Thread/sleep (long *acquire-retry-interval-ms*))
+            (catch InterruptedException e
+              (.interrupt (Thread/currentThread))
+              (throw e)))
+          (recur true))))))
 
 (defn do-with-lease
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
-  Returns `{:acquired? true :result ...}` when this caller owned the lease, or `{:acquired? false}` without invoking
-  `thunk` when another owner has a live lease. Release is best-effort because expiry already provides crash recovery."
-  [coordinate thunk]
-  (if-let [claim (try-acquire! coordinate)]
-    (let [stopped   (promise)
-          context   {:claim claim, :lost? (atom false)}
-          timer     (u/start-timer)
-          heartbeat (future (heartbeat-loop! context stopped))]
-      (record-event! claim (if (:taken-over? claim) :taken-over :acquired))
-      (try
-        {:acquired? true
-         :result    (binding [*lease-context* context
-                              ;; Hold the coordinate stable if site-locale changes while a rebuild is in flight.
-                              i18n/*site-locale-override* (:lang_code claim)]
-                      (thunk))}
-        (finally
-          (deliver stopped true)
-          (future-cancel heartbeat)
-          (analytics/observe! :metabase-search/reindex-lease-held-duration-ms
-                              {:engine (:engine claim)}
-                              (u/since-ms timer))
-          (try
-            (release! claim)
-            (catch Throwable e
-              (record-event! claim :release-error)
-              (log/warnf "Failed to release search reindex lease for %s; it will expire at %s: %s"
-                         (select-keys claim [:engine :version :lang_code])
-                         (:expires_at claim)
-                         (ex-message e)))))))
-    (do
-      (record-event! (where-coordinate coordinate) :busy)
-      {:acquired? false})))
+  By default a busy caller waits and retries without holding a connection, preserving the previous cluster-lock
+  behavior. Pass `{:wait? false}` for an explicit non-blocking attempt."
+  ([coordinate thunk]
+   (do-with-lease coordinate thunk {}))
+  ([coordinate thunk {:keys [wait?] :or {wait? true}}]
+   (if-let [claim (wait-for-claim coordinate wait?)]
+     (let [stopped               (promise)
+           heartbeat             (volatile! nil)
+           last-renewal-start-ns (atom (:last-renewal-start-ns claim))
+           context               {:claim claim, :lost? (atom false), :last-renewal-start-ns last-renewal-start-ns}
+           timer                 (u/start-timer)]
+       (try
+         (record-event! claim (if (:taken-over? claim) :taken-over :acquired))
+         ;; Never convey a caller-owned connection to the heartbeat thread. Transaction depth is intentionally
+         ;; conveyed: an ambient transaction means this process's isolated coordination pool must be used.
+         (vreset! heartbeat (binding [t2.conn/*current-connectable* nil]
+                              (future (heartbeat-loop! context stopped))))
+         {:acquired? true
+          :result    (binding [*lease-context* context
+                               i18n/*site-locale-override* (:lang_code claim)]
+                       (thunk))}
+         (finally
+           (deliver stopped true)
+           (when-let [heartbeat @heartbeat]
+             (future-cancel heartbeat))
+           (try
+             (release! claim)
+             (catch Throwable e
+               (record-event! claim :release-error)
+               (log/warnf "Failed to release search reindex lease for %s; it will expire at %s: %s"
+                          (select-keys claim [:engine :version :lang_code])
+                          (:expires_at claim)
+                          (ex-message e))))
+           (observe-held-duration! claim timer))))
+     {:acquired? false})))

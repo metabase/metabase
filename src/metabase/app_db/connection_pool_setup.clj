@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -194,3 +194,26 @@
       (com.mchange.v2.c3p0.DataSources/pooledDataSource
        data-source
        (connection-pool/map->properties pool-props)))))
+
+(mu/defn single-connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
+  "Create a lazy one-connection pool backed by the same unpooled data source as `data-source`.
+
+  This is intended for tiny app-db coordination operations that must be able to make progress while the caller holds a
+  connection from the main application pool. It must not be used for general application queries."
+  ^PoolBackedDataSource [db-type :- :keyword
+                         ^javax.sql.DataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (let [^javax.sql.DataSource
+        unpooled   (if (instance? PoolBackedDataSource data-source)
+                     (let [connection-pool-data-source (.getConnectionPoolDataSource ^PoolBackedDataSource data-source)]
+                       (if (instance? WrapperConnectionPoolDataSource connection-pool-data-source)
+                         (.getNestedDataSource ^WrapperConnectionPoolDataSource connection-pool-data-source)
+                         (throw (ex-info "Cannot create an isolated app-db pool from this pooled data source"
+                                         {:connection-pool-data-source (class connection-pool-data-source)}))))
+                     data-source)
+        pool-props (assoc (application-db-connection-pool-props)
+                          "dataSourceName" (format "metabase-%s-app-db-coordination" (name db-type))
+                          "initialPoolSize" 0
+                          "minPoolSize" 0
+                          "maxPoolSize" 1
+                          "acquireIncrement" 1)]
+    (DataSources/pooledDataSource unpooled (connection-pool/map->properties pool-props))))
