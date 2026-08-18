@@ -146,7 +146,7 @@ describe("ChartSettingSegmentsEditor", () => {
             ],
           }),
         }),
-        staleTooltip: "Orders → avg",
+        pillTooltip: "Orders → avg",
       },
       {
         type: "measure",
@@ -163,7 +163,7 @@ describe("ChartSettingSegmentsEditor", () => {
             result_column_name: column,
           }),
         }),
-        staleTooltip: "Revenue → Revenue",
+        pillTooltip: "Revenue → Revenue",
       },
     ] as const;
 
@@ -174,7 +174,7 @@ describe("ChartSettingSegmentsEditor", () => {
         id,
         createReferencedEntities,
         createEntityWithColumn,
-        staleTooltip,
+        pillTooltip,
       }) => {
         function setupReference(
           column: string,
@@ -265,7 +265,7 @@ describe("ChartSettingSegmentsEditor", () => {
           await userEvent.hover(
             screen.getByRole("button", { name: "Change value source" }),
           );
-          expect(await screen.findByText(staleTooltip)).toBeInTheDocument();
+          expect(await screen.findByText(pillTooltip)).toBeInTheDocument();
 
           expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
           expect(
