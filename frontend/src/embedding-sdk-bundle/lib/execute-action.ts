@@ -57,9 +57,6 @@ const isActionDefinition = (
  */
 function toExecutableActionId(input: SdkActionInput): SdkActionId {
   if (!isActionDefinition(input)) {
-    // A raw id would run in the dev preview and 403 once deployed, since it
-    // addresses the authored action an app's viewers cannot read. Refuse it
-    // while its author is still writing the app.
     if (isDataApp()) {
       throw new Error(
         `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the synchronized action runs.`,
@@ -69,8 +66,6 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
     return input;
   }
 
-  // Only a data app runs copies. In the dev preview they do not exist yet, and
-  // outside a data app they never do, so the authored action is the one to run.
   if (isDataAppDev() || !isDataApp()) {
     return input.action.id;
   }

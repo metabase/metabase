@@ -1,4 +1,4 @@
-import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToDataAppGroup,
@@ -108,6 +108,30 @@ describe("scenarios > data apps > sync-resources in production", () => {
         );
         expect(stage?.["source-table"], "not the authored table").to.be
           .undefined;
+      });
+    });
+  });
+
+  // The swap is only safe if both sides return the same thing. The dev preview
+  // runs the authored query unswapped; production runs the card it was published
+  // as. A deployed app cannot run the authored query at all, so the two sides are
+  // captured separately rather than side by side.
+  it("returns the same rows from the published card as from the authored query", () => {
+    syncApp().then((cardId) => {
+      cy.request("POST", "/api/dataset", {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+      }).then(({ body: authored }) => {
+        cy.request("POST", `/api/card/${cardId}/query`).then(
+          ({ body: published }) => {
+            expect(published.data.rows).to.deep.eq(authored.data.rows);
+            expect(
+              published.data.rows[0][0],
+              "a match on two empty results would be vacuous",
+            ).to.be.greaterThan(0);
+          },
+        );
       });
     });
   });
