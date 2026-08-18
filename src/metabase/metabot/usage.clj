@@ -67,7 +67,9 @@
 
 (defn- meter-entry
   [token-status provider]
-  (meter-value (:meters token-status) (metabase-meter-key provider)))
+  (some-> token-status
+          :meters
+          (meter-value (metabase-meter-key provider))))
 
 (defn- managed-free-limit-reached-for-provider?
   [token-status provider]

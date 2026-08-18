@@ -21,9 +21,9 @@
 
 (deftest analyze-chart-returns-free-trial-limit-error-when-managed-provider-is-locked-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                     "metabase/anthropic/claude-sonnet-4-6"]
+                                     metabot.settings/default-metabase-llm-metabot-provider]
     (mt/with-dynamic-fn-redefs [premium-features/token-status
-                                (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens
+                                (constantly {:meters {:anthropic:claude-sonnet-5:tokens
                                                       {:meter-value 1000000
                                                        :is-locked   true}}})
                                 metabot/analyze-chart
