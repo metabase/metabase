@@ -7,6 +7,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 
+import S from "./GoalValueInput.module.css";
 import type { PickedItem } from "./types";
 import { useEntityPickerSearch } from "./use-entity-picker-search";
 
@@ -50,6 +51,7 @@ export function GoalEntityPickers({
   return (
     <>
       <MiniPicker
+        className={S.entityPicker}
         forceSearch
         menuProps={{
           position: "bottom-start",
