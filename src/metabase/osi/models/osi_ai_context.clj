@@ -155,7 +155,10 @@
 ;;; A burst costs one drain rather than N runs: `request-entity-sync!` only adds to a dirty set, and the
 ;;; enterprise scheduler keeps at most one pending run.
 ;;; The drain still reconciles each dirty entity separately, so an import touching N entities performs N
-;;; entity reconciles in one pass. Embeddings are content-addressed, so batching would not change their cost.
+;;; entity reconciles in one pass. Both paths embed exactly the documents whose `doc_id` is not already
+;;; stored, so batching would not change how much text is embedded — only how many provider requests it is
+;;; split across. (`doc_id` covers the entity and doc type as well as the text, so it dedupes an unchanged
+;;; document, not the same text appearing on two entities.)
 ;;;
 ;;; Updates nudge only when `ai_context` changed (see the before-update hook) — it is the one column an
 ;;; index doc is derived from.
