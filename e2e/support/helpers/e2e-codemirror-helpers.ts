@@ -45,6 +45,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     ) {
       if (focus) {
         helpers.focus();
+      } else {
+        // The editor can be a lazily loaded chunk, so it may still be mounting.
+        // Wait for it to hold focus before typing, or the first keystroke goes
+        // nowhere. Do not click it: that would move the caret.
+        helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       }
 
       if (allowFastSet) {
