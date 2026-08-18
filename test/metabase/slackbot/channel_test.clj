@@ -116,24 +116,32 @@
       (is (= "Here are your results." (:text (first posts)))))))
 
 (deftest channel-response-truncates-oversized-answer-test
-  (testing "an oversized answer is cut and followed by an explanation (BOT-1606)"
+  (testing "an oversized answer is cut, and the same message explains why (BOT-1606)"
     (let [{:keys [posts backfills]} (send-channel-response! {:text-parts (long-answer)
                                                              :viz-blocks table-viz-blocks
                                                              :post-fn    (fake-slack)})
-          [answer notice] posts]
-      (is (= 2 (count posts)))
+          answer                    (first posts)
+          notice-text               (fn [blocks]
+                                      (->> blocks
+                                           (filter #(= "context" (:type %)))
+                                           (mapcat :elements)
+                                           (map :text)
+                                           (str/join "\n")))]
+      (is (= 1 (count posts))
+          "one message only -- a second would be invisible to delete and to history replay")
       (is (every? #(:ok (:response %)) posts)
-          "Slack accepted both messages, so nothing had to fall back")
+          "Slack accepted it, so nothing had to fall back")
       (testing "the answer is cut to the budget and keeps its visualizations and buttons"
         (is (>= slackbot.blocks/markdown-text-limit (count (:text answer))))
-        (is (= ["markdown" "section" "table" "context_actions"] (mapv :type (:blocks answer)))))
-      (testing "the notice follows as its own message, linking to the conversation"
-        (is (str/starts-with? (:text notice) "_This answer was too long"))
-        (is (re-find #"<https?://\S+/metabot/conversation/conversation-id\|open this conversation in Metabase>"
-                     (:text notice))
-            "an absolute link to this conversation, so the full answer is one click away")
-        (is (= ["markdown"] (mapv :type (:blocks notice))))
-        (is (not-any? #(= "context_actions" (:type %)) (:blocks notice))))
+        (is (= ["markdown" "section" "table" "context" "context_actions"]
+               (mapv :type (:blocks answer)))))
+      (testing "the notice rides in a context block, linking to the conversation"
+        (is (str/starts-with? (notice-text (:blocks answer)) "_This answer was too long"))
+        (is (re-find #"<https?://\S+/metabot/conversation/conversation-id\|see it in full in Metabase>"
+                     (notice-text (:blocks answer)))
+            "an absolute link to this conversation, so the full answer is one click away"))
+      (testing "the notice stays out of `:text`, which `thread->history` replays back to the model"
+        (is (not (str/includes? (:text answer) "too long to post in Slack"))))
       (testing "the answer's ts is persisted -- it carries the buttons and is what a delete targets"
         (is (= [{:msg-id 42 :slack-msg-id (:ts (:response answer))}] backfills))))))
 
@@ -142,7 +150,7 @@
     (let [{:keys [posts]} (send-channel-response! {:text-parts ["Short answer."]
                                                    :post-fn    (fake-slack)})]
       (is (= 1 (count posts)))
-      (is (not-any? #(str/includes? (:text %) "too long to post in Slack") posts)))))
+      (is (not-any? #(str/includes? (pr-str %) "too long to post in Slack") posts)))))
 
 (deftest channel-response-falls-back-when-slack-rejects-blocks-test
   (testing "when Slack rejects the blocks the answer is still delivered, as plain text (BOT-1606)"
@@ -166,6 +174,30 @@
           "the fallback's ts is persisted, so the message can still be looked up and edited")
       (is (= "" (:status (last statuses)))
           "the thread status is cleared so the spinner does not linger"))))
+
+(deftest channel-response-fallback-never-posts-the-preview-placeholder-test
+  (testing "a rejected visualization-only reply falls back to something that actually says so"
+    ;; The planned message's `:text` for a viz-only reply is the `Query results` notification
+    ;; preview. Posting that as the fallback would deliver a message saying nothing at all, with
+    ;; the tables silently dropped.
+    (let [{:keys [posts]} (send-channel-response!
+                           {:text-parts []
+                            :viz-blocks table-viz-blocks
+                            :post-fn    (constantly {:ok false :error "invalid_blocks"})})
+          fallback        (last posts)]
+      (is (= 2 (count posts)) "the blocks post, then the plain-text fallback")
+      (is (not (str/includes? (:text fallback) slackbot.blocks/viz-only-preview-text))
+          "the notification preview is never mistaken for the answer")
+      (is (str/includes? (:text fallback) "visualizations could not be included")
+          "plain text cannot carry the tables, so their loss is called out")))
+  (testing "a rejected reply that does have prose falls back to the prose itself"
+    (let [{:keys [posts]} (send-channel-response!
+                           {:text-parts ["Here are your results."]
+                            :viz-blocks table-viz-blocks
+                            :post-fn    (constantly {:ok false :error "invalid_blocks"})})
+          fallback        (last posts)]
+      (is (str/includes? (:text fallback) "Here are your results."))
+      (is (str/includes? (:text fallback) "visualizations could not be included")))))
 
 (deftest channel-response-caps-total-blocks-test
   (testing "a message with many visualizations stays inside Slack's 50 block ceiling (BOT-1606)"

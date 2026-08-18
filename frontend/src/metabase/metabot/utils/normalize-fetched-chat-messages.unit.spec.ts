@@ -7,6 +7,7 @@ const agentText = (
   extras: {
     finished?: boolean | null;
     error?: { message: string } | null;
+    profile_id?: string | null;
   } = {},
 ): FetchedChatMessage => ({
   id,
@@ -19,18 +20,51 @@ const agentText = (
 
 describe("normalizeFetchedChatMessages", () => {
   describe("slack", () => {
-    it("converts slack mrkdwn to markdown when isSlack is true", () => {
-      const result = normalizeFetchedChatMessages(
-        [
-          agentText("a1", "see <https://example.com|the docs>", {
-            finished: true,
-          }),
-        ],
-        { isSlack: true },
-      );
+    it("converts slack mrkdwn to markdown for a slack-authored message", () => {
+      const result = normalizeFetchedChatMessages([
+        agentText("a1", "see <https://example.com|the docs>", {
+          finished: true,
+          profile_id: "slackbot",
+        }),
+      ]);
       expect(result[0]).toMatchObject({
         type: "text",
         message: "see [the docs](https://example.com)",
+      });
+    });
+
+    it("leaves a web-authored message unconverted", () => {
+      const result = normalizeFetchedChatMessages([
+        agentText("a1", "see <https://example.com|the docs>", {
+          finished: true,
+          profile_id: "embedding_next",
+        }),
+      ]);
+      expect(result[0]).toMatchObject({
+        type: "text",
+        message: "see <https://example.com|the docs>",
+      });
+    });
+
+    // The decision is per message: a conversation forked out of Slack and
+    // continued on the web holds both, and converting by conversation would
+    // corrupt whichever half lost the vote.
+    it("converts only the slack-authored messages of a mixed conversation", () => {
+      const result = normalizeFetchedChatMessages([
+        agentText("a1", "see <https://example.com|the docs>", {
+          finished: true,
+          profile_id: "slackbot",
+        }),
+        agentText("a2", "see <https://example.com|the docs>", {
+          finished: true,
+          profile_id: "embedding_next",
+        }),
+      ]);
+      expect(result[0]).toMatchObject({
+        message: "see [the docs](https://example.com)",
+      });
+      expect(result[1]).toMatchObject({
+        message: "see <https://example.com|the docs>",
       });
     });
   });

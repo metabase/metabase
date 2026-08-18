@@ -18,7 +18,6 @@ import type {
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
-import { isSlackProfile } from "metabase/metabot/utils/slack-mrkdwn";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -92,22 +91,16 @@ export function ConversationDetailPage() {
     refetchOnMountOrArgChange: true,
   });
 
-  const isSlack = isSlackProfile(conversation?.profile_id);
-
   const conversationMessages = useMemo(
     () => conversation?.messages ?? [],
     [conversation?.messages],
   );
 
-  const { messages, getExtraActions } = useBranchableMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const { messages, getExtraActions } =
+    useBranchableMessages(conversationMessages);
 
-  const feedbackChatMessages = normalizeFetchedChatMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const feedbackChatMessages =
+    normalizeFetchedChatMessages(conversationMessages);
 
   if (isLoading || error) {
     return (

@@ -263,12 +263,14 @@ describe("MetabotConversationPage", () => {
             role: "user",
             type: "text",
             message: "Describe the tables",
+            profile_id: profileId,
           },
           {
             id: "m2",
             role: "agent",
             type: "text",
             message: `Start with <${TABLE_URL}|PEOPLE>.`,
+            profile_id: profileId,
           },
         ],
       });
@@ -294,6 +296,48 @@ describe("MetabotConversationPage", () => {
       expect(
         screen.queryByRole("link", { name: "PEOPLE" }),
       ).not.toBeInTheDocument();
+    });
+
+    // Forking a Slack thread copies its rows, so a follow-up asked on the web
+    // leaves one transcript holding both profiles. The conversation-level
+    // `profile_id` reports only the last row, so it cannot decide this.
+    it("converts the slack messages of a conversation continued on the web", async () => {
+      mockConversationDetail(
+        createMockMetabotConversationDetail({
+          conversation_id: CONVERSATION_ID,
+          profile_id: "embedding_next",
+          messages: [
+            {
+              id: "m1",
+              role: "user",
+              type: "text",
+              message: "Describe the tables",
+              profile_id: "slackbot",
+            },
+            {
+              id: "m2",
+              role: "agent",
+              type: "text",
+              message: `Start with <${TABLE_URL}|PEOPLE>.`,
+              profile_id: "slackbot",
+            },
+            {
+              id: "m3",
+              role: "user",
+              type: "text",
+              message: "Thanks, anything else?",
+              profile_id: "embedding_next",
+            },
+          ],
+        }),
+      );
+
+      setup({ metabotInitialState: createAskState() });
+
+      const link = await screen.findByRole("link", { name: "PEOPLE" });
+      expect(link).toHaveAttribute("href", TABLE_URL);
+      expect(screen.queryByText(new RegExp(TABLE_URL))).not.toBeInTheDocument();
+      expect(screen.getByText("Thanks, anything else?")).toBeInTheDocument();
     });
   });
 });

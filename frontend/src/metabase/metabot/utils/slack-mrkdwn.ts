@@ -44,9 +44,10 @@ export function convertSlackChatMessage(
 }
 
 /**
- * Slack-authored conversations store their text in Slack's mrkdwn rather than
- * standard markdown, so readers must convert it before rendering. The profile is
- * recorded per message; `profile_id` on a conversation is the last one's.
+ * Slack-authored messages store their text in Slack's mrkdwn rather than standard
+ * markdown, so readers must convert it before rendering. Ask this per message: a
+ * conversation can mix profiles, because forking a Slack thread and continuing it
+ * on the web leaves both kinds of row in one transcript.
  */
 export function isSlackProfile(profileId?: string | null): boolean {
   return profileId === "slackbot" || profileId === "slack";

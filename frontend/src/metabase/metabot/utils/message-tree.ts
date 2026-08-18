@@ -66,12 +66,11 @@ function activePath(
 export function activeResponses(
   messages: ParentedChatMessage[],
   selectedReplyByParentId: SelectedReplyByParentId,
-  { isSlack }: { isSlack: boolean },
 ): ActiveResponse[] {
   const index = indexChildrenByParent(messages);
   const path = activePath(index, selectedReplyByParentId);
   return groupIntoResponses(path).map((response) => ({
-    messages: normalizeFetchedChatMessages(response, { isSlack }),
+    messages: normalizeFetchedChatMessages(response),
     branch: branchAt(index, response),
   }));
 }

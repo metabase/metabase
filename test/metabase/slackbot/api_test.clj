@@ -240,16 +240,17 @@
                                                      :slack_msg_id [:not= nil])
                          :done?      some?
                          :timeout-ms 5000})
-                ;; How the answer is split is `channel-response-splits-oversized-text-test`'s
-                ;; job -- with no DB and no polling. What only this test can show is that the
-                ;; app_mention route reaches the channel path and Slack accepts what it sends.
-                (testing "Slack accepts every message"
+                ;; How the answer is cut is `blocks-test`'s job -- with no DB and no polling.
+                ;; What only this test can show is that the app_mention route reaches the channel
+                ;; path and Slack accepts what it sends.
+                (testing "Slack accepts the message"
                   (is (= [] @rejections))
                   (is (every? #(nil? (tu/block-rejection (:blocks %))) @post-calls))
-                  (is (= 2 (count @post-calls))
-                      "the cut answer, then the notice explaining the cut")
-                  (is (str/includes? (:text (second @post-calls)) "too long to post in Slack"))
-                  (is (not-any? #(str/includes? (:text %) "could not render") @post-calls)
+                  (is (= 1 (count @post-calls))
+                      "the cut answer, notice included -- one message, so one ts to record")
+                  (is (str/includes? (pr-str (:blocks (first @post-calls))) "too long to post in Slack")
+                      "the notice rides in a context block of that message")
+                  (is (not-any? #(str/includes? (str (:text %)) "could not render") @post-calls)
                       "no fallback message was needed"))))))))))
 
 (deftest stream-start-failure-test

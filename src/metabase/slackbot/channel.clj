@@ -31,15 +31,24 @@
 (def ^:private fallback-prefix
   "I could not render the formatted response, so here it is as plain text:\n\n")
 
+(def ^:private dropped-viz-suffix
+  "\n\n_The visualizations could not be included._")
+
 (defn- post-render-fallback!
   "Post the answer as plain text after Slack refused to render the block message. The DM path drops
    the text here (`streaming.clj`), but it has already delivered it via `chat.appendStream` -- the
-   channel path has sent nothing yet, so dropping it would lose the answer outright."
-  [client message-ctx text feedback-blocks]
+   channel path has sent nothing yet, so dropping it would lose the answer outright.
+
+   Takes the answer itself rather than the planned message's `:text`, which for a reply carrying
+   only visualizations is the `Query results` notification preview -- posting that would deliver
+   nothing at all. Plain text cannot carry the visualizations either, so say so when there were
+   any, rather than dropping them silently."
+  [client message-ctx text viz? feedback-blocks]
   (let [body (if (str/blank? text)
                "I generated a response, but Slack could not render it. Please try again."
                (str fallback-prefix
-                    (u.str/elide text (- text-field-limit (count fallback-prefix)))))
+                    (u.str/elide text (- text-field-limit (count fallback-prefix) (count dropped-viz-suffix)))))
+        body (cond-> body viz? (str dropped-viz-suffix))
         res  (slackbot.client/post-thread-reply client message-ctx body
                                                 :blocks (not-empty feedback-blocks))]
     (when-not (:ok res)
@@ -141,23 +150,21 @@
                                               answer-text
                                               "I wasn't able to generate a response. Please try again.")
               feedback                      (feedback-blocks conversation-id message-external-id)
-              {:keys [messages truncated?]} (slackbot.blocks/message-payloads final-text blocks feedback
-                                                                              (conversation-url conversation-id))
-              [answer & follow-ups]         messages]
+              {:keys [message truncated?]}  (slackbot.blocks/message-payloads final-text blocks feedback
+                                                                              (conversation-url conversation-id))]
           (when truncated?
             (analytics/inc! :metabase-slackbot/responses-truncated))
-          (let [posted (post-message! client channel thread-ts answer)
+          ;; One message, always: the truncation notice rides inside it, so there is exactly one
+          ;; `ts` to record and exactly one thing for a delete to resolve to.
+          (let [posted (post-message! client channel thread-ts message)
                 ;; Slack returns `{:ok false}` rather than throwing, so without a fallback the
                 ;; thread just goes quiet. Plain text cannot be rejected the way the blocks were.
                 res    (if (:ok posted)
                          posted
                          (do (set-status! nil)
-                             (post-render-fallback! client message-ctx (:text answer) feedback)))]
-            ;; The notice explains a cut that happened either way, so it follows the answer even
-            ;; when the answer itself fell back to plain text.
-            (run! #(post-message! client channel thread-ts %) follow-ups)
-            ;; The feedback buttons ride the answer message, so that is the one a rating or a
-            ;; delete has to resolve to.
+                             (post-render-fallback! client message-ctx final-text (seq blocks) feedback)))]
+            ;; The feedback buttons ride this message, so it is the one a rating or a delete has
+            ;; to resolve to.
             (when-let [res-ts (:ts res)]
               (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts)))
           (doseq [e errors]

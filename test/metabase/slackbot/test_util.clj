@@ -3,10 +3,10 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [clojure.walk :as walk]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
-   [metabase.slackbot.blocks :as slackbot.blocks]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
@@ -67,6 +67,24 @@
   "Slack rejects a message with more blocks than this."
   50)
 
+(defn- text-payload-length
+  "Characters Slack charges a message's block budget: every `text` and `alt_text` string anywhere
+   in the payload.
+
+   Deliberately implemented apart from `slackbot.blocks/block-text-length`, and by a different
+   traversal. A harness that measured with the very function under test could only ever agree with
+   it, so an under-count in production budgeting would pass here and fail against real Slack."
+  [blocks]
+  (let [total (volatile! 0)]
+    (walk/postwalk (fn [x]
+                     (when (map-entry? x)
+                       (let [[k v] x]
+                         (when (and (#{:text :alt_text} k) (string? v))
+                           (vswap! total + (count v)))))
+                     x)
+                   blocks)
+    @total))
+
 (defn block-rejection
   "The `chat.postMessage` response Slack returns for `blocks`, or nil when it would accept them."
   [blocks]
@@ -91,7 +109,7 @@
       (some #(> (count (:text % "")) slack-markdown-text-limit) markdown)
       {:ok false :error "msg_too_long"}
 
-      (and (seq markdown) (> (slackbot.blocks/block-text-length blocks) slack-message-text-limit))
+      (and (seq markdown) (> (text-payload-length blocks) slack-message-text-limit))
       {:ok false :error "msg_blocks_too_long"})))
 
 (defmacro with-ensure-encryption
