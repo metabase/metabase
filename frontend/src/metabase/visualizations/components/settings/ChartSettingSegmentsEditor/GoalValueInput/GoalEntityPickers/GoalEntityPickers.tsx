@@ -7,9 +7,10 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 
+import type { PickedItem } from "../types";
+import { useEntityPickerSearch } from "../use-entity-picker-search";
+
 import S from "./GoalEntityPickers.module.css";
-import type { PickedItem } from "./types";
-import { useEntityPickerSearch } from "./use-entity-picker-search";
 
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "metric",

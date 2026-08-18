@@ -14,8 +14,9 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ResolvedGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 
+import { ICON_BUTTON_SIZE } from "../constants";
+
 import S from "./GoalValuePill.module.css";
-import { ICON_BUTTON_SIZE } from "./constants";
 
 type Props = {
   "aria-label"?: string;
