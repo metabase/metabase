@@ -90,5 +90,5 @@ const useActionImpl = <
   };
 };
 
-/** @notExported useAction */
+/** @notExported UseAction */
 export const useAction: UseAction = useActionImpl;
