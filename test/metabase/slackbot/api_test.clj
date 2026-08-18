@@ -207,11 +207,12 @@
                   (is (some? (:slack_msg_id msg))))))))))))
 
 (deftest app-mention-long-answer-fits-slack-blocks-test
-  (testing "POST /events with app_mention splits a long answer so Slack accepts the blocks (BOT-1606)"
+  (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
     (tu/with-slackbot-setup
-      (let [;; 5 paragraphs of ~690 chars. The channel path concatenates every text part the
-            ;; agent loop emits, so a multi-round turn easily clears Slack's 3000 char limit.
-            mock-ai-text (str/join "\n\n" (repeat 5 (apply str (repeat 690 "x"))))
+      (let [;; 30 paragraphs of ~690 chars. The channel path concatenates every text part the
+            ;; agent loop emits, so a multi-round turn easily clears the 12000 characters one
+            ;; `markdown` block allows.
+            mock-ai-text (str/join "\n\n" (repeat 30 (apply str (repeat 690 "x"))))
             channel-id   "C-LONG-ANSWER-TEST"
             event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
         (tu/with-slackbot-mocks
@@ -222,9 +223,9 @@
               (mt/with-dynamic-fn-redefs
                 [slackbot.client/post-message (fn [_client msg]
                                                 (swap! post-calls conj msg)
-                                                (if-let [idx (tu/oversized-section-index (:blocks msg))]
-                                                  (do (swap! rejections conj idx)
-                                                      (tu/invalid-blocks-response idx))
+                                                (if-let [rejection (tu/block-rejection (:blocks msg))]
+                                                  (do (swap! rejections conj rejection)
+                                                      rejection)
                                                   {:ok      true
                                                    :ts      "1700000000.000002"
                                                    :channel (:channel msg)}))]
@@ -242,10 +243,13 @@
                 ;; How the answer is split is `channel-response-splits-oversized-text-test`'s
                 ;; job -- with no DB and no polling. What only this test can show is that the
                 ;; app_mention route reaches the channel path and Slack accepts what it sends.
-                (testing "Slack accepts the message"
+                (testing "Slack accepts every message"
                   (is (= [] @rejections))
-                  (is (nil? (tu/oversized-section-index (:blocks (first @post-calls)))))
-                  (is (= 1 (count @post-calls))
+                  (is (every? #(nil? (tu/block-rejection (:blocks %))) @post-calls))
+                  (is (= 2 (count @post-calls))
+                      "the cut answer, then the notice explaining the cut")
+                  (is (str/includes? (:text (second @post-calls)) "too long to post in Slack"))
+                  (is (not-any? #(str/includes? (:text %) "could not render") @post-calls)
                       "no fallback message was needed"))))))))))
 
 (deftest stream-start-failure-test

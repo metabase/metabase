@@ -6,6 +6,7 @@
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
+   [metabase.slackbot.blocks :as slackbot.blocks]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
@@ -45,30 +46,53 @@
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
 
+;;; Slack's block limits, measured against the API rather than taken from the docs -- which
+;;; describe the markdown budget as a per-payload total when it is enforced per block, and omit
+;;; `msg_too_long` from the error list entirely. The mocked client accepts anything, so tests that
+;;; care about deliverability validate through [[block-rejection]].
+
 (def slack-section-text-limit
   "Slack rejects a `section` block whose `text.text` exceeds this many characters."
   3000)
 
-(defn oversized-section-index
-  "Index of the first `section` block whose text exceeds [[slack-section-text-limit]], or nil
-   when every block is within Slack's limits. Lets tests validate blocks the way Slack does,
-   since the mocked client otherwise accepts anything."
-  [blocks]
-  (first (keep-indexed (fn [idx block]
-                         (when (and (= "section" (:type block))
-                                    (> (count (get-in block [:text :text] "")) slack-section-text-limit))
-                           idx))
-                       blocks)))
+(def slack-markdown-text-limit
+  "Slack rejects a `markdown` block whose `text` exceeds this many characters."
+  12000)
 
-(defn invalid-blocks-response
-  "The `chat.postMessage` response Slack returns when the section block at `idx` is too long."
-  [idx]
-  {:ok    false
-   :error "invalid_blocks"
-   :response_metadata
-   {:messages [(format "[ERROR] failed to match all allowed schemas [json-pointer:/blocks/%d/text]" idx)
+(def slack-message-text-limit
+  "Once a `markdown` block is present, Slack rejects a message carrying more block text than this."
+  13202)
+
+(def slack-max-blocks
+  "Slack rejects a message with more blocks than this."
+  50)
+
+(defn block-rejection
+  "The `chat.postMessage` response Slack returns for `blocks`, or nil when it would accept them."
+  [blocks]
+  (let [invalid      (fn [& messages]
+                       {:ok false :error "invalid_blocks" :response_metadata {:messages (vec messages)}})
+        markdown     (filter #(= "markdown" (:type %)) blocks)
+        section-idx  (first (keep-indexed (fn [idx block]
+                                            (when (and (= "section" (:type block))
+                                                       (> (count (get-in block [:text :text] ""))
+                                                          slack-section-text-limit))
+                                              idx))
+                                          blocks))]
+    (cond
+      (> (count blocks) slack-max-blocks)
+      (invalid (format "[ERROR] no more than %d items allowed [json-pointer:/blocks]" slack-max-blocks))
+
+      section-idx
+      (invalid (format "[ERROR] failed to match all allowed schemas [json-pointer:/blocks/%d/text]" section-idx)
                (format "[ERROR] must be less than %d characters [json-pointer:/blocks/%d/text/text]"
-                       (inc slack-section-text-limit) idx)]}})
+                       (inc slack-section-text-limit) section-idx))
+
+      (some #(> (count (:text % "")) slack-markdown-text-limit) markdown)
+      {:ok false :error "msg_too_long"}
+
+      (and (seq markdown) (> (slackbot.blocks/block-text-length blocks) slack-message-text-limit))
+      {:ok false :error "msg_blocks_too_long"})))
 
 (defmacro with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.
