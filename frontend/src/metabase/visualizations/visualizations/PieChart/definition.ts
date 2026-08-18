@@ -47,7 +47,6 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
-  usesEChartsRenderer: true,
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
   supportsVisualizer: true,

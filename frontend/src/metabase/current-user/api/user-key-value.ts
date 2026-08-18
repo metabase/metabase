@@ -1,10 +1,9 @@
+import { Api } from "metabase/api/api";
 import type {
   DeleteUserKeyValueRequest,
   GetUserKeyValueRequest,
   UpdateUserKeyValueRequest,
 } from "metabase-types/api";
-
-import { Api } from "./api";
 
 export const userKeyValueApi = Api.injectEndpoints({
   endpoints: (builder) => ({

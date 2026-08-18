@@ -69,9 +69,9 @@ export const useBrush = (
   // chart model changes (ECharts resets the cursor state on re-render).
   option?: unknown,
   // ECharts instance — used as a signal dep so the brush is (re-)enabled once
-  // the (lazily loaded) renderer has initialized the chart. `onInit` fires
-  // after this hook's effects first run, so without this the brush would never
-  // be enabled on desktop.
+  // the renderer has initialized the chart. It renders nothing until
+  // ExplicitSize has measured it, so `onInit` fires after this hook's effects
+  // first run, and without this the brush would never be enabled on desktop.
   chartInstance?: unknown,
 ) => {
   const isTouch = useRef(isTouchDevice()).current;

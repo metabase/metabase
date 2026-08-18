@@ -14,7 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.performance :as perf :refer [not-empty]]))
 
 (defn- transduce-stages
   ([rf query]
@@ -128,6 +128,25 @@
     (stage-values-set query (keep :source-card))
     (all-metric-ids query)
     (all-template-tag-card-ids query))))
+
+(mu/defn all-source-card-ids-recursive :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Like [[all-source-card-ids]], but follows each source Card into its own query, returning every Card the query reads
+  at any depth."
+  [query :- ::lib.schema/query]
+  (loop [seen #{}, layer (set (all-source-card-ids query))]
+    (let [layer (set/difference layer seen)]
+      (if (perf/empty? layer)
+        (not-empty seen)
+        (do
+          (lib.metadata/bulk-metadata query :metadata/card layer)
+          (recur (set/union seen layer)
+                 (into #{}
+                       (mapcat (fn [card-id]
+                                 (some-> (lib.metadata/card query card-id)
+                                         :dataset-query
+                                         not-empty
+                                         all-source-card-ids)))
+                       layer)))))))
 
 (mu/defn any-native-stage?
   "Returns true if any stage of this query is native."

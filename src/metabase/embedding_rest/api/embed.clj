@@ -412,7 +412,11 @@
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card)
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-card
+       card
+       (api.embed.common/tile-parameters-for-card
+        card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+       zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -443,4 +447,8 @@
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard
+       dashboard dashcard card
+       (api.embed.common/tile-parameters-for-dashboard
+        dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+       zoom x y lat-field lon-field))))

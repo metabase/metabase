@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { type AttachedDwhInfo, getHasAttachedDwh } from "metabase/common/hooks";
+import { canAccessSettings, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 
 interface AddDataState extends AttachedDwhInfo {
   areDatabasesLoading: boolean;

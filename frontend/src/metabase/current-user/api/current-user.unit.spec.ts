@@ -3,10 +3,10 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { findRequests } from "__support__/server-mocks";
+import { Api } from "metabase/api/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { Api } from "./api";
-import { userApi } from "./user";
+import { currentUserApi } from "./current-user";
 
 let activeStore: ReturnType<typeof getStore> | undefined;
 
@@ -18,7 +18,7 @@ function setup() {
   return { store };
 }
 
-describe("userApi", () => {
+describe("currentUserApi", () => {
   afterEach(() => {
     // Drop the store's RTK Query subscriptions before pulling the fetch routes,
     // otherwise orphaned subscriptions refetch against removed routes.
@@ -35,7 +35,7 @@ describe("userApi", () => {
       const { store } = setup();
 
       const { data } = await store.dispatch(
-        userApi.endpoints.getCurrentUser.initiate(),
+        currentUserApi.endpoints.getCurrentUser.initiate(),
       );
 
       expect(data?.id).toBe(7);
@@ -51,7 +51,9 @@ describe("userApi", () => {
 
       const { store } = setup();
 
-      await store.dispatch(userApi.endpoints.updateUserModalQbnewb.initiate(7));
+      await store.dispatch(
+        currentUserApi.endpoints.updateUserModalQbnewb.initiate(7),
+      );
 
       await waitFor(async () => {
         const puts = await findRequests("PUT");
