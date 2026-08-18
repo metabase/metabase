@@ -79,13 +79,17 @@ describe("SharedCombinedEmbeddingSettings", () => {
   it("should show the embedding secret key input", async () => {
     await setup({ enabled: true });
 
-    expect(await screen.findByText("Embedding secret key")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Secret key for guest embeds"),
+    ).toBeInTheDocument();
   });
 
   it("should generate a new embedding secret key", async () => {
     await setup({ enabled: true });
 
-    expect(await screen.findByText("Embedding secret key")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Secret key for guest embeds"),
+    ).toBeInTheDocument();
     const generateButton = screen.getByRole("button", { name: "Generate key" });
     await userEvent.click(generateButton);
 
