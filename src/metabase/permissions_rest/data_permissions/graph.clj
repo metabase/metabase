@@ -221,9 +221,10 @@
                                    (when group-id [:= :group_id group-id])
                                    (when group-ids [:in :group_id group-ids])
                                    (when-not audit? [:not= :db_id audit/audit-db-id])
-                                   [:not-in :db_id {:select [:id]
-                                                    :from   [:metabase_database]
-                                                    :where  [:not= :router_database_id nil]}]]
+                                   [:not-in :db_id ^:allow-subquery
+                                    {:select [:id]
+                                     :from   [:metabase_database]
+                                     :where  [:not= :router_database_id nil]}]]
                         :order-by [:group_id :db_id]}))
 
 (defn- add-perm

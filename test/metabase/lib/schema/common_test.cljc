@@ -45,3 +45,14 @@
   (is (nil? (get (lib.schema.common/unfussy-sorted-map :a 1) "lib/type")))
   (is (= {"a" 1 :b 2}
          (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))
+
+(deftest ^:parallel coercion-strategy-test
+  (testing "keywords in the :Coercion/* hierarchy are valid"
+    (are [k] (not (me/humanize (mr/explain ::lib.schema.common/coercion-strategy k)))
+      :Coercion/UNIXMilliSeconds->DateTime
+      :Coercion/String->Number))
+  (testing "JSON-roundtripped strings normalize to keywords"
+    (is (= :Coercion/UNIXMilliSeconds->DateTime
+           (lib/normalize ::lib.schema.common/coercion-strategy "Coercion/UNIXMilliSeconds->DateTime"))))
+  (testing "non-coercion keywords are invalid"
+    (is (me/humanize (mr/explain ::lib.schema.common/coercion-strategy :type/DateTime)))))

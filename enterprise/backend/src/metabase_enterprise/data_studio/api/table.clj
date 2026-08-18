@@ -73,6 +73,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
+  ^:allow-subquery
   {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph

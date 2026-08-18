@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -205,7 +206,8 @@
   [_route-params
    {:keys [context], :as overrides} :- [:map
                                         [:context {:default :default} :keyword]
-                                        [:search_engine {:optional true} :any]]]
+                                        [:search_engine {:optional true} :any]
+                                        [::mc/default [:map-of :keyword :string]]]]
   ;; remove cookie
   (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)

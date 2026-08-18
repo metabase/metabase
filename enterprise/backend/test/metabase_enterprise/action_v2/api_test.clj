@@ -16,6 +16,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -675,3 +676,38 @@
               (is (= {table-id [nil
                                 {:price "Must be an integer"}
                                 {:name  "This field is required"}]} (:errors result))))))))))
+
+(deftest ^:parallel action-value-map-rejects-map-values-test
+  (testing "an action `:params`/`:input`/`:inputs` value is a parameter value -- never a map"
+    (are [m valid?] (= valid?
+                       (mr/validate :metabase-enterprise.action-v2.api/action-value-map m))
+      ;; scalar values -- the values that survive JSON transport as a row cell
+      {:name "Pichu"}          true
+      {:id 1}                  true
+      {:delete-children true}  true
+      {:note nil}              true
+      {}                       true
+      ;; a sequence of scalars, same as `POST /api/action/:id/execute` allows: a query action binds its parameters to
+      ;; native template tags, which take multiple values
+      {:ids [1 2 3]}           true
+      {:tags ["a" "b"]}        true
+      {:ids []}                true
+      ;; a value that carries nested structure into the write
+      {:x {:nested "map"}}     false
+      {:x [{:a 1}]}            false
+      {:x [[1 2]]}             false)))
+
+(deftest map-cell-value-is-rejected-not-dropped-test
+  (testing "a map cell value is a 400, not a row quietly written without that column"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (doseq [[label value] [["a map"              {:nested "map"}]
+                                 ["a sequence of maps" [{:nested "map"}]]]]
+            (testing label
+              (mt/user-http-request :crowberto :post 400 execute-bulk-url
+                                    {:action :data-grid.row/create
+                                     :scope  {:table-id table-id}
+                                     :inputs [{:name "Pidgey" :song value}]})))
+          (testing "and nothing was written"
+            (is (= [] (table-rows table-id)))))))))

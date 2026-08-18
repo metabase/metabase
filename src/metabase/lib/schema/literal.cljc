@@ -152,6 +152,16 @@
     [:effective-type ::common/base-type]
     [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
 
+(mr/def ::value.value
+  "The value slot of a `:value` clause: a single literal that is not a Clojure collection. Its concrete type is left
+  open -- literals of many kinds reach this slot (strings, numbers, temporals, UUIDs, byte arrays, ...) -- but it must
+  never be a Clojure collection. A map or sequence here is indistinguishable from Metabase's compiled-query structure
+  and would be spliced into the query as operator/DSL rather than bound as a value; the runtime
+  `check-value-literal` guard enforces the same rule for driver paths that build SQL directly from this slot."
+  [:fn
+   {:error/message "value must be a literal, not a Clojure collection"}
+   (complement coll?)])
+
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
 ;;; literals, to make it easier for drivers to process queries; see
 ;;; the [[metabase.query-processor.middleware.wrap-value-literals]] middleware. It is also used to differentiate `nil`
@@ -166,7 +176,7 @@
    {:error/message "Value :value clause"}
    #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
-   #_value any?])
+   #_value [:ref ::value.value]])
 
 (mr/def ::literal
   [:or

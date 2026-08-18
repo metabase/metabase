@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot.tools.field-stats-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,3 +49,20 @@
               (is (= full-distinct-count (get-in new-fp [:global :distinct-count])))))
           (finally
             (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
+
+(deftest sandbox-restricted-column-on-own-table-is-not-drillable-test
+  (testing "a column the sandbox's source card omits is not drillable on the sandboxed table itself"
+    (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+      (let [name-field-id (mt/id :venues :name)]
+        (try
+          (testing "PRICE is outside the sandbox's column set"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                 (metabot.tools.field-stats/field-values
+                  {:entity-type "table" :entity-id (mt/id :venues) :field-id (mt/id :venues :price)}))))
+          (testing "a column the sandbox does expose is still drillable"
+            (is (=? {:structured-output {:field_id name-field-id}}
+                    (metabot.tools.field-stats/field-values
+                     {:entity-type "table" :entity-id (mt/id :venues) :field-id name-field-id}))))
+          (finally
+            (t2/delete! :model/FieldValues :field_id name-field-id :type :advanced)))))))

@@ -839,28 +839,32 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (system/site-url)]
-          (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[:model/Card card-id]
-                                [:model/Table table-id]
-                                [:model/Database database-id]
-                                [:model/Dashboard dashboard-id]
-                                [:model/Collection collection-id]
-                                [:model/Card model-id]]]
-              (t2/update! model id {:name (format "New %s name" (name model))}))
-            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
-                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
-          (testing "it should filter out models that current users does not have permission to read"
-            (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
+        ;; Seed `site-url` explicitly: test app DBs have none stored, and header-derivation only fires on
+        ;; pre-setup instances. Link-card URLs render against it, and the expectations below are
+        ;; built from it, so it must be non-nil and consistent.
+        (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+          (let [site-url (system/site-url)]
+            (testing "should returns all link cards and name are newly fetched"
+              (doseq [[model id] [[:model/Card card-id]
+                                  [:model/Table table-id]
+                                  [:model/Database database-id]
+                                  [:model/Dashboard dashboard-id]
+                                  [:model/Collection collection-id]
+                                  [:model/Card model-id]]]
+                (t2/update! model id {:name (format "New %s name" (name model))}))
+              (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
+                       {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) collection-owner-id nil))))
+            (testing "it should filter out models that current users does not have permission to read"
+              (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
 
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
@@ -889,28 +893,32 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (system/site-url)]
-          (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[:model/Card card-id]
-                                [:model/Table table-id]
-                                [:model/Database database-id]
-                                [:model/Dashboard dashboard-id]
-                                [:model/Collection collection-id]
-                                [:model/Card model-id]]]
-              (t2/update! model id {:name (format "New %s name" (name model))}))
-            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
-                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
-          (testing "it should filter out models that current users does not have permission to read"
-            (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
+        ;; Seed `site-url` explicitly: test app DBs have none stored, and header-derivation only fires on
+        ;; pre-setup instances. Link-card URLs render against it, and the expectations below are
+        ;; built from it, so it must be non-nil and consistent.
+        (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+          (let [site-url (system/site-url)]
+            (testing "should returns all link cards and name are newly fetched"
+              (doseq [[model id] [[:model/Card card-id]
+                                  [:model/Table table-id]
+                                  [:model/Database database-id]
+                                  [:model/Dashboard dashboard-id]
+                                  [:model/Collection collection-id]
+                                  [:model/Card model-id]]]
+                (t2/update! model id {:name (format "New %s name" (name model))}))
+              (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
+                       {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) collection-owner-id nil))))
+            (testing "it should filter out models that current users does not have permission to read"
+              (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
 
 (deftest execute-dashboard-with-tabs-test
   (mt/with-temp

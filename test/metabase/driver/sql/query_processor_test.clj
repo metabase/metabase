@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -26,13 +27,20 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
 (set! *warn-on-reflection* true)
+
+;; some of these tests run the full preprocessor, which includes EE middleware that reads the app DB
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel compiled-test
   (is (= [:raw "x"]
@@ -1689,3 +1697,77 @@
              (->> (qp/process-query query)
                   (mt/formatted-rows [identity int])
                   (map second)))))))
+
+(deftest ^:parallel map->honeysql-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"\QUnexpected ->honeysql call on a map\E"
+       (sql.qp/->honeysql :h2 {:raw "1) UNION SELECT 1 -- "}))))
+
+(deftest ^:parallel collection-in-value-clause-test
+  (let [evil-values {"map inside a vector"   [{:raw "1) UNION SELECT 1 -- "}]
+                     "sub-select in vector"  [{:select [:password] :from [:core_user]}]
+                     "honeysql op in vector" [[:raw "1) UNION SELECT 1 -- "]]
+                     "bare map"              {:raw "1) UNION SELECT 1 -- "}
+                     "a set"                 #{"a" "b"}}]
+    (testing "legacy MBQL `[:value <value> <opts>]`"
+      (doseq [[label value] evil-values]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"\QUnexpected collection in a :value clause\E"
+               ((get-method sql.qp/->honeysql [:sql :value]) :h2 [:value value {:base_type :type/Text}])))))
+      (testing "ordinary literals still compile"
+        (is (= "x" ((get-method sql.qp/->honeysql [:sql :value]) :h2 [:value "x" {:base_type :type/Text}])))
+        (is (nil? ((get-method sql.qp/->honeysql [:sql :value]) :h2 [:value nil {:base_type :type/Text}])))))))
+
+(deftest ^:parallel naughty-filter-values-test
+  (mu/disable-enforcement
+    (letfn [(query-with-filter [filter-value]
+              (let [mp meta/metadata-provider]
+                (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) filter-value)))))
+            (compile-query-with-filter [filter-value]
+              (-> (query-with-filter filter-value)
+                  qp.compile/compile
+                  :query
+                  (->> (driver/prettify-native-form :h2))
+                  (str/replace #"\"" "")
+                  str/split-lines))]
+      (testing "raw map -- should fail when validating the query since this is not a valid filter literal value"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid query: \{:stages \[\{:filters"
+             (compile-query-with-filter {:raw "1) UNION SELECT 1 -- "}))))
+      (testing "other invalid argument types -- not sure why these get compiled to IS NULL but that's fine as long as SQL isn't injected"
+        (doseq [[label evil-value] [["map inside vec" [{:raw "1) UNION SELECT 1 -- "}]]
+                                    ["honeysql vec"   [["raw" "1) UNION SELECT 1 -- "]]]]]
+          (testing label
+            (is (= ["SELECT"
+                    "  PUBLIC.VENUES.ID AS ID,"
+                    "  PUBLIC.VENUES.NAME AS NAME,"
+                    "  PUBLIC.VENUES.CATEGORY_ID AS CATEGORY_ID,"
+                    "  PUBLIC.VENUES.LATITUDE AS LATITUDE,"
+                    "  PUBLIC.VENUES.LONGITUDE AS LONGITUDE,"
+                    "  PUBLIC.VENUES.PRICE AS PRICE"
+                    "FROM"
+                    "  PUBLIC.VENUES"
+                    "WHERE"
+                    "  PUBLIC.VENUES.PRICE IS NULL"
+                    "LIMIT"
+                    "  1048575"]
+                   (compile-query-with-filter evil-value)))))))))
+
+(deftest ^:parallel check-interval-unit-test
+  (testing "check-interval-unit accepts every member of the closed interval-unit set"
+    (doseq [unit lib.schema.temporal-bucketing/datetime-interval-units]
+      (is (= unit (sql.qp/check-interval-unit unit)))))
+  (testing "and rejects anything outside it -- a unit outside the allow-list is rejected"
+    (doseq [bad [:nanosecond
+                 :day-of-week
+                 (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")
+                 nil]]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/check-interval-unit bad))))))

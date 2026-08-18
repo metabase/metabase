@@ -108,7 +108,6 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     csv-field-separator: ','
