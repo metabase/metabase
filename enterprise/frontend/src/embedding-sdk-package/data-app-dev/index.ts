@@ -8,7 +8,7 @@ import {
   loadEnv,
 } from "vite";
 
-import { checkQuerySync } from "../data-app-query-sync/sync";
+import { checkResourcesSynced } from "../data-app-query-sync/sync";
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
@@ -39,10 +39,10 @@ function dataAppVitePlugin(): PluginOption[] {
     ...dataAppBuildPlugins(),
     dataAppSandboxDevPlugin(appSlug, allowedHosts),
     {
-      name: "metabase-data-app-query-sync-check",
+      name: "metabase-resource-sync-check",
       apply: "build",
       buildStart: async () => {
-        await checkQuerySync(appRoot);
+        await checkResourcesSynced(appRoot);
       },
     },
     {

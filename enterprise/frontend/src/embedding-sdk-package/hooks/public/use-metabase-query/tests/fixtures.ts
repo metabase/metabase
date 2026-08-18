@@ -158,6 +158,41 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
+  models: {
+    orders: {
+      actions: {
+        create: {
+          kind: "action" as const,
+          id: 51,
+          name: "Create Order",
+          type: "implicit" as const,
+          implicitKind: "row/create" as const,
+          parameters: [
+            {
+              slug: "status",
+              displayName: "Status",
+              jsType: "string" as const,
+            },
+          ],
+        },
+        update: {
+          kind: "action" as const,
+          id: 52,
+          name: "Update Order",
+          type: "implicit" as const,
+          implicitKind: "row/update" as const,
+          parameters: [
+            {
+              slug: "id",
+              displayName: "ID",
+              jsType: "number" as const,
+              required: true,
+            },
+          ],
+        },
+      },
+    },
+  },
   questions: {
     // Generated question columns carry only `type`, `name`, and `jsType`; the
     // display name is rendered as a comment, not as runtime metadata.

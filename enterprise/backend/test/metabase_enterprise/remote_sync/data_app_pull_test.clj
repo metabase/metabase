@@ -30,7 +30,7 @@
     (impl/handle-task-result! result task)
     result))
 
-(defn- app-tree
+(defn- app-tree!
   "Repo files for one data app: its `data_app.yaml` + a bundle at `dist/index.js`."
   [slug bundle]
   (let [{:keys [resource_collection_entity_id permission_group_entity_id]}
@@ -65,8 +65,8 @@
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-            (let [outcome (pull-outcome! (app-tree "sales" "BUNDLE-V1")
-                                         (app-tree "sales" "BUNDLE-V2"))]
+            (let [outcome (pull-outcome! (app-tree! "sales" "BUNDLE-V1")
+                                         (app-tree! "sales" "BUNDLE-V2"))]
               (is (= "pulled" (:kind outcome)) "not reported as skipped")
               (is (= 1 (:count outcome)) "the one changed data app is counted"))))))))
 
@@ -77,7 +77,7 @@
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
-            (let [app     (app-tree "sales" "BUNDLE")
+            (let [app     (app-tree! "sales" "BUNDLE")
                   outcome (pull-outcome! app (merge coll-file app))]
               (is (= "pulled" (:kind outcome)))
               (is (= 1 (:count outcome)) "the collection counts; the unchanged app adds 0"))))))))
@@ -89,7 +89,7 @@
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection AND changes the data app's bundle.
-            (let [outcome (pull-outcome! (app-tree "ops" "BUNDLE")
-                                         (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
+            (let [outcome (pull-outcome! (app-tree! "ops" "BUNDLE")
+                                         (merge coll-file (app-tree! "ops" "BUNDLE-V2")))]
               (is (= "pulled" (:kind outcome)))
               (is (= 2 (:count outcome)) "the collection (1) plus the changed data app (1)"))))))))

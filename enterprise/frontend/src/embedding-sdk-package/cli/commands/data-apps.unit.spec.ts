@@ -1,15 +1,15 @@
 import { Command } from "commander";
 
-import { syncQueriesAction } from "../actions/sync-queries";
+import { syncResourcesAction } from "../actions/sync-resources";
 
 import { addDataAppsCommands } from "./data-apps";
 
-jest.mock("../actions/sync-queries", () => ({
-  syncQueriesAction: jest.fn(),
+jest.mock("../actions/sync-resources", () => ({
+  syncResourcesAction: jest.fn(),
 }));
 
 describe("data app commands", () => {
-  it("runs query synchronization for the requested app root", async () => {
+  it("runs resource synchronization for the requested app root", async () => {
     const program = new Command();
     addDataAppsCommands(program);
 
@@ -17,20 +17,20 @@ describe("data app commands", () => {
       "node",
       "cli",
       "data-apps",
-      "sync-queries",
+      "sync-resources",
       "--app-root",
       "data_apps/orders",
     ]);
 
-    expect(syncQueriesAction).toHaveBeenCalledWith("data_apps/orders");
+    expect(syncResourcesAction).toHaveBeenCalledWith("data_apps/orders");
   });
 
-  it("runs query synchronization from the current directory by default", async () => {
+  it("runs resource synchronization from the current directory by default", async () => {
     const program = new Command();
     addDataAppsCommands(program);
 
-    await program.parseAsync(["node", "cli", "data-apps", "sync-queries"]);
+    await program.parseAsync(["node", "cli", "data-apps", "sync-resources"]);
 
-    expect(syncQueriesAction).toHaveBeenCalledWith(process.cwd());
+    expect(syncResourcesAction).toHaveBeenCalledWith(process.cwd());
   });
 });

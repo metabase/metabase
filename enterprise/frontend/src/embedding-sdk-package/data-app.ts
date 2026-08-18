@@ -15,6 +15,7 @@ export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export { defineQuery } from "./hooks/public/use-metabase-query/define-query";
+export { defineAction } from "./hooks/public/use-action/define-action";
 export {
   aggregations,
   breakout,

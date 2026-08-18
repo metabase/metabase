@@ -1,5 +1,4 @@
 export { useAction } from "./use-action";
-export type { UseActionResult } from "./use-action";
 export type {
   ActionExecuteError,
   ActionImplicitKind,
@@ -15,4 +14,5 @@ export type {
   ActionResultForUpdate,
   ActionSchema,
   AnyActionResult,
+  UseActionResult,
 } from "./types";
