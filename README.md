@@ -47,7 +47,7 @@ The [Metabase handbook](https://www.metabase.com/docs/latest/).
 ## Contributing
 
 - To contribute to Metabase, see our [Developer docs](./docs/developers-guide/start.md).
-- Found an issue? Read our [Reporting a bug guide](/docs/latest/troubleshooting-guide/bugs)
+- Found an issue? Read our [Reporting a bug guide](https://www.metabase.com/docs/latest/troubleshooting-guide/bugs)
 
 ## Extending Metabase
 
