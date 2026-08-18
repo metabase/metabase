@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useAdminSetting,
   useAdminSettings,
@@ -32,6 +33,7 @@ export function EmbeddingToggle({
 
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   const [
     isLegaleseModalOpen,
@@ -45,7 +47,12 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  const isEmbeddingToggle = settingKey === "enable-embedding-modular";
+  // The terms speak of modular embedding and the SDK, and of shared accounts as
+  // unfair usage of a paid seat. Neither applies below the paywall, where guest
+  // embeds -- served to anonymous viewers over a signed JWT -- is the only
+  // method, so the modal stays paid-only.
+  const isEmbeddingToggle =
+    settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
 
   const handleChange = (checked: boolean) => {
     const shouldShowEmbedTerms = showSdkEmbedTerms || showSimpleEmbedTerms;

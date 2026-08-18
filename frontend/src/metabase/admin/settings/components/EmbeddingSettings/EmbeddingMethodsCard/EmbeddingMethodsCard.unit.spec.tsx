@@ -24,6 +24,7 @@ const OSS_LABEL = "Enable embedding";
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
   isPinnedToEnv?: boolean;
+  showEmbedTerms?: boolean;
 } & Partial<
   Pick<Settings, "enable-embedding-modular" | "enable-embedding-interactive">
 >;
@@ -31,13 +32,14 @@ type SetupOpts = {
 async function setup({
   hasSimpleEmbedding = true,
   isPinnedToEnv = false,
+  showEmbedTerms = false,
   ...values
 }: SetupOpts = {}) {
   const settingValues = createMockSettings({
     "enable-embedding-modular": false,
     "enable-embedding-interactive": false,
-    "show-simple-embed-terms": false,
-    "show-sdk-embed-terms": false,
+    "show-simple-embed-terms": showEmbedTerms,
+    "show-sdk-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
     }),
@@ -116,6 +118,39 @@ describe("EmbeddingMethodsCard", () => {
 
       const [{ body }] = await findRequests("PUT");
       expect(body).toEqual({ "enable-embedding-modular": true });
+    });
+
+    it("asks the admin to accept the terms before turning embedding on", async () => {
+      await setup({ showEmbedTerms: true });
+
+      const [mergedSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(mergedSwitch);
+
+      expect(
+        await screen.findByText(
+          "Each end user needs their own Metabase account",
+        ),
+      ).toBeInTheDocument();
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
+    // The terms are about paid methods and about shared accounts as unfair use
+    // of a paid seat, so guest embeds below the paywall never trigger them.
+    it("does not ask an OSS admin to accept the terms", async () => {
+      await setup({ hasSimpleEmbedding: false, showEmbedTerms: true });
+
+      const [guestSwitch] = await screen.findAllByRole("switch");
+      await userEvent.click(guestSwitch);
+
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+
+      const [{ body }] = await findRequests("PUT");
+      expect(body).toEqual({ "enable-embedding-modular": true });
+      expect(
+        screen.queryByText("Each end user needs their own Metabase account"),
+      ).not.toBeInTheDocument();
     });
 
     it("locks the row when the setting is pinned to an env var", async () => {
