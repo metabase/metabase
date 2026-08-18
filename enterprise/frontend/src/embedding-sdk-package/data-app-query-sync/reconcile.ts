@@ -1,13 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { injectSavedQuestionId } from "./ast/query-source";
+import { QUERY_DEFINITIONS, injectGeneratedId } from "./ast/query-source";
 import { getCanonicalQueryJson } from "./canonical";
 import { isPositiveInteger } from "./guards";
-import { writeQueryLockfile } from "./lockfile";
+import { RESOURCE_LOCKFILE, writeResourceLockfile } from "./lockfile";
+import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
-import { MetabaseApiError } from "./metabase-client";
-import type { DiscoveredQuery, QueryLockEntry } from "./types";
+import { orNullOn404 } from "./metabase-client";
+import type {
+  DiscoveredQuery,
+  QueryLockEntry,
+  ResourceLockfile,
+} from "./types";
 
 type QueryCard = Awaited<ReturnType<MetabaseClient["getCard"]>>;
 
@@ -20,7 +25,7 @@ interface ReconciliationContext {
   appRoot: string;
   collectionId: number;
   client: MetabaseClient;
-  entries: QueryLockEntry[];
+  lockfile: ResourceLockfile;
   recoveredIds: Map<DiscoveredQuery, number>;
   repairedLockfileIds: Set<number>;
   cardsById: Map<number, QueryCard | null>;
@@ -32,7 +37,7 @@ export interface ReconcileQueriesOptions {
   slug: string;
   collectionId: number;
   queries: DiscoveredQuery[];
-  previousEntries: QueryLockEntry[];
+  lockfile: ResourceLockfile;
   client: MetabaseClient;
   log: (message: string) => void;
 }
@@ -68,14 +73,6 @@ function replaceLockEntry(
   }
 }
 
-function queryLocation(appRoot: string, query: DiscoveredQuery) {
-  return `${path.relative(appRoot, query.filePath)}:${query.exportName}`;
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function recoverMissingQueryIds(
   appRoot: string,
   queries: DiscoveredQuery[],
@@ -92,18 +89,22 @@ function recoverMissingQueryIds(
     if (query.savedQuestionSourceId) {
       continue;
     }
+
     const candidates = previousEntries.filter(
       (entry) =>
         entry.tableId === query.tableId &&
         entry.hash === query.hash &&
         !claimedIds.has(entry.savedQuestionSourceId),
     );
+
     if (candidates.length > 1) {
       throw new Error(
-        `${queryLocation(appRoot, query)} matches multiple lockfile entries. Restore its savedQuestionSourceId manually and run sync-queries again.`,
+        `${getRelativeDefinitionLocation(appRoot, query)} matches multiple lockfile entries. Restore its savedQuestionSourceId manually and run sync-resources again.`,
       );
     }
+
     const [candidate] = candidates;
+
     if (candidate) {
       recoveredIds.set(query, candidate.savedQuestionSourceId);
       claimedIds.add(candidate.savedQuestionSourceId);
@@ -138,7 +139,7 @@ async function resolveQueries(
         };
       } catch (error) {
         throw new Error(
-          `Could not resolve ${queryLocation(appRoot, query)}: ${errorMessage(error)}`,
+          `Could not resolve ${getRelativeDefinitionLocation(appRoot, query)}: ${getErrorMessage(error)}`,
         );
       }
     }),
@@ -154,17 +155,12 @@ async function fetchReferencedCards(
   await Promise.all(
     queries.map(async (query) => {
       const id = savedQuestionId(query, recoveredIds);
+
       if (!id) {
         return;
       }
-      try {
-        cardsById.set(id, await client.getCard(id));
-      } catch (error) {
-        if (!(error instanceof MetabaseApiError) || error.status !== 404) {
-          throw error;
-        }
-        cardsById.set(id, null);
-      }
+
+      cardsById.set(id, await orNullOn404(client.getCard(id)));
     }),
   );
   return cardsById;
@@ -181,22 +177,28 @@ function findLockfileRepairs(
 
   for (const query of queries) {
     const id = savedQuestionId(query, recoveredIds);
+
     if (!id) {
       continue;
     }
+
     const card = cardsById.get(id);
+
     if (card && card.id !== id) {
       throw new Error(
         `The Card API returned card ${card.id} when card ${id} was requested.`,
       );
     }
+
     const isLockfileProven = entries.some(
       ({ savedQuestionSourceId }) => savedQuestionSourceId === id,
     );
+
     if (isLockfileProven) {
       if (card && card.type !== "question") {
         throw new Error(`Card ${id} is no longer a saved question.`);
       }
+
       continue;
     }
     if (
@@ -208,6 +210,7 @@ function findLockfileRepairs(
         `${query.exportName} references card ${id}, but the lockfile does not prove ownership and the card cannot be safely adopted.`,
       );
     }
+
     repairs.push({ query, id });
   }
 
@@ -216,15 +219,17 @@ function findLockfileRepairs(
 
 function applyLockfileRepairs(
   appRoot: string,
-  entries: QueryLockEntry[],
+  lockfile: ResourceLockfile,
   repairs: Array<{ query: DiscoveredQuery; id: number }>,
 ) {
   const repairedIds = new Set<number>();
+
   for (const { query, id } of repairs) {
-    entries.push(lockEntry(query, id));
-    writeQueryLockfile(appRoot, entries);
+    lockfile.queries.push(lockEntry(query, id));
+    writeResourceLockfile(appRoot, lockfile);
     repairedIds.add(id);
   }
+
   return repairedIds;
 }
 
@@ -244,6 +249,7 @@ function logExistingCardOutcome(
 ) {
   const { recoveredIds, repairedLockfileIds, log } = context;
   const recoveredId = recoveredIds.get(query);
+
   if (needsUpdate) {
     const authoredChanged =
       existingEntry.tableId !== query.tableId ||
@@ -257,6 +263,7 @@ function logExistingCardOutcome(
       : repairedLockfileIds.has(card.id)
         ? "repaired lockfile, "
         : "";
+
     log(`${checkpoint}${action}: card ${card.id}`);
   } else if (recoveredId) {
     log(`restored source ID: ${query.exportName} -> card ${card.id}`);
@@ -271,7 +278,7 @@ async function reconcileLiveQuery(
   context: ReconciliationContext,
   { query, resolved }: ResolvedQuery,
 ) {
-  const { appRoot, collectionId, client, entries, recoveredIds, cardsById } =
+  const { appRoot, collectionId, client, lockfile, recoveredIds, cardsById } =
     context;
   const authoritative = {
     name: query.exportName,
@@ -284,44 +291,58 @@ async function reconcileLiveQuery(
 
   if (!card) {
     const created = await client.createCard(authoritative);
+
     if (!isPositiveInteger(created.id)) {
       throw new Error("The Card API did not return a valid saved question ID.");
     }
-    injectSavedQuestionId(query, created.id);
-    replaceLockEntry(entries, previousId, lockEntry(query, created.id));
-    writeQueryLockfile(appRoot, entries);
+
+    injectGeneratedId(query, QUERY_DEFINITIONS, created.id);
+    replaceLockEntry(
+      lockfile.queries,
+      previousId,
+      lockEntry(query, created.id),
+    );
+    writeResourceLockfile(appRoot, lockfile);
     context.log(
       previousId
         ? `recreated: card ${previousId} -> card ${created.id}`
         : `created: ${query.exportName} -> card ${created.id}`,
     );
+
     return created.id;
   }
 
   if (recoveredId) {
-    injectSavedQuestionId(query, recoveredId);
+    injectGeneratedId(query, QUERY_DEFINITIONS, recoveredId);
   }
-  const existingEntry = entries.find(
+
+  const existingEntry = lockfile.queries.find(
     ({ savedQuestionSourceId }) => savedQuestionSourceId === card.id,
   );
+
   if (!existingEntry) {
     throw new Error(
       `${query.exportName} references card ${card.id}, but the lockfile does not prove ownership.`,
     );
   }
+
   if (card.type !== "question") {
     throw new Error(`Card ${card.id} is no longer a saved question.`);
   }
+
   const needsUpdate =
     card.name !== query.exportName ||
     card.collection_id !== collectionId ||
     !queriesMatch(card, resolved);
+
   if (needsUpdate) {
     await client.updateCard(card.id, authoritative);
   }
+
   logExistingCardOutcome(context, query, card, existingEntry, needsUpdate);
-  replaceLockEntry(entries, card.id, lockEntry(query, card.id));
-  writeQueryLockfile(appRoot, entries);
+  replaceLockEntry(lockfile.queries, card.id, lockEntry(query, card.id));
+  writeResourceLockfile(appRoot, lockfile);
+
   return card.id;
 }
 
@@ -330,23 +351,26 @@ async function reconcileLiveQueries(
   resolvedQueries: ResolvedQuery[],
 ) {
   const liveIds = new Set<number>();
+
   for (const resolvedQuery of resolvedQueries) {
     liveIds.add(await reconcileLiveQuery(context, resolvedQuery));
   }
+
   return liveIds;
 }
 
 function removeLockEntry(
   appRoot: string,
-  entries: QueryLockEntry[],
+  lockfile: ResourceLockfile,
   id: number,
 ) {
-  const index = entries.findIndex(
+  const index = lockfile.queries.findIndex(
     ({ savedQuestionSourceId }) => savedQuestionSourceId === id,
   );
+
   if (index >= 0) {
-    entries.splice(index, 1);
-    writeQueryLockfile(appRoot, entries);
+    lockfile.queries.splice(index, 1);
+    writeResourceLockfile(appRoot, lockfile);
   }
 }
 
@@ -355,32 +379,34 @@ async function reconcileRemovedQueries(
   previousEntries: QueryLockEntry[],
   liveIds: Set<number>,
 ) {
-  const { appRoot, collectionId, client, entries, log } = context;
+  const { appRoot, collectionId, client, lockfile, log } = context;
   for (const entry of previousEntries) {
     if (liveIds.has(entry.savedQuestionSourceId)) {
       continue;
     }
-    let card;
-    try {
-      card = await client.getCard(entry.savedQuestionSourceId);
-    } catch (error) {
-      if (error instanceof MetabaseApiError && error.status === 404) {
-        removeLockEntry(appRoot, entries, entry.savedQuestionSourceId);
-        continue;
-      }
-      throw error;
+
+    const card = await orNullOn404(client.getCard(entry.savedQuestionSourceId));
+
+    if (!card) {
+      removeLockEntry(appRoot, lockfile, entry.savedQuestionSourceId);
+
+      continue;
     }
+
     if (card.type !== "question" || card.collection_id !== collectionId) {
       const recovery =
         card.type === "question"
           ? `Move card ${card.id} back to data app collection ${collectionId} or delete it manually`
           : `Change card ${card.id} back to a saved question in data app collection ${collectionId} or delete it manually`;
+
       throw new Error(
-        `Card ${card.id} belongs to a removed query but is no longer an owned question in the data app collection, so it was left untouched. ${recovery}, then run sync-queries again.`,
+        `Card ${card.id} belongs to a removed query but is no longer an owned question in the data app collection, so it was left untouched. ${recovery}, then run sync-resources again.`,
       );
     }
+
     await client.deleteCard(card.id);
-    removeLockEntry(appRoot, entries, card.id);
+
+    removeLockEntry(appRoot, lockfile, card.id);
     log(`deleted: card ${card.id}`);
   }
 }
@@ -390,11 +416,11 @@ export async function reconcileQueries({
   slug,
   collectionId,
   queries,
-  previousEntries,
+  lockfile,
   client,
   log,
 }: ReconcileQueriesOptions) {
-  const entries = [...previousEntries];
+  const previousEntries = [...lockfile.queries];
   const recoveredIds = recoverMissingQueryIds(
     appRoot,
     queries,
@@ -405,26 +431,27 @@ export async function reconcileQueries({
   const repairs = findLockfileRepairs(
     queries,
     recoveredIds,
-    entries,
+    lockfile.queries,
     cardsById,
     collectionId,
   );
-  const repairedLockfileIds = applyLockfileRepairs(appRoot, entries, repairs);
+  const repairedLockfileIds = applyLockfileRepairs(appRoot, lockfile, repairs);
   const context: ReconciliationContext = {
     appRoot,
     collectionId,
     client,
-    entries,
+    lockfile,
     recoveredIds,
     repairedLockfileIds,
     cardsById,
     log,
   };
   const liveIds = await reconcileLiveQueries(context, resolvedQueries);
+
   await reconcileRemovedQueries(context, previousEntries, liveIds);
 
-  if (!fs.existsSync(path.join(appRoot, "queries_metadata.json"))) {
-    writeQueryLockfile(appRoot, entries);
+  if (!fs.existsSync(path.join(appRoot, RESOURCE_LOCKFILE))) {
+    writeResourceLockfile(appRoot, lockfile);
   }
 
   return [

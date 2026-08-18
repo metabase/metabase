@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-import { syncQueriesAction } from "../actions/sync-queries";
+import { syncResourcesAction } from "../actions/sync-resources";
 
 export function addDataAppsCommands(program: Command) {
   const dataAppsCommand = program
@@ -8,8 +8,10 @@ export function addDataAppsCommands(program: Command) {
     .description("manage Metabase data apps");
 
   dataAppsCommand
-    .command("sync-queries")
-    .description("synchronize data app query definitions as saved questions")
+    .command("sync-resources")
+    .description(
+      "synchronize data app query and action definitions into its collection",
+    )
     .option("--app-root <path>", "data app directory", process.cwd())
-    .action(({ appRoot }: { appRoot: string }) => syncQueriesAction(appRoot));
+    .action(({ appRoot }: { appRoot: string }) => syncResourcesAction(appRoot));
 }

@@ -2,10 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export function setupQuerySyncTests(): void {
+export function setupResourceSyncTests(): void {
   const appRoots: string[] = [];
+
   afterEach(() => {
     jest.restoreAllMocks();
+
     appRoots.forEach((appRoot) =>
       fs.rmSync(appRoot, { recursive: true, force: true }),
     );
@@ -20,9 +22,11 @@ export function makeApp() {
   const appRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "data-app-query-sync-"),
   );
+
   trackedAppRoots?.push(appRoot);
 
   fs.mkdirSync(path.join(appRoot, "queries"));
+  fs.mkdirSync(path.join(appRoot, "actions"));
   fs.writeFileSync(
     path.join(appRoot, "data_app.yaml"),
     "name: Test data app\npath: dist/index.js\n",
@@ -44,10 +48,38 @@ export function makeApp() {
 
   fs.writeFileSync(
     path.join(packageRoot, "data-app.js"),
-    "exports.defineQuery = (query) => query;",
+    [
+      "exports.defineQuery = (query) => query;",
+      "exports.defineAction = (definition) => definition;",
+    ].join("\n"),
   );
 
   return appRoot;
+}
+
+export function writeAction(appRoot: string, body: string) {
+  const filePath = path.join(appRoot, "actions/orders.action.ts");
+  fs.writeFileSync(
+    filePath,
+    `import { defineAction } from "@metabase/embedding-sdk-react/data-app";\n${body}\n`,
+  );
+  return filePath;
+}
+
+export const FAKE_HASH = `v1:sha256:${"0".repeat(64)}`;
+
+export function writeQueryLockfile(
+  appRoot: string,
+  queries: Array<{
+    tableId: number;
+    hash: string;
+    savedQuestionSourceId: number;
+  }>,
+) {
+  fs.writeFileSync(
+    path.join(appRoot, "resources_metadata.json"),
+    JSON.stringify({ queries, models: [] }),
+  );
 }
 
 export function writeQuery(appRoot: string, body: string) {
@@ -77,12 +109,12 @@ export function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-export function isQuerySyncPermissionsRequest(
+export function isResourcePermissionsRequest(
   pathname: string,
   method: string,
   slug: string,
 ) {
   return (
-    pathname === `/api/apps/${slug}/query-sync/permissions` && method === "PUT"
+    pathname === `/api/apps/${slug}/resources/permissions` && method === "PUT"
   );
 }

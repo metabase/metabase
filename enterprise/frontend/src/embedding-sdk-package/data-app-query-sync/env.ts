@@ -11,7 +11,7 @@ function parseEnvFile(filePath: string) {
   return parseEnv(fs.readFileSync(filePath, "utf8"));
 }
 
-export function getQuerySyncCredentials(appRoot: string) {
+export function getResourceSyncCredentials(appRoot: string) {
   const values = {
     ...parseEnvFile(path.join(findEnvRoot(appRoot), ".env.local")),
     ...process.env,

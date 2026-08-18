@@ -315,7 +315,7 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? { binning?: BinningOptions } & BinningOptionsInput
+  ? { unit?: never; binning?: BinningOptions } & BinningOptionsInput
   : { unit?: TemporalUnit; binning?: BinningOptions } & BinningOptionsInput;
 
 export type MetabaseBreakoutObjectForDimension<TDimension> =

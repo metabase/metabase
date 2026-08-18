@@ -5,8 +5,6 @@ import ts from "typescript";
 
 import { SDK_PACKAGE_NAME } from "embedding-sdk-package/cli/constants/config";
 
-import type { DiscoveredQuery } from "../types";
-
 export interface QuerySource {
   exportName: string;
   filePath: string;
@@ -17,7 +15,29 @@ interface InspectedQuerySource extends QuerySource {
   sourceFile: ts.SourceFile;
 }
 
-const QUERIES_DIRECTORY_PATH = "queries";
+/** A source-controlled definition kind, and where synchronization looks for it. */
+export interface DefinitionKind {
+  directory: string;
+  factory: string;
+  idKey: string;
+  /** Article included, so it reads in "did not evaluate to … object". */
+  description: string;
+}
+
+export const QUERY_DEFINITIONS: DefinitionKind = {
+  directory: "queries",
+  factory: "defineQuery",
+  idKey: "savedQuestionSourceId",
+  description: "a query",
+};
+
+export const ACTION_DEFINITIONS: DefinitionKind = {
+  directory: "actions",
+  factory: "defineAction",
+  idKey: "copiedActionId",
+  description: "an action",
+};
+
 const DATA_APP_MODULE = SDK_PACKAGE_NAME + "/data-app";
 
 const QUERY_FILE_EXTENSIONS = [
@@ -31,33 +51,52 @@ const QUERY_FILE_EXTENSIONS = [
   ".mts",
 ];
 
-export function findQuerySources(appRoot: string): QuerySource[] {
-  return listQueryFiles(path.join(appRoot, QUERIES_DIRECTORY_PATH)).flatMap(
-    inspectQueryFile,
+export function findDefinitionSources(
+  appRoot: string,
+  kind: DefinitionKind,
+): QuerySource[] {
+  return listQueryFiles(path.join(appRoot, kind.directory)).flatMap(
+    (filePath) => inspectFile(filePath, kind),
   );
 }
 
-export function injectSavedQuestionId(query: DiscoveredQuery, id: number) {
-  const source = inspectQueryFile(query.filePath).find(
-    ({ exportName }) => exportName === query.exportName,
+/**
+ * Writes a generated ID back into its definition. The file is re-parsed here
+ * because reconciliation injects sequentially, and an earlier injection into the
+ * same file invalidates the offsets captured during discovery.
+ */
+export function injectGeneratedId(
+  target: QuerySource,
+  kind: DefinitionKind,
+  id: number,
+) {
+  const source = inspectFile(target.filePath, kind).find(
+    ({ exportName }) => exportName === target.exportName,
   );
   if (!source) {
-    throw new Error(`Could not find ${query.exportName} in ${query.filePath}.`);
+    throw new Error(
+      `Could not find ${target.exportName} in ${target.filePath}.`,
+    );
   }
 
   const contents = source.sourceFile.text;
-  const existing = source.object.properties.find(
-    (property) =>
-      ts.isPropertyAssignment(property) &&
-      (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
-      property.name.text === "savedQuestionSourceId",
-  );
-  const replacement = `savedQuestionSourceId: ${id}`;
+  // Recovery re-injects over an ID that is already there, so replace the
+  // existing assignment rather than adding a second key.
+  const existing = findIdProperty(source.object, kind.idKey);
+  const replacement = `${kind.idKey}: ${id}`;
   const updated = existing
     ? `${contents.slice(0, existing.getStart(source.sourceFile))}${replacement}${contents.slice(existing.getEnd())}`
     : `${contents.slice(0, source.object.getStart(source.sourceFile) + 1)}\n  ${replacement},${contents.slice(source.object.getStart(source.sourceFile) + 1)}`;
-  fs.writeFileSync(query.filePath, updated);
+  fs.writeFileSync(target.filePath, updated);
 }
+
+const findIdProperty = (object: ts.ObjectLiteralExpression, idKey: string) =>
+  object.properties.find(
+    (item): item is ts.PropertyAssignment =>
+      ts.isPropertyAssignment(item) &&
+      (ts.isIdentifier(item.name) || ts.isStringLiteral(item.name)) &&
+      item.name.text === idKey,
+  );
 
 function listQueryFiles(directory: string): string[] {
   if (!fs.existsSync(directory)) {
@@ -108,8 +147,8 @@ function getDataAppNamedImports(statement: ts.Statement) {
   return namedBindings.elements;
 }
 
-const isDefineQueryImport = (item: ts.ImportSpecifier) =>
-  (item.propertyName ?? item.name).text === "defineQuery";
+const isFactoryImport = (item: ts.ImportSpecifier, factory: string) =>
+  (item.propertyName ?? item.name).text === factory;
 
 const isDirectVariableInitialization = (
   declaration: ts.Node,
@@ -126,14 +165,14 @@ const isNamedExportStatement = (statement: ts.Node | undefined) =>
     hasExportModifier(statement),
   );
 
-const queryObjectArgument = (node: ts.CallExpression) => {
+const definitionObjectArgument = (node: ts.CallExpression) => {
   const [argument] = node.arguments;
   return node.arguments.length === 1 && ts.isObjectLiteralExpression(argument)
     ? argument
     : undefined;
 };
 
-const isDirectNamedQueryDefinition = (
+const isDirectNamedDefinition = (
   node: ts.CallExpression,
   declaration: ts.Node,
   statement: ts.Node | undefined,
@@ -141,7 +180,7 @@ const isDirectNamedQueryDefinition = (
   isDirectVariableInitialization(declaration, node) &&
   isNamedExportStatement(statement);
 
-const isDefineQueryCall = (
+const isFactoryCall = (
   node: ts.Node,
   names: Set<string>,
 ): node is ts.CallExpression =>
@@ -149,7 +188,10 @@ const isDefineQueryCall = (
   ts.isIdentifier(node.expression) &&
   names.has(node.expression.text);
 
-function inspectQueryFile(filePath: string): InspectedQuerySource[] {
+function inspectFile(
+  filePath: string,
+  kind: DefinitionKind,
+): InspectedQuerySource[] {
   const contents = fs.readFileSync(filePath, "utf8");
 
   const sourceFile = ts.createSourceFile(
@@ -160,7 +202,7 @@ function inspectQueryFile(filePath: string): InspectedQuerySource[] {
     filePath.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
 
-  const defineQueryNames = new Set<string>();
+  const factoryNames = new Set<string>();
 
   for (const statement of sourceFile.statements) {
     const namedImports = getDataAppNamedImports(statement);
@@ -170,30 +212,27 @@ function inspectQueryFile(filePath: string): InspectedQuerySource[] {
     }
 
     for (const item of namedImports) {
-      if (isDefineQueryImport(item)) {
-        defineQueryNames.add(item.name.text);
+      if (isFactoryImport(item, kind.factory)) {
+        factoryNames.add(item.name.text);
       }
     }
   }
 
-  const querySources: InspectedQuerySource[] = [];
+  const definitionSources: InspectedQuerySource[] = [];
 
   const visit = (node: ts.Node) => {
-    if (isDefineQueryCall(node, defineQueryNames)) {
+    if (isFactoryCall(node, factoryNames)) {
       const declaration = node.parent;
       const statement = declaration.parent?.parent;
-      const object = queryObjectArgument(node);
+      const object = definitionObjectArgument(node);
 
-      if (
-        !isDirectNamedQueryDefinition(node, declaration, statement) ||
-        !object
-      ) {
+      if (!isDirectNamedDefinition(node, declaration, statement) || !object) {
         throw new Error(
-          `${filePath}: defineQuery must directly initialize a named exported variable with one object literal.`,
+          `${filePath}: ${kind.factory} must directly initialize a named exported variable with one object literal.`,
         );
       }
 
-      querySources.push({
+      definitionSources.push({
         exportName: declaration.name.text,
         filePath,
         object,
@@ -206,5 +245,5 @@ function inspectQueryFile(filePath: string): InspectedQuerySource[] {
 
   visit(sourceFile);
 
-  return querySources;
+  return definitionSources;
 }

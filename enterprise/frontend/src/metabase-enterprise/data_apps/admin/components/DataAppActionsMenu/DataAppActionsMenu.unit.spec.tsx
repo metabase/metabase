@@ -12,6 +12,11 @@ const setup = ({
   canRemove = false,
   resourceCollectionId = 9,
   permissionGroupId = 9,
+}: {
+  enabled?: boolean;
+  canRemove?: boolean;
+  resourceCollectionId?: number | null;
+  permissionGroupId?: number | null;
 } = {}) => {
   const app = createMockDataApp({
     name: "sales",

@@ -1,4 +1,7 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
 const { H } = cy;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` covers every
@@ -133,6 +136,100 @@ describe("scenarios > data apps > repo sync", () => {
     cy.findByTestId("admin-layout-content").within(() => {
       cy.findByTestId("data-app-list-item-broken-bundle").should("exist");
       cy.findByTestId("data-app-list-item-good").should("not.exist");
+    });
+  });
+  describe("when the manifest repoints the app at another collection", () => {
+    const APP_SLUG = "good";
+
+    /** A repoint demands an empty target, so the copy is always left behind. */
+    const repointToNewCollection = () => {
+      H.copySyncedCollectionFixture();
+      H.copySyncedDataAppsFixture();
+      H.declareSyncedDataAppQuery(APP_SLUG, ORDERS_ID);
+      H.provisionSyncedDataAppResources();
+      H.commitToRepo("Add data apps");
+      H.configureGitAndPullChanges("read-write");
+
+      return cy
+        .request(`/api/apps/${APP_SLUG}`)
+        .then(({ body: app }) =>
+          cy
+            .request(
+              `/api/collection/${app.resource_collection_id}/items?models=card`,
+            )
+            .then(({ body }) => body.data[0]),
+        )
+        .then((copy) =>
+          cy
+            .request("POST", "/api/collection", { name: "Somewhere else" })
+            .then(({ body: destination }) => {
+              const manifestPath = `${H.LOCAL_GIT_PATH}/data_apps/${APP_SLUG}/data_app.yaml`;
+
+              cy.readFile(manifestPath).then((manifest: string) =>
+                cy.writeFile(
+                  manifestPath,
+                  manifest.replace(
+                    /^resource_collection_entity_id: .*$/m,
+                    `resource_collection_entity_id: ${destination.entity_id}`,
+                  ),
+                ),
+              );
+              H.commitToRepo("Point the app at another collection");
+              H.configureGitAndPullChanges("read-write");
+
+              cy.request(`/api/apps/${APP_SLUG}`)
+                .its("body.resource_collection_id")
+                .should("eq", destination.id);
+
+              return cy.wrap({ copy, destination }, { log: false });
+            }),
+        );
+    };
+
+    const syncApp = () =>
+      H.createDataAppApiKey().then((apiKey) =>
+        H.syncDataAppResources(
+          apiKey,
+          `${H.LOCAL_GIT_PATH}/data_apps/${APP_SLUG}`,
+        ),
+      );
+
+    it("moves the copy the app left behind into its new collection", () => {
+      repointToNewCollection().then(({ copy, destination }) => {
+        syncApp().then(({ ok, error }) => {
+          expect(error, "sync-resources failed").to.eq(null);
+          expect(ok).to.eq(true);
+        });
+
+        cy.request(`/api/card/${copy.id}`)
+          .its("body.collection_id")
+          .should("eq", destination.id);
+      });
+    });
+
+    it("refuses a copy that was moved out by hand instead of sweeping it up", () => {
+      repointToNewCollection().then(({ copy }) => {
+        cy.request("POST", "/api/collection", { name: "Taken by hand" }).then(
+          ({ body: elsewhere }) => {
+            cy.request("PUT", `/api/card/${copy.id}`, {
+              collection_id: elsewhere.id,
+            });
+            // Dropping the declaration asks for the copy to be deleted.
+            cy.exec(
+              `rm -f "${H.LOCAL_GIT_PATH}/data_apps/${APP_SLUG}/queries/orders.query.ts"`,
+            );
+
+            syncApp().should(({ ok, error }) => {
+              expect(ok, "sync-resources should have refused").to.eq(false);
+              expect(error).to.contain(`Move card ${copy.id} back to`);
+            });
+
+            cy.request(`/api/card/${copy.id}`)
+              .its("body.collection_id")
+              .should("eq", elsewhere.id);
+          },
+        );
+      });
     });
   });
 });
