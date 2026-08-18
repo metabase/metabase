@@ -106,12 +106,11 @@
         (t2/query-one {:select [:u.email :u.sso_source]
                        :from   [[:core_user :u]]
                        :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                       :where  [:or [:= :key_hashed metabase-session-key-hashed] [:= :session.id metabase-session-key]]})]
+                       :where  [:= :key_hashed metabase-session-key-hashed]})]
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
-    ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
     (when-not (sso-settings/saml-slo-enabled)
-      (t2/delete! :model/Session {:where [:or [:= :key_hashed metabase-session-key-hashed] [:= :id metabase-session-key]]}))
+      (t2/delete! :model/Session :key_hashed metabase-session-key-hashed))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))

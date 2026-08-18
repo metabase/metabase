@@ -173,18 +173,19 @@
         (is (nil? (:key session)) "Key is not returned by the insert")
         (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session :user_id user-id)))))))
 
-(deftest ^:parallel hash-session-key-test
-  (testing "hashing is deterministic and collision-free across keys"
-    (is (= (session/hash-session-key "test")
-           (session/hash-session-key "test")))
-    (is (not= (session/hash-session-key "test")
-              (session/hash-session-key "test2")))))
+(deftest hash-session-key-test
+  (testing "the no-secret on-disk format stays plain SHA-512; a format regression here mass-logs-out keyless
+            deployments on upgrade"
+    (with-redefs-fn {#'session/session-hash-secret (constantly nil)}
+      (fn []
+        (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff"
+               (session/hash-session-key "test")))
+        (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9"
+               (session/hash-session-key "test2")))))))
 
 (deftest keyed-hash-session-key-test
   (testing "with a configured secret, key_hashed is an HMAC and not derivable from the session key alone"
     (let [secret      (byte-array (range 64))
-          ;; hash-session-key memoizes on the session key, so each with-redefs scope needs a fresh key or it would
-          ;; return a value cached under a different secret
           ^String session-key (str (random-uuid))
           key-bytes   (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
       (with-redefs-fn {#'session/session-hash-secret (constantly secret)}

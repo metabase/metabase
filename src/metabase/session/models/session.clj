@@ -5,6 +5,7 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
+   [clojure.string :as str]
    [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -23,30 +24,38 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
-(def ^:private session-hash-secret*
-  (delay (encryption/validate-and-hash-secret-key
-          (or (env/env :mb-session-hash-secret-key)
-              (env/env :mb-encryption-secret-key)))))
+;; validated eagerly at load so a misconfigured secret fails at startup instead of 500ing the first auth request
+(defonce ^:private ^{:tag 'bytes} default-session-hash-secret
+  (let [dedicated (env/env :mb-session-hash-secret-key)]
+    (if-not (str/blank? dedicated)
+      (do (assert (>= (count dedicated) 16) "MB_SESSION_HASH_SECRET_KEY must be at least 16 characters.")
+          (encryption/secret-key->hash dedicated))
+      ;; returns nil for a nil/blank encryption key; a too-short one already failed the encryption ns load assert
+      (encryption/validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))))
 
 (defn- session-hash-secret
   "Secret used to HMAC session keys before they are stored in or looked up from the app DB. Read from
   `MB_SESSION_HASH_SECRET_KEY`, falling back to `MB_ENCRYPTION_SECRET_KEY`. Nil when neither is set."
   ^bytes []
-  @session-hash-secret*)
+  default-session-hash-secret)
 
-(def ^{:arglists '([session-key])} hash-session-key
+(def ^:private ^{:arglists '([secret session-key])} hash-session-key*
+  (memo/lru (fn [^bytes secret ^String session-key]
+              (let [key-bytes (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
+                (codecs/bytes->hex
+                 (if secret
+                   (mac/hash key-bytes {:key secret :alg :hmac+sha512})
+                   (buddy-hash/sha512 key-bytes)))))
+            {} :lru/threshold 100))
+
+(defn hash-session-key
   "Hash the session-key for storage in (and lookup from) the database.
 
   When a secret is configured this is an HMAC-SHA512 keyed by that secret, so a valid `key_hashed` value cannot be
   computed with app-db (SQL) access alone. Without a secret this falls back to a plain SHA-512; such instances also
   store their credentials unencrypted, so the keyed hash would add no protection there."
-  (memo/lru (fn [^String session-key]
-              (let [key-bytes (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
-                (codecs/bytes->hex
-                 (if-let [secret (session-hash-secret)]
-                   (mac/hash key-bytes {:key secret :alg :hmac+sha512})
-                   (buddy-hash/sha512 key-bytes)))))
-            {} :lru/threshold 100))
+  [session-key]
+  (hash-session-key* (session-hash-secret) session-key))
 
 (defn generate-session-key
   "Generate a new session key."
