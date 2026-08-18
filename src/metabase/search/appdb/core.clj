@@ -16,6 +16,7 @@
    [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
@@ -53,6 +54,14 @@
             (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
+
+(defn- with-appdb-lease
+  [operation thunk]
+  (let [{:keys [acquired? result]}
+        (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk)]
+    (if acquired?
+      result
+      (log/infof "Skipping appdb search %s; another node holds its lease" operation))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
@@ -145,7 +154,8 @@
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
           (future
-            (search.engine/init! search-engine {:force-reset? false}))
+            (with-appdb-lease "late initialization"
+              #(search.engine/init! search-engine {:force-reset? false})))
           (catch Exception e
             (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
@@ -298,6 +308,8 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (let [reindex #(with-appdb-lease "locale-change reindex"
+                     (fn [] (search.engine/reindex! :search.engine/appdb {})))]
+      (if search.ingestion/*force-sync*
+        (reindex)
+        (future (reindex))))))

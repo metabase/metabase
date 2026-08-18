@@ -74,10 +74,15 @@
               :status :pending))
 
 (defn active-pending!
-  "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
-  [engine version]
+  "If there is a pending index, make it active and return the active index name.
+
+  When supplied, `before-activate!` runs inside the same transaction immediately before the metadata rotation. Search
+  reindex uses this hook to fence activation against its lease row."
+  [engine version & [before-activate!]]
   (t2/with-transaction [_conn]
     (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :pending)
+      (when before-activate!
+        (before-activate!))
       (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :retired)
       (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
       (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))

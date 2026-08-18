@@ -374,6 +374,14 @@
                          {:description "Duration in milliseconds that index reindex jobs took."
                           ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-search/reindex-lease-events
+                       {:description "Search reindex lease outcomes and failures by engine."
+                        :labels      [:engine :event]})
+   (prometheus/histogram :metabase-search/reindex-lease-held-duration-ms
+                         {:description "Duration in milliseconds that a search reindex lease was held."
+                          :labels      [:engine]
+                          ;; 1 second -> 2 hours
+                          :buckets     [1000 5000 30000 60000 300000 600000 1800000 3600000 7200000]})
    (prometheus/gauge :metabase-search/appdb-index-size
                      {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
