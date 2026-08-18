@@ -711,24 +711,26 @@
   500)
 
 (defn- field-path
-  "Return the field name used in the generation prompt. Nested fields use their `nfc_path` ancestors plus
-  their leaf name; ordinary columns use the leaf name alone.
+  "Return the field name used in the generation prompt: a nested field's dotted `nfc_path`, an ordinary
+  column's own name.
 
-  Mongo-style fields with a `parent_id` but no `nfc_path` currently fall back to the leaf name and may be
-  ambiguous. Resolving those paths would require ancestor lookup and is intentionally outside this bounded
-  hydration pass."
+  `nfc_path` runs from the root document down to and including the field's own leaf name, in both the
+  Mongo and sql-jdbc conventions, so it is the whole path already and the leaf must not be appended to it.
+  Preferring it also normalizes the two drivers, which name a nested field differently: sql-jdbc stores the
+  path joined by arrows as the field's `name`, Mongo stores only the leaf."
   [{field-name :name, :keys [nfc_path]}]
   (if (seq nfc_path)
-    (str/join "." (conj (vec nfc_path) field-name))
+    (str/join "." nfc_path)
     field-name))
 
 (defn- keep-first-names
   "Reducing function that retains at most [[max-field-names]] lexicographically smallest distinct field
   paths for one table.
 
-  The bound keeps memory use stable, while deterministic selection prevents unordered database results
-  from producing a different `basis` on each run. Exact duplicate paths collapse. When [[field-path]] must
-  fall back to a bare leaf name, distinct Mongo-style fields with the same leaf may also collapse."
+  Fed from a reducible select, so a table never holds more than the cap at once however wide it is.
+  Deterministic selection prevents unordered database results from producing a different `basis` on each
+  run. Exact duplicate paths collapse, which distinct fields cannot produce once each is named by its
+  full [[field-path]]."
   [acc field-name]
   (let [acc (conj acc field-name)]
     (if (> (count acc) max-field-names)
@@ -753,10 +755,13 @@
                                  field-path
                                  keep-first-names
                                  (sorted-set)
-                                 (t2/select [:model/Field :table_id :name :nfc_path]
-                                            :table_id [:in (vec id-chunk)]
-                                            :active true
-                                            :visibility_type [:not-in ["sensitive" "retired"]]))
+                                 ;; reducible-select, so rows fold into the capped sets as they arrive. A
+                                 ;; plain select would materialize every field of every table in the chunk
+                                 ;; first, and the cap would bound only the result, not the peak.
+                                 (t2/reducible-select [:model/Field :table_id :name :nfc_path]
+                                                      :table_id [:in (vec id-chunk)]
+                                                      :active true
+                                                      :visibility_type [:not-in ["sensitive" "retired"]]))
                      vec)))
           ;; Chunked for the app db's bind-parameter limit. Chunking by table id is what keeps the cap
           ;; per-table: every field of a table lands in the one chunk holding its id, so no table is

@@ -180,10 +180,14 @@
       (t2/query {:update :osi_ai_context
                  :set    {:ai_context (json/encode
                                        {:instructions (apply str (repeat (* 2 entity-retrieval/max-instructions-len) "x"))
-                                        :synonyms     (mapv str (range (* 2 entity-retrieval/max-list-len)))
-                                        :examples     [(apply str (repeat (* 2 entity-retrieval/max-item-len) "y"))]})}
+                                        ;; over the list cap, over the item cap, and a non-string item:
+                                        ;; the read schema asserts none of the three
+                                        :synonyms     (conj (mapv str (range (* 2 entity-retrieval/max-list-len))) 42)
+                                        :examples     [(apply str (repeat (* 2 entity-retrieval/max-item-len) "y"))
+                                                       nil
+                                                       {:not "a string"}]})}
                  :where  [:and [:= :entity_type "table"] [:= :entity_local_id 1]]})
-      (is (= (* 2 entity-retrieval/max-list-len)
+      (is (= (inc (* 2 entity-retrieval/max-list-len))
              (count (:synonyms (:ai_context (mt/user-http-request :crowberto :get 200 "osi/ai-context/table/1"))))))
       (is (has-entity? (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/")) "table" 1)
           "and it does not take the whole list down with it"))))
