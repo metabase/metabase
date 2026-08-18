@@ -100,7 +100,8 @@
   {:doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
    :examples [["./bin/mage load-namespaces"]]
    :requires [[mage.load-namespaces]]
-   :task (task! (mage.load-namespaces/load-namespaces (:arguments parsed)))}
+   :arg-schema [:tuple]
+   :task (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
   {:doc "Check for misspellings in the source code."
