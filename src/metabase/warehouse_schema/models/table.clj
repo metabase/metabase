@@ -711,29 +711,36 @@
   500)
 
 (defn- field-path
-  "Return the field name used in the generation prompt: a nested field's dotted `nfc_path`, an ordinary
-  column's own name.
+  "Return the field name used in the generation prompt: a nested field's dotted path, an ordinary column's
+  own name.
+  The full path keeps `user.id` and `item.id` distinct when both leaves are named `id`.
 
-  `nfc_path` runs from the root document down to and including the field's own leaf name, in both the
-  Mongo and sql-jdbc conventions, so it is the whole path already and the leaf must not be appended to it.
-  Preferring it also normalizes the two drivers, which name a nested field differently: sql-jdbc stores the
-  path joined by arrows as the field's `name`, Mongo stores only the leaf."
+  Drivers use two `nfc_path` conventions, which this function detects:
+  - Mongo and sql-jdbc write the whole chain including the leaf. sql-jdbc also names the field by that chain
+    joined with ` → `.
+  - BigQuery writes only the ancestors and puts the leaf in `name`.
+
+  Appending the leaf unconditionally mangles the first pair; never appending it collapses distinct BigQuery
+  siblings, since `r.a` and `r.b` would both become `r`."
   [{field-name :name, :keys [nfc_path]}]
-  (if (seq nfc_path)
-    (str/join "." nfc_path)
-    field-name))
+  ;; TODO (Chris 2026-08-18) -- Sniffing the convention per row is a workaround. BigQuery's
+  ;; {:name "r", :nfc_path ["r"]} is indistinguishable here from a full path and becomes `r`, not `r.r`.
+  ;; An unrecognized third convention also falls into the :else branch and is silently misnamed. Sync should
+  ;; store one canonical nfc_path across drivers, after which this is a join.
+  (cond
+    (empty? nfc_path)                        field-name
+    (= field-name (last nfc_path))           (str/join "." nfc_path)
+    (= field-name (str/join " → " nfc_path)) (str/join "." nfc_path)
+    :else                                    (str/join "." (conj (vec nfc_path) field-name))))
 
 (defn- keep-first-names
   "Reducing function that retains at most [[max-field-names]] lexicographically smallest distinct field
-  paths for one table.
-
-  Fed from a reducible select, so a table never holds more than the cap at once however wide it is.
-  Deterministic selection prevents unordered database results from producing a different `basis` on each
-  run. Exact duplicate paths collapse, which distinct fields cannot produce once each is named by its
-  full [[field-path]]."
+  paths for one table."
   [acc field-name]
   (let [acc (conj acc field-name)]
     (if (> (count acc) max-field-names)
+      ;; The sorted-set accumulator removes duplicates. Dropping its greatest member on overflow keeps the
+      ;; survivors independent of row order while bounding the accumulator after every reducing step.
       (disj acc (first (rseq acc)))
       acc)))
 
@@ -741,8 +748,8 @@
   "Batch `:field-names` hydration for the Table `:osi-context` projection: map of
   [[entity-retrieval.spec/hydration-key]] -> the table's active field paths (see [[field-path]]), sorted,
   capped at [[max-field-names]].
-  Deterministic and bounded by contract — an unstable or unbounded value here makes every table
-  perpetually dirty at LLM prices, and nothing else bounds the stored `osi_ai_context.basis` blob."
+  Like every `:osi-context` hydration, the value must be deterministic and bounded. Sorting and
+  [[max-field-names]] satisfy that contract here; no later step limits the stored `osi_ai_context.basis`."
   [tables]
   (when-let [ids (not-empty (into [] (keep :id) tables))]
     (into {}
@@ -755,13 +762,17 @@
                                  field-path
                                  keep-first-names
                                  (sorted-set)
-                                 ;; reducible-select, so rows fold into the capped sets as they arrive. A
-                                 ;; plain select would materialize every field of every table in the chunk
-                                 ;; first, and the cap would bound only the result, not the peak.
-                                 (t2/reducible-select [:model/Field :table_id :name :nfc_path]
-                                                      :table_id [:in (vec id-chunk)]
-                                                      :active true
-                                                      :visibility_type [:not-in ["sensitive" "retired"]]))
+                                 ;; Rows fold into capped sets as they arrive, so each table accumulator peaks
+                                 ;; at the cap rather than at that table's field count. Postgres still buffers
+                                 ;; a reducible-select result; streaming-reducible supplies the transaction
+                                 ;; connection and fetch size that make it stream.
+                                 (app-db/streaming-reducible
+                                  (fn [conn]
+                                    (t2/reducible-select :conn conn
+                                                         [:model/Field :table_id :name :nfc_path]
+                                                         :table_id [:in (vec id-chunk)]
+                                                         :active true
+                                                         :visibility_type [:not-in ["sensitive" "retired"]]))))
                      vec)))
           ;; Chunked for the app db's bind-parameter limit. Chunking by table id is what keeps the cap
           ;; per-table: every field of a table lands in the one chunk holding its id, so no table is
@@ -769,9 +780,9 @@
           (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
 
 (defn- table->llm-input
-  "The `:osi-context` projection for a Table: the deterministic map handed to the generation prompt.
-  Prompt-only additions (sampled content, fk summaries) belong here and must never move into `:basis` —
-  basis exclusion is what keeps volatile inputs from making every table perpetually dirty."
+  "The `:osi-context` projection for a Table: the map handed to the generation prompt.
+  Prompt-only additions (sampled content, fk summaries) belong here and must never move into `:basis`.
+  Excluding them from the basis keeps volatile inputs from scheduling regeneration on every run."
   [table]
   ;; Complete v1 prompt projection. Prompt-only additions stay out of :basis unless they should
   ;; invalidate previously generated metadata.
