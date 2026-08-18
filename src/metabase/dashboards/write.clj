@@ -4,6 +4,7 @@
   These functions return the saved Dashboard row; response-shaping concerns such as hydration and
   `:last-edit-info` belong to the callers."
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -31,6 +32,44 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- dashcard-card-ids [dashcard]
+  (concat (when-let [card-id (:card_id dashcard)]
+            [card-id])
+          (keep :id (:series dashcard))))
+
+(defn- references
+  [{:keys [dashcards parameters]}]
+  {:cards   (into (set (queries/values-source-card-ids parameters))
+                  (comp (mapcat dashcard-card-ids) (filter pos-int?))
+                  dashcards)
+   :actions (into #{} (keep :action_id) dashcards)})
+
+(defn- stored-references
+  [dashboard-id]
+  {:cards   (into (set (t2/select-fn-vec :card_id :model/ParameterCard
+                                         :parameterized_object_type "dashboard"
+                                         :parameterized_object_id   dashboard-id))
+                  (concat (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id)
+                          (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                                            {:where [:in :dashboardcard_id
+                                                     ^:allow-subquery {:select [:id]
+                                                                       :from   [(t2/table-name :model/DashboardCard)]
+                                                                       :where  [:= :dashboard_id dashboard-id]}]})))
+   :actions (set (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))})
+
+(def ^:private no-references {:cards #{} :actions #{}})
+
+(defn- check-new-references
+  "Read-check every card and action the incoming `dashboard` newly references, relative to `stored`.
+  Lives here rather than at the REST boundary so every writer — MCP's dashboard_write included —
+  gets the check."
+  [stored dashboard]
+  (let [new-references (references dashboard)]
+    (doseq [card-id (set/difference (:cards new-references) (:cards stored))]
+      (api/read-check :model/Card card-id))
+    (doseq [action-id (set/difference (:actions new-references) (:actions stored))]
+      (api/read-check :model/Action action-id))))
+
 (mu/defn create-dashboard! :- :map
   "Create a Dashboard owned by the current user and return the saved row. `:width` and
   `:auto_apply_filters` fall back to the column defaults when omitted or nil.
@@ -48,6 +87,7 @@
        [:auto_apply_filters  {:optional true} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
+  (check-new-references no-references {:parameters parameters})
   (let [dashboard-data (cond-> {:name                name
                                 :description         description
                                 :parameters          (or parameters [])
@@ -179,11 +219,6 @@
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
-(defn- dashcard-card-ids [dashcard]
-  (concat (when-let [card-id (:card_id dashcard)]
-            [card-id])
-          (keep :id (:series dashcard))))
-
 (defn- assert-dashcards-are-not-internal-to-other-dashboards
   "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
   dashboard already references (as a dashcard's card or series, per `existing-dashboard`'s hydrated
@@ -279,6 +314,7 @@
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
+    (check-new-references (stored-references id) dash-updates)
     (let [current-dash                       (api/write-check :model/Dashboard id)
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.

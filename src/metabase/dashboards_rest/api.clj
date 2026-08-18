@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -20,6 +21,7 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -85,6 +87,16 @@
                    dashboard)))
           dashboards)))
 
+(defn- remove-unreadable-actions
+  [dashboard]
+  (m/update-existing dashboard :dashcards
+                     (fn [dashcards]
+                       (mapv (fn [dashcard]
+                               (cond-> dashcard
+                                 (and (:action dashcard) (not (mi/can-read? (:action dashcard))))
+                                 (dissoc :action)))
+                             dashcards))))
+
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
   [{dashboard-id :id :as dashboard}]
@@ -96,9 +108,8 @@
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (cond->>  [[:dashcards
-                  ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                  [:series :can_write #_:can_run_adhoc_query]
+                  [:card :can_write [:moderation_reviews :moderator_details]]
+                  [:series :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
                  :can_restore
@@ -112,8 +123,8 @@
                  [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
-        true (apply t2/hydrate dashboard)))))
-
+        true (apply t2/hydrate dashboard)
+        true remove-unreadable-actions))))
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -478,23 +489,23 @@
                               :c.dashboard_id
                               [nil :location]
                               [(h2x/literal "card")  :model]
-                              [{:select   [:status]
-                                :from     [:moderation_review]
-                                :where    [:and
-                                           [:= :moderated_item_type "card"]
-                                           [:= :moderated_item_id :c.id]
-                                           [:= :most_recent true]]
-                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                ;; protecting against potential bugs
-                                :order-by [[:id :desc]]
-                                :limit    1}
+                              [^:allow-subquery {:select   [:status]
+                                                 :from     [:moderation_review]
+                                                 :where    [:and
+                                                            [:= :moderated_item_type "card"]
+                                                            [:= :moderated_item_id :c.id]
+                                                            [:= :most_recent true]]
+                                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                                 ;; protecting against potential bugs
+                                                 :order-by [[:id :desc]]
+                                                 :limit    1}
                                :moderated_status]]
                      :from      [[:report_card :c]]
                      :where     [:and
                                  [:= :c.dashboard_id id]
-                                 [:exists {:select 1
-                                           :from [[:report_dashboardcard :dc]]
-                                           :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
+                                 [:exists ^:allow-subquery {:select 1
+                                                            :from [[:report_dashboardcard :dc]]
+                                                            :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                                  [:= :c.archived false]]}
                     (when (request/paged?)
                       {:limit (request/limit)
@@ -648,6 +659,37 @@
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
+(def ^:private TransientCard
+  [:map
+   [:id                     {:optional true} [:maybe [:or ms/PositiveInt ms/NonBlankString]]]
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+
+(def ^:private TransientDashboardCard
+  [:map
+   [:card                   {:optional true} [:maybe TransientCard]]
+   [:series                 {:optional true} [:maybe [:sequential TransientCard]]]
+   [:row                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:col                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:size_x                 {:optional true} [:maybe ms/PositiveInt]]
+   [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]])
+
+(def ^:private TransientDashboard
+  [:map
+   [:name               {:optional true} [:maybe ms/NonBlankString]]
+   [:description        {:optional true} [:maybe :string]]
+   [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
+   [:auto_apply_filters {:optional true} [:maybe :boolean]]
+   [:width              {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:dashcards          {:optional true} [:maybe [:sequential TransientDashboardCard]]]
+   [:tabs               {:optional true} [:maybe [:sequential dashboards.write/UpdatedDashboardTab]]]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -657,7 +699,7 @@
   [{:keys [parent-collection-id]} :- [:map
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
-   dashboard]
+   dashboard :- TransientDashboard]
   (api/create-check :model/Dashboard {:collection_id parent-collection-id})
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
@@ -671,13 +713,13 @@
   "Save a denormalized description of dashboard."
   [_route-params
    _query-params
-   dashboard]
+   dashboard :- TransientDashboard]
   (let [parent-collection-id (:id (xrays/get-or-create-container-collection
                                    (if api/*is-superuser?*
                                      "/"
                                      (collection/children-location
                                       (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
-        dashboard (dashboard/save-transient-dashboard! (assoc dashboard :creator_id api/*current-user-id*) parent-collection-id)]
+        dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
@@ -790,11 +832,14 @@
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
+                            [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
   (api/read-check :model/Dashboard dashboard-id)
-  (actions/fetch-values
-   (api/check-404 (actions/dashcard->action dashcard-id))
-   parameters))
+  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))]
+    (actions/fetch-values
+     (api/check-404 (actions/dashcard->action dashcard))
+     parameters)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -810,9 +855,9 @@
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
+                            [:parameters {:optional true}
+                             [:maybe ::actions.schema/execute-parameter-values.string-keys]]]]
   (api/read-check :model/Dashboard dashboard-id)
-  ;; Undo middleware string->keyword coercion
   (actions/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------

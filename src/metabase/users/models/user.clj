@@ -373,7 +373,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
+  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -549,13 +549,13 @@
   "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
   manage-table-metadata."
   []
-  [:exists {:select [1]
-            :from   [[:permissions_group_membership :pgm]]
-            :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
-            :where  [:and
-                     [:= :pgm.user_id :core_user.id]
-                     [:= :p.perm_type "perms/manage-table-metadata"]
-                     [:= :p.perm_value "yes"]]}])
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[:permissions_group_membership :pgm]]
+                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                             :where  [:and
+                                      [:= :pgm.user_id :core_user.id]
+                                      [:= :p.perm_type "perms/manage-table-metadata"]
+                                      [:= :p.perm_value "yes"]]}])
 
 (defn filter-clauses
   "Honeysql clauses for filtering on users.

@@ -17,28 +17,30 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- cards-to-create-schema
   "Request schema for the `cards` map: placeholder id -> new card.
 
-  The strict `[:map-of key-schema CardCreateSchema]` can't be the request schema directly. Request decoding strips
-  `:map-of` entries that don't match their schema, so an unusable card would be quietly dropped and the document
-  saved without it. Decoding therefore sees a permissive `[:map-of :int :any]` — enough to turn the JSON string keys
-  into ints — and the `:fn` re-checks the strict shape afterwards, so a bad card is a 400."
+  Plain `:map-of` can't be the request schema directly — request decoding silently strips entries that don't match,
+  so an unusable card would vanish and the document would save without it. Decoding each key and value explicitly
+  turns a bad card into a 400 instead."
   [key-schema]
-  (let [strict [:map-of key-schema m.document/CardCreateSchema]]
-    [:and
-     [:map-of :int :any]
-     [:fn {:error/message "value must map a card placeholder id to a card"}
-      #(mr/validate strict %)]]))
+  [:schema
+   {:decode/normalize (fn [cards]
+                        (cond-> cards
+                          (map? cards)
+                          (-> (update-keys #(api.macros/decode-and-validate-params
+                                             :body key-schema (cond-> % (keyword? %) u/qualified-name)))
+                              (update-vals #(api.macros/decode-and-validate-params
+                                             :body m.document/CardCreateSchema %)))))}
+   [:map-of key-schema m.document/CardCreateSchema]])
 
 (def ^:private DocumentCreateOptions
   [:map
    [:name m.document/DocumentName]
-   [:document :any]
+   [:document ::prose-mirror/ast]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
@@ -46,7 +48,7 @@
 (def ^:private DocumentUpdateOptions
   [:map
    [:name {:optional true} m.document/DocumentName]
-   [:document {:optional true} :any]
+   [:document {:optional true} [:maybe ::prose-mirror/ast]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
@@ -299,7 +301,8 @@
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
-    (api/check-404 (t2/exists? :model/Card :id card-id :document_id document-id :archived false))))
+    (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
+                        (t2/exists? :model/Card :id card-id :document_id document-id :archived false)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

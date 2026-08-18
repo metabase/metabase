@@ -477,6 +477,7 @@
            app-db
            config
            events
+           lib
            models
            permissions
            premium-features
@@ -594,7 +595,6 @@
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
-           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -614,7 +614,6 @@
            request
            revisions
            search
-           settings
            tracing
            transforms
            upload
@@ -751,6 +750,7 @@
                     :model/DashboardBookmark
                     :model/Field
                     :model/ModerationReview
+                    :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
@@ -823,6 +823,7 @@
            batch-processing
            collections
            events
+           lib-be
            models
            public-sharing
            queries
@@ -967,6 +968,7 @@
            eid-translation
            embedding
            events
+           lib
            models
            notification
            parameters
@@ -1217,9 +1219,9 @@
 
   lib-be
   {:team "Querying Platform"
-   :api  #{metabase.lib-be.core
-           metabase.lib-be.init}
-   :uses #{lib
+   :api  #{metabase.lib-be.core metabase.lib-be.init metabase.lib-be.schema}
+   :uses #{legacy-mbql
+           lib
            models
            settings
            util}
@@ -1583,6 +1585,7 @@
            driver
            embedding
            events
+           lib
            models
            parameters
            permissions
@@ -1709,6 +1712,7 @@
    :uses #{api
            audit-app
            events
+           lib
            permissions
            premium-features
            request
@@ -1793,6 +1797,7 @@
            api
            dashboards
            dashboards-rest
+           documents
            events
            lib
            models
@@ -1891,6 +1896,7 @@
            view-log
            warehouse-schema}
    :model-exports #{:model/Card
+                    :model/ParameterCard
                     :model/Query
                     :model/QueryExecution
                     :model/QueryTable
@@ -1914,8 +1920,7 @@
   queries-rest
   {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
-   :uses #{analyze
-           api
+   :uses #{api
            collections
            eid-translation
            embedding
@@ -1927,6 +1932,7 @@
            permissions
            public-sharing
            queries
+           query-permissions
            query-processor
            request
            revisions
@@ -1951,7 +1957,7 @@
            query-processor
            request
            util}
-   :model-imports #{:model/Card :model/Field}}
+   :model-imports #{:model/Card :model/Field :model/Table}}
 
   query-processor
   {:team    "Querying Platform"
@@ -2064,22 +2070,27 @@
            metabase.revisions.core
            metabase.revisions.init}
    :uses #{api
+           collections
            config
            dashboards
            events
            lib
            models
+           parameters
            queries
            query-permissions
            util}
    :model-exports #{:model/Revision}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/DashboardTab
                     :model/Document
                     :model/Exploration
                     :model/Measure
+                    :model/ParameterCard
                     :model/Segment
                     :model/Transform}}
 
@@ -2197,6 +2208,7 @@
            request
            session
            settings
+           setup
            sso
            system
            tracing
@@ -2530,7 +2542,6 @@
            models
            permissions
            premium-features
-           queries
            query-processor
            remote-sync
            revisions
@@ -2838,6 +2849,7 @@
    :uses #{analytics
            api
            app-db
+           collections
            database-routing
            driver
            events
@@ -2854,7 +2866,8 @@
            util
            warehouse-schema
            xrays}
-   :model-imports #{:model/Database
+   :model-imports #{:model/Collection
+                    :model/Database
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
@@ -2976,8 +2989,7 @@
 
   enterprise/advanced-config
   {:team "UX West"
-   :api  #{metabase-enterprise.advanced-config.api
-           metabase-enterprise.advanced-config.api.logs
+   :api  #{metabase-enterprise.advanced-config.api.logs
            metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
@@ -3063,6 +3075,7 @@
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
@@ -3144,6 +3157,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-proxy.api}
    :uses #{api
+           lib
            premium-features
            util
            enterprise/harbormaster}}
@@ -3620,6 +3634,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            premium-features

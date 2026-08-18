@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
@@ -68,7 +69,7 @@
   card fields are declared locally: the model layer doesn't depend on the REST card schema."
   [:map
    [:name ms/NonBlankString]
-   [:dataset_query ms/Map]
+   [:dataset_query ::lib-be.schema/maybe-legacy-query]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
    [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
    [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
@@ -82,6 +83,7 @@
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (card/check-parameter-source-card-permissions (:parameters card))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]

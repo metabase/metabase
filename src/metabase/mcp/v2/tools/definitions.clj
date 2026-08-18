@@ -134,10 +134,10 @@
        (format "`definition` is not a valid MBQL query: %s %s"
                (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
 
-;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint
-;; auto-converts MBQL 4 via measures.api/normalize-input-definition, but MBQL 4 is a Cypress-e2e
-;; affordance, not an agent path (agents author MBQL 5 from execute_query / get_content). Keeping
-;; the narrower contract here teaches the model the one dialect it should speak.
+;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
+;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
+;; (agents author MBQL 5 from execute_query / get_content). Keeping the narrower contract here
+;; teaches the model the one dialect it should speak.
 (defn- require-mbql5-definition!
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))

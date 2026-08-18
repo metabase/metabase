@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
@@ -17,7 +18,7 @@
 
 (mu/defn check-card-can-be-saved!
   "Throw a 400 when a `:metric` card's `dataset-query` can't be saved. No-op for other card types."
-  [dataset-query :- [:maybe ::queries.schema/query]
+  [dataset-query :- [:maybe ::lib-be.schema/maybe-legacy-query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
     (when-not (lib/can-save? dataset-query card-type)

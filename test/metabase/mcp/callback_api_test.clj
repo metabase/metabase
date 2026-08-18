@@ -52,7 +52,7 @@
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           response   (post-drill {:encodedQuery "ZW5jb2RlZA=="}
                                  {"mcp-session-id" session-id})]
       (is (=? {:status 200
@@ -69,7 +69,7 @@
                         {"mcp-session-id" "not-a-uuid"}))))
   (testing "session owned by a different user returns 404"
     (let [owner   (mt/user->id :crowberto)
-          session (mcp.session/create! owner)
+          session (mcp.session/create! owner nil)
           _       (mcp.session/get-or-create-session-key! session owner)]
       (is (=? {:status 404}
               (post-drill :rasta 404 {:encodedQuery "ZW5jb2RlZA=="}
@@ -77,8 +77,8 @@
 
 (deftest ui-credential-session-binding-test
   (let [user-id          (mt/user->id :crowberto)
-        credential-id    (mcp.session/create! user-id)
-        other-session-id (mcp.session/create! user-id)
+        credential-id    (mcp.session/create! user-id nil)
+        other-session-id (mcp.session/create! user-id nil)
         credential       (mcp.session/issue-ui-credential credential-id user-id)]
     (testing "a credential can use the callback surface for its own MCP session"
       (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
@@ -97,7 +97,7 @@
             (metabase.server.middleware.session/mcp-ui-request-surface), never the wider API —
             possession of one must not amount to a Metabase session"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           headers    {"x-metabase-mcp-ui-auth" (mcp.session/issue-ui-credential session-id user-id)}]
       (testing "an allowlisted route authenticates"
         (is (= 200 (:status (client/client-full-response :get 200 "user/current"
@@ -109,7 +109,7 @@
 (deftest drills-post-rejects-blank-body-test
   (testing "blank encodedQuery returns 400"
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)]
+          session-id (mcp.session/create! user-id nil)]
       (is (=? {:status 400}
               (post-drill :crowberto 400 {:encodedQuery ""}
                           {"mcp-session-id" session-id}))))))
@@ -136,7 +136,7 @@
   (testing "GHY-4157: the iframe exchanges a handle for the query and the prompt stored with it"
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [user-id    (mt/user->id :crowberto)
-            session-id (mcp.session/create! user-id)
+            session-id (mcp.session/create! user-id nil)
             handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
         (is (=? {:status 200
                  :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
@@ -144,7 +144,7 @@
   (testing "GHY-4157: a handle stored without a prompt resolves with a null prompt, not a 404"
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [user-id    (mt/user->id :crowberto)
-            session-id (mcp.session/create! user-id)
+            session-id (mcp.session/create! user-id nil)
             handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
         (is (=? {:status 200
                  :body   {:query "ZW5jb2RlZA==" :prompt nil}}
@@ -154,7 +154,7 @@
   (testing "GHY-4157: another user cannot exchange a handle they did not store — it is not a bearer credential"
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [owner      (mt/user->id :crowberto)
-            session-id (mcp.session/create! owner)
+            session-id (mcp.session/create! owner nil)
             _          (mcp.session/get-or-create-session-key! session-id owner)
             handle     (mcp.session/store-handle! session-id owner "ZW5jb2RlZA==")]
         (is (=? {:status 404} (get-query :rasta 404 handle session-id)))))))
@@ -162,7 +162,7 @@
 (deftest queries-get-validates-session-header-test
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
+          session-id (mcp.session/create! user-id nil)
           handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
       (testing "GHY-4157: a missing Mcp-Session-Id header is a 400"
         (is (=? {:status 400}
@@ -183,7 +183,7 @@
 (deftest feedback-post-persists-mcp-visualization-feedback-test
   (testing "MCP feedback is persisted to mcp_feedback with the visualization context inline"
     (mt/with-model-cleanup [:model/McpFeedback]
-      (let [session-id (mcp.session/create! (mt/user->id :rasta))
+      (let [session-id (mcp.session/create! (mt/user->id :rasta) nil)
             body       {:feedback          {:positive          false
                                             :issue_type        "wrong-visualization"
                                             :freeform_feedback "wrong chart"}
@@ -204,7 +204,7 @@
 (deftest feedback-post-persists-minimal-payload-test
   (testing "MCP feedback with only a rating persists a row with the optional fields nil"
     (mt/with-model-cleanup [:model/McpFeedback]
-      (let [session-id (mcp.session/create! (mt/user->id :rasta))
+      (let [session-id (mcp.session/create! (mt/user->id :rasta) nil)
             body       {:feedback          {:positive true}
                         :conversation_data {:source "mcp"}}]
         (post-mcp-feedback :rasta 204 body session-id)
@@ -222,7 +222,7 @@
     (mt/with-model-cleanup [:model/McpFeedback]
       (mt/with-temporary-setting-values [metabot-enabled? false
                                          embedded-metabot-enabled? false]
-        (let [session-id (mcp.session/create! (mt/user->id :rasta))
+        (let [session-id (mcp.session/create! (mt/user->id :rasta) nil)
               body       {:feedback          {:positive true}
                           :conversation_data {:source "mcp"}}]
           (is (=? {:status 403}
@@ -232,7 +232,7 @@
 (deftest feedback-post-rejects-oversized-free-text-test
   (testing "MCP feedback bounds user-controlled free text before persisting"
     (mt/with-model-cleanup [:model/McpFeedback]
-      (let [session-id (mcp.session/create! (mt/user->id :rasta))
+      (let [session-id (mcp.session/create! (mt/user->id :rasta) nil)
             too-large  (apply str (repeat 10001 "x"))
             base-body  {:feedback          {:positive true}
                         :conversation_data {:source "mcp"}}]
@@ -255,7 +255,7 @@
               (post-mcp-feedback :rasta 400 body)))
       (is (=? {:status 404}
               (post-mcp-feedback :rasta 404 body "not-a-uuid")))
-      (let [owner-session (mcp.session/create! (mt/user->id :crowberto))]
+      (let [owner-session (mcp.session/create! (mt/user->id :crowberto) nil)]
         (mcp.session/get-or-create-session-key! owner-session (mt/user->id :crowberto))
         (is (=? {:status 404}
                 (post-mcp-feedback :rasta 404 body owner-session)))))))

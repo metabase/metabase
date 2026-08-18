@@ -7,6 +7,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
@@ -74,8 +75,8 @@
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
-  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the namespaced
-  ;; keyword `:io.modelcontextprotocol/ui`.
+  ;; The wire key is the JSON string `"io.modelcontextprotocol/ui"`; keywordizing preserves the slash, so the lookup
+  ;; below is a namespaced keyword rather than the dotted `:io.modelcontextprotocol.ui` it might look like a typo for.
   (contains?
    (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))
@@ -222,7 +223,7 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [{:keys [dispatch-method-fn capabilities instructions]} user-id request]
-  (let [body            (:body request)
+  (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
         batch?          (sequential? body)]

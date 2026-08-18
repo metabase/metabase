@@ -1321,17 +1321,20 @@
   "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
   "Metric123_456DefGhI78")
 
-;; The db id must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
-;; `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
-;; treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
-;; instead of this provider. With db id 1 that found the real Sample Database's ORDERS, which has
-;; no CAMPAIGN_ID, and the failure appeared only when another namespace had booted the app DB.
+(def ^:private mock-db-id
+  "Must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
+  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+  treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
+  rather than this provider. With db id 1 that found the real Sample Database's ORDERS, which has
+  no CAMPAIGN_ID, and the failure surfaced only once another namespace had booted the app DB."
+  Integer/MAX_VALUE)
+
 (def ^:private mp-metric-base
   "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
   (lib.tu/mock-metadata-provider
-   {:database {:id 987654321 :name "Sample"}
-    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 987654321}
-               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 987654321}]
+   {:database {:id mock-db-id :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id mock-db-id}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id mock-db-id}]
     :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
                {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
                {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
@@ -1350,14 +1353,14 @@
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
    mp-metric-base
-   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id 987654321 :table-id 10
+   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id mock-db-id :table-id 10
              :entity-id metric-eid :dataset-query metric-definition}]}))
 
 (defn- with-joined-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
-                construct/resolve-database-id-from-first-stage (fn [_] 987654321)
+                construct/resolve-database-id-from-first-stage (fn [_] mock-db-id)
                 construct/permission-aware-content-store (stub-content-store
-                                                          {:id 700 :database_id 987654321 :entity_id metric-eid})
+                                                          {:id 700 :database_id mock-db-id :entity_id metric-eid})
                 api/read-check  allow-read-check
                 api/query-check allow-read-check
                 ;; `metric-details` gates its base table and every surfaced column on app-db
@@ -1366,7 +1369,8 @@
                 ;; app-DB-free (see the fixture note above). That the surfaced dimensions ARE
                 ;; permission-filtered is covered against real tables in entity-details-test.
                 mi/can-read?                             (constantly true)
-                entity-details/permission-filter-columns identity
+                mi/can-query?                            (constantly true)
+                entity-details/permission-filter-columns (fn [cols & _] cols)
                 entity-details/verified-review?          (constantly false)]
     (f)))
 

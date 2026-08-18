@@ -15,7 +15,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.settings :as collections.settings]
    [metabase.collections.util :as collections.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
@@ -30,7 +29,6 @@
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -339,15 +337,15 @@
   {:select [:exploration_id
             :timestamp
             :user_id
-            [[:over [[:row_number] {:partition-by [:exploration_id]
-                                    :order-by     [[:timestamp :desc]]}]] :rn]]
-   :from   [[{:select [[:r.model_id :exploration_id]
-                       [:r.timestamp :timestamp]
-                       [:r.user_id   :user_id]]
-              :from   [[:revision :r]]
-              :where  [:and
-                       [:= :r.model (h2x/literal "Exploration")]
-                       [:= :r.most_recent true]]}
+            [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                     :order-by     [[:timestamp :desc]]}]] :rn]]
+   :from   [[^:allow-subquery {:select [[:r.model_id :exploration_id]
+                                        [:r.timestamp :timestamp]
+                                        [:r.user_id   :user_id]]
+                               :from   [[:revision :r]]
+                               :where  [:and
+                                        [:= :r.model (h2x/literal "Exploration")]
+                                        [:= :r.most_recent true]]}
              :all_edits]]})
 
 (defmethod collection-children-query :exploration
@@ -543,29 +541,18 @@
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
 (defn- post-process-card-like
-  [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [threshold              (collections.settings/can-run-adhoc-query-check-threshold)
-        card-count             (count rows)
-        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
-                                             (pos? threshold)
-                                             (> card-count threshold))
-                                 (when <>
-                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
-                                              card-count threshold)))
-        hydration              (cond-> [:can_write
-                                        :can_restore
-                                        :can_delete
-                                        :dashboard_count
-                                        :is_remote_synced
-                                        :collection_namespace
-                                        [:dashboard :moderation_status]]
-                                 (and include-can-run-adhoc-query
-                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
+  [{:keys [hydrate-based-on-upload]} rows]
+  (let [hydration [:can_write
+                   :can_restore
+                   :can_delete
+                   :dashboard_count
+                   :is_remote_synced
+                   :collection_namespace
+                   [:dashboard :moderation_status]]]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload
-        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -1071,8 +1058,8 @@
                      :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
         rows-query  (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                             :select   [:* [[:over [[:count :*] {} :total_count]]]]
-                             :from     [[{:union-all queries} :dummy_alias]]
+                             :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                             :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                              :order-by sql-order}
                       search-clause
                       (sql.helpers/where search-clause))

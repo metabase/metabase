@@ -350,11 +350,10 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query include_library collection_type
+           include_library collection_type
            show_dashboard_questions q include_available_models]} :- [:map
                                                                      [:models                      {:optional true} [:maybe collections.children/Models]]
                                                                      [:collection_type             {:optional true} collections.children/CollectionType]
-                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                                                      [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                                                      [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
                                                                      [:include_library             {:default false} [:maybe ms/BooleanValue]]
@@ -374,7 +373,6 @@
                                   (not (mi/can-read? root-collection)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
-                         :include-can-run-adhoc-query include_can_run_adhoc_query
                          :show-dashboard-questions?   (boolean show_dashboard_questions)
                          :collection-type             collection_type
                          :include-library?            include_library
@@ -527,7 +525,6 @@
                           [:description      {:optional true} [:maybe ms/NonBlankString]]
                           [:archived         {:default false} [:maybe ms/BooleanValue]]
                           [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                          [:type             {:optional true} [:maybe collections.children/CollectionType]]
                           [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collection-detail (collections/update-collection! id collection-updates)))
 
@@ -575,7 +572,6 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
-  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
   *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.
   *  `include_available_models` - include the models that have at least one visible item in the requested scope.
 
@@ -584,11 +580,9 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
            show_dashboard_questions q include_available_models]} :- [:map
                                                                      [:models                      {:optional true} [:maybe collections.children/Models]]
                                                                      [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                                                      [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
                                                                      [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
                                                                      [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
@@ -604,7 +598,6 @@
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned_state)
-                     :include-can-run-adhoc-query include_can_run_adhoc_query
                      :search-text                 q
                      :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
                                                    :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)

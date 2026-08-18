@@ -86,10 +86,13 @@
 (defn mentions
   "Find mentioned users inside of a comment content"
   [content]
-  (->> (tree-seq :content :content content)
-       (filter #(and (= "smartLink" (-> % :type))
-                     (= "user" (-> % :attrs :model))))
-       (mapv #(-> % :attrs :entityId))))
+  (into []
+        (comp (filter #(and (= "smartLink" (:type %))
+                            (= "user" (-> % :attrs :model))))
+              (keep #(let [entity-id (-> % :attrs :entityId)]
+                       (when (pos-int? entity-id)
+                         entity-id))))
+        (tree-seq :content :content content)))
 
 (defn comments-for-document
   "All live comments on a document, oldest first, with `:creator` hydrated. Read access to the

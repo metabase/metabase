@@ -32,10 +32,6 @@
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:archived        {:optional true} [:maybe :boolean]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-   ;; `:type` stays loose here: the exact enum lives in `metabase.collections.children`, which reaches
-   ;; `queries` and cycles back to `metabase.collections.core`. The REST endpoint validates it against
-   ;; `collections.children/CollectionType` at its own boundary, and it's the only caller that sends one.
-   [:type            {:optional true} [:maybe :string]]
    [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
 
 (defn- maybe-send-archived-notifications!
@@ -116,7 +112,7 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the request. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that

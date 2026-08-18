@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -34,29 +35,6 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- normalize-input-definition
-  "Normalize measure definition from API input to MBQL5.
-  Accepts MBQL4 definitions for Cypress e2e test support:
-  - MBQL5 full queries (passed through)
-  - MBQL4 full queries (converted to MBQL5)
-  - MBQL4 fragments (wrapped in full query, then converted to MBQL5); the fragment must
-    include `:source-table` so the table can be derived"
-  [definition]
-  (if (seq definition)
-    (-> (case (lib/normalized-mbql-version definition)
-          (:mbql-version/mbql5 :mbql-version/legacy)
-          definition
-          ;; default: MBQL4 fragment - wrap it in a full query
-          (let [table-id    (:source-table definition)
-                _           (api/check-400 (pos-int? table-id)
-                                           (tru "Measure definition must specify a source table."))
-                database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-            {:database database-id
-             :type :query
-             :query definition}))
-        lib-be/normalize-query)
-    {}))
-
 (defn- definition-table-id
   "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
   [normalized-definition]
@@ -69,15 +47,18 @@
   `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
   the create-check runs wherever a Measure is authored."
   [{:keys [name description definition], :as body}]
-  (let [normalized-definition (normalize-input-definition definition)
-        table-id (definition-table-id normalized-definition)]
+  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
+  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
+  ;; `definition-table-id` requires a normalized definition.
+  (let [definition (lib-be/normalize-query definition)
+        table-id   (definition-table-id definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
                    (first (t2/insert-returning-instances! :model/Measure
                                                           :creator_id  api/*current-user-id*
                                                           :name        name
                                                           :description description
-                                                          :definition  normalized-definition)))]
+                                                          :definition  definition)))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 
@@ -87,7 +68,7 @@
    _query-params
    body :- [:map
             [:name        ms/NonBlankString]
-            [:definition  ms/Map]
+            [:definition  ::measures.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
   (create-measure! body))
 
@@ -136,20 +117,20 @@
   wherever a Measure is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
-        clean-body (u/select-keys-when body
-                                       :present #{:description}
-                                       :non-nil #{:archived :definition :name})
-        new-def    (when-let [def (:definition clean-body)]
-                     (normalize-input-definition def))
-        new-body   (merge
-                    (dissoc clean-body :revision_message)
-                    (when new-def {:definition new-def}))
+        ;; Normalized for the same reason as in `create-measure!` — non-REST callers (MCP's
+        ;; measure_write) arrive undecoded, and both the stored definition and the table-id
+        ;; derivation below need MBQL 5.
+        clean-body (cond-> (u/select-keys-when body
+                                               :present #{:description}
+                                               :non-nil #{:archived :definition :name})
+                     (some? (:definition body)) (update :definition lib-be/normalize-query))
+        new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
     ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
     ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
     ;; new one.
-    (when new-def
+    (when-let [new-def (:definition clean-body)]
       (let [new-table-id (definition-table-id new-def)]
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Measure {:table_id new-table-id}))))
@@ -166,7 +147,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe ms/Map]]
+            [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]

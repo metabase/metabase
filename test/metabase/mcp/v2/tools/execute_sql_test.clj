@@ -79,7 +79,7 @@
 (deftest execute-sql-happy-path-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid    (str "execute-sql-happy-" (random-uuid))
+      (let [sid    (str (random-uuid))
             result (call! sid {:database_id (mt/id)
                                :row_limit   3
                                :sql         "SELECT ID, TOTAL FROM ORDERS ORDER BY ID"})
@@ -110,7 +110,7 @@
 (deftest execute-sql-truncation-signal-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid    (str "execute-sql-trunc-" (random-uuid))
+      (let [sid    (str (random-uuid))
             result (call! sid {:database_id (mt/id)
                                :row_limit   100
                                :sql         "SELECT ID FROM ORDERS ORDER BY ID LIMIT 5"})
@@ -128,7 +128,7 @@
             right, and execute_sql mints no cursor that could correct the mistake."
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/McpQueryHandle]
-        (let [sid    (str "execute-sql-exact-" (random-uuid))
+        (let [sid    (str (random-uuid))
               result (call! sid {:database_id (mt/id)
                                  :row_limit   5
                                  :sql         "SELECT ID FROM ORDERS ORDER BY ID LIMIT 5"})
@@ -144,7 +144,7 @@
             page holds exactly row_limit rows and stops at the row_limit'th value"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/McpQueryHandle]
-        (let [sid  (str "execute-sql-probe-" (random-uuid))
+        (let [sid  (str (random-uuid))
               body (payload (call! sid {:database_id (mt/id)
                                         :row_limit   3
                                         :sql         "SELECT ID FROM ORDERS ORDER BY ID LIMIT 10"}))]
@@ -158,7 +158,7 @@
 (deftest execute-sql-template-tag-binding-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid        (str "execute-sql-tags-" (random-uuid))
+      (let [sid        (str (random-uuid))
             count-sql  "SELECT count(*) AS C FROM ORDERS WHERE TOTAL > {{min_total}}"
             full-count (count-value (payload (call! sid {:database_id (mt/id)
                                                          :sql "SELECT count(*) AS C FROM ORDERS"})))]
@@ -185,7 +185,7 @@
 (deftest execute-sql-template-tag-teaching-errors-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid (str "execute-sql-tag-errors-" (random-uuid))]
+      (let [sid (str (random-uuid))]
         (testing "a value naming no {{tag}} in the SQL is a teaching error listing the tags that exist"
           (let [msg (error-text (call! sid {:database_id         (mt/id)
                                             :sql                 "SELECT count(*) AS C FROM ORDERS WHERE TOTAL > {{min_total}}"
@@ -218,7 +218,7 @@
             silently degrade every SQL-derived chart"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-model-cleanup [:model/McpQueryHandle]
-        (let [sid           (str "execute-sql-prompt-" (random-uuid))
+        (let [sid           (str (random-uuid))
               uid           (mt/user->id :crowberto)
               ;; the raw store accessor, not common/resolve-query-handle! — that one re-runs the
               ;; native-query guard and refuses SQL handles by design (see the handle-contract test)
@@ -246,7 +246,7 @@
 (deftest execute-sql-validate-only-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid (str "execute-sql-validate-" (random-uuid))
+      (let [sid (str (random-uuid))
             uid (mt/user->id :crowberto)]
         (testing "validate_only mints a handle without executing — even unrunnable SQL is accepted"
           (let [sql    "SELECT FROM WHERE kaboom"
@@ -274,7 +274,7 @@
 (deftest execute-sql-kill-switch-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
-      (let [sid (str "execute-sql-kill-" (random-uuid))]
+      (let [sid (str (random-uuid))]
         (testing "the kill switch refuses execution and names the setting that re-enables it"
           (is (str/includes? (error-text (call! sid {:database_id (mt/id) :sql "SELECT 1"}))
                              "mcp-execute-sql-enabled")))
@@ -291,7 +291,7 @@
       (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
                                                      :create-queries :query-builder}}
         (mt/with-current-user (mt/user->id :rasta)
-          (let [sid (str "execute-sql-perms-" (random-uuid))]
+          (let [sid (str (random-uuid))]
             (is (str/includes? (error-text (call! sid args))
                                "permission to run native queries"))
             (testing "validate_only is refused identically, and neither path mints a handle"
@@ -303,14 +303,14 @@
                                                      :create-queries :query-builder-and-native}}
         (mt/with-current-user (mt/user->id :rasta)
           (mt/with-model-cleanup [:model/McpQueryHandle]
-            (let [body (payload (call! (str "execute-sql-perms-ok-" (random-uuid)) args))]
+            (let [body (payload (call! (str (random-uuid)) args))]
               (is (= 1 (:returned body))))))))))
 
 ;; not ^:parallel: rebinds the shared data-perms graph
 (deftest execute-sql-existence-collapse-test
   (mt/with-no-data-perms-for-all-users!
     (mt/with-current-user (mt/user->id :rasta)
-      (let [sid       (str "execute-sql-oracle-" (random-uuid))
+      (let [sid       (str (random-uuid))
             normalize #(str/replace % #"\d+" "<id>")
             denied    (error-text (call! sid {:database_id (mt/id) :sql "SELECT 1"}))
             missing   (error-text (call! sid {:database_id Integer/MAX_VALUE :sql "SELECT 1"}))]
@@ -351,7 +351,7 @@
 (deftest execute-sql-handle-rejected-by-execute-query-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid    (str "execute-sql-handle-" (random-uuid))
+      (let [sid    (str (random-uuid))
             handle (:query_handle (payload (call! sid {:database_id   (mt/id)
                                                        :sql           "SELECT 1"
                                                        :validate_only true})))]
@@ -371,7 +371,7 @@
       (is (contains? (listed-names sql-scope) "execute_sql"))
       (is (not (contains? (listed-names #{"agent:query:run"}) "execute_sql")))))
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [sid  (str "execute-sql-scope-" (random-uuid))
+    (let [sid  (str (random-uuid))
           args {:database_id (mt/id) :sql "SELECT 1"}]
       (testing "a token holding only execute_query's scope cannot call execute_sql"
         (is (str/includes? (error-text (call! sid "execute_sql" args #{"agent:query:run"}))
@@ -386,7 +386,7 @@
 (deftest execute-sql-argument-validation-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [sid (str "execute-sql-args-" (random-uuid))]
+      (let [sid (str (random-uuid))]
         (testing "row_limit above the cap is a validation error naming the argument"
           (is (str/includes? (error-text (call! sid {:database_id (mt/id)
                                                      :sql         "SELECT 1"

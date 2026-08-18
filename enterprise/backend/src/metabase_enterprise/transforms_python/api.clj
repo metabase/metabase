@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
@@ -67,9 +68,12 @@
        [:source_tables                        [:sequential {:min 1} ::transforms-base.u/source-table-entry]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
-  (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (map :table_id source_tables)])]
+  (let [table-ids (map :table_id source_tables)
+        db-ids    (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids])]
     (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
-    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids))))
+    (api/check-403 (perms/has-db-transforms-permission? api/*current-user-id* (first db-ids)))
+    (doseq [table-id table-ids]
+      (api/check-403 (mi/can-query? :model/Table table-id))))
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code

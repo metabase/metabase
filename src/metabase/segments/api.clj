@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -58,7 +59,7 @@
    _query-params
    body :- [:map
             [:name        ms/NonBlankString]
-            [:definition  ms/Map]
+            [:definition  ::segments.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
   (create-segment! body))
 
@@ -129,7 +130,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe ms/Map]]
+            [:definition              {:optional true} [:maybe ::segments.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]
