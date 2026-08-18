@@ -30,6 +30,14 @@
           (t2/delete! table :model model :model_id [:in ids])))
       (t2/insert! table entries))))
 
+(defmethod specialization/batch-upsert-on-connection! :h2 [conn table entries]
+  (locking upsert-lock
+    (when (seq entries)
+      (doseq [[model model-entries] (group-by :model entries)]
+        (let [ids (map (comp str :model_id) model-entries)]
+          (t2/delete! :conn conn table :model model :model_id [:in ids])))
+      (t2/insert! :conn conn table entries))))
+
 (defn- wildcard-tokens [search-term]
   (->> (str/split search-term #"\s+")
        (map #(u/lower-case-en (str/trim %)))

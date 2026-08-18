@@ -256,16 +256,91 @@
                 (t2/update! :search_index_lease
                             {:engine engine, :version version, :lang_code lang_code}
                             {:owner (str (random-uuid))}))
-              (mdb/with-unshared-connection [conn]
+              (t2/with-connection [conn (mdb/app-db)]
                 (lease/do-in-fenced-transaction!
                  conn
                  #(search-index-metadata/active-pending-on-current-connection!
-                   :appdb version index-name)))))))
+                   % :appdb version index-name)))))))
       (is (= :pending
              (t2/select-one-fn :status :model/SearchIndexMetadata
                                :engine :appdb :version version :index_name index-name))
           "the ownership check and metadata rotation share a transaction")
       (finally
+        (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
+        (delete-coordinate! coordinate)))))
+
+(deftest fenced-mutation-locks-out-takeover-until-commit-test
+  (let [coordinate (coordinate)
+        version    (:version coordinate)
+        index-name (str (random-uuid))
+        allow-write (promise)
+        writer      (atom nil)
+        contender   (atom nil)]
+    (try
+      (binding [lease/*lease-duration* (t/millis 200)]
+        (let [claim      (lease/try-acquire! coordinate)
+              context    {:claim claim, :lost? (atom false)}
+              fence-held (promise)]
+          (reset! writer
+                  (binding [lease/*lease-context* context]
+                    (future
+                      (t2/with-connection [conn (mdb/app-db)]
+                        (lease/do-in-fenced-transaction!
+                         conn
+                         #(do
+                            (deliver fence-held true)
+                            @allow-write
+                            (t2/insert! :conn % :model/SearchIndexMetadata
+                                        {:engine :appdb, :version version
+                                         :lang_code (:lang-code coordinate), :status :pending
+                                         :index_name index-name})))))))
+          (is (true? (deref fence-held 5000 false)))
+          ;; Let the database lease expire while the fenced transaction still owns the row lock.
+          (Thread/sleep 250)
+          (reset! contender (future (lease/try-acquire! coordinate)))
+          (is (= ::blocked (deref @contender 50 ::blocked))
+              "takeover waits for the transaction containing the protected mutation")
+          (deliver allow-write true)
+          (is (= 1 (deref @writer 5000 ::timed-out)))
+          (let [replacement (deref @contender 5000 ::timed-out)]
+            (is (map? replacement))
+            (is (= index-name
+                   (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                                     :engine :appdb :version version :status :pending)))
+            (when (map? replacement)
+              (lease/release! replacement)))))
+      (finally
+        (deliver allow-write true)
+        (some-> @writer future-cancel)
+        (some-> @contender future-cancel)
+        (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
+        (delete-coordinate! coordinate)))))
+
+(deftest fenced-mutation-commits-independently-of-ambient-transaction-test
+  (let [coordinate (coordinate)
+        version    (:version coordinate)
+        index-name (str (random-uuid))
+        claim      (lease/try-acquire! coordinate)
+        context    {:claim claim, :lost? (atom false)}]
+    (try
+      (is (thrown-with-msg?
+           Exception
+           #"roll back caller"
+           (t2/with-transaction [_outer-conn]
+             (binding [lease/*lease-context* context]
+               (t2/with-connection [conn (mdb/app-db)]
+                 (lease/do-in-fenced-transaction!
+                  conn
+                  #(t2/insert! :conn % :model/SearchIndexMetadata
+                               {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                                :status :pending, :index_name index-name}))))
+             (throw (Exception. "roll back caller")))))
+      (is (= index-name
+             (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                               :engine :appdb :version version :status :pending))
+          "the independent mutation is not rolled back with the caller's connection")
+      (finally
+        (lease/release! claim)
         (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
         (delete-coordinate! coordinate)))))
 

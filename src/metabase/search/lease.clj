@@ -94,16 +94,16 @@
 
 (defn- db-times
   "Read the app database's current time and the corresponding lease expiry without converting JDBC time types."
-  []
+  [conn]
   (let [millis (.toMillis ^java.time.Duration *lease-duration*)]
-    (t2/query-one
-     (case (mdb/db-type)
-       :postgres ["SELECT CURRENT_TIMESTAMP AS now, CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') AS expires_at"
-                  millis]
-       :mysql    ["SELECT CURRENT_TIMESTAMP AS now, TIMESTAMPADD(MICROSECOND, ?, CURRENT_TIMESTAMP) AS expires_at"
-                  (* millis 1000)]
-       :h2       ["SELECT CURRENT_TIMESTAMP AS now, DATEADD('MILLISECOND', ?, CURRENT_TIMESTAMP) AS expires_at"
-                  millis]))))
+    (t2/query-one conn
+                  (case (mdb/db-type)
+                    :postgres ["SELECT CURRENT_TIMESTAMP AS now, CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') AS expires_at"
+                               millis]
+                    :mysql    ["SELECT CURRENT_TIMESTAMP AS now, TIMESTAMPADD(MICROSECOND, ?, CURRENT_TIMESTAMP) AS expires_at"
+                               (* millis 1000)]
+                    :h2       ["SELECT CURRENT_TIMESTAMP AS now, DATEADD('MILLISECOND', ?, CURRENT_TIMESTAMP) AS expires_at"
+                               millis]))))
 
 (defn- duplicate-key-violation?
   [error]
@@ -124,9 +124,9 @@
       (recur (ex-cause error)))))
 
 (defn- try-insert-claim!
-  [claim]
+  [conn claim]
   (try
-    (t2/insert! :search_index_lease
+    (t2/insert! :conn conn :search_index_lease
                 (select-keys claim [:engine :version :lang_code :owner
                                     :acquired_at :last_renewed_at :expires_at]))
     true
@@ -142,12 +142,12 @@
   elects one expired-row taker; the coordinate primary key elects one concurrent inserter."
   [coordinate]
   (do-with-lifecycle-connection
-   (fn [_conn]
+   (fn [conn]
      (let [attempt-start-ns (System/nanoTime)
            owner            (str (random-uuid))
            input-coordinate coordinate
            coordinate       (where-coordinate input-coordinate)
-           {:keys [now expires_at]} (db-times)
+           {:keys [now expires_at]} (db-times conn)
            claim            (assoc coordinate
                                    :owner owner
                                    :site-locale (or (:site-locale input-coordinate) (configured-site-locale))
@@ -155,7 +155,7 @@
                                    :last_renewed_at now
                                    :expires_at expires_at
                                    :last-renewal-start-ns attempt-start-ns)
-           stolen?          (pos? (t2/update! :search_index_lease
+           stolen?          (pos? (t2/update! :conn conn :search_index_lease
                                               (assoc coordinate :expires_at [:<= now])
                                               (select-keys claim [:owner :acquired_at
                                                                   :last_renewed_at :expires_at])))]
@@ -163,32 +163,32 @@
          stolen?
          (assoc claim :taken-over? true)
 
-         (try-insert-claim! claim)
+         (try-insert-claim! conn claim)
          claim
 
          :else
          nil)))))
 
 (defn- renew-on-current-connection!
-  [{:keys [owner] :as claim}]
-  (let [{:keys [now expires_at]} (db-times)
+  [conn {:keys [owner] :as claim}]
+  (let [{:keys [now expires_at]} (db-times conn)
         coordinate              (where-coordinate claim)]
-    (pos? (t2/update! :search_index_lease
+    (pos? (t2/update! :conn conn :search_index_lease
                       (assoc coordinate :owner owner :expires_at [:> now])
                       {:last_renewed_at now, :expires_at expires_at}))))
 
 (defn renew!
   "Renew `claim` with a short autocommit operation. Returns false if it expired or changed owner."
   [claim]
-  (do-with-lifecycle-connection (fn [_conn] (renew-on-current-connection! claim))))
+  (do-with-lifecycle-connection (fn [conn] (renew-on-current-connection! conn claim))))
 
 (defn release!
   "Release `claim` with a short autocommit operation, only if it still belongs to this owner."
   [{:keys [owner] :as claim}]
   (do-with-lifecycle-connection
-   (fn [_conn]
+   (fn [conn]
      (let [{:keys [engine version lang_code]} (where-coordinate claim)]
-       (pos? (t2/delete! :search_index_lease
+       (pos? (t2/delete! :conn conn :search_index_lease
                          :engine engine :version version :lang_code lang_code :owner owner))))))
 
 (defn- labels [claim event]
@@ -248,12 +248,12 @@
 
 (defn assert-current-in-transaction!
   "Fence the caller's current mutation transaction by renewing and locking its lease row."
-  []
+  [conn]
   (when-let [{:keys [claim] :as context} *lease-context*]
     (throw-if-lost!)
     (assert-coordinate-current!)
     (try
-      (when-not (renew-on-current-connection! claim)
+      (when-not (renew-on-current-connection! conn claim)
         (mark-lost! context)
         (throw (lost-ex claim)))
       (catch Throwable e
@@ -266,34 +266,23 @@
 (defn do-in-fenced-transaction!
   "Run `thunk` in a short transaction on the explicit mutation `conn`, fencing lease ownership before mutation.
 
-  This deliberately uses JDBC transaction control instead of Toucan's transaction macro: a streaming source query can
-  make the current thread appear transaction-bound even though `conn` is the independent batch-write connection."
+  The transaction is isolated from Toucan's ambient thread-local transaction state: a streaming source query or caller
+  can appear transaction-bound even though `conn` is the independent batch-write connection."
   [^Connection conn thunk]
-  (let [auto-commit? (.getAutoCommit conn)]
-    (when-not auto-commit?
-      (throw (ex-info "Search lease mutation connection unexpectedly has auto-commit disabled"
-                      {:type ::non-autocommit-mutation-connection})))
-    (try
-      (.setAutoCommit conn false)
-      (let [result (t2/with-connection [_ conn]
-                     (assert-current-in-transaction!)
-                     (thunk))]
-        (.commit conn)
-        result)
-      (catch Throwable e
-        (try
-          (.rollback conn)
-          (catch Throwable rollback-error
-            (log/warnf "Failed to roll back a fenced search mutation: %s" (ex-message rollback-error))))
-        (throw e))
-      (finally
-        (.setAutoCommit conn auto-commit?)))))
+  (when-not (.getAutoCommit conn)
+    (throw (ex-info "Search lease mutation connection unexpectedly has auto-commit disabled"
+                    {:type ::non-autocommit-mutation-connection})))
+  (mdb/do-with-independent-connection-transaction
+   conn
+   (fn [conn]
+     (assert-current-in-transaction! conn)
+     (thunk conn))))
 
 (defn assert-current!
   "Prove current ownership with a short lifecycle operation. Used only where no protected DB mutation follows."
   []
   (if *lease-context*
-    (do-with-lifecycle-connection (fn [_conn] (assert-current-in-transaction!)))
+    (do-with-lifecycle-connection (fn [conn] (assert-current-in-transaction! conn)))
     true))
 
 (defn- lease-duration-nanos []

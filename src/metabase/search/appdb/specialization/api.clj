@@ -24,6 +24,11 @@
   {:arglists '([table-name entries])}
   db-type)
 
+(defmulti batch-upsert-on-connection!
+  "Insert or update multiple entries using the explicit transaction connection."
+  {:arglists '([conn table-name entries])}
+  db-type)
+
 (defmulti extra-entry-fields
   "Populate additional fields only present for this database driver's index table"
   {:arglists '([entity])}

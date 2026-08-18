@@ -41,6 +41,7 @@
   db-type
   do-before-commit
   do-after-commit
+  do-with-independent-connection-transaction
   in-transaction?
   quoting-style
   unique-identifier

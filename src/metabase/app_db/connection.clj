@@ -426,6 +426,21 @@
         (run-after-commit-callbacks! callbacks))
       result)))
 
+(defn do-with-independent-connection-transaction
+  "Run `f` as a top-level transaction on the explicit JDBC `connection`.
+
+  Use this when the caller can be inside an unrelated ambient transaction but has deliberately checked out another
+  connection whose work must commit independently. Transaction nesting in the app-db layer is thread-local, so it must
+  be isolated along with the callback state; otherwise Toucan treats this connection as a nested savepoint and never
+  commits it."
+  [^java.sql.Connection connection f]
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *before-commit-callbacks*      nil
+            *after-commit-callbacks*       nil
+            *transaction-state*            nil]
+    (t2.conn/do-with-transaction connection {} f)))
+
 ;;;; Unshared connections
 ;;;;
 ;;;; A connection that holds fragile long-lived state -- a streaming result set (postgres portal), a row
