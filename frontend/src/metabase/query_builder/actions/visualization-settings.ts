@@ -90,8 +90,9 @@ function referencesNewForeignColumn(
 function getReferencedColumnKeys(settings: VisualizationSettings): Set<string> {
   return new Set(
     getReferencedEntitiesFromVizSettings(settings).flatMap(
-      ({ type, id, columns = [] }) =>
-        columns.map((column) => `${type}:${id}:${column}`),
+      ({ type, id, columns = [] }) => {
+        return columns.map((column) => `${type}:${id}:${column}`);
+      },
     ),
   );
 }
