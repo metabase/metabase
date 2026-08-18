@@ -2242,3 +2242,21 @@
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
+
+(define-migration BackfillAuthMaterialSignatures
+  ;; Stamp the keyed signature columns for rows that predate them, using the value already in each row.
+  ;; No-op when no signing secret is configured (the signature would be nil).
+  (when (encryption/hmac-signing-secret)
+    (run! (fn [{:keys [id is_superuser]}]
+            (t2/query {:update :core_user
+                       :set    {:is_superuser_sig (encryption/hmac-signature "core_user.is_superuser" id (boolean is_superuser))}
+                       :where  [:= :id id]}))
+          (t2/reducible-query {:select [:id :is_superuser] :from [:core_user]}))
+    (run! (fn [{:keys [id user_id provider credentials]}]
+            (let [creds (encrypted-json-out credentials)]
+              (t2/query {:update :auth_identity
+                         :set    {:credentials_sig (encryption/hmac-signature "auth_identity.credentials"
+                                                                              user_id provider
+                                                                              (:password_hash creds) (:token_hash creds))}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :user_id :provider :credentials] :from [:auth_identity]}))))

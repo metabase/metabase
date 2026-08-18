@@ -2,6 +2,7 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.models.auth-identity :as auth-identity.models]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
@@ -145,7 +146,9 @@
         (if-let [auth-identity (t2/select-one :model/AuthIdentity
                                               :user_id user-id
                                               :provider (name provider))]
-          (let [verification-result (verify-reset-token token (:credentials auth-identity))]
+          (let [verification-result (if (auth-identity.models/credentials-signature-valid? auth-identity)
+                                      (verify-reset-token token (:credentials auth-identity))
+                                      :invalid)]
             (case verification-result
               :valid
               (do

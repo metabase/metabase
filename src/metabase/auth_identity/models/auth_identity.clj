@@ -6,6 +6,7 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [methodical.core :as methodical]
@@ -73,18 +74,41 @@
                            credentials))
       (dissoc :plaintext_password)))
 
+(defn- credentials-signature
+  "Keyed signature bound to `(user-id, provider, password_hash, token_hash)`. Recomputed on the
+  model write path."
+  [user-id provider credentials]
+  (encryption/hmac-signature "auth_identity.credentials"
+                             user-id provider
+                             (:password_hash credentials) (:token_hash credentials)))
+
+(defn credentials-signature-valid?
+  "True when `auth-identity`'s `credentials_sig` verifies against its credentials, or when no signing
+  secret is configured. Providers call this before honoring the stored credentials."
+  [{:keys [user_id provider credentials credentials_sig]}]
+  (encryption/hmac-signature-valid? credentials_sig "auth_identity.credentials"
+                                    user_id provider
+                                    (:password_hash credentials) (:token_hash credentials)))
+
 (t2/define-before-insert :model/AuthIdentity
-  [{:keys [provider] :as auth-identity}]
+  [{:keys [user_id provider credentials] :as auth-identity}]
   (provider/validate (provider/provider-string->keyword provider) auth-identity)
-  auth-identity)
+  (assoc auth-identity :credentials_sig (credentials-signature user_id provider credentials)))
 
 (t2/define-before-update :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
-  (u/prog1 (cond-> auth-identity
-             (and (= provider "password")
-                  (contains? (t2/changes auth-identity) :credentials))
-             (update :credentials hash-password-credentials))
-    (provider/validate (provider/provider-string->keyword provider) <>)))
+  (let [creds-changed? (contains? (t2/changes auth-identity) :credentials)
+        hashed         (cond-> auth-identity
+                         (and (= provider "password") creds-changed?)
+                         (update :credentials hash-password-credentials))]
+    (provider/validate (provider/provider-string->keyword provider) hashed)
+    ;; resign whenever credentials change; fetch user_id when it isn't part of this update
+    (cond-> hashed
+      creds-changed?
+      (as-> ai (assoc ai :credentials_sig
+                      (credentials-signature (or (:user_id ai)
+                                                 (t2/select-one-fn :user_id :model/AuthIdentity (:id ai)))
+                                             provider (:credentials ai)))))))
 
 (t2/define-after-insert :model/AuthIdentity
   [{:keys [user_id provider credentials] :as auth-identity}]

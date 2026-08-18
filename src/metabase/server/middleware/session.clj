@@ -39,6 +39,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.encryption :as encryption]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]
    [toucan2.core :as t2]
@@ -118,6 +119,7 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_superuser_sig :is-superuser-sig]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]
                             [:auth_identity.provider :auth-provider]]
@@ -158,6 +160,7 @@
        (cond-> {:select    [[:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_superuser_sig :is-superuser-sig]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      :api_key
@@ -184,6 +187,7 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:user.id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_superuser_sig :is-superuser-sig]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      [[:core_user :user]]
@@ -199,6 +203,17 @@
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
+
+(defn- check-superuser-signature
+  "Downgrade `:is-superuser?` to false unless `:is-superuser-sig` verifies against `(id, is_superuser)`.
+  A missing/invalid signature strips admin without breaking the account. Always removes the signature
+  from the returned map. No-op passthrough when no signing secret is configured."
+  [{:keys [metabase-user-id is-superuser? is-superuser-sig] :as user-info}]
+  (cond-> (dissoc user-info :is-superuser-sig)
+    (and is-superuser?
+         (not (encryption/hmac-signature-valid? is-superuser-sig
+                                                "core_user.is_superuser" metabase-user-id true)))
+    (assoc :is-superuser? false)))
 
 (defn- valid-session-key?
   "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
@@ -225,6 +240,7 @@
                           (when (seq anti-csrf-token)
                             [anti-csrf-token]))]
       (some-> (t2/query-one (cons sql params))
+              check-superuser-signature
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
@@ -266,6 +282,7 @@
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
+              check-superuser-signature
               (dissoc :api-key)))))))
 
 (def ^:private full-access-token-scopes
@@ -301,6 +318,7 @@
       (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
         (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?))
                                     [user-id]))
+                check-superuser-signature
                 (m/update-existing :is-group-manager? boolean)
                 (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
 
