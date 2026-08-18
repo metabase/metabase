@@ -282,7 +282,13 @@ async function reconcileModel(
   if (previous && copy) {
     assertOwnedModelCopy(copy, collectionId);
 
-    if (getPayloadFingerprint(modelCopyInput(copy)) !== hash) {
+    // `archived` is deliberately not part of the fingerprint: it describes the
+    // copy's state, not the payload, and folding it in would invalidate every
+    // lockfile written before this.
+    if (
+      copy.archived === true ||
+      getPayloadFingerprint(modelCopyInput(copy)) !== hash
+    ) {
       await client.updateModel(previous.copiedModelId, {
         ...modelCopyInput(sourceModel),
         collectionId,

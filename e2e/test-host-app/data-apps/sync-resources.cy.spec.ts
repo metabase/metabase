@@ -147,6 +147,19 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     });
   });
 
+  it("brings back a saved question that was trashed on its own", () => {
+    syncOneQuery().then((card) => {
+      cy.request("PUT", `/api/card/${card.id}`, { archived: true });
+
+      sync();
+
+      cy.request(`/api/card/${card.id}`).then(({ body: restored }) => {
+        expect(restored.archived, "the copy is out of the trash").to.eq(false);
+        expect(restored.collection_id).to.eq(card.collection_id);
+      });
+    });
+  });
+
   it("recreates the saved question after it is deleted in Metabase", () => {
     syncOneQuery().then((card) => {
       cy.request("DELETE", `/api/card/${card.id}`);

@@ -333,6 +333,8 @@ async function reconcileLiveQuery(
   const needsUpdate =
     card.name !== query.exportName ||
     card.collection_id !== collectionId ||
+    // A copy trashed on its own keeps its collection, so only `archived` says so.
+    card.archived === true ||
     !queriesMatch(card, resolved);
 
   if (needsUpdate) {

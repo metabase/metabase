@@ -133,6 +133,7 @@ export class MetabaseClient {
         type: "question",
         dataset_query: input.datasetQuery,
         collection_id: input.collectionId,
+        archived: false,
       }),
     });
   }
@@ -197,6 +198,7 @@ interface ModelInput {
 const modelBody = (input: ModelInput) => ({
   name: input.name,
   type: "model",
+  archived: false,
   dataset_query: input.datasetQuery,
   display: input.display,
   visualization_settings: input.visualizationSettings,

@@ -451,6 +451,23 @@ describe(
         });
       });
 
+      it("brings back a copied model that was trashed on its own", () => {
+        syncOneAction().then(({ copiedModel }) => {
+          cy.request("PUT", `/api/card/${copiedModel.id}`, { archived: true });
+
+          sync();
+
+          cy.request(`/api/card/${copiedModel.id}`).then(
+            ({ body: restored }) => {
+              expect(restored.archived, "the copy is out of the trash").to.eq(
+                false,
+              );
+              expect(restored.collection_id).to.eq(copiedModel.collection_id);
+            },
+          );
+        });
+      });
+
       it("recreates the copied model after it is deleted in Metabase", () => {
         syncOneAction().then(({ copiedModel }) => {
           cy.request("DELETE", `/api/card/${copiedModel.id}`);
