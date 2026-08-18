@@ -1000,3 +1000,36 @@
           hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
       (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
       (is (not (contains? (hosts details) "10.0.0.1"))))))
+
+(deftest create-schema-if-needed!-escapes-schema-name-test
+  (testing "the transform target :schema is escaped in the EXEC literal"
+    (let [captured (atom nil)]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec sql] (reset! captured sql))]
+        (driver/create-schema-if-needed! :sqlserver {} "x'); DROP TABLE secrets; --"))
+      (is (= "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'x''); DROP TABLE secrets; --') EXEC('CREATE SCHEMA \"x''); DROP TABLE secrets; --\";');"
+             (ffirst @captured))))))
+
+(deftest ^:parallel add-interval-honeysql-form-rejects-hostile-unit-test
+  (testing "the SQL Server DATEADD sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 hostile))))
+    (testing "and still compiles a legitimate unit to the expected DATEPART token"
+      (is (= ["DATEADD(day, 1, some_col)"]
+             (sql/format-expr (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 :day)
+                              {:nested true}))))))
+
+(deftest ^:parallel escape-like-pattern-test
+  (testing "escape-like-pattern neutralizes every SQL Server LIKE metacharacter, so a filter value matches literally"
+    (are [pattern expected] (= expected (sql.qp/escape-like-pattern :sqlserver pattern))
+      "abc"           "abc"
+      "a%b"           "a[%]b"
+      "a_b"           "a[_]b"
+      ;; `[` opens a character class in SQL Server LIKE, so it must be escaped too (it was not, letting a public /
+      ;; embedded dashboard filter value run as a pattern rather than a literal)
+      "a[bc]"         "a[[]bc]"
+      "50% off [x]"   "50[%] off [[]x]"
+      ;; `[` is escaped first, so the brackets the other replacements introduce are not re-escaped
+      "x[%]y"         "x[[][%]]y")))

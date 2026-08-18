@@ -60,7 +60,7 @@
                  "is-null"         "is-not-null"
                  "string-is-empty" "string-is-not-empty"
                  "is-true"         "is-false"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-extraction-filter
   [:and
@@ -75,7 +75,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:value :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-extraction-filter
   [:and
@@ -90,7 +90,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:values [:sequential :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-filter
   [:and
@@ -102,7 +102,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-filter
   [:and
@@ -114,7 +114,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:values [:sequential [:or :string :int]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::string-filter
   [:and
@@ -125,7 +125,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-string-date-filter
   [:and
@@ -136,7 +136,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:values [:sequential :string]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::numeric-filter
   [:and
@@ -147,7 +147,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-numeric-filter
   [:and
@@ -156,14 +156,14 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::segment-filter
   "Filter using a pre-defined segment."
   [:and
    [:map
     [:segment_id :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::filter
   [:or
@@ -181,7 +181,7 @@
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::count-aggregation
   "Count aggregation — counts rows, no field_id needed.
@@ -191,7 +191,7 @@
     [:function [:= {:encode/tool-api-request keyword} "count"]]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-aggregation
   "Aggregation using a field and function. field_id is required.
@@ -203,7 +203,7 @@
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count-distinct" "max" "min" "sum"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
   "Aggregation using a pre-defined measure."
@@ -211,7 +211,7 @@
    [:map
     [:measure_id :int]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
   "Aggregation — count (field optional), field-based (field required), or measure-based."
@@ -222,7 +222,7 @@
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::order-by
   "Order by item specifying a field and sort direction."
@@ -324,7 +324,7 @@
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:definition {:optional true} [:maybe :map]]])
+   [:definition {:optional true} [:maybe ms/Map]]])
 
 (mr/def ::segment
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -332,7 +332,7 @@
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:definition {:optional true} [:maybe :map]]])
+   [:definition {:optional true} [:maybe ms/Map]]])
 
 (mr/def ::table-result
   [:map
@@ -392,7 +392,7 @@
     [:with_model_metrics                    {:optional true, :default true} :boolean]
     [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]
     [:with_metric_queryable_dimensions      {:optional true, :default true} :boolean]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:with_model_fields                     :with-fields?
                                :with_model_metrics                    :with-metrics?
                                :with_metric_default_temporal_breakout :with-default-temporal-breakout?
@@ -426,7 +426,7 @@
     [:search_native_query {:optional true, :default false} [:maybe :boolean]]
     [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]
     [:weights             {:optional true} [:map-of :keyword number?]]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
 (mr/def ::search-result-item
@@ -497,7 +497,7 @@
                             (for [fl ["first" "last"]
                                   day days]
                               (str fl "-" day)))]]]
-     [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]))
+     [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]))
 
 (mr/def ::create-dashboard-subscription-arguments
   [:and
@@ -505,7 +505,7 @@
     [:dashboard_id :int]
     [:email :string]
     [:schedule ::subscription-schedule]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/create-dashboard-subscription"
   "Create a dashboard subscription."
@@ -522,7 +522,7 @@
     [:entity_id :int]
     [:field_id :string]
     [:limit {:optional true} [:maybe :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-values-result
   [:or
@@ -559,8 +559,8 @@
                     [:map
                      [:table_id :string]
                      [:result_field_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+                   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]]
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::find-outliers-result
   [:or
@@ -585,7 +585,7 @@
           [:map [:metric_id :int]]
           [:map [:table_id :string]]
           [:map [:report_id :int]]
-          [:map [:query :map]]]]])
+          [:map [:query ms/Map]]]]])
 
 (deftool "/generate-insights"
   "Generate insights."
@@ -616,7 +616,7 @@
 (mr/def ::get-dashboard-details-arguments
   [:and
    [:map [:dashboard_id :int]]
-   [:map {:encode/tool-api-request #(set/rename-keys % {:dashboard_id :dashboard-id})}]])
+   [:map {:closed false, :encode/tool-api-request #(set/rename-keys % {:dashboard_id :dashboard-id})}]])
 
 (mr/def ::get-dashboard-details-result
   [:or
@@ -644,7 +644,7 @@
     [:with_field_values              {:optional true, :default true} :boolean]
     [:with_queryable_dimensions      {:optional true, :default true} :boolean]
     [:with_segments                  {:optional true, :default false} :boolean]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:metric_id                      :metric-id
                                :with_default_temporal_breakout :with-default-temporal-breakout?
                                :with_field_values              :with-field-values?
@@ -664,7 +664,7 @@
    :handler       metabot-v3.tools.entity-details/get-metric-details})
 
 (mr/def ::get-query-details-arguments
-  [:map [:query :map]])
+  [:map [:query ms/Map]])
 
 (mr/def ::get-query-details-result
   [:or
@@ -690,7 +690,7 @@
     [:report_id                                         :int]
     [:with_fields       {:optional true, :default true} :boolean]
     [:with_field_values {:optional true, :default true} :boolean]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:report_id         :report-id
                                :with_fields       :with-fields?
                                :with_field_values :with-field-values?})}]])
@@ -719,7 +719,7 @@
   [:and
    [:map
     [:document_id :int]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:document_id :document-id})}]])
 
 (mr/def ::get-document-details-result
@@ -753,7 +753,7 @@
     [:with_segments                         {:optional true, :default false} :boolean]]
    [:fn {:error/message "Exactly one of model_id and table_id required"}
     #(= (count (select-keys % [:model_id :table_id])) 1)]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:model_id                              :model-id
                                :table_id                              :table-id
                                :with_fields                           :with-fields?
@@ -780,7 +780,7 @@
   [:and
    [:map
     [:database_id :int]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:database_id :database-id})}]])
 
 (mr/def ::get-tables-result
@@ -833,7 +833,7 @@
   [:and
    [:map
     [:transform_id :int]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:transform_id :transform-id})}]])
 
 (mr/def ::get-transform-details-result
@@ -852,7 +852,7 @@
   [:and
    [:map
     [:path :string]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::get-transform-python-library-details-result
@@ -876,7 +876,7 @@
    [:map
     [:transform_id :int]
     [:source ::metabot-v3.tools.transforms/transform-source]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:transform_id :id})}]])
 
 (mr/def ::broken-question
@@ -918,9 +918,9 @@
                      [:query_id {:optional true} :string]]
                     [:map [:report_id :int]]
                     [:map [:table_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]
+                   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]
     [:filters [:sequential ::filter]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/filter-records"
   "Construct a query from a metric."
@@ -934,7 +934,7 @@
     [:metric_id :int]
     [:filters {:optional true} [:maybe [:sequential ::filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/query-metric"
   "Construct a query from a metric."
@@ -952,7 +952,7 @@
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
     [:order_by {:optional true} [:maybe [:sequential ::order-by]]]
     [:limit {:optional true} [:maybe :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 ;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
 (deftool "/query-model"
@@ -974,7 +974,7 @@
     [:limit {:optional true} [:maybe :int]]]
    [:fn {:error/message "Exactly one of table_id and model_id required"}
     #(= (count (select-keys % [:table_id :model_id])) 1)]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 ;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
 (deftool "/query-datasource"
@@ -1000,7 +1000,7 @@
   [:and
    [:map
     [:snippet_id :int]]
-   [:map {:encode/tool-api-request
+   [:map {:closed false, :encode/tool-api-request
           #(set/rename-keys % {:snippet_id :snippet-id})}]])
 
 (mr/def ::get-snippet-details-result

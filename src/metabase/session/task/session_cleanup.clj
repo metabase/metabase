@@ -14,10 +14,10 @@
 (defn- cleanup-sessions!
   "Deletes sessions from the database which are no longer valid"
   []
-  (let [oldest-allowed [:inline (h2x/add-interval-honeysql-form (mdb/db-type)
-                                                                :%now
-                                                                (- (config/config-int :max-session-age))
-                                                                :minute)]]
+  (let [oldest-allowed (h2x/add-interval-honeysql-form (mdb/db-type)
+                                                       :%now
+                                                       (- (config/config-int :max-session-age))
+                                                       :minute)]
     (t2/delete! :model/Session :created_at [:< oldest-allowed])))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))

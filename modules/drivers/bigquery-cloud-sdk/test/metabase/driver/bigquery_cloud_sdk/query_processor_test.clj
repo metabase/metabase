@@ -1035,6 +1035,26 @@
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
 
+(deftest ^:parallel identifier-quoting-test
+  (letfn [(compile-identifier [& components]
+            (first (sql/format {:select [[(apply h2x/identifier :field components)]]}
+                               {:dialect (sql.qp/quote-style :bigquery-cloud-sdk), :quoted true})))]
+    (testing "ordinary identifiers are backtick-quoted"
+      (is (= "SELECT `my_dataset`.`my_table`.`my_field`"
+             (compile-identifier "my_dataset" "my_table" "my_field"))))
+    (testing "a backtick is escaped with a backslash, not doubled -- GoogleSQL has no doubling escape"
+      (is (= "SELECT `a\\`b`"
+             (compile-identifier "a`b"))))
+    (testing "a backslash is doubled, so it cannot escape the closing backtick"
+      (is (= "SELECT `a\\\\b`"
+             (compile-identifier "a\\b"))))
+    (testing "an identifier cannot break out into raw SQL"
+      (is (= (str "SELECT `__mb_source`.`a\\`\\\\\\`, (SELECT STRING_AGG(x) FROM other.secret) "
+                  "AS leak FROM ds.tbl -- `")
+             (compile-identifier "__mb_source" "a`\\`, (SELECT STRING_AGG(x) FROM other.secret) AS leak FROM ds.tbl -- ")))
+      (is (= "SELECT `x\\`\\\\\\`; DROP TABLE ds.tbl; -- `"
+             (compile-identifier "x`\\`; DROP TABLE ds.tbl; -- "))))))
+
 (deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
@@ -1366,3 +1386,14 @@
                              (mapv #(update % 0 inc)))]
               (is (= exp-rows
                      (mt/formatted-rows [int int int] (qp/process-query query)))))))))))
+
+(deftest ^:parallel interval-rejects-hostile-unit-test
+  (testing "the BigQuery INTERVAL sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (#'bigquery.qp/interval 1 hostile))))
+    (testing "and still emits the expected INTERVAL token for a legitimate unit"
+      (is (= [:raw "INTERVAL 1 day"]
+             (#'bigquery.qp/interval 1 :day))))))

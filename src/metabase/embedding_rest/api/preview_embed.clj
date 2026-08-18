@@ -14,11 +14,13 @@
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
@@ -114,6 +116,7 @@
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    query-params]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
@@ -128,6 +131,7 @@
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
    query-params]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            prefix
@@ -144,6 +148,7 @@
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    {:keys [value]}]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -228,16 +233,20 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
-        parameters (json/decode+kw parameters)
+        card       (api/check-404 (t2/select-one :model/Card card-id))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-card
+       card-id
+       (api.embed.common/tile-parameters-for-card
+        card (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -255,13 +264,17 @@
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        parameters       (json/decode+kw parameters)
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard
+       dashboard-id dashcard-id card-id
+       (api.embed.common/tile-parameters-for-dashboard
+        dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y lat-field lon-field))))

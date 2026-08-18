@@ -52,6 +52,7 @@
   :feature :library
   [table-id-column {:keys [user-id is-superuser?]}]
   [:in table-id-column
+   ^:allow-subquery
    {:select [:id]
     :from   [:metabase_table]
     :where  [:and

@@ -36,11 +36,14 @@
                                :data_layer "hidden"})
         (is (= :hidden (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
         (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
-      (testing "cannot update both visibility_type and data_layer at once"
-        (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
-                              {:table_ids        [table-1-id]
-                               :visibility_type  "hidden"
-                               :data_layer "hidden"})))))
+      (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
+        (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
+                              {:table_ids       [table-1-id]
+                               :visibility_type "hidden"
+                               :data_layer      "final"})
+        ;; had visibility_type been honoured, the model would have refused to update both at once
+        (is (= :final (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
+        (is (= nil (t2/select-one-fn :visibility_type :model/Table :id table-1-id)))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"

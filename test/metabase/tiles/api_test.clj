@@ -7,7 +7,8 @@
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 ;; TODO: Assert on the contents of the response, not just the format
 (defn png? [s]
@@ -260,3 +261,25 @@
              :latField (encoded-lat-field-ref :mbql)
              :lonField (encoded-lon-field-ref :mbql)
              :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))))))
+
+(deftest ad-hoc-query-cannot-write-another-cards-result-metadata-test
+  (testing "GET /api/tiles/:zoom/:x/:y takes a whole query as a query-string param, so its :info must come from the server"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id collection-id
+                                                            :dataset_query (venues-query)
+                                                            :result_metadata
+                                                            [{:name         "SECRET"
+                                                              :display_name "Secret"
+                                                              :base_type    :type/Text}]}]
+        (testing "sanity: the caller cannot even read the Card"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "card/" card-id)))))
+        (testing "a forged :info :card-id does not rewrite that Card's result_metadata"
+          (is (png? (mt/user-http-request
+                     :rasta :get 200 "tiles/4/2/4"
+                     :query (json/encode (assoc (venues-query) :info {:card-id card-id}))
+                     :latField (encoded-lat-field-ref :mbql)
+                     :lonField (encoded-lon-field-ref :mbql))))
+          (is (= ["SECRET"]
+                 (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
