@@ -299,8 +299,9 @@
 (def hydration-query-chunk-size
   "IDs per `:in` clause in a hydration query, shared by every batch hydration fn so none of them can put an
   unbounded id list into one statement. Well under the app db's bind-parameter ceiling (Postgres: 65,535).
-  Keeping this at 500 also bounds how many entities' hydrated values are accumulated at once; a hydration
-  with many child rows must stream them and bound each entity's value separately."
+  It bounds one query, and nothing else: [[hydrate]] hands each batch fn the whole entity collection and
+  holds its whole result map, so a hydration with many child rows per entity has to stream them and bound
+  each entity's value itself (as the Table `:field-names` one does)."
   500)
 
 (defn- raw-ai-context-rows
