@@ -150,7 +150,6 @@ jobs:
             ~/.gitlibs
             ~/.deps.clj
             bin/bb
-            .cpcache
           key: ${{ env.M2_CACHE_KEY }}
 
       # Frontend preparation and caches
