@@ -74,11 +74,10 @@ export async function handleItemDrop({
       return false;
     }
 
+    const pinned = pinIndex !== null;
+    const pinValue = pinIndex ?? false;
     await Promise.all(
       pinnableItems.map(async (item) => {
-        const pinned = pinIndex !== null;
-        const pinValue = pinIndex ?? false;
-
         if (isItemPinned(item) === pinned) {
           await setPinned(item, pinValue);
           return;

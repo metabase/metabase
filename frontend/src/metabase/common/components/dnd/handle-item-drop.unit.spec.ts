@@ -18,15 +18,6 @@ const dashboard = createMockCollectionItem({
   collection_position: null,
 });
 
-function getTrackedEvents(
-  trackSimpleEvent: jest.SpiedFunction<typeof Analytics.trackSimpleEvent>,
-  eventName: string,
-) {
-  return trackSimpleEvent.mock.calls
-    .map(([event]) => event)
-    .filter(({ event }) => event === eventName);
-}
-
 function setup(items: CollectionItem[] = [question]) {
   return {
     items,
@@ -55,29 +46,21 @@ describe("handleItemDrop", () => {
     });
 
     expect(props.setCollection).toHaveBeenCalledTimes(2);
-    const moveEvents = getTrackedEvents(
-      trackSimpleEvent,
-      "collection_item_moved",
-    );
-    expect(moveEvents).toHaveLength(2);
-    expect(moveEvents).toEqual(
-      expect.arrayContaining([
-        {
-          event: "collection_item_moved",
-          event_detail: "question",
-          target_id: question.id,
-          triggered_from: "drag_and_drop",
-          result: "success",
-        },
-        {
-          event: "collection_item_moved",
-          event_detail: "dashboard",
-          target_id: dashboard.id,
-          triggered_from: "drag_and_drop",
-          result: "success",
-        },
-      ]),
-    );
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "collection_item_moved",
+      event_detail: "question",
+      target_id: question.id,
+      triggered_from: "drag_and_drop",
+      result: "success",
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "collection_item_moved",
+      event_detail: "dashboard",
+      target_id: dashboard.id,
+      triggered_from: "drag_and_drop",
+      result: "success",
+    });
   });
 
   it("tracks failed collection moves and preserves the rejection", async () => {
@@ -113,9 +96,7 @@ describe("handleItemDrop", () => {
       },
     });
 
-    expect(
-      getTrackedEvents(trackSimpleEvent, "collection_item_moved"),
-    ).toHaveLength(0);
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
     expect(trackSchemaEvent).toHaveBeenCalledWith("simple_event", {
       event: "moved-to-trash",
       event_detail: "question",
