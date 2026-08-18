@@ -6,7 +6,7 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
 import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
-import type { QueryModalType } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store/qb";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

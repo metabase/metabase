@@ -14,11 +14,11 @@ import {
   within,
 } from "__support__/ui";
 import * as modelActions from "metabase/query_builder/actions/models";
-import { MODAL_TYPES } from "metabase/querying/constants";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { MODAL_TYPES } from "metabase/redux/store/qb";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";

@@ -22,9 +22,9 @@ import type { QuestionSharingModalType } from "metabase/embedding/components/Sha
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
-import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
+import { MODAL_TYPES } from "metabase/redux/store/qb";
 import { useSetting } from "metabase/settings";
 import { Box, CopyButton, Flex } from "metabase/ui";
 import {

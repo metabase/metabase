@@ -8,9 +8,9 @@ import {
   getTimeseriesDataInterval,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenTimelines } from "metabase/redux/query-builder";
+import { MODAL_TYPES, type QueryModalType } from "metabase/redux/store/qb";
 import { Box, Button, Icon } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";

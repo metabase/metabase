@@ -23,12 +23,12 @@ import {
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
-import type { QueryModalType } from "metabase/querying/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
+import type { QueryModalType } from "metabase/redux/store/qb";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

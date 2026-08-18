@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
-import { MODAL_TYPES } from "metabase/querying/constants";
 import { setUIControls } from "metabase/redux/query-builder";
+import { MODAL_TYPES } from "metabase/redux/store/qb";
 import { Button, Flex } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { LegacyDrill } from "metabase/visualizations/types";

@@ -46,10 +46,10 @@ import { getInitialEditorHeight } from "metabase/querying/components/NativeQuery
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
-import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { MODAL_TYPES } from "metabase/redux/store/qb";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";

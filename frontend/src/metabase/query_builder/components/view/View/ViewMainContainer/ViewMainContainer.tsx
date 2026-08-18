@@ -7,10 +7,10 @@ import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectD
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import type { QueryModalType } from "metabase/redux/store/qb";
 import { Box } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
