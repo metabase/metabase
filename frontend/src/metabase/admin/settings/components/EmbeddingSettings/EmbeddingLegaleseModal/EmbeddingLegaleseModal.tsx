@@ -9,9 +9,18 @@ type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
 
 export const EmbeddingLegaleseModal = ({
   setting,
+  mergedSettingKeys = [],
   opened,
   onClose,
-}: ModalProps & { setting: SettingKey }) => {
+}: ModalProps & {
+  setting: SettingKey;
+  /**
+   * The other settings the switch that opened this modal writes. Accepting has
+   * to write them too, or the switch reads on while the methods it stands for
+   * stay off.
+   */
+  mergedSettingKeys?: string[];
+}) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -20,6 +29,7 @@ export const EmbeddingLegaleseModal = ({
 
     await updateSettings({
       [setting]: true,
+      ...Object.fromEntries(mergedSettingKeys.map((key) => [key, true])),
 
       // hide the legalese modal and popups.
       [getShowEmbedTermsSetting(setting)]: false,
