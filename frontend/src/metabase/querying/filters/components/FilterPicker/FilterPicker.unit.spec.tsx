@@ -351,7 +351,9 @@ describe("FilterPicker", () => {
         const [filter] = Lib.filters(query, -1);
 
         setup({ query, filter });
-        expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+        expect(
+          await screen.findByText(/Custom expression/i),
+        ).toBeInTheDocument();
         // the expression editor formats its source asynchronously; wait for it
         // to settle so the resulting state updates stay inside act()
         await waitFor(() =>

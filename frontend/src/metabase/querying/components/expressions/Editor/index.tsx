@@ -1,2 +1,1 @@
-export { Editor } from "./lazy";
-export type { EditorProps } from "./Editor";
+export * from "./Editor";
