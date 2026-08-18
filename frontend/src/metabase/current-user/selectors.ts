@@ -1,12 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { userApi } from "metabase/api/user";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 
+import { currentUserApi } from "./api/current-user";
+
 const selectCurrentUser: (state: State) => { data?: User } =
-  userApi.endpoints.getCurrentUser.select();
+  currentUserApi.endpoints.getCurrentUser.select();
 
 export const getUser = (state: State): User | null =>
   selectCurrentUser(state).data ?? null;
@@ -49,11 +50,6 @@ export const getUserAttributes = createSelector(
 export const getUserPersonalCollectionId = createSelector(
   [getUser],
   (user) => user?.personal_collection_id,
-);
-
-export const getUserTenantCollectionId = createSelector(
-  [getUser],
-  (user) => user?.tenant_collection_id,
 );
 
 export const canUserCreateQueries = createSelector(

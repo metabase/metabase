@@ -23,7 +23,9 @@ const SHARED_UTILS_LEVELS = [
   ["shared/redux"],
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U4 — app services over the store and registry.
+  // U4 — the current user, composed over the plugin registry for application permissions.
+  ["shared/current-user"],
+  // U5 — app services over the store, registry and current user.
   [
     "shared/selectors",
     "shared/content-translation",
@@ -32,7 +34,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U5 — composition over the levels below.
+  // U6 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
   [
     "shared/hoc",

@@ -13,6 +13,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
@@ -672,7 +673,8 @@
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
-                      scope/*current-loadable-skill-ids*       (atom #{})]
+                      scope/*current-loadable-skill-ids*       (atom #{})
+                      metabot.perms/*cache*                    (atom {})]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream

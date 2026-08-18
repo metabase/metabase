@@ -1,17 +1,18 @@
 import { useCallback } from "react";
 
-import {
-  skipToken,
-  useDeleteUserKeyValueMutation,
-  useGetUserKeyValueQuery,
-  useUpdateKeyValueMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api/api";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import type {
   UpdateUserKeyValueRequest,
   UserKeyValue,
 } from "metabase-types/api";
+
+import {
+  useDeleteUserKeyValueMutation,
+  useGetUserKeyValueQuery,
+  useUpdateKeyValueMutation,
+} from "./api/user-key-value";
+import { getUser } from "./selectors";
 
 type UserKeyValueNamespace<Namespace extends UserKeyValue["namespace"]> =
   Extract<UserKeyValue, { namespace: Namespace }>;

@@ -490,26 +490,30 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                        :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
-          (t2/insert! :model/RemoteSyncObject
-                      [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id 999 :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
-          (is (= 3 (t2/count :model/RemoteSyncObject)))
-          (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
-                                    (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                    "collections/main/test_collection/test_card.yaml"
-                                    (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result (impl/import! (source.p/snapshot mock-source) task-id)]
-            (is (= :success (:status result)))
-            (let [entries (t2/select :model/RemoteSyncObject)]
-              (is (= 2 (count entries)))
-              (is (every? #(= "synced" (:status %)) entries))
-              (is (some #(and (= "Collection" (:model_type %))
-                              (= coll-id (:model_id %))) entries))
-              (is (some #(and (= "Card" (:model_type %))
-                              (= card-id (:model_id %))) entries))
-              (is (not (some #(= 999 (:model_id %)) entries))))))))))
+          ;; derived rather than hard-coded: `card-id` comes from an auto-increment shared across the whole run, so
+          ;; a literal here is a landmine -- once the sequence reaches it, the "deleted" marker and the real Card are
+          ;; the same id and the prune assertion below fails
+          (let [deleted-card-id (+ card-id 1000000)]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id deleted-card-id :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
+            (is (= 3 (t2/count :model/RemoteSyncObject)))
+            (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
+                                      (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                      "collections/main/test_collection/test_card.yaml"
+                                      (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result)))
+              (let [entries (t2/select :model/RemoteSyncObject)]
+                (is (= 2 (count entries)))
+                (is (every? #(= "synced" (:status %)) entries))
+                (is (some #(and (= "Collection" (:model_type %))
+                                (= coll-id (:model_id %))) entries))
+                (is (some #(and (= "Card" (:model_type %))
+                                (= card-id (:model_id %))) entries))
+                (is (not (some #(= deleted-card-id (:model_id %)) entries)))))))))))
 
 (deftest export!-updates-all-statuses-to-synced-test
   (testing "export! updates all RemoteSyncObject entries to synced status"

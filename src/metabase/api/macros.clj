@@ -302,10 +302,21 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
+(def ^:private keywordize-declared-map-keys-transformer
+  (mtx/transformer
+   {:name :keywordize-declared-map-keys
+    :decoders {:map {:compile (fn [schema _]
+                                (let [keyword-keys (into #{}
+                                                         (comp (filter keyword?)
+                                                               (map u/qualified-name))
+                                                         (malli.util/keys schema))]
+                                  (mtx/-transform-map-keys keyword-keys mtx/-string->keyword)))}}}))
+
 (def ^:private decode-transformer
   (mtx/transformer
    (mtx/string-transformer)
    (mtx/json-transformer)
+   keywordize-declared-map-keys-transformer
    (mtx/default-value-transformer)
    {:name :api}
    {:name :normalize}
@@ -393,7 +404,9 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
+           (assoc-in m error-path (if nested-schema
+                                    (umd/describe nested-schema)
+                                    "unexpected key"))))))
    {}
    (:errors explanation)))
 
