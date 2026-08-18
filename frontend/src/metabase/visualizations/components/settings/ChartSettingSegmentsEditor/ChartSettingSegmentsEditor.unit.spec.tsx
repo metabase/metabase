@@ -22,10 +22,7 @@ import {
   createMockMeasure,
 } from "metabase-types/api/mocks";
 
-import {
-  ChartSettingSegmentsEditor,
-  type ChartSettingSegmentsEditorProps,
-} from "./ChartSettingSegmentsEditor";
+import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<GoalSegment>): GoalSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
@@ -39,29 +36,32 @@ const DEFAULT_VALUE = [
 const CARD_ID = 9;
 const MEASURE_ID = 4;
 
-type EntityMocks = {
+type SetupOpts = {
+  canRemoveAll?: boolean;
   card?: Card;
+  data?: DatasetData;
   measure?: Measure;
+  value?: GoalSegment[];
 };
 
-function setup(
-  props: Partial<ChartSettingSegmentsEditorProps> = {},
-  entities: EntityMocks = {},
-) {
-  setupCardEndpoints(
-    entities.card ?? createMockCard({ id: CARD_ID, name: "Orders" }),
-  );
-  setupMeasureEndpoint(
-    entities.measure ?? createMockMeasure({ id: MEASURE_ID, name: "Revenue" }),
-  );
+function setup({
+  canRemoveAll,
+  card = createMockCard({ id: CARD_ID, name: "Orders" }),
+  data,
+  measure = createMockMeasure({ id: MEASURE_ID, name: "Revenue" }),
+  value = DEFAULT_VALUE,
+}: SetupOpts = {}) {
+  setupCardEndpoints(card);
+  setupMeasureEndpoint(measure);
 
   const onChange = jest.fn();
 
   renderWithProviders(
     <ChartSettingSegmentsEditor
-      value={DEFAULT_VALUE}
+      canRemoveAll={canRemoveAll}
+      data={data}
+      value={value}
       onChange={onChange}
-      {...props}
     />,
   );
 
@@ -115,9 +115,9 @@ describe("ChartSettingSegmentsEditor", () => {
     function setupBound(
       min: GoalValue | null,
       data: DatasetData,
-      entities?: EntityMocks,
+      entities?: Pick<SetupOpts, "card" | "measure">,
     ) {
-      return setup({ value: [createMockSegment({ min })], data }, entities);
+      return setup({ value: [createMockSegment({ min })], data, ...entities });
     }
 
     const DATA = createMockDatasetData({
@@ -140,7 +140,9 @@ describe("ChartSettingSegmentsEditor", () => {
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           card: { [CARD_ID]: result },
         }),
-        createEntityWithColumn: (column: string): EntityMocks => ({
+        createEntityWithColumn: (
+          column: string,
+        ): Pick<SetupOpts, "card" | "measure"> => ({
           card: createMockCard({
             id: CARD_ID,
             name: "Orders",
@@ -161,7 +163,9 @@ describe("ChartSettingSegmentsEditor", () => {
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           measure: { [MEASURE_ID]: result },
         }),
-        createEntityWithColumn: (column: string): EntityMocks => ({
+        createEntityWithColumn: (
+          column: string,
+        ): Pick<SetupOpts, "card" | "measure"> => ({
           measure: createMockMeasure({
             id: MEASURE_ID,
             name: "Revenue",
@@ -184,7 +188,7 @@ describe("ChartSettingSegmentsEditor", () => {
         function setupReference(
           column: string,
           result?: ReferencedEntityResult,
-          entities?: EntityMocks,
+          entities?: Pick<SetupOpts, "card" | "measure">,
         ) {
           return setupBound(
             { type, id, column },
