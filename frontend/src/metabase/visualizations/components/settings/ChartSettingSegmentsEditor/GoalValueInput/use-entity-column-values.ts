@@ -6,16 +6,13 @@ import type { DatasetData } from "metabase-types/api";
 
 import type { GoalEntityRef } from "./types";
 
-/**
- * Resolves the referenced entity's column values for the column list.
- * `data`'s referenced_entities only carries already-referenced columns, so a
- * fresh run of the entity's query previews the values of all of them.
- */
+type ResolveColumnValue = (column: string) => number | null;
+
 export function useEntityColumnValues(
   data: DatasetData,
   entity: GoalEntityRef | null,
   { enabled }: { enabled: boolean },
-): (columnName: string) => number | null {
+): ResolveColumnValue {
   const { data: entityDataset } = useGetCardQueryQuery(
     enabled && entity?.type === "card" ? { cardId: entity.id } : skipToken,
   );
@@ -23,24 +20,33 @@ export function useEntityColumnValues(
   const values = useMemo(() => {
     const { cols = [], rows = [] } = entityDataset?.data ?? {};
     const row = rows[0] ?? [];
+
     return new Map(
-      cols.map((column, index): [string, number | null] => {
+      cols.map((column, index) => {
         const raw = row[index];
-        return [
-          column.name,
-          typeof raw === "number" && Number.isFinite(raw) ? raw : null,
-        ];
+        const value =
+          typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+
+        return [column.name, value];
       }),
     );
   }, [entityDataset]);
 
-  return (columnName) =>
-    values.get(columnName) ??
-    (entity != null
-      ? resolveGoalValue(data, {
-          type: entity.type,
-          id: entity.id,
-          column: columnName,
-        }).value
-      : null);
+  return (column) => {
+    const value = values.get(column);
+
+    if (value != null) {
+      return value;
+    }
+
+    if (entity == null) {
+      return null;
+    }
+
+    return resolveGoalValue(data, {
+      type: entity.type,
+      id: entity.id,
+      column,
+    }).value;
+  };
 }
