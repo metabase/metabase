@@ -41,8 +41,7 @@
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know.
-  Catalog aliases (e.g. `mistral-medium-latest`) are not resolved here; unmatched
-  aliases fall back to the caller's default."
+  Catalog aliases (e.g. `mistral-medium-latest`) are not resolved."
   [model]
   (get-in supported-models [model :context-window]))
 

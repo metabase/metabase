@@ -54,20 +54,12 @@ export function MetabotChatInput() {
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
-        readOnly={metabot.isDoingScience}
+        readOnly={!metabot.canSubmitPrompt}
         placeholder={placeholder}
         onChange={(e) => metabot.setPrompt(e.target.value)}
         classNames={{ input: S.chatInput }}
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing) {
-            return;
-          }
-
-          if (metabot.isContextWindowFull) {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.stopPropagation();
-            }
             return;
           }
 
@@ -78,7 +70,9 @@ export function MetabotChatInput() {
           if (e.key === "Enter" && !isModifiedKeyPress) {
             e.preventDefault();
             e.stopPropagation();
-            metabot.submitInput(metabot.prompt, { focusInput: true });
+            if (metabot.canSubmitPrompt) {
+              metabot.submitInput(metabot.prompt, { focusInput: true });
+            }
           }
         }}
       />

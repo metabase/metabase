@@ -38,8 +38,10 @@ describe("MetabotChatInput", () => {
       "placeholder",
       "Start a new chat to continue",
     );
+    expect(input).toHaveAttribute("readonly");
 
     await userEvent.type(input, "This should not be sent");
+    expect(input).toHaveValue("");
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(agentEndpoint).not.toHaveBeenCalled();

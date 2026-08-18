@@ -156,10 +156,6 @@ export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
   return chatInput.querySelector<HTMLElement>("[contenteditable]")!;
 };
-export const inputPlaceholder = async () =>
-  (await input())
-    .querySelector("[data-placeholder]")
-    ?.getAttribute("data-placeholder");
 export const enterChatMessage = async (message: string, send = true) => {
   // using userEvent.type works locally but in CI characters are sometimes dropped
   // so "Who is your favorite?" becomes something like "Woi or fvrite?"

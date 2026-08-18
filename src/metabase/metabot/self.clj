@@ -98,20 +98,14 @@
     "zai"        zai/context-window-tokens
     nil))
 
-(def ^:private default-context-window-tokens
-  "Conservative input context window for models no adapter has an entry for."
-  128000)
-
 (defn context-window-tokens
-  "Best-known input context window (tokens) for a `connection-key/model` string.
-  Unconfigured connections, unknown providers, and unknown models fall back to
-  a conservative default rather than throwing."
+  "Input context window (tokens) for a `connection-key/model` string, or nil when the
+  connection, provider, or model isn't one we know."
   [model-ref]
   (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
         window-fn            (resolve-context-window-fn type)]
-    (or (when (and window-fn model)
-          (window-fn model))
-        default-context-window-tokens)))
+    (when (and window-fn model)
+      (window-fn model))))
 
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.

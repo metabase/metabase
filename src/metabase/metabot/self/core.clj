@@ -308,12 +308,18 @@
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
 
-  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
+  Input: `usage-by-model` and `last-call-by-model` are both
+  `{\"provider/model\" {:promptTokens N :completionTokens N}}` — cumulative over
+  the turn and for the final LLM call alone, respectively.
 
   Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
                     :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
             :usageByModel {\"provider/model\" {…}}
-            :contextWindowTokens N}`
+            :contextWindowTokens N
+            :contextTokens N}`
+
+  `:contextTokens` is the primary model's final call (prompt + completion) — how much of the
+  window the conversation now occupies. Both context keys are omitted when unknown.
 
   Returns nil if no usage was observed. The cache counts are a subset of
   :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
@@ -344,10 +350,14 @@
         promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
 
 (defn- completion-finish-reason
+  "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
+  `stop`: a turn that ends on a terminal tool call is a normal completion, not an incomplete
+  one. A loop stopped at max iterations surfaces as `tool-calls` instead, so the client can
+  offer to continue."
   [finish-reason error? loop-finish-reason]
   (cond
-    (= finish-reason "length")               "length"
-    error?                                   "error"
+    (= finish-reason "length")             "length"
+    error?                                 "error"
     (= finish-reason "content-filter")     "content-filter"
     (= loop-finish-reason :max-iterations) "tool-calls"
     :else                                  "stop"))
@@ -380,8 +390,7 @@
     :message-id            - When set, force this id into the `start` event so the client
                              sees the same id we persist as `metabot_message.external_id`.
     :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
-    :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`
-                             (the request's agent-model input context window).
+    :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step

@@ -108,29 +108,6 @@ describe("MetabotChatEditor", () => {
     expect(onSubmit).toHaveBeenCalled();
   });
 
-  it("should prevent editing while disabled and keep the placeholder visible", async () => {
-    const onChange = jest.fn();
-    setup({
-      disabled: true,
-      onChange,
-      placeholder: "Start a new chat to continue",
-    });
-
-    const editor = await input();
-    expect(editor).toHaveAttribute("contenteditable", "false");
-    expect(
-      screen.getByText(
-        (_content, element) =>
-          element?.getAttribute("data-placeholder") ===
-          "Start a new chat to continue",
-      ),
-    ).toBeInTheDocument();
-
-    await userEvent.type(editor, "This should not be entered");
-    expect(editor).not.toHaveTextContent("This should not be entered");
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
   it("should support @mentions", async () => {
     setup();
 

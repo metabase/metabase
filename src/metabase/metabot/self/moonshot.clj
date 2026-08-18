@@ -41,7 +41,7 @@
       (tru "Moonshot API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "Moonshot models offered in the Metabot model picker, as a map of model id -> display name.
+  "Moonshot models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
   The `kimi-k2.7-code` models the catalog also carries are coding models, not agent models, and are excluded."

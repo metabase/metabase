@@ -172,14 +172,15 @@
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
 (def ^:private supported-models
-  "Bedrock models offered in the Metabot model picker, as a map of model id -> display name.
+  "Bedrock models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
-  Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes."
-  {"anthropic.claude-fable-5"   {:display-name "Claude Fable 5"        :context-window 200000}
-   "anthropic.claude-opus-5"    {:display-name "Claude Opus 5"         :context-window 200000}
-   "anthropic.claude-opus-4-8"  {:display-name "Claude Opus 4.8"       :context-window 200000}
-   "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"       :context-window 200000}
-   "anthropic.claude-sonnet-5"  {:display-name "Claude Sonnet 5"       :context-window 200000}
+  Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
+  Context windows are from the per-model cards at https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html"
+  {"anthropic.claude-fable-5"   {:display-name "Claude Fable 5"        :context-window 1000000}
+   "anthropic.claude-opus-5"    {:display-name "Claude Opus 5"         :context-window 1000000}
+   "anthropic.claude-opus-4-8"  {:display-name "Claude Opus 4.8"       :context-window 1000000}
+   "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"       :context-window 1000000}
+   "anthropic.claude-sonnet-5"  {:display-name "Claude Sonnet 5"       :context-window 1000000}
    "anthropic.claude-haiku-4-5" {:display-name "Claude Haiku 4.5"      :context-window 200000}
    "openai.gpt-5.4"             {:display-name "GPT-5.4"               :context-window 272000}
    "openai.gpt-5.4-2026-03-05"  {:display-name "GPT-5.4 (2026-03-05)"  :context-window 272000}

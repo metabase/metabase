@@ -730,7 +730,15 @@
     (testing "a length finish outranks a max-iterations stop"
       (is (=? {:type "finish" :finishReason "length"}
               (last (sse-events [(usage-part "length" "max_tokens")
-                                 {:type :finish :finish-reason :max-iterations}])))))))
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
+    (testing "an in-turn error outranks every non-length provider finish reason"
+      (doseq [finish-reason (disj self.core/finish-reasons "length" "error")]
+        (is (=? {:type "finish" :finishReason "error"}
+                (last (sse-events [error-part
+                                   (usage-part finish-reason nil)]))))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
@@ -960,9 +968,9 @@
     "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
     "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
     "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
-    "azure/openai/my-deployment"           128000  ; unmatched deployment -> default
-    "anthropic/some-future-model"          128000  ; unknown model -> default
-    "unknown"                              128000)) ; unknown provider -> default
+    "azure/openai/my-deployment"           nil     ; unmatched deployment
+    "anthropic/some-future-model"          nil     ; unknown model
+    "unknown"                              nil))   ; unknown provider
 
 ;;; ===================== Retry Logic Tests =====================
 

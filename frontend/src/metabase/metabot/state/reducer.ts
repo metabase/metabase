@@ -17,11 +17,8 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import {
-  CONTEXT_WINDOW_FULL_PERCENT,
-  type MetabotProfileId,
-} from "../constants";
-import { getContextWindowPercentUsage } from "../utils/context-usage";
+import type { MetabotProfileId } from "../constants";
+import { isContextWindowFull } from "../utils/context-usage";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -489,6 +486,7 @@ export const metabot = createSlice({
       convo.activeChainId = undefined;
       convo.title = title;
       convo.forkedFromConversationId = forkedFromConversationId;
+      convo.lastTokenUsage = undefined;
       convo.isProcessing = hasInProgressMessage(messages);
       if (convo.isProcessing) {
         openChain(convo); // resuming mid-response
@@ -543,8 +541,7 @@ export const metabot = createSlice({
           if (isResumableFinishReason) {
             const contextWindowFull =
               finishReason === "length" &&
-              getContextWindowPercentUsage(convo.lastTokenUsage) >=
-                CONTEXT_WINDOW_FULL_PERCENT;
+              isContextWindowFull(convo.lastTokenUsage);
             appendAgentTurnIncomplete(convo, finishReason, contextWindowFull);
           }
 

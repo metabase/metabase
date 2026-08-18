@@ -1,3 +1,4 @@
+import { CONTEXT_WINDOW_FULL_PERCENT } from "../constants";
 import type { MetabotContextUsage } from "../state/types";
 
 export const isValidContextUsage = (
@@ -19,3 +20,8 @@ export const getContextWindowPercentUsage = (
         (contextUsage.contextTokens / contextUsage.contextWindowTokens) * 100,
       )
     : 0;
+
+export const isContextWindowFull = (
+  contextUsage: MetabotContextUsage | undefined,
+): boolean =>
+  getContextWindowPercentUsage(contextUsage) >= CONTEXT_WINDOW_FULL_PERCENT;
