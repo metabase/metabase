@@ -215,20 +215,36 @@
                         e))))))
 
 ;; TODO (Chris 2026-08-17) -- delete this once no supported upgrade can start from the bare names.
+(defn- legacy-table-in-search-path
+  "The first table named `table-name` on the effective search path, excluding the current index schema."
+  [tx table-name]
+  (some-> (jdbc/execute-one!
+           tx
+           [(str "SELECT n.nspname AS schema_name"
+                 " FROM unnest(current_schemas(true)) WITH ORDINALITY AS p(schema_name, search_order)"
+                 " JOIN pg_namespace n ON n.nspname = p.schema_name"
+                 " JOIN pg_class c ON c.relnamespace = n.oid"
+                 " WHERE c.relname = ? AND c.relkind IN ('r', 'p') AND n.nspname <> ?"
+                 " ORDER BY p.search_order LIMIT 1")
+            table-name index-schema]
+           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+          :schema_name
+          (str "." table-name)))
+
 (defn- drop-legacy-tables!
   "Drop an index built before [[index-schema]] and immutable embedding-space identities existed.
 
   Its vectors have no trustworthy space identity, so they must be rebuilt rather than moved into the
   current schema. A dedicated store only: an app db may contain unrelated application tables with these
-  names. Qualify the old names with `public` so a customized search path cannot resolve the new tables."
+  names. Resolve the effective search path, excluding the current index schema, then drop the resolved
+  tables by qualified name."
   [tx]
   (when (and (= default-tables (tables))
              (semantic.db.datasource/dedicated-url-configured?))
     (doseq [k [:vectors :meta]]
-      (let [legacy (str "public." (k legacy-tables))]
-        (when (table-exists? tx legacy)
-          (log/infof "Dropping incompatible legacy library entity index table %s" legacy)
-          (jdbc/execute! tx [(format "DROP TABLE %s" (semantic.util/quote-table legacy))]))))))
+      (when-let [legacy (legacy-table-in-search-path tx (k legacy-tables))]
+        (log/infof "Dropping incompatible legacy library entity index table %s" legacy)
+        (jdbc/execute! tx [(format "DROP TABLE %s" (semantic.util/quote-table legacy))])))))
 
 (defn vectors-table-exists?
   "Whether the configured entity-retrieval vectors table exists."

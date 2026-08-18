@@ -240,6 +240,7 @@ embedder_plugin:
   - "enterprise/backend/test/metabase_enterprise/semantic_search/appdb_pgvector_mode_test.clj"
   - "enterprise/backend/test/metabase_enterprise/semantic_search/embedding_test.clj"
   - "src/metabase/embeddings/provider.clj"
+  - "src/metabase/embeddings/startup.clj"
   - "src/metabase/plugins/**"
   - "test/metabase/embeddings/embedder_plugin_artifact_test.clj"
 

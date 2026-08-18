@@ -62,24 +62,26 @@
 
 (deftest incompatible-legacy-tables-are-dropped-test
   (let [statements (atom [])
-        exists     (atom #{"public.library_entity_index" "public.library_entity_index_meta"})]
-    (with-redefs-fn {#'index-table/table-exists?        (fn [_ table] (contains? @exists table))
-                     #'jdbc/execute!                    (fn [_ sql] (swap! statements conj (first sql)) nil)
-                     #'semantic.db.datasource/db-url    "jdbc:postgresql://stub"}
+        located    (atom {"library_entity_index"      "legacy.library_entity_index"
+                          "library_entity_index_meta" "legacy.library_entity_index_meta"})]
+    (with-redefs-fn {#'index-table/legacy-table-in-search-path (fn [_ table] (get @located table))
+                     #'jdbc/execute!                           (fn [_ sql] (swap! statements conj (first sql)) nil)
+                     #'semantic.db.datasource/db-url           "jdbc:postgresql://stub"}
       (fn []
         (testing "an index built before immutable space identity is discarded"
           (#'index-table/drop-legacy-tables! ::tx)
-          (is (= ["DROP TABLE \"public\".\"library_entity_index\""
-                  "DROP TABLE \"public\".\"library_entity_index_meta\""]
+          (is (= ["DROP TABLE \"legacy\".\"library_entity_index\""
+                  "DROP TABLE \"legacy\".\"library_entity_index_meta\""]
                  @statements)))
         (testing "there is nothing to do after the legacy tables are gone"
           (reset! statements [])
-          (reset! exists #{})
+          (reset! located {})
           (#'index-table/drop-legacy-tables! ::tx)
           (is (empty? @statements)))
         (testing "same-named app db tables are never dropped"
           (reset! statements [])
-          (reset! exists #{"public.library_entity_index" "public.library_entity_index_meta"})
+          (reset! located {"library_entity_index"      "public.library_entity_index"
+                           "library_entity_index_meta" "public.library_entity_index_meta"})
           (with-redefs [semantic.db.datasource/db-url nil]
             (#'index-table/drop-legacy-tables! ::tx))
           (is (empty? @statements)
@@ -92,30 +94,36 @@
       (semantic.tu/with-test-db! {:dbname "library_retrieval_adoption_test" :mode :blank :cleanup :both}
         (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)]
           (jdbc/execute! pgvector ["CREATE EXTENSION IF NOT EXISTS vector"])
-          ;; both bare names and the metadata shape the index carried before immutable space identity
-          (jdbc/execute! pgvector ["CREATE TABLE library_entity_index
-                                    (doc_id text primary key, entity_type text, entity_local_id bigint,
-                                     doc_type text, doc_text text, doc_embedding vector(4))"])
-          (jdbc/execute! pgvector ["INSERT INTO library_entity_index
-                                    VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
-          (jdbc/execute! pgvector ["CREATE TABLE library_entity_index_meta
-                                    (id smallint primary key, provider text, model_name text,
-                                     vector_dimensions int, schema_version int,
-                                     updated_at timestamptz, reconciled_at timestamptz)"])
-          (jdbc/execute! pgvector ["INSERT INTO library_entity_index_meta
-                                    VALUES (1, ?, ?, ?, ?, now(), now())"
-                                   (:provider semantic.tu/mock-embedding-model)
-                                   (:model-name semantic.tu/mock-embedding-model)
-                                   (:vector-dimensions semantic.tu/mock-embedding-model)
-                                   index-table/schema-version])
+          (jdbc/with-transaction [tx pgvector]
+            (jdbc/execute! tx ["CREATE SCHEMA legacy_retrieval"])
+            (jdbc/execute! tx ["SET LOCAL search_path TO legacy_retrieval, public"])
+            ;; both bare names and the metadata shape the index carried before immutable space identity
+            (jdbc/execute! tx ["CREATE TABLE library_entity_index
+                                (doc_id text primary key, entity_type text, entity_local_id bigint,
+                                 doc_type text, doc_text text, doc_embedding vector(4))"])
+            (jdbc/execute! tx ["INSERT INTO library_entity_index
+                                VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
+            (jdbc/execute! tx ["CREATE TABLE library_entity_index_meta
+                                (id smallint primary key, provider text, model_name text,
+                                 vector_dimensions int, schema_version int,
+                                 updated_at timestamptz, reconciled_at timestamptz)"])
+            (jdbc/execute! tx ["INSERT INTO library_entity_index_meta
+                                VALUES (1, ?, ?, ?, ?, now(), now())"
+                               (:provider semantic.tu/mock-embedding-model)
+                               (:model-name semantic.tu/mock-embedding-model)
+                               (:vector-dimensions semantic.tu/mock-embedding-model)
+                               index-table/schema-version])
+            (#'index-table/drop-legacy-tables! tx))
           (is (= :created (index-table/ensure-tables! pgvector semantic.tu/mock-embedding-model)))
           (is (empty? (jdbc/execute! pgvector
                                      [(format "SELECT doc_id FROM %s" (index-table/vectors-table-sql))]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
               "unknown legacy vectors are not relabeled as the current embedding space")
-          (is (empty? (jdbc/execute! pgvector [(str "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-                                                    " AND tablename LIKE 'library_entity_index%'")]))
-              "the incompatible public tables do not remain as stale duplicates"))))))
+          (is (empty? (jdbc/execute! pgvector
+                                     [(str "SELECT schemaname, tablename FROM pg_tables"
+                                           " WHERE schemaname <> 'library_retrieval'"
+                                           " AND tablename LIKE 'library_entity_index%'")]))
+              "the incompatible tables do not remain in their custom search-path schema"))))))
 
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]
