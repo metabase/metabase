@@ -13,7 +13,7 @@
    [metabase.util.malli.registry :as mr]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
-   (java.time ZonedDateTime)))
+   (java.time ZoneId ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -81,6 +81,14 @@
   "The system timezone of this Metabase instance."
   ^String []
   (.. (t/system-clock) getZone getId))
+
+(mu/defn same-zone-rules? :- :boolean
+  "Whether two timezone IDs describe identical rules, e.g. `US/Pacific` and `America/Los_Angeles`, or `UTC` and
+  `Etc/UTC`. Throws if either ID is not a valid timezone ID."
+  [zone-id-1 :- :string
+   zone-id-2 :- :string]
+  (= (.getRules ^ZoneId (t/zone-id zone-id-1))
+     (.getRules ^ZoneId (t/zone-id zone-id-2))))
 
 (defn requested-timezone-id
   "The timezone that we would *like* to run a query in, regardless of whether we are actually able to do so. This is
