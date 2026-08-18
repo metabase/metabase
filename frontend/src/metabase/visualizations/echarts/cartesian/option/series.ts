@@ -389,11 +389,12 @@ export const getStackValuePercentage = (
   stackSeriesKeys: DataKey[],
   value: number,
 ) => {
-  const isNegativeValue = value < 0;
+  const isNonNegative = (num: number) => num >= 0;
   const stackTotal = stackSeriesKeys.reduce((total, dataKey) => {
     const seriesValue = datum[dataKey];
     const hasSameSign =
-      typeof seriesValue === "number" && seriesValue < 0 === isNegativeValue;
+      typeof seriesValue === "number" &&
+      isNonNegative(value) === isNonNegative(seriesValue);
 
     return hasSameSign ? total + seriesValue : total;
   }, 0);
