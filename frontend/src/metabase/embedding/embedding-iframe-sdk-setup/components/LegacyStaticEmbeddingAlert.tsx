@@ -1,9 +1,9 @@
 import { c, t } from "ttag";
 
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { useDispatch } from "metabase/redux";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/redux/store/modal";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Alert, Anchor, Icon } from "metabase/ui";
 

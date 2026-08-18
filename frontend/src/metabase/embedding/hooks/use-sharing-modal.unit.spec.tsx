@@ -1,10 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 
 import type { DashboardSharingModalType } from "metabase/embedding/components/SharingMenu/types";
-import {
-  GUEST_EMBED_EMBEDDING_TYPE,
-  STATIC_LEGACY_EMBEDDING_TYPE,
-} from "metabase/embedding/constants";
+import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/redux/store/modal";
 import { setOpenModal } from "metabase/redux/ui";
 import type { Dashboard } from "metabase-types/api";
 

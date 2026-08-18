@@ -6,7 +6,6 @@ import CreateCollectionModal, {
 } from "metabase/common/collections/containers/CreateCollectionModal";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type {
@@ -17,6 +16,7 @@ import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
