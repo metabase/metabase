@@ -86,11 +86,14 @@ export const ChartSettingGoalInput = ({
           <Icon name="chevrondown" />
         </Box>
       </Menu.Target>
+
       <Menu.Dropdown miw={320}>
         <Menu.Item fw="bold" onClick={() => handleMenuItemSelect(numericValue)}>
           {t`Custom value`}
         </Menu.Item>
+
         <Menu.Divider />
+
         {availableColumns.map((column) => (
           <Menu.Item
             key={column.value}
