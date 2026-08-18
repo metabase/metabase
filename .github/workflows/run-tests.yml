@@ -237,11 +237,13 @@ jobs:
 
   bundle-size:
     needs: [uberjar, create-test-plan]
-    if: always() && !cancelled()
+    if: |
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.uberjar.result == 'success' &&
+      needs.create-test-plan.outputs.frontend_sources == 'true'
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
-    with:
-      skip: ${{ github.event_name != 'pull_request' || needs.uberjar.result != 'success' || needs.create-test-plan.outputs.frontend_sources != 'true' }}
 
   pr-env:
     needs: [uberjar]
