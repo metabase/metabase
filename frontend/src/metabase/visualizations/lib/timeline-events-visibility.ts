@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import dayjs from "metabase/dayjs";
 import _ from "underscore";
 
 import { isCollectionTimeline } from "metabase/common/utils/timelines";
@@ -113,7 +113,6 @@ const setTimelineVisible = (
       sets.hiddenTimelineIds.add(timeline.id);
     }
   }
-
   timeline.events?.forEach((event) => sets.hiddenEventIds.delete(event.id));
 };
 
