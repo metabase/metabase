@@ -57,27 +57,32 @@
   [meters meter-key]
   (some-> meter-key keyword meters))
 
-(defn- default-metabase-meter-key
-  []
-  (some-> metabot.settings/default-metabase-llm-metabot-provider
+(defn- metabase-meter-key
+  [provider]
+  (some-> provider
           provider-util/strip-metabase-prefix
           u/qualified-name
           (str/replace-first "/" ":")
           (str ":tokens")))
 
 (defn- meter-entry
-  [token-status]
-  (let [meters      (:meters token-status)
-        default-key (default-metabase-meter-key)]
-    (meter-value meters default-key)))
+  [token-status provider]
+  (meter-value (:meters token-status) (metabase-meter-key provider)))
+
+(defn- managed-free-limit-reached-for-provider?
+  [token-status provider]
+  (some-> (meter-entry token-status provider)
+          :is-locked))
 
 (defn managed-free-limit-reached?
   "True when the configured managed Metabase provider is locked for free-tier usage."
-  ([] (and (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-           (some-> (premium-features/token-status) managed-free-limit-reached?)))
+  ([] (let [provider (metabot.settings/llm-metabot-provider)]
+        (and (provider-util/metabase-provider? provider)
+             (managed-free-limit-reached-for-provider? (premium-features/token-status) provider))))
   ([token-status]
-   (some-> (meter-entry token-status)
-           :is-locked)))
+   (let [provider (metabot.settings/llm-metabot-provider)]
+     (and (provider-util/metabase-provider? provider)
+          (managed-free-limit-reached-for-provider? token-status provider)))))
 
 (defn check-metabase-managed-free-limit!
   "Return the free-trial lock message when the managed Metabase provider is locked."
