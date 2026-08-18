@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
 import type {
   ComputedVisualizationSettings,
   LegacyDrill,
