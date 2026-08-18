@@ -62,6 +62,7 @@ You can specify your own API key and model for Metabot from one of the supported
 - **Mistral**
 - **OpenAI**: GPT models.
 - **OpenRouter**: Claude, GPT, Mistral, DeepSeek, and GLM-5.2 models.
+- **vLLM**: Whatever model your own vLLM server is serving. See [Connect a vLLM server](#connect-a-vllm-server).
 - **Z.AI**: GLM-5.2 models.
 
 If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
@@ -78,7 +79,19 @@ When your connection is active, the provider card header shows **Connected to [p
 
 To clear your provider connection, click **Disconnect**. Disconnecting removes the stored API key and turns off any AI features that depend on the provider.
 
-## Configure Metabot
+### Connect a vLLM server
+
+With [vLLM](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) you host the model yourself, so instead of an API key you give Metabase the URL of your server's OpenAI-compatible API, like `http://vllm.internal:8000/v1`. The **API key** field is only for servers started with `--api-key`.
+
+Metabot needs more from a model than chat, so connecting runs a check against the model your server is serving, and tells you what to change if it doesn't pass. Start your server with:
+
+```
+--enable-auto-tool-choice --tool-call-parser <parser for your model> --max-model-len 16384
+```
+
+Add `--reasoning-parser <parser for your model>` if your model thinks before it answers. Without it, the model's thinking shows up inside Metabot's answers.
+
+The **Model** dropdown lists every model your server serves. Metabot starts on the one the connection check ran against.
 
 _Admin > AI > AI settings_
 
