@@ -42,7 +42,6 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
     ref,
   ) {
     return (
-      // bg and 40px height match Mantine's md inputs, so both bound inputs look alike
       <Group
         aria-label={ariaLabel}
         bdrs="sm"
@@ -58,7 +57,6 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         onKeyDown={onKeyDown}
       >
         <Tooltip disabled={tooltip == null} label={tooltip}>
-          {/* min-width lets the value ellipsize instead of pushing the remove button out of the shell */}
           <UnstyledButton
             aria-label={t`Change value source`}
             bdrs="1rem"
