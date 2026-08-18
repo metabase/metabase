@@ -99,14 +99,37 @@ runs:
         row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
         }
+        # Renders one suite's decision. Unknown outcomes print raw rather than
+        # hiding, so a new variant is visible before this learns to phrase it.
+        why() { # decisions key
+          jq -r --arg k "$1" '
+            .decisions[$k] as $d |
+            if $d.outcome == "forced-full" then
+              "full — forced by " + ($d.forcedBy | join(", "))
+            elif $d.outcome == "narrowed" then
+              ($d.affectedModules | length) as $n |
+              if $n == 0 then "narrowed to nothing — no affected modules"
+              else "narrowed — affected: " + ($d.affectedModules[:8] | join(", "))
+                + (if $n > 8 then " (+" + (($n - 8) | tostring) + " more)" else "" end)
+              end
+            elif $d.outcome == "gated-full" then "full — frontend files changed"
+            elif $d.outcome == "skipped" then "skipped — no relevant change"
+            else $d.outcome end' "$plan"
+        }
         {
           echo "## Affected test plan"
+          echo
+          echo "Mode: **$(jq -r '.decisions.mode' "$plan")**"
           echo
           echo "| Suite | Selected | Total |"
           echo "|---|---:|---:|"
           row "Unit" "$(jq '.stats.unit_specs_to_run_usage' "$plan")" "$(jq '.stats.unit_specs_all' "$plan")"
           row "Loki" "$(jq '.stats.loki_stories_to_run_usage' "$plan")" "$(jq '.stats.loki_stories_all' "$plan")"
           row "E2E"  "$(jq '.stats.e2e_specs_to_run_usage' "$plan")"  "$(jq '.stats.e2e_specs_all' "$plan")"
+          echo
+          echo "- Unit: $(why unit)"
+          echo "- Loki: $(why loki)"
+          echo "- E2E: $(why e2e)"
           echo
           echo "Changed: $(jq '.stats.fe_files_changed' "$plan") FE / $(jq '.stats.be_files_changed' "$plan") BE file(s) · $(jq '.stats.fe_modules_affected_usage' "$plan") FE module(s) affected"
           echo

@@ -285,6 +285,58 @@ describe("createTestPlan", () => {
     expect(plan.fe_unit_specs_to_run).toEqual([]);
     expect(plan.loki_stories_to_run).toEqual([]);
   });
+
+  it("explains a narrowed suite with the modules that selected its tests", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["src/foo/x.ts"],
+      feFilesChanged: 1,
+    });
+
+    expect(plan.decisions.version).toBe(1);
+    expect(plan.decisions.mode).toBe("SELECTIVE");
+    expect(plan.decisions.unit).toEqual({
+      outcome: "narrowed",
+      affectedModules: ["feature/foo"],
+    });
+    // No manifest in baseInput, so e2e is forced rather than narrowed.
+    expect(plan.decisions.e2e).toEqual({
+      outcome: "forced-full",
+      forcedBy: ["no_coverage_manifest"],
+    });
+  });
+
+  it("reports every force signal that fired, not just the first", () => {
+    const plan = createTestPlan({
+      ...baseInput,
+      changedFiles: ["jest.config.js", "src/x.cljc"],
+      unitInfraTouched: true,
+      sharedSourcesTouched: true,
+    });
+
+    expect(plan.decisions.unit).toEqual({
+      outcome: "forced-full",
+      forcedBy: ["unit_infra", "shared_sources"],
+    });
+  });
+
+  it("distinguishes gated-full from skipped off pull requests", () => {
+    const gated = createTestPlan({
+      ...baseInput,
+      githubEvent: "merge_group",
+      changedFiles: ["src/foo/x.ts"],
+      feFilesChanged: 1,
+    });
+    expect(gated.decisions.mode).toBe("COMPREHENSIVE");
+    expect(gated.decisions.unit).toEqual({ outcome: "gated-full" });
+
+    const skipped = createTestPlan({
+      ...baseInput,
+      githubEvent: "merge_group",
+      changedFiles: ["docs/readme.md"],
+    });
+    expect(skipped.decisions.unit).toEqual({ outcome: "skipped" });
+  });
 });
 
 describe("filterAffectedTests", () => {

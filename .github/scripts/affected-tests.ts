@@ -37,8 +37,35 @@ export type TestPlanStats = {
   e2e_specs_to_run_usage: number;
 };
 
+// A signal that forces a suite to run in full, in either selection mode.
+export type ForceSignal =
+  | "unit_infra"
+  | "loki_infra"
+  | "e2e_infra"
+  | "shared_sources"
+  | "backend_files"
+  | "no_coverage_manifest";
+
+// Why a suite's tests were selected. One variant per selectTestsToRun branch,
+// so adding a branch without deciding its explanation does not compile.
+// forcedBy lists every signal that fired, not just the first.
+export type SuiteDecision =
+  | { outcome: "forced-full"; forcedBy: [ForceSignal, ...ForceSignal[]] }
+  | { outcome: "narrowed"; affectedModules: string[] }
+  | { outcome: "gated-full" }
+  | { outcome: "skipped" };
+
+export type TestPlanDecisions = {
+  version: 1;
+  mode: TestSelectionMode;
+  unit: SuiteDecision;
+  loki: SuiteDecision;
+  e2e: SuiteDecision;
+};
+
 export type TestPlan = {
   stats: TestPlanStats;
+  decisions: TestPlanDecisions;
   fe_unit_specs_to_run: string[];
   loki_stories_to_run: string[];
   e2e_specs_to_run: string[];
@@ -123,19 +150,28 @@ export function createTestPlan({
   const featureModules = new Set(getFeatureModules(elements));
 
   // Step 3: derive the signals that force a suite to run in full.
+  const signals = (pairs: [ForceSignal, boolean][]): ForceSignal[] =>
+    pairs.filter(([, fired]) => fired).map(([signal]) => signal);
   // cljc/cljs compile into the FE bundle, so they force a full run that module
   // selection can't narrow — same effect as a suite's own infra changing.
-  const unitForceAll = unitInfraTouched || sharedSourcesTouched;
-  const lokiForceAll = lokiInfraTouched || sharedSourcesTouched;
+  const unitForceSignals = signals([
+    ["unit_infra", unitInfraTouched],
+    ["shared_sources", sharedSourcesTouched],
+  ]);
+  const lokiForceSignals = signals([
+    ["loki_infra", lokiInfraTouched],
+    ["shared_sources", sharedSourcesTouched],
+  ]);
   // e2e is integration-level, so anything the FE-coverage manifest can't see
-  // forces a full run: cljc/cljs in the bundle (sharedSourcesTouched), a backend
-  // change that can break the UI (beFilesChanged), an e2e harness/support change
-  // (e2eInfraTouched), or no manifest at all.
-  const e2eForceAll =
-    sharedSourcesTouched ||
-    e2eInfraTouched ||
-    beFilesChanged > 0 ||
-    e2eSpecFiles === null;
+  // forces a full run: cljc/cljs in the bundle (shared_sources), a backend
+  // change that can break the UI (backend_files), an e2e harness/support change
+  // (e2e_infra), or no manifest at all.
+  const e2eForceSignals = signals([
+    ["shared_sources", sharedSourcesTouched],
+    ["e2e_infra", e2eInfraTouched],
+    ["backend_files", beFilesChanged > 0],
+    ["no_coverage_manifest", e2eSpecFiles === null],
+  ]);
 
   // Step 4: decide which of each suite's tests run, per graph.
   const { unit, loki, e2e } = testFilesBySuite;
@@ -143,85 +179,130 @@ export function createTestPlan({
   // Precompute spec -> feature modules once (null when e2e never narrows).
   const specFeatures =
     testSelectionMode === "COMPREHENSIVE" ||
-    e2eForceAll ||
+    e2eForceSignals.length > 0 ||
     e2eSpecFiles === null
       ? null
       : specFeatureModules(nodes, featureModules, e2eSpecFiles);
   // A spec that was itself edited always runs, even when no app module changed.
   const changedSet = new Set(changedFiles);
 
-  const affectedUnit = (affected: Set<string>) =>
-    filterAffectedTests(nodes, affected, unit);
-  const affectedLoki = (affected: Set<string>) =>
-    filterAffectedTests(nodes, affected, loki);
-  const affectedE2e = (affected: Set<string>): string[] => {
+  // Each returns the selected files plus the affected modules that explain
+  // them, for the narrowed decision.
+  type AffectedTests = { files: string[]; modules: string[] };
+  const affectedSuite =
+    (files: string[]) =>
+    (affected: Set<string>): AffectedTests => {
+      const selected = filterAffectedTests(nodes, affected, files);
+      const modules = selected
+        .map((file) => mapFileToModule(nodes, file))
+        .filter((module): module is string => module !== null);
+      return { files: selected, modules: [...new Set(modules)].sort() };
+    };
+  const affectedUnit = affectedSuite(unit);
+  const affectedLoki = affectedSuite(loki);
+  const affectedE2e = (affected: Set<string>): AffectedTests => {
     if (specFeatures === null) {
-      return e2e;
+      return { files: e2e, modules: [] };
     }
     const narrowed = new Set(
       filterAffectedE2eSpecs(specFeatures, affected, e2e),
     );
-    return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
+    const files = e2e.filter(
+      (spec) => narrowed.has(spec) || changedSet.has(spec),
+    );
+    const modules = new Set<string>();
+    for (const spec of files) {
+      for (const feature of specFeatures.get(spec) ?? []) {
+        if (affected.has(feature)) {
+          modules.add(feature);
+        }
+      }
+    }
+    return { files, modules: [...modules].sort() };
   };
 
-  // Which of one suite's tests run, in order of precedence.
-  // A force-all signal wins in either mode,
+  // Which of one suite's tests run, in order of precedence, with the decision
+  // that explains it. A force signal wins in either mode,
   // and COMPREHENSIVE ignores the module graph on purpose,
   // so a graph mistake can never skip a suite at the last gate before master.
   const selectTestsToRun = (
-    forceAll: boolean,
+    forceSignals: ForceSignal[],
     affected: Set<string>,
     files: string[],
-    affectedTests: (affected: Set<string>) => string[],
-  ): string[] => {
-    if (forceAll) {
-      return files;
+    affectedTests: (affected: Set<string>) => AffectedTests,
+  ): { files: string[]; decision: SuiteDecision } => {
+    if (forceSignals.length > 0) {
+      return {
+        files,
+        decision: {
+          outcome: "forced-full",
+          forcedBy: forceSignals as [ForceSignal, ...ForceSignal[]],
+        },
+      };
     }
     if (testSelectionMode === "SELECTIVE") {
-      return affectedTests(affected);
+      const { files: selected, modules } = affectedTests(affected);
+      return {
+        files: selected,
+        decision: { outcome: "narrowed", affectedModules: modules },
+      };
     }
-    return feFilesChanged > 0 ? files : [];
+    if (feFilesChanged > 0) {
+      return { files, decision: { outcome: "gated-full" } };
+    }
+    return { files: [], decision: { outcome: "skipped" } };
   };
 
   const unitRules = selectTestsToRun(
-    unitForceAll,
+    unitForceSignals,
     rulesAffected,
     unit,
     affectedUnit,
-  );
-  const unitUsage = selectTestsToRun(
-    unitForceAll,
+  ).files;
+  const unitUsageRun = selectTestsToRun(
+    unitForceSignals,
     usageAffected,
     unit,
     affectedUnit,
   );
   const lokiRules = selectTestsToRun(
-    lokiForceAll,
+    lokiForceSignals,
     rulesAffected,
     loki,
     affectedLoki,
-  );
-  const lokiUsage = selectTestsToRun(
-    lokiForceAll,
+  ).files;
+  const lokiUsageRun = selectTestsToRun(
+    lokiForceSignals,
     usageAffected,
     loki,
     affectedLoki,
   );
   const e2eRules = selectTestsToRun(
-    e2eForceAll,
+    e2eForceSignals,
     rulesAffected,
     e2e,
     affectedE2e,
-  );
-  const e2eUsage = selectTestsToRun(
-    e2eForceAll,
+  ).files;
+  const e2eUsageRun = selectTestsToRun(
+    e2eForceSignals,
     usageAffected,
     e2e,
     affectedE2e,
   );
+  const unitUsage = unitUsageRun.files;
+  const lokiUsage = lokiUsageRun.files;
+  const e2eUsage = e2eUsageRun.files;
 
-  // Step 5: emit the plan and its stats.
+  // Step 5: emit the plan, its decisions, and its stats.
+  // Decisions describe the usage-graph run - the lists that actually ship.
   return {
+    decisions: {
+      version: 1,
+      mode: testSelectionMode,
+      unit: unitUsageRun.decision,
+      loki: lokiUsageRun.decision,
+      e2e: e2eUsageRun.decision,
+    },
     stats: {
       fe_files_changed: feFilesChanged,
       fe_files_total: feFilesTotal,
