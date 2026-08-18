@@ -21,8 +21,10 @@ import {
 import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
+  CardId,
   DatasetData,
   GoalValue,
+  MeasureId,
   ReferencedEntityType,
 } from "metabase-types/api";
 import {
@@ -110,16 +112,12 @@ export const GoalValueInput = ({
       : foreignColumnLabel
     : selfColumnLabel;
 
-  // A pick resolves asynchronously; bumping the token abandons whatever is in
-  // flight so it can't commit a value the user has already navigated away from.
-  const pickTokenRef = useRef(0);
+  const pickTokenRef = useRef(0); // useAsyncFn-like semaphore counter
   const abandonPendingPick = useCallback(() => {
     pickTokenRef.current += 1;
   }, []);
   useEffect(() => abandonPendingPick, [abandonPendingPick]);
 
-  // An entity picked but never committed must not outlive the menu, or the pill
-  // would describe an entity the value doesn't come from.
   const closeMenu = useCallback(() => {
     abandonPendingPick();
     menu.close();
@@ -153,8 +151,6 @@ export const GoalValueInput = ({
     if (isSelfRef) {
       setMenuLevel(selfColumns.length > 1 ? "self" : "root");
     } else {
-      // Until the entity's metadata lands we don't know its column count, so
-      // open the column list - it renders a loader while we wait.
       setMenuLevel(
         entityInfo.isLoading || entityInfo.columns.length > 1
           ? "entity"
@@ -178,38 +174,36 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
-  /** The picked entity's only numeric column, or null when the user has to choose. */
+  // Resolves with string when entity only has 1 column - null otherwise
   const fetchSoleColumn = async (
     type: ReferencedEntityType,
-    entityId: number,
+    entityId: CardId | MeasureId,
   ): Promise<string | null> => {
     try {
       if (type === "measure") {
         const measure = await fetchMeasure(entityId, true).unwrap();
         return measure.result_column_name ?? null;
       }
+
       const card = await fetchCard({ id: entityId }, true).unwrap();
       const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
       return numericColumns.length === 1 ? numericColumns[0].name : null;
     } catch {
-      // metadata failed to load - fall through to the column list, which says so
       return null;
     }
   };
 
-  // Committing here rather than from an effect on `pickedEntity` keeps the
-  // settings update out of React's nested-update chain.
   const handleEntityPicked = async (item: PickedItem) => {
     if (typeof item.id !== "number") {
       return;
     }
+
     const type: ReferencedEntityType =
       item.model === "measure" ? "measure" : "card";
     const pickToken = ++pickTokenRef.current;
 
-    // Resolving the column before touching the menu keeps a single-column pick
-    // from flashing a column list open and immediately shut.
     const soleColumn = await fetchSoleColumn(type, item.id);
+
     if (pickToken !== pickTokenRef.current) {
       return;
     }
@@ -218,12 +212,13 @@ export const GoalValueInput = ({
       commitValue({ type, id: item.id, column: soleColumn });
       return;
     }
+
     setPickedEntity({ type, id: item.id, name: item.name });
     setMenuLevel("entity");
     menu.open();
   };
 
-  const handleShellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       commitValue(null);
       setTimeout(() => numberInputRef.current?.focus(), 0);
@@ -236,8 +231,6 @@ export const GoalValueInput = ({
         closeOnItemClick={false}
         opened={isMenuOpen}
         position="bottom-end"
-        // opening happens only via the hexagon trigger or the pill; the
-        // target-wide toggle would otherwise open the menu on any input click
         onChange={(opened) => {
           if (!opened) {
             closeMenu();
@@ -251,7 +244,7 @@ export const GoalValueInput = ({
               isMenuOpen={isMenuOpen}
               resolved={resolved}
               tooltip={pillTooltip}
-              onKeyDown={handleShellKeyDown}
+              onKeyDown={handlePillKeyDown}
               onOpenMenu={openMenuFromPill}
               onRemove={() => commitValue(null)}
             />
@@ -281,6 +274,7 @@ export const GoalValueInput = ({
             </Box>
           )}
         </Menu.Target>
+
         <Menu.Dropdown
           miw={
             menuLevel === "root" ? ROOT_MENU_MIN_WIDTH : COLUMN_MENU_MIN_WIDTH
@@ -296,6 +290,7 @@ export const GoalValueInput = ({
                   {t`Value from this question`}
                 </Menu.Item>
               )}
+
               <Menu.Item
                 rightSection={<Icon name="chevronright" />}
                 onClick={openEntityPicker}
@@ -315,7 +310,9 @@ export const GoalValueInput = ({
               >
                 {t`Value from this question`}
               </Menu.Item>
+
               <Menu.Divider />
+
               {selfColumns.map((column) => (
                 <GoalColumnMenuItem
                   key={column.name}
@@ -338,7 +335,9 @@ export const GoalValueInput = ({
               >
                 {entityName ?? t`Value from another question`}
               </Menu.Item>
+
               <Menu.Divider />
+
               {entityInfo.hasError ? (
                 <Menu.Item disabled>{t`Couldn't load this source`}</Menu.Item>
               ) : entityInfo.isLoading ? (

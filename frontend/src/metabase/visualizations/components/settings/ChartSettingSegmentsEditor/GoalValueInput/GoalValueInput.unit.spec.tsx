@@ -295,8 +295,8 @@ describe("GoalValueInput", () => {
   it("clears the reference with backspace", async () => {
     const { onChange } = setup({ value: "sum" });
 
-    const shell = screen.getByRole("group", { name: "Min" });
-    fireEvent.keyDown(shell, { key: "Backspace" });
+    const pill = screen.getByRole("group", { name: "Min" });
+    fireEvent.keyDown(pill, { key: "Backspace" });
 
     expect(onChange).toHaveBeenCalledWith(null);
   });
@@ -316,8 +316,8 @@ describe("GoalValueInput", () => {
     };
     renderWithProviders(<Harness />);
 
-    const shell = screen.getByRole("group", { name: "Min" });
-    fireEvent.keyDown(shell, { key: "Backspace" });
+    const pill = screen.getByRole("group", { name: "Min" });
+    fireEvent.keyDown(pill, { key: "Backspace" });
 
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
