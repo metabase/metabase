@@ -1,7 +1,6 @@
 import { Navigate, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { EmbeddingHubSecurityPage } from "./pages";
 import { CanAccessEmbeddingHub } from "./route-guards";
 
 /**
@@ -16,6 +15,11 @@ const embeddingHubLayout = () =>
 const embeddingHubGetStartedPage = () =>
   import("./pages").then(({ EmbeddingHubGetStartedPage }) => ({
     Component: EmbeddingHubGetStartedPage,
+  }));
+
+const embeddingHubSecurityPage = () =>
+  import("./pages").then(({ EmbeddingHubSecurityPage }) => ({
+    Component: EmbeddingHubSecurityPage,
   }));
 
 const setupPermissionsAndTenantsPage = () =>
@@ -56,7 +60,7 @@ export function getEmbeddingHubRoutes() {
           <Route path="sso-setup" lazy={setupSsoPage} />
         </Route>
 
-        <Route path="security" element={<EmbeddingHubSecurityPage />} />
+        <Route path="security" lazy={embeddingHubSecurityPage} />
       </Route>
     </Route>
   );
