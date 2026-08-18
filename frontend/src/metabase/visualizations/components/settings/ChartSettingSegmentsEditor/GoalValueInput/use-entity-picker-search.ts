@@ -30,15 +30,11 @@ export function useEntityPickerSearch(enabled: boolean) {
     { context: ["selections", "views"] },
     { skip: !shouldFallBackToQuestions },
   );
+
   const recentQuestionIds = useMemo(
     () =>
       (recentItems ?? [])
-        .filter(
-          (item) =>
-            item.model === "card" ||
-            item.model === "dataset" ||
-            item.model === "metric",
-        )
+        .filter((item) => QUESTION_FALLBACK_MODELS.includes(item.model))
         .slice(0, SEARCH_RESULTS_LIMIT)
         .map((item) => item.id),
     [recentItems],

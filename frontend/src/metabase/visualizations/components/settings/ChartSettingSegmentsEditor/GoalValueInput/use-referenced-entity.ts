@@ -3,14 +3,11 @@ import { useMemo } from "react";
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import type { ColumnOption, GoalEntityRef } from "./types";
-
-export type ReferencedEntityInfo = {
-  name: string | undefined;
-  columns: ColumnOption[];
-  isLoading: boolean;
-  hasError: boolean;
-};
+import type {
+  ColumnOption,
+  GoalEntityRef,
+  ReferencedEntityInfo,
+} from "./types";
 
 /** The name and numeric columns of the card or measure a goal value references. */
 export function useReferencedEntity(
