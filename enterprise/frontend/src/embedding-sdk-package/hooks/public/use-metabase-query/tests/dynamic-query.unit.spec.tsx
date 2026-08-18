@@ -59,6 +59,11 @@ describe("an unsynchronized table source", () => {
 });
 
 describe("dynamic query clauses", () => {
+  // The swap these cover is a data-app rule; elsewhere the table is what runs.
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+  });
+
   it("runs the published card in production and layers the dynamic stage on top", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
       STATIC_QUERY,
@@ -145,7 +150,9 @@ describe("dynamic query clauses", () => {
     expect(stagesOf(datasetQuery)).toMatchObject([{ "source-card": 41 }]);
   });
 
-  it("ignores the published card for a query that has none", async () => {
+  it("layers the dynamic stage on a preview query that has no card", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
       { source: TEST_SCHEMA.tables.orders },
       { filters: [statusFilter] },

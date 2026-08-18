@@ -61,20 +61,20 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
  * already baked into the card, so only the source and the dynamic stage remain.
  */
 function toSourceInput(input: QueryInput): QueryInput {
-  // We need to do the swap only for production data apps
-  if (!isTableInput(input) || isDataAppDev()) {
+  // Only a data app runs published cards. In the dev preview they do not exist
+  // yet, and outside a data app they never do, so the table is what runs.
+  if (!isTableInput(input) || isDataAppDev() || !isDataApp()) {
     return input;
   }
 
-  if (input.savedQuestionSourceId == null) {
+  if (
+    input.savedQuestionSourceId === null ||
+    input.savedQuestionSourceId === undefined
+  ) {
     // An app's viewers can only read the published cards, so a table source 403s.
-    if (isDataApp()) {
-      throw new Error(
-        "This query has not been synchronized. Define it with `defineQuery(...)` in `queries/`, run `npm run sync-resources`, and rebuild.",
-      );
-    }
-
-    return input;
+    throw new Error(
+      "This query has not been synchronized. Define it with `defineQuery(...)` in `queries/`, run `npm run sync-resources`, and rebuild.",
+    );
   }
 
   return { source: { type: "card", id: input.savedQuestionSourceId } };
