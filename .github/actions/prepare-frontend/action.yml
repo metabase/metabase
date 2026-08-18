@@ -29,6 +29,7 @@ runs:
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.m2-restore-key }}
+          ${{ steps.get-cache-keys.outputs.m2-master-restore-key }}
 
     - name: Get bun cache directory
       id: bun-cache
@@ -48,6 +49,7 @@ runs:
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.node-restore-key }}
+          ${{ steps.get-cache-keys.outputs.node-master-restore-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.

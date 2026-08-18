@@ -1,24 +1,33 @@
 name: Get cache keys
 description: |
   Get deterministic cache keys for Maven and Node.js caches based on the centrally controlled cache prefix,
-  the runner OS, and a hash of the files that define the dependency set.
+  the runner OS, the base ref, and a hash of the files that define the dependency set.
 
-  Two branches with the same dependency files share one cache entry; when their dependencies diverge they
-  get separate entries. No branch or release line is named anywhere.
+  The key is `<prefix>-<base ref>-<hash>`, restored through two fallbacks: `<prefix>-<base ref>-`, then
+  `<prefix>-master-`. An exact hit needs the same dependency set; the first fallback takes the newest entry
+  written for that base ref; the last takes master's, which every ref can read because master is the default
+  branch. So a branch that changes its dependencies downloads a delta, and a base ref that has never been
+  warmed still starts from master instead of missing entirely.
 
 outputs:
   m2-cache-key:
     description: "The cache key for the Maven cache."
     value: ${{ steps.keys-factory.outputs.m2-cache-key }}
   m2-restore-key:
-    description: "The fallback restore key prefix for the Maven cache."
+    description: "The fallback restore key prefix for the Maven cache, scoped to the base ref."
     value: ${{ steps.keys-factory.outputs.m2-restore-key }}
+  m2-master-restore-key:
+    description: "The last-resort restore key prefix for the Maven cache, scoped to master."
+    value: ${{ steps.keys-factory.outputs.m2-master-restore-key }}
   node-cache-key:
     description: "The cache key for the Node.js cache."
     value: ${{ steps.keys-factory.outputs.node-cache-key }}
   node-restore-key:
-    description: "The fallback restore key prefix for the Node.js cache."
+    description: "The fallback restore key prefix for the Node.js cache, scoped to the base ref."
     value: ${{ steps.keys-factory.outputs.node-restore-key }}
+  node-master-restore-key:
+    description: "The last-resort restore key prefix for the Node.js cache, scoped to master."
+    value: ${{ steps.keys-factory.outputs.node-master-restore-key }}
   eslint-cache-key:
     description: "The cache key for Eslint cache"
     value: ${{ steps.keys-factory.outputs.eslint-cache-key }}
@@ -36,7 +45,7 @@ runs:
         NODE_CACHE_PREFIX='node-modules-${{ runner.os }}'
         ESLINT_CACHE_PREFIX='eslint'
         CYPRESS_CACHE_PREFIX='cypress'
-        DEPS_HASH='${{ hashFiles('deps.edn', 'modules/drivers/*/deps.edn') }}'
+        DEPS_HASH='${{ hashFiles('deps.edn', 'modules/drivers/deps.edn', 'modules/drivers/*/deps.edn') }}'
         NODE_HASH='${{ hashFiles('bun.lock') }}'
         WEEK_OF_YEAR=$(/bin/date "+%G-%V")
         CACHE_SUFFIX="${{ runner.os }}-$WEEK_OF_YEAR"
@@ -46,10 +55,29 @@ runs:
           exit 1
         fi
 
-        echo "m2-cache-key=$M2_CACHE_PREFIX-$DEPS_HASH" >> "$GITHUB_OUTPUT"
-        echo "m2-restore-key=$M2_CACHE_PREFIX-" >> "$GITHUB_OUTPUT"
-        echo "node-cache-key=$NODE_CACHE_PREFIX-$NODE_HASH" >> "$GITHUB_OUTPUT"
-        echo "node-restore-key=$NODE_CACHE_PREFIX-" >> "$GITHUB_OUTPUT"
+        # `github.base_ref` is set only for pull_request; the merge queue carries its target in the
+        # merge_group payload; everything else is a direct push to the ref being built.
+        BASE_REF='${{ github.base_ref }}'
+        [ -n "$BASE_REF" ] || BASE_REF='${{ github.event.merge_group.base_ref }}'
+        [ -n "$BASE_REF" ] || BASE_REF='${{ github.ref_name }}'
+        BASE_REF="${BASE_REF#refs/heads/}"
+
+        # Only refs that cache-warm writes for can have entries of their own. Anything else - the few
+        # long-lived branches with their own push triggers, merge queue refs - reads master's, which
+        # every ref may read because it is the default branch.
+        case "$BASE_REF" in
+          master|release-x.*.x) ;;
+          *) BASE_REF='master' ;;
+        esac
+
+        echo "Cache keys scoped to base ref: $BASE_REF"
+
+        echo "m2-cache-key=$M2_CACHE_PREFIX-$BASE_REF-$DEPS_HASH" >> "$GITHUB_OUTPUT"
+        echo "m2-restore-key=$M2_CACHE_PREFIX-$BASE_REF-" >> "$GITHUB_OUTPUT"
+        echo "m2-master-restore-key=$M2_CACHE_PREFIX-master-" >> "$GITHUB_OUTPUT"
+        echo "node-cache-key=$NODE_CACHE_PREFIX-$BASE_REF-$NODE_HASH" >> "$GITHUB_OUTPUT"
+        echo "node-restore-key=$NODE_CACHE_PREFIX-$BASE_REF-" >> "$GITHUB_OUTPUT"
+        echo "node-master-restore-key=$NODE_CACHE_PREFIX-master-" >> "$GITHUB_OUTPUT"
         echo "eslint-cache-key=$ESLINT_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"
         echo "cypress-cache-key=$CYPRESS_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"
       shell: bash
