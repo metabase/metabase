@@ -436,18 +436,19 @@
   (binding [pgm/*allow-direct-deletion* true]
     (next-method model explicit-attributes f)))
 
-;; A temporary User's Personal Collection is deleted with the User (or rolled back with the outer
-;; with-temp transaction), invalidating the production cache's "Personal Collections cannot be deleted"
-;; premise. Evict only that User's test-created entry when its scope ends.
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
+;; A Personal Collection created during a with-temp is rolled back with it, invalidating the production
+;; cache's "Personal Collections cannot be deleted" premise. Evicting the temp User's own entry is not
+;; enough: a committed user's collection is created lazily on its first permission check, which often
+;; lands inside somebody else's with-temp, and no User scope ends to clear it. Key off the rollback
+;; instead of the user, and drop whatever the scope may have cached.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :default
   [model explicit-attributes f]
   (next-method model explicit-attributes
-               (fn [user]
+               (fn [temp-object]
                  (try
-                   (f user)
+                   (f temp-object)
                    (finally
-                     (memoize/memo-clear! @#'collection/user->personal-collection-id
-                                          [(mdb/unique-identifier) (:id user)]))))))
+                     (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
