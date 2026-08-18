@@ -161,8 +161,8 @@
           (is (= 3 (count @calls))))))))
 
 (deftest suppressing-the-audit-trail-still-checks-every-method-test
-  (testing (str "with `*audit-refusals?*` bound off, every method — including the audited "
-                "`-by-entity-id` ones and an `audited-by-id?` store — still admits a readable "
+  (testing (str "with `*audit-refusals?*` bound off, every method (including the audited "
+                "`-by-entity-id` ones and an `audited-by-id?` store) still admits a readable "
                 "row and still 403s an unreadable one, without going through `api/read-check`")
     (let [row (stub-row {:opaque :marker})]
       (doseq [audited-by-id? [false true]]

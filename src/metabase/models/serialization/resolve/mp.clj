@@ -284,7 +284,7 @@
   403. Bind to false around a lookup whose refusal you catch and discard.
 
   The permission check itself is unaffected; an unreadable row never reaches the caller either
-  way. The stores defined below are permission-agnostic and ignore this var — it is honoured by
+  way. The stores defined below are permission-agnostic and ignore this var. It is honoured by
   `metabase.metabot.tools.shared.content-store/read-checked`."
   true)
 
