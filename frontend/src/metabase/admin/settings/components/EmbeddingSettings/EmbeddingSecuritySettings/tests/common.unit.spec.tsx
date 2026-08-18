@@ -4,21 +4,17 @@ import { findRequests } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { setup as baseSetup } from "../../tests/setup";
-import { EmbeddingSecurityWidgets } from "../EmbeddingSecuritySettings";
+import { EmbeddingSecuritySettings } from "../EmbeddingSecuritySettings";
 
 const setup = async () => {
   await baseSetup({
-    // SameSite is paid-only now: it is inert for guest embeds.
-    tokenFeatures: { embedding_simple: true },
     renderCallback: ({ state }) =>
-      renderWithProviders(<EmbeddingSecurityWidgets />, {
+      renderWithProviders(<EmbeddingSecuritySettings />, {
         storeInitialState: state,
       }),
   });
 
-  expect(
-    await screen.findByText("Cross-Origin Resource Sharing (CORS)"),
-  ).toBeInTheDocument();
+  expect(await screen.findByText("Security")).toBeInTheDocument();
 };
 
 describe("EmbeddingSecuritySettings => common", () => {
