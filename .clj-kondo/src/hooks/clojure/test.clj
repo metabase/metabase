@@ -53,6 +53,12 @@
         ns-explicitly-nonparallel? (or (true? (:synchronized ns-metadata))
                                        (and (contains? ns-metadata :parallel)
                                             (false? (:parallel ns-metadata))))]
+    (when (and (contains? combined-metadata :parallel)
+               (false? (:parallel combined-metadata)))
+      (hooks/reg-finding! (assoc (meta test-name)
+                                 :message (str "Use `^:synchronized` instead of `^{:parallel false}`. "
+                                               "[:metabase/validate-deftest]")
+                                 :type :metabase/validate-deftest)))
     (when (:sequential combined-metadata)
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message (str "Use `^:synchronized` to mark this test explicitly non-parallel; "

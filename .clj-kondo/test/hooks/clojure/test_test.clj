@@ -52,6 +52,11 @@
                     (re-find #"ignored by Hawk" (:message %)))
               (parallel-metadata-findings
                "(deftest ^:sequential example-test (is true))"))))
+  (testing "the verbose Hawk spelling is not accepted as Metabase style"
+    (is (some #(and (= (:type %) :metabase/validate-deftest)
+                    (re-find #"Use `\^:synchronized` instead" (:message %)))
+              (parallel-metadata-findings
+               "(deftest ^{:parallel false} example-test (is true))"))))
   (testing "a test cannot request both execution modes"
     (is (some #(and (= (:type %) :metabase/validate-deftest)
                     (re-find #"both `\^:parallel` and `\^:synchronized`" (:message %)))

@@ -73,12 +73,21 @@
 
 (defn- lint-test-parallel-metadata [ns-form-node]
   (when-let [ns-symb-node (ns-form-node->ns-symb-node ns-form-node)]
-    (when (:synchronous (meta (hooks/sexpr ns-symb-node)))
-      (hooks/reg-finding!
-       (assoc (meta ns-symb-node)
-              :message (str "Use `^:synchronized` to mark this namespace explicitly non-parallel; "
-                            "`^:synchronous` is ignored by Hawk. [:metabase/validate-deftest]")
-              :type :metabase/validate-deftest)))))
+    (let [ns-metadata (meta (hooks/sexpr ns-symb-node))]
+      (cond
+        (:synchronous ns-metadata)
+        (hooks/reg-finding!
+         (assoc (meta ns-symb-node)
+                :message (str "Use `^:synchronized` to mark this namespace explicitly non-parallel; "
+                              "`^:synchronous` is ignored by Hawk. [:metabase/validate-deftest]")
+                :type :metabase/validate-deftest))
+
+        (and (contains? ns-metadata :parallel)
+             (false? (:parallel ns-metadata)))
+        (hooks/reg-finding!
+         (assoc (meta ns-symb-node)
+                :message "Use `^:synchronized` instead of `^{:parallel false}`. [:metabase/validate-deftest]"
+                :type :metabase/validate-deftest))))))
 
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
