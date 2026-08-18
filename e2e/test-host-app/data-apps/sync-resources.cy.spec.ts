@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createDataAppApiKey,
@@ -73,6 +74,26 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     sync();
     return savedQuestions().then(([card]) => cy.wrap(card, { log: false }));
   };
+
+  it("names the definition whose query Metabase could not resolve", () => {
+    declareDataAppQueries(APP_ROOT(), [{ name: "Orders", tableId: 999999 }]);
+
+    syncExpectingRefusal("Could not resolve queries/orders.query.ts:Orders");
+
+    savedQuestions().should("have.length", 0);
+  });
+
+  it("grants the app's group view-data on the database its queries read", () => {
+    syncOneQuery().then(() => {
+      cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+        cy.request("/api/permissions/graph").then(({ body: graph }) => {
+          expect(
+            graph.groups[app.permission_group_id][SAMPLE_DB_ID]["view-data"],
+          ).to.eq("unrestricted");
+        });
+      });
+    });
+  });
 
   it("creates the saved question, writes its ID back, and re-syncs without changes", () => {
     declareDataAppQueries(APP_ROOT(), [
