@@ -225,10 +225,52 @@ describe("scenarios > embedding > embedding hub > security", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
+
+      // The snapshot turns these two on, and the merged switch reads on when
+      // any of the settings it stands for is on.
+      H.updateSetting("enable-embedding-sdk", false);
+      H.updateSetting("enable-embedding-static", false);
+    });
+
+    it("turns modular embedding, the SDK and guest embeds on with one switch", () => {
+      cy.intercept("GET", "/api/setting").as("getSettings");
+      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+
+      cy.visit("/embedding/security");
+
+      cy.log("The first enable goes through the terms modal");
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Modular embedding and SDK for React")
+        .should("be.visible");
+
+      // The switch renders before either request lands, reading undefined as
+      // off and as terms-already-seen, so a click before then writes the
+      // settings directly instead of opening the modal.
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+      cy.findAllByRole("switch").first().should("not.be.checked").click();
+      cy.findByRole("button", { name: "Agree" }).click();
+
+      cy.log("All three settings the switch stands for are written");
+
+      // A fresh visit rather than cy.reload(): reloading the app inside the
+      // Cypress runner leaves the hub, landing on /unauthorized and then home.
+      cy.visit("/embedding/security");
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+
+      cy.findAllByRole("switch").first().should("be.checked");
+
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["enable-embedding-simple"]).to.be.true;
+        expect(body["enable-embedding-sdk"]).to.be.true;
+        expect(body["enable-embedding-static"]).to.be.true;
+      });
     });
 
     it("lists published guest embeds even after guest embeds are switched off", () => {
       cy.log("Publish a dashboard as a guest embed");
+      // Publishing is itself gated on guest embeds being on, so this has to
+      // come before the dashboard is marked embeddable.
+      H.updateSetting("enable-embedding-static", true);
       H.createDashboard({ name: "Published dashboard" }).then(
         ({ body: dashboard }) => {
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
@@ -237,7 +279,6 @@ describe("scenarios > embedding > embedding hub > security", () => {
         },
       );
 
-      H.updateSetting("enable-embedding-static", true);
       cy.visit("/embedding/security");
 
       assertPublishedDashboardIsListed();
