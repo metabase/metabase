@@ -93,6 +93,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
+      persistDefault: true,
     }),
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("pie.dimension", {
@@ -102,6 +103,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
+      persistDefault: true,
     }),
     "pie.rows": {
       getHidden: () => true,
