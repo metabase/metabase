@@ -17,9 +17,10 @@ export function GoalColumnMenuItem({
   return (
     <Menu.Item
       bg={selected ? "background-selected" : undefined}
+      lh="1rem"
       rightSection={
         resolvedValue != null ? (
-          <Text c="text-secondary" fz="md">
+          <Text c="text-secondary" fz="md" lh="1rem">
             {formatValue(resolvedValue)}
           </Text>
         ) : undefined
