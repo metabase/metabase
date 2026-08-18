@@ -2,14 +2,17 @@
 ## OSI generation job as well as by a person, so the row records whether its content is human-approved (data_source),
 ## when it was generated, when it was invalidated, and what it was generated from (basis).
 ##
-## data_source is the approval bit: "human" means a person approved this content, not that a person
-## typed it. The generator never overwrites a human row. It defaults to "human" so existing rows —
+## data_source is the approval bit: "human" means a person approved the content currently in the row, not
+## that a person typed it. It describes stored content, so only a write moves it — the generator flips a
+## row to "metabot" when it rewrites the content, never when a rewrite is merely requested, because the
+## instructions an entity serves to the agent are gated on this column. The generator leaves a human row
+## alone unless rewrite_requested_at is later than generated_at. It defaults to "human" so existing rows —
 ## all written through the CRUD API by a person — backfill on the humans-win side, and so a write
 ## path that forgets the column cannot silently mark content as machine-owned.
 ##
 ## rewrite_requested_at is the forcing channel for the regenerate action: a row whose
 ## rewrite_requested_at is later than its generated_at goes to the LLM regardless of whether its
-## basis changed. It exists rather than having regenerate blank `basis` because `basis` is real
+## basis changed, and regardless of a human data_source. It is the only thing regenerate writes. It exists rather than having regenerate blank `basis` because `basis` is real
 ## prompt input (what the previous metadata was generated from), and because encoding an
 ## instruction by deleting data is the same mistake as a suppression flag.
 ##
@@ -33,7 +36,7 @@ databaseChangeLog:
                   name: data_source
                   type: varchar(32)
                   defaultValue: human
-                  remarks: Approval state - human means protected from automatic overwrite; metabot means generation may replace it
+                  remarks: Approval state of the content in this row - human means a person approved it and generation leaves it alone unless a rewrite is requested; metabot means generation may replace it
                   constraints:
                     nullable: false
       rollback:

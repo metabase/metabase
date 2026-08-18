@@ -91,6 +91,13 @@
     (throw (ex-info (str "Invalid " projection-key " projection declaration for " model ": "
                          (pr-str (me/humanize explanation)))
                     {:projection projection-key, :model model, :errors (me/humanize explanation)})))
+  ;; An empty :membership map passes the schema (both keys are optional) but formats to `WHERE TRUE`, so
+  ;; every row in the table would be reported as a library member — silently, and at LLM prices on the
+  ;; :osi-context path. Same rule as an empty :basis: declare something or the declaration is a mistake.
+  (let [{:keys [where via-parent]} (:membership decl)]
+    (when-not (or where via-parent)
+      (throw (ex-info ":membership declares neither :where nor :via-parent — that selects every row"
+                      {:projection projection-key, :model model}))))
   (let [src (get-in @declarations [:sources model])]
     (when-not src
       (throw (ex-info (str "No source declared for " model " — define-source must precede define-projection")
@@ -205,7 +212,11 @@
   `:id` restricts to one entity; `:parent-ids` restricts a `:via-parent` model to member parents."
   [projection-key model lib-ids {:keys [id parent-ids]}]
   (let [{:keys [fields] :as src}   (source model)
-        {:keys [membership]}       (projection projection-key model)
+        ;; No declaration means no membership clauses, which formats to `WHERE TRUE` — every row a member.
+        ;; Callers must check first; reaching here undeclared is a bug, not an empty result.
+        {:keys [membership]}       (or (projection projection-key model)
+                                       (throw (ex-info (str "No " projection-key " projection declared for " model)
+                                                       {:projection projection-key, :model model})))
         {:keys [where via-parent]} membership
         clauses                    (cond-> []
                                      where      (conj (resolve-membership-where where lib-ids))
@@ -263,9 +274,12 @@
     (when-let [lib-ids (library-collection-ids)]
       (when-let [decl (projection projection-key model)]
         (if-let [{parent :model, fk :fk} (get-in decl [:membership :via-parent])]
-          (when-let [parent-id (t2/select-one-fn fk model :id entity-local-id)]
-            (when (seq (member-rows projection-key parent lib-ids {:id parent-id}))
-              (first (member-rows projection-key model lib-ids {:id entity-local-id, :parent-ids [parent-id]}))))
+          ;; A parent that declares no projection has no members, so neither does this model — the same
+          ;; answer [[member-entities]] gives, which skips a via-parent model with no parent results.
+          (when (projection projection-key parent)
+            (when-let [parent-id (t2/select-one-fn fk model :id entity-local-id)]
+              (when (seq (member-rows projection-key parent lib-ids {:id parent-id}))
+                (first (member-rows projection-key model lib-ids {:id entity-local-id, :parent-ids [parent-id]})))))
           (first (member-rows projection-key model lib-ids {:id entity-local-id})))))))
 
 ;;; ------------------------------------------------- Hydration ---------------------------------------------------
@@ -279,8 +293,10 @@
   ([entity-type entity-local-id]
    (entity-retrieval/entity-class entity-type entity-local-id)))
 
-(def ^:private hydration-query-chunk-size
-  "IDs per ai_context hydration query. Kept below SQLite's parameter limit, with room for the type parameter."
+(def hydration-query-chunk-size
+  "IDs per `:in` clause in a hydration query, shared by every batch hydration fn so none of them can put an
+  unbounded id list into one statement. Well under the app db's bind-parameter ceiling (Postgres: 65,535),
+  and low enough that a chunk's result set is a bounded amount of memory rather than the whole library's."
   500)
 
 (defn- raw-ai-context-rows
@@ -335,9 +351,21 @@
                     (mu/validate-throw IndexedAiContextSlice decoded))
                   (catch Throwable e
                     (ex-info "Invalid osi_ai_context.ai_context"
-                             {:entity-type entity_type :entity-local-id entity_local_id}
+                             {::data-defect true :entity-type entity_type :entity-local-id entity_local_id}
                              e)))]))
         (raw-ai-context-rows entities)))
+
+(defn data-defect?
+  "Whether `e` (or anything it wraps) reports an unusable stored value rather than an unforeseen error.
+  The distinction is what a caller needs to decide whether to retry: a bad `ai_context` blob stays bad
+  until a person repairs the row, so treating it as transient means retrying forever, while an unforeseen
+  error may well be gone on the next run."
+  [e]
+  (loop [e e]
+    (cond
+      (nil? e)                    false
+      (::data-defect (ex-data e)) true
+      :else                       (recur (ex-cause e)))))
 
 (defn hydrate
   "Apply `projection-key`'s declared `:hydrate` batch fns to a COLLECTION of entities, returning them with
@@ -561,19 +589,31 @@
      :doc_type        doc-type
      :doc_text        doc-text}))
 
+(defn base-index-docs
+  "The docs an entity has regardless of its `ai_context`: a `name` doc (always) and a `description` doc
+  (non-blank).
+  Split out so a caller can still index an entity whose enrichment is unusable. Retaining an entity's
+  existing docs only helps when it has some; on a first build or a full rebuild it has none, so without
+  this a bad `ai_context` blob would leave the entity unfindable even by its own name.
+  Pure over an unhydrated entity — it reads nothing the `:ai-context` hydration provides."
+  [entity]
+  (let [{:keys [entity_type entity_local_id name description]} (entity-summary entity)
+        doc #(make-doc entity_type entity_local_id %1 %2)]
+    (cond-> [(doc "name" name)]
+      (not (str/blank? description)) (conj (doc "description" description)))))
+
 (defn library-index-docs
-  "All desired index docs for one hydrated library entity: a `name` doc (always), a `description` doc
-  (non-blank), and a `synonym`/`example` doc per hydrated `:ai-context` value.
+  "All desired index docs for one hydrated library entity: [[base-index-docs]] plus a `synonym`/`example`
+  doc per hydrated `:ai-context` value.
   Instructions are never indexed — the tool reads them live from `osi_ai_context`.
   The shared derivation behind every model's `:library-index` `:project` var, so the doc format stays
   single while the declarations stay per-model."
   [entity]
-  (let [{:keys [entity_type entity_local_id name description]} (entity-summary entity)
+  (let [{:keys [entity_type entity_local_id]} (entity-summary entity)
         ai-context (:ai-context entity)
         doc        #(make-doc entity_type entity_local_id %1 %2)]
     (concat
-     [(doc "name" name)]
-     (when-not (str/blank? description) [(doc "description" description)])
+     (base-index-docs entity)
      ;; Keep only the non-blank string values, capped: a legacy or forward-compatible row may hold a
      ;; non-string item, and a row that skipped the API's bounds could otherwise bloat the index with an
      ;; unbounded number of synonym/example docs. A malformed item is skipped, never fatal to the slice.

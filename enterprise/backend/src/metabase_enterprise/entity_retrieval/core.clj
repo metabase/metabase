@@ -245,12 +245,16 @@
 (defn- record-run!
   "Emit metrics and a log line for one completed reconcile. `scope` is \"full\" or \"targeted\"; the index
   size gauges come only from a full run, which counts the whole index."
-  [scope {:keys [inserted deleted unchanged rebuilt? documents entities]} ran-ms]
+  [scope {:keys [inserted deleted unchanged rebuilt? documents entities degraded]} ran-ms]
   (analytics/observe! :metabase-entity-retrieval/reconcile-duration-ms {:scope scope} ran-ms)
   (when (pos? (long (or inserted 0))) (analytics/inc! :metabase-entity-retrieval/docs-inserted (long inserted)))
   (when (pos? (long (or deleted 0)))  (analytics/inc! :metabase-entity-retrieval/docs-deleted  (long deleted)))
   (when documents (analytics/set-gauge! :metabase-entity-retrieval/index-documents documents))
   (when entities  (analytics/set-gauge! :metabase-entity-retrieval/index-entities  entities))
+  ;; Entities indexed from their name and description alone because their stored ai_context is unusable.
+  ;; This is the signal for a defect that no reconcile can clear on its own — deliberately a gauge rather
+  ;; than a freshness stall, which would report the whole index as stale over one bad row.
+  (when degraded  (analytics/set-gauge! :metabase-entity-retrieval/index-degraded-entities degraded))
   (when (or (pos? (long (or inserted 0))) (pos? (long (or deleted 0))) rebuilt?)
     (log/info "library entity index reconciled"
               {:scope scope :inserted inserted :deleted deleted :unchanged unchanged

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.osi.ai-context.api :as osi.api]
    [metabase.test :as mt]
@@ -183,20 +184,31 @@
         (is (not (contains? row :basis)))))))
 
 (deftest regenerate-requests-rewrite-test
-  (testing "regenerate revokes approval and records the request without destroying generation state"
+  (testing "regenerate records the request without destroying generation state or revoking approval"
     (let [generated-at         (t/offset-date-time "2026-07-20T10:00Z")
           basis-invalidated-at (t/offset-date-time "2026-07-20T09:00Z")
           basis                {:name "Orders"}]
       (with-test-entry [_ {:data_source :human :generated_at generated-at
                            :basis_invalidated_at basis-invalidated-at :basis basis}]
-        (is (= "metabot" (:data_source
-                          (mt/user-http-request :crowberto :post 200
-                                                "osi/ai-context/table/1/regenerate"))))
+        (is (= "human" (:data_source
+                        (mt/user-http-request :crowberto :post 200
+                                              "osi/ai-context/table/1/regenerate"))))
         (let [row (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1)]
           (is (t/after? (:rewrite_requested_at row) generated-at))
           (is (= {:ai_context {:instructions "find orders"}
+                  :data_source :human
                   :basis basis :basis_invalidated_at basis-invalidated-at :generated_at generated-at}
-                 (select-keys row [:ai_context :basis :basis_invalidated_at :generated_at]))))))))
+                 (select-keys row [:ai_context :data_source :basis :basis_invalidated_at :generated_at]))))))))
+
+(deftest regenerate-keeps-instructions-serving-test
+  (testing "the instructions an entity serves to the agent survive a regenerate request — the content is
+           unchanged until the job rewrites it, so the human approval it is gated on must not be revoked"
+    (with-test-entry [_ {:data_source :human}]
+      (is (= {["table" 1] "find orders"}
+             (entity-retrieval/ai-context-instructions [{:model "table" :id 1}])))
+      (mt/user-http-request :crowberto :post 200 "osi/ai-context/table/1/regenerate")
+      (is (= {["table" 1] "find orders"}
+             (entity-retrieval/ai-context-instructions [{:model "table" :id 1}]))))))
 
 (deftest regenerate-outruns-clock-skew-test
   (testing "rewrite_requested_at lands strictly after a generated_at that is ahead of this node's clock —

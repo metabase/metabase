@@ -348,8 +348,9 @@
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"
               (is (empty? (docs-for ds "table" leaving))))))))))
 
-(deftest ^:synchronized malformed-ai-context-is-isolated-and-retains-existing-docs-test
-  (testing "one corrupt context does not abort healthy projections or delete the corrupt entity's prior slice"
+(deftest ^:synchronized malformed-ai-context-degrades-to-name-and-description-test
+  (testing "an unusable ai_context costs the entity its enrichment, not its place in the index: it stays
+           findable by name and description, and the enrichment docs it can no longer justify GC"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
@@ -363,34 +364,40 @@
                            :model/OsiAiContext _ {:entity_type "table" :entity_local_id bad-id
                                                   :ai_context {:synonyms ["kept synonym"]}}]
               (reconcile/reconcile! ds (constantly model))
-              (let [bad-before (set (map :doc_id (docs-for ds "table" bad-id)))]
-                (t2/update! :model/Table good-id {:display_name "Good Renamed"})
-                (doseq [corrupt-value ["{not-json" "null"]]
-                  (t2/query-one {:update :osi_ai_context
-                                 :set    {:ai_context corrupt-value}
-                                 :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
-                  (is (map? (reconcile/reconcile! ds (constantly model))))
-                  (is (= bad-before (set (map :doc_id (docs-for ds "table" bad-id))))
-                      "parse-invalid and shape-invalid contexts both retain the entity's existing docs"))
-                (testing "a recoverable legacy row (over-cap instructions + unknown key) rebuilds its slice"
-                  (t2/query-one {:update :osi_ai_context
-                                 :set    {:ai_context (json/encode
-                                                       {:instructions (apply str (repeat (inc entity-retrieval/max-instructions-len) "x"))
-                                                        :future-key   "ignored"
-                                                        :synonyms     ["legacy synonym"]})}
-                                 :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
-                  (is (map? (reconcile/reconcile! ds (constantly model))))
-                  (is (= {"name" 1 "description" 1 "synonym" 1}
-                         (frequencies (map :doc_type (docs-for ds "table" bad-id)))))
-                  (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "legacy synonym")
-                      "the fresh synonym is indexed, not the retained stale one"))
-                (is (= #{"Good Renamed"}
-                       (set (map :doc_text (filter #(= "name" (:doc_type %))
-                                                   (docs-for ds "table" good-id)))))
-                    "the healthy entity still reconciles")))))))))
+              (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "kept synonym")
+                  "baseline: the synonym is indexed while the context is readable")
+              (t2/update! :model/Table good-id {:display_name "Good Renamed"})
+              (doseq [corrupt-value ["{not-json" "null"]]
+                (t2/query-one {:update :osi_ai_context
+                               :set    {:ai_context corrupt-value}
+                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
+                (let [result (reconcile/reconcile! ds (constantly model))]
+                  (is (= 1 (:degraded result))
+                      "the entity is counted for the gauge, which is the signal a person has to act on")
+                  (is (= {"name" 1 "description" 1}
+                         (frequencies (map :doc_type (docs-for ds "table" bad-id))))
+                      "parse-invalid and shape-invalid contexts both degrade to the base docs")))
+              (testing "a recoverable legacy row (over-cap instructions + unknown key) rebuilds its slice"
+                (t2/query-one {:update :osi_ai_context
+                               :set    {:ai_context (json/encode
+                                                     {:instructions (apply str (repeat (inc entity-retrieval/max-instructions-len) "x"))
+                                                      :future-key   "ignored"
+                                                      :synonyms     ["legacy synonym"]})}
+                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id bad-id]]})
+                (is (map? (reconcile/reconcile! ds (constantly model))))
+                (is (= {"name" 1 "description" 1 "synonym" 1}
+                       (frequencies (map :doc_type (docs-for ds "table" bad-id)))))
+                (is (contains? (set (map :doc_text (docs-for ds "table" bad-id))) "legacy synonym")
+                    "the fresh synonym is indexed, not the retained stale one"))
+              (is (= #{"Good Renamed"}
+                     (set (map :doc_text (filter #(= "name" (:doc_type %))
+                                                 (docs-for ds "table" good-id)))))
+                  "the healthy entity still reconciles"))))))))
 
-(deftest ^:synchronized projection-failure-blocks-the-watermark-test
-  (testing "a projection failure leaves stale docs, so it must freeze reconciled_at like an insert failure does"
+(deftest ^:synchronized data-defect-does-not-block-the-watermark-test
+  (testing "an unusable ai_context stays unusable until a person repairs the row, so freezing freshness on
+           it would report the index as stale forever while every reconcile was doing all it can. The
+           entity is indexed from its name and description, so nothing about naming has gone undetected."
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
@@ -406,15 +413,32 @@
                 (t2/query-one {:update :osi_ai_context
                                :set    {:ai_context "{not-json"}
                                :where  [:and [:= :entity_type "table"] [:= :entity_local_id table-id]]})
-                (is (map? (reconcile/reconcile! ds (constantly model))))
-                (is (= converged (reconciled-at! ds))
-                    "the corrupt entity's projection failed and its docs are stale — the watermark must not move")
-                (t2/query-one {:update :osi_ai_context
-                               :set    {:ai_context (json/encode {:synonyms ["sales"]})}
-                               :where  [:and [:= :entity_type "table"] [:= :entity_local_id table-id]]})
+                (is (= 1 (:degraded (reconcile/reconcile! ds (constantly model)))))
+                (is (not= converged (reconciled-at! ds))
+                    "the run converged on everything it could, so freshness advances")))))))))
+
+(deftest ^:sequential unforeseen-projection-failure-blocks-the-watermark-test
+  (testing "an unforeseen projection error may well be gone next run and leaves the entity's stale docs in
+           place meanwhile, so it freezes reconciled_at the way a failed insert does"
+    (mt/with-premium-features #{:library :library-retrieval}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {table-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                        :active true :name "orders" :display_name "Orders"}
+                           :model/OsiAiContext _ {:entity_type "table" :entity_local_id table-id
+                                                  :ai_context {:synonyms ["sales"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (let [converged (reconciled-at! ds)]
+                (is (some? converged) "a clean run stamps the watermark")
+                (mt/with-dynamic-fn-redefs [spec/library-index-docs (fn [& _] (throw (ex-info "boom" {})))]
+                  (is (map? (reconcile/reconcile! ds (constantly model))))
+                  (is (= converged (reconciled-at! ds))
+                      "the entity's docs are stale and a retry might fix it — the watermark must not move"))
                 (is (map? (reconcile/reconcile! ds (constantly model))))
                 (is (not= converged (reconciled-at! ds))
-                    "healing the row lets the next converged run advance the watermark")))))))))
+                    "once the error clears, the next converged run advances the watermark")))))))))
 
 (deftest ^:synchronized reconcile-entity!-targets-one-slice-test
   (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
