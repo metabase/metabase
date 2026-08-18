@@ -21,6 +21,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.resources :as metabot-resources]
@@ -190,11 +191,13 @@
   (including operators, joins, expressions, multi-stage queries, and FK conventions).
 
   Closed map: any extra top-level keys (notably the legacy `source_entity` /
-  `referenced_entities` envelope from before the repr migration) are rejected with a 400 so
-  callers don't silently send fields the server ignores.
+  `referenced_entities` envelope from before the repr migration) are dropped during request
+  decoding, so a caller still sending the old shape is served.
 
-  The inner `:query` value is intentionally typed as a plain `:map` at this boundary rather
-  than `::lib.schema/external-query`. Reasons:
+  The inner `:query` value is intentionally typed as an open map ([[ms/Map]]) at this boundary
+  rather than `::lib.schema/external-query`. Being open matters: a closed map with no declared
+  entries would have every key stripped before the handler saw it. Reasons for not naming the
+  real schema:
 
   1. Deep MBQL-shape validation runs inside the representations pipeline
      (`metabot.tools.construct/execute-representations-query` calls `repr/validate-query`
@@ -208,7 +211,7 @@
   [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
-    :map]
+    ms/Map]
    ;; The user's original message, when available, captured so `visualize_query` can later
    ;; surface it back to the iframe alongside the query body for feedback submission. The MCP
    ;; layer stores it with the handle (see `metabase.mcp.tools/make-store-construct-query-result`).
@@ -436,8 +439,8 @@
   (-> query
       (update-in [:middleware :js-int-to-string?] (fnil identity true))
       qp/userland-query-with-default-constraints
-      (update :info merge {:executed-by api/*current-user-id*
-                           :context     :agent})))
+      (assoc :info {:executed-by api/*current-user-id*
+                    :context     :agent})))
 
 (defn- prepare-combined-query
   "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
@@ -457,13 +460,15 @@
       /v2/construct-query.
 
   The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a
-  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`
-  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (string? (:query m))    :handle
-                         :else                   :fresh))}
+  closed map, so top-level keys it doesn't declare (e.g. the legacy `source_entity` /
+  `referenced_entities` envelope, or a `:query` sent alongside a `:continuation_token`) are
+  dropped before the handler runs."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (fn [m]
+                               (cond
+                                 (:continuation_token m) :continuation
+                                 (string? (:query m))    :handle
+                                 :else                   :fresh))}
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
@@ -925,7 +930,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe :map]]])
+   [:visualization_settings {:optional true} [:maybe ms/Map]]])
 
 (mr/def ::create-question-response
   [:map
@@ -975,7 +980,7 @@
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe :map]]])
+   [:visualization_settings {:optional true} [:maybe ms/Map]]])
 
 (mr/def ::create-metric-response
   [:map
@@ -1041,7 +1046,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1099,7 +1104,7 @@
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:archived               {:optional true} [:maybe :boolean]]
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -1309,9 +1314,8 @@
 
    The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on
    the dashboard's first tab."
-  [:multi {:dispatch :action}
-   ;; Branches are closed so an inapplicable key (e.g. `display_size` on `add_heading`, which is
-   ;; always full-width) fails validation instead of being silently ignored.
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :action}
    ["add"         [:map {:closed true}
                    [:action       [:= "add"]]
                    [:card_id      ms/PositiveInt]
@@ -1320,6 +1324,7 @@
    ["add_heading" [:map {:closed true}
                    [:action [:= "add_heading"]]
                    [:text   ms/NonBlankString]
+                   [:display_size {:optional true} [:nil {:error/message "headings are always full-width"}]]
                    [:tab_id {:optional true} [:maybe ms/PositiveInt]]]]
    ["add_text"    [:map {:closed true}
                    [:action       [:= "add_text"]]

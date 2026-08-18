@@ -271,7 +271,7 @@
       (do-login)
       (http-401-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   username]
+                                   (login-throttlers :username)   (u/lower-case-en username)]
           (do-login))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -296,7 +296,7 @@
 ;; There's also no need to salt the token because it's already random <3
 
 (def ^:private forgot-password-throttlers
-  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
+  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- sso-password-reset-disabled?
@@ -403,7 +403,7 @@
   "Reset password with a reset token."
   [_route-params
    _query-params
-   request-body :- [:map
+   request-body :- [:map {:closed true}
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
    request]
@@ -412,7 +412,7 @@
   (let [auth-result (auth-identity/with-fallback auth-identity/login!
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
-                      request-body)]
+                      (select-keys request-body [:token :password]))]
     (cond
       (not (:success? auth-result))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))

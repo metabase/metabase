@@ -5,7 +5,6 @@
 
   https://docs.z.ai/api-reference/llm/chat-completion"
   (:require
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -50,23 +49,24 @@
 
   The endpoint is OpenAI-compatible but undocumented; it doubles as the credential
   round-trip behind the admin Connect button (auth is checked before routing, so a 2xx
-  proves the key and base URL reach an authenticated surface).
+  proves the key and base URL reach an authenticated surface). A 2xx whose body isn't a
+  recognizable catalog throws rather than yielding an empty picker — see
+  [[chat-completions/models-catalog]].
   `:ai-proxy?` is not supported for Z.AI and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "zai" "Z.AI"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-zai-api-key)))]
-                                    {:url     (llm/llm-zai-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
                                    :url     "/models"
                                    :as      :json
                                    :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
+      (chat-completions/models-catalog "Z.AI" res))
     (catch Exception e
       (core/rethrow-api-error! "zai" zai-error-msg e))))
 
@@ -93,8 +93,10 @@
 
 (mu/defn zai-raw
   "Perform a streaming request to the Z.AI Chat Completions API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for Z.AI and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -105,10 +107,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-zai-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "zai" "Z.AI"
                                           (when api-key
-                                            {:url     (llm/llm-zai-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth
@@ -125,10 +127,17 @@
         (catch Exception e
           (core/rethrow-api-error! "zai" zai-error-msg e))))))
 
+(def ^:private stop-reasons
+  "Z.AI signals a filtered response with `sensitive` rather than OpenAI's `content_filter`, and reports an upstream
+  failure as a finish reason instead of an error event."
+  (assoc chat-completions/stop-reasons
+         "sensitive"     "content-filter"
+         "network_error" "error"))
+
 (defn zai->aisdk-chunks-xf
   "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 (defn zai
   "Call the Z.AI Chat Completions API, return AISDK stream."

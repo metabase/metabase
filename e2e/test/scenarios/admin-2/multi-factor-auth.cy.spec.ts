@@ -130,7 +130,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.signInAsNormalUser();
         cy.visit("/account/security");
         cy.findByTestId("account-header")
-          .findByRole("tab", { name: "Security" })
+          .findByRole("tab", { name: "Authentication" })
           .should("be.visible");
         enrollViaUI().then((secret) => {
           totpSecret = secret;
@@ -202,7 +202,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           cy.findByTestId("greeting-message").should("be.visible");
 
           cy.log("Regenerate the recovery codes");
-          cy.visit("/account/security");
+          cy.visit("/account/authentication");
           cy.findByRole("button", { name: "Generate recovery codes" }).click();
           H.modal().within(() => {
             cy.findByText(
@@ -341,8 +341,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           });
 
           cy.log("Without the feature there is no way back into setup");
-          cy.url().should("contain", "/account/profile");
-          cy.visit("/account/security");
+          cy.url().should("contain", "/account/authentication");
           cy.findByRole("button", {
             name: "Set up two-factor authentication",
           }).should("be.disabled");
@@ -497,6 +496,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.findByLabelText(
           "Enter the 6-digit code from the authenticator app",
         ).type(generateTotpCode(secret, Date.now() / 1000));
+        cy.button("Set up authentication").click();
 
         cy.findByTestId("login-page")
           .findByText("Your recovery codes")

@@ -48,11 +48,12 @@
                                    [:or
                                     [:and
                                      [:!= :collection_id (:id (audit/default-audit-collection))]
-                                     [:not [:exists {:select [1]
-                                                     :from   [[(t2/table-name :model/Collection) :sample_coll]]
-                                                     :where  [:and
-                                                              [:= :sample_coll.is_sample true]
-                                                              [:= :sample_coll.id :report_card.collection_id]]}]]]
+                                     [:not [:exists ^:allow-subquery
+                                            {:select [1]
+                                             :from   [[(t2/table-name :model/Collection) :sample_coll]]
+                                             :where  [:and
+                                                      [:= :sample_coll.is_sample true]
+                                                      [:= :sample_coll.id :report_card.collection_id]]}]]]
                                     [:is :collection_id nil]]]}))
 
 (defn- has-user-created-tenants? []

@@ -119,6 +119,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
@@ -337,6 +338,12 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
+
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
@@ -1622,6 +1629,8 @@
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
+ [lib.underlying
+  aggregation-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1657,6 +1666,7 @@
   all-measure-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids

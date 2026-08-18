@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -147,7 +148,7 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)
@@ -312,8 +313,21 @@
             (is (= :not-cached
                    (run-query :cache-strategy strategy)))))))))
 
+(deftest cancellation-mid-flight-does-not-throw-assertion-test
+  (testing (str "a cache-miss query canceled between the driver's respond callback and the reducer "
+                "returns nil silently #66655.")
+    (with-mock-cache! []
+      (let [qp (cache/maybe-return-cached-results qp.pipeline/*run*)]
+        (binding [driver.settings/*query-timeout-ms* 2000
+                  qp.pipeline/*canceled-chan*        (a/promise-chan)
+                  qp.pipeline/*execute*              (fn [_driver _query respond]
+                                                       (a/>!! qp.pipeline/*canceled-chan* ::test-cancel)
+                                                       (respond {} [[:toucan 1]]))]
+          (driver/with-driver :h2
+            (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
+
 (deftest not-eligible-refresh-deletes-outdated-entry-test
-  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
+  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min_duration_ms), the expired entry
             is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
     (with-mock-cache! [save-chan]
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
@@ -497,6 +511,25 @@
         (mt/wait-for-result save-chan)
         (is (= :cached
                (run-query)))))))
+
+(deftest min-duration-honored-from-stored-config-test
+  (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
+                "(regression for #78340)")
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (cache-config/store! (mt/user->id :crowberto)
+                           {:model    "root"
+                            :model_id 0
+                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (with-mock-cache! [save-chan]
+        (let [strategy (-> (cache-config/root-strategy)
+                           cache-config/row->config
+                           :strategy
+                           (assoc :avg-execution-ms 1000))]
+          (run-query :cache-strategy strategy)
+          (is (= :metabase.test.util.async/timed-out
+                 (mt/wait-for-result save-chan)))
+          (is (= :not-cached
+                 (run-query :cache-strategy strategy))))))))
 
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"

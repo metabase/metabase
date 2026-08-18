@@ -9,6 +9,7 @@ import {
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { TRASHABLE_MODELS, getParentEntityLink } from "metabase/archive/utils";
@@ -24,6 +25,8 @@ import type {
   DashboardId,
   Document,
   DocumentId,
+  Exploration,
+  ExplorationId,
   RegularCollectionId,
 } from "metabase-types/api";
 
@@ -40,7 +43,8 @@ export type RestorableItem =
   | Restorable<"metric", CardId>
   | Restorable<"dashboard", DashboardId>
   | Restorable<"collection", RegularCollectionId>
-  | Restorable<"document", DocumentId>;
+  | Restorable<"document", DocumentId>
+  | Restorable<"exploration", ExplorationId>;
 
 export type RestorableModel = RestorableItem["model"];
 
@@ -55,7 +59,12 @@ export function canRestore(item: {
   return item.can_restore === true && isRestorable(item);
 }
 
-export type RestoredEntity = Card | Dashboard | Collection | Document;
+export type RestoredEntity =
+  | Card
+  | Dashboard
+  | Collection
+  | Document
+  | Exploration;
 
 export type RestoreResult = {
   entity: RestoredEntity;
@@ -70,6 +79,7 @@ export function useRestore() {
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateCollection] = useUpdateCollectionMutation();
   const [updateDocument] = useUpdateDocumentMutation();
+  const [updateExploration] = useUpdateExplorationMutation();
 
   return useCallback(
     async (item: RestorableItem): Promise<RestoreResult> => {
@@ -107,6 +117,13 @@ export function useRestore() {
           }).unwrap();
           return { entity, parentCollection: entity.collection ?? undefined };
         })
+        .with({ model: "exploration" }, async ({ id }) => {
+          const entity = await updateExploration({
+            id,
+            archived: false,
+          }).unwrap();
+          return { entity, parentCollection: entity.collection ?? undefined };
+        })
         .exhaustive();
 
       dispatch(Api.util.invalidateTags([listTag("bookmark")]));
@@ -131,6 +148,7 @@ export function useRestore() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      updateExploration,
       navigate,
     ],
   );

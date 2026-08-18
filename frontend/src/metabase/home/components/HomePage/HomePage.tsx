@@ -3,11 +3,10 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHomepageDashboard } from "metabase/home/use-homepage-dashboard";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
-import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
-import { useUpdateSettingMutation } from "metabase/settings";
+import { useSetting, useUpdateSettingMutation } from "metabase/settings";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
@@ -27,7 +26,7 @@ export const HomePage = (): JSX.Element => {
 
 const useDashboardRedirect = () => {
   const { dashboardId, dashboard, isLoading } = useHomepageDashboard();
-  const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
+  const hasDismissedToast = useSetting("dismissed-custom-dashboard-toast");
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [updateSetting] = useUpdateSettingMutation();

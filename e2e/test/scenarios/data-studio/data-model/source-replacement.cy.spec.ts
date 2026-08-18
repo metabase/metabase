@@ -209,7 +209,10 @@ describe(
               expect(total).to.equal(800);
             },
           );
-          H.echartsContainer().should("be.visible");
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .and("have.attr", "data-viz-ui-name", "Number");
+          cy.findByTestId("scalar-value").should("have.text", "800");
         });
       });
 
@@ -1087,8 +1090,12 @@ function createSourceTotalAmountMeasure() {
         H.createMeasure({
           name: "Total amount",
           definition: {
-            "source-table": sourceTableId,
-            aggregation: [["sum", ["field", amountFieldId, null]]],
+            database: WRITABLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": sourceTableId,
+              aggregation: [["sum", ["field", amountFieldId, null]]],
+            },
           },
         }),
     ),

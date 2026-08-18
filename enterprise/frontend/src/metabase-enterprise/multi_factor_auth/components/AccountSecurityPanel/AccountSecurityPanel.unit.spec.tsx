@@ -5,7 +5,11 @@ import {
   setupMfaStatusEndpointError,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaEnforcement, MfaStatus } from "metabase-types/api";
 import {
@@ -104,6 +108,18 @@ describe("AccountSecurityPanel", () => {
         name: "Generate recovery codes",
       }),
     ).toBeInTheDocument();
+  });
+  it("should render nothing when the instance has two-factor authentication off", async () => {
+    setup({
+      status: createMockMfaStatus({ mfa_enabled: false, enrolled: true }),
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByText("Two-factor authentication"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   describe("when two-factor authentication is required", () => {

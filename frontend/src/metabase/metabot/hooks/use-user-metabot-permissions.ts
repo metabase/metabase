@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 
-import { useGetUserMetabotPermissionsQuery } from "metabase/api";
+import { canAccessSettings, getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
+
+import { useGetUserMetabotPermissionsQuery } from "../api";
 
 import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-enabled";
 

@@ -7,6 +7,7 @@ import type {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { Extent } from "metabase/visualizations/types";
 import type {
   Card,
@@ -230,6 +231,7 @@ export type BaseCartesianChartModel = {
   splitPanelYAxisModels?: YAxisModel[];
   xAxisModel: XAxisModel;
 
+  cardsColumns: CartesianChartColumns[];
   columnByDataKey: Record<DataKey, DatasetColumn>;
 
   // Allows to use multiple ECharts series options to represent single data series

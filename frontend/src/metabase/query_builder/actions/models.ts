@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { SET_METADATA_DIFF } from "metabase/redux/query-builder";
 import type {
   DatasetEditorTab,
   Dispatch,
@@ -37,11 +38,7 @@ export const turnQuestionIntoModel =
       return;
     }
 
-    const model = question
-      .setType("model")
-      .setPinned(true)
-      .setDisplay("table")
-      .setSettings({});
+    const model = question.setType("model").setDisplay("table").setSettings({});
     await dispatch(apiUpdateQuestion(model, { rerunQuery: true }));
 
     dispatch(
@@ -76,7 +73,6 @@ export const turnModelIntoQuestion =
     );
   };
 
-export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
 export const onModelPersistenceChange =

@@ -6,6 +6,7 @@
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -29,6 +30,7 @@
    :dataset           :model/Card
    :dimension         :model/Dimension
    :document          :model/Document
+   :exploration       :model/Exploration
    :measure           :model/Measure
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup
@@ -134,9 +136,16 @@
 
 (mu/defn ->id :- :int
   "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
-   Please use that if you have to do man lookups at once."
+   Please use that if you have to do man lookups at once.
+
+   The non-string branch is a runtime guard, not the `:-`/argument schemas: those are `mu/defn`
+   schemas, which are compiled out of production builds, so they cannot be relied on to keep a
+   non-scalar value (e.g. a keyword-keyed map decoded from a JWT claim) out of the query built from
+   the return value. A map returned here reaches a Toucan2 value position and is compiled as HoneySQL
+   query structure rather than bound as a parameter."
   [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
-  (if (string? id)
+  (cond
+    (string? id)
     (let [model (->model api-name-or-model)
           [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
       (update-translation-count! [status])
@@ -147,7 +156,12 @@
                          :id id
                          :status status}))
         (:id info)))
-    id))
+
+    (pos-int? id)
+    id
+
+    :else
+    (throw (ex-info (tru "Invalid ID.") {:status-code 400}))))
 
 (mu/defn ->id-or-404 :- :int
   "Translates a single entity_id -> id, throwing a 404 error if not found.

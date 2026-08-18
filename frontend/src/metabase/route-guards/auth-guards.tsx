@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { type Location, Navigate, Outlet } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import { replaceLocation } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -23,7 +23,7 @@ function FullPageRedirect({ to }: { to: string }): null {
 }
 
 const loginUrlWithRedirect = (location: Omit<Location, "query" | "action">) => {
-  const from = `${location.pathname}${location.search}`;
+  const from = `${location.pathname}${location.search}${location.hash ?? ""}`;
   const query = new URLSearchParams({ redirect: from }).toString();
   return `/auth/login?${query}`;
 };

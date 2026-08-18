@@ -27,6 +27,7 @@ import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import "metabase/auth/plugins";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
@@ -386,6 +387,7 @@ export function TestWrapper({
 export type TestRouter = {
   navigate(to: string, options?: { replace?: boolean }): void;
   back(): void;
+  forward(): void;
   readonly location: Location;
   /**
    * Observe every location the router passes through, for specs asserting on
@@ -412,6 +414,9 @@ function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
     },
     back: () => {
       requireRouter().navigate(-1);
+    },
+    forward: () => {
+      requireRouter().navigate(1);
     },
     get location() {
       // `toFacadeLocation` normalizes `state` from v7's `null` to `undefined`,

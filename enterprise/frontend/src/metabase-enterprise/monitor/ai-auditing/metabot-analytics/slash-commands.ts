@@ -1,8 +1,8 @@
+import { getUserIsAdmin } from "metabase/current-user";
 import { getMetabotConversation } from "metabase/metabot/state";
 import type { MetabotSlashCommandHandler } from "metabase/plugins/oss/audit";
 import { addUndo } from "metabase/redux/undo";
 import { navigate } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 
 export const handleMetabotSlashCommand: MetabotSlashCommandHandler = ({

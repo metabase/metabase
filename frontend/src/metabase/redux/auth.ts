@@ -4,7 +4,7 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { Api, refetchCurrentUser } from "metabase/api";
+import { Api } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import {
   type MfaChallengeResponse,
@@ -13,10 +13,10 @@ import {
   isMfaEnrollment,
   sessionApi,
 } from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { navigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";

@@ -14,7 +14,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { type Location, useNavigate, useParams } from "metabase/router";
@@ -51,12 +51,10 @@ type NewTransformPageProps = {
 function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
+    remoteSyncReadOnly,
     isLoadingDatabases: isLoading,
     databasesError: error,
   } = useTransformPermissions();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -66,14 +64,14 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     );
   }
 
-  if (isRemoteSyncReadOnly) {
+  if (remoteSyncReadOnly) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
             </DataStudioBreadcrumbs>
           }
@@ -166,7 +164,7 @@ function NewTransformPageBody({
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
               {t`New transform`}
             </DataStudioBreadcrumbs>

@@ -8,6 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -64,6 +65,21 @@
       (is (not (#'agent/should-continue? 0 max-iter no-term [{:type :usage}])))
       (is (not (#'agent/should-continue? 0 max-iter no-term []))))))
 
+(deftest truncated-iteration-test
+  (let [truncated [{:type :tool-input :id "t1"}
+                   {:type :usage :finish-reason "length" :raw-finish-reason "max_tokens"}]
+        complete  [{:type :tool-input :id "t1"}
+                   {:type :usage :finish-reason "tool-calls" :raw-finish-reason "tool_use"}]]
+    (testing "a provider-truncated iteration does not continue, even with a tool call present"
+      (is (not (#'agent/should-continue? 0 20 #{} truncated)))
+      (is (#'agent/should-continue? 0 20 #{} complete)))
+    (testing "finish-reason reports :length ahead of everything else"
+      (is (= :length (#'agent/finish-reason 0 20 #{} truncated)))
+      (is (= :length (#'agent/finish-reason 20 20 #{} truncated))
+          ":length wins over :max-iterations — it is the more specific cause"))
+    (testing "a usage part without a finish reason (older adapters) is not truncation"
+      (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
+
 (deftest terminal-tool-call-test
   (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
         success  [{:type :tool-input :id "a" :function "edit_sql_query"}
@@ -91,7 +107,8 @@
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs agent loop with mocked LLM returning text"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -142,6 +159,31 @@
               (is (some #(= :data (:type %)) result))
               ;; Should have tool-related parts
               (is (some #(= :tool-input (:type %)) result))))))
+      (testing "a provider-truncated turn stops the loop WITHOUT an error part (truncation is not an error;
+                the partial turn must stay replayable so the user can continue from it)"
+        (let [call-count (atom 0)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (swap! call-count inc)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "search"
+                                                                 :arguments {:query "test"}}
+                                                                {:type :usage :model "m"
+                                                                 :usage {:promptTokens 1 :completionTokens 64 :totalTokens 65}
+                                                                 :finish-reason "length" :raw-finish-reason "max_tokens"}]))]
+            (let [result (into [] (agent/run-agent-loop
+                                   {:messages   [{:role :user :content "Hi"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}}))]
+              (is (= 1 @call-count)
+                  "does not iterate on a truncated turn despite the tool call")
+              (is (not-any? #(= :error (:type %)) result)
+                  "no error part — the client learns of the truncation via finishReason \"length\"")
+              (is (some #(and (= :usage (:type %)) (= "length" (:finish-reason %))) result))
+              (is (some #(= :data (:type %)) result)
+                  "state data part still closes the turn")))))
       (testing "handles errors gracefully"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
@@ -182,7 +224,8 @@
 
 (deftest integration-run-agent-loop-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs full agent loop without external calls"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -283,7 +326,8 @@
 
 (deftest integration-search-query-chart-flow-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
         ;; User asks: "Show me the first 10 orders"
         ;; - Iteration 1: LLM calls search tool to find orders table
@@ -394,7 +438,8 @@
     ;; real. `capture-reducible` binds the capture unconditionally (ignores MB_AI_EVAL_CAPTURE), and
     ;; we redef `emit!` to a no-op so the test never writes a per-session JSONL file.
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
         (let [llm-call-count (atom 0)
               llm-responses  [;; Iteration 1: call the search tool (produces a real tool span)
                               [{:type :start :id "msg-1"}
@@ -459,7 +504,8 @@
 
 (deftest cumulative-usage-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "usage parts are cumulative across agent loop iterations"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -533,7 +579,8 @@
 
 (deftest run-agent-loop-retries-on-rate-limit-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "agent loop retries when LLM returns 429 and then succeeds"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
@@ -559,7 +606,8 @@
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
       (testing "records agent-requests, agent-iterations, and llm-requests metrics"
         (let [call-count (atom 0)]
@@ -622,7 +670,8 @@
 ;;; ===================== Snowplow Analytics Tests =====================
 
 (deftest agent-used-tool-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/ai_service_event 'agent_used_tool' per tool call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
@@ -705,7 +754,8 @@
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/token_usage event per LLM call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
@@ -814,16 +864,20 @@
       (testing "sql profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "nlq profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
-        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes})))
+        (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
       (testing "transforms_codegen profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
-        (is (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))
+        (is (nil? (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))
+      (testing "explorations profile (gated on NLQ permission)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
+        (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))

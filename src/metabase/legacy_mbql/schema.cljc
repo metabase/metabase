@@ -274,7 +274,7 @@
 ;;
 ;; :value clauses are also used to wrap top-level literal values in expression clauses.
 (defclause value
-  value    :any
+  value    [:ref ::lib.schema.literal/value.value]
   type-info [:maybe ::ValueTypeInfo])
 
 (defmethod options-style-method :value [_tag] ::options-style.last-always.snake_case)
@@ -362,7 +362,10 @@
     ::raw-int         [:field x nil]
     :field-id         (let [[_tag id] x]
                         ;; sometimes the old FE code was dumb and passed in `:field-literal` wrapped inside` `:field-id`
-                        (if (sequential? id)
+                        (if (and (sequential? id)
+                                 (contains? #{"field-literal" "field" "field-id" "datetime-field" "binning-strategy"
+                                              :field-literal :field :field-id :datetime-field :binning-strategy}
+                                            (first id)))
                           (normalize-field id)
                           [:field id nil]))
     :field-literal    (let [[_tag field-name base-type] x]
@@ -1545,7 +1548,7 @@
   [:map
    [:field-id ::lib.schema.id/field]
    [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
-   [:value    :any]])
+   [:value    [:ref ::lib.schema.parameter/parameter.value]]])
 
 ;; Example:
 ;;
@@ -1571,7 +1574,7 @@
    ::TemplateTag.Common
    [:map
     ;; default value for this parameter
-    [:default  {:optional true} :any]
+    [:default  {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
 
@@ -1754,9 +1757,9 @@
   "Schema for a valid value for a `:source-query`."
   [:and
    ;; normalize the keys in the map first so we can check for the presence of `:native` versus `:mbql` in the `:multi`
-   ;; schema below
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}]
+   ;; schema below. Carried on the `:and` rather than on a keyless `[:map ...]` sibling, which would declare no keys
+   ;; and so strip the whole query while decoding.
+   {:decode/normalize lib.schema.common/normalize-map}
    [:multi
     {:dispatch (fn [x]
                  (if ((every-pred map? :native) x)
@@ -1851,17 +1854,35 @@
      [:base_type          {:default :type/*} ::lib.schema.common/base-type]
      [:display_name       :string]
      [:name               :string]
+     [:active             {:optional true} :boolean]
      [:description        {:optional true} [:maybe :string]]
      [:binning_info       {:optional true} [:maybe [:ref ::legacy-column-metadata.binning-info]]]
+     [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+     [:database_type      {:optional true} [:maybe :string]]
      [:effective_type     {:optional true} ::lib.schema.common/base-type]
      [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
      [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; implicit-join provenance -- the FE renders "Orders → Category" from these, and drill-thru needs them to
+     ;; rebuild the `:source-field` option
+     [:fk_field_id        {:optional true} [:maybe ::lib.schema.id/field]]
+     [:fk_field_name      {:optional true} [:maybe :string]]
+     [:fk_join_alias      {:optional true} [:maybe [:ref ::lib.schema.join/alias]]]
+     [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
      ;; Fingerprint is required in order to use BINNING
      [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+     [:has_field_values   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.has-field-values]]]
      [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+     [:inherited_temporal_unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+     [:nfc_path           {:optional true} [:maybe [:sequential :string]]]
+     [:position           {:optional true} [:maybe :int]]
+     [:remapped_from      {:optional true} [:maybe :string]]
+     [:remapped_to        {:optional true} [:maybe :string]]
+     [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:settings           {:optional true} [:maybe [:map {:closed false}]]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+     [:table_id           {:optional true} [:maybe [:ref ::SourceTable]]]
      [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
      [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
     [:ref ::legacy-column-metadata.qualified-keys]]
@@ -2086,9 +2107,10 @@
    ;;    {:aggregation "ROWS"} => {:aggregation nil}
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
+   ;; open: this only exists to run a second normalization pass, so it must not constrain (or strip) any keys
    [:schema
     {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
-    :map]
+    [:map {:closed false}]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -2197,8 +2219,9 @@
 
 (mr/def ::Query
   [:and
-   [:map
-    {:decode/normalize #'normalize-query}]
+   ;; carried here rather than on a keyless `[:map ...]` sibling, which would declare no keys and so strip the whole
+   ;; query while decoding
+   {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
    [:map

@@ -1,11 +1,10 @@
 import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
-import { getSetting } from "metabase/settings";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export interface RouterProps {
@@ -60,10 +59,6 @@ export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   (user) => user?.custom_homepage?.dashboard_id || null,
 );
-
-export const getHasDismissedCustomHomePageToast = (state: State) => {
-  return getSetting(state, "dismissed-custom-dashboard-toast");
-};
 
 export const getIsErrorDiagnosticModalOpen = (state: State) =>
   state.app.isErrorDiagnosticsOpen;
