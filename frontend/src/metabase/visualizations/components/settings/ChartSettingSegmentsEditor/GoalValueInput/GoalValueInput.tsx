@@ -319,9 +319,9 @@ export const GoalValueInput = ({
               {selfColumns.map((column) => (
                 <GoalColumnMenuItem
                   key={column.name}
-                  isSelected={value === column.name}
                   label={column.label}
                   resolvedValue={resolveGoalValue(data, column.name).value}
+                  selected={value === column.name}
                   onClick={() => commitValue(column.name)}
                 />
               ))}
@@ -349,9 +349,9 @@ export const GoalValueInput = ({
                 entityInfo.columns.map((column) => (
                   <GoalColumnMenuItem
                     key={column.name}
-                    isSelected={foreignRef?.column === column.name}
                     label={column.label}
                     resolvedValue={resolveEntityColumnValue(column.name)}
+                    selected={foreignRef?.column === column.name}
                     onClick={() => selectEntityColumn(column.name)}
                   />
                 ))
