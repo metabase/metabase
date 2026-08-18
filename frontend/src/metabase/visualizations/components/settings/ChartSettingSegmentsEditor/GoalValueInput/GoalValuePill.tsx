@@ -14,7 +14,7 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ResolvedGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 
-import S from "./GoalValueInput.module.css";
+import S from "./GoalValuePill.module.css";
 import { ICON_BUTTON_SIZE } from "./constants";
 
 type Props = {
@@ -34,6 +34,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
       isMenuOpen,
       resolved,
       tooltip,
+      onKeyDown,
       onOpenMenu,
       onRemove,
     },
@@ -45,7 +46,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         aria-label={ariaLabel}
         bdrs="sm"
         bg="background_page-primary"
-        className={S.refShell}
+        className={S.root}
         gap="sm"
         h={40}
         px="sm"
@@ -53,6 +54,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         role="group"
         tabIndex={0}
         wrap="nowrap"
+        onKeyDown={onKeyDown}
       >
         <Tooltip disabled={tooltip == null} label={tooltip}>
           {/* min-width lets the value ellipsize instead of pushing the remove button out of the shell */}

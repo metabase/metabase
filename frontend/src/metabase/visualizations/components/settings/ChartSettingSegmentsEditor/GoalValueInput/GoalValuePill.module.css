@@ -1,0 +1,32 @@
+.root {
+  border: 1px solid var(--mb-color-border);
+  cursor: default;
+
+  &:focus-within,
+  &:focus {
+    border-color: var(--mb-color-brand);
+    outline: none;
+  }
+}
+
+.root:hover .trigger,
+.root:focus-within .trigger,
+.trigger[data-open="true"] {
+  visibility: visible;
+}
+
+.trigger {
+  visibility: hidden;
+}
+
+.pill {
+  align-items: center;
+  background-color: var(--mb-color-background-primary);
+  box-shadow: var(--mantine-shadow-xs);
+  cursor: pointer;
+  gap: 6px;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
