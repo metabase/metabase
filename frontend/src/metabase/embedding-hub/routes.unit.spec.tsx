@@ -1,12 +1,14 @@
+import { lazyLoaders } from "__support__/lazy-routes";
 import { type RouteObject, toRouteObjects } from "metabase/router";
 
 import { getEmbeddingHubRoutes } from "./routes";
 
 /**
- * Every page here is imported directly, so TypeScript already catches a bad
- * component reference. What it cannot catch is a path string, and no e2e test
- * visits `sso-setup`. Reading the tree as data keeps those honest without
- * rendering the pages, the layout or the guard.
+ * Reading the tree as data keeps the paths honest without rendering the pages,
+ * the layout or the guard. No e2e test visits `sso-setup`.
+ *
+ * Each page is named in an `import()` rather than imported, so resolving every
+ * loader is what catches a typo that would otherwise first show as a blank page.
  */
 describe("embedding hub routes", () => {
   it("routes every page it owns", () => {
@@ -18,6 +20,16 @@ describe("embedding hub routes", () => {
       "embedding/get-started/permissions-setup",
       "embedding/get-started/sso-setup",
     ]);
+  });
+
+  it("resolves every page", async () => {
+    const loaders = lazyLoaders(getEmbeddingHubRoutes());
+
+    expect(loaders).toHaveLength(4);
+
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
   });
 });
 
