@@ -1,6 +1,7 @@
 import type {
   DataAppMetadata,
   DraftDataAppMetadata,
+  MetabaseAction,
   MetabaseCard,
 } from "./types";
 
@@ -12,6 +13,24 @@ export class MetabaseApiError extends Error {
     super(message);
   }
 }
+
+/**
+ * Resolves to `null` on a confirmed 404, so a caller can treat "gone" as
+ * recoverable. Any other failure still throws: only a 404 proves the entity is
+ * absent rather than unreachable.
+ */
+export const orNullOn404 = async <T>(
+  request: Promise<T>,
+): Promise<T | null> => {
+  try {
+    return await request;
+  } catch (error) {
+    if (error instanceof MetabaseApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
 
 export class MetabaseClient {
   constructor(
@@ -59,7 +78,7 @@ export class MetabaseClient {
 
   reconcilePermissions(slug: string, databaseIds: number[]) {
     return this.request<DataAppMetadata>(
-      `apps/${encodeURIComponent(slug)}/query-sync/permissions`,
+      `apps/${encodeURIComponent(slug)}/resources/permissions`,
       {
         method: "PUT",
         body: JSON.stringify({ database_ids: databaseIds }),
@@ -118,7 +137,69 @@ export class MetabaseClient {
     });
   }
 
+  moveCardToCollection(id: number, collectionId: number) {
+    return this.request<MetabaseCard>(`card/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+  }
+
   deleteCard(id: number) {
     return this.request<void>(`card/${id}`, { method: "DELETE" });
   }
+
+  createModel(input: ModelInput) {
+    return this.request<MetabaseCard>("card", {
+      method: "POST",
+      body: JSON.stringify(modelBody(input)),
+    });
+  }
+
+  updateModel(id: number, input: ModelInput) {
+    return this.request<MetabaseCard>(`card/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(modelBody(input)),
+    });
+  }
+
+  getAction(id: number) {
+    return this.request<MetabaseAction>(`action/${id}`);
+  }
+
+  createAction(body: Record<string, unknown>) {
+    return this.request<MetabaseAction>("action", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  updateAction(id: number, body: Record<string, unknown>) {
+    return this.request<MetabaseAction>(`action/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  }
+
+  deleteAction(id: number) {
+    return this.request<void>(`action/${id}`, { method: "DELETE" });
+  }
 }
+
+interface ModelInput {
+  name: string;
+  collectionId: number;
+  datasetQuery: Record<string, unknown>;
+  display: string;
+  visualizationSettings: Record<string, unknown>;
+  description: string | null;
+}
+
+const modelBody = (input: ModelInput) => ({
+  name: input.name,
+  type: "model",
+  dataset_query: input.datasetQuery,
+  display: input.display,
+  visualization_settings: input.visualizationSettings,
+  description: input.description,
+  collection_id: input.collectionId,
+});

@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { getStore } from "__support__/entities-store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { Api } from "metabase/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import { executeAction } from "./execute-action";
 
@@ -29,6 +30,64 @@ describe("executeAction", () => {
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = false;
+  });
+
+  describe("a synchronized action definition", () => {
+    const AUTHORED_ID = 51;
+    const COPIED_ID = 91;
+    const definition = {
+      action: { id: AUTHORED_ID },
+      copiedActionId: COPIED_ID,
+    };
+
+    const expectExecuted = async (
+      id: number,
+      actionId: Parameters<ReturnType<typeof executeAction>>[0]["actionId"],
+    ) => {
+      fetchMock.post(`path:/api/action/${id}/execute`, {
+        status: 200,
+        body: { "rows-affected": 1 },
+      });
+
+      await executeAction(setup())({ actionId });
+
+      expect(
+        fetchMock.callHistory.calls(`path:/api/action/${id}/execute`),
+      ).toHaveLength(1);
+    };
+
+    it("runs the copy in a production build", async () => {
+      await expectExecuted(COPIED_ID, definition);
+    });
+
+    it("runs the authored action in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+      await expectExecuted(AUTHORED_ID, definition);
+    });
+
+    it("refuses an unsynchronized definition in a production build", async () => {
+      await expect(
+        executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
+      ).rejects.toThrow("has not been synchronized");
+    });
+
+    it("refuses a raw id inside a data app", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
+    });
+
+    it("runs a raw id in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+      await expectExecuted(AUTHORED_ID, AUTHORED_ID);
+    });
   });
 
   it("POSTs to /api/action/:id/execute with the given parameters", async () => {

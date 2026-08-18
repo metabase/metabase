@@ -317,6 +317,7 @@ function QueryComparison({
   cardQuery,
   dynamic,
   totalTestId,
+  totalValue,
 }: {
   testId: string;
   tableQuery: MetabaseQueryOptions<undefined>;
@@ -432,7 +433,13 @@ function PublishedSource() {
 
 function Actions() {
   const { actionId, actionParams } = getTestEnv();
-  const action = useAction(actionId ?? null);
+  // A data app names its actions by definition. Nothing synchronizes here, so
+  // the copy the definition points at is the authored action itself.
+  const action = useAction(
+    actionId
+      ? { action: { id: actionId, parameters: [] }, copiedActionId: actionId }
+      : null,
+  );
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {

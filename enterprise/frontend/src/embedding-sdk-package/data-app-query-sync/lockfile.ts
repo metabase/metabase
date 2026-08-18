@@ -1,61 +1,153 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { QueryLockEntry } from "./types";
+import { isPositiveInteger, isRecord } from "./guards";
+import type {
+  ActionLockEntry,
+  ModelLockEntry,
+  QueryLockEntry,
+  ResourceLockfile,
+} from "./types";
 
-export const QUERY_LOCKFILE = "queries_metadata.json";
+export const RESOURCE_LOCKFILE = "resources_metadata.json";
 
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
+const HASH_PATTERN = /^v1:sha256:[0-9a-f]{64}$/;
+
+function isHash(value: unknown): value is string {
+  return typeof value === "string" && HASH_PATTERN.test(value);
 }
 
 function isQueryLockEntry(value: unknown): value is QueryLockEntry {
   return (
-    !!value &&
-    typeof value === "object" &&
-    "tableId" in value &&
+    isRecord(value) &&
     isPositiveInteger(value.tableId) &&
-    "savedQuestionSourceId" in value &&
     isPositiveInteger(value.savedQuestionSourceId) &&
-    "hash" in value &&
-    typeof value.hash === "string" &&
-    /^v1:sha256:[0-9a-f]{64}$/.test(value.hash)
+    isHash(value.hash)
   );
 }
 
-export function readQueryLockfile(appRoot: string): QueryLockEntry[] {
-  const lockfilePath = path.join(appRoot, QUERY_LOCKFILE);
-  if (!fs.existsSync(lockfilePath)) {
+function isActionLockEntry(value: unknown): value is ActionLockEntry {
+  return (
+    isRecord(value) &&
+    isPositiveInteger(value.sourceActionId) &&
+    isPositiveInteger(value.copiedActionId) &&
+    isHash(value.hash)
+  );
+}
+
+function isModelLockEntry(value: unknown): value is ModelLockEntry {
+  return (
+    isRecord(value) &&
+    isPositiveInteger(value.sourceModelId) &&
+    isPositiveInteger(value.copiedModelId) &&
+    isHash(value.hash) &&
+    Array.isArray(value.actions) &&
+    value.actions.every(isActionLockEntry)
+  );
+}
+
+function assertUnique(ids: number[], subject: string) {
+  if (new Set(ids).size !== ids.length) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains a duplicate ${subject}.`);
+  }
+}
+
+function parseQueries(value: unknown): QueryLockEntry[] {
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => !isQueryLockEntry(entry))
+  ) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid entry.`);
+  }
+
+  const queries: QueryLockEntry[] = value;
+
+  assertUnique(
+    queries.map((entry) => entry.savedQuestionSourceId),
+    "saved question ID",
+  );
+
+  return queries;
+}
+
+function parseModels(value: unknown): ModelLockEntry[] {
+  if (value === undefined) {
     return [];
+  }
+
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => !isModelLockEntry(entry))
+  ) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid model entry.`);
+  }
+
+  const models: ModelLockEntry[] = value;
+
+  assertUnique(
+    models.map((entry) => entry.sourceModelId),
+    "source model ID",
+  );
+  assertUnique(
+    models.map((entry) => entry.copiedModelId),
+    "copied model ID",
+  );
+  assertUnique(
+    models.flatMap((entry) =>
+      entry.actions.map(({ sourceActionId }) => sourceActionId),
+    ),
+    "source action ID",
+  );
+  assertUnique(
+    models.flatMap((entry) =>
+      entry.actions.map(({ copiedActionId }) => copiedActionId),
+    ),
+    "copied action ID",
+  );
+
+  return models;
+}
+
+export function readResourceLockfile(appRoot: string): ResourceLockfile {
+  const lockfilePath = path.join(appRoot, RESOURCE_LOCKFILE);
+
+  if (!fs.existsSync(lockfilePath)) {
+    return { queries: [], models: [] };
   }
 
   let value: unknown;
   try {
     value = JSON.parse(fs.readFileSync(lockfilePath, "utf8"));
   } catch (error) {
-    throw new Error(`Could not read ${QUERY_LOCKFILE}: ${String(error)}`);
+    throw new Error(`Could not read ${RESOURCE_LOCKFILE}: ${String(error)}`);
+  }
+
+  if (!isRecord(value)) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid entry.`);
   }
 
   if (
-    !Array.isArray(value) ||
-    value.some((entry) => !isQueryLockEntry(entry))
+    value.collectionId !== undefined &&
+    !isPositiveInteger(value.collectionId)
   ) {
-    throw new Error(`${QUERY_LOCKFILE} contains an invalid entry.`);
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid collection ID.`);
   }
 
-  const ids = value.map((entry) => entry.savedQuestionSourceId);
-  if (new Set(ids).size !== ids.length) {
-    throw new Error(
-      `${QUERY_LOCKFILE} contains a duplicate saved question ID.`,
-    );
-  }
-
-  return value;
+  return {
+    ...(value.collectionId === undefined
+      ? undefined
+      : { collectionId: value.collectionId }),
+    queries: parseQueries(value.queries ?? []),
+    models: parseModels(value.models),
+  };
 }
 
-export function writeQueryLockfile(appRoot: string, entries: QueryLockEntry[]) {
+export function writeResourceLockfile(
+  appRoot: string,
+  lockfile: ResourceLockfile,
+) {
   fs.writeFileSync(
-    path.join(appRoot, QUERY_LOCKFILE),
-    `${JSON.stringify(entries, null, 2)}\n`,
+    path.join(appRoot, RESOURCE_LOCKFILE),
+    `${JSON.stringify(lockfile, null, 2)}\n`,
   );
 }

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { isRecord } from "./guards";
+
 /** Serializes a query with stable object-key ordering. */
 export const canonicalJson = (value: unknown): string =>
   JSON.stringify(canonicalize(value));
@@ -31,6 +33,19 @@ export function getQueryFingerprint(query: Record<string, unknown>) {
     .digest("hex");
 
   return { tableId, hash: `v1:sha256:${hash}` };
+}
+
+/**
+ * Returns the stable hash of a payload copied into a data app collection.
+ * Generated Lib UUIDs are normalized so a re-read of the same source does not
+ * read as drift.
+ */
+export function getPayloadFingerprint(value: unknown): string {
+  const hash = createHash("sha256")
+    .update(getCanonicalQueryJson(value))
+    .digest("hex");
+
+  return `v1:sha256:${hash}`;
 }
 
 /** Serializes a resolved query while removing generated Lib UUIDs. */
@@ -115,7 +130,3 @@ function canonicalize(value: unknown, seen = new Set<object>()): unknown {
 
   return result;
 }
-
-/** Checks whether a value is a non-array object. */
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);

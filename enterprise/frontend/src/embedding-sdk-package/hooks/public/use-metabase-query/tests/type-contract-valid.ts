@@ -16,7 +16,8 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { defineQuery } from "../../../../data-app";
+import { useAction } from "../../use-action";
+import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
@@ -29,6 +30,19 @@ const revenueQuery = defineQuery({
 
 const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
 const _queryLimit: 10 = revenueQuery.limit;
+
+const CreateOrder = defineAction({
+  copiedActionId: 91,
+  action: TEST_SCHEMA.models.orders.actions.create,
+});
+
+const _copiedActionId: 91 = CreateOrder.copiedActionId;
+const _sourceActionId: 51 = CreateOrder.action.id;
+
+// A definition is authored without a generated ID; synchronization writes one.
+const UpdateOrder = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.update,
+});
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -55,6 +69,30 @@ const _validHookResultCard = {
 } satisfies MetabaseCard;
 
 function ValidTypeFixtures() {
+  // A definition types `execute` and `result` on its own, no generics written.
+  const createOrder = useAction(CreateOrder);
+
+  void createOrder.execute({ status: "shipped" });
+
+  const createdRow: RowValue | undefined =
+    createOrder.result?.["created-row"].ID;
+
+  void createdRow;
+
+  const updateOrder = useAction(UpdateOrder);
+
+  void updateOrder.execute({ id: 1 });
+
+  const updatedRows: readonly RowValue[] | undefined =
+    updateOrder.result?.["rows-updated"];
+
+  void updatedRows;
+
+  // A raw id types nothing, so the generics still stand in for a definition.
+  const rawAction = useAction<{ status: string }, "create">(51);
+
+  void rawAction.execute({ status: "shipped" });
+
   const selectedFieldsResult = useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     fields: [TEST_SCHEMA.tables.orders.fields.id],

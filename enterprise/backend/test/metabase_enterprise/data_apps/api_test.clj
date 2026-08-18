@@ -6,6 +6,9 @@
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -115,7 +118,7 @@
 
 (deftest superuser-can-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
       (let [response (mt/user-http-request
                       :crowberto :post 200 "apps/demo/query"
@@ -136,11 +139,11 @@
                      :model/Database {second-database-id :id} {}]
         (create-app!)
         (let [{group-id :permission_group_id}
-              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+              (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                     {:database_ids [first-database-id]})]
           (is (= :unrestricted (view-data-permission group-id first-database-id)))
           (is (= :blocked (view-data-permission group-id second-database-id)))
-          (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+          (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                 {:database_ids [second-database-id]})
           (is (= :blocked (view-data-permission group-id first-database-id)))
           (is (= :unrestricted (view-data-permission group-id second-database-id))))))))
@@ -152,7 +155,7 @@
                      :model/Database {second-database-id :id} {}]
         (create-app!)
         (let [{group-id :permission_group_id}
-              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+              (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                     {:database_ids [first-database-id]})
               original-set-database-permission! perms/set-database-permission!
               view-data-calls                  (atom 0)]
@@ -163,7 +166,7 @@
                                        (= 2 (swap! view-data-calls inc)))
                               (throw (ex-info "permission update failed" {})))
                             (apply original-set-database-permission! args)))]
-            (mt/user-http-request :crowberto :put 500 "apps/demo/query-sync/permissions"
+            (mt/user-http-request :crowberto :put 500 "apps/demo/resources/permissions"
                                   {:database_ids [second-database-id]}))
           (is (= :unrestricted (view-data-permission group-id first-database-id)))
           (is (= :blocked (view-data-permission group-id second-database-id))))))))
@@ -185,7 +188,7 @@
 
 (deftest non-superuser-cannot-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "apps/demo/query"
@@ -211,7 +214,7 @@
 
 (deftest non-superuser-cannot-create-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "apps/draft-app/draft")))
       (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
@@ -222,6 +225,44 @@
       (is (= "Data app draft slugs must use lowercase letters, numbers, and dashes."
              (mt/user-http-request :crowberto :post 400 "apps/Draft/draft")))
       (is (not (t2/exists? :model/DataApp :name "Draft"))))))
+
+(deftest data-app-group-reaches-only-copied-actions-test
+  (testing "an action is reachable exactly when its model lives in the data app collection"
+    (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          ;; Its own slug: the `Data App: <slug>` group outlives other tests in
+          ;; this namespace, so sharing "demo" collides on the group name.
+          (let [{:keys [permission_group_id resource_collection_id]}
+                (data-app.sync/ensure-draft! "action-perms-app")
+                metadata-provider (mt/metadata-provider)
+                venues            (lib.metadata/table metadata-provider (mt/id :venues))]
+            (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
+            (mt/with-temp
+              [:model/Collection {source-collection-id :id} {}
+               :model/Card       {source-model-id :id}      {:type          :model
+                                                             :collection_id source-collection-id
+                                                             :dataset_query (lib/query metadata-provider venues)}
+               ;; What `npm run sync-resources` produces: a copy of the model in the
+               ;; app's own collection, carrying its own copy of the action.
+               :model/Card       {copied-model-id :id}      {:type          :model
+                                                             :collection_id resource_collection_id
+                                                             :dataset_query (lib/query metadata-provider venues)}]
+              (let [action     {:name "Create Venue", :type :implicit, :kind :row/create}
+                    source-id  (actions/insert! (assoc action :model_id source-model-id))
+                    copied-id  (actions/insert! (assoc action :model_id copied-model-id))]
+                (testing "the app's group reads the action copied into its collection"
+                  (is (=? {:id copied-id}
+                          (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
+                (testing "the same group cannot read the source action it was copied from"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "action/" source-id)))))
+                (testing "copying does not widen access to the source model"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "card/" source-model-id)))))
+                (testing "a superuser still reads both"
+                  (is (=? {:id source-id}
+                          (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))))
 
 (deftest list-available-apps-test
   (mt/with-premium-features #{:data-apps-preview}
