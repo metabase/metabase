@@ -138,12 +138,7 @@ describe("scenarios > data apps > repo sync", () => {
   describe("when the manifest repoints the app at another collection", () => {
     const APP_SLUG = "good";
 
-    /**
-     * Materializes `good` with one synchronized query, then repoints it at a
-     * fresh collection through `data_app.yaml` — the only way an app's
-     * collection changes, and it demands an empty target, so the copy is always
-     * left behind in the collection it was synchronized into.
-     */
+    /** A repoint demands an empty target, so the copy is always left behind. */
     const repointToNewCollection = () => {
       H.copySyncedCollectionFixture();
       H.copySyncedDataAppsFixture();
@@ -216,8 +211,7 @@ describe("scenarios > data apps > repo sync", () => {
             cy.request("PUT", `/api/card/${copy.id}`, {
               collection_id: elsewhere.id,
             });
-            // Dropping the declaration asks synchronization to delete the copy,
-            // which it refuses while the copy sits outside the app collection.
+            // Dropping the declaration asks for the copy to be deleted.
             cy.exec(
               `rm -f "${H.LOCAL_GIT_PATH}/data_apps/${APP_SLUG}/queries/orders.query.ts"`,
             );

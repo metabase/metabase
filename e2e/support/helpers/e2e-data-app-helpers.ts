@@ -25,6 +25,8 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   display_name: DATA_APP_DISPLAY_NAME,
   bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
   enabled: true,
+  resource_collection_id: null,
+  permission_group_id: null,
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
   last_synced_sha: "e2e0000",
@@ -255,7 +257,6 @@ export function syncDataAppResources(apiKey: string, appRoot: string) {
   });
 }
 
-/** Apps in `example_synced_data_apps` that the repo can materialize. */
 const SYNCED_DATA_APP_SLUGS = ["good", "broken-bundle"];
 
 export const copySyncedDataAppsFixture = () =>
@@ -264,12 +265,7 @@ export const copySyncedDataAppsFixture = () =>
     destination: LOCAL_GIT_PATH,
   });
 
-/**
- * Gives a fixture app inside the test repo a resolvable `defineQuery`, so
- * `sync-resources` can discover a declaration there. The repo is not an npm
- * project, and only the host apps install the real package — resolution is what
- * those specs cover, not this one.
- */
+/** The test repo is not an npm project, so `defineQuery` needs a stub to resolve. */
 export function declareSyncedDataAppQuery(slug: string, tableId: number) {
   const appRoot = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
   const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
@@ -293,11 +289,7 @@ export function declareSyncedDataAppQuery(slug: string, tableId: number) {
   );
 }
 
-/**
- * Provisions each synced fixture app the way an author does: `sync-resources`
- * creates the app's collection and group, then writes their entity IDs into its
- * `data_app.yaml`, which is what the repo sync resolves the resources from.
- */
+/** Provisions each fixture app the way an author does, so its manifest carries the entity IDs the repo sync resolves. */
 export const provisionSyncedDataAppResources = () =>
   createDataAppApiKey().then((apiKey) =>
     cy.wrap<string[]>(SYNCED_DATA_APP_SLUGS).each((slug: string) =>

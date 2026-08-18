@@ -110,12 +110,10 @@ export async function checkResourcesSynced(appRoot: string) {
 }
 
 /**
- * Repointing `resource_collection_entity_id` in `data_app.yaml` moves the app to
- * another collection, and that collection must be empty to claim, so the copies
- * are left behind in the old one. They have to follow: read access to the app's
- * current collection is what lets its viewers run them at all. Only a copy still
- * sitting where synchronization last put it is the app's to move; anything else
- * was displaced by hand, which the reconcilers still refuse.
+ * A manifest repoint claims an empty collection, leaving the copies in the old
+ * one, and they have to follow: read access to the app's current collection is
+ * what lets its viewers run them. Only a copy still sitting where synchronization
+ * put it is the app's to move; anything else was displaced by hand.
  */
 async function moveCopiesToAppCollection(
   appRoot: string,
