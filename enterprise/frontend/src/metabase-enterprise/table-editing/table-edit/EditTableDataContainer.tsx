@@ -9,9 +9,9 @@ import {
 } from "metabase/common/components/BulkActionBar";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useLocation, useParams } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 

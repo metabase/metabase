@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   create-test-plan:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     name: Create test plan
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -71,7 +71,7 @@ jobs:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && (github.event.pull_request.head.repo.full_name == 'metabase/metabase' || (github.event_name == 'push' && github.repository == 'metabase/metabase')) }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +121,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -237,11 +237,13 @@ jobs:
 
   bundle-size:
     needs: [uberjar, create-test-plan]
-    if: always() && !cancelled()
+    if: |
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.uberjar.result == 'success' &&
+      needs.create-test-plan.outputs.frontend_sources == 'true'
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
-    with:
-      skip: ${{ github.event_name != 'pull_request' || needs.uberjar.result != 'success' || needs.create-test-plan.outputs.frontend_sources != 'true' }}
 
   pr-env:
     needs: [uberjar]

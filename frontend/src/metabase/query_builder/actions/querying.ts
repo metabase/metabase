@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { isAbortError } from "metabase/api/client";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
@@ -16,6 +17,7 @@ import {
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
+import { visualizations } from "metabase/visualizations";
 import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -210,6 +212,34 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
       (!originalQuestion || question.isDirtyComparedTo(originalQuestion));
 
     if (isDirty) {
+      // A `custom:*` display counts as sensible only once its plugin is in
+      // the visualizations registry, so register it before deciding whether
+      // to reset the display (metabase#76065).
+      const display = question.display();
+      let skipDisplayReset = false;
+      if (
+        PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display) &&
+        !visualizations.has(display)
+      ) {
+        const runController = getState().qb.cancelQueryController;
+        const { status } =
+          await PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(
+            dispatch,
+            display,
+          );
+
+        // Drop this completion if the run was superseded or cancelled
+        if (getState().qb.cancelQueryController !== runController) {
+          return;
+        }
+        if (runController?.signal.aborted) {
+          dispatch({ type: CANCEL_QUERY });
+          return;
+        }
+
+        skipDisplayReset = status === "error";
+      }
+
       const series = [{ card: question.card(), data, error }];
       const previousSeries =
         prevCard && prevData
@@ -226,11 +256,13 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
         );
       }
 
-      question = question.maybeResetDisplay(
-        data,
-        getSensibleDisplays(series),
-        previousSeries ? getSensibleDisplays(previousSeries) : undefined,
-      );
+      if (!skipDisplayReset) {
+        question = question.maybeResetDisplay(
+          data,
+          getSensibleDisplays(series),
+          previousSeries ? getSensibleDisplays(previousSeries) : undefined,
+        );
+      }
     }
 
     const card = question.card();

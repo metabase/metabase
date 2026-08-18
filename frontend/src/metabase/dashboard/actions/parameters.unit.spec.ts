@@ -253,7 +253,6 @@ describe("setParameterMapping", () => {
           },
         }),
         entities: {
-          collections: {},
           dashboards: {},
           databases: {},
           schemas: {},
@@ -369,7 +368,6 @@ describe("setParameterMapping", () => {
           },
         }),
         entities: {
-          collections: {},
           dashboards: {},
           databases: {},
           schemas: {},

@@ -29,6 +29,7 @@ import {
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
 import { setHighlightedComment } from "metabase/explorations/explorations.slice";
 import {
@@ -36,7 +37,6 @@ import {
   useExplorationCommentUrl,
 } from "metabase/explorations/hooks/useExplorationCommentUrl";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import {
   ActionIcon,
   Avatar,

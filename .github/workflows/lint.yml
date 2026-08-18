@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   files-changed:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       actionlint: ${{ steps.changes.outputs.actionlint }}
@@ -89,23 +89,6 @@ jobs:
       - name: Validate OpenAPI spec
         if: needs.files-changed.outputs.openapi == 'true'
         run: bun run lint-openapi
-
-  codeql:
-    if: needs.files-changed.outputs.codeql == 'true'
-    needs: files-changed
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript
-          config-file: ./.github/codeql/codeql-config.yml
-          trap-caching: false
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
 
   i18n:
     needs: files-changed

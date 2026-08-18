@@ -31,7 +31,7 @@
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
   the agent prompt."
-  [:map
+  [:map {:closed false}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])

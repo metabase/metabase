@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAsyncFn } from "react-use";
 
 import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { isQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
 import type { QuestionSchema, TableSchema } from "../data-schema";
