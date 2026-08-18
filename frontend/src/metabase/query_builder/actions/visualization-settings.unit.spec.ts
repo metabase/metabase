@@ -108,8 +108,6 @@ describe("onReplaceAllVisualizationSettings", () => {
     expectRun(true);
   });
 
-  // results are narrowed to the requested columns, so another column of the
-  // same entity still has to be fetched
   it("re-runs when a dynamic range is retargeted to another column of the same entity", async () => {
     await dispatchWith(
       DYNAMIC_SEGMENTS,
