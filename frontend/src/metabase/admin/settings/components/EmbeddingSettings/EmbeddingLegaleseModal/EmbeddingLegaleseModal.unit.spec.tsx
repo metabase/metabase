@@ -48,10 +48,9 @@ describe("EmbeddingSdkLegaleseModal", () => {
     async ({ setting, expectedSettingUpdate }) => {
       const { onClose } = setup(setting);
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Agree and continue" }),
-        { delay: null },
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Agree" }), {
+        delay: null,
+      });
 
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
@@ -67,7 +66,7 @@ describe("EmbeddingSdkLegaleseModal", () => {
 
   it("should not update settings when the user clicks Decline", async () => {
     const { onClose } = setup();
-    await userEvent.click(screen.getByText("Decline and go back"));
+    await userEvent.click(screen.getByText("Cancel"));
     expect(onClose).toHaveBeenCalled();
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(0);
