@@ -259,7 +259,7 @@
     default-llm-metabot-provider
     (get default-llm-metabot-model-by-provider provider)))
 
-(defn- validate-metabot-provider!
+(defn validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
   Dispatches to [[validate-metabase-managed-provider!]] when `value` uses the
   `metabase/` proxy prefix and to [[validate-direct-provider!]] otherwise.

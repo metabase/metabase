@@ -1357,6 +1357,12 @@
   [s]
   (when-not (str/blank? s) s))
 
+(defn trimmed-string
+  "Trim `value` and return it when non-empty; return nil for blank or non-string values."
+  [value]
+  (when (string? value)
+    (not-blank (str/trim value))))
+
 (defn safe-min
   "nil safe clojure.core/min"
   [& args]

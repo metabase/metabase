@@ -18,15 +18,10 @@
   Used to validate [[llm-bedrock-region]]."
   (into #{} (map str) (Region/regions)))
 
-(defn- trimmed-string
-  [value]
-  (when (string? value)
-    (not-empty (str/trim value))))
-
 (defn- set-trimmed-string!
   "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
   [setting-key new-value]
-  (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
+  (setting/set-value-of-type! :string setting-key (u/trimmed-string new-value)))
 
 (def ^:private loopback-hosts
   "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
@@ -53,7 +48,7 @@
 
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
-  (let [trimmed (trimmed-string new-value)]
+  (let [trimmed (u/trimmed-string new-value)]
     (when (and trimmed (not (str/starts-with? trimmed prefix)))
       (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
@@ -62,7 +57,7 @@
   "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
   The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
   [value]
-  (some-> (trimmed-string value)
+  (some-> (u/trimmed-string value)
           (str/replace #"/+$" "")
           not-empty))
 
@@ -271,7 +266,7 @@
 
 (defn- set-google-project-id!
   [new-value]
-  (let [project-id (trimmed-string new-value)]
+  (let [project-id (u/trimmed-string new-value)]
     (when (and project-id (not (valid-google-project-id? project-id)))
       (throw (ex-info (tru (str "{0} is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase "
                                 "letters, digits and hyphens — rather than the project name or number.")
@@ -288,7 +283,7 @@
 
 (defn- set-google-location!
   [new-value]
-  (let [location (trimmed-string new-value)]
+  (let [location (u/trimmed-string new-value)]
     (when (and location (not (valid-google-location? location)))
       (throw (ex-info (tru (str "{0} is not a valid Google Cloud location. Use a location ID like \"us-central1\", "
                                 "or leave it blank to use the global location.")
@@ -342,7 +337,7 @@
 
 (defn- set-bedrock-region!
   [new-value]
-  (let [region (trimmed-string new-value)]
+  (let [region (u/trimmed-string new-value)]
     (when (and region (not (contains? known-aws-regions region)))
       (throw (ex-info (tru "Invalid AWS region {0}." (pr-str region)) {:status-code 400})))
     (setting/set-value-of-type! :string :llm-bedrock-region region)))
