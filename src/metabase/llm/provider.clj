@@ -45,6 +45,7 @@
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
+    :mini-model    "claude-haiku-4-5-20251001"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -61,6 +62,7 @@
    {:type          "openai"
     :label         (deferred-tru "OpenAI")
     :default-model "gpt-5.4"
+    :mini-model    "gpt-5.4-mini"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -77,6 +79,7 @@
    {:type          "openrouter"
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
+    :mini-model    "anthropic/claude-haiku-4.5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -93,6 +96,7 @@
    {:type          "mistral"
     :label         (deferred-tru "Mistral")
     :default-model "mistral-medium-3-5"
+    :mini-model    "mistral-medium-3-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -109,6 +113,7 @@
    {:type          "zai"
     :label         (deferred-tru "Z.AI")
     :default-model "glm-5.2"
+    :mini-model    "glm-5.2"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -125,6 +130,7 @@
    {:type          "moonshot"
     :label         (deferred-tru "Moonshot AI")
     :default-model "kimi-k3"
+    :mini-model    "kimi-k3"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -238,6 +244,7 @@
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
+    :mini-model    "anthropic.claude-haiku-4-5"
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
                      :type        :password
@@ -328,6 +335,14 @@
   models are deployment names the admin chooses)."
   [type-name]
   (:default-model (provider-type type-name)))
+
+(defn mini-model
+  "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
+  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
+  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
+  provider, which serves one benchmarked model."
+  [type-name]
+  (:mini-model (provider-type type-name)))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
