@@ -16,7 +16,7 @@
   This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,
   super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet."
   [:and
-   [:map
+   [:map {:closed false}
     [:database {:optional true} [:or
                                  ::lib.schema.id/database
                                  ::lib.schema.id/saved-questions-virtual-database]]]

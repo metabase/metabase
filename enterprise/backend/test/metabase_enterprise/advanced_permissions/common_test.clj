@@ -4,12 +4,14 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.upload.impl :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
@@ -472,6 +474,59 @@
             (is (= expected-target
                    (:target (update-target))))))))))
 
+(deftest update-field-fk-target-needs-perms-on-the-target-test
+  (testing "PUT /api/field/:id cannot point a Field at a target the user has no data model perms for"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    off-limits-table {:db_id db-id, :schema "schema1"}
+                   :model/Table    editable-table   {:db_id db-id, :schema "schema2"}
+                   :model/Field    off-limits-field {:table_id (:id off-limits-table)}
+                   :model/Field    field            {:table_id      (:id editable-table)
+                                                     :semantic_type :type/FK}]
+      (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {"schema1" {(:id off-limits-table) :none}
+                                                                          "schema2" {(:id editable-table)   :all}}}}}
+        (testing "the write is refused"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (format "field/%d" (:id field))
+                                       {:fk_target_field_id (:id off-limits-field)}))))
+        (testing "and nothing is persisted"
+          (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id (:id field))))))
+      (testing "an admin can still set it"
+        (is (= (:id off-limits-field)
+               (:fk_target_field_id (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field))
+                                                          {:fk_target_field_id (:id off-limits-field)})))))
+      (testing "and leaving that existing target in place is not an escalation, so unrelated edits still work"
+        (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {"schema1" {(:id off-limits-table) :none}
+                                                                            "schema2" {(:id editable-table)   :all}}}}}
+          (is (= "Renamed"
+                 (:display_name (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field))
+                                                      {:display_name "Renamed"}))))
+          (is (= (:id off-limits-field)
+                 (t2/select-one-fn :fk_target_field_id :model/Field :id (:id field)))))))))
+
+(deftest field-dimension-needs-perms-on-the-human-readable-field-test
+  (testing "POST /api/field/:id/dimension cannot remap to a target the user has no data model perms for"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    off-limits-table {:db_id db-id, :schema "schema1"}
+                   :model/Table    editable-table   {:db_id db-id, :schema "schema2"}
+                   :model/Field    off-limits-field {:table_id (:id off-limits-table)}
+                   :model/Field    field            {:table_id      (:id editable-table)
+                                                     :semantic_type :type/FK}]
+      (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {"schema1" {(:id off-limits-table) :none}
+                                                                          "schema2" {(:id editable-table)   :all}}}}}
+        (testing "the write is refused"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" (:id field))
+                                       {:type                    "external"
+                                        :name                    "Remapped"
+                                        :human_readable_field_id (:id off-limits-field)}))))
+        (testing "and no Dimension is created"
+          (is (nil? (t2/select-one :model/Dimension :field_id (:id field)))))
+        (testing "an internal remapping, which references no other Field, is still allowed"
+          (is (=? {:type "internal"}
+                  (mt/user-http-request :rasta :post 200 (format "field/%d/dimension" (:id field))
+                                        {:type "internal"
+                                         :name "Remapped"}))))))))
+
 (deftest update-field-test
   (mt/with-temp [:model/Table {table-id :id}                     {:db_id (mt/id) :schema "PUBLIC"}
                  :model/Table {table-id-2 :id}                   {:db_id (mt/id) :schema "PUBLIC"}
@@ -920,6 +975,58 @@
                              clojure.lang.ExceptionInfo
                              #"You don't have permissions to do that\."
                              (append-csv!)))))))))))))))
+
+(deftest update-csv-metadata-perms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action [:metabase.upload/append :metabase.upload/replace]]
+      (testing (format "%s is a data write, so data-model perms alone must not authorize it" action)
+        (upload-test/with-upload-table!
+          [table (upload-test/create-upload-table!)]
+          (let [append-csv! #(upload-test/update-csv-with-defaults!
+                              action
+                              :table-id (:id table)
+                              :user-id (mt/user->id :rasta))]
+            (testing "data-model perms are metadata access, not data access"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+                                                             :create-queries :no
+                                                             :data-model     {:schemas :all}}}
+                (mt/with-test-user :rasta
+                  (is (mi/can-write? table)
+                      "data-model perms alone are `manage-table-metadata`, which `can-write?` accepts")
+                  (is (not (mi/can-read? table))
+                      "...but on this branch `can-read?` for a Table is the data-access predicate"))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (append-csv!))
+                    "so the upload is refused")))
+            (testing "nor is seeing the data enough on its own -- create-queries is the other half of the gate"
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                             :create-queries :no}}
+                (mt/with-test-user :rasta
+                  (is (not (mi/can-read? table))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (append-csv!)))))))))))
+
+(deftest delete-upload-metadata-perms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "dropping an uploaded table needs data access too, not data-model perms on their own"
+      (upload-test/with-upload-table!
+        [table (upload-test/create-upload-table!)]
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+                                                       :create-queries :no
+                                                       :data-model     {:schemas :all}}}
+          (mt/with-test-user :rasta
+            (is (mi/can-write? table)
+                "data-model perms alone satisfy `can-write?`, which is what used to gate the drop...")
+            (is (not (mi/can-read? table))
+                "...but not the data-access gate, and dropping it destroys rows they cannot read")
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You don't have permissions to do that\."
+                 (upload/delete-upload! table :archive-cards? false)))))))))
 
 (deftest update-csv-block-perms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

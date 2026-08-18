@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { uuid } from "metabase/lib/uuid";
@@ -1190,9 +1191,12 @@ describe("scenarios > question > offset", () => {
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
       },
     });
 

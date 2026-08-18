@@ -137,3 +137,28 @@
       (is (nil? (-> (t2/select-one :model/Segment id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
+
+(deftest definition-value-payload-stays-inert-test
+  (testing "a non-scalar `:value` clause payload cannot survive read normalization as a live clause"
+    ;; Keywordizing a stored `[{"raw": "..."}]` on the way out of the app DB would turn it into the live Honey SQL
+    ;; form `[{:raw "..."}]`, which `expand-macros` would then splice verbatim into any query referencing the Segment.
+    ;; The `:value` clause holds its payload to a scalar, so a crafted non-scalar payload fails normalization and the
+    ;; definition reads back as `{}` rather than as a live clause.
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition {:filter [:= [:field-id (mt/id :venues :price)] 4]}}]
+      ;; write the crafted definition straight to the column, bypassing the model's insert hooks
+      (t2/query-one {:update :segment
+                     :set    {:definition (json/encode
+                                           {:lib/type :mbql/query
+                                            :database (mt/id)
+                                            :stages   [{:lib/type     :mbql.stage/mbql
+                                                        :source-table (mt/id :venues)
+                                                        :filters      [[:= {:lib/uuid (str (random-uuid))}
+                                                                        [:field {:lib/uuid   (str (random-uuid))
+                                                                                 :base-type  :type/Text}
+                                                                         (mt/id :venues :name)]
+                                                                        [:value {:lib/uuid       (str (random-uuid))
+                                                                                 :effective-type :type/Text}
+                                                                         [{:raw "1) UNION SELECT 1 -- "}]]]]}]})}
+                     :where  [:= :id segment-id]})
+      (is (= {} (:definition (t2/select-one :model/Segment :id segment-id)))))))

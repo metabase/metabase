@@ -835,3 +835,23 @@
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
              (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
                                                 :output-table "PRODUCTS_COPY"}))))))
+
+(deftest create-schema-if-needed!-escapes-schema-name-test
+  (testing "the transform target :schema is escaped in the EXEC literal"
+    (let [captured (atom nil)]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec sql] (reset! captured sql))]
+        (driver/create-schema-if-needed! :sqlserver {} "x'); DROP TABLE secrets; --"))
+      (is (= "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'x''); DROP TABLE secrets; --') EXEC('CREATE SCHEMA \"x''); DROP TABLE secrets; --\";');"
+             (ffirst @captured))))))
+
+(deftest ^:parallel add-interval-honeysql-form-rejects-hostile-unit-test
+  (testing "the SQL Server DATEADD sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 hostile))))
+    (testing "and still compiles a legitimate unit to the expected DATEPART token"
+      (is (= ["DATEADD(day, 1, some_col)"]
+             (sql/format-expr (sql.qp/add-interval-honeysql-form :sqlserver :some_col 1 :day)
+                              {:nested true}))))))

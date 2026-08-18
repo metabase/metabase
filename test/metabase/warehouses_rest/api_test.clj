@@ -2471,6 +2471,25 @@
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))
 
+(deftest healthcheck-requires-superuser
+  (testing "GET /api/database/:id/healthcheck"
+    (testing "reports whether a database exists and whether it is reachable, so it is for admins only"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "database/" id "/healthcheck"))))
+          (testing "and a database the caller can otherwise query is no exception -- the reply says whether the
+                   connection is up, which is not theirs to know"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str "database/" (mt/id) "/healthcheck")))))
+          (testing "a database that doesn't exist is turned away the same way, rather than being distinguishable"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "database/999999999/healthcheck")))))))
+    (testing "an admin asking after a database that doesn't exist gets a 404"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "database/999999999/healthcheck"))))))
+
 (setting/defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
   :type :boolean

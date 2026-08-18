@@ -10,6 +10,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
@@ -1416,3 +1417,8 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
+
+(deftest ^:parallel create-schema-quotes-schema-name-test
+  (testing "create-schema-if-needed! quotes the target :schema"
+    (is (= "`zinj\\`; DROP SCHEMA victim; CREATE SCHEMA \\`zz`"
+           (sql.u/quote-name :bigquery-cloud-sdk :table "zinj`; DROP SCHEMA victim; CREATE SCHEMA `zz")))))

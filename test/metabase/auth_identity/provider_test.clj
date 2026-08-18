@@ -4,7 +4,8 @@
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;; Set up test providers for testing the hierarchy
 (derive :provider/test-password ::provider/provider)
@@ -261,6 +262,141 @@
           "Should not have error")
       (is (some? (:user-data result))
           "Should have user-data for new user creation"))))
+
+;;; -------------------------------------- Session forgery regression tests --------------------------------------
+
+;; These providers read the account to log in from `:token`, which is legitimately caller-supplied, so
+;; the tests can name a temp user without redefining a method inside a `with-temp` body.
+
+(derive :provider/test-forgery-failure ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-forgery-failure
+  [_provider _request]
+  ;; every failure branch of every real provider returns exactly this shape: no :user-id
+  {:success? false
+   :error :invalid-credentials
+   :message "Invalid credentials"})
+
+(derive :provider/test-forgery-success ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-forgery-success
+  [_provider {:keys [token]}]
+  {:success? true :user-id (parse-long token)})
+
+(derive :provider/test-forgery-redirect ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-forgery-redirect
+  [_provider {:keys [token]}]
+  {:success? :redirect
+   :redirect-url "https://example.com/oauth"
+   :user-id (parse-long token)})
+
+;; SSO shape (JWT/SAML/Google): identity comes from the email in `:user-data`, and no `:user-id` is
+;; returned — the shape where dropping caller-owned keys is load-bearing, since resolution reads
+;; `:user-id` before the email branch. Takes the email from `:token` so a temp user can be named
+;; without redefining a method inside `with-temp`.
+(derive :provider/test-forgery-sso ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-forgery-sso
+  [_provider {:keys [token]}]
+  {:success? true
+   :user-data {:email token}})
+
+;; Stands in for a provider whose `authenticate` hands back a non-scalar `:user-id` instead of the
+;; positive int it owes, so resolution can be shown to fail closed.
+(derive :provider/test-forgery-nonscalar-id ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-forgery-nonscalar-id
+  [_provider {:keys [token]}]
+  {:success? true :user-id {:raw token}})
+
+;; `request/DeviceInfo` is a closed map, so this literal must match its key set exactly.
+(def ^:private test-device-info
+  {:device_id          "test-device"
+   :device_description "Test Browser"
+   :ip_address         "127.0.0.1"
+   :embedded           false})
+
+(deftest login!-ignores-caller-supplied-user-id-on-failed-authenticate-test
+  (testing "a caller-injected :user-id does not survive a failed authenticate"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [result (provider/login! :provider/test-forgery-failure
+                                    {:token "garbage"
+                                     :user-id user-id
+                                     :device-info test-device-info})]
+        (is (false? (:success? result))
+            "a failed authenticate must still report failure")
+        (is (nil? (:user result))
+            "the injected :user-id must not resolve a user")
+        (is (nil? (:session result))
+            "no session may be returned")
+        (is (zero? (t2/count :model/Session :user_id user-id))
+            "no session row may be written for the injected user")))))
+
+(deftest login!-ignores-caller-supplied-success-and-session-test
+  (testing "A caller may not assert its own :success?, :user or :session into a failed login"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [result (provider/login! :provider/test-forgery-failure
+                                    {:token "garbage"
+                                     :success? true
+                                     :user {:id user-id :is_active true}
+                                     :session {:key "forged"}
+                                     :device-info test-device-info})]
+        (is (false? (:success? result)))
+        (is (nil? (:user result)))
+        (is (nil? (:session result)))
+        (is (zero? (t2/count :model/Session :user_id user-id)))))))
+
+(deftest login!-does-not-create-session-for-redirect-test
+  ;; `:success?` is `:redirect` while an OAuth/OIDC flow is being initiated — truthy, but not a login.
+  (testing "a :redirect result mints no session"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [result (provider/login! :provider/test-forgery-redirect
+                                    {:token (str user-id)
+                                     :device-info test-device-info})]
+        (is (= :redirect (:success? result)))
+        (is (nil? (:session result)))
+        (is (zero? (t2/count :model/Session :user_id user-id))
+            "flow initiation must not write a session row")))))
+
+(deftest login!-still-creates-session-for-genuine-success-test
+  (testing "Regression guard: a genuinely successful authenticate still mints a session"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [result (provider/login! :provider/test-forgery-success
+                                    {:token (str user-id)
+                                     :device-info test-device-info})]
+        (is (true? (:success? result)))
+        (is (= user-id (get-in result [:user :id])))
+        (is (some? (:session result)))
+        (is (= 1 (t2/count :model/Session :user_id user-id)))))))
+
+(deftest login!-caller-user-id-cannot-override-authenticated-identity-test
+  ;; The SSO shape is where the dissoc earns its keep: authenticate returns no :user-id, so a caller's
+  ;; survives the merge, and resolution reads :user-id before the :user-data email branch.
+  (testing "a caller-injected :user-id does not override the identity authenticate resolved"
+    (mt/with-temp [:model/User {real-id :id, real-email :email} {:is_active true}
+                   :model/User {other-id :id}                    {:is_active true, :is_superuser true}]
+      (let [result (provider/login! :provider/test-forgery-sso
+                                    {:token       real-email
+                                     :user-id     other-id
+                                     :device-info test-device-info})]
+        (is (= real-id (get-in result [:user :id]))
+            "the email-resolved identity wins, not the injected :user-id")
+        (is (= 1 (t2/count :model/Session :user_id real-id)))
+        (is (zero? (t2/count :model/Session :user_id other-id))
+            "no session for the injected (superuser) target")))))
+
+(deftest login!-nonscalar-user-id-cannot-reach-query-sink-test
+  (testing "a non-scalar :user-id resolves no user instead of reaching the query"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [result (provider/login! :provider/test-forgery-nonscalar-id
+                                    {:token       "1) OR (1=1) --"
+                                     :device-info test-device-info})]
+        (is (nil? (:user result))
+            "a non-scalar :user-id resolves no user")
+        (is (nil? (:session result))
+            "and mints no session")
+        (is (zero? (t2/count :model/Session :user_id user-id)))))))
 
 (deftest ^:parallel authenticate-failure-bypasses-expiration-check-test
   (testing "Failed authentication bypasses expiration check"
