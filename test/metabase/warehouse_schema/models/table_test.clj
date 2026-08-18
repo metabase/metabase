@@ -780,10 +780,26 @@
             (is (= ["a" "b" "c"] (collect (shuffle names))))))))))
 
 (deftest field-path-test
-  (testing "a plain column is named by itself; a nested field by its nfc_path ancestors plus its own name"
+  (testing "a plain column is named by itself"
     (is (= "total" (#'table/field-path {:name "total"})))
-    (is (= "total" (#'table/field-path {:name "total" :nfc_path nil})))
-    (is (= "payload.user.id" (#'table/field-path {:name "id" :nfc_path ["payload" "user"]}))))
+    (is (= "total" (#'table/field-path {:name "total" :nfc_path nil}))))
+  (testing "nfc_path already includes the leaf, so it is the whole path and the name is not appended"
+    (testing "mongo names a nested field by its leaf"
+      (is (= "payload.user.id" (#'table/field-path {:name "id" :nfc_path ["payload" "user" "id"]}))))
+    (testing "sql-jdbc names it by the arrow-joined path; both normalize to the same dotted path"
+      (is (= "payload.user.id" (#'table/field-path {:name "payload → user → id"
+                                                    :nfc_path ["payload" "user" "id"]})))))
+  (testing "bigquery writes ancestors only, so there the leaf does have to be appended"
+    (is (= "r.a" (#'table/field-path {:name "a" :nfc_path ["r"]})))
+    (is (= "r.b" (#'table/field-path {:name "b" :nfc_path ["r"]}))))
+  (testing "a bigquery field sharing its parent's name collapses into the parent — the residual ambiguity
+           the TODO describes, pinned so it is a known limit rather than a surprise. BigQuery `a.b.b` and
+           Mongo `a.b` are the same row, so no per-row rule gets both right."
+    (is (= "r" (#'table/field-path {:name "r" :nfc_path ["r"]})) "wanted r.r, indistinguishable from mongo")
+    (is (= "a.b" (#'table/field-path {:name "b" :nfc_path ["a" "b"]})) "wanted a.b.b for bigquery"))
   (testing "sibling leaves that share a name stay distinct once qualified — the reason to use the path"
-    (is (not= (#'table/field-path {:name "id" :nfc_path ["payload" "user"]})
-              (#'table/field-path {:name "id" :nfc_path ["payload" "item"]})))))
+    (doseq [[a b] [[{:name "id" :nfc_path ["payload" "user" "id"]}
+                    {:name "id" :nfc_path ["payload" "item" "id"]}]
+                   [{:name "id" :nfc_path ["payload" "user"]}
+                    {:name "id" :nfc_path ["payload" "item"]}]]]
+      (is (not= (#'table/field-path a) (#'table/field-path b))))))

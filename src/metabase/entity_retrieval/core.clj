@@ -70,11 +70,13 @@
   50)
 
 (def AiContext
-  "Closed, bounded OSI `ai_context` schema. Kept in the dependency-light public module so model writes
-  and the generation loop's stored-row reader validate against exactly the same contract. The index
-  hydration reader deliberately checks only the slice it projects
-  (see [[metabase.entity-retrieval.spec/ai-context-by-entity]]), so a legacy over-cap or
-  forward-compatible row cannot knock an entity out of the index."
+  "Closed OSI `ai_context` schema, bounded by the `:max` constraints using [[max-instructions-len]],
+  [[max-list-len]], and [[max-item-len]].
+  Kept in the dependency-light public module so model writes and the generation loop's stored-row reader
+  validate against exactly the same contract.
+  The index hydration reader deliberately checks only the slice it projects (see
+  [[metabase.entity-retrieval.spec/ai-context-by-entity]]), so a legacy over-cap or forward-compatible row
+  cannot knock an entity out of the index."
   [:map {:closed true}
    [:instructions {:optional true} [:maybe [:string {:max max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len}

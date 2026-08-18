@@ -417,7 +417,7 @@
                 (is (not= converged (reconciled-at! ds))
                     "the run converged on everything it could, so freshness advances")))))))))
 
-(deftest ^:sequential unforeseen-projection-failure-blocks-the-watermark-test
+(deftest ^:synchronized unforeseen-projection-failure-blocks-the-watermark-test
   (testing "an unforeseen projection error may well be gone next run and leaves the entity's stale docs in
            place meanwhile, so it freezes reconciled_at the way a failed insert does"
     (mt/with-premium-features #{:library :library-retrieval}
