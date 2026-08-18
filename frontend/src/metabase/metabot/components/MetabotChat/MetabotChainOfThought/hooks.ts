@@ -24,13 +24,21 @@ export const useAutoCollapseOnSettle = (isStreaming: boolean) => {
   return { open, toggle };
 };
 
-export const useMeteredLabel = (target: string): string => {
+// meter quick bursts of steps to prevent strobing when enabled
+export const useMeteredLabel = (target: string, enabled: boolean): string => {
   const [shown, setShown] = useState(target);
   const queueRef = useRef<string[]>([]);
   const lastRef = useRef(target);
   const lockedRef = useRef(false);
 
   useEffect(() => {
+    if (!enabled) {
+      queueRef.current = [];
+      lockedRef.current = false;
+      lastRef.current = target;
+      setShown(target);
+      return;
+    }
     if (target === lastRef.current) {
       return;
     }
@@ -41,7 +49,7 @@ export const useMeteredLabel = (target: string): string => {
       lockedRef.current = true;
       setShown(target);
     }
-  }, [target]);
+  }, [target, enabled]);
 
   useEffect(() => {
     if (!lockedRef.current) {
@@ -58,5 +66,5 @@ export const useMeteredLabel = (target: string): string => {
     return () => clearTimeout(id);
   }, [shown]);
 
-  return shown;
+  return enabled ? shown : target;
 };
