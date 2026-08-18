@@ -14,6 +14,7 @@
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.util.json :as json]
@@ -240,13 +241,12 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
         card       (api/check-404 (t2/select-one :model/Card card-id))
-        parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
@@ -272,7 +272,7 @@
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
@@ -280,7 +280,6 @@
         dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card             (api/check-404 (t2/select-one :model/Card card-id))
-        parameters       (json/decode+kw parameters)
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]
     (request/as-admin

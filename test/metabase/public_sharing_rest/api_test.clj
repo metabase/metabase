@@ -527,6 +527,21 @@
                                                                     :type "id",
                                                                     :value nil}]))))))))))
 
+(deftest execute-public-card-with-invalid-parameters-test
+  (testing "GET /api/public/card/:uuid/query -- malformed `parameters` is rejected with a 400"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {}]
+        (let [url (str "public/card/" uuid "/query")]
+          (testing "valid JSON that is not a sequence of parameter maps"
+            (client/client :get 400 url
+                           :parameters (json/encode {:_PRICE_ 3})))
+          (testing "a sequence of maps missing the required :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:value 3}])))
+          (testing "a parameter with a non-scalar garbage :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:id {:not "a string"} :value 3}]))))))))
+
 ;; Cards with required params
 (defn- do-with-required-param-card! [f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
