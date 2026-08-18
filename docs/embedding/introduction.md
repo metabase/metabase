@@ -24,49 +24,16 @@ If you just want to share a chart or dashboard with anyone who has the link, and
 
 With [modular embedding](./modular-embedding.md), you can embed individual Metabase [components](./components.md) in your web app: dashboards, questions, the query builder, AI chat, and a collection browser.
 
-### Authentication is a setting on a component
+When you set up a component, Metabase shows you an **Authentication** card where you pick:
 
-When you set up a component, Metabase shows you an **Authentication** card with two options:
+- **Metabase account (SSO)**, for [components with SSO authentication](#components-with-sso-authentication)
+- **Guest**, for [components with guest authentication](#components-with-guest-authentication)
 
-- [**SSO authentication**](#sso-authentication)
-- [**Guest authentication**](#guest-authentication)
-
-Both options embed the same components the same way. What changes is whether Metabase knows who's looking at the data, and that in turn decides what the component can do. See the [comparison between SSO and guest authentication](#comparison-between-sso-and-guest-authentication).
+The authentication method you choose determines what people can do (see the comparison below).
 
 You can only use one authentication method per page of your app. A single page can't mix a question that uses SSO with a question that uses guest authentication.
 
-#### SSO authentication
-
-With SSO, Metabase can know who's viewing what, which unlocks a lot of stuff. You can automatically apply [data permissions](../permissions/embedding.md), which means you can give people access to all the cool tools Metabase provides, and everyone will only ever see the data they're allowed to.
-
-**When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
-
-SSO requires a Pro or Enterprise plan, and everyone viewing the embedded component needs their own Metabase account. To set up JWT or SAML, check out [modular embedding authentication](./authentication.md).
-
-If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
-
-Accounts for these embedded people in your Metabase count toward the [accounts billed in your Metabase plan](https://www.metabase.com/docs/latest/cloud/how-billing-works). But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
-
-#### Guest authentication
-
-With [guest authentication](./guest-embedding.md), Metabase doesn't create a session for the person viewing the component, so you don't have to create a Metabase account for everyone who sees your charts and dashboards. Guest authentication works on all Metabase plans, including OSS and Starter.
-
-Guest doesn't mean unsecured. Metabase only loads the component if the request carries a JWT signed with a secret shared between your app and your Metabase. What Metabase doesn't have is an identity: with no account to check permissions against, Metabase can't tell whether a new query is one that person should be allowed to run. That's why components with guest authentication are view-only.
-
-**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./guest-embedding.md#locked-parameters), where your app sets the filter value in the signed token.
-
-### Set up modular embeds with web components or React
-
-Whichever way you authenticate, you can set up modular embeds two ways.
-
-- **Web components**: a script tag plus HTML elements like `<metabase-question>`. Web components have no build step and no framework requirement, so they work in plain HTML, Vue, Svelte, Rails, React, or any framework you like. Metabase's [in-app wizard](./modular-embedding.md) writes the code for you.
-- **React SDK**: React components that you import and compose yourself. The [SDK](./sdk/introduction.md) gives you more control: you can build custom layouts and [customize behavior with plugins](./sdk/plugins.md).
-
-If your app runs on React and you want that extra control, go with the SDK. Otherwise start with web components. You can always move to the SDK later.
-
 ## Comparison between SSO and guest authentication
-
-Both columns describe the same set of components. The only difference is how Metabase authenticates whoever's looking at them.
 
 All SSO options require a Pro or Enterprise plan.
 
@@ -95,6 +62,35 @@ All SSO options require a Pro or Enterprise plan.
 \*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan with either authentication method.
 
 \*\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
+
+### Components with SSO authentication
+
+With SSO, Metabase can know who's viewing what, which unlocks a lot of stuff. You can automatically apply [data permissions](../permissions/embedding.md), which means you can give people access to all the cool tools Metabase provides, and everyone will only ever see the data they're allowed to.
+
+**When to use SSO**: You want to offer multi-tenant, self-service analytics, or you want to include the query builder, AI chat, drill-through, or a collection browser.
+
+SSO requires a Pro or Enterprise plan, and everyone viewing the embedded component needs their own Metabase account. To set up JWT or SAML, check out [modular embedding authentication](./authentication.md).
+
+If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
+
+Accounts for these embedded people in your Metabase count toward the [accounts billed in your Metabase plan](https://www.metabase.com/docs/latest/cloud/how-billing-works). But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
+
+### Components with guest authentication
+
+With [guest authentication](./guest-embedding.md), Metabase doesn't create a session for the person viewing the component, so you don't have to create a Metabase account for everyone who sees your charts and dashboards. Guest authentication works on all Metabase plans, including OSS and Starter.
+
+Guest doesn't mean unsecured. Metabase only loads the component if the request carries a JWT signed with a secret shared between your app and your Metabase. What Metabase doesn't have is an identity: with no account to check permissions against, Metabase can't tell whether a new query is one that person should be allowed to run. That's why components with guest authentication are view-only.
+
+**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./guest-embedding.md#locked-parameters), where your app sets the filter value in the signed token.
+
+## Set up modular embeds with web components or React
+
+Whichever way you authenticate, you can set up modular embeds two ways.
+
+- **Web components**: a script tag plus HTML elements like `<metabase-question>`. Web components have no build step and no framework requirement, so they work in plain HTML, Vue, Svelte, Rails, React, or any framework you like. Metabase's [in-app wizard](./modular-embedding.md) writes the code for you.
+- **React SDK**: React components that you import and compose yourself. The [SDK](./sdk/introduction.md) gives you more control: you can build custom layouts and [customize behavior with plugins](./sdk/plugins.md).
+
+If your app runs on React and you want that extra control, go with the SDK. Otherwise start with web components. You can always move to the SDK later.
 
 ## Full app embedding
 
