@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -38,7 +38,10 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
-import { SuggestionPreviewContent } from "./lazySuggestionPreviewContent";
+import {
+  SuggestionPreviewContent,
+  loadSuggestionPreview,
+} from "./lazySuggestionPreviewContent";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
   part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
@@ -123,6 +126,21 @@ export const AgentSuggestionMessage = ({
     error,
   } = useGetOldTransform({ editorTransform, suggestedTransform });
 
+  // The preview is a separate chunk. Waiting for it inside the existing
+  // "Loading preview" state means one loading state rather than two in a row.
+  const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadSuggestionPreview().then(() => {
+      if (!cancelled) {
+        setIsPreviewLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
     : "";
@@ -186,7 +204,7 @@ export const AgentSuggestionMessage = ({
         transitionDuration={0}
         transitionTimingFunction="linear"
       >
-        {match({ isLoading, error })
+        {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
               p="md"
