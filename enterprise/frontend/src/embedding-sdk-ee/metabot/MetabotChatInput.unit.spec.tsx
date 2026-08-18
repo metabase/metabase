@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   mockAgentEndpoint,
@@ -17,14 +17,14 @@ const fullContextState = () => {
     throw new Error("Expected the omnibot conversation to exist");
   }
   conversation.lastTokenUsage = {
-    contextTokens: 190,
+    contextTokens: 200,
     contextWindowTokens: 200,
   };
   return state;
 };
 
 describe("MetabotChatInput", () => {
-  it("prevents submission when the context window is full", async () => {
+  it("stays usable once the context window is full", async () => {
     const agentEndpoint = mockAgentEndpoint({
       events: whoIsYourFavoriteResponse,
     });
@@ -34,16 +34,10 @@ describe("MetabotChatInput", () => {
     });
 
     const input = screen.getByRole("textbox");
-    expect(input).toHaveAttribute(
-      "placeholder",
-      "Start a new chat to continue",
-    );
-    expect(input).toHaveAttribute("readonly");
+    expect(input).not.toHaveAttribute("readonly");
 
-    await userEvent.type(input, "This should not be sent");
-    expect(input).toHaveValue("");
-    fireEvent.keyDown(input, { key: "Enter" });
+    await userEvent.type(input, "Who is your favorite?{Enter}");
 
-    expect(agentEndpoint).not.toHaveBeenCalled();
+    await waitFor(() => expect(agentEndpoint).toHaveBeenCalled());
   });
 });

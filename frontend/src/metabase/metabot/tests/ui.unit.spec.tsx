@@ -431,7 +431,21 @@ describe("metabot > ui", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should replace the input with a new-chat prompt once the context window is full", async () => {
+  it("should keep the input usable as the conversation approaches the context limit", async () => {
+    setup();
+    // 95% of the window — the conversation is free to use the rest of it
+    mockAgentEndpoint({ events: contextUsageResponse(10450) });
+
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
+
+    expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("metabot-context-usage-ring"),
+    ).toBeInTheDocument();
+  });
+
+  it("should prompt for a new chat once the context window is full, without removing the input", async () => {
     setup();
     mockAgentEndpoint({
       events: [
@@ -443,11 +457,11 @@ describe("metabot > ui", () => {
           finishReason: "stop",
           messageMetadata: {
             usage: {
-              inputTokens: 10900,
+              inputTokens: 10950,
               outputTokens: 50,
-              totalTokens: 10950,
+              totalTokens: 11000,
             },
-            contextTokens: 10950,
+            contextTokens: 11000,
             contextWindowTokens: 11000,
           },
         },
@@ -464,14 +478,10 @@ describe("metabot > ui", () => {
     expect(
       within(notice).queryByTestId("metabot-long-chat-dismiss"),
     ).not.toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("metabot-chat-input"),
-      ).not.toBeInTheDocument();
-    });
+    expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
     expect(
-      screen.queryByTestId("metabot-context-usage-ring"),
-    ).not.toBeInTheDocument();
+      screen.getByTestId("metabot-context-usage-ring"),
+    ).toBeInTheDocument();
 
     await userEvent.click(
       within(notice).getByTestId("metabot-long-chat-new-chat"),

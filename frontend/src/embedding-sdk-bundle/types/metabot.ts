@@ -91,14 +91,14 @@ export type UseMetabotResult = {
   /** How much of the model's context window the conversation occupies, 0-100. */
   contextWindowPercentUsage: number;
   /**
-   * Whether the conversation has filled its context window. Once `true`, it
-   * cannot accept new messages and needs to be replaced with a new one.
+   * Whether the conversation has consumed its entire context window. Submitting
+   * is still allowed, but further messages are likely to be rejected by the
+   * model, so this is the point to offer starting a new conversation.
    */
   isContextWindowFull: boolean;
   /**
    * Whether a message can be submitted right now — `false` while a response is
-   * in flight and once the context window is full. Does not consider whether
-   * the prompt itself is empty.
+   * in flight. Does not consider whether the prompt itself is empty.
    */
   canSubmitPrompt: boolean;
 

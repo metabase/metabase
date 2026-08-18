@@ -14,7 +14,7 @@ const fullContextState = () => {
     throw new Error("Expected the omnibot conversation to exist");
   }
   conversation.lastTokenUsage = {
-    contextTokens: 190,
+    contextTokens: 200,
     contextWindowTokens: 200,
   };
   return state;

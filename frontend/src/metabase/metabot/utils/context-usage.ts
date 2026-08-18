@@ -1,4 +1,3 @@
-import { CONTEXT_WINDOW_FULL_PERCENT } from "../constants";
 import type { MetabotContextUsage } from "../state/types";
 
 export const isValidContextUsage = (
@@ -10,7 +9,6 @@ export const isValidContextUsage = (
   contextUsage.contextTokens > 0 &&
   contextUsage.contextWindowTokens > 0;
 
-/** Share of the model's context window the conversation occupies, 0-100. */
 export const getContextWindowPercentUsage = (
   contextUsage: MetabotContextUsage | undefined,
 ): number =>
@@ -24,4 +22,5 @@ export const getContextWindowPercentUsage = (
 export const isContextWindowFull = (
   contextUsage: MetabotContextUsage | undefined,
 ): boolean =>
-  getContextWindowPercentUsage(contextUsage) >= CONTEXT_WINDOW_FULL_PERCENT;
+  isValidContextUsage(contextUsage) &&
+  contextUsage.contextTokens >= contextUsage.contextWindowTokens;

@@ -4,10 +4,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 
-import {
-  CONTEXT_WINDOW_FULL_PERCENT,
-  CONTEXT_WINDOW_WARNING_PERCENT,
-} from "../constants";
+import { CONTEXT_WINDOW_WARNING_PERCENT } from "../constants";
 
 import { getMetabotInitialState } from "./reducer-utils";
 
@@ -125,11 +122,13 @@ describe("metabot selectors", () => {
       expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
     });
 
-    it("reports full when context tokens reach the full percent of the window", () => {
-      const state = setup(
-        [shortMessage],
-        usage((CONTEXT_WINDOW * CONTEXT_WINDOW_FULL_PERCENT) / 100),
-      );
+    it("still only warns just short of the window — the whole window is usable", () => {
+      const state = setup([shortMessage], usage(CONTEXT_WINDOW - 1));
+      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
+    });
+
+    it("reports full once context tokens consume the whole window", () => {
+      const state = setup([shortMessage], usage(CONTEXT_WINDOW));
       expect(getMetabotLongChatNotice(state, "omnibot")).toBe("full");
     });
 

@@ -208,40 +208,37 @@ export const MetabotChat = ({
                 onNewChat={onNewConversation}
               />
             )}
-            {!metabot.isContextWindowFull && (
-              <Paper
-                className={cx(
-                  Styles.inputContainer,
-                  metabot.isDoingScience && Styles.inputContainerLoading,
-                )}
-              >
-                <MetabotChatEditor
-                  ref={metabot.promptInputRef}
-                  value={metabot.prompt}
-                  autoFocus
-                  isResponding={metabot.isDoingScience}
-                  placeholder={t`How can I help? Type @ to mention items.`}
-                  onChange={metabot.setPrompt}
-                  onSubmit={() => metabot.submitInput(metabot.prompt)}
-                  onStop={metabot.cancelRequest}
-                  suggestionConfig={{
-                    suggestionModels: config.suggestionModels,
-                  }}
-                />
-              </Paper>
-            )}
+            <Paper
+              className={cx(
+                Styles.inputContainer,
+                metabot.isDoingScience && Styles.inputContainerLoading,
+              )}
+            >
+              <MetabotChatEditor
+                ref={metabot.promptInputRef}
+                value={metabot.prompt}
+                autoFocus
+                isResponding={metabot.isDoingScience}
+                placeholder={t`How can I help? Type @ to mention items.`}
+                onChange={metabot.setPrompt}
+                onSubmit={() => metabot.submitInput(metabot.prompt)}
+                onStop={metabot.cancelRequest}
+                suggestionConfig={{
+                  suggestionModels: config.suggestionModels,
+                }}
+              />
+            </Paper>
           </Box>
           <Box className={Styles.footerRow}>
             <Text fz="sm" c="text-secondary" ta="center">
               {t`${metabotName} isn't perfect. Double-check results.`}
             </Text>
-            {metabot.contextWindowPercentUsage > 50 &&
-              !metabot.isContextWindowFull && (
-                <MetabotContextUsageRing
-                  className={Styles.contextUsage}
-                  percentUsage={metabot.contextWindowPercentUsage}
-                />
-              )}
+            {metabot.contextWindowPercentUsage > 50 && (
+              <MetabotContextUsageRing
+                className={Styles.contextUsage}
+                percentUsage={metabot.contextWindowPercentUsage}
+              />
+            )}
           </Box>
         </Box>
       )}

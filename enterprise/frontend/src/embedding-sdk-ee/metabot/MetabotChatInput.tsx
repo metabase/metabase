@@ -18,12 +18,9 @@ import S from "./MetabotQuestion.module.css";
 export function MetabotChatInput() {
   const metabot = useMetabotAgent();
 
-  const availablePlaceholder = metabot.isDoingScience
+  const placeholder = metabot.isDoingScience
     ? t`Doing science...`
     : t`Ask AI a question...`;
-  const placeholder = metabot.isContextWindowFull
-    ? t`Start a new chat to continue`
-    : availablePlaceholder;
 
   return (
     <Flex
