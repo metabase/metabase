@@ -35,7 +35,8 @@
        {:insert-into   table
         :values        entries
         :on-conflict   [:model :model_id]
-        :do-update-set (zipmap update-keys (map excluded-kw update-keys))}))))
+        :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                                  {:allow-subquery true})}))))
 
 (defmethod specialization/base-query :postgres
   [active-table search-term search-ctx select-items]
