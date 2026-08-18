@@ -1,0 +1,288 @@
+[
+  {
+    "name": "select_42",
+    "sql": "SELECT 42 AS answer",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 76,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 95,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "select_literal_string",
+    "sql": "SELECT 'hello quack' AS s",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 82,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 97,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "select_null",
+    "sql": "SELECT NULL AS n, 1 AS i",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 81,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 124,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "range_10",
+    "sql": "SELECT i FROM range(10) t(i)",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 85,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 165,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 10
+  },
+  {
+    "name": "range_2048",
+    "sql": "SELECT i FROM range(2048) t(i)",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 87,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 16473,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 2048
+  },
+  {
+    "name": "types_scalar",
+    "sql": "SELECT * FROM samples.types",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 84,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 614,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "ints_with_nulls",
+    "sql": "SELECT id, v_with_nulls FROM samples.ints",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 98,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 1738,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 100
+  },
+  {
+    "name": "nested_list_struct",
+    "sql": "SELECT * FROM samples.nested",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 85,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 502,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 5
+  },
+  {
+    "name": "decimal_col",
+    "sql": "SELECT v_decimal FROM samples.types",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 92,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 129,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "hugeint_uuid",
+    "sql": "SELECT v_hugeint, v_uuid FROM samples.types",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 100,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 150,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  },
+  {
+    "name": "blob_interval",
+    "sql": "SELECT v_blob, v_interval FROM samples.types",
+    "messages": [
+      {
+        "file": "00_request.bin",
+        "direction": "request",
+        "bytes": 101,
+        "note": "PREPARE_REQUEST"
+      },
+      {
+        "file": "01_response.bin",
+        "direction": "response",
+        "bytes": 140,
+        "note": "PREPARE_RESPONSE"
+      },
+      {
+        "file": "02_request.bin",
+        "direction": "request",
+        "bytes": 54,
+        "note": "DISCONNECT"
+      }
+    ],
+    "fetches": 0,
+    "rows": 1
+  }
+]
