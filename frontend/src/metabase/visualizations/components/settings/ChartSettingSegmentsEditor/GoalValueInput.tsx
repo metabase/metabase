@@ -12,6 +12,7 @@ import { t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
+  useGetCardQueryQuery,
   useGetMeasureQuery,
   useLazyGetCardQuery,
   useLazyGetMeasureQuery,
@@ -161,6 +162,37 @@ export const GoalValueInput = ({
     }
     return [];
   }, [entity?.type, entityCard, entityMeasure]);
+
+  // referenced_entities only carries already-referenced columns; a fresh run of
+  // the entity's query previews the values of all of them
+  const { data: entityDataset } = useGetCardQueryQuery(
+    menuLevel === "entity" && entity?.type === "card" && entityCard != null
+      ? { cardId: entity.id }
+      : skipToken,
+  );
+  const entityColumnValues = useMemo(() => {
+    const { cols = [], rows = [] } = entityDataset?.data ?? {};
+    const row = rows[0] ?? [];
+    return new Map(
+      cols.map((column, index): [string, number | null] => {
+        const raw = row[index];
+        return [
+          column.name,
+          typeof raw === "number" && Number.isFinite(raw) ? raw : null,
+        ];
+      }),
+    );
+  }, [entityDataset]);
+
+  const resolveEntityColumnValue = (columnName: string): number | null =>
+    entityColumnValues.get(columnName) ??
+    (entity != null
+      ? resolveGoalValue(data, {
+          type: entity.type,
+          id: entity.id,
+          column: columnName,
+        }).value
+      : null);
 
   const resolved = useResolvedGoalValue(data, value);
   const selfColumnLabel = isSelfRef
@@ -470,15 +502,7 @@ export const GoalValueInput = ({
                     key={column.name}
                     isSelected={foreignRef?.column === column.name}
                     label={column.label}
-                    resolvedValue={
-                      entity != null
-                        ? resolveGoalValue(data, {
-                            type: entity.type,
-                            id: entity.id,
-                            column: column.name,
-                          }).value
-                        : null
-                    }
+                    resolvedValue={resolveEntityColumnValue(column.name)}
                     onClick={() => selectEntityColumn(column.name)}
                   />
                 ))

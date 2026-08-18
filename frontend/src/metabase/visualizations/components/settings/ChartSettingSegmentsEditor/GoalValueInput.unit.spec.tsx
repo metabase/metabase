@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   setupCardEndpoints,
+  setupCardQueryEndpoints,
   setupMeasureEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -20,6 +21,7 @@ import type { DatasetData, GoalValue, SearchResult } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
+  createMockDataset,
   createMockDatasetData,
   createMockField,
   createMockMeasure,
@@ -415,22 +417,33 @@ describe("GoalValueInput", () => {
       createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
     ]);
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setupCardEndpoints(
-      createMockCard({
-        id: 15,
-        name: "Other question",
-        result_metadata: [
-          createMockField({
-            name: "revenue",
-            display_name: "Revenue",
-            base_type: "type/Integer",
-          }),
-          createMockField({
-            name: "target",
-            display_name: "Target",
-            base_type: "type/Integer",
-          }),
-        ],
+    const otherCard = createMockCard({
+      id: 15,
+      name: "Other question",
+      result_metadata: [
+        createMockField({
+          name: "revenue",
+          display_name: "Revenue",
+          base_type: "type/Integer",
+        }),
+        createMockField({
+          name: "target",
+          display_name: "Target",
+          base_type: "type/Integer",
+        }),
+      ],
+    });
+    setupCardEndpoints(otherCard);
+    setupCardQueryEndpoints(
+      otherCard,
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "revenue" }),
+            createMockColumn({ name: "target" }),
+          ],
+          rows: [[100, 200]],
+        }),
       }),
     );
     setup(
@@ -503,29 +516,40 @@ describe("GoalValueInput", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
-  // two bounds referencing different columns of one entity get both fetched
-  it("shows values for the columns the results were fetched for", async () => {
-    setupCardEndpoints(
-      createMockCard({
-        id: 9,
-        name: "Orders",
-        result_metadata: [
-          createMockField({
-            name: "total",
-            display_name: "Total",
-            base_type: "type/Integer",
-          }),
-          createMockField({
-            name: "avg",
-            display_name: "Average",
-            base_type: "type/Integer",
-          }),
-        ],
+  it("shows values for all of the entity's columns", async () => {
+    const card = createMockCard({
+      id: 9,
+      name: "Orders",
+      result_metadata: [
+        createMockField({
+          name: "total",
+          display_name: "Total",
+          base_type: "type/Integer",
+        }),
+        createMockField({
+          name: "avg",
+          display_name: "Average",
+          base_type: "type/Integer",
+        }),
+      ],
+    });
+    setupCardEndpoints(card);
+    setupCardQueryEndpoints(
+      card,
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "total" }),
+            createMockColumn({ name: "avg" }),
+          ],
+          rows: [[250, 12]],
+        }),
       }),
     );
     setup(
       { value: { type: "card", id: 9, column: "total" } },
       {
+        // the dataset carries a value for the referenced column only
         data: createMockDatasetData({
           ...DATA,
           referenced_entities: {
@@ -533,11 +557,8 @@ describe("GoalValueInput", () => {
               9: {
                 status: "completed",
                 data: {
-                  cols: [
-                    createMockColumn({ name: "total" }),
-                    createMockColumn({ name: "avg" }),
-                  ],
-                  rows: [[250, 12]],
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
                 },
               },
             },
@@ -551,7 +572,10 @@ describe("GoalValueInput", () => {
     );
 
     const item = await screen.findByRole("menuitem", { name: /Average/ });
-    expect(within(item).getByText("12")).toBeInTheDocument();
+    expect(await within(item).findByText("12")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("menuitem", { name: /Total/ })).getByText("250"),
+    ).toBeInTheDocument();
   });
 
   it("offers another question as a source when this question has no numeric columns", async () => {
