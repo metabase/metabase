@@ -42,6 +42,11 @@ export function GoalEntityPickers({
   const [isBrowseModalOpen, browseModal] = useDisclosure(false);
   const { models, getSearchParams } = useEntityPickerSearch(hasOpened);
 
+  const handleBrowseAll = () => {
+    onClose();
+    browseModal.open();
+  };
+
   const handleChange = (item: PickedItem) => {
     onClose();
     browseModal.close();
@@ -61,10 +66,7 @@ export function GoalEntityPickers({
         searchInputPlaceholder={t`Search…`}
         searchParams={getSearchParams}
         showSearchInput
-        onBrowseAll={() => {
-          onClose();
-          browseModal.open();
-        }}
+        onBrowseAll={handleBrowseAll}
         onChange={handleChange}
         onClose={onClose}
       />
