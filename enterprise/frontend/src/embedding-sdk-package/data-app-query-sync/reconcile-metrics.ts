@@ -33,7 +33,6 @@ function rewriteMetricReferences(
         : rewriteMetricReferences(item, copiedMetricIdBySourceMetricId),
     );
   }
-
   if (value === null || typeof value !== "object") {
     return value;
   }
@@ -68,13 +67,11 @@ export async function reconcileMetrics({
       ),
     ).values(),
   ];
-
   const copiedMetricIdBySourceMetricId: Record<number, number> = {};
 
   for (const metric of metrics) {
     const input = metricInput(metric, collectionId);
     const hash = getPayloadFingerprint(input);
-
     const entry = lockfile.metrics.find(
       ({ sourceMetricId }) => sourceMetricId === metric.id,
     );
@@ -127,7 +124,6 @@ export async function reconcileMetrics({
           hash,
         });
       }
-
       log(`copied metric: card ${metric.id} -> card ${created.id}`);
     }
 
@@ -139,7 +135,6 @@ export async function reconcileMetrics({
       resolved.dataset_query,
       copiedMetricIdBySourceMetricId,
     );
-
     if (!isRecord(rewritten)) {
       throw new Error("Rewritten metric query must be an object.");
     }
