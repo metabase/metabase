@@ -28,7 +28,7 @@
     (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now})
     result))
 
-(defn- app-config
+(defn- app-config!
   [slug name path]
   (let [{:keys [resource_collection_entity_id permission_group_entity_id]}
         (data-app.test-util/ensure-manifest-resources! slug)]
@@ -42,7 +42,7 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [files  {"main" {"collections/c/c.yaml"
                             (test-helpers/generate-collection-yaml "data-apps-test-collx" "DA Coll")
-                            "data_apps/sales/data_app.yaml"  (app-config "sales" "Sales" "./dist/index.js")
+                            "data_apps/sales/data_app.yaml"  (app-config! "sales" "Sales" "./dist/index.js")
                             "data_apps/sales/dist/index.js" "SALESBUNDLE"}}
             result (import! files)]
         (is (= :success (:status result)))
@@ -56,12 +56,12 @@
 (deftest import-prunes-data-apps-absent-from-repo-test
   (testing "an import whose repo no longer has an app dir prunes that app (the repo is the source of truth)"
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (import! {"main" {"data_apps/gone/data_app.yaml" (app-config "gone" "Gone" "./i.js")
+      (import! {"main" {"data_apps/gone/data_app.yaml" (app-config! "gone" "Gone" "./i.js")
                         "data_apps/gone/i.js"         "X"
-                        "data_apps/kept/data_app.yaml" (app-config "kept" "Kept" "./i.js")
+                        "data_apps/kept/data_app.yaml" (app-config! "kept" "Kept" "./i.js")
                         "data_apps/kept/i.js"         "K"}})
       (is (= #{"gone" "kept"} (t2/select-fn-set :name :model/DataApp)))
-      (import! {"main" {"data_apps/kept/data_app.yaml" (app-config "kept" "Kept" "./i.js")
+      (import! {"main" {"data_apps/kept/data_app.yaml" (app-config! "kept" "Kept" "./i.js")
                         "data_apps/kept/i.js"         "K"}})
       (is (nil? (t2/select-one :model/DataApp :name "gone"))
           "the app absent from the later import is pruned")
@@ -73,7 +73,7 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       ;; No serdes content, so the outcome's count comes purely from data apps.
       (import! {"main" {"README.md"                    "x"
-                        "data_apps/gone/data_app.yaml" (app-config "gone" "Gone" "./i.js")
+                        "data_apps/gone/data_app.yaml" (app-config! "gone" "Gone" "./i.js")
                         "data_apps/gone/i.js"          "X"}})
       (is (= #{"gone"} (t2/select-fn-set :name :model/DataApp)))
       ;; Same repo minus the app dir: nothing is upserted (`:changed` 0), one app removed.
