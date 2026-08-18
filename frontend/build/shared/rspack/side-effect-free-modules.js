@@ -29,21 +29,27 @@ const SIDE_EFFECT_FREE_PATHS = [
 ];
 
 /**
- * Files inside a side-effect-free directory that do have an import-time effect,
+ * Paths inside a side-effect-free directory that do have an import-time effect,
  * so keep rspack's default (assume side effects) for them. An entry, and its
  * whole import graph, is kept in every bundle that reaches it, so the list
- * should stay short and every entry should be a fix candidate.
+ * should stay short and every file entry should be a fix candidate.
+ *
+ * A directory entry (trailing separator, like SIDE_EFFECT_FREE_PATHS) covers
+ * every file under it. When a module with an `api/` folder is enrolled, list
+ * `<module>/api` here: RTK endpoint injection at import is the endpoint
+ * ownership pattern (D3), and it must never be tree-shaken away.
  */
-const SIDE_EFFECT_FILES = [];
+const SIDE_EFFECT_PATHS = [];
 
 const SIDE_EFFECT_FREE_RULE = {
   include: SIDE_EFFECT_FREE_PATHS,
-  exclude: SIDE_EFFECT_FILES,
+  // Prefix-matched like `include`, so a directory entry excludes its whole tree.
+  exclude: SIDE_EFFECT_PATHS,
   sideEffects: false,
 };
 
 module.exports = {
   SIDE_EFFECT_FREE_PATHS,
-  SIDE_EFFECT_FILES,
+  SIDE_EFFECT_PATHS,
   SIDE_EFFECT_FREE_RULE,
 };

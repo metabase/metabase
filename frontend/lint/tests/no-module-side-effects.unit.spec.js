@@ -15,7 +15,9 @@ const FILENAME = "/repo/frontend/src/metabase/widgets/Widget/Widget.tsx";
 const REGISTRATION_FILE =
   "/repo/frontend/src/metabase/widgets/Widget/register-widget.ts";
 
-const options = [{ sideEffectFiles: [REGISTRATION_FILE] }];
+const REGISTRATION_DIR = "/repo/frontend/src/metabase/widgets/api/";
+
+const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
 
 const VALID_CASES = [
   {
@@ -174,6 +176,12 @@ const VALID_CASES = [
   {
     name: "bare import of a listed side-effect file with extension",
     code: `import "./register-widget.ts";`,
+    filename: FILENAME,
+    options,
+  },
+  {
+    name: "bare import of a file under a listed side-effect directory",
+    code: `import "../api/nested/register-endpoints";`,
     filename: FILENAME,
     options,
   },
@@ -383,6 +391,13 @@ const INVALID_CASES = [
   {
     name: "bare import of an unlisted sibling",
     code: `import "./register-something-else";`,
+    filename: FILENAME,
+    options,
+    errors: [{ messageId: "bareImport" }],
+  },
+  {
+    name: "bare import of a sibling of a listed side-effect directory",
+    code: `import "../../api-client";`,
     filename: FILENAME,
     options,
     errors: [{ messageId: "bareImport" }],

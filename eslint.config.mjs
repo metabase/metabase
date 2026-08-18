@@ -24,8 +24,8 @@ import ttagPlugin from "eslint-plugin-ttag";
 
 import boundaries from "eslint-plugin-boundaries";
 import {
-  SIDE_EFFECT_FILES,
   SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_PATHS,
 } from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 import {
@@ -1166,7 +1166,12 @@ const configs = [
       (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
     ),
     ignores: [
-      ...SIDE_EFFECT_FILES.map((file) => path.relative(__dirname, file)),
+      // A directory entry (trailing separator) covers every file under it
+      ...SIDE_EFFECT_PATHS.map((entry) =>
+        entry.endsWith(path.sep)
+          ? `${path.relative(__dirname, entry)}/**`
+          : path.relative(__dirname, entry),
+      ),
       "**/*.unit.spec.*",
       "**/*.stories.*",
       "**/tests/**",
@@ -1177,7 +1182,7 @@ const configs = [
       "metabase/no-module-side-effects": [
         "error",
         {
-          sideEffectFiles: SIDE_EFFECT_FILES,
+          sideEffectPaths: SIDE_EFFECT_PATHS,
           // Alias roots that resolve inside the repo (the tsconfig `paths` roots),
           // so a module-scope call into them counts as our own code
           internalModules: [

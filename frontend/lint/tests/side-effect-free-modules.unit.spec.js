@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 
 import {
-  SIDE_EFFECT_FILES,
   SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_PATHS,
 } from "../../build/shared/rspack/side-effect-free-modules";
 
 // A directory in SIDE_EFFECT_FREE_PATHS promises rspack that importing any file
@@ -35,10 +35,14 @@ it.each(SIDE_EFFECT_FREE_PATHS)(
   },
 );
 
-// The files that opt back out must exist, otherwise the exclusion silently
+// The paths that opt back out must exist, otherwise the exclusion silently
 // stops applying after a move and the effect they carry becomes shakeable.
-for (const file of SIDE_EFFECT_FILES) {
-  it(`side-effect file ${file} exists`, () => {
-    expect(fs.existsSync(file)).toBe(true);
+// A directory entry ends with a separator and must still hold source files.
+for (const entry of SIDE_EFFECT_PATHS) {
+  it(`side-effect path ${entry} exists`, () => {
+    const exists = entry.endsWith(path.sep)
+      ? hasSourceFiles(entry)
+      : fs.statSync(entry).isFile();
+    expect(exists).toBe(true);
   });
 }

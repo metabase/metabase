@@ -142,9 +142,10 @@ module.exports = {
               additionalProperties: false,
             },
           },
-          sideEffectFiles: {
+          sideEffectPaths: {
             type: "array",
-            // Absolute paths of files that are allowed to have import-time effects
+            // Absolute paths allowed to have import-time effects: a file, or a
+            // directory (trailing separator) covering every file under it
             items: { type: "string" },
           },
           internalModules: {
@@ -158,19 +159,19 @@ module.exports = {
     ],
     messages: {
       bareImport:
-        "Bare import of '{{source}}' runs it for its effect at import time. Move the effect into a registration module listed in SIDE_EFFECT_FILES, or into an entry.",
+        "Bare import of '{{source}}' runs it for its effect at import time. Move the effect into a registration module listed in SIDE_EFFECT_PATHS, or into an entry.",
       callOnImport:
         "Module-scope call on the imported binding `{{callee}}` runs at import time. If it is pure, annotate it `/* #__PURE__ */` or add it to pureCallees; otherwise move it out of module scope.",
       callAtModuleScope:
-        "Module-scope call `{{callee}}` runs at import time and its result is unused, so it exists only for its effect. Move it into a registration module listed in SIDE_EFFECT_FILES, or annotate it `/* #__PURE__ */` if it is pure.",
+        "Module-scope call `{{callee}}` runs at import time and its result is unused, so it exists only for its effect. Move it into a registration module listed in SIDE_EFFECT_PATHS, or annotate it `/* #__PURE__ */` if it is pure.",
       assignToImport:
-        "Assigning to `{{target}}` mutates an imported object at import time. Move it into a registration module listed in SIDE_EFFECT_FILES.",
+        "Assigning to `{{target}}` mutates an imported object at import time. Move it into a registration module listed in SIDE_EFFECT_PATHS.",
       assignToGlobal:
-        "Assigning to `{{target}}` writes global state at import time. Move it into a registration module listed in SIDE_EFFECT_FILES, or into an entry.",
+        "Assigning to `{{target}}` writes global state at import time. Move it into a registration module listed in SIDE_EFFECT_PATHS, or into an entry.",
       topLevelAwait:
         "Top-level await runs at import time. Move it into a function that is called from an entry.",
       controlFlow:
-        "`{{kind}}` at module scope means work runs at import time. Move it into a function, or into a registration module listed in SIDE_EFFECT_FILES.",
+        "`{{kind}}` at module scope means work runs at import time. Move it into a function, or into a registration module listed in SIDE_EFFECT_PATHS.",
     },
   },
 
@@ -182,8 +183,8 @@ module.exports = {
       ...DEFAULT_PURE_CALLEES,
       ...(options.pureCallees || []),
     ];
-    const sideEffectFiles = normalizeSideEffectFiles(
-      options.sideEffectFiles || [],
+    const sideEffectPaths = normalizeSideEffectPaths(
+      options.sideEffectPaths || [],
     );
     const internalModules = new Set(options.internalModules || []);
 
@@ -426,10 +427,7 @@ module.exports = {
       const target = source.startsWith(".")
         ? normalizePath(path.resolve(path.dirname(filename), source))
         : source;
-      if (
-        sideEffectFiles.has(target) ||
-        sideEffectFiles.has(stripScriptExtension(target))
-      ) {
+      if (sideEffectPaths.allows(target)) {
         return;
       }
       context.report({ node, messageId: "bareImport", data: { source } });
@@ -698,12 +696,26 @@ function stripScriptExtension(file) {
   return file.replace(/\.[jt]sx?$/, "");
 }
 
-function normalizeSideEffectFiles(files) {
-  const normalized = new Set();
-  for (const file of files) {
-    const absolute = normalizePath(path.resolve(file));
-    normalized.add(absolute);
-    normalized.add(stripScriptExtension(absolute));
+// A directory entry ends with a separator and allows every file under it.
+function normalizeSideEffectPaths(paths) {
+  const files = new Set();
+  const directories = [];
+  for (const entry of paths) {
+    const absolute = normalizePath(path.resolve(entry));
+    if (normalizePath(entry).endsWith("/")) {
+      directories.push(`${absolute}/`);
+    } else {
+      files.add(absolute);
+      files.add(stripScriptExtension(absolute));
+    }
   }
-  return normalized;
+  return {
+    allows(target) {
+      return (
+        files.has(target) ||
+        files.has(stripScriptExtension(target)) ||
+        directories.some((directory) => target.startsWith(directory))
+      );
+    },
+  };
 }
