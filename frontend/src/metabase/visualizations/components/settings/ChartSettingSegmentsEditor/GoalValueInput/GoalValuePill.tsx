@@ -1,5 +1,4 @@
-import cx from "classnames";
-import { type HTMLAttributes, forwardRef } from "react";
+import { type KeyboardEventHandler, forwardRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -18,11 +17,12 @@ import { formatValue } from "metabase/visualizations/lib/formatting";
 import S from "./GoalValueInput.module.css";
 import { ICON_BUTTON_SIZE } from "./constants";
 
-// the div props include what Menu.Target injects, so the menu can anchor here
-type Props = HTMLAttributes<HTMLDivElement> & {
+type Props = {
+  "aria-label"?: string;
   isMenuOpen: boolean;
   resolved: ResolvedGoalValue;
   tooltip: string | null;
+  onKeyDown: KeyboardEventHandler<HTMLDivElement>;
   onOpenMenu: () => void;
   onRemove: () => void;
 };
@@ -30,30 +30,29 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
   function GoalValuePill(
     {
-      className,
+      "aria-label": ariaLabel,
       isMenuOpen,
       resolved,
       tooltip,
       onOpenMenu,
       onRemove,
-      ...divProps
     },
     ref,
   ) {
     return (
       // bg and 40px height match Mantine's md inputs, so both bound inputs look alike
       <Group
-        ref={ref}
+        aria-label={ariaLabel}
         bdrs="sm"
         bg="background_page-primary"
-        className={cx(S.refShell, className)}
+        className={S.refShell}
         gap="sm"
         h={40}
         px="sm"
+        ref={ref}
         role="group"
         tabIndex={0}
         wrap="nowrap"
-        {...divProps}
       >
         <Tooltip disabled={tooltip == null} label={tooltip}>
           {/* min-width lets the value ellipsize instead of pushing the remove button out of the shell */}
@@ -80,6 +79,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             )}
           </UnstyledButton>
         </Tooltip>
+
         <Tooltip label={t`Remove value source`}>
           <ActionIcon
             aria-label={t`Remove value source`}
