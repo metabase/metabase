@@ -16,22 +16,24 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
-      actionlint: ${{ steps.changes.outputs.actionlint }}
-      actionlint_files: ${{ steps.changes.outputs.actionlint_files }}
-      codeql: ${{ steps.changes.outputs.codeql }}
-      i18n: ${{ steps.changes.outputs.i18n }}
-      openapi: ${{ steps.changes.outputs.openapi }}
-      snowplow: ${{ steps.changes.outputs.snowplow }}
-      yaml: ${{ steps.changes.outputs.yaml }}
+      actionlint: ${{ fromJSON(steps.changes.outputs.results).actionlint }}
+      actionlint_files: ${{ fromJSON(steps.changes.outputs.results).actionlint_files }}
+      codeql: ${{ fromJSON(steps.changes.outputs.results).codeql }}
+      i18n: ${{ fromJSON(steps.changes.outputs.results).i18n }}
+      openapi: ${{ fromJSON(steps.changes.outputs.results).openapi }}
+      snowplow: ${{ fromJSON(steps.changes.outputs.results).snowplow }}
+      yaml: ${{ fromJSON(steps.changes.outputs.results).yaml }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Everything files-changed needs — the action and the filter config —
+          # lives under .github, and paths-filter diffs refs, not the worktree.
+          sparse-checkout: .github
 
       - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
+        uses: ./.github/actions/files-changed
         with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
           list-files: shell
 
   lint:

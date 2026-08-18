@@ -46,25 +46,25 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
-      backend_all: ${{ steps.changes.outputs.backend_all }}
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      documentation: ${{ steps.changes.outputs.documentation }}
-      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
-      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
-      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
-      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
-      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      e2e_all: ${{ fromJSON(steps.changes.outputs.results).e2e_all }}
+      e2e_specs: ${{ fromJSON(steps.changes.outputs.results).e2e_specs }}
+      backend_all: ${{ fromJSON(steps.changes.outputs.results).backend_all }}
+      frontend_all: ${{ fromJSON(steps.changes.outputs.results).frontend_all }}
+      frontend_sources: ${{ fromJSON(steps.changes.outputs.results).frontend_sources }}
+      documentation: ${{ fromJSON(steps.changes.outputs.results).documentation }}
+      embedding_documentation: ${{ fromJSON(steps.changes.outputs.results).embedding_documentation }}
+      embedding_sdk_components: ${{ fromJSON(steps.changes.outputs.results).embedding_sdk_components }}
+      embedding_sdk_host_sample_apps: ${{ fromJSON(steps.changes.outputs.results).embedding_sdk_host_sample_apps }}
+      embedding_sdk_ci: ${{ fromJSON(steps.changes.outputs.results).embedding_sdk_ci }}
+      custom_viz_all: ${{ fromJSON(steps.changes.outputs.results).custom_viz_all }}
       no_source_code_changes: >-
-        ${{ steps.changes.outputs.documentation == 'true'
-        && steps.changes.outputs.backend_all == 'false'
-        && steps.changes.outputs.frontend_all == 'false'
-        && steps.changes.outputs.e2e_all == 'false' }}
+        ${{ fromJSON(steps.changes.outputs.results).documentation == 'true'
+        && fromJSON(steps.changes.outputs.results).backend_all == 'false'
+        && fromJSON(steps.changes.outputs.results).frontend_all == 'false'
+        && fromJSON(steps.changes.outputs.results).e2e_all == 'false' }}
 
-      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
-      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
+      e2e_all_files: ${{ fromJSON(steps.changes.outputs.results).e2e_all_files }}
+      e2e_specs_files: ${{ fromJSON(steps.changes.outputs.results).e2e_specs_files }}
 
       stats: ${{ steps.compute.outputs.stats }}
       fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
@@ -73,25 +73,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
+        uses: ./.github/actions/files-changed
         with:
-          token: ${{ github.token }}
           # comma separated list of files
           list-files: csv
-          filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
         if: ${{ github.event_name == 'pull_request' }}
         uses: ./.github/actions/create-test-plan
         with:
-          changed-files: ${{ steps.changes.outputs.all_changed_files }}
-          fe-changed-files: ${{ steps.changes.outputs.frontend_sources_files }}
-          be-changed-files: ${{ steps.changes.outputs.backend_sources_files }}
-          unit-infra-touched: ${{ steps.changes.outputs.frontend_unit_infra }}
-          loki-infra-touched: ${{ steps.changes.outputs.frontend_loki_infra }}
-          e2e-infra-touched: ${{ steps.changes.outputs.e2e_infra }}
-          shared-sources-touched: ${{ steps.changes.outputs.shared_sources }}
+          changed-files: ${{ fromJSON(steps.changes.outputs.results).all_changed_files }}
+          fe-changed-files: ${{ fromJSON(steps.changes.outputs.results).frontend_sources_files }}
+          be-changed-files: ${{ fromJSON(steps.changes.outputs.results).backend_sources_files }}
+          unit-infra-touched: ${{ fromJSON(steps.changes.outputs.results).frontend_unit_infra }}
+          loki-infra-touched: ${{ fromJSON(steps.changes.outputs.results).frontend_loki_infra }}
+          e2e-infra-touched: ${{ fromJSON(steps.changes.outputs.results).e2e_infra }}
+          shared-sources-touched: ${{ fromJSON(steps.changes.outputs.results).shared_sources }}
 
   upload-affected-tests-stats:
     needs: create-test-plan
@@ -162,7 +160,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+      changed: ${{ steps.static_viz.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -174,11 +172,11 @@ jobs:
         env:
           MB_EDITION: ee
       - name: Check for static viz changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
+        uses: ./.github/actions/files-changed
         with:
-          token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
+          any-of: static_viz
 
   backend-tests:
     if: |
@@ -192,7 +190,7 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.create-test-plan.outputs.backend_all != 'true' &&
-        needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+        needs.static-viz-files-changed.outputs.changed != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   semantic-search-tests:
