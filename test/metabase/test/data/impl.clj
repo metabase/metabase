@@ -61,11 +61,17 @@
 
   That is memoized for the current application database."
   []
-  (mdb/memoize-for-application-db
-   (fn [driver]
-     ;; the id is memoized for the whole app db, so the Database has to outlive whatever scope first asked for it --
-     ;; created inside a test's `:rollback-only` `with-temp` it would be rolled back while the memo kept its id
-     (mdb/do-outside-transaction #(u/the-id (get-or-create-default-dataset! driver))))))
+  (let [cached (mdb/memoize-for-application-db
+                (fn [driver]
+                  (u/the-id (get-or-create-default-dataset! driver))))]
+    (fn [driver]
+      ;; The id is memoized for the whole app db, so caching one obtained inside a transaction would outlive a
+      ;; rollback that took the Database with it. Look it up directly there instead of caching. Don't reach for a
+      ;; separate connection to make it durable: the caller's transaction may be holding cluster lock rows, and a
+      ;; second connection waiting on those deadlocks until the lock acquisition times out.
+      (if (mdb/in-transaction?)
+        (u/the-id (get-or-create-default-dataset! driver))
+        (cached driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -395,14 +401,14 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb/memoize-for-application-db
-                           (fn [driver]
-                             ;; memoized for the whole app db, so it must not be rolled back with the scope that
-                             ;; happened to ask for it first -- see [[make-memoized-test-database-id-fn]]
-                             (let [db (mdb/do-outside-transaction #(get-or-create-database! driver dbdef))]
-                               (assert db)
-                               (assert (pos-int? (:id db)))
-                               db)))
+        get-db!           (fn [driver]
+                            (let [db (get-or-create-database! driver dbdef)]
+                              (assert db)
+                              (assert (pos-int? (:id db)))
+                              db))
+        cached            (mdb/memoize-for-application-db get-db!)
+        ;; skip the cache inside a transaction -- see [[make-memoized-test-database-id-fn]]
+        get-db-for-driver #(if (mdb/in-transaction?) (get-db! %) (cached %))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*                   db-fn
               *db-id-fn*                #(u/the-id (db-fn))
