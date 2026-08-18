@@ -132,7 +132,7 @@
       (is (every? #(:ok (:response %)) posts)
           "Slack accepted it, so nothing had to fall back")
       (testing "the answer is cut to the budget and keeps its visualizations and buttons"
-        (is (>= slackbot.blocks/markdown-text-limit (count (:text answer))))
+        (is (>= @#'slackbot.blocks/markdown-text-limit (count (:text answer))))
         (is (= ["markdown" "section" "table" "context" "context_actions"]
                (mapv :type (:blocks answer)))))
       (testing "the notice rides in a context block, linking to the conversation"
