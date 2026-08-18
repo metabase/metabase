@@ -23,6 +23,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.custom-migrations.llm-providers :as llm-providers]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
@@ -2237,3 +2238,7 @@
                              :where  [:and
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
+
+(define-reversible-migration MigrateLlmProviderSettings
+  (llm-providers/migrate-up!)
+  (llm-providers/migrate-down!))

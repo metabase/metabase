@@ -702,7 +702,7 @@ LIMIT
     });
 
     it("should show the metabot button", () => {
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
       visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("Query builder").click();

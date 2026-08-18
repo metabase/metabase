@@ -1268,6 +1268,7 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
+           metabase.llm.provider
            metabase.llm.settings
            metabase.llm.startup}
    :uses #{analytics
@@ -1278,6 +1279,7 @@
            lib-be
            metabot
            models
+           permissions
            premium-features
            request
            settings
@@ -2274,6 +2276,7 @@
               channel
               formatter
               lib
+              llm
               metabot
               permissions
               query-processor
@@ -3116,7 +3119,7 @@
 
   enterprise/cloud-add-ons
   {:team "Cloud"
-   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :api  #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
    :uses #{api
            events
            premium-features
@@ -3469,6 +3472,7 @@
               metabot}
    :uses    #{api
               lib-be
+              llm
               metabot
               models
               permissions
@@ -3476,6 +3480,7 @@
               settings
               task
               util
+              enterprise/cloud-add-ons
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog
