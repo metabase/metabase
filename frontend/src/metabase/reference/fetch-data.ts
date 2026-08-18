@@ -1,19 +1,18 @@
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import type { Dispatch } from "metabase/redux/store";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import {
   fetchSegmentFields,
   fetchSegmentRevisions,
   fetchSegmentTable,
   fetchSegments,
-} from "metabase/redux/metadata";
-import type { Dispatch } from "metabase/redux/store";
-import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+} from "metabase/reference/segments/thunks";
 import type { SegmentId, TableId } from "metabase-types/api";
 
 /**
- * What each reference page loads. Previously the `wrapped*` helpers, which also
- * drove the module's loading state. That part now belongs to
- * `useReferenceFetch`, so these are plain fetches.
+ * What each reference page loads. Loading state is reported separately, by
+ * `useReferenceFetch`.
  */
 
 const fetchQuestions = (dispatch: Dispatch) =>
