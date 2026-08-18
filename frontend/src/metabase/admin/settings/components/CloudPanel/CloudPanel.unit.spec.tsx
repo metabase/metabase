@@ -6,9 +6,9 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getPlan } from "metabase/common/utils/plan";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getSettings } from "metabase/settings";
+import { getPlan } from "metabase/utils/plan";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 

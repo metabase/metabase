@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import type { Plan } from "metabase/common/utils/plan";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useSetting } from "metabase/settings";
@@ -17,6 +16,7 @@ import {
   Progress,
   Text,
 } from "metabase/ui";
+import type { Plan } from "metabase/utils/plan";
 
 import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
 

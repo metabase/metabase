@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
 import { UpsellBanner } from "metabase/common/components/upsells/components";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSetting } from "metabase/settings";
+import { getPlan, isProPlan } from "metabase/utils/plan";
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {
   const isHosted = useSetting("is-hosted?");

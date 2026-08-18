@@ -1,4 +1,4 @@
-import { getPlan } from "metabase/common/utils/plan";
+import { getPlan } from "metabase/utils/plan";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 describe("common/utils/columns", () => {

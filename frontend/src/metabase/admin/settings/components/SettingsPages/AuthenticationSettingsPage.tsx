@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import {
   type AuthSettingsPageTab,
   PLUGIN_AUTH_PROVIDERS,
@@ -10,6 +9,7 @@ import {
 } from "metabase/plugins";
 import { useGetSettingsQuery } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
+import { hasAnySsoFeature } from "metabase/utils/plan";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
 import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthCard";

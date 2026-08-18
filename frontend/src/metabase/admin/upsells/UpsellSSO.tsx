@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { Box, List } from "metabase/ui";
+import { hasAnySsoFeature } from "metabase/utils/plan";
 
 export const UpsellSSO = ({ location }: { location: string }) => {
   const campaign = "sso";

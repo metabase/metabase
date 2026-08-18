@@ -2,10 +2,10 @@ import { c, t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { getPlan } from "metabase/common/utils/plan";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
+import { getPlan } from "metabase/utils/plan";
 
 export const UpsellUploads = ({ location }: { location: string }) => {
   const campaign = "manage-uploads";

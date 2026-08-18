@@ -1,9 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getPlan } from "metabase/common/utils/plan";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { getPlan } from "metabase/utils/plan";
 import type { State } from "metabase/redux/store";
 import { getSetting, getTokenFeature } from "metabase/settings";
+import { getPlan } from "metabase/utils/plan";
 
 export const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {
