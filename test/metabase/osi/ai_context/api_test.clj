@@ -287,8 +287,9 @@
 
 ;;; --------------------------------------------- Nudge call sites ---------------------------------------------
 ;;;
-;;; The model has no write hooks, so each write site must remember to nudge — a forgotten
-;;; one costs index freshness until the periodic reconcile. The interactive CRUD paths are pinned here.
+;;; The model nudges from its own write hooks, so every writer gets it. What is pinned here is that the
+;;; interactive CRUD paths nudge exactly once with the normalized key, and that a write touching only
+;;; generation metadata does not nudge at all.
 ;;;
 ;;; No `with-test-entry` in these tests: `mt/with-temp` runs its body inside a transaction, and the
 ;;; in-process client executes the endpoint on the same thread, so a `do-after-commit` nudge would be
