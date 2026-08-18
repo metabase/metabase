@@ -567,6 +567,8 @@
     "bin/build/test"
     "bin/lint-migrations-file/src"
     "bin/lint-migrations-file/test"
+    "bin/load-namespaces/src"
+    "bin/load-namespaces/test"
     "bin/release-list/src"
     "bin/release-list/test"
     "modules/drivers/athena/src"
