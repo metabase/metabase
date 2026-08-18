@@ -732,6 +732,9 @@
    (prometheus/counter :metabase-slackbot/file-uploads
                        {:description "Number of file uploads via the Slack bot."
                         :labels [:result]})
+   (prometheus/counter :metabase-slackbot/responses-truncated
+                       {:description (str "Number of Slack bot responses truncated because they exceeded "
+                                          "Slack's message limits.")})
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
