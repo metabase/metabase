@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
-      frontend_embedding_sdk_package_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_package_sources }}
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -23,12 +23,14 @@ jobs:
       - name: Test which files changed
         id: changes
         uses: ./.github/actions/files-changed
+        with:
+          any-of: frontend_embedding_sdk_package_sources
 
   embedding-sdk-package-no-release-notes-reminder:
     needs: [ files-changed ]
     if: |
       !cancelled() &&
-      (needs.files-changed.outputs.frontend_embedding_sdk_package_sources == 'true')
+      (needs.files-changed.outputs.changed == 'true')
     name: Embedding SDK package release-notes/no-release-notes label reminder
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5

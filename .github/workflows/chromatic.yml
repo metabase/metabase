@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -27,10 +27,12 @@ jobs:
       - name: Test which files changed
         id: changes
         uses: ./.github/actions/files-changed
+        with:
+          any-of: frontend_all
 
   fe-chromatic:
     needs: files-changed
-    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.changed == 'true')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout repository

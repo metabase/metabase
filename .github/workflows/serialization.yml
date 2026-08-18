@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
-      serialization_baseline: ${{ steps.changes.outputs.serialization_baseline }}
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -26,10 +26,12 @@ jobs:
       - name: Test which files changed
         id: changes
         uses: ./.github/actions/files-changed
+        with:
+          any-of: serialization_baseline
 
   validate-serialization-baseline:
     needs: files-changed
-    if: needs.files-changed.outputs.serialization_baseline == 'true'
+    if: needs.files-changed.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:

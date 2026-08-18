@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
-      cljs: ${{ steps.changes.outputs.cljs }}
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -27,10 +27,12 @@ jobs:
       - name: Test which files changed
         id: changes
         uses: ./.github/actions/files-changed
+        with:
+          any-of: cljs
 
   shared-tests-cljs:
     needs: files-changed
-    if: needs.files-changed.outputs.cljs == 'true'
+    if: needs.files-changed.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:

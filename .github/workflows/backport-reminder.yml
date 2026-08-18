@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
-      docs: ${{ steps.changes.outputs.docs }}
+      changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -41,6 +41,8 @@ jobs:
       - name: Test which files changed
         id: changes
         uses: ./.github/actions/files-changed
+        with:
+          any-of: docs
 
   backport-reminder:
     needs: [ files-changed, flags ]
@@ -53,7 +55,7 @@ jobs:
       - name: Fail if backport decision label is missing
         if: >
           github.event_name == 'pull_request' &&
-          needs.files-changed.outputs.docs == 'true' &&
+          needs.files-changed.outputs.changed == 'true' &&
           needs.flags.outputs.has_backport_label == 'false'
         run: |
           echo "::error::PR has docs changes and is missing a backport decision label. Add one of: no-backport, backport, single-backport, double-backport, or triple-backport"
