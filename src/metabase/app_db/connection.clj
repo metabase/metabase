@@ -236,7 +236,10 @@
                   (cond
                     rollback-only?
                     (do
-                      (rollback!)
+                      (try
+                        (rollback!)
+                        (catch Exception rollback-e
+                          (throw (ex-info "Error rolling back a rollback-only transaction" {} rollback-e))))
                       [result false])
 
                     (= *transaction-depth* 1)
@@ -260,7 +263,17 @@
     (if (.getAutoCommit connection)
       (try
         (.setAutoCommit connection false)
-        (thunk)
+        (try
+          (thunk)
+          (catch Throwable t
+            ;; restoring autocommit below commits whatever is still open, so anything that got here by throwing --
+            ;; including a requested rollback that failed -- has to discard the transaction itself, or the work it
+            ;; was meant to undo gets committed
+            (try
+              (.rollback connection)
+              (catch Throwable rollback-e
+                (log/warnf "Failed to roll back transaction: %s" (ex-message rollback-e))))
+            (throw t)))
         (finally
           ;; prevent a failing .setAutoCommit call from masking the original exception
           (try
@@ -292,15 +305,21 @@
       started later.
 
   `:rollback-only true` rolls a successful scope back to its savepoint and discards the callbacks and transaction state
-  it registered. Other JDBC transaction options are rejected rather than silently treated as ordinary writable
-  transactions."
+  it registered. It cannot be combined with `:nested-transaction-rule :ignore`, which skips the savepoint entirely.
+  Other JDBC transaction options are rejected rather than silently treated as ordinary writable transactions."
   [^java.sql.Connection connection
    {:keys [nested-transaction-rule rollback-only] :or {nested-transaction-rule :allow} :as options}
    f]
   (when-let [unsupported-options (seq (remove supported-transaction-options (keys options)))]
-    (throw (ex-info "Unsupported application database transaction options"
-                    {:unsupported-options (vec unsupported-options)})))
+    (throw (ex-info (str "Unsupported transaction options: " (pr-str (vec unsupported-options)))
+                    {:unsupported-options (vec unsupported-options)
+                     :options             options})))
   (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
+  ;; rejected whatever the current depth is, so a call site fails the same way wherever it runs
+  (when (and rollback-only (= nested-transaction-rule :ignore))
+    (throw (ex-info (str "Cannot combine :rollback-only with :nested-transaction-rule :ignore -- an ignored "
+                         "nested transaction has no savepoint to roll back to")
+                    {:options options})))
   (cond
     (and (pos? *transaction-depth*)
          (= nested-transaction-rule :ignore))
