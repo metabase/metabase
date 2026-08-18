@@ -1202,6 +1202,41 @@ const configs = [
       ],
     },
   },
+
+  // ============================================
+  // BASE API OBJECT ACCESS
+  // ============================================
+  {
+    // Endpoints are injected into the one `Api` object at import time by the
+    // file that owns them, so they exist only once that file has been
+    // evaluated. Reaching them by name through the base object works only while
+    // something else imports the owner, and a side-effect-free api module lets
+    // production shake the owner away. Consumers go through the owner's
+    // exports instead.
+    files: [
+      "frontend/src/**/*.{ts,tsx,js,jsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
+    ],
+    rules: {
+      "metabase/no-base-api-access": [
+        "error",
+        {
+          allowIn: [
+            // The api module itself
+            `${__dirname}/frontend/src/metabase/api/**`,
+            // Owner files: a module's `api/` folder or its `api.ts`
+            "**/api/**",
+            "**/api.ts",
+            // Test support seeds the cache by endpoint name, after importing
+            // the whole api index so every owner has run
+            `${__dirname}/frontend/test/**`,
+            "**/__support__/**",
+            "**/*.unit.spec.*",
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 if (shouldLintCssModules) {

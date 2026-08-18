@@ -10,6 +10,7 @@ module.exports = {
   rules: {
     "enforce-module-public-api": require("./rules/enforce-module-public-api"),
     "jtag-missing-key": require("./rules/jtag-missing-key"),
+    "no-base-api-access": require("./rules/no-base-api-access"),
     "no-color-literals": require("./rules/no-color-literals"),
     "no-direct-helper-import": require("./rules/no-direct-helper-import"),
     "no-external-references-for-sdk-package-code": require("./rules/no-external-references-for-sdk-package-code"),
