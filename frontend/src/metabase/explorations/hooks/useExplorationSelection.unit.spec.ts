@@ -3,8 +3,8 @@ import { act } from "@testing-library/react";
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   DimensionId,
   ExplorationMetric,

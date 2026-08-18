@@ -5,6 +5,7 @@ import {
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
+import { canUserCreateQueries, getUser } from "metabase/current-user";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -24,7 +25,6 @@ import type { Location } from "metabase/router";
 import { navigate } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
