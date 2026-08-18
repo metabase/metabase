@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { Alert, Box, Card, Stack } from "metabase/ui";

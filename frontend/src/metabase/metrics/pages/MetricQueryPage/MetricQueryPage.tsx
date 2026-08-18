@@ -7,12 +7,12 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type {
   MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";

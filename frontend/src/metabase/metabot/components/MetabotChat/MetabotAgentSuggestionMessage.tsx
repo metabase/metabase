@@ -6,6 +6,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -13,7 +14,6 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

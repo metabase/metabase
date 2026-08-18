@@ -8,6 +8,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -15,7 +16,6 @@ import {
 import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   PLUGIN_DEPENDENCIES,
