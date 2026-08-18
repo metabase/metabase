@@ -44,6 +44,11 @@ export function useViewerUrl(
   const navigate = useNavigate();
   const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
+  // Current state, readable inside the URL→state effect without adding `state`
+  // to its dependency list (which would re-run the effect on every state
+  // change). Used to detect echoes of our own pushes: see the guard below.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // sync URL to state
   useEffect(() => {
@@ -79,6 +84,25 @@ export function useViewerUrl(
       }
 
       if (hash === lastHashRef.current) {
+        setInitialLoadComplete(true);
+        return;
+      }
+      // The router re-emits our own pushes and, under load, can deliver them
+      // late and out of order — after lastHashRef has already advanced. Such a
+      // stale echo is not external navigation: if the incoming hash encodes the
+      // same state we currently hold, it carries no new information. Restoring
+      // it anyway would wipe+reload definitions and re-serialize to a slightly
+      // different hash (dimension slots refill, selectedDimensionBreakoutId
+      // null→X), pushing again and looping until React throws "Maximum update
+      // depth exceeded". So adopt it as the baseline and skip the restore.
+      //
+      // We compare against the *current* state (not a set of every hash we ever
+      // pushed): a stale echo that encodes a state we've since moved past is
+      // still restored, because dimension-add and back/forward rely on that
+      // pass. The loop is broken by this same check — once the app converges,
+      // the echo of the converged hash matches current state and is skipped.
+      if (hash === encodeState(stateToSerializedState(stateRef.current))) {
+        lastHashRef.current = hash;
         setInitialLoadComplete(true);
         return;
       }
