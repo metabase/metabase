@@ -24,6 +24,7 @@ import {
 import {
   ActionIcon,
   Box,
+  Ellipsified,
   Group,
   Icon,
   Loader,
@@ -332,11 +333,11 @@ export const GoalValueInput = ({
                   {resolved.isResolving ? (
                     <Loader size="xs" />
                   ) : (
-                    <span className={S.pillValue}>
+                    <Ellipsified fw={500} showTooltip={false}>
                       {resolved.value != null
                         ? formatValue(resolved.value)
                         : EMPTY_CELL_PLACEHOLDER}
-                    </span>
+                    </Ellipsified>
                   )}
                 </UnstyledButton>
               </Tooltip>

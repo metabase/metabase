@@ -53,13 +53,6 @@
   flex-shrink: 0;
 }
 
-.pillValue {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .selectedItem {
   background-color: var(--mb-color-background-selected);
 }
