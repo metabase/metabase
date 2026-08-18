@@ -649,8 +649,7 @@
                      :keyword_rank]])
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-     ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
-     :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
+     :join [[[:to_tsquery ^:allow-raw-sql [:inline tsv-lang] [:lift ts-search-expr]]
              :query] [:= 1 1]]
      :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
               (if (seq filters)
@@ -892,7 +891,7 @@
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
   [row]
-  ;; BOT-1543: some existing rows have legacy_input stored as a JSON string rather than a JSON
+  ;; some existing rows have legacy_input stored as a JSON string rather than a JSON
   ;; object, so one decode yields a string; decode once more in that case.
   (update row :legacy_input
           (fn [pgo]

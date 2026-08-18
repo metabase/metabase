@@ -126,3 +126,18 @@
         ;; look at the `:effective-type` and/or `:effective-type`, not the wrapped literal type.
         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
         ::expression/string))))
+
+(deftest ^:parallel value-clause-value-test
+  (let [opts {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text}]
+    (testing "a :value clause holds a scalar literal"
+      (are [v] (mr/validate :mbql.clause/value [:value opts v])
+        "abc"
+        42
+        4.5
+        true
+        nil))
+    (testing "a :value clause value is not a collection"
+      (are [v] (not (mr/validate :mbql.clause/value [:value opts v]))
+        {:a 1}
+        [1 2 3]
+        #{1 2}))))

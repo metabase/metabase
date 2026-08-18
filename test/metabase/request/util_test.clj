@@ -43,7 +43,7 @@
                               {"front-end-https" "off"}        false
                               {"origin" "https://mysite.com"}  true
                               {"origin" "http://mysite.com"}   false
-                              ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
+                              ;; a blank proto header must fall through to the boolean HTTPS indicators
                               {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
                               {"x-forwarded-proto" "" "front-end-https" "on"}          true
                               {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
@@ -110,10 +110,10 @@
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
         (is (= "5.6.7.8"
                (request.current/ip-address mock-request))))
-      (testing "multiple IP addresses"
+      (testing "multiple IP addresses -- takes the last (proxy-appended, trusted) entry, not the first"
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
-          (is (= "1.2.3.4"
+          (is (= "5.6.7.8"
                  (request.current/ip-address mock-request)))))
       (testing "different header than default X-Forwarded-For"
         (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]

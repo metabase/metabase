@@ -22,9 +22,9 @@
                                          {:select [[:tablename :xi]]
                                           :from [:pg_tables]
                                           :where [:and
-                                                  [:<> :schemaname [:inline "information_schema"]]
-                                                  [:<> :schemaname [:inline "pg_catalog"]]
-                                                  [:<> :tablename  [:inline "migration"]]]})))]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "information_schema"]]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "pg_catalog"]]
+                                                  [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]]})))]
     (doseq [table table-names]
       (jdbc/execute! tx
                      (sql/format
@@ -126,8 +126,8 @@
              tbl-model-id       (keyword table-name "model_id")
              tbl-root-coll-type (keyword table-name "root_collection_type")
              gate-id            (keyword gate-table "id")
-             gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
+             gate-doc-root      [:->> (keyword gate-table "document") ^:allow-raw-sql [:inline "root_collection_type"]]
+             composite-gate-id  [:|| tbl-model ^:allow-raw-sql [:inline "_"] tbl-model-id]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
@@ -140,7 +140,7 @@
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
            (execute! {:update kw-tbl
-                      :set    {:root_collection_type [:inline root-type]}
+                      :set    {:root_collection_type ^:allow-raw-sql [:inline root-type]}
                       :where  [:and
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))
@@ -167,7 +167,7 @@
                           {:where [:and
                                    [:= :active true]
                                    [:or [:= :is_published true]
-                                    [:= :data_authority [:inline "authoritative"]]]]}))
+                                    [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -208,7 +208,7 @@
   (doseq [chunk (partition-all 5000 model-ids)]
     (execute! {:update kw-tbl
                :set    set-map
-               :where  [:and [:= :model [:inline model]] [:in :model_id (vec chunk)]]})))
+               :where  [:and [:= :model ^:allow-raw-sql [:inline model]] [:in :model_id (vec chunk)]]})))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -241,10 +241,10 @@
              ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
              (execute! {:update kw-tbl
                         :set   {:curated curated-expr}
-                        :where [:and [:= :curated nil] [:!= :model [:inline "table"]]]})
+                        :where [:and [:= :curated nil] [:!= :model ^:allow-raw-sql [:inline "table"]]]})
              ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
-                                            {:data_authority [:inline "authoritative"] :curated true})
+                                            {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
              (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
              ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
              ;; official dashboards (curated alone would leave them scoring as non-official until reindex).

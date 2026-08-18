@@ -30,8 +30,12 @@
 (def ^:private AiContext
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
-  the agent prompt."
-  [:map
+  the agent prompt.
+
+  `{:closed false}` is what makes that tolerance real: request decoding drops keys a schema doesn't declare, so a
+  plain `:map` would have quietly discarded the forward-compat keys on the way in -- while serdes import, which
+  copies the blob verbatim, kept them."
+  [:map {:closed false}
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])

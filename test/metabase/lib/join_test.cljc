@@ -964,7 +964,7 @@
                     (lib/display-info query col)))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-card-non-suggested-test
-  (testing "non-suggested join conditions should be correctly formed, using correct ID- or name-based refs (QUE2-383)"
+  (testing "non-suggested join conditions should be correctly formed, using correct ID- or name-based refs"
     (let [card     (:categories (lib.tu/mock-cards))
           mp       (lib.tu/metadata-provider-with-mock-cards)
           base     (lib/query mp (meta/table-metadata :venues))
@@ -1253,9 +1253,10 @@
                                                            :name "account__id"
                                                            :table-id account-tab-id
                                                            :base-type :type/Integer}]
-                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                        :dataset-query {:lib/type :mbql/query
                                                         :database (:id meta/database)
-                                                        :source-table account-tab-id}})
+                                                        :stages [{:lib/type :mbql.stage/mbql
+                                                                  :source-table account-tab-id}]}})
                                       (lib.tu/as-model
                                        {:id contact-card-id
                                         :name "Contact Model"
@@ -1267,9 +1268,10 @@
                                                            :base-type :type/Integer
                                                            :semantic-type :type/FK
                                                            :fk-target-field-id organization-f-id}]
-                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                        :dataset-query {:lib/type :mbql/query
                                                         :database (:id meta/database)
-                                                        :source-table contact-tab-id}})]})
+                                                        :stages [{:lib/type :mbql.stage/mbql
+                                                                  :source-table contact-tab-id}]}})]})
           account-card (lib.metadata/card metadata-provider account-card-id)
           contact-card (lib.metadata/card metadata-provider contact-card-id)
           query (lib/query metadata-provider account-card)]
@@ -1710,7 +1712,7 @@
                    has-fields?))))))
 
 (deftest ^:parallel joined-card-columns-use-name-refs-test
-  (testing "a joined card's columns should use name-based refs (QUE2-383)"
+  (testing "a joined card's columns should use name-based refs"
     (let [card     (:products (lib.tu/mock-cards))
           base     (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (meta/table-metadata :orders))
                        (lib/join (lib/join-clause card)))

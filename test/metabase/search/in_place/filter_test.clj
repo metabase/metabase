@@ -20,6 +20,8 @@
    :is-data-analyst?               false
    :current-user-perms             #{"/"}
    :calculate-available-models?    false
+   :is-sandboxed-user?             false
+   :is-impersonated-user?          false
    :enabled-transform-source-types #{"mbql"}})
 
 (deftest ^:parallel ->applicable-models-test
@@ -120,6 +122,30 @@
               (merge default-search-ctx
                      {:is-superuser? false
                       :models #{"dashboard" "card" "transform"}})))))))
+
+(deftest ^:parallel app-user-visibility-test
+  (testing "models with :visibility :app-user (indexed-entity) are hidden from sandboxed/impersonated users"
+    (let [models #{"dashboard" "card" "indexed-entity"}]
+      (testing "an ordinary user still sees indexed-entity"
+        (is (contains?
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx {:models models
+                                         :is-sandboxed-user? false
+                                         :is-impersonated-user? false}))
+             "indexed-entity")))
+      (testing "an impersonated user does not -- even with no search string (the LIKE-clause guard never fires)"
+        (is (= #{"dashboard" "card"}
+               (search.filter/search-context->applicable-models
+                (merge default-search-ctx {:models models
+                                           :search-string nil
+                                           :is-sandboxed-user? false
+                                           :is-impersonated-user? true})))))
+      (testing "a sandboxed user does not either"
+        (is (= #{"dashboard" "card"}
+               (search.filter/search-context->applicable-models
+                (merge default-search-ctx {:models models
+                                           :is-sandboxed-user? true
+                                           :is-impersonated-user? false}))))))))
 
 (deftest joined-with-table?-test
   #_{:clj-kondo/ignore [:equals-true]}
@@ -357,7 +383,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:= [:inline 0] [:inline 1]]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -370,7 +396,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:= [:inline 0] [:inline 1]]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -391,7 +417,7 @@
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
-              [:inline [:= 1 1]]]
+              [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -402,7 +428,7 @@
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
-              [:inline [:= 1 1]]]
+              [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -468,5 +494,5 @@
         (let [result (search.filter/build-filters
                       base-search-query model
                       (merge default-search-ctx {:collection 1}))]
-          (is (some #{[:inline [:= 0 1]]}
+          (is (some #{[:= [:inline 0] [:inline 1]]}
                     (tree-seq sequential? seq (:where result)))))))))

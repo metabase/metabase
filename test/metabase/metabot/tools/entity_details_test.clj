@@ -6,6 +6,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
@@ -802,3 +803,93 @@
             (is (=? #{{:id products :related_by {:id (mt/id :orders :product_id) :name "PRODUCT_ID"}}
                       {:id products :related_by {:id (mt/id :reviews :product_id) :name "PRODUCT_ID"}}}
                     (into #{} (map #(select-keys % [:id :related_by])) product-rows)))))))))
+
+(deftest related-tables-omit-blocked-fk-targets-test
+  (testing "a table the user is Blocked from is neither surfaced as a related table nor named as an FK
+            target, even when the user manages that table's metadata"
+    (mt/test-driver :h2
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/manage-table-metadata :yes)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [output  (:structured-output
+                         (entity-details/get-table-details {:entity-type        :table
+                                                            :entity-id          (mt/id :orders)
+                                                            :with-field-values? false}))
+                related (:related_tables output)
+                user-id (some #(when (= "USER_ID" (:name %)) %) (:fields output))]
+            (testing "the readable FK neighbour is still expanded"
+              (is (some #(= (mt/id :products) (:id %)) related)))
+            (testing "the blocked FK neighbour is absent"
+              (is (not-any? #(= (mt/id :people) (:id %)) related)))
+            (testing "the FK column itself is retained but no longer names its target"
+              (is (some? user-id))
+              (is (not (contains? user-id :fk_target_portable_fk))))
+            (testing "no People column or table name appears anywhere in the payload"
+              (is (not (str/includes? (pr-str output) "PEOPLE"))))))))))
+
+(deftest related-tables-include-readable-fk-targets-test
+  (testing "control: with view-data on every table, both FK neighbours are expanded and FK targets are named"
+    (mt/test-driver :h2
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [output  (:structured-output
+                         (entity-details/get-table-details {:entity-type        :table
+                                                            :entity-id          (mt/id :orders)
+                                                            :with-field-values? false}))
+                related (:related_tables output)
+                user-id (some #(when (= "USER_ID" (:name %)) %) (:fields output))]
+            (is (some #(= (mt/id :products) (:id %)) related))
+            (is (some #(= (mt/id :people) (:id %)) related))
+            (is (contains? user-id :fk_target_portable_fk))))))))
+
+(deftest related-tables-permission-checks-are-memoized-test
+  (testing "the permission gate on FK expansion re-asks the same tables the same questions, so an agent
+            turn's memo cuts the app-DB reads it costs ( gap 3)"
+    (mt/test-driver :h2
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [details  #(entity-details/get-table-details {:entity-type        :table
+                                                             :entity-id          (mt/id :orders)
+                                                             :with-field-values? false})
+                ;; Warm whatever else the first call populates, so the two measurements differ only in
+                ;; whether the memo is bound.
+                _        (details)
+                uncached (t2/with-call-count [calls] (details) (calls))
+                cached   (metabot.perms/with-cache
+                           (t2/with-call-count [calls] (details) (calls)))]
+            (is (< cached uncached)
+                (format "expected fewer app-DB calls with the memo bound (cached %d, uncached %d)"
+                        cached uncached))
+            (testing "and the output is unchanged"
+              (is (= (:structured-output (metabot.perms/with-cache (details)))
+                     (:structured-output (details)))))))))))
+
+(deftest get-dashboard-details-rejects-non-integer-id-test
+  (testing (str "a non-integer dashboard-id reaches t2/select-one's queryable position and would run as "
+                "raw SQL on the app DB. get-dashboard-details must reject it before any query, the same way "
+                "get-report-details/get-metric-details do.")
+    (doseq [[label bad-id] {"a raw SQL string"      "SELECT 1 AS id; DROP TABLE t; --"
+                            "a {:raw ...} map"       {:raw "1); DROP TABLE t; --"}
+                            "a honeysql-ish vector"  [:raw "1=1"]
+                            "nil"                    nil}]
+      (testing label
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid dashboard_id format"
+             (entity-details/get-dashboard-details {:dashboard-id bad-id}))
+            "the guard throws before the value can reach the app DB")
+        (try
+          (entity-details/get-dashboard-details {:dashboard-id bad-id})
+          (catch clojure.lang.ExceptionInfo e
+            (is (= 400 (:status-code (ex-data e))))
+            (is (:agent-error? (ex-data e))))))))
+  (testing "an integer id still passes the guard and resolves normally"
+    (is (= {:output "dashboard not found"}
+           (entity-details/get-dashboard-details {:dashboard-id Integer/MAX_VALUE})))))

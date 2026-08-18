@@ -10,6 +10,8 @@
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -387,8 +389,32 @@
           (is (true? @called-native?) "Should use native SQL parsing path")
           (is (false? @called-mbql?) "Should NOT use MBQL path for native queries"))))))
 
+(deftest mbql-source-tables-for-context-is-permission-filtered-test
+  (testing "table ids come out of the client-supplied query, so a table the user cannot query never
+            becomes a stub carrying a DB-sourced name/schema/description, not even for a user who manages
+            that table's metadata"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/create-queries :no)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (let [stubs (fn [table-id]
+                      (-> (#'context/enhance-context-with-schema
+                           {:user_is_viewing [{:type  "adhoc"
+                                               :query {:database (mt/id)
+                                                       :type     "query"
+                                                       :query    {:source-table table-id}}}]})
+                          :user_is_viewing first :used_tables))]
+          (is (nil? (stubs (mt/id :people)))
+              "blocked table produces no stub at all, despite manage-table-metadata")
+          (is (= [{:id (mt/id :orders) :type :table :name "ORDERS" :database_schema "PUBLIC" :description nil}]
+                 (stubs (mt/id :orders)))
+              "readable table still produces its stub"))))))
+
 (deftest filter-recents-to-curated-test
-  (testing "keeps only recents that collections.curation marks curated, keyed by [model id] (BOT-1570)"
+  (testing "keeps only recents that collections.curation marks curated, keyed by [model id]"
     (let [recents [{:model :card :id 1} {:model :table :id 2} {:model :dashboard :id 3}]]
       (mt/with-dynamic-fn-redefs [curation/curated-ids (constantly #{["card" 1] ["table" 2]})]
         (is (= [{:model :card :id 1} {:model :table :id 2}]

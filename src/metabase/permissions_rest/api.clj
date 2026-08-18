@@ -3,8 +3,6 @@
   (:require
    [clojure.data :as data]
    [honey.sql.helpers :as sql.helpers]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -16,8 +14,6 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -89,39 +85,30 @@
    {:keys [skip-graph force]} :- [:map
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- :map]
+   new-graph :- ::permissions-rest.schema/graph-update-request]
   (api/check-superuser)
-  (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
-                             body
-                             (mtx/transformer
-                              mtx/string-transformer
-                              (mtx/transformer {:name :perm-graph})))]
-    (when-not (mr/validate ::permissions-rest.schema/data-permissions-graph new-graph)
-      (let [explained (mu/explain ::permissions-rest.schema/data-permissions-graph new-graph)]
-        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
-                        {:status-code 400}))))
-    (t2/with-transaction [_conn]
-      (let [group-ids (-> new-graph :groups keys)
-            old-graph (data-perms.graph/api-graph {:group-ids group-ids})
-            [old new] (data/diff (:groups old-graph)
-                                 (:groups new-graph))
-            old       (or old {})
-            new       (or new {})]
-        (perms/log-permissions-changes old new)
-        (when-not force (perms/check-revision-numbers old-graph new-graph))
-        (data-perms.graph/update-data-perms-graph! {:groups new})
-        (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
-        (let [sandbox-updates        (:sandboxes new-graph)
-              sandboxes              (when sandbox-updates
-                                       (upsert-sandboxes! sandbox-updates))
-              impersonation-updates  (:impersonations new-graph)
-              impersonations         (when impersonation-updates
-                                       (insert-impersonations! impersonation-updates))
-              group-ids (-> new-graph :groups keys)]
-          (merge {:revision (perms/latest-permissions-revision-id)}
-                 (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
-                 (when sandboxes {:sandboxes sandboxes})
-                 (when impersonations {:impersonations impersonations})))))))
+  (t2/with-transaction [_conn]
+    (let [group-ids (-> new-graph :groups keys)
+          old-graph (data-perms.graph/api-graph {:group-ids group-ids})
+          [old new] (data/diff (:groups old-graph)
+                               (:groups new-graph))
+          old       (or old {})
+          new       (or new {})]
+      (perms/log-permissions-changes old new)
+      (when-not force (perms/check-revision-numbers old-graph new-graph))
+      (data-perms.graph/update-data-perms-graph! {:groups new})
+      (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+      (let [sandbox-updates        (:sandboxes new-graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations new-graph)
+            impersonations         (when impersonation-updates
+                                     (insert-impersonations! impersonation-updates))
+            group-ids (-> new-graph :groups keys)]
+        (merge {:revision (perms/latest-permissions-revision-id)}
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -182,11 +169,11 @@
          (when (and (not api/*is-superuser?*)
                     (premium-features/enable-advanced-permissions?)
                     api/*is-group-manager?*)
-           [:in :id {:select [:group_id]
-                     :from   [:permissions_group_membership]
-                     :where  [:and
-                              [:= :user_id api/*current-user-id*]
-                              [:= :is_group_manager true]]}])
+           [:in :id ^:allow-subquery {:select [:group_id]
+                                      :from   [:permissions_group_membership]
+                                      :where  [:and
+                                               [:= :user_id api/*current-user-id*]
+                                               [:= :is_group_manager true]]}])
          (when-not (setting/get :use-tenants)
            [:not :is_tenant_group])
          (when-not (premium-features/enable-advanced-permissions?)
@@ -296,11 +283,11 @@
                                   (and (not api/*is-superuser?*)
                                        api/*is-group-manager?*)
                                   (sql.helpers/where
-                                   [:in :group_id {:select [:group_id]
-                                                   :from   [:permissions_group_membership]
-                                                   :where  [:and
-                                                            [:= :user_id api/*current-user-id*]
-                                                            [:= :is_group_manager true]]}])
+                                   [:in :group_id ^:allow-subquery {:select [:group_id]
+                                                                    :from   [:permissions_group_membership]
+                                                                    :where  [:and
+                                                                             [:= :user_id api/*current-user-id*]
+                                                                             [:= :is_group_manager true]]}])
                                   (not (premium-features/enable-advanced-permissions?))
                                   (sql.helpers/where [:not= :group_id (u/the-id (perms/data-analyst-group))])))))
 

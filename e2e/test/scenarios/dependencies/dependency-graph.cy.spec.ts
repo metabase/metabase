@@ -1101,8 +1101,12 @@ function createTableBasedSegment({ tableId }: { tableId: TableId }) {
     description: "Segment description",
     table_id: tableId,
     definition: {
-      "source-table": tableId,
-      filter: ["=", 1, 1],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["=", 1, 1],
+      },
     },
   });
 }
@@ -1119,8 +1123,12 @@ function createSegmentBasedSegment({
     description: "Segment description",
     table_id: tableId,
     definition: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["segment", segmentId],
+      },
     },
   });
 }
@@ -1206,7 +1214,7 @@ function createDocumentWithTableBasedQuestion({
 }) {
   return H.createDocument({
     name: DOCUMENT_NAME,
-    document: [],
+    document: { type: "doc", content: [] },
     cards: {
       "-1": createMockCard({
         id: -1,
@@ -1229,8 +1237,12 @@ function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
     name: TABLE_BASED_MEASURE_NAME,
     table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: [["count"]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: [["count"]],
+      },
     },
   });
 }
@@ -1246,8 +1258,12 @@ function createSegmentBaseMeasure({
     name: SEGMENT_BASED_MEASURE_NAME,
     table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: [["count-where", ["segment", segmentId]]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: [["count-where", ["segment", segmentId]]],
+      },
     },
   });
 }
@@ -1342,8 +1358,12 @@ function createMeasureBasedMeasure({
     name: MEASURE_BASED_MEASURE_NAME,
     table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: ["+", 1, ["measure", measureId]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: ["+", 1, ["measure", measureId]],
+      },
     },
   });
 }

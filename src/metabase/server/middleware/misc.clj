@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
+   [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -72,15 +73,20 @@
       (when-let [ssl (or x-forwarded-ssl front-end-https)]
         (when (= "on" (u/lower-case-en ssl)) "https"))))
 
-(defn- maybe-set-site-url* [{headers :headers, uri :uri}]
+(defn- maybe-set-site-url* [{headers :headers, uri :uri, superuser? :is-superuser?}]
   (let [{:strs [origin x-forwarded-host host user-agent]} headers]
     (when (and (mdb/db-is-set-up?)
                (not (system/site-url))
+               ;; Only derive from headers when the request can't be forged by an attacker: before setup, or from an
+               ;; admin. `has-user-setup` alone would never let a headlessly-provisioned instance (config-from-file
+               ;; `users:`) derive it at all, since those have users from their first request.
+               (or (not (setup/has-user-setup))
+                   superuser?)
                (not (#{"/api/health" "/livez" "/readyz"} uri))
                (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
       ;; `origin` already carries a scheme; the `*-host` headers normally don't, so prepend the scheme the proxy
       ;; terminated TLS with -- otherwise `normalize-site-url` defaults to `http://` and a TLS-terminating proxy ends
-      ;; up advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth (BOT-1617). Only
+      ;; up advertising `http://` auth/discovery URLs over an `https` origin, breaking MCP OAuth. Only
       ;; prepend when the host is scheme-less; a scheme-bearing host passes through untouched.
       (when-let [site-url (or origin
                               (when-let [host (or x-forwarded-host host)]
@@ -95,7 +101,7 @@
             (log/warnf "Failed to set site-url: %s" (ex-message e))))))))
 
 (defn maybe-set-site-url
-  "Middleware to set the `site-url` setting on the initial setup request"
+  "Middleware to set the `site-url` setting from request headers while it is still unset."
   [handler]
   (fn [request respond raise]
     (maybe-set-site-url* request)

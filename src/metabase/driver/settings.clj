@@ -205,6 +205,16 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *impersonation-allow-write?*
+  "Whether an impersonated native query is allowed to be a single write statement rather than a single SELECT. Bound
+  by [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions, and read
+  by [[metabase.driver.sql/validate-impersonated-query*]].
+
+  A dynamic binding rather than a key on the query: as a key it rode in from the JSON request body untouched, letting
+  a non-admin on an impersonated database run an INSERT/UPDATE/DELETE where only a SELECT is allowed. Nothing a caller
+  sends can set a binding."
+  false)
+
 (def ^:dynamic *allow-testing-sqlite-connections*
   "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
   users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
