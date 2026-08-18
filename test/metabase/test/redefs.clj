@@ -5,6 +5,7 @@
    [mb.hawk.parallel]
    [metabase.classloader.core :as classloader]
    [metabase.test.util.thread-local :as tu.thread-local]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp]))
@@ -30,7 +31,15 @@
       ;; [[metabase.test.data.impl]] outlive it, handing out ids for rows that no longer exist -- and it
       ;; would be rebuilt for every test, since it could never commit.
       (classloader/require 'metabase.test.data.impl)
-      ((resolve 'metabase.test.data.impl/db-id))
+      ;; Only for the default driver. This resolves through the driver under test, and a driver test's
+      ;; warehouse dataset has its own lifecycle -- building it here would reach for a warehouse the
+      ;; with-temp may never touch. Best effort even then: it must not take an unrelated with-temp down.
+      (classloader/require 'metabase.test.data.interface)
+      (when (= :h2 ((resolve 'metabase.test.data.interface/driver)))
+        (try
+          ((resolve 'metabase.test.data.impl/db-id))
+          (catch Throwable e
+            (log/debugf "Could not materialise the test dataset before with-temp: %s" (ex-message e)))))
       (binding [*in-with-temp* true]
         (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
           (next-method model attributes f))))
