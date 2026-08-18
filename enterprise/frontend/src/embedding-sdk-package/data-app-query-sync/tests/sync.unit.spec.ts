@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { syncQueries } from "../sync";
@@ -112,6 +113,12 @@ describe("query synchronization", () => {
         body: JSON.stringify({ database_ids: [] }),
       },
     ]);
+    expect(
+      fs.readFileSync(path.join(appRoot, "data_app.yaml"), "utf8"),
+    ).toContain("resource_collection_entity_id: resourcecollectionid1");
+    expect(
+      fs.readFileSync(path.join(appRoot, "data_app.yaml"), "utf8"),
+    ).toContain("permission_group_entity_id: permissiongroupid0001");
   });
 
   it("reconciles the complete set of resolved query databases", async () => {
