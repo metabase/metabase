@@ -69,6 +69,12 @@
       ;; rollback that took the Database with it. Look it up directly there instead of caching. Don't reach for a
       ;; separate connection to make it durable: the caller's transaction may be holding cluster lock rows, and a
       ;; second connection waiting on those deadlocks until the lock acquisition times out.
+      ;; TODO (Chris 2026-08-18) -- an in-transaction miss creates the Database on the caller's uncommitted
+      ;; connection, so a concurrent first lookup cannot see the row and may create and sync a duplicate
+      ;; ((name, engine) is not unique), and Quartz triggers from the after-insert hook can outlive the
+      ;; rollback. Left as is deliberately: creating it on its own connection deadlocks against cluster
+      ;; lock rows the caller's transaction holds, and single-flight-until-commit is a lot of machinery
+      ;; for a test path. Initialising the dataset before the transaction opens would avoid both.
       (if (mdb/in-transaction?)
         (u/the-id (get-or-create-default-dataset! driver))
         (cached driver)))))
