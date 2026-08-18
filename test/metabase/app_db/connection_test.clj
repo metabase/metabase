@@ -279,6 +279,28 @@
              (t2/with-transaction [conn nil {:rollback-only true}]
                (t2/with-transaction [_ conn {:nested-transaction-rule :ignore :rollback-only true}]))))))))
 
+(deftest failed-nested-rollback-only-blocks-the-outer-commit-test
+  (testing "swallowing the error from a failed rollback-only rollback must not let the outer scope commit it"
+    (let [calls     (atom [])
+          mock-conn (reify Connection
+                      (rollback [_ _savepoint]
+                        (throw (ex-info "Savepoint rollback error" {})))
+                      (rollback [_] (swap! calls conj :rollback))
+                      (commit [_] (swap! calls conj :commit))
+                      (setAutoCommit [_ _])
+                      (getAutoCommit [_] true)
+                      (setSavepoint [_]))]
+      (binding [t2.connection/*current-connectable* mock-conn]
+        (let [e (is (thrown? Exception
+                             (t2/with-transaction [conn]
+                               (try
+                                 (t2/with-transaction [_ conn {:rollback-only true}] :nested)
+                                 (catch Exception _ :swallowed))
+                               :outer)))]
+          (is (re-find #"Not committing" (ex-message e)))))
+      (is (= #{:rollback} (set @calls))
+          "the tree is rolled back, and never committed"))))
+
 (deftest failed-savepoint-rollback-still-restores-transaction-state-test
   (testing "a nested scope whose savepoint rollback throws must not leave its state visible to the outer scope"
     (let [mock-conn (reify Connection
