@@ -39,26 +39,6 @@ export const updateSegment =
   (dispatch: Dispatch): Promise<unknown> =>
     runRtkEndpoint(segment, dispatch, segmentApi.endpoints.updateSegment);
 
-export const fetchRealDatabases =
-  (reload = false) =>
-  (dispatch: Dispatch): Promise<unknown> =>
-    runRtkEndpoint(
-      { include: "tables" },
-      dispatch,
-      databaseApi.endpoints.listDatabases,
-      { forceRefetch: reload },
-    );
-
-export const fetchDatabaseMetadata =
-  (id: DatabaseId, options: { reload?: boolean } = {}) =>
-  (dispatch: Dispatch): Promise<unknown> =>
-    runRtkEndpoint(
-      { id, skip_fields: true } satisfies GetDatabaseMetadataRequest,
-      dispatch,
-      databaseApi.endpoints.getDatabaseMetadata,
-      { forceRefetch: options.reload ?? false },
-    );
-
 export const updateDatabase =
   (database: Database) =>
   async (dispatch: Dispatch): Promise<unknown> => {
@@ -103,6 +83,18 @@ export const updateField =
     dispatch(updateMetadata(result, FieldSchema));
     return result;
   };
+
+// Private: the only caller left is `fetchSegmentFields` below. It deletes with
+// that thunk.
+const fetchDatabaseMetadata =
+  (id: DatabaseId) =>
+  (dispatch: Dispatch): Promise<unknown> =>
+    runRtkEndpoint(
+      { id, skip_fields: true } satisfies GetDatabaseMetadataRequest,
+      dispatch,
+      databaseApi.endpoints.getDatabaseMetadata,
+      { forceRefetch: false },
+    );
 
 const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
 export const fetchSegmentFields = createThunkAction(
