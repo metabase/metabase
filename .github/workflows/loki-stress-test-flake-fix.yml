@@ -21,7 +21,7 @@ on:
 jobs:
   detect-changed-stories:
     name: Detect changed stories
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       story_files: ${{ steps.detect.outputs.story_files }}

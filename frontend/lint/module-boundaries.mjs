@@ -188,11 +188,7 @@ const elements = [
   createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
-  createElement({
-    type: "shared",
-    name: "metadata",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
@@ -228,11 +224,7 @@ const elements = [
     enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({
-    type: "shared",
-    name: "transforms",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "transforms" }),
   createElement({
     type: "shared",
     name: "types",

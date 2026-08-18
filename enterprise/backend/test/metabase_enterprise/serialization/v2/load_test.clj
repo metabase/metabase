@@ -2007,16 +2007,11 @@
                          (t2/select-one-fn :details :model/Database)))))))))
       (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
-        (testing "with :include-database-secrets"
+        (testing "connection details are never exported, even when :include-database-secrets is requested"
           (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
                 dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
             (is (= 1 (count dbs)))
-            (is (every? :details dbs))
-            (ts/with-db dest-db
-              (testing "Details are imported if provided"
-                (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                (is (= (:details (first dbs))
-                       (t2/select-one-fn :details :model/Database)))))))))))
+            (is (not-any? :details dbs))))))))
 
 (deftest unique-dimensions-test
   (ts/with-dbs [source-db dest-db]

@@ -770,7 +770,7 @@ jobs:
 
   login-to-ecr:
     if: inputs.driver == 'Vertica'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
       id-token: write
