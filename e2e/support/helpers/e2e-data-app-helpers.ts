@@ -11,6 +11,7 @@ import type {
 
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
+import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
@@ -253,6 +254,32 @@ export function syncDataAppResources(apiKey: string, appRoot: string) {
     apiKey,
   });
 }
+
+/** Apps in `example_synced_data_apps` that the repo can materialize. */
+const SYNCED_DATA_APP_SLUGS = ["good", "broken-bundle"];
+
+export const copySyncedDataAppsFixture = () =>
+  cy.task("copyDirectory", {
+    source: `${Cypress.config("projectRoot")}/e2e/support/assets/example_synced_data_apps`,
+    destination: LOCAL_GIT_PATH,
+  });
+
+/**
+ * Provisions each synced fixture app the way an author does: `sync-resources`
+ * creates the app's collection and group, then writes their entity IDs into its
+ * `data_app.yaml`, which is what the repo sync resolves the resources from.
+ */
+export const provisionSyncedDataAppResources = () =>
+  createDataAppApiKey().then((apiKey) =>
+    cy.wrap<string[]>(SYNCED_DATA_APP_SLUGS).each((slug: string) =>
+      syncDataAppResources(apiKey, `${LOCAL_GIT_PATH}/data_apps/${slug}`).then(
+        ({ ok, error }) => {
+          expect(error, `sync-resources failed for ${slug}`).to.eq(null);
+          expect(ok).to.eq(true);
+        },
+      ),
+    ),
+  );
 
 export function createDataAppApiKey() {
   return cy
