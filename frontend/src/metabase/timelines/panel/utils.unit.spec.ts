@@ -1,22 +1,19 @@
-import userEvent from "@testing-library/user-event";
-
-import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
-import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
-import { renderWithProviders, screen } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
+
+import type { TimeSeriesInterval } from "metabase/viz-core";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
 import {
-  TimelineSidebar,
+  filterTimelinesByXAxis,
+  filterVisibleTimelineEvents,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
-} from "./TimelineSidebar";
+  transformTimelines,
+} from "./utils";
 
 const releases = createMockTimeline({
   id: 1,
@@ -94,9 +91,9 @@ describe("getEventsXDomain", () => {
 });
 
 describe("formatTitle", () => {
-  const june3 = dayjs.utc("2027-06-03T00:00:00Z");
-  const june27 = dayjs.utc("2027-06-27T00:00:00Z");
-  const july5 = dayjs.utc("2027-07-05T00:00:00Z");
+  const june3 = dayjs("2027-06-03T00:00:00Z");
+  const june27 = dayjs("2027-06-27T00:00:00Z");
+  const july5 = dayjs("2027-07-05T00:00:00Z");
 
   it("returns a generic title without a domain", () => {
     expect(formatTitle()).toBe("Events");
@@ -133,37 +130,92 @@ describe("formatTitle", () => {
   });
 });
 
-describe("TimelineSidebar", () => {
-  beforeEach(() => {
-    setupCollectionByIdEndpoint({
-      collections: [
-        createMockCollection({ ...ROOT_COLLECTION, can_write: true }),
-      ],
-    });
+describe("transformTimelines", () => {
+  it("drops archived events and parses timestamps", () => {
+    const [timeline] = transformTimelines([
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 1, timestamp: "2027-06-03T00:00:00Z" }),
+          createMockTimelineEvent({ id: 2, archived: true }),
+        ],
+      }),
+    ]);
+
+    expect(timeline.events?.map((event) => event.id)).toEqual([1]);
+    expect(dayjs.isDayjs(timeline.events?.[0].timestamp)).toBe(true);
   });
 
-  it("renders Edit/Move/New modals internally when onOpenModal is absent", async () => {
-    const timeline = createMockTimeline({
-      id: 1,
-      name: "Releases",
-      collection: createMockCollection({ can_write: true }),
-      events: [createMockTimelineEvent({ id: 1, name: "RC1", timeline_id: 1 })],
-    });
-    setupTimelinesEndpoints([timeline]);
+  it("puts default timelines first", () => {
+    const sorted = transformTimelines([
+      createMockTimeline({ id: 1, name: "B", default: false }),
+      createMockTimeline({ id: 2, name: "A", default: true }),
+    ]);
+    expect(sorted.map((timeline) => timeline.id)).toEqual([2, 1]);
+  });
+});
 
-    renderWithProviders(
-      <TimelineSidebar
-        collectionId="root"
-        timelines={[timeline]}
-        visibleTimelineEventIds={[1]}
-        selectedTimelineEventIds={[]}
-        onShowTimelineEvents={jest.fn()}
-        onHideTimelineEvents={jest.fn()}
-      />,
+describe("filterTimelinesByXAxis", () => {
+  const timelines = transformTimelines([
+    createMockTimeline({
+      id: 1,
+      events: [
+        createMockTimelineEvent({ id: 1, timestamp: "2024-01-15T00:00:00Z" }),
+        createMockTimelineEvent({ id: 2, timestamp: "2024-03-20T00:00:00Z" }),
+        createMockTimelineEvent({ id: 3, timestamp: "2024-06-01T00:00:00Z" }),
+      ],
+    }),
+    createMockTimeline({
+      id: 2,
+      events: [
+        createMockTimelineEvent({ id: 4, timestamp: "2020-01-01T00:00:00Z" }),
+      ],
+    }),
+  ]);
+  const domain: [dayjs.Dayjs, dayjs.Dayjs] = [
+    dayjs("2024-01-01T00:00:00Z"),
+    dayjs("2024-03-01T00:00:00Z"),
+  ];
+
+  const filterIds = (interval: TimeSeriesInterval | null) =>
+    filterTimelinesByXAxis(timelines, { domain, interval }).flatMap(
+      (timeline) => (timeline.events ?? []).map((event) => event.id),
     );
 
-    expect(await screen.findByText("Create event")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Create event"));
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  it("keeps events up to the end of the last period and drops empty timelines", () => {
+    expect(filterIds({ count: 1, unit: "month" })).toEqual([1, 2]);
+  });
+
+  it("extends by whole intervals for sub-day units", () => {
+    expect(filterIds({ count: 6, unit: "hour" })).toEqual([1]);
+  });
+
+  it("does not extend the domain without an interval", () => {
+    expect(filterIds(null)).toEqual([1]);
+  });
+
+  it("returns non-empty timelines untouched without an axis", () => {
+    const filtered = filterTimelinesByXAxis(timelines, null);
+    expect(filtered.map((timeline) => timeline.id)).toEqual([1, 2]);
+  });
+});
+
+describe("filterVisibleTimelineEvents", () => {
+  it("returns visible events across timelines sorted by timestamp", () => {
+    const timelines = [
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 1, timestamp: "2027-06-15T00:00:00Z" }),
+          createMockTimelineEvent({ id: 2, timestamp: "2027-06-01T00:00:00Z" }),
+        ],
+      }),
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 3, timestamp: "2027-06-10T00:00:00Z" }),
+        ],
+      }),
+    ];
+    expect(
+      filterVisibleTimelineEvents(timelines, [1, 3]).map((event) => event.id),
+    ).toEqual([3, 1]);
   });
 });

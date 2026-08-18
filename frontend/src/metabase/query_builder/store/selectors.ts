@@ -1,14 +1,11 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import * as d3 from "d3";
-import { merge, updateIn } from "icepick";
+import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getMetadata } from "metabase/metadata-store";
 import {
@@ -16,20 +13,20 @@ import {
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { getSetting } from "metabase/settings";
-import { selectIsWithinIframe } from "metabase/utils/iframe";
-import { parseTimestamp } from "metabase/utils/time-dayjs";
-import { isNotNull } from "metabase/utils/types";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import {
-  type TimeSeriesInterval,
-  computeTimeseriesDataInterval,
+  filterTimelinesByXAxis,
+  filterVisibleTimelineEvents,
+  transformTimelines,
+} from "metabase/timelines/panel/utils";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
+import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import { getTimeseriesXAxis } from "metabase/visualizations/lib/timeseries-x-axis";
+import {
   createRawSeries,
   extractRemappings,
   getComputedSettingsForSeries,
   getVisualizationTransformed,
-  getXValues,
   isTimeseries,
-  minTimeseriesUnit,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -50,9 +47,7 @@ import type {
   Field,
   Series,
   Timeline,
-  TimelineEvent,
 } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
@@ -807,54 +802,20 @@ export const getIsTimeseries = createSelector(
   (settings) => settings && isTimeseries(settings),
 );
 
-export const getTimeseriesXValues = createSelector(
-  [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
-  (isTimeseries, series, settings) =>
-    isTimeseries && series && settings
-      ? getXValues({ series, settings })
-      : null,
+const getTimeseriesXAxisInfo = createSelector(
+  [getTransformedSeries, getVisualizationSettings],
+  (series, settings) =>
+    series && settings ? getTimeseriesXAxis(series, settings) : null,
 );
 
 export const getTimeseriesDataInterval = createSelector(
-  [
-    getTransformedSeries,
-    getVisualizationSettings,
-    getIsTimeseries,
-    getTimeseriesXValues,
-  ],
-  (series, settings, isTimeseries, xValues): TimeSeriesInterval | null => {
-    if (!isTimeseries || !xValues) {
-      return null;
-    }
-    const columns = series?.[0]?.data?.cols ?? [];
-    const dimensions = settings?.["graph.dimensions"] ?? [];
-    const dimensionColumns = dimensions.map((dimension) =>
-      columns.find((column) => column != null && column.name === dimension),
-    );
-    const columnUnits = dimensionColumns
-      .map((column) =>
-        isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
-      )
-      .filter(isNotNull);
-    return (
-      computeTimeseriesDataInterval(xValues, minTimeseriesUnit(columnUnits)) ??
-      null
-    );
-  },
+  [getTimeseriesXAxisInfo],
+  (xAxis) => xAxis?.interval ?? null,
 );
 
-type Numeric = string | number | boolean | object | dayjs.Dayjs;
-type Domain<T extends Numeric = Numeric> = [T, T];
-
 export const getTimeseriesXDomain = createSelector(
-  [getIsTimeseries, getTimeseriesXValues],
-  (isTimeseries, xValues) => {
-    if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
-      // Unjustified type cast. FIXME
-      return d3.extent(xValues as Array<d3.Numeric>) as Domain<dayjs.Dayjs>;
-    }
-    return null;
-  },
+  [getTimeseriesXAxisInfo],
+  (xAxis) => xAxis?.domain ?? null,
 );
 
 const selectListTimelines = timelineApi.endpoints.listTimelines.select({
@@ -868,90 +829,17 @@ export const getFetchedTimelines = createSelector(
 
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
-  (timelines) => {
-    return getSortedTimelines(
-      timelines.map((timeline) =>
-        updateIn(timeline, ["events"], (events = []) =>
-          _.chain(events)
-            .map((event) => updateIn(event, ["timestamp"], parseTimestamp))
-            .filter((event) => !event.archived)
-            .value(),
-        ),
-      ),
-    );
-  },
+  transformTimelines,
 );
 
-function isEventWithinDomain(
-  event: TimelineEvent,
-  xDomain: Domain<dayjs.Dayjs>,
-) {
-  return dayjs(event.timestamp).isBetween(
-    xDomain[0],
-    xDomain[1],
-    undefined,
-    "[]",
-  );
-}
-
-function getXDomainForTimelines<T extends Numeric>(
-  xDomain: Domain<T> | null,
-  dataInterval: TimeSeriesInterval | null,
-): Domain<T> | null {
-  // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
-  // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
-  // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
-  if (
-    xDomain &&
-    isAbsoluteDateTimeUnit(dataInterval?.unit) &&
-    dayjs.isDayjs(xDomain[0]) &&
-    dayjs.isDayjs(xDomain[1])
-  ) {
-    let maxValue = xDomain[1]
-      .clone()
-      .add(dataInterval.count, dataInterval.unit);
-
-    if (dataInterval.unit !== "hour" && dataInterval.unit !== "minute") {
-      maxValue = maxValue.subtract(1, "day");
-    }
-
-    // Unjustified type cast. FIXME
-    return [xDomain[0], maxValue as T];
-  }
-
-  return xDomain;
-}
-
 export const getFilteredTimelines = createSelector(
-  [getTransformedTimelines, getTimeseriesXDomain, getTimeseriesDataInterval],
-  (timelines, xDomain, dataInterval) => {
-    const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
-    return timelines
-      .map((timeline) =>
-        updateIn(timeline, ["events"], (events: TimelineEvent[]) =>
-          xDomain
-            ? events.filter(
-                (event) =>
-                  timelineXDomain &&
-                  isEventWithinDomain(event, timelineXDomain),
-              )
-            : events,
-        ),
-      )
-      .filter((timeline) => (timeline.events ?? []).length > 0);
-  },
+  [getTransformedTimelines, getTimeseriesXAxisInfo],
+  filterTimelinesByXAxis,
 );
 
 export const getVisibleTimelineEvents = createSelector(
   [getFilteredTimelines, getVisibleTimelineEventIds],
-  (timelines, visibleTimelineEventIds) =>
-    _.chain(timelines)
-      .map((timeline) => timeline.events)
-      .flatten()
-      .compact()
-      .filter((event) => visibleTimelineEventIds.includes(event.id))
-      .sortBy((event) => event.timestamp)
-      .value(),
+  filterVisibleTimelineEvents,
 );
 
 export function getOffsetForQueryAndPosition(

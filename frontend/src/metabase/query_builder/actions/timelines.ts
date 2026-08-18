@@ -1,7 +1,8 @@
 import { createAction } from "redux-actions";
 
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type { CollectionId, Timeline } from "metabase-types/api";
+import { getCollectionTimelines } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   DESELECT_TIMELINE_EVENTS,
@@ -19,10 +20,9 @@ export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 export const showTimelinesForCollection =
   (collectionId?: CollectionId | null) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const fetchedTimelines: Timeline[] = getFetchedTimelines(getState());
-    const collectionTimelines = collectionId
-      ? fetchedTimelines.filter((t) => t.collection_id === collectionId)
-      : fetchedTimelines.filter((t) => t.collection_id == null);
-
+    const collectionTimelines = getCollectionTimelines(
+      getFetchedTimelines(getState()),
+      collectionId,
+    );
     dispatch(showTimelineEvents(collectionTimelines.flatMap((t) => t.events)));
   };
