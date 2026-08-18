@@ -2530,9 +2530,11 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Field
+                    :model/NativeQuerySnippet
                     :model/Table
                     :model/TableIndex
                     :model/User}}

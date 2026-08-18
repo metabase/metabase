@@ -1670,6 +1670,7 @@
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids
+  all-template-tag-table-ids
   all-template-tags
   all-template-tags-map
   all-template-tags-id->field-ids

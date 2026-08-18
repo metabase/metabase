@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -48,23 +49,74 @@
   (when (api/is-data-analyst?)
     (transforms.gating/enabled-source-types)))
 
+(defn- source-query-references
+  "The Cards and Snippets a query transform's `source` names in its template tags, and the Tables it reads, as a
+  `{model #{id}}` map. Each is spliced into the compiled SQL and carries a permission of its own that access to
+  the source database doesn't extend to. Only what the query names; the raw SQL text around them isn't parsed.
+
+  Empty when the query isn't MBQL 5. A source that reaches a permission check through the API or the app DB is
+  normalized, apart from one whose database is unset: [[source-tables-readable?]] refuses that before consulting
+  references, and execution fails on the missing database immediately after reaching here."
+  [source]
+  (let [query (:query source)]
+    (when (= :mbql/query (:lib/type query))
+      {:model/Card               (into #{} (keep :card-id) (lib/all-template-tags query))
+       :model/Table              (into (set (lib/all-source-table-ids query))
+                                       (lib/all-template-tag-table-ids query))
+       :model/NativeQuerySnippet (lib/all-template-tag-snippet-ids query)})))
+
+(defn- reference-readable?
+  "Whether the current user may use `instance`: reading a Card or a Snippet is what lets a query splice it in,
+  while a Table has to be queryable, not merely visible."
+  [model instance]
+  (case model
+    (:model/Card :model/NativeQuerySnippet) (mi/can-read? instance)
+    :model/Table                            (mi/can-query? instance)))
+
+(defn- model-resolver
+  "How a permission check looks an entity up: out of `models-cache` when [[prefetch-source-models]] loaded one,
+  from the app DB otherwise."
+  [models-cache]
+  (fn [model id]
+    (if models-cache
+      (get-in models-cache [model id])
+      (t2/select-one model id))))
+
+(defn- references-readable?
+  "Whether the current user may read every entity [[source-query-references]] finds in `source`. A reference that
+  no longer resolves counts as unreadable, so it fails closed."
+  [source resolve*]
+  (every? (fn [[model ids]]
+            (every? #(boolean (some->> (resolve* model %) (reference-readable? model))) ids))
+          (source-query-references source)))
+
+(defn source-references-readable?
+  "Whether the current user may read every entity `transform`'s source query names.
+
+  Separate from [[source-tables-readable?]] on purpose: reading a transform tells you it exists and what it is
+  called, which the source database alone covers, while writing one or running it makes its query read those
+  entities. So this gates create, write and execution rather than read."
+  ([transform] (source-references-readable? transform nil))
+  ([transform models-cache]
+   (references-readable? (:source transform) (model-resolver models-cache))))
+
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
   source database (for query transforms). Returns false if the referenced source database
-  no longer exists."
+  no longer exists.
+
+  What the query itself names is checked separately, by [[source-references-readable?]]."
   ([transform] (source-tables-readable? transform nil))
   ([transform models-cache]
-   (let [resolve* (fn [model id]
-                    (if models-cache
-                      (get-in models-cache [model id])
-                      (t2/select-one model id)))
+   (let [resolve* (model-resolver models-cache)
          source   (:source transform)]
      (case (keyword (:type source))
        :query
        (if-let [db-id (get-in source [:query :database])]
          (if-let [db (resolve* :model/Database db-id)]
-           (boolean (mi/can-query? db))
+           (and (boolean (mi/can-query? db))
+                (source-references-readable? transform models-cache))
            false)
          false)
 
@@ -81,16 +133,29 @@
 
        (throw (ex-info (str "Unknown transform source type: " (:type source)) {}))))))
 
+(defn- index-by-id
+  "`{id instance}` for the `ids` of `model`, or nil when there are none to load."
+  [model ids]
+  (when (seq ids)
+    (t2/select-pk->fn identity model :id [:in ids])))
+
 (defn prefetch-source-models
-  "Bulk-load the source databases and tables referenced by `transforms` into a
-  `{:model/Database {id db} :model/Table {id table}}` map"
+  "Bulk-load the entities `transforms` reference into a `{model {id instance}}` map for
+  [[source-tables-readable?]] to resolve against, so checking N transforms doesn't query per transform.
+
+  An id missing from the map reads as a missing entity, and so as unreadable -- whatever that check consults has
+  to be loaded here."
   [transforms]
-  (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
-        table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
-    {:model/Database (when (seq db-ids)
-                       (u/index-by :id (t2/select :model/Database :id [:in db-ids])))
-     :model/Table    (when (seq table-ids)
-                       (u/index-by :id (t2/select :model/Table :id [:in table-ids])))}))
+  (let [references (map (comp source-query-references :source) transforms)
+        referenced (fn [model] (into #{} (mapcat model) references))
+        db-ids     (into #{} (keep #(get-in % [:source :query :database])) transforms)
+        table-ids  (into (referenced :model/Table)
+                         (mapcat #(keep :table_id (get-in % [:source :source-tables])))
+                         transforms)]
+    {:model/Database           (index-by-id :model/Database db-ids)
+     :model/Table              (index-by-id :model/Table table-ids)
+     :model/Card               (index-by-id :model/Card (referenced :model/Card))
+     :model/NativeQuerySnippet (index-by-id :model/NativeQuerySnippet (referenced :model/NativeQuerySnippet))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.
@@ -101,6 +166,17 @@
     (mapv #(assoc % :source_readable (source-tables-readable? %))
           transform-or-transforms)
     (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
+
+(defn check-source-references-readable!
+  "Throw a 403 unless the current user may read every entity `transform`'s source query names -- see
+  [[source-tables-readable?]]. A no-op when no user is bound, so a scheduled run is unaffected.
+
+  Transforms compile and run their source query directly rather than through `qp.execute/run`, so the check is
+  made here."
+  [transform]
+  (when api/*current-user-id*
+    (api/check-403 (source-references-readable? transform))
+    nil))
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 

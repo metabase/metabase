@@ -11,7 +11,9 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -310,6 +312,154 @@
                       (binding [api/*current-user-id* (:id user)]
                         (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
+
+;;; --------------------------------------- Query source reference permissions ---------------------------------------
+
+(defn- card-tag
+  [card-id]
+  (let [tag (str "#" card-id)]
+    {:id tag, :name tag, :display-name tag, :type :card, :card-id card-id}))
+
+(defn- table-tag
+  [tag-name table-id]
+  {:id tag-name, :name tag-name, :display-name tag-name, :type :table, :table-id table-id})
+
+(defn- native-source
+  "A `:query` transform source whose SQL carries `tags`, normalized the way the API and the app DB both
+  normalize it."
+  [db-id sql tags]
+  {:type  :query
+   :query (lib-be/normalize-query
+           {:database db-id
+            :type     :native
+            :native   {:query sql, :template-tags (into {} (map (juxt :name identity)) tags)}})})
+
+(defn- mbql-source
+  "A `:query` transform source whose MBQL query is `inner`, normalized the same way."
+  [db-id inner]
+  {:type  :query
+   :query (lib-be/normalize-query {:database db-id, :type :query, :query inner})})
+
+;;; `mt/with-current-user` resolves the user's permissions once for the whole body, so each phase below grants or
+;;; revokes first and enters it after, rather than mutating permissions inside it.
+
+(deftest source-references-readable?-card-tag-test
+  (testing "a Card a query source names is authorized in its own right"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card {card-id :id} {:collection_id (:id collection)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (let [transform {:source (native-source (mt/id)
+                                                (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                [(card-tag card-id)])}]
+          (mt/with-user-in-groups [group {:name "transforms"}
+                                   user  [group]]
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+                (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder
+                  (testing "refused while the Card's collection is unreadable"
+                    (mt/with-current-user (:id user)
+                      (is (false? (transforms.u/source-references-readable? transform)))))
+                  (perms/grant-collection-read-permissions! group collection)
+                  (testing "allowed once the Card is readable"
+                    (mt/with-current-user (:id user)
+                      (is (true? (transforms.u/source-references-readable? transform))))))))))))))
+
+(deftest source-references-readable?-table-tag-test
+  (testing "a `{{table}}` tag is authorized against that Table, so a per-table permission still applies"
+    (let [table-id  (mt/id :users)
+          transform {:source (native-source (mt/id) "SELECT * FROM {{users}}" [(table-tag "users" table-id)])}]
+      (mt/with-user-in-groups [group {:name "transforms"}
+                               user  [group]]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+            (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder
+              (testing "allowed while the tagged Table is queryable"
+                (mt/with-current-user (:id user)
+                  (is (true? (transforms.u/source-references-readable? transform)))))
+              (data-perms/set-table-permission! (:id group) table-id :perms/view-data :blocked)
+              (testing "refused once the tagged Table is blocked"
+                (mt/with-current-user (:id user)
+                  (is (false? (transforms.u/source-references-readable? transform))))))))))))
+
+(deftest source-references-readable?-mbql-source-table-test
+  (testing "the Tables an MBQL source reads are authorized, whether named by the query or reached through a join"
+    (let [users     (mt/id :users)
+          venues    (mt/id :venues)
+          cats      (mt/id :categories)
+          plain     {:source (mbql-source (mt/id) {:source-table users})}
+          joined    {:source (mbql-source (mt/id)
+                                          {:source-table venues
+                                           :joins        [{:source-table cats
+                                                           :alias        "c"
+                                                           :condition    [:= [:field (mt/id :venues :category_id) nil]
+                                                                          [:field (mt/id :categories :id)
+                                                                           {:join-alias "c"}]]}]})}]
+      (mt/with-user-in-groups [group {:name "transforms"}
+                               user  [group]]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+            (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder
+              (testing "allowed while every Table the query reads is queryable"
+                (mt/with-current-user (:id user)
+                  (is (true? (transforms.u/source-references-readable? plain)))
+                  (is (true? (transforms.u/source-references-readable? joined)))))
+              (data-perms/set-table-permission! (:id group) users :perms/view-data :blocked)
+              (data-perms/set-table-permission! (:id group) cats :perms/view-data :blocked)
+              (testing "refused once the Table the query names is blocked"
+                (mt/with-current-user (:id user)
+                  (is (false? (transforms.u/source-references-readable? plain)))))
+              (testing "refused once a joined Table is blocked, though the Table it starts from is not"
+                (mt/with-current-user (:id user)
+                  (is (false? (transforms.u/source-references-readable? joined))))))))))))
+
+(deftest check-source-references-readable!-test
+  (testing "the execution path authorizes what the source names as well"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card {card-id :id} {:collection_id (:id collection)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (let [transform {:source (native-source (mt/id)
+                                                (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                [(card-tag card-id)])}]
+          (testing "no-ops when no user is bound, so a scheduled run is unaffected"
+            (binding [api/*current-user-id* nil]
+              (is (nil? (transforms.u/check-source-references-readable! transform)))))
+          (mt/with-user-in-groups [group {:name "transforms"}
+                                   user  [group]]
+            (testing "throws while the Card is unreadable"
+              (mt/with-current-user (:id user)
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                                      (transforms.u/check-source-references-readable! transform)))))
+            (perms/grant-collection-read-permissions! group collection)
+            (testing "passes once the Card is readable"
+              (mt/with-current-user (:id user)
+                (is (nil? (transforms.u/check-source-references-readable! transform)))))))))))
+
+(deftest prefetch-source-models-cache-test
+  (testing "a prefetched cache reaches the same verdict as an uncached check"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card {card-id :id} {:collection_id (:id collection)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (let [transform {:source (native-source (mt/id)
+                                                (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                [(card-tag card-id)])}
+              cache     (transforms.u/prefetch-source-models [transform])]
+          (testing "the Card the source names is loaded, keyed by the id the check looks it up by"
+            (is (= card-id (:id (get-in cache [:model/Card card-id])))))
+          (mt/with-user-in-groups [group {:name "transforms"}
+                                   user  [group]]
+            (mt/with-no-data-perms-for-all-users!
+              (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+                (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder
+                  (testing "refused through the cache while the Card is unreadable"
+                    (mt/with-current-user (:id user)
+                      (is (false? (transforms.u/source-references-readable? transform cache)))))
+                  (perms/grant-collection-read-permissions! group collection)
+                  (testing "allowed through the cache once the Card is readable"
+                    (mt/with-current-user (:id user)
+                      (is (true? (transforms.u/source-references-readable? transform cache))))))))))))))
 
 (deftest activate-table-and-mark-computed-sets-is-writable-false-test
   (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
