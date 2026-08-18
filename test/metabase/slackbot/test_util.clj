@@ -45,6 +45,29 @@
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
 
+(def slack-section-text-limit
+  "Slack rejects a `section` block whose `text.text` exceeds this many characters."
+  3000)
+
+(defn oversized-section-error
+  "The `chat.postMessage` rejection Slack returns when a `section` block in `blocks` is over
+   [[slack-section-text-limit]], or nil when none is. Models that one rule -- the one BOT-1606 is
+   about -- not Block Kit validation at large."
+  [blocks]
+  ;; The mocked client accepts anything, so tests that care about this rule come through here.
+  (when-let [idx (first (keep-indexed (fn [idx block]
+                                        (when (and (= "section" (:type block))
+                                                   (> (count (get-in block [:text :text] ""))
+                                                      slack-section-text-limit))
+                                          idx))
+                                      blocks))]
+    {:ok    false
+     :error "invalid_blocks"
+     :response_metadata
+     {:messages [(format "[ERROR] failed to match all allowed schemas [json-pointer:/blocks/%d/text]" idx)
+                 (format "[ERROR] must be less than %d characters [json-pointer:/blocks/%d/text/text]"
+                         (inc slack-section-text-limit) idx)]}}))
+
 (defmacro with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.
    Avoids conflicts with encrypted settings in the DB that were written with the real key."
