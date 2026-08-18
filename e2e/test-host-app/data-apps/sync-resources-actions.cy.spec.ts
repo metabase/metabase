@@ -1,4 +1,5 @@
 import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToDataAppGroup,
   createDataAppApiKey,
@@ -325,6 +326,40 @@ describe(
           cy.request({ url: `/api/card/${modelId}`, failOnStatusCode: false })
             .its("status")
             .should("eq", 403);
+        });
+      });
+
+      // The app declares nothing on the sample database, so the group blocks it —
+      // but `blocked` in one group loses to `unrestricted` in another, so joining
+      // an app's group never takes away access a member already had.
+      it("leaves a member's access to an undeclared database untouched", () => {
+        syncOneAction().then(() => {
+          const readsSampleDatabase = () =>
+            cy.request({
+              method: "POST",
+              url: "/api/dataset",
+              failOnStatusCode: false,
+              body: {
+                type: "query",
+                database: SAMPLE_DB_ID,
+                query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 1 },
+              },
+            });
+
+          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+            dataAppDatabasePermissions(groupId).should((permissions) => {
+              expect(permissions[String(SAMPLE_DB_ID)]).to.eq("blocked");
+            });
+
+            cy.signInAsNormalUser();
+            readsSampleDatabase().its("status").should("eq", 202);
+
+            cy.signInAsAdmin();
+            addUserToDataAppGroup(groupId, USERS.normal.email);
+
+            cy.signInAsNormalUser();
+            readsSampleDatabase().its("status").should("eq", 202);
+          });
         });
       });
 
