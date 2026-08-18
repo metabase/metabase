@@ -47,9 +47,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
-      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
-      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
@@ -59,6 +57,15 @@ jobs:
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
       custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
+      no_source_code_changes: >-
+        ${{ steps.changes.outputs.documentation == 'true'
+        && steps.changes.outputs.backend_all == 'false'
+        && steps.changes.outputs.frontend_all == 'false'
+        && steps.changes.outputs.e2e_all == 'false' }}
+
+      e2e_all_files: ${{ steps.changes.outputs.e2e_all_files }}
+      e2e_specs_files: ${{ steps.changes.outputs.e2e_specs_files }}
+
       stats: ${{ steps.compute.outputs.stats }}
       fe_unit_specs_to_run: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
       loki_stories_to_run: ${{ steps.compute.outputs.loki_stories_to_run }}
@@ -113,10 +120,7 @@ jobs:
     if: |
       !cancelled() && needs.should-run.outputs.verdict != 'force-skip' &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      !(needs.create-test-plan.outputs.documentation == 'true' &&
-        needs.create-test-plan.outputs.backend_all == 'false' &&
-        needs.create-test-plan.outputs.frontend_all == 'false' &&
-        needs.create-test-plan.outputs.e2e_all == 'false'))
+      needs.create-test-plan.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
