@@ -133,7 +133,19 @@
                                                :attrs {:entityId 1
                                                        :model    "card"
                                                        :label    "Phishing"
-                                                       :href     "https://evil.example"}}]}))))))
+                                                       :href     "https://evil.example"}}]})))))
+  (testing "an entityId that isn't an ID renders as plain text instead of a link"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [entity-id [{:data "string"} "42" -42 nil]
+              ;; `document` builds its URL with `%d`, so it used to throw outright on these
+              model     ["card" "document"]]
+        (testing (pr-str model entity-id)
+          (is (= "Look here"
+                 (render/content->html {:type    "doc"
+                                        :content [{:type  "smartLink"
+                                                   :attrs {:entityId entity-id
+                                                           :model    model
+                                                           :label    "Look here"}}]}))))))))
 
 (deftest content->html-xss-test
   (testing "HTML in text content is escaped"

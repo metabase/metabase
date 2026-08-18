@@ -1,4 +1,3 @@
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import * as Lib from "metabase-lib";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
@@ -69,7 +68,7 @@ export const shouldDisableItemNotInDb =
     }
 
     if (isQuestionItem(item)) {
-      return canCollectionCardBeUsed(item) && item.database_id !== databaseId;
+      return item.database_id !== databaseId;
     }
 
     return false;

@@ -14,10 +14,14 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+;; some of these tests run the full preprocessor, which includes EE middleware that reads the app DB
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel needs-type-inference?-test
   (is (#'annotate/needs-type-inference?

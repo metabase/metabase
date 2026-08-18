@@ -72,6 +72,8 @@
                      :model/Card {card2-id :id} {:name "Card 2"
                                                  :dataset_query (mt/mbql-query venues {:limit 10})
                                                  :document_id (:id document)}]
+        (t2/update! :model/Document (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [card1-id card2-id])})
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "response includes cards field"
             (is (contains? result :cards)))
@@ -124,6 +126,8 @@
                        :model/Card card {:name "Test Card"
                                          :dataset_query (mt/mbql-query venues {:limit 5})
                                          :document_id (:id document)}]
+          (t2/update! :model/Document (:id document)
+                      {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
           (let [result (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))]
             (is (some? result))
             (is (= "completed" (:status result)))))))))
@@ -146,6 +150,8 @@
                      :model/Card card {:name "Export Test Card"
                                        :dataset_query (mt/mbql-query venues {:limit 5})
                                        :document_id (:id document)}]
+        (t2/update! :model/Document (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
         (testing "Can export card results as CSV"
           (let [response (mt/client-full-response :post (format "public/document/%s/card/%d/csv"
                                                                 (:public_uuid document)
@@ -159,3 +165,55 @@
                                                                 (:id card))
                                                   {})]
             (is (= 200 (:status response)))))))))
+
+;;; ------------------------------ cards removed from a document must not stay exposed ------------------------
+
+(deftest public-document-hides-cards-not-in-current-content-test
+  (testing "GET /api/public/document/:uuid must not expose a card that owns document_id but is no longer in the AST"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})
+                     :model/Card {live-id :id} {:name "Still embedded"
+                                                :dataset_query (mt/mbql-query venues {:limit 5})
+                                                :document_id (:id document)}
+                     :model/Card {orphan-id :id} {:name "Removed from body"
+                                                  :dataset_query (mt/mbql-query venues {:limit 5})
+                                                  :document_id (:id document)}]
+        ;; Simulate a pre-fix orphan: both cards own the FK, but the current content embeds only `live-id`.
+        (t2/update! :model/Document (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [live-id])})
+        (let [uuid (:public_uuid document)
+              cards (:cards (mt/client :get 200 (str "public/document/" uuid)))]
+          (testing "the still-embedded card is exposed"
+            (is (contains? cards live-id)))
+          (testing "the removed card is not exposed in :cards"
+            (is (not (contains? cards orphan-id))))
+          (testing "the removed card cannot be queried through the public document"
+            (is (= "Not found."
+                   (mt/client :get 404 (format "public/document/%s/card/%d" uuid orphan-id)))))
+          (testing "the removed card cannot be exported through the public document"
+            (is (= 404
+                   (:status (mt/client-full-response :post (format "public/document/%s/card/%d/csv" uuid orphan-id) {})))))
+          (testing "the still-embedded card is still queryable"
+            (is (= "completed"
+                   (:status (mt/client :get 202 (format "public/document/%s/card/%d" uuid live-id)))))))))))
+
+(deftest public-document-serves-a-re-added-card-again-test
+  (testing "removing a card from the body then restoring it (e.g. reverting a revision) re-exposes it -- the read-side
+            gate is by live AST membership and the document_id FK is never mutated on the write path"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})
+                     :model/Card {card-id :id} {:name "Toggled Card"
+                                                :dataset_query (mt/mbql-query venues {:limit 5})
+                                                :document_id (:id document)}]
+        (let [uuid (:public_uuid document)]
+          (testing "absent from the body -> not served"
+            (t2/update! :model/Document (:id document)
+                        {:document (documents.test-util/text->prose-mirror-ast "no cards")})
+            (is (not (contains? (:cards (mt/client :get 200 (str "public/document/" uuid))) card-id)))
+            (is (= "Not found." (mt/client :get 404 (format "public/document/%s/card/%d" uuid card-id)))))
+          (testing "restored to the body (FK never mutated) -> served again"
+            (t2/update! :model/Document (:id document)
+                        {:document (documents.test-util/cards->prose-mirror-ast [card-id])})
+            (is (contains? (:cards (mt/client :get 200 (str "public/document/" uuid))) card-id))
+            (is (= "completed"
+                   (:status (mt/client :get 202 (format "public/document/%s/card/%d" uuid card-id)))))))))))

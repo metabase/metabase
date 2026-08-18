@@ -13,6 +13,7 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -649,6 +650,21 @@
                         [:expression "expr"]]}) ;; result
        mt/rows
        first))
+
+(deftest convert-timezone-rejects-hostile-timezone-at-schema-layer-test
+  (testing "a hostile :convert-timezone zone is rejected by MBQL/schema validation before it
+            ever reaches driver compilation, for every driver"
+    (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+      (mt/dataset times-mixed
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"(?i)invalid timezone ID"
+             (qp.compile/compile
+              (mt/mbql-query times
+                {:expressions {"tz" [:convert-timezone [:field (mt/id :times :dt) nil]
+                                     "Z\\' AT TIME ZONE 'UTC" "UTC"]}
+                 :fields      [[:expression "tz"]]
+                 :limit       1}))))))))
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)

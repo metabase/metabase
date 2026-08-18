@@ -49,17 +49,19 @@
                   user-id (conj [:= :c.user_id user-id])
                   (seq date) (conj (date-string->constraints :c.created_at date))
                   (and group-id (not= group-id (:id (perms/all-users-group))))
-                  (conj [:exists {:select [1]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :where  [:and
-                                           [:= :pgm.user_id :c.user_id]
-                                           [:= :pgm.group_id group-id]]}])
+                  (conj [:exists ^:allow-subquery
+                         {:select [1]
+                          :from   [[:permissions_group_membership :pgm]]
+                          :where  [:and
+                                   [:= :pgm.user_id :c.user_id]
+                                   [:= :pgm.group_id group-id]]}])
                   tenant-id
-                  (conj [:exists {:select [1]
-                                  :from   [[:core_user :u]]
-                                  :where  [:and
-                                           [:= :u.id :c.user_id]
-                                           [:= :u.tenant_id tenant-id]]}]))
+                  (conj [:exists ^:allow-subquery
+                         {:select [1]
+                          :from   [[:core_user :u]]
+                          :where  [:and
+                                   [:= :u.id :c.user_id]
+                                   [:= :u.tenant_id tenant-id]]}]))
         clauses (remove nil? clauses)]
     (when (seq clauses)
       (into [:and] clauses))))
@@ -96,7 +98,8 @@
                ;; First assistant message's profile_id, matching the
                ;; `v_metabot_conversations` analytics view. User messages carry
                ;; a placeholder `profile_id` and are excluded.
-               [{:select   [:mm.profile_id]
+               [^:allow-subquery
+                {:select   [:mm.profile_id]
                  :from     [[:metabot_message :mm]]
                  :where    [:and
                             [:= :mm.conversation_id :c.id]
@@ -111,6 +114,7 @@
                ;; would fan out against the `metabot_message` join and inflate
                ;; every aggregate above.
                [[:coalesce
+                 ^:allow-subquery
                  {:select [[[:sum :aul.cache_read_tokens]]]
                   :from   [[:ai_usage_log :aul]]
                   :where  [:= :aul.conversation_id :c.id]}

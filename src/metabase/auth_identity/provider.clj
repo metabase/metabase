@@ -58,6 +58,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -284,14 +285,41 @@
              :success? true
              :redirect-url redirect-url))))
 
+(def ^:private authenticate-owned-keys
+  "Keys the pipeline derives for itself, dropped from the merge base. Callers forward user-controlled
+  maps into [[login!]] — the SSO integrations pass the whole Ring request — and a surviving copy of
+  any of these would let the caller name the account it logs into, assert its own success, or steer
+  tenant sync. `:user_id` is here because JSON keywordizes verbatim: a body can carry the snake_case
+  spelling alongside the kebab-case key resolution reads.
+
+  A key the caller legitimately supplies and the pipeline only reads back does not belong on this
+  list; `:oidc-provider-key` is one, and dropping it disables OIDC group sync silently."
+  [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
+   :error :message :mfa/pending? :mfa/methods :mfa/first-factor
+   :jwt-data :claims
+   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+
 (methodical/defmethod login! :around ::provider
   [provider request]
-  (as-> (merge request (authenticate provider request)) $
-    (assoc $ :user
-           (or (when-let [user-id (:user-id $)]
-                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
-               (when-let [email (get-in $ [:user-data :email])]
-                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))))
+  ;; `authenticate` still receives the unmodified request; it reads the caller's :token, :code, :state.
+  (as-> (merge (apply dissoc request authenticate-owned-keys)
+               (authenticate provider request)) $
+    ;; `true?`, not truthy: `:success?` is `:redirect` while an OAuth/OIDC flow is being initiated,
+    ;; and a redirect must resolve no user, so that `create-session!` below has none to mint.
+    (cond-> $
+      (true? (:success? $))
+      (assoc :user
+             ;; A User id is always a positive int; fail closed rather than let any other shape reach
+             ;; the query. Callers cannot supply `:user-id`, so a non-int one is a provider bug, and
+             ;; failing closed without a word would surface it only as unexplained login failures.
+             ;; The value stays out of the log: in the hostile case it is the payload.
+             (or (when-let [user-id (:user-id $)]
+                   (if (pos-int? user-id)
+                     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
+                     (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
+                                 provider (some-> user-id class .getName))))
+                 (when-let [email (get-in $ [:user-data :email])]
+                   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email))))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -301,7 +329,7 @@
     (t2/with-transaction [_]
       (next-method provider $))
     (cond-> $
-      (:user $) (create-session! provider))
+      (and (true? (:success? $)) (:user $)) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key])))
 
 (defenterprise sso-user-fields
@@ -325,7 +353,11 @@
                  [:provider-id {:optional true} [:maybe :string]]]
    provider :- :keyword]
   (t2/with-transaction [_]
-    (t2/update! :model/User user-id (select-keys user-data (conj (sso-user-fields) :is_active)))
+    (let [reactivating? (and (:is_active user-data)
+                             (not (t2/select-one-fn :is_active :model/User :id user-id)))]
+      (t2/update! :model/User user-id
+                  (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                    reactivating? (assoc :is_superuser false))))
     (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))

@@ -1161,9 +1161,10 @@
                                                            :name "account__id"
                                                            :table-id account-tab-id
                                                            :base-type :type/Integer}]
-                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                        :dataset-query {:lib/type :mbql/query
                                                         :database (:id meta/database)
-                                                        :source-table account-tab-id}})
+                                                        :stages [{:lib/type :mbql.stage/mbql
+                                                                  :source-table account-tab-id}]}})
                                       (lib.tu/as-model
                                        {:id contact-card-id
                                         :name "Contact Model"
@@ -1175,9 +1176,10 @@
                                                            :base-type :type/Integer
                                                            :semantic-type :type/FK
                                                            :fk-target-field-id organization-f-id}]
-                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                        :dataset-query {:lib/type :mbql/query
                                                         :database (:id meta/database)
-                                                        :source-table contact-tab-id}})]})
+                                                        :stages [{:lib/type :mbql.stage/mbql
+                                                                  :source-table contact-tab-id}]}})]})
           account-card (lib.metadata/card metadata-provider account-card-id)
           contact-card (lib.metadata/card metadata-provider contact-card-id)
           query (lib/query metadata-provider account-card)]

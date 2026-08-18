@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [compojure.response]
    [malli.error :as me]
    [metabase.driver :as driver]
@@ -72,23 +73,25 @@
          (reset! start-execution-chan nil)))))
 
 (defmethod driver/execute-reducible-query ::test-driver
-  [_driver {{{:keys [sleep]} :query} :native, database-id :database} _context respond]
-  {:pre [(integer? sleep) (integer? database-id)]}
-  (let [futur (future
-                (try
-                  (when-let [chan @start-execution-chan]
-                    (a/>!! chan ::started))
-                  (Thread/sleep (long sleep))
-                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
-                  (catch InterruptedException e
-                    (reset! canceled? ::interrupted-exception)
-                    (throw e))))]
-    (when-let [canceled-chan qp.pipeline/*canceled-chan*]
-      (a/go
-        (when (a/<! canceled-chan)
-          (reset! canceled? ::canceled-chan-message)
-          (future-cancel futur))))
-    (u/deref-with-timeout futur 5000)))
+  [_driver {{native-query :query} :native, database-id :database} _context respond]
+  (let [{:keys [sleep]} (walk/keywordize-keys native-query)]
+    (assert (integer? sleep))
+    (assert (integer? database-id))
+    (let [futur (future
+                  (try
+                    (when-let [chan @start-execution-chan]
+                      (a/>!! chan ::started))
+                    (Thread/sleep (long sleep))
+                    (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
+                    (catch InterruptedException e
+                      (reset! canceled? ::interrupted-exception)
+                      (throw e))))]
+      (when-let [canceled-chan qp.pipeline/*canceled-chan*]
+        (a/go
+          (when (a/<! canceled-chan)
+            (reset! canceled? ::canceled-chan-message)
+            (future-cancel futur))))
+      (u/deref-with-timeout futur 5000))))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]

@@ -433,9 +433,9 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (let [table-ids-query {:from   [(t2/table-name :model/Table)]
-                         :select [:id]
-                         :where  [:= :db_id database-id]}]
+  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
+                                          :select [:id]
+                                          :where  [:= :db_id database-id]}]
     ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
     ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
     ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
@@ -447,13 +447,15 @@
                         [:and
                          [:in :table_id table-ids-query]
                          ;; Double-wrapped subquery to work around MySQL limitation
-                         [:not-in :id {:select [:parent_id]
-                                       :from   [[{:select [:parent_id]
-                                                  :from   [(t2/table-name :model/Field)]
-                                                  :where  [:and
-                                                           [:not= :parent_id nil]
-                                                           [:in :table_id table-ids-query]]}
-                                                 :parent_fields]]}]]})]
+                         [:not-in :id ^:allow-subquery
+                          {:select [:parent_id]
+                           :from   [[^:allow-subquery
+                                     {:select [:parent_id]
+                                      :from   [(t2/table-name :model/Field)]
+                                      :where  [:and
+                                               [:not= :parent_id nil]
+                                               [:in :table_id table-ids-query]]}
+                                     :parent_fields]]}]]})]
           (when (pos? deleted)
             (recur)))))))
 
@@ -726,14 +728,10 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
-  [_model-name {:keys [include-database-secrets]}]
-  ;; Export only when secrets are explicitly included AND the database isn't an attached DWH.
-  ;; Import is unconditional.
-  (let [details-transform {:export-with-context (fn [current _ details]
-                                                  (if (and include-database-secrets
-                                                           (not (:is_attached_dwh current)))
-                                                    details
-                                                    ::serdes/skip))
+  [_model-name _opts]
+  ;; Connection `details` are never exported: they hold warehouse credentials in plaintext, and serialized
+  ;; archives are not a safe place for secrets. Import is unconditional so existing archives still load.
+  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
