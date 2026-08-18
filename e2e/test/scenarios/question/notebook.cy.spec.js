@@ -1146,6 +1146,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .should("be.visible")
         .and("have.text", PRODUCT_ROW_ID)
         .click();
+      H.popover().findByText("View details").click();
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/${PRODUCT_ROW_ID}`,

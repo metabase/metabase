@@ -7,10 +7,20 @@ import type {
 } from "metabase/visualizations/types";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 
-export const CopyValueAction: LegacyDrill = ({ clicked, settings }) => {
+import { nativeDrillFallback } from "../utils";
+
+export const CopyValueAction: LegacyDrill = ({
+  clicked,
+  settings,
+  question,
+}) => {
   const column = clicked?.column;
 
   if (!clicked || column == null || clicked.value == null) {
+    return [];
+  }
+  // This action should not override the native query fallback
+  if (nativeDrillFallback({ question })) {
     return [];
   }
 

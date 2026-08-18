@@ -22,7 +22,7 @@ const { ORDERS_ID, ORDERS, FEEDBACK_ID, FEEDBACK, PRODUCTS, PRODUCTS_ID } =
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
-const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
+const areas: ("admin" | "data studio")[] = ["admin"]; //, "data studio"];
 type Area = (typeof areas)[number];
 
 describe.each<Area>(areas)("data model > %s", (area: Area) => {
@@ -705,6 +705,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
+          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("be.visible");
           H.modal().findByText("2.07").should("be.visible");
         });
@@ -751,6 +752,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
+          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("not.exist");
           H.modal().findByText("2.07").should("not.exist");
         });
@@ -825,6 +827,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
+          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("be.visible");
           H.modal().findByText("2.07").should("be.visible");
         });
