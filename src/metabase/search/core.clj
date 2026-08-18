@@ -10,6 +10,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -74,6 +75,17 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
+(defmethod analytics.core/known-labels :metabase-search/reindex-lease-events
+  [_]
+  (for [engine (map name (search.engine/known-engines))
+        event  [:acquired :busy :taken-over :heartbeat-error :lost :coordinate-obsolete :release-error]]
+    {:engine engine, :event event}))
+
+(defmethod analytics.core/known-labels :metabase-search/reindex-lease-held-duration-ms
+  [_]
+  (for [engine (map name (search.engine/known-engines))]
+    {:engine engine}))
+
 (defmethod analytics.core/known-labels :metabase-search/engine-default
   [_]
   (analytics.core/known-labels :metabase-search/engine-active))
@@ -98,6 +110,14 @@
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
+
+(defn- with-engine-lease
+  [engine operation thunk]
+  (let [{:keys [acquired? result] :as outcome}
+        (search.lease/do-with-lease (search.lease/coordinates engine) thunk)]
+    (when-not acquired?
+      (log/infof "Skipping search %s for %s; another node holds its lease" operation engine))
+    (assoc outcome :result result)))
 
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
@@ -160,10 +180,13 @@
         ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
         (try
           (let [timer    (u/start-timer)
+                outcomes (for [engine engines]
+                           (with-engine-lease engine "initialization"
+                             #(search.engine/init! engine opts)))
+                acquired? (some :acquired? outcomes)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e engines]
-                                   (search.engine/init! e opts)))
+                                 (keep :result outcomes))
                 duration (u/since-ms timer)]
             (if (seq report)
               (do
@@ -173,7 +196,8 @@
                   (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
                 (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
                 report)
-              (log/info "Found existing search index, and using it.")))
+              (when acquired?
+                (log/info "Found existing search index, and using it."))))
           (catch Exception e
             (analytics/inc! :metabase-search/index-error)
             (throw e)))))))
@@ -184,17 +208,21 @@
       (lib-be/with-metadata-provider-cache
         (try
           (log/info "Reindexing searchable entities")
-          (let [timer    (u/start-timer)
-                report   (reduce (partial merge-with max)
-                                 nil
-                                 (for [e engines]
-                                   (search.engine/reindex! e opts)))
+          (let [timer     (u/start-timer)
+                outcomes  (for [engine engines]
+                            (with-engine-lease engine "reindex"
+                              #(search.engine/reindex! engine opts)))
+                acquired? (some :acquired? outcomes)
+                report    (reduce (partial merge-with max)
+                                  nil
+                                  (keep :result outcomes))
                 duration (u/since-ms timer)]
-            (analytics/inc! :metabase-search/index-reindex-ms duration)
-            (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
-            (doseq [[model cnt] report]
-              (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-            (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+            (when acquired?
+              (analytics/inc! :metabase-search/index-reindex-ms duration)
+              (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+              (doseq [[model cnt] report]
+                (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+              (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report)))
             report)
           (catch Exception e
             (analytics/inc! :metabase-search/index-error)
@@ -202,6 +230,7 @@
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
+  Each engine is protected by a renewable app-db lease scoped to its engine, index version, and locale.
   Returns a future that will complete when the reindexing is done.
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
   Alternatively, if `:async?` is false, it will also run synchronously."

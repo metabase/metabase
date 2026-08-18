@@ -12,6 +12,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
@@ -242,19 +243,25 @@
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
+  ;; Check before sync-tracking-atoms! can replace this process's current-locale tracking with the old coordinate.
+  (search.lease/assert-coordinate-current!)
   (locking *indexes*
     (if *mocking-tables*
       ;; The atoms are the only source of truth, we must not update the metadata.
       (boolean
        (when-let [pending (:pending @*indexes*)]
          (analyze-table! pending)
+         (search.lease/assert-current!)
          (reset! *indexes* {:pending nil, :active pending}) true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
-          (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
+          (let [active (keyword (search-index-metadata/active-pending!
+                                 :appdb
+                                 (search.spec/index-version-hash)
+                                 search.lease/assert-current-in-transaction!))]
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
@@ -364,6 +371,9 @@
 
   (let [reindexing? (some? reindex-table)
         do-writes   (fn []
+                      ;; Outside a leased rebuild this is a cheap no-op. During all rebuild modes (including in-place
+                      ;; and force-sync) it stops a stale owner at the next batch boundary.
+                      (search.lease/throw-if-lost!)
                       (let [entries (map document->entry documents)
                             updated (if reindexing?
                                       ;; Full reindex: write only to the table captured for the whole run, so a
