@@ -10,7 +10,7 @@ For the entity described in the user message, produce up to three fields:
 
 1. Never rewrite the entity's own name or description — they are inputs, not outputs.
 2. Synonyms and examples are embedded into a search index, so every one you emit has an ongoing cost. Emit only entries that add real matching power; instructions are cheap to regenerate, synonyms and examples are not.
-3. Existing metadata in this workflow is an unapproved Metabot draft. Use it as context, but rewrite it when the current entity state or requested rewrite calls for a better result. Human-approved metadata is excluded before this prompt is built.
+3. The user message labels existing metadata as either an unapproved Metabot draft or human-approved metadata. A Metabot draft may be freely improved. Treat human-approved metadata as authoritative context; it appears here only after an explicit rewrite request and may be revised to produce that requested new version.
 4. When a list of changes since the last generation is given, focus your revisions on what the changes affect: a rename argues for revisiting synonyms, a changed column list argues for revisiting examples.
 5. Limits: instructions at most {{max-instructions-len}} characters; at most {{max-list-len}} synonyms and {{max-list-len}} examples, each at most {{max-item-len}} characters.
 6. Omit any field you have nothing worthwhile for. An empty object is a valid response and means the entity needs no generated metadata.

@@ -169,4 +169,4 @@
   "Call the Moonshot Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply moonshot-raw args)]
-    (eduction (moonshot->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (moonshot->aisdk-chunks-xf) raw)))

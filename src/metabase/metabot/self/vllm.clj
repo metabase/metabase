@@ -460,14 +460,35 @@
   rather than a raw `IOException`. The adapter's own `try` covers only establishing the request.
 
   Goes inside `core/reducible-with-api-errors`, never outside: [[stream-io-ex]] tags `:api-error
-  true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO."
+  true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO.
+
+  Only *source* failures are translated. The reducing function runs inside `.reduce`, so an
+  `IOException` a consumer throws would otherwise be relabelled a vLLM transport error — hiding the real
+  failure, and telling `core/completion-safe-eduction` the source died so it flushes as if the stream had
+  been interrupted."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (try
-        (.reduce ^clojure.lang.IReduceInit reducible rf init)
-        (catch IOException e
-          (throw (stream-io-ex e timeout-ms)))))))
+      (let [rf-error (volatile! nil)
+            rf*      (fn
+                       ([result]
+                        (try
+                          (rf result)
+                          (catch Throwable e
+                            (vreset! rf-error e)
+                            (throw e))))
+                       ([result input]
+                        (try
+                          (rf result input)
+                          (catch Throwable e
+                            (vreset! rf-error e)
+                            (throw e)))))]
+        (try
+          (.reduce ^clojure.lang.IReduceInit reducible rf* init)
+          (catch IOException e
+            (if (identical? e @rf-error)
+              (throw e)
+              (throw (stream-io-ex e timeout-ms)))))))))
 
 (mu/defn vllm-raw
   "Perform a streaming request to a vLLM server's Chat Completions API.
@@ -525,4 +546,4 @@
   "Call a vLLM server's Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply vllm-raw args)]
-    (eduction (vllm->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (vllm->aisdk-chunks-xf) raw)))

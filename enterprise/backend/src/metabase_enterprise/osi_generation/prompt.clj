@@ -4,10 +4,10 @@
   [[build-messages]] is a pure function of the candidate — no clock reads, no settings reads, no appdb —
   so the same row state always renders the same prompt for reproducibility and prompt caching. The
   system message is static and cache-friendly; the user message carries the row state: the entity's
-  `:llm-input` projection, the existing unapproved Metabot draft with absolute timestamps (never a
+  `:llm-input` projection, existing metadata with its ownership and absolute timestamps (never a
   current date or elapsed time), and the basis diff so the model knows WHAT changed. Human-approved
-  rows are excluded before this layer. An empty diff never reaches this namespace — the loop restamps
-  and skips upstream."
+  rows reach this layer only after an explicit rewrite request. An empty diff never reaches this
+  namespace — the loop restamps and skips upstream."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
@@ -47,10 +47,11 @@
 
 (defn- existing-block
   "Template context for the existing-context block, or nil when the candidate has no stored row:
-  the previous Metabot `ai_context` plus both staleness timestamps as absolute ISO-8601 UTC."
-  [{:keys [ai_context generated_at invalidated_at] :as existing-context}]
+  the previous `ai_context`, its ownership, and both staleness timestamps as absolute ISO-8601 UTC."
+  [{:keys [ai_context data_source generated_at invalidated_at] :as existing-context}]
   (when existing-context
-    {:generated-at   (iso-utc generated_at)
+    {:human-approved (contains? #{:human "human"} data_source)
+     :generated-at   (iso-utc generated_at)
      :invalidated-at (iso-utc invalidated_at)
      :instructions   (:instructions ai_context)
      :synonyms       (not-empty (:synonyms ai_context))

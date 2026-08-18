@@ -239,10 +239,29 @@
    :socket-timeout     60000})
 
 (def ^:dynamic *embedding-request-source*
-  "Bound to \"osi-generation\" around an OSI metadata-generation run's trailing reconcile so its embedding
-  volume is distinguishable from other embedding traffic; nil (the default) records \"unknown\".
-  A call-site binding, not per-request state."
+  "Bound to identify the operation that caused an embedding request; nil (the default) records \"unknown\".
+  Reconcile scheduling captures this value so queued work retains the cause of the write that dirtied it."
   nil)
+
+(def ^:private embedding-request-source-priority
+  "Known request sources, highest priority first. When multiple writes dirty one entity before its queued
+  reconcile runs, the source that caused the content-changing work wins over routine reconciliation."
+  ["osi-generation" "reconcile"])
+
+(def ^:private embedding-request-source-rank
+  (zipmap embedding-request-source-priority (range)))
+
+(defn merge-embedding-request-sources
+  "Choose the source to retain when queued work from `current` and `incoming` is coalesced.
+  Known sources outrank unknown ones in [[embedding-request-source-priority]] order, and every non-nil
+  source outranks nil. Equal-priority sources retain `current`."
+  [current incoming]
+  (cond
+    (nil? current) incoming
+    (nil? incoming) current
+    (< (get embedding-request-source-rank incoming Long/MAX_VALUE)
+       (get embedding-request-source-rank current Long/MAX_VALUE)) incoming
+    :else current))
 
 (defn- record-embedding-request!
   "Count an attempted embedding-service request before I/O -- including failures and timeouts -- labelled by

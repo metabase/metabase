@@ -141,7 +141,7 @@
           do-targeted-run (var-get #'entity-retrieval.core/do-targeted-run)
           reconciled      (atom [])
           sources         (atom [])]
-      (reset! dirty #{["table" 7] ["metric" 9]})
+      (reset! dirty {["table" 7] "osi-generation", ["metric" 9] nil})
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
          semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
@@ -152,8 +152,64 @@
                                                                   {:inserted 1 :deleted 0 :unchanged 0})]
         (do-targeted-run nil)
         (is (= #{["table" 7] ["metric" 9]} (set @reconciled)))
-        (is (= #{"reconcile"} (set @sources)))
-        (is (empty? @dirty) "the dirty set is cleared at the run's start")))))
+        (is (= #{"osi-generation" "reconcile"} (set @sources)))
+        (is (empty? @dirty) "the dirty map is cleared at the run's start")))))
+
+(deftest request-entity-sync-retains-highest-priority-source-test
+  (testing "coalesced writes retain the source that caused the content-changing work, regardless of arrival order"
+    (mt/with-premium-features #{:library :library-retrieval}
+      (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+        (let [dirty @#'entity-retrieval.core/dirty-entities]
+          (reset! dirty {})
+          (with-redefs-fn {#'entity-retrieval.core/available? (constantly true)
+                           #'entity-retrieval.core/schedule! (fn [& _] nil)}
+            #(do
+               (binding [semantic.embedding/*embedding-request-source* "osi-generation"]
+                 (entity-retrieval.core/request-entity-sync! "table" 1))
+               (entity-retrieval.core/request-entity-sync! "table" 1)
+               (entity-retrieval.core/request-entity-sync! "metric" 2)
+               (binding [semantic.embedding/*embedding-request-source* "osi-generation"]
+                 (entity-retrieval.core/request-entity-sync! "metric" 2))))
+          (is (= {["table" 1] "osi-generation", ["metric" 2] "osi-generation"} @dirty))
+          (reset! dirty {}))))))
+
+(deftest failed-targeted-reconcile-retains-source-test
+  (testing "a targeted reconcile failure re-queues the entity with its source intact"
+    (let [dirty           @#'entity-retrieval.core/dirty-entities
+          do-targeted-run (var-get #'entity-retrieval.core/do-targeted-run)]
+      (reset! dirty {["table" 7] "osi-generation"})
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+         reconcile/reconcile-entity!                            (fn [& _] (throw (ex-info "boom" {})))]
+        (do-targeted-run nil))
+      (is (= {["table" 7] "osi-generation"} @dirty))
+      (reset! dirty {}))))
+
+(deftest targeted-write-arriving-mid-run-retains-source-for-followup-test
+  (testing "a write racing an active entity reconcile is queued with its own source for the follow-up"
+    (mt/with-premium-features #{:library :library-retrieval}
+      (let [dirty           @#'entity-retrieval.core/dirty-entities
+            do-targeted-run (var-get #'entity-retrieval.core/do-targeted-run)
+            sources         (atom [])]
+        (reset! dirty {["table" 7] "reconcile"})
+        (with-redefs-fn
+          {#'entity-retrieval.core/available?                        (constantly true)
+           #'entity-retrieval.core/schedule!                        (fn [& _] nil)
+           #'semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+           #'reconcile/reconcile-entity!                            (fn [& _]
+                                                                      (swap! sources conj
+                                                                             semantic.embedding/*embedding-request-source*)
+                                                                      (when (= 1 (count @sources))
+                                                                        (binding [semantic.embedding/*embedding-request-source*
+                                                                                  "osi-generation"]
+                                                                          (entity-retrieval.core/request-entity-sync! "table" 7)))
+                                                                      {:inserted 1 :deleted 0 :unchanged 0})}
+          #(do
+             (do-targeted-run nil)
+             (is (= {["table" 7] "osi-generation"} @dirty))
+             (do-targeted-run nil)))
+        (is (= ["reconcile" "osi-generation"] @sources))
+        (is (empty? @dirty))))))
 
 (deftest request-entity-sync-is-fire-and-forget-test
   (testing "request-entity-sync! returns nil without throwing on the calling thread, even if the reconcile fails"
@@ -162,7 +218,7 @@
         (let [tc    @#'entity-retrieval.core/targeted-current
               tn    @#'entity-retrieval.core/targeted-next
               dirty @#'entity-retrieval.core/dirty-entities]
-          (reset! tc nil) (reset! tn nil) (reset! dirty #{})
+          (reset! tc nil) (reset! tn nil) (reset! dirty {})
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
              semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
@@ -170,7 +226,7 @@
             (is (nil? (entity-retrieval.core/request-entity-sync! "table" 1)))
             ;; let the fire-and-forget drain settle so its logged error doesn't bleed into later tests
             (when-let [f @tc] (deref f 5000 nil))
-            (reset! tc nil) (reset! tn nil) (reset! dirty #{})))))))
+            (reset! tc nil) (reset! tn nil) (reset! dirty {})))))))
 
 (deftest force-reconcile-coalescing-test
   (testing "force-reconcile! never joins the in-flight run, queues one shared follow-up, and reports index + timing"
@@ -178,9 +234,13 @@
       ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (let [current @#'entity-retrieval.core/full-current
-              nxt     @#'entity-retrieval.core/full-next
-              calls   (atom 0)
-              sources (atom [])]
+              nxt            @#'entity-retrieval.core/full-next
+              current-source @#'entity-retrieval.core/full-current-source
+              next-source    @#'entity-retrieval.core/full-next-source
+              run-lock       @#'entity-retrieval.core/run-lock
+              schedule-full  (var-get #'entity-retrieval.core/schedule-full!)
+              calls          (atom 0)
+              sources        (atom [])]
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
              semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
@@ -190,7 +250,8 @@
                                                                       (swap! calls inc)
                                                                       {:inserted 3 :deleted 1 :unchanged 2})]
             (testing "idle: the caller starts the run, gets its index diff + timing, and the schedule clears"
-              (reset! current nil) (reset! nxt nil) (reset! calls 0)
+              (reset! current nil) (reset! nxt nil)
+              (reset! current-source nil) (reset! next-source nil) (reset! calls 0)
               (is (=? {:index     {:inserted 3 :deleted 1 :unchanged 2}
                        :execution {:waited_ms int? :ran_ms int?}}
                       (entity-retrieval.core/force-reconcile!)))
@@ -198,25 +259,46 @@
               (is (= "reconcile" (last @sources)))
               (is (nil? @current)) (is (nil? @nxt)))
             (testing "an explicit caller source survives the routine default"
-              (reset! current nil) (reset! nxt nil) (reset! calls 0) (reset! sources [])
+              (reset! current nil) (reset! nxt nil)
+              (reset! current-source nil) (reset! next-source nil)
+              (reset! calls 0) (reset! sources [])
               (binding [semantic.embedding/*embedding-request-source* "osi-generation"]
                 (entity-retrieval.core/force-reconcile!))
               (is (= ["osi-generation"] @sources)))
             (testing "a run in flight: the caller queues a fresh follow-up instead of reusing the in-flight run"
               ;; a completed future stands in for the in-flight run — the caller must still run a fresh pass.
-              (reset! current (future {:index {} :execution {}})) (reset! nxt nil) (reset! calls 0)
+              (reset! current (future {:index {} :execution {}})) (reset! nxt nil)
+              (reset! current-source (atom nil)) (reset! next-source nil) (reset! calls 0)
               (is (=? {:index {:inserted 3 :deleted 1 :unchanged 2}}
                       (entity-retrieval.core/force-reconcile!)))
               (is (= 1 @calls) "a fresh reconcile ran; the in-flight run's result was not reused"))
             (testing "a follow-up already queued: further callers coalesce onto it (no extra run)"
               (reset! current (future {:index {} :execution {}}))
               (reset! nxt (future {:index {:inserted 7 :deleted 0 :unchanged 0} :execution {:waited_ms 5 :ran_ms 9}}))
+              (reset! current-source (atom nil))
+              (reset! next-source (atom nil))
               (reset! calls 0)
               (is (=? {:index     {:inserted 7 :deleted 0 :unchanged 0}
                        :execution {:waited_ms 5 :ran_ms 9}}
                       (entity-retrieval.core/force-reconcile!)))
               (is (zero? @calls) "joined the queued follow-up; no new reconcile")
-              (reset! current nil) (reset! nxt nil))))))))
+              (reset! current nil) (reset! nxt nil)
+              (reset! current-source nil) (reset! next-source nil))
+            (testing "a higher-priority caller upgrades an already-queued full follow-up"
+              (let [release     (promise)
+                    predecessor (future @release)]
+                (reset! current predecessor) (reset! nxt nil)
+                (reset! current-source (atom nil)) (reset! next-source nil)
+                (reset! calls 0) (reset! sources [])
+                (let [queued (locking run-lock (schedule-full))
+                      joined (binding [semantic.embedding/*embedding-request-source* "osi-generation"]
+                               (locking run-lock (schedule-full)))]
+                  (is (identical? queued joined))
+                  (deliver release nil)
+                  (deref queued 5000 ::timeout)
+                  (is (= ["osi-generation"] @sources)))
+                (reset! current nil) (reset! nxt nil)
+                (reset! current-source nil) (reset! next-source nil)))))))))
 
 (deftest force-reconcile-unavailable-returns-nil-test
   (testing "force-reconcile! is nil (so the API can 400) when pgvector isn't configured"

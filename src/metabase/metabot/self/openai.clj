@@ -63,18 +63,78 @@
           current-id   (volatile! nil)
           model-name   (volatile! nil)
           payload      (volatile! {})
-          close!       (fn [result]
-                         ;; only emit an end marker for chunk types we translate.
-                         (u/prog1 (if-let [end-type (case @current-type
-                                                      :text          :text-end
-                                                      :function_call :tool-input-available
-                                                      :reasoning     :reasoning-end
-                                                      nil)]
-                                    (rf result (merge {:type end-type} @payload))
-                                    result)
+          ;; Function items are provisional until response.completed. Buffer the ordered suffix so
+          ;; unsuccessful terminal outcomes can drop tools without reordering later text/reasoning.
+          pending-chunks (volatile! [])
+          completed-tool-ids (volatile! #{})
+          clear!       (fn [result]
+                         (u/prog1 result
                            (vreset! current-type nil)
                            (vreset! current-id nil)
-                           (vreset! payload {})))]
+                           (vreset! payload {})))
+          emit!        (fn [result tool-id chunk]
+                         (cond
+                           (reduced? result) result
+                           (or tool-id (seq @pending-chunks))
+                           (u/prog1 result
+                             (vswap! pending-chunks conj [tool-id chunk]))
+                           :else (rf result chunk)))
+          emit-rf!     (fn [result chunk]
+                         (if (reduced? result) result (rf result chunk)))
+          close!       (fn [result]
+                         ;; only emit an end marker for chunk types we translate.
+                         (let [tool-id @current-id
+                               result  (if-let [end-type (case @current-type
+                                                           :text          :text-end
+                                                           :function_call :tool-input-available
+                                                           :reasoning     :reasoning-end
+                                                           nil)]
+                                         (emit! result
+                                                (when (= :function_call @current-type) tool-id)
+                                                (merge {:type end-type} @payload))
+                                         result)]
+                           (when (= :function_call @current-type)
+                             (vswap! completed-tool-ids conj tool-id))
+                           (clear! result)))
+          safe-close!  (fn [result]
+                         ;; A function call is executable only after its own output_item.done. EOF or
+                         ;; a transition to another item is evidence of truncation, not completion.
+                         (if (= :function_call @current-type)
+                           (clear! result)
+                           (close! result)))
+          resolve-tools! (fn [result successful?]
+                           (let [result    (cond
+                                             (= :function_call @current-type) (clear! result)
+                                             @current-type                    (close! result)
+                                             :else                            result)
+                                 completed @completed-tool-ids
+                                 result    (u/reduce-preserving-reduced
+                                            (fn [result [tool-id chunk]]
+                                              (if (or (nil? tool-id)
+                                                      (and successful? (contains? completed tool-id)))
+                                                (rf result chunk)
+                                                result))
+                                            result
+                                            @pending-chunks)]
+                             (vreset! pending-chunks [])
+                             (vreset! completed-tool-ids #{})
+                             result))
+          interrupt!   (fn [result]
+                         ;; An interrupted block is incomplete, so never synthesize its normal end marker.
+                         ;; Release any safe buffered content while dropping every provisional tool chunk.
+                         (let [result (clear! result)
+                               result (u/reduce-preserving-reduced
+                                       (fn [result [tool-id chunk]]
+                                         (if tool-id result (rf result chunk)))
+                                       result
+                                       @pending-chunks)]
+                           (vreset! pending-chunks [])
+                           (vreset! completed-tool-ids #{})
+                           result))
+          close-for-event! (fn [result tool-done?]
+                             (if (or (not= :function_call @current-type) tool-done?)
+                               (close! result)
+                               (safe-close! result)))]
       ;; some notes about the approach:
       ;; - most of message types carry similar payload, like id for messages, or id+name for tool calls
       ;; - this trick with u/prog1 was chosen deliberately, a few approaches were made and they all looked worse
@@ -82,108 +142,125 @@
       ;;   smaller, I'd rather contain this hairyness in a single piece while it's possible
       (fn
         ([result]
-         (cond-> result
-           ;; in case the response was incomplete we'll close up latest type
-           @current-type (close!)
-           true          (rf)))
+         (let [result (-> (cond-> result
+                            ;; Text/reasoning remain useful at EOF; an open function call does not.
+                            @current-type (safe-close!))
+                          (resolve-tools! false))]
+           (if (reduced? result) result (rf result))))
         ([result {t :type :keys [response item delta error] :as chunk}]
-         (let [middle     (second (str/split t #"\."))
-               chunk-type (case middle
-                            "output_item"             (case (:type item)
-                                                        "message" :text
-                                                        (keyword (:type item)))
-                            "content_part"            :text
-                            "output_text"             :text
-                            "function_call_arguments" :function_call
-                            "reasoning_summary_text"  :reasoning
-                            "reasoning_summary_part"  :reasoning
-                            (keyword middle))
-               chunk-id   (or (case chunk-type
-                                ;; chunks that have natural id in API response go here
-                                :function_call (:call_id item)
-                                :text          (:id chunk)
-                                :reasoning     (:id item)
-                                nil)
-                              @current-id
-                              (core/mkid))]
-           (cond-> result
-             (= t "response.created")           (-> (rf {:type :start :messageId (:id response)})
-                                                    (u/prog1
-                                                      (vreset! model-name (:model response))))
-             ;; a finished reasoning item carries the encrypted content that lets us
-             ;; replay it next round-trip — ride it out on the reasoning-end's metadata
-             (and (= t "response.output_item.done")
-                  (= "reasoning" (:type item))
-                  (= @current-id (:id item))
-                  (:encrypted_content item))
-             (u/prog1
-               (vswap! payload assoc :providerMetadata
-                       {:openai {:itemId           (:id item)
-                                 :encryptedContent (:encrypted_content item)}}))
+         (if (= chunk core/interrupted-stream-event)
+           (interrupt! result)
+           (let [middle     (second (str/split t #"\."))
+                 chunk-type (case middle
+                              "output_item"             (case (:type item)
+                                                          "message" :text
+                                                          (keyword (:type item)))
+                              "content_part"            :text
+                              "output_text"             :text
+                              "function_call_arguments" :function_call
+                              "reasoning_summary_text"  :reasoning
+                              "reasoning_summary_part"  :reasoning
+                              (keyword middle))
+                 chunk-id   (or (case chunk-type
+                                  ;; chunks that have natural id in API response go here
+                                  :function_call (:call_id item)
+                                  :text          (or (:id item) (:item_id chunk) (:id chunk))
+                                  :reasoning     (or (:id item) (:item_id chunk))
+                                  nil)
+                                @current-id
+                                (core/mkid))]
+             (cond-> result
+               (= t "response.created")           (-> (rf {:type :start :messageId (:id response)})
+                                                      (u/prog1
+                                                        (vreset! model-name (:model response))))
+               ;; a finished reasoning item carries the encrypted content that lets us
+               ;; replay it next round-trip — ride it out on the reasoning-end's metadata
+               (and (= t "response.output_item.done")
+                    (= "reasoning" (:type item))
+                    (= @current-id (:id item))
+                    (:encrypted_content item))
+               (u/prog1
+                 (vswap! payload assoc :providerMetadata
+                         {:openai {:itemId           (:id item)
+                                   :encryptedContent (:encrypted_content item)}}))
 
-             ;; time to finish previous chunk
-             ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
-             (or (= t "response.output_item.done")
-                 (and @current-id
-                      (not= chunk-id
-                            @current-id)))      (close!)
-             ;; start of a new chunk — only for types we translate
-             (and (= t "response.output_item.added")
-                  (translated-chunk-type? chunk-type)) (-> (u/prog1
-                                                             (vreset! current-type chunk-type)
-                                                             (vreset! current-id chunk-id)
-                                                             (vreset! payload
-                                                                      (case @current-type
-                                                                        ;; no :type in payloads since we'll use that for finish msg too
-                                                                        :text          {:id chunk-id}
-                                                                        :function_call {:toolCallId chunk-id
-                                                                                        :toolName   (:name item)}
-                                                                        :reasoning     {:id chunk-id}
-                                                                        nil)))
-                                                           (rf (merge (case @current-type
-                                                                        :text          {:type :text-start}
-                                                                        :function_call {:type :tool-input-start}
-                                                                        :reasoning     {:type :reasoning-start}
-                                                                        nil)
-                                                                      @payload)))
-             ;; a 2nd+ summary part is a new paragraph within the same reasoning item
-             (and (= t "response.reasoning_summary_part.added")
-                  (= @current-type :reasoning)
-                  (pos? (:summary_index chunk 0)))
-             (rf {:type :reasoning-delta :id @current-id :delta "\n\n"})
+               ;; time to finish previous chunk
+               ;; this logic will skip most of the *.done types, but they seem to be always followed by one of those two?
+               (or (= t "response.output_item.done")
+                   (and @current-id
+                        (not= chunk-id
+                              @current-id)))      (close-for-event!
+                                                   (and (= t "response.output_item.done")
+                                                        (= "function_call" (:type item))
+                                                        (= chunk-id @current-id)))
+               ;; start of a new chunk — only for types we translate
+               (and (= t "response.output_item.added")
+                    (translated-chunk-type? chunk-type)) (-> (u/prog1
+                                                               (vreset! current-type chunk-type)
+                                                               (vreset! current-id chunk-id)
+                                                               (vreset! payload
+                                                                        (case @current-type
+                                                                          ;; no :type in payloads since we'll use that for finish msg too
+                                                                          :text          {:id chunk-id}
+                                                                          :function_call {:toolCallId chunk-id
+                                                                                          :toolName   (:name item)}
+                                                                          :reasoning     {:id chunk-id}
+                                                                          nil)))
+                                                             (emit! (when (= :function_call @current-type) @current-id)
+                                                                    (merge (case @current-type
+                                                                             :text          {:type :text-start}
+                                                                             :function_call {:type :tool-input-start}
+                                                                             :reasoning     {:type :reasoning-start}
+                                                                             nil)
+                                                                           @payload)))
+               ;; a 2nd+ summary part is a new paragraph within the same reasoning item
+               (and (= t "response.reasoning_summary_part.added")
+                    (= @current-type :reasoning)
+                    (pos? (:summary_index chunk 0)))
+               (emit! nil {:type :reasoning-delta :id @current-id :delta "\n\n"})
 
-             ;; just a middle of a chunk — ignore deltas for types we don't translate
-             (and delta
-                  (translated-chunk-type? @current-type)) (rf (case @current-type
-                                                                :text          {:type  :text-delta
-                                                                                :id    @current-id
-                                                                                :delta delta}
-                                                                :reasoning     {:type  :reasoning-delta
-                                                                                :id    @current-id
-                                                                                :delta delta}
-                                                                :function_call {:type           :tool-input-delta
-                                                                                :toolCallId     (:toolCallId @payload)
-                                                                                :inputTextDelta delta}))
-             ;; `response.completed` and `response.incomplete` are both terminal events carrying final usage.
-             ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
-             ;; still has valid partial output, so we record its usage rather than treating it as an error.
-             (contains? #{"response.completed" "response.incomplete"} t)
-             (rf (let [raw (get-in response [:incomplete_details :reason])]
-                   (cond-> {:type  :usage
-                            :usage (openai-usage->aisdk-usage (:usage response))
-                            ;; non-standard extension, not in AISDK5
-                            :id    (:id response)
-                            :model @model-name}
-                     raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
-                                :raw-finish-reason raw))))
-             ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
-             ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
-             (= t "response.failed")            (rf {:type      :error
-                                                     :errorText (or (get-in response [:error :message])
-                                                                    (get-in response [:error :code])
-                                                                    (tru "The model provider failed to complete the response"))})
-             (= t "error")                      (rf {:type      :error
-                                                     :errorText (or (:message error) (:message chunk))}))))))))
+               ;; just a middle of a chunk — ignore deltas for types we don't translate
+               (and delta
+                    (translated-chunk-type? @current-type)) (emit! (when (= :function_call @current-type) @current-id)
+                                                                   (case @current-type
+                                                                     :text          {:type  :text-delta
+                                                                                     :id    @current-id
+                                                                                     :delta delta}
+                                                                     :reasoning     {:type  :reasoning-delta
+                                                                                     :id    @current-id
+                                                                                     :delta delta}
+                                                                     :function_call {:type           :tool-input-delta
+                                                                                     :toolCallId     (:toolCallId @payload)
+                                                                                     :inputTextDelta delta}))
+               (= t "response.completed") (resolve-tools! true)
+               (= t "response.incomplete") (resolve-tools! false)
+               ;; `response.completed` and `response.incomplete` are both terminal events carrying final usage.
+               ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
+               ;; still has valid partial output, so we record its usage rather than treating it as an error.
+               (contains? #{"response.completed" "response.incomplete"} t)
+               (emit-rf! (let [raw (get-in response [:incomplete_details :reason])]
+                           (cond-> {:type  :usage
+                                    :usage (openai-usage->aisdk-usage (:usage response))
+                                    ;; non-standard extension, not in AISDK5
+                                    :id    (:id response)
+                                    :model @model-name}
+                             raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
+                                        :raw-finish-reason raw))))
+               ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
+               ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
+               (= t "response.failed")            (resolve-tools! false)
+               (and (= t "response.failed") (:usage response))
+               (emit-rf! {:type  :usage
+                          :usage (openai-usage->aisdk-usage (:usage response))
+                          :id    (:id response)
+                          :model @model-name})
+               (= t "response.failed")            (emit-rf! {:type      :error
+                                                             :errorText (or (get-in response [:error :message])
+                                                                            (get-in response [:error :code])
+                                                                            (tru "The model provider failed to complete the response"))})
+               (= t "error")                      (resolve-tools! false)
+               (= t "error")                      (emit-rf! {:type      :error
+                                                             :errorText (or (:message error) (:message chunk))})))))))))
 
 ;;; AISDK parts → OpenAI Responses API input items
 
@@ -393,4 +470,4 @@
   "Call OpenAI API, return AISDK stream."
   [& args]
   (let [raw (apply openai-raw args)]
-    (eduction (openai->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (openai->aisdk-chunks-xf) raw)))

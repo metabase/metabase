@@ -155,4 +155,4 @@
   "Call the Mistral Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply mistral-raw args)]
-    (eduction (mistral->aisdk-chunks-xf) raw)))
+    (core/completion-safe-eduction (mistral->aisdk-chunks-xf) raw)))

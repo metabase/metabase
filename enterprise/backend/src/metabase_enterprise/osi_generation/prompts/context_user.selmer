@@ -12,7 +12,9 @@ Fields:
 {% if existing %}
 # Existing metadata
 
-This metadata is an unapproved Metabot draft — use it as context and rewrite it when appropriate.
+{% if existing.human-approved %}This metadata was approved by a human and explicitly selected for rewriting. Treat it as authoritative context while producing the requested new version.
+{% else %}This metadata is an unapproved Metabot draft — use it as context and rewrite it when appropriate.
+{% endif %}
 {% if existing.generated-at %}Generated at: {{existing.generated-at}}
 {% endif %}{% if existing.invalidated-at %}Entity changed at: {{existing.invalidated-at}}
 {% endif %}{% if existing.instructions %}
@@ -34,6 +36,6 @@ This entity has no generated metadata yet — write a fresh set.
 {% if rewrite-requested %}
 # Explicit rewrite request
 
-An administrator explicitly requested a new version of this metadata. Reassess the existing draft and rewrite it;
+An administrator explicitly requested a new version of this metadata. Reassess the existing metadata and rewrite it;
 do not preserve it merely because the entity inputs are unchanged.
 {% endif %}

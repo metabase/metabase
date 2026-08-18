@@ -119,7 +119,8 @@
                                                             [{:type :start :messageId "msg-1"}
                                                              {:type :tool-input-start :toolCallId "call-1" :toolName "json"}
                                                              {:type :tool-input-delta :toolCallId "call-1"
-                                                              :inputTextDelta "{\"questions\":[\"q1\",\"q2\"]}"}])]
+                                                              :inputTextDelta "{\"questions\":[\"q1\",\"q2\"]}"}
+                                                             {:type :tool-input-available :toolCallId "call-1" :toolName "json"}])]
           (testing "returns questions from openrouter responses"
             (is (=? {:table_questions  [{:questions ["q1" "q2"]}]
                      :metric_questions [{:questions ["q1" "q2"]}]}
