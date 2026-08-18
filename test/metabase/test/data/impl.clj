@@ -154,11 +154,24 @@
                     :table_id table-id
                     :active   true))
 
-(def ^:private ^{:arglists '([database-id])} table-lookup-map
+;; Like the Database id above, these are memoized for the whole app db, so a map built inside a transaction
+;; would outlive a rollback that took the Tables and Fields with it and hand out ids for rows that are
+;; gone. Look them up directly there instead of caching.
+(def ^:private ^{:arglists '([database-id])} cached-table-lookup-map
   (mdb/memoize-for-application-db build-table-lookup-map))
 
-(def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
+(defn- table-lookup-map [database-id]
+  (if (mdb/in-transaction?)
+    (build-table-lookup-map database-id)
+    (cached-table-lookup-map database-id)))
+
+(def ^:private ^{:arglists '([table-id])} cached-field-lookup-map
   (mdb/memoize-for-application-db build-field-lookup-map))
+
+(defn- field-lookup-map [table-id]
+  (if (mdb/in-transaction?)
+    (build-field-lookup-map table-id)
+    (cached-field-lookup-map table-id)))
 
 (defn- cached-table-id [db-id table-name]
   (get (table-lookup-map db-id) [db-id table-name]))

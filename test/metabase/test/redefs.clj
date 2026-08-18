@@ -24,9 +24,16 @@
   (classloader/require 'metabase.test.util)
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and tu.thread-local/*thread-local* (not *in-with-temp*))
-    (binding [*in-with-temp* true]
-      (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
-        (next-method model attributes f)))
+    (do
+      ;; Materialise the test-data Database before opening the transaction. Created inside it, the
+      ;; Database and its Tables are rolled back with the scope while the memoized ids in
+      ;; [[metabase.test.data.impl]] outlive it, handing out ids for rows that no longer exist -- and it
+      ;; would be rebuilt for every test, since it could never commit.
+      (classloader/require 'metabase.test.data.impl)
+      ((resolve 'metabase.test.data.impl/db-id))
+      (binding [*in-with-temp* true]
+        (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+          (next-method model attributes f))))
     (next-method model attributes f)))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
