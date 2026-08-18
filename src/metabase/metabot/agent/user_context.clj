@@ -268,8 +268,8 @@
                  (tree-seq coll? seq normalized))))
 
 (defn- native-sql-table-ids
-  "Table ids the analyzer finds in `normalized`, throwing when it cannot analyze the query at all.
-  A non-SQL driver never can, so the caller omits the query rather than skipping the table check."
+  "Return the table IDs referenced by a native query. Throws if the analyzer can't read them
+  (always for non-SQL)."
   [normalized]
   (let [analysis (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)]
     (when-not (and (map? analysis) (contains? analysis :tables))
@@ -310,9 +310,7 @@
           nil)))))
 
 (defn- exported-query-text
-  "A client-supplied query rendered for the LLM, only when the current user may query it.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider; a query
-  naming no `:database` skips that resolution and only ever pprints."
+  "Render a query for the LLM when the user may query it."
   [query]
   (when (or (not (and (map? query) (:database query)))
             (queryable-normalized-query query))
