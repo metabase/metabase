@@ -7,8 +7,9 @@
   adjusted. Do not update them when the new spec changes: a mismatch represents a behavior change that
   must be reviewed.
 
-  These tests use only the application database. Both implementations scan the same database, so the
-  fixture corpus needs to cover relevant branches but does not need exclusive ownership of library data."
+  These tests use only the application database and do not need a pgvector container.
+  Both implementations scan the same database, so the fixture corpus needs to cover relevant branches but
+  does not need exclusive ownership of library data."
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
@@ -286,7 +287,7 @@
 
 ;;; ------------------------------------------------- Equivalence -------------------------------------------------
 
-(deftest ^:sequential membership-equivalence-test
+(deftest ^:synchronized membership-equivalence-test
   (do-with-corpus!
    (fn [{:keys [members non-members]}]
      (let [old (set (old-library-entities))
@@ -304,7 +305,7 @@
              (is (not (contains? classes (entity-retrieval/entity-class entity-type id)))
                  (str entity-type " " id)))))))))
 
-(deftest ^:sequential point-membership-equivalence-test
+(deftest ^:synchronized point-membership-equivalence-test
   (do-with-corpus!
    (fn [{:keys [members non-members]}]
      (doseq [[entity-type ids] (concat members non-members)
@@ -314,7 +315,7 @@
          (is (= (old-library-entity alias' id)
                 (some-> (spec/member-entity :library-index alias' id) spec/entity-summary))))))))
 
-(deftest ^:sequential desired-docs-equivalence-test
+(deftest ^:synchronized desired-docs-equivalence-test
   (do-with-corpus!
    (fn [_corpus]
      ;; End-to-end comparison of complete document maps, including `doc_id`, against the live refactored
@@ -322,7 +323,7 @@
      (is (= (set (old-desired-docs))
             (set (:docs (#'reconcile/desired-docs))))))))
 
-(deftest ^:sequential point-desired-docs-equivalence-test
+(deftest ^:synchronized point-desired-docs-equivalence-test
   (do-with-corpus!
    (fn [{:keys [members non-members]}]
      (doseq [[entity-type ids] (concat members non-members)
@@ -332,7 +333,7 @@
          (is (= (set (old-entity-desired-docs alias' id))
                 (set (#'reconcile/entity-desired-docs alias' id)))))))))
 
-(deftest ^:sequential osi-context-membership-matches-library-index-test
+(deftest ^:synchronized osi-context-membership-matches-library-index-test
   ;; :osi-context membership is fixed to :library-index's for v1. Entity keys only — the two projections
   ;; hydrate and project differently by design.
   (do-with-corpus!
