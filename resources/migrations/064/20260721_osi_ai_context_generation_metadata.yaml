@@ -1,8 +1,8 @@
 ## Generation metadata for osi_ai_context (BOT-1747).
 ##
-## data_source describes approval of the content currently stored in the row. "human" means a person
-## approved it, regardless of who authored it; "metabot" means generation may replace it. The column
-## defaults to "human" so existing rows remain protected and writers that omit the column fail safely.
+## data_source describes the content currently stored in the row, not an intent. The column defaults to
+## "human" so existing rows remain protected and writers that omit it fail safely. The transition contract
+## lives in metabase.osi.models.osi-ai-context/data-sources.
 ##
 ## rewrite_requested_at explicitly forces regeneration when it is later than generated_at, even for
 ## human-approved content or an unchanged basis. Regenerate updates only this timestamp; basis remains
@@ -25,7 +25,9 @@ databaseChangeLog:
                   name: data_source
                   type: varchar(32)
                   defaultValue: human
-                  remarks: Approval state of the content in this row - human means a person approved it and generation leaves it alone unless a rewrite is requested; metabot means generation may replace it
+                  remarks: >-
+                    Source of the content currently in this row - human means a person approved it;
+                    metabot means the generation job wrote it
                   constraints:
                     nullable: false
       rollback:

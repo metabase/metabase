@@ -66,8 +66,8 @@
 
 (def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- one missed ~15m full-reconcile cycle
 (def ^:private staleness-critical-seconds (* 60 60))   ; 60m -- reconcile clearly stalled
-;; Absolute orphan counts. The curated library is a bounded, small tier, so tolerances are much lower than
-;; semantic search; reconcile GCs orphans every ~15m. Tunable (promotable to settings).
+;; Absolute orphan counts. The library is a bounded, small tier, so tolerances are much lower than semantic
+;; search; reconcile GCs orphans every ~15m. Tunable (promotable to settings).
 (def ^:private garbage-warn-count     5)
 (def ^:private garbage-critical-count 100)
 

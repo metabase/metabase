@@ -17,8 +17,8 @@
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
-  That drop-and-rebuild is the entire model-change story — the index is rebuilt from the authoritative
-  appdb (library membership + `osi_ai_context`), so rebuilding is cheap."
+  That drop-and-rebuild is the entire model-change story. The index holds no authoritative data: it is
+  rebuilt from the appdb's library membership and `osi_ai_context`, so dropping it loses no source data."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -91,12 +91,20 @@
   "Version of the index document format: the metadata and vectors table schemas plus the document
   derivation contract (`doc_id`, `doc_type`, `doc_text`, deduplication, and key rules).
 
+  Document derivation lives in [[metabase.entity-retrieval.spec]] and the four `:library-index`
+  declarations for Card, Table, Measure, and Segment.
+
   This participates in [[model-identity]]. Bumping it makes [[ensure-tables!]] rebuild the vectors table,
   which the startup reconcile then repopulates and re-embeds.
 
-  Bump it whenever a schema or derivation change makes existing rows incompatible with newly derived
-  documents. Do not bump it for unrelated declaration edits or as a refresh mechanism. The version is
-  manual so source-only changes do not trigger unnecessary full rebuilds."
+  Bump it for:
+  - a metadata- or vectors-table column or type change;
+  - a new or renamed `doc_type`;
+  - a changed `doc_text` source; or
+  - a changed `doc_id`, deduplication, or key scheme.
+
+  Do not bump it for unrelated declaration edits or as a refresh mechanism.
+  The version is manual so source-only changes do not trigger unnecessary full rebuilds."
   ;; v1 — initial schema; v2 — immutable embedding-space identity.
   2)
 

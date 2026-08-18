@@ -7,8 +7,9 @@
   adjusted. Do not update them when the new spec changes: a mismatch represents a behavior change that
   must be reviewed.
 
-  These tests use only the application database. Both implementations scan the same database, so the
-  fixture corpus needs to cover relevant branches but does not need exclusive ownership of library data."
+  These tests use only the application database and do not need a pgvector container.
+  Both implementations scan the same database, so the fixture corpus needs to cover relevant branches but
+  does not need exclusive ownership of library data."
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
