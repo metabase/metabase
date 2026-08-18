@@ -1,15 +1,14 @@
 (ns metabase-enterprise.entity-retrieval.spec-equivalence-test
-  "Old-vs-new equivalence proof for the refactor of reconcile's membership selects and doc derivation onto
+  "Regression comparison between the pre-refactor membership/document derivation and
   [[metabase.entity-retrieval.spec]].
 
-  The `old-*` fns below are a frozen verbatim copy of the pre-refactor fns from
-  `metabase-enterprise.entity-retrieval.reconcile` @ 428c6be0707 (renamed, internal calls repointed).
-  They pin behavior: do NOT update them when the spec changes — a diff against them is a behavior change
-  to justify, not drift to fix.
+  The `old-*` functions are a frozen copy of the implementation from
+  `metabase-enterprise.entity-retrieval.reconcile` at 428c6be0707, with names and internal references
+  adjusted. Do not update them when the new spec changes: a mismatch represents a behavior change that
+  must be reviewed.
 
-  Appdb only — membership and doc derivation never touch the pgvector index, so no container is needed.
-  The shared test appdb may hold other library content; old and new scan the same live db, so equality is
-  unaffected and the corpus only has to guarantee edge coverage, not exclusivity."
+  These tests use only the application database. Both implementations scan the same database, so the
+  fixture corpus needs to cover relevant branches but does not need exclusive ownership of library data."
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
@@ -162,13 +161,9 @@
   this fixture in the background."
   [f]
   (mt/with-premium-features #{:library}
-    ;; the corpus includes placements the live write path rejects — a model/question card in the Metrics
-    ;; collection, a published table outside a Data collection — rows that predate the placement
-    ;; validation or arrive via serdes/direct appdb writes, and that membership must still classify.
-    ;; Bypass the placement check AND the ai_context write validation for construction only: the corpus
-    ;; deliberately holds over-cap / blank / duplicate synonym and example values that simulate rows which
-    ;; bypassed the API cap (serdes / direct writes / pre-cap) -- exactly what the read-side projection must
-    ;; still handle. Nothing under test consults either check.
+    ;; Some fixtures intentionally bypass placement and ai_context write validation to represent legacy,
+    ;; SerDes, and direct-appdb rows. The corpus exercises read-side membership and projection behavior;
+    ;; write validation itself is outside this test.
     (mt/with-dynamic-fn-redefs [collection/check-allowed-content   (constantly true)
                                 osi-ai-context/validate-ai-context! identity]
       (collections.tu/with-library [{data :data, metrics :metrics}]
@@ -322,8 +317,8 @@
 (deftest ^:sequential desired-docs-equivalence-test
   (do-with-corpus!
    (fn [_corpus]
-     ;; the money assertion: full doc maps, doc_id included, over the live (already refactored)
-     ;; reconcile/desired-docs — this covers member-entities + hydrate + project + dedup end to end.
+     ;; End-to-end comparison of complete document maps, including `doc_id`, against the live refactored
+     ;; `desired-docs`; covers membership, hydration, projection, and deduplication together.
      (is (= (set (old-desired-docs))
             (set (:docs (#'reconcile/desired-docs))))))))
 

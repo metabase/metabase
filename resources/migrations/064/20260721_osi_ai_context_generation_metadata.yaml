@@ -1,27 +1,16 @@
-## Generation metadata on osi_ai_context (BOT-1747). An ai_context row can now be written by the
-## OSI generation job as well as by a person, so the row records whether its content is human-approved (data_source),
-## when it was generated, when it was invalidated, and what it was generated from (basis).
+## Generation metadata for osi_ai_context (BOT-1747).
 ##
-## data_source is the approval bit: "human" means a person approved the content currently in the row, not
-## that a person typed it. It describes stored content, so only a write moves it — the generator flips a
-## row to "metabot" when it rewrites the content, never when a rewrite is merely requested, because the
-## instructions an entity serves to the agent are gated on this column. The generator leaves a human row
-## alone unless rewrite_requested_at is later than generated_at. It defaults to "human" so existing rows —
-## all written through the CRUD API by a person — backfill on the humans-win side, and so a write
-## path that forgets the column cannot silently mark content as machine-owned.
+## data_source describes approval of the content currently stored in the row. "human" means a person
+## approved it, regardless of who authored it; "metabot" means generation may replace it. The column
+## defaults to "human" so existing rows remain protected and writers that omit the column fail safely.
 ##
-## rewrite_requested_at is the forcing channel for the regenerate action: a row whose
-## rewrite_requested_at is later than its generated_at goes to the LLM regardless of whether its
-## basis changed, and regardless of a human data_source. It is the only thing regenerate writes. It exists rather than having regenerate blank `basis` because `basis` is real
-## prompt input (what the previous metadata was generated from), and because encoding an
-## instruction by deleting data is the same mistake as a suppression flag.
+## rewrite_requested_at explicitly forces regeneration when it is later than generated_at, even for
+## human-approved content or an unchanged basis. Regenerate updates only this timestamp; basis remains
+## the record of the inputs used for the previous generation.
 ##
-## generator_version records the enrichment identity — the prompt plus model — a row was generated
-## under. Nothing reads it in v1. It exists so a later prompt upgrade can re-enter converged rows:
-## the basis diff never fires on a prompt change, so without this column the only lever is a bulk
-## rewrite_requested_at stamp, which overloads a user-intent column for an operational backfill. It
-## is nullable and unwritten before the generation job exists, so pre-generation rows read as
-## unknown identity, which is why it ships now rather than when the job lands.
+## generator_version identifies the prompt-and-model configuration used to generate the row. Nothing
+## reads it in v1, but recording it now allows a later generator upgrade to invalidate converged rows
+## without overloading rewrite_requested_at, which represents an administrator's request.
 
 databaseChangeLog:
   - changeSet:
