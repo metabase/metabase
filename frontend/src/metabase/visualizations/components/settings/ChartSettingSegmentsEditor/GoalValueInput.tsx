@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import {
   type KeyboardEvent,
   useCallback,
@@ -32,6 +31,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -335,21 +335,23 @@ export const GoalValueInput = ({
                     <span className={S.pillValue}>
                       {resolved.value != null
                         ? formatValue(resolved.value)
-                        : "—"}
+                        : EMPTY_CELL_PLACEHOLDER}
                     </span>
                   )}
                 </UnstyledButton>
               </Tooltip>
-              <ActionIcon
-                aria-label={t`Remove value source`}
-                className={S.trigger}
-                data-open={isMenuOpen}
-                ml="auto"
-                size={ICON_BUTTON_SIZE}
-                onClick={() => commitValue(null)}
-              >
-                <Icon name="close" size={16} />
-              </ActionIcon>
+              <Tooltip label={t`Remove value source`}>
+                <ActionIcon
+                  aria-label={t`Remove value source`}
+                  className={S.trigger}
+                  data-open={isMenuOpen}
+                  ml="auto"
+                  size={ICON_BUTTON_SIZE}
+                  onClick={() => commitValue(null)}
+                >
+                  <Icon name="close" size={16} />
+                </ActionIcon>
+              </Tooltip>
             </div>
           ) : (
             <Box>
@@ -359,15 +361,17 @@ export const GoalValueInput = ({
                 inputRef={numberInputRef}
                 placeholder={placeholder}
                 rightSection={
-                  <ActionIcon
-                    aria-label={t`Pick a dynamic value`}
-                    className={S.trigger}
-                    data-open={isMenuOpen || isEntityPickerOpen}
-                    size={ICON_BUTTON_SIZE}
-                    onClick={openMenuFromTrigger}
-                  >
-                    <Icon name="hexagon" size={16} />
-                  </ActionIcon>
+                  <Tooltip label={t`Pick a dynamic value`}>
+                    <ActionIcon
+                      aria-label={t`Pick a dynamic value`}
+                      className={S.trigger}
+                      data-open={isMenuOpen || isEntityPickerOpen}
+                      size={ICON_BUTTON_SIZE}
+                      onClick={openMenuFromTrigger}
+                    >
+                      <Icon name="hexagon" size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                 }
                 value={value}
                 onChange={onChange}
@@ -384,7 +388,6 @@ export const GoalValueInput = ({
             <>
               {selfColumns.length > 0 && (
                 <Menu.Item
-                  leftSection={<ActiveSourceCheck isActive={isSelfRef} />}
                   rightSection={<Icon name="chevronright" />}
                   onClick={selectSelfOption}
                 >
@@ -392,9 +395,6 @@ export const GoalValueInput = ({
                 </Menu.Item>
               )}
               <Menu.Item
-                leftSection={
-                  <ActiveSourceCheck isActive={foreignRef != null} />
-                }
                 rightSection={<Icon name="chevronright" />}
                 onClick={openEntityPicker}
               >
@@ -511,19 +511,3 @@ export const GoalValueInput = ({
     </Box>
   );
 };
-
-/**
- * Marks the source the current value comes from. Decorative: keeping it out of
- * the a11y tree stops it from prefixing the menu item's name, and it always
- * occupies its slot so labels line up whether or not it is shown.
- */
-function ActiveSourceCheck({ isActive }: { isActive: boolean }) {
-  return (
-    <Icon
-      aria-hidden
-      className={cx({ [S.invisible]: !isActive })}
-      name="check"
-      size={12}
-    />
-  );
-}

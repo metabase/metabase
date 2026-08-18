@@ -63,8 +63,3 @@
 .selectedItem {
   background-color: var(--mb-color-background-selected);
 }
-
-/* holds the check's slot so menu labels line up whether or not it is shown */
-.invisible {
-  visibility: hidden;
-}
