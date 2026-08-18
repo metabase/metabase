@@ -68,8 +68,6 @@ export function getCanonicalQueryJson(value: unknown): string {
     if (key === "lib/uuid") {
       return undefined;
     }
-    // Card writes discard this internal field when it has no metadata. Treating
-    // it as content makes an otherwise unchanged copied Card update forever.
     if (key === "lib/metadata" && item === null) {
       return undefined;
     }

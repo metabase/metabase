@@ -74,12 +74,12 @@ describe("query canonicalization", () => {
     expect(normalized(first)).not.toBe(normalized(different));
   });
 
-  it("ignores empty Lib metadata that Card writes discard", () => {
+  it("omits empty lib/metadata from query", () => {
     expect(
       getCanonicalQueryJson({
         database: 1,
-        "lib/metadata": null,
         stages: [],
+        "lib/metadata": null,
       }),
     ).toBe(getCanonicalQueryJson({ database: 1, stages: [] }));
   });

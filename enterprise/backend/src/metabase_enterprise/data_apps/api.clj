@@ -225,7 +225,7 @@
 
 (defn- table-sourced-metric?
   [card]
-  (some? (get-in card [:dataset_query :stages 0 :source-table])))
+  (some? (:table_id card)))
 
 (defn- metric-cards
   "Return direct metric references. Data apps only support table-sourced metrics."

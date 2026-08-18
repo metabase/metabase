@@ -60,7 +60,7 @@ function removeMetricLockEntry(
   }
 }
 
-async function reconcileRemovedMetrics({
+export async function reconcileRemovedMetrics({
   appRoot,
   collectionId,
   previousEntries,
@@ -192,16 +192,6 @@ export async function reconcileMetrics({
     writeResourceLockfile(appRoot, lockfile);
   }
 
-  await reconcileRemovedMetrics({
-    appRoot,
-    collectionId,
-    previousEntries,
-    liveMetricIds,
-    lockfile,
-    client,
-    log,
-  });
-
   for (const resolved of resolvedQueries) {
     const rewritten = rewriteMetricReferences(
       resolved.dataset_query,
@@ -213,4 +203,6 @@ export async function reconcileMetrics({
 
     resolved.dataset_query = rewritten;
   }
+
+  return { previousEntries, liveMetricIds };
 }
