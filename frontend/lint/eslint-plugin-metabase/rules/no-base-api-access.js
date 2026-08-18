@@ -6,10 +6,11 @@
  * file has been evaluated, and code that reaches it there by name (`Api.endpoints.getX`,
  * `Api.util.upsertQueryEntries`) works only while something else imports the owner.
  * A side-effect-free api module lets production shake that owner away. This reports
- * member access on a base api binding that reaches endpoints or injects them, outside the
- * `allowIn` locations (the api module, owner files, test support). Tag invalidation
- * through the base object is allowed: it is cross-owner by design and a no-op when no
- * provider is registered.
+ * member access on a base api binding that injects endpoints outside `allowInjectionIn`
+ * (the api module and owner files), and access that reaches endpoints by name outside
+ * `allowReachIn` (the api module and test support). Tag invalidation through the base
+ * object is allowed: it is cross-owner by design and a no-op when no provider is
+ * registered.
  */
 
 const micromatch = require("micromatch");
@@ -41,11 +42,15 @@ module.exports = {
       {
         type: "object",
         properties: {
-          allowIn: {
+          // Both are globs matched against the linted file's path
+          allowInjectionIn: {
             type: "array",
-            // Globs, matched against the linted file's path, where the base
-            // object may be used freely: the api module, endpoint owners, and
-            // test support
+            // Where endpoints may be injected: the api module and owner files
+            items: { type: "string" },
+          },
+          allowReachIn: {
+            type: "array",
+            // Where endpoints may be reached by name: the api module and test support
             items: { type: "string" },
           },
           baseApis: {
@@ -76,14 +81,15 @@ module.exports = {
     const sourceCode = context.sourceCode || context.getSourceCode();
     const filename = context.filename || context.getFilename();
     const options = context.options[0] || {};
-    const allowIn = options.allowIn || [];
     const baseApis = options.baseApis || DEFAULT_BASE_APIS;
 
     // `dot: true` so a checkout under a dotted directory still matches `**`
-    if (
-      allowIn.length > 0 &&
-      micromatch.isMatch(filename, allowIn, { dot: true })
-    ) {
+    const isAllowedIn = (globs = []) =>
+      globs.length > 0 && micromatch.isMatch(filename, globs, { dot: true });
+    const injectionAllowed = isAllowedIn(options.allowInjectionIn);
+    const reachAllowed = isAllowedIn(options.allowReachIn);
+
+    if (injectionAllowed && reachAllowed) {
       return {};
     }
 
@@ -92,10 +98,10 @@ module.exports = {
         return null;
       }
       if (INJECTORS.has(property.name)) {
-        return "injection";
+        return injectionAllowed ? null : "injection";
       }
-      if (property.name === "endpoints") {
-        return "endpointAccess";
+      if (property.name === "endpoints" || property.name === "util") {
+        return reachAllowed ? null : "endpointAccess";
       }
       return null;
     }
@@ -113,7 +119,9 @@ module.exports = {
         parent.property.type === "Identifier"
       ) {
         if (parent.property.name === "util") {
-          checkUtilAccess(parent, apiName);
+          if (!reachAllowed) {
+            checkUtilAccess(parent, apiName);
+          }
           return;
         }
         const messageId = judge(parent.property, parent.computed);
@@ -135,8 +143,7 @@ module.exports = {
           if (key.type !== "Identifier") {
             continue;
           }
-          const messageId =
-            key.name === "util" ? "endpointAccess" : judge(key, false);
+          const messageId = judge(key, false);
           if (messageId != null) {
             report(
               property,

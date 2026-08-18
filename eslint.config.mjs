@@ -1217,18 +1217,24 @@ const configs = [
       "frontend/src/**/*.{ts,tsx,js,jsx}",
       "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
     ],
+    ignores: [
+      // TODO(no-base-api-access): test-seeding helper reaches endpoints by name; decide its home
+      "frontend/src/metabase/redux/store/mocks/api.ts",
+    ],
     rules: {
       "metabase/no-base-api-access": [
         "error",
         {
-          allowIn: [
-            // The api module itself
+          // Where an endpoint is declared is a path question: the api module, or a module's `api/` folder or `api.ts`.
+          allowInjectionIn: [
             `${__dirname}/frontend/src/metabase/api/**`,
-            // Owner files: a module's `api/` folder or its `api.ts`
             "**/api/**",
             "**/api.ts",
-            // Test support seeds the cache by endpoint name, after importing
-            // the whole api index so every owner has run
+          ],
+          // Reaching an endpoint by name is never fine in product code, whatever the file is called.
+          // Test support seeds the cache by endpoint name, after importing the whole api index so every owner has run.
+          allowReachIn: [
+            `${__dirname}/frontend/src/metabase/api/**`,
             `${__dirname}/frontend/test/**`,
             "**/__support__/**",
             "**/*.unit.spec.*",

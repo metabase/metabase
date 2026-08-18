@@ -20,10 +20,14 @@ const API_MODULE_FILE = "/repo/frontend/src/metabase/api/card.ts";
 
 const options = [
   {
-    allowIn: [
+    allowInjectionIn: [
       "/repo/frontend/src/metabase/api/**",
       "**/api/**",
       "**/api.ts",
+    ],
+    allowReachIn: [
+      "/repo/frontend/src/metabase/api/**",
+      "/repo/frontend/test/**",
       "**/__support__/**",
       "**/*.unit.spec.*",
     ],
@@ -284,7 +288,28 @@ const INVALID_CASES = [
     errors: [{ messageId: "endpointAccess" }],
   },
   {
-    name: "no allowIn means everywhere is checked",
+    name: "cache seeding in a product file named api.ts",
+    filename: "/repo/frontend/src/metabase/redux/store/mocks/api.ts",
+    options,
+    code: `
+      import { Api } from "metabase/api";
+      export const seed = (state, entries) =>
+        Api.reducer(state, Api.util.upsertQueryEntries(entries));
+    `,
+    errors: [{ messageId: "endpointAccess" }],
+  },
+  {
+    name: "endpoint reached by name in an owner file",
+    filename: OWNER_FILE,
+    options,
+    code: `
+      import { Api } from "metabase/api";
+      export const selectFoo = Api.endpoints.getFoo.select();
+    `,
+    errors: [{ messageId: "endpointAccess" }],
+  },
+  {
+    name: "no allowlists means everywhere is checked",
     filename: OWNER_FILE,
     code: `
       import { Api } from "metabase/api";
