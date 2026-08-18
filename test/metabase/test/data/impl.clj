@@ -24,6 +24,11 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+(def ^:dynamic *skip-dataset-prewarm?*
+  "Bound by helpers whose app DB is deliberately empty, so the with-temp boundary does not materialise the
+  test-data Database inside them. See [[metabase.test.data/with-empty-h2-app-db!]]."
+  false)
+
 (defmulti get-or-create-database!
   "Create data warehouse database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
   and sync the Database. `driver` is a keyword name of a driver that implements test extension methods (as defined in
