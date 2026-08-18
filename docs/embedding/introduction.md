@@ -24,7 +24,7 @@ If you just want to share a chart or dashboard with anyone who has the link, and
 
 With [modular embedding](./modular-embedding.md), you can embed individual Metabase [components](./components.md) in your web app: dashboards, questions, the query builder, AI chat, and a collection browser.
 
-When you set up a component, Metabase shows you an **Authentication** card where you pick:
+When you setting up an embed, you need to pick an authentication method:
 
 - **Metabase account (SSO)**, for [components with SSO authentication](#components-with-sso-authentication)
 - **Guest**, for [components with guest authentication](#components-with-guest-authentication)
