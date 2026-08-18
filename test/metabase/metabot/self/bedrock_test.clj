@@ -326,6 +326,15 @@
             {:type "response.completed"
              :response {:id "resp_1" :usage {:input_tokens 3 :output_tokens 2}}}]))))
 
+(deftest openai-model-discards-function-call-without-output-item-done-test
+  (let [parts (aisdk-parts-for!
+               "openai.gpt-5.5"
+               [{:type "response.created" :response {:id "resp_1" :model "openai.gpt-5.5"}}
+                {:type "response.output_item.added"
+                 :item {:type "function_call" :call_id "call_1" :name "mutate"}}
+                {:type "response.function_call_arguments.delta" :delta "{\"x\":"}])]
+    (is (not-any? #(= :tool-input (:type %)) parts))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Region validation (host-injection backstop)
 ;;; ──────────────────────────────────────────────────────────────────

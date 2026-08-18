@@ -255,23 +255,47 @@
           text-id     (volatile! nil) ; Non-nil while a text block is open.
           usage-acc   (volatile! nil)
           stop-reason (volatile! nil)
+          ;; Tool calls are provisional until STOP. Buffer the ordered suffix so a failure can discard
+          ;; tools while preserving later text in provider order.
+          pending-chunks (volatile! [])
           usage-part  (fn []
                         {:type  :usage
                          :usage @usage-acc
                          :id    @message-id
                          :model @model-name})
+          emit!       (fn [result tool-chunk? chunk]
+                        (cond
+                          (reduced? result) result
+                          (or tool-chunk? (seq @pending-chunks))
+                          (u/prog1 result
+                            (vswap! pending-chunks conj [tool-chunk? chunk]))
+                          :else (rf result chunk)))
+          emit-rf!    (fn [result chunk]
+                        (if (reduced? result) result (rf result chunk)))
           close-text! (fn [result]
                         (if-let [id @text-id]
                           (do (vreset! text-id nil)
-                              (rf result {:type :text-end :id id}))
+                              (emit! result false {:type :text-end :id id}))
                           result))
+          resolve-tools! (fn [result successful?]
+                           (let [result (u/reduce-preserving-reduced
+                                         (fn [result [tool-chunk? chunk]]
+                                           (if (or successful? (not tool-chunk?))
+                                             (rf result chunk)
+                                             result))
+                                         result
+                                         @pending-chunks)]
+                             (vreset! pending-chunks [])
+                             result))
           finish!     (fn [result reason]
                         (vreset! stop-reason reason)
                         (when-not (= reason finish-reason-completed)
                           (log/info "Gemini stopped early" {:finishReason reason}))
-                        (let [result (close-text! result)]
+                        (let [result (-> result
+                                         close-text!
+                                         (resolve-tools! (= reason finish-reason-completed)))]
                           (if-let [error-text (finish-reason-error reason)]
-                            (rf result {:type :error :errorText error-text})
+                            (emit-rf! result {:type :error :errorText error-text})
                             result)))
           emit-part   (fn [result {:keys [text functionCall thought thoughtSignature]}]
                         (cond
@@ -288,25 +312,25 @@
                                           thoughtSignature
                                           (assoc :providerMetadata {:google {:thoughtSignature thoughtSignature}}))]
                             (-> (close-text! result)
-                                (rf start)
-                                (rf {:type           :tool-input-delta
-                                     :toolCallId     tool-id
-                                     :inputTextDelta (json/encode (or (:args functionCall) {}))})
-                                (rf (merge {:type :tool-input-available} ids))))
+                                (emit! true start)
+                                (emit! true {:type           :tool-input-delta
+                                             :toolCallId     tool-id
+                                             :inputTextDelta (json/encode (or (:args functionCall) {}))})
+                                (emit! true (merge {:type :tool-input-available} ids))))
 
                           ;; Open a text block only for text that is not empty, thus an empty part
                           ;; between tool calls does not divide them. In an open block, blank
                           ;; deltas pass through and keep the whitespace.
                           (some? text)
                           (if-let [id @text-id]
-                            (rf result {:type :text-delta :id id :delta text})
+                            (emit! result false {:type :text-delta :id id :delta text})
                             (if (empty? text)
                               result
                               (let [id (core/mkid)]
                                 (vreset! text-id id)
                                 (-> result
-                                    (rf {:type :text-start :id id})
-                                    (rf {:type :text-delta :id id :delta text})))))
+                                    (emit! false {:type :text-start :id id})
+                                    (emit! false {:type :text-delta :id id :delta text})))))
 
                           :else
                           result))]
@@ -318,22 +342,26 @@
          (let [reason @stop-reason
                usage  (or @usage-acc
                           (when (early-stops-without-error reason)
-                            (usage->aisdk-usage nil)))]
-           (-> result
-               (close-text!)
-               (cond-> usage
-                 (rf (cond-> {:type  :usage
-                              :usage usage
-                              :id    @message-id
-                              :model @model-name}
-                       reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
-                                     :raw-finish-reason reason))))
-               (rf))))
+                            (usage->aisdk-usage nil)))
+               result (-> result
+                          (close-text!)
+                          (resolve-tools! false))
+               result (cond-> result
+                        usage (emit-rf! (cond-> {:type  :usage
+                                                 :usage usage
+                                                 :id    @message-id
+                                                 :model @model-name}
+                                          reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons reason)
+                                                        :raw-finish-reason reason))))]
+           (if (reduced? result) result (rf result))))
         ([result event]
          ;; This is deliberately an exclusive branch. If the source failed before its first event there
          ;; is no usage to flush and, critically, no provider output that should suppress a retry.
          (if (= event core/interrupted-stream-event)
-           (cond-> result @usage-acc (rf (usage-part)))
+           (-> result
+               close-text!
+               (resolve-tools! false)
+               (cond-> @usage-acc (emit-rf! (usage-part))))
            (let [{:keys [candidates usageMetadata responseId modelVersion promptFeedback error]} event]
              (when (some? usageMetadata)
                (vreset! usage-acc (usage->aisdk-usage usageMetadata)))
@@ -347,13 +375,15 @@
                  (not @message-id)      (-> (u/prog1
                                               (vreset! message-id (or responseId (core/mkid))))
                                             (rf {:type :start :messageId @message-id}))
-                 (seq (:parts content)) (as-> res (reduce emit-part res (:parts content)))
+                 (seq (:parts content)) (as-> res (u/reduce-preserving-reduced emit-part res (:parts content)))
                  (some? finishReason)   (finish! finishReason)
                  ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
                  (some? block-reason)   (-> (close-text!)
-                                            (rf {:type      :error
-                                                 :errorText (str "Prompt blocked by Google: " block-reason)}))
+                                            (resolve-tools! false)
+                                            (emit-rf! {:type      :error
+                                                       :errorText (str "Prompt blocked by Google: " block-reason)}))
                  ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
                  (some? error)          (-> (close-text!)
-                                            (rf {:type      :error
-                                                 :errorText (or (:message error) (pr-str error))})))))))))))
+                                            (resolve-tools! false)
+                                            (emit-rf! {:type      :error
+                                                       :errorText (or (:message error) (pr-str error))})))))))))))

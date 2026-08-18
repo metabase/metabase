@@ -266,6 +266,50 @@
                    {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
                    {:choices [] :usage {:prompt_tokens 138 :completion_tokens 36}}])))))
 
+(deftest ^:parallel chunks-xf-clean-eof-during-tool-input-discards-partial-call-test
+  (let [parts (into []
+                    (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                          (self.core/aisdk-xf))
+                    [{:id      "chatcmpl-truncated"
+                      :model   "test-model"
+                      :choices [{:index 0 :delta {:role "assistant" :content ""} :finish_reason nil}]}
+                     {:choices [{:index 0
+                                 :delta {:tool_calls [{:index    0
+                                                       :id       "call-1"
+                                                       :type     "function"
+                                                       :function {:name "search" :arguments "{\"q\":"}}]}}]}])]
+    (is (not-any? #(= :tool-input (:type %)) parts))))
+
+(deftest ^:parallel chunks-xf-unsuccessful-finish-discards-closed-tool-call-test
+  (doseq [finish-reason ["length" "content_filter" "refusal"]]
+    (testing (str finish-reason " cannot expose a syntactically closed tool call")
+      (let [parts (into []
+                        (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                              (self.core/aisdk-xf))
+                        [{:id "chatcmpl-failed" :model "test-model" :choices [{:delta {}}]}
+                         {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                           :function {:name "search"
+                                                                      :arguments "{\"q\": \"orders\"}"}}]}}]}
+                         {:choices [{:delta {:content "safe partial text"}}]}
+                         {:choices [{:delta {} :finish_reason finish-reason}]}
+                         {:choices [] :usage {:prompt_tokens 10 :completion_tokens 3}}])]
+        (is (not-any? #(= :tool-input (:type %)) parts))
+        (is (some #(and (= :text (:type %)) (= "safe partial text" (:text %))) parts))
+        (is (=? {:type :usage :raw-finish-reason finish-reason}
+                (last parts)))))))
+
+(deftest ^:parallel chunks-xf-provisional-tool-preserves-later-text-order-test
+  (let [parts (into []
+                    (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                          (self.core/aisdk-xf))
+                    [{:id "chatcmpl-ordered" :model "test-model" :choices [{:delta {}}]}
+                     {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                       :function {:name "search" :arguments "{}"}}]}}]}
+                     {:choices [{:delta {:content "after"}}]}
+                     {:choices [{:delta {} :finish_reason "tool_calls"}]}])]
+    (is (= [:start :tool-input :text]
+           (mapv :type parts)))))
+
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
     ;; Reasoning is not replayable over Chat Completions, so it is dropped rather than surfaced as text.

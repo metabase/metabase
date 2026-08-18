@@ -1,7 +1,8 @@
 (ns metabase-enterprise.osi-generation.core
   "The OSI metadata generation loop: select candidates, generate ai_context through the
-  [[metabase-enterprise.osi-generation.generate]] seam, write back with the basis stamp, then one
-  coalesced index reconcile for the whole batch.
+  [[metabase-enterprise.osi-generation.generate]] seam, write back with the basis stamp, then request one
+  coalesced full index reconcile for the whole batch. Each write also schedules a targeted reconcile through
+  the `osi_ai_context` write hook.
 
   Gating lives in the callers (the Quartz job body and the manual API), not here:
   `osi-generation-enabled` -> [[available?]] -> `settings/configured?`.
@@ -110,7 +111,8 @@
   written, `:skipped` when a concurrent human write took the row mid-flight (the guard matched
   nothing) — the raced row stays a candidate for the next run rather than discarding the result's
   target."
-  [{:keys [entity existing-context basis] :as candidate} {:keys [ai_context generator-version]}]
+  [{:keys [entity existing-context basis rewrite-requested?] :as candidate}
+   {:keys [ai_context generator-version]}]
   (let [[entity-type entity-local-id] (entity-retrieval/entity-class
                                        (:entity_type entity) (:entity_local_id entity))
         stamp {:ai_context           ai_context
@@ -125,14 +127,19 @@
       :skipped
 
       existing-context
-      ;; `updated_at` is the selection token. It guards every intervening write, including a human
-      ;; approval and a second generator, rather than merely checking the content basis.
-      (if (pos? (t2/update! :model/OsiAiContext
-                            {:entity_type     (:entity_type existing-context)
-                             :entity_local_id (:entity_local_id existing-context)
-                             :updated_at      (:updated_at existing-context)
-                             :data_source     :metabot}
-                            stamp))
+      ;; `updated_at` is the general selection token. The selected rewrite timestamp is an additional
+      ;; authorization token for human rows, guarding even a direct/SerDes write that clears the request
+      ;; while retaining `updated_at`. Generated content then changes ownership to :metabot via `stamp`.
+      (if (and (or (= :metabot (:data_source existing-context))
+                   (and (= :human (:data_source existing-context)) rewrite-requested?))
+               (pos? (t2/update! :model/OsiAiContext
+                                 (cond-> {:entity_type     (:entity_type existing-context)
+                                          :entity_local_id (:entity_local_id existing-context)
+                                          :updated_at      (:updated_at existing-context)
+                                          :data_source     (:data_source existing-context)}
+                                   (= :human (:data_source existing-context))
+                                   (assoc :rewrite_requested_at (:rewrite_requested_at existing-context)))
+                                 stamp)))
         :generated
         :skipped)
 
@@ -196,15 +203,15 @@
 
 (defn run-generation!
   "Run one generation pass: ordered `candidates` (at most `limit` processable attempts, nil = unbounded), each
-  isolated in its own try/catch (`:errors` counts throws, the run continues), then ONE coalesced
-  reconcile iff at least one row was written — the batch's only index touch, since `osi_ai_context`
-  writes have no side effects.
+  isolated in its own try/catch (`:errors` counts throws, the run continues), then request one coalesced full
+  reconcile iff at least one row was written. Each `osi_ai_context` write also nudges its entity's targeted
+  reconcile through the model hook; both paths retain the OSI embedding-request source.
 
   Returns `{:candidates n :generated n :restamped n :skipped n :errors n :pending n
             :usage {:input-tokens n :output-tokens n} :reconcile <force-reconcile! result | nil>}`.
   `:usage` is actual spend — each candidate's usage is summed as its call returns, whether or not the
-  write-back after it succeeded. `:reconcile` nil means the index wasn't touched — nothing was
-  written, or entity-retrieval is unavailable (rows sit unindexed until the 15-minute backstop).
+  write-back after it succeeded. `:reconcile` nil means the trailing full reconcile was not requested —
+  either nothing was written or entity-retrieval is unavailable.
   `:pending` is total selected-but-unprocessed backlog when a run stops early, 0 otherwise.
 
   A per-run `tracker` holds the soft entity/token/duration budget. The entity cap bounds expensive
@@ -215,8 +222,9 @@
   flattened rotating offset advances by the candidates examined and interleaves the tiers fairly. Write-back rechecks the source
   basis and the context-row selection token. Configured hourly/daily
   quotas are checked first and no-op a run when exhausted; they intentionally default to unset pending
-  production measurements. The reported duration includes the trailing reconcile, whose embedding calls
-  are labelled with the OSI source."
+  production measurements. The reported duration includes the trailing reconcile. The whole pass is bound
+  to the OSI request source so write-triggered targeted reconciles and the full reconcile are attributed to
+  the generation work that caused them."
   ([]
    (run-generation! {}))
   ([{:keys [limit]}]
@@ -226,102 +234,98 @@
          (do (log/info "OSI generation skipped: persistent token window quota exhausted" {:window window})
              (metrics/record-run! {:duration-ms 0, :stopped-by window} nil)
              (blocked-summary window))
-         (let [budget   (cond-> (throttle/run-budget)
-                          (some? remaining-tokens)
-                          (update :max-tokens #(if (some? %) (min % remaining-tokens) remaining-tokens)))
-               tracker  (throttle/new-tracker budget)
-               ;; nil-safe min of the explicit :limit and the entity cap; nil = unbounded.
-               cap      (some->> [limit (throttle/entity-cap tracker)] (remove nil?) seq (apply min))
-               ;; The selection bound is the processing cap widened by the error budget — construction
-               ;; errors happen before processing and do not consume cap slots, so a capped run needs
-               ;; headroom to reach `cap` processable candidates behind corrupt rows — plus one sentinel: bounded basis/projection work, honest
-               ;; backlog metric (a lower bound of one, not a false zero).
-               select-cap (some-> cap (+ max-errors-per-run))
-               offset   (max 0 (or (settings/osi-generation-candidate-offset) 0))
-               selected (candidates/candidates (some-> select-cap inc) offset)
-               more?    (boolean (and select-cap (> (count selected) select-cap)))
-               cands    (if select-cap (vec (take select-cap selected)) selected)
-               result   (reduce (fn [{:keys [totals processed attempted] :as acc} candidate]
-                                  (cond
-                                    ;; a token/duration/entity cap bound — stop; the rest stay
-                                    ;; candidates and are counted :pending for the backlog gauge and
-                                    ;; the next run.
-                                    (throttle/allow? tracker)
-                                    (reduced acc)
+         (binding [embedding/*embedding-request-source* settings/usage-source]
+           (let [budget   (cond-> (throttle/run-budget)
+                            (some? remaining-tokens)
+                            (update :max-tokens #(if (some? %) (min % remaining-tokens) remaining-tokens)))
+                 tracker  (throttle/new-tracker budget)
+                 ;; nil-safe min of the explicit :limit and the entity cap; nil = unbounded.
+                 cap      (some->> [limit (throttle/entity-cap tracker)] (remove nil?) seq (apply min))
+                 ;; The selection bound is the processing cap widened by the error budget — construction
+                 ;; errors happen before processing and do not consume cap slots, so a capped run needs
+                 ;; headroom to reach `cap` processable candidates behind corrupt rows — plus one sentinel: bounded basis/projection work, honest
+                 ;; backlog metric (a lower bound of one, not a false zero).
+                 select-cap (some-> cap (+ max-errors-per-run))
+                 offset   (max 0 (or (settings/osi-generation-candidate-offset) 0))
+                 selected (candidates/candidates (some-> select-cap inc) offset)
+                 more?    (boolean (and select-cap (> (count selected) select-cap)))
+                 cands    (if select-cap (vec (take select-cap selected)) selected)
+                 result   (reduce (fn [{:keys [totals processed attempted] :as acc} candidate]
+                                    (cond
+                                      ;; a token/duration/entity cap bound — stop; the rest stay
+                                      ;; candidates and are counted :pending for the backlog gauge and
+                                      ;; the next run.
+                                      (throttle/allow? tracker)
+                                      (reduced acc)
 
-                                    ;; The caller's :limit can undercut the tracker's entity cap. Enforce
-                                    ;; it against every candidate that reached processing, whether or not
-                                    ;; that attempt succeeded.
-                                    (and cap (>= attempted cap))
-                                    (reduced acc)
+                                      ;; The caller's :limit can undercut the tracker's entity cap. Enforce
+                                      ;; it against every candidate that reached processing, whether or not
+                                      ;; that attempt succeeded.
+                                      (and cap (>= attempted cap))
+                                      (reduced acc)
 
-                                    ;; the error budget is spent — stop rather than churn through an
-                                    ;; arbitrarily long field of corrupt rows; the rest count :pending.
-                                    (>= (:errors totals) max-errors-per-run)
-                                    (reduced acc)
+                                      ;; the error budget is spent — stop rather than churn through an
+                                      ;; arbitrarily long field of corrupt rows; the rest count :pending.
+                                      (>= (:errors totals) max-errors-per-run)
+                                      (reduced acc)
 
-                                    :else
-                                    (try
-                                      (when-let [e (:candidate-error candidate)]
-                                        (throw e))
-                                      (-> acc
-                                          (update :totals #(process-candidate tracker % candidate))
-                                          (assoc :processed (inc processed))
-                                          (update :attempted inc))
-                                      (catch Exception e
-                                        (rethrow-nonordinary! e)
-                                        ;; A malformed candidate never reached generation and is exempt
-                                        ;; from the entity cap. Every later failure consumes one attempt,
-                                        ;; plus any provider usage it carried.
-                                        (let [construction-error? (some? (:candidate-error candidate))
-                                              usage              (or (:usage (ex-data e)) {})]
-                                          (log/error e "OSI generation failed for candidate"
-                                                     (select-keys (:entity candidate) [:entity_type :entity_local_id]))
-                                          (metrics/record-candidate! (candidate-entity-type candidate) :error)
-                                          (throttle/consume! tracker (cond-> usage
-                                                                       (not construction-error?)
-                                                                       (assoc :entities 1)))
-                                          (cond-> (-> acc
-                                                      (update-in [:totals :errors] inc)
-                                                      (update-in [:totals :usage] #(merge-with + % usage))
-                                                      (assoc :processed (inc processed)))
-                                            (not construction-error?) (update :attempted inc)))))))
-                                {:totals    {:generated 0
-                                             :restamped 0
-                                             :skipped   0
-                                             :errors    0
-                                             :usage     {:input-tokens 0, :output-tokens 0}}
-                                 :processed 0
-                                 :attempted 0}
-                                cands)
-               totals    (:totals result)
-               ;; Advance through the single flattened tier cursor by the raw position of the last
-               ;; processed candidate. This includes converged tier-3 rows filtered during selection,
-               ;; so a later failing candidate cannot be replayed while the cursor catches up.
-               _         (when (pos? (:processed result))
-                           (let [last-processed (nth cands (dec (:processed result)))
-                                 advance       (or (:cursor-advance last-processed) (:processed result))]
-                             (settings/osi-generation-candidate-offset! (+ offset advance))))
-               ;; the sentinel proves the entity cap, not exhaustion, ended selection — record it
-               ;; against the tracker so the summary's :stopped-by reflects the true early stop.
-               _         (when more? (throttle/allow? tracker))
-               pending   (+ (- (count cands) (:processed result)) (if more? 1 0))
-               ;; force-reconcile! is inside the deadline the summary reports; its embedding requests
-               ;; carry the OSI source so their volume is separable.
-               ;; TODO (Chris 2026-07-24) -- The "osi-generation" embedding-source label is best-effort: when this
-               ;; reconcile coalesces onto an already-queued future, that future captured its creator's
-               ;; *embedding-request-source*, so a fraction of OSI-driven embedding requests may retain the
-               ;; already-queued run's source rather than "osi-generation". It's a volume metric, so
-               ;; approximate attribution is acceptable;
-               ;; threading source through the reconcile scheduler would make it exact.
-               reconcile (when (pos? (:generated totals))
-                           (binding [embedding/*embedding-request-source* settings/usage-source]
-                             (entity-retrieval/force-reconcile!)))]
-           (metrics/record-run! (throttle/summary tracker) pending)
-           (assoc totals
-                  :candidates (count cands)
-                  :pending    pending
-                  :reconcile  reconcile))))
+                                      :else
+                                      (try
+                                        (when-let [e (:candidate-error candidate)]
+                                          (throw e))
+                                        (-> acc
+                                            (update :totals #(process-candidate tracker % candidate))
+                                            (assoc :processed (inc processed))
+                                            (update :attempted inc))
+                                        (catch Exception e
+                                          (rethrow-nonordinary! e)
+                                          ;; A malformed candidate never reached generation and is exempt
+                                          ;; from the entity cap. Every later failure consumes one attempt,
+                                          ;; plus any provider usage it carried.
+                                          (let [construction-error? (some? (:candidate-error candidate))
+                                                usage              (or (:usage (ex-data e)) {})]
+                                            (log/error e "OSI generation failed for candidate"
+                                                       (select-keys (:entity candidate) [:entity_type :entity_local_id]))
+                                            (metrics/record-candidate! (candidate-entity-type candidate) :error)
+                                            (throttle/consume! tracker (cond-> usage
+                                                                         (not construction-error?)
+                                                                         (assoc :entities 1)))
+                                            (cond-> (-> acc
+                                                        (update-in [:totals :errors] inc)
+                                                        (update-in [:totals :usage] #(merge-with + % usage))
+                                                        (assoc :processed (inc processed)))
+                                              (not construction-error?) (update :attempted inc)))))))
+                                  {:totals    {:generated 0
+                                               :restamped 0
+                                               :skipped   0
+                                               :errors    0
+                                               :usage     {:input-tokens 0, :output-tokens 0}}
+                                   :processed 0
+                                   :attempted 0}
+                                  cands)
+                 totals    (:totals result)
+                 ;; Advance through the single flattened tier cursor by the raw position of the last
+                 ;; processed candidate. This includes converged tier-3 rows filtered during selection,
+                 ;; so a later failing candidate cannot be replayed while the cursor catches up.
+                 _         (when (pos? (:processed result))
+                             (let [last-processed (nth cands (dec (:processed result)))
+                                   advance       (or (:cursor-advance last-processed) (:processed result))]
+                               (settings/osi-generation-candidate-offset! (+ offset advance))))
+                 ;; the sentinel proves the entity cap, not exhaustion, ended selection — record it
+                 ;; against the tracker so the summary's :stopped-by reflects the true early stop.
+                 _         (when more? (throttle/allow? tracker))
+                 pending   (+ (- (count cands) (:processed result)) (if more? 1 0))
+                 ;; force-reconcile! is inside the deadline the summary reports. Targeted write nudges carry
+                 ;; their source through coalescing and retries; attribution remains best-effort only for a
+                 ;; write racing an already-active reconcile of the same entity. This trailing full pass is
+                 ;; a backstop and normally finds those documents already stored.
+                 reconcile (when (pos? (:generated totals))
+                             (entity-retrieval/force-reconcile!))]
+             (metrics/record-run! (throttle/summary tracker) pending)
+             (assoc totals
+                    :candidates (count cands)
+                    :pending    pending
+                    :reconcile  reconcile)))))
      (catch Exception e
        (rethrow-nonordinary! e)
        ;; Cover quota evaluation, budget construction and selection too; failures before the old inner

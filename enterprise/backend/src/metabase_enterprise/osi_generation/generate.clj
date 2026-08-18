@@ -49,8 +49,8 @@
   `candidate` is the map built by `candidates`: `:entity` (hydrated source entity, for the write path's
   keys), `:llm-input` (the `:osi-context` projection output the prompt renders), `:basis` (fresh),
   `:diff` (`basis-diff` stored->fresh; nil for tier-1 fresh generation), and `:existing-context` (the
-  stored Metabot row incl. `generated_at`/`invalidated_at`, nil when none) so the prompt can use its
-  prior draft as context. Human-approved rows are excluded before this function.
+  stored row incl. `generated_at`/`invalidated_at`, nil when none) so the prompt can use its prior
+  draft as context. Human-approved rows without a pending rewrite are excluded before this function.
 
   Returns `{:ai_context        {:instructions ... :synonyms [...] :examples [...]}
             :generator-version <the prompt+model identity stamped into the row>

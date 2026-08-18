@@ -14,9 +14,11 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
@@ -33,6 +35,142 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:parallel buffered-tool-release-preserves-downstream-cancellation-test
+  (let [cases {:claude
+               [(self.claude/claude->aisdk-chunks-xf)
+                [{:type "message_start" :message {:id "m1"}}
+                 {:type "content_block_start" :index 0
+                  :content_block {:type "tool_use" :id "call-1" :name "search"}}
+                 {:type "content_block_delta" :index 0
+                  :delta {:type "input_json_delta" :partial_json "{}"}}
+                 {:type "content_block_stop" :index 0}
+                 {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                 {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "later"}}
+                 {:type "content_block_stop" :index 1}
+                 {:type "message_delta" :delta {:stop_reason "tool_use"}}]]
+
+               :openai-responses
+               [(openai/openai->aisdk-chunks-xf)
+                [{:type "response.created" :response {:id "r1"}}
+                 {:type "response.output_item.added"
+                  :item {:type "function_call" :call_id "call-1" :name "search"}}
+                 {:type "response.function_call_arguments.delta" :delta "{}"}
+                 {:type "response.output_item.done"
+                  :item {:type "function_call" :call_id "call-1" :name "search"}}
+                 {:type "response.output_item.added" :item {:type "message" :id "item-2"}}
+                 {:type "response.output_text.delta" :item_id "item-2" :delta "later"}
+                 {:type "response.output_item.done" :item {:type "message" :id "item-2"}}
+                 {:type "response.completed" :response {:id "r1"}}]]
+
+               :chat-completions
+               [(chat-completions/chat-completions->aisdk-chunks-xf)
+                [{:id "c1" :choices [{:delta {}}]}
+                 {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                   :function {:name "search" :arguments "{}"}}]}}]}
+                 {:choices [{:delta {:content "later"}}]}
+                 {:choices [{:delta {} :finish_reason "tool_calls"}]}]]
+
+               :google
+               [(stream-generate-content/->aisdk-chunks-xf)
+                [{:responseId "g1"
+                  :candidates [{:content {:parts [{:functionCall {:name "search" :args {}}}
+                                                  {:text "later"}]}
+                                :finishReason "STOP"}]}]]}]
+    (doseq [[provider [xf events]] cases]
+      (testing (name provider)
+        (let [seen (atom [])]
+          (transduce xf
+                     (fn
+                       ([] nil)
+                       ([result] result)
+                       ([result chunk]
+                        (swap! seen conj (:type chunk))
+                        (if (= :tool-input-start (:type chunk))
+                          (reduced result)
+                          result)))
+                     nil
+                     events)
+          (is (= [:start :tool-input-start] @seen)
+              "no buffered delta/text is emitted after downstream cancellation"))))))
+
+(deftest interrupted-openai-and-chat-streams-flush-safe-text-test
+  (let [throwing-raw (fn [events]
+                       (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (reduce rf init events)
+                           (throw (ex-info "stream interrupted after text" {})))))
+        cases        {:openai-responses
+                      [(fn [raw]
+                         (with-redefs-fn {#'openai/openai-raw (constantly raw)}
+                           #(openai/openai {})))
+                       [{:type "response.created" :response {:id "r1"}}
+                        {:type "response.output_item.added"
+                         :item {:type "function_call" :call_id "call-1" :name "search"}}
+                        {:type "response.function_call_arguments.delta" :delta "{}"}
+                        {:type "response.output_item.done"
+                         :item {:type "function_call" :call_id "call-1" :name "search"}}
+                        {:type "response.output_item.added" :item {:type "message" :id "item-2"}}
+                        {:type "response.output_text.delta" :item_id "item-2" :delta "safe text"}]]
+
+                      :chat-completions
+                      [(fn [raw]
+                         (with-redefs-fn {#'openrouter/openrouter-raw (constantly raw)}
+                           #(openrouter/openrouter {})))
+                       [{:id "c1" :choices [{:delta {}}]}
+                        {:choices [{:delta {:tool_calls [{:id "call-1"
+                                                          :function {:name "search" :arguments "{}"}}]}}]}
+                        {:choices [{:delta {:content "safe text"}}]}]]}]
+    (doseq [[provider [stream-for events]] cases]
+      (testing (name provider)
+        (let [parts  (atom [])
+              stream (->> (throwing-raw events)
+                          stream-for
+                          (eduction (self.core/lite-aisdk-xf)))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stream interrupted after text"
+                                (reduce (fn [result part]
+                                          (swap! parts conj part)
+                                          result)
+                                        nil
+                                        stream)))
+          (is (some #(and (= :text (:type %)) (= "safe text" (:text %))) @parts))
+          (is (not-any? #(= :tool-input (:type %)) @parts)))))))
+
+(deftest ^:parallel completion-safe-eduction-does-not-flush-after-downstream-error-test
+  (doseq [[label source]
+          [["direct source" [::value]]
+           ["source inside the provider API-error wrapper"
+            (self.core/reducible-with-api-errors [::value] "Test provider" (constantly nil))]]]
+    (testing label
+      (let [expected (ex-info "consumer failed" {})
+            seen     (atom [])
+            thrown   (try
+                       (reduce (fn [result input]
+                                 (swap! seen conj input)
+                                 (if (= ::value input)
+                                   (throw expected)
+                                   result))
+                               nil
+                               (self.core/completion-safe-eduction (map identity) source))
+                       (catch Throwable e e))]
+        (is (identical? expected thrown) "the downstream exception escapes unchanged")
+        (is (= [::value] @seen)
+            "an interrupted-stream event is not sent through the reducer after a consumer failure")))))
+
+(deftest ^:parallel completion-safe-eduction-unwraps-completion-time-cancellation-test
+  (let [flush-xf (fn [rf]
+                   (fn
+                     ([] (rf))
+                     ([result] (rf result ::flush))
+                     ([result _input] result)))
+        seen     (atom [])]
+    (is (= ::stopped
+           (reduce (fn [_result input]
+                     (swap! seen conj input)
+                     (reduced ::stopped))
+                   nil
+                   (self.core/completion-safe-eduction flush-xf []))))
+    (is (= [::flush] @seen))))
 
 ;;; provider resolution tests
 
@@ -328,6 +466,14 @@
                   {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]]
       (is (= [{:type :start :id "msg-1"}
               {:type :tool-input :id "call-1" :function "search" :arguments {:query "test"}}]
+             (into [] (self.core/lite-aisdk-xf) chunks)))))
+  (testing "does not materialize tool input until the provider marks it available"
+    (let [chunks [{:type :start :messageId "msg-1"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\":"}
+                  {:type :usage :usage {:promptTokens 10 :completionTokens 0}}]]
+      (is (= [{:type :start :id "msg-1"}
+              {:type :usage :usage {:promptTokens 10 :completionTokens 0}}]
              (into [] (self.core/lite-aisdk-xf) chunks)))))
   (testing "converts tool-output-available to tool-output"
     (let [chunks [{:type                   :tool-output-available

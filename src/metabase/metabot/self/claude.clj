@@ -49,10 +49,6 @@
    :cacheCreationTokens (:cache_creation_input_tokens u 0)
    :cacheReadTokens     (:cache_read_input_tokens u 0)})
 
-(def ^:private translated-chunk-type?
-  "Claude content-block types we translate into AI SDK chunks."
-  #{:text :tool_use :thinking :redacted_thinking})
-
 (def ^:private stop-reasons
   "Anthropic `stop_reason` → AI SDK v5 `FinishReason`."
   {"end_turn"                      "stop"
@@ -94,6 +90,9 @@
           ;; internal event so we don't complete a partial block.
           last-usage   (volatile! nil)
           stop-reason  (volatile! nil)
+          ;; Once a provisional tool starts, buffer the ordered suffix. Successful tool_use releases
+          ;; it intact; any other finish drops only tool chunks and releases later text/reasoning in order.
+          pending-chunks (volatile! [])
           usage-part   (fn []
                          (cond-> {:type  :usage
                                   :usage (claude-usage->aisdk-usage @last-usage)
@@ -103,26 +102,66 @@
                            (assoc :finish-reason
                                   (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                   :raw-finish-reason @stop-reason)))
-          close!       (fn [result]
-                         (u/prog1 (if-let [end-type (case @current-type
-                                                      :text              :text-end
-                                                      :tool_use          :tool-input-available
-                                                      :thinking          :reasoning-end
-                                                      :redacted_thinking :reasoning-end
-                                                      nil)]
-                                    (rf result (merge {:type end-type} @payload))
-                                    result)
+          clear!       (fn [result]
+                         (u/prog1 result
                            (vreset! current-type nil)
                            (vreset! current-id nil)
-                           (vreset! payload {})))]
+                           (vreset! payload {})))
+          emit!        (fn [result tool-chunk? chunk]
+                         (cond
+                           (reduced? result) result
+                           (or tool-chunk? (seq @pending-chunks))
+                           (u/prog1 result
+                             (vswap! pending-chunks conj [tool-chunk? chunk]))
+                           :else (rf result chunk)))
+          emit-rf!     (fn [result chunk]
+                         (if (reduced? result) result (rf result chunk)))
+          close!       (fn [result]
+                         (let [result (case @current-type
+                                        :tool_use (emit! result true
+                                                         (merge {:type :tool-input-available} @payload))
+                                        (:text :thinking :redacted_thinking)
+                                        (emit! result false
+                                               (merge {:type (case @current-type
+                                                               :text              :text-end
+                                                               :thinking          :reasoning-end
+                                                               :redacted_thinking :reasoning-end)}
+                                                      @payload))
+                                        result)]
+                           (clear! result)))
+          resolve-tools! (fn [result successful?]
+                           (let [open-tool?  (= :tool_use @current-type)
+                                 result      (cond
+                                               open-tool?   (clear! result)
+                                               @current-type (close! result)
+                                               :else         result)
+                                 successful? (and successful? (not open-tool?))
+                                 result      (u/reduce-preserving-reduced
+                                              (fn [result [tool-chunk? chunk]]
+                                                (if (or successful? (not tool-chunk?))
+                                                  (rf result chunk)
+                                                  result))
+                                              result
+                                              @pending-chunks)]
+                             (vreset! pending-chunks [])
+                             result))]
       (fn
         ([result]
-         (cond-> result
-           ;; close up latest type if incomplete
-           @current-type (close!)
-           ;; flush last-known usage if stream ended before message_delta.
-           @last-usage   (rf (usage-part))
-           true          (rf)))
+         (let [result (cond
+                        ;; Only content_block_stop proves a tool call is complete. Clean EOF may still
+                        ;; be a truncated response, so discard an open tool instead of making it executable.
+                        (= :tool_use @current-type) (clear! result)
+                        @current-type               (close! result)
+                        :else                       result)
+               ;; Even syntactically closed tool blocks are provisional until message_delta says the
+               ;; message successfully ended for tool use. EOF or an unsuccessful finish discards them.
+               result (resolve-tools! result false)]
+           (if (reduced? result)
+             result
+             (let [result (cond-> result
+                            ;; flush last-known usage if stream ended before message_delta.
+                            @last-usage (rf (usage-part)))]
+               (if (reduced? result) result (rf result))))))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
@@ -130,7 +169,8 @@
            (cond-> result
              ;; Exceptional source termination must preserve billed usage without normal transducer
              ;; completion: completing a partial tool_use block would mark it executable.
-             (= chunk core/interrupted-stream-event) (cond-> @last-usage (rf (usage-part)))
+             (= chunk core/interrupted-stream-event) (resolve-tools! false)
+             (= chunk core/interrupted-stream-event) (cond-> @last-usage (emit-rf! (usage-part)))
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
                                              (u/prog1
@@ -153,25 +193,35 @@
                                                                               :providerMetadata {:anthropic {:redactedData (:data content_block)}}}
                                                           nil)))
                                              (cond->
-                                              (translated-chunk-type? block-type)
-                                               (rf (case block-type
-                                                     :text                          (merge {:type :text-start} @payload)
-                                                     :tool_use                      (merge {:type :tool-input-start} @payload)
-                                                     (:thinking :redacted_thinking) {:type :reasoning-start :id chunk-id}))))
+                                              (= :tool_use block-type)
+                                               (u/prog1
+                                                 (vswap! pending-chunks conj
+                                                         [true (merge {:type :tool-input-start} @payload)]))
+
+                                               (contains? #{:text :thinking :redacted_thinking} block-type)
+                                               (emit! false
+                                                      (case block-type
+                                                        :text                          (merge {:type :text-start} @payload)
+                                                        (:thinking :redacted_thinking) {:type :reasoning-start :id chunk-id}))))
 
              ;; content block delta
              (and (= t "content_block_delta")
-                  (contains? #{"text_delta" "input_json_delta" "thinking_delta"} (:type delta)))
-             (rf (case (:type delta)
-                   "text_delta"       {:type  :text-delta
-                                       :id    (:id @payload)
-                                       :delta (:text delta)}
-                   "thinking_delta"   {:type  :reasoning-delta
-                                       :id    (:id @payload)
-                                       :delta (:thinking delta)}
-                   "input_json_delta" {:type           :tool-input-delta
-                                       :toolCallId     (:toolCallId @payload)
-                                       :inputTextDelta (:partial_json delta)}))
+                  (= "input_json_delta" (:type delta)))
+             (emit! true
+                    {:type           :tool-input-delta
+                     :toolCallId     (:toolCallId @payload)
+                     :inputTextDelta (:partial_json delta)})
+
+             (and (= t "content_block_delta")
+                  (contains? #{"text_delta" "thinking_delta"} (:type delta)))
+             (emit! false
+                    (case (:type delta)
+                      "text_delta"     {:type  :text-delta
+                                        :id    (:id @payload)
+                                        :delta (:text delta)}
+                      "thinking_delta" {:type  :reasoning-delta
+                                        :id    (:id @payload)
+                                        :delta (:thinking delta)}))
 
              ;; the signature rides the reasoning-end via @payload (needed to replay
              ;; the block within the turn); nothing is emitted to the client
@@ -189,11 +239,13 @@
              (= t "message_delta")      (u/prog1
                                           (vswap! last-usage merge (:usage chunk))
                                           (vreset! stop-reason (:stop_reason delta)))
+             (= t "message_delta")      (resolve-tools! (= "tool_use" (:stop_reason delta)))
              ;; end of message
              (= t "message_stop")       identity
              ;; catch errors if any
-             (= t "error")              (rf {:type      :error
-                                             :errorText (:message error)}))))))))
+             (= t "error")              (resolve-tools! false)
+             (= t "error")              (emit-rf! {:type      :error
+                                                   :errorText (:message error)}))))))))
 
 ;;; AISDK parts → Claude messages
 
