@@ -30,12 +30,11 @@
       ;; Database and its Tables are rolled back with the scope while the memoized ids in
       ;; [[metabase.test.data.impl]] outlive it, handing out ids for rows that no longer exist -- and it
       ;; would be rebuilt for every test, since it could never commit.
+      ;; Skipped where the app DB is deliberately empty -- creating a Database there breaks the very thing
+      ;; those helpers assert. Best effort otherwise: a dataset that cannot be built must not take an
+      ;; unrelated with-temp down with it.
       (classloader/require 'metabase.test.data.impl)
-      ;; Only for the default driver. This resolves through the driver under test, and a driver test's
-      ;; warehouse dataset has its own lifecycle -- building it here would reach for a warehouse the
-      ;; with-temp may never touch. Best effort even then: it must not take an unrelated with-temp down.
-      (classloader/require 'metabase.test.data.interface)
-      (when (= :h2 ((resolve 'metabase.test.data.interface/driver)))
+      (when-not @(resolve 'metabase.test.data.impl/*skip-dataset-prewarm?*)
         (try
           ((resolve 'metabase.test.data.impl/db-id))
           (catch Throwable e
