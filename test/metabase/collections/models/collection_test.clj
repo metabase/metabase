@@ -54,6 +54,19 @@
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
 
+(deftest personal-collection-id-not-cached-from-a-rolled-back-transaction-test
+  (testing "an id obtained inside a transaction is not cached, so a rollback cannot leave a stale one behind"
+    ;; the cache assumes a Personal Collection is never deleted, which a rollback breaks: caching an id
+    ;; created inside one leaves later lookups pointing at a row that never existed
+    (mt/with-temp [:model/User {user-id :id}]
+      (t2/delete! :model/Collection :personal_owner_id user-id)
+      (let [in-txn (t2/with-transaction [_conn nil {:rollback-only true}]
+                     (u/the-id (collection/user->personal-collection user-id)))]
+        (is (not (t2/exists? :model/Collection :id in-txn))
+            "the collection created inside the rollback-only scope is gone")
+        (is (t2/exists? :model/Collection :id (u/the-id (collection/user->personal-collection user-id)))
+            "the next lookup returns a collection that exists rather than the rolled-back id")))))
+
 (deftest user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
           (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}

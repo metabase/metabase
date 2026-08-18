@@ -185,16 +185,19 @@
                     (setSavepoint [_])
                     (commit [_]))]
     (binding [t2.connection/*current-connectable* mock-conn]
-      (t2/with-transaction [_conn]
-        (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer)))
-        ;; the nested body registers a callback then throws; its savepoint rollback also throws
-        (is (thrown?
-             Exception
-             (t2/with-transaction [_]
-               (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested)))
-               (throw (ex-info "boom" {})))))))
-    ;; the nested callback is discarded even though the rollback threw — only :outer survives to run
-    (is (= [:outer] @calls))))
+      ;; the nested callback is discarded even though the rollback threw, and the outer scope then refuses to
+      ;; commit -- the nested writes are still pending, so its own callbacks never fire either
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Not committing"
+           (t2/with-transaction [_conn]
+             (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer)))
+             ;; the nested body registers a callback then throws; its savepoint rollback also throws
+             (is (thrown?
+                  Exception
+                  (t2/with-transaction [_]
+                    (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested)))
+                    (throw (ex-info "boom" {})))))))))
+    (is (= [] @calls))))
 
 (deftest after-commit-callback-registering-another-runs-it-immediately-test
   (let [calls (atom [])]
@@ -281,14 +284,17 @@
 
 (deftest failed-nested-rollback-only-blocks-the-outer-commit-test
   (testing "swallowing the error from a failed rollback-only rollback must not let the outer scope commit it"
+    ;; autocommit is tracked rather than pinned true, so only the outermost scope believes it owns the
+    ;; connection -- with it pinned, the nested scope also installs a rollback and hides what this covers
     (let [calls     (atom [])
+          auto?     (atom true)
           mock-conn (reify Connection
                       (rollback [_ _savepoint]
                         (throw (ex-info "Savepoint rollback error" {})))
                       (rollback [_] (swap! calls conj :rollback))
                       (commit [_] (swap! calls conj :commit))
-                      (setAutoCommit [_ _])
-                      (getAutoCommit [_] true)
+                      (setAutoCommit [_ v] (reset! auto? v))
+                      (getAutoCommit [_] @auto?)
                       (setSavepoint [_]))]
       (binding [t2.connection/*current-connectable* mock-conn]
         (let [e (is (thrown? Exception
@@ -312,13 +318,17 @@
                       (setSavepoint [_])
                       (commit [_]))]
       (binding [t2.connection/*current-connectable* mock-conn]
-        (t2/with-transaction [conn]
-          (swap! mdb.connection/*transaction-state* assoc :outer "kept")
-          (is (thrown? Exception
-                       (t2/with-transaction [_ conn]
-                         (swap! mdb.connection/*transaction-state* assoc :nested "discarded")
-                         (throw (ex-info "Original error" {})))))
-          (is (= {:outer "kept"} @mdb.connection/*transaction-state*)))))))
+        ;; the outer scope refuses to commit at the end: the nested writes could not be rolled back, so they
+        ;; are still pending and committing would take them with it
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Not committing"
+             (t2/with-transaction [conn]
+               (swap! mdb.connection/*transaction-state* assoc :outer "kept")
+               (is (thrown? Exception
+                            (t2/with-transaction [_ conn]
+                              (swap! mdb.connection/*transaction-state* assoc :nested "discarded")
+                              (throw (ex-info "Original error" {})))))
+               (is (= {:outer "kept"} @mdb.connection/*transaction-state*)))))))))
 
 (deftest failed-rollback-only-rollback-discards-the-transaction-test
   (testing "an outermost rollback-only whose savepoint is gone discards what is pending instead of failing"
