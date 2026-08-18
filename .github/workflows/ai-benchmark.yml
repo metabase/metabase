@@ -9,7 +9,9 @@ on:
         required: false
         default: ""
       ref:
-        description: "Metabase branch, tag or sha (resolved to a full sha; overrides the PR head, and must sit on the PR's branch when both are given)"
+        description: >-
+          Metabase branch, tag or sha (resolved to a full sha; overrides the PR head, and must sit on the PR's
+          branch when both are given)
         required: false
         default: ""
       scope:
@@ -27,7 +29,6 @@ on:
         default: main
   workflow_call:
     inputs:
-      # TODO: decide whether to delete
       pr:
         type: string
       ref:
@@ -44,6 +45,9 @@ on:
         default: main
       comment_id:
         type: string
+        description: >-
+          The id of the comment that was created by calling workflow, if any. It is passed through to the executing
+          action so it can modify the comment according to its result.
 
 concurrency:
   group: evals-dispatch-${{ (github.event.label.name == 'evals/smoke' && github.event.pull_request.number) || github.run_id }}
@@ -94,7 +98,6 @@ jobs:
     with:
       commit: ${{ needs.resolve.outputs.sha }}
 
-  # comment_id serves for updates to the comment added in ai-benchmark-labeled.yml. This is only pass through.
   dispatch:
     needs: [resolve, image]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

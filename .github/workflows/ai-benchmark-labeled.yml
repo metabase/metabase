@@ -6,7 +6,7 @@ on:
 
 jobs:
 
-  # Check whether workflow can be started even.
+  # Check whether workflow can be started.
   supported:
     if: >-
       github.event_name == 'pull_request'
