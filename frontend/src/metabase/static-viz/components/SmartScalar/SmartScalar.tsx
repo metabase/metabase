@@ -37,6 +37,7 @@ export function SmartScalar({
     root: {
       fontFamily,
       fontSize: "14px",
+      color: getColor("text-primary"),
     },
     value: {
       color: getColor("text-primary"),
@@ -100,10 +101,11 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
   const styles: Record<string, CSSProperties> = {
     root: {
       fontSize: "14px",
+      color: getColor("text-primary"),
     },
     icon: {
       fontSize: "14px",
-      color: comparison.changeColor,
+      color: comparison.changeColor || getColor("text-disabled"),
       marginRight: "6px",
     },
     percentChange: {
