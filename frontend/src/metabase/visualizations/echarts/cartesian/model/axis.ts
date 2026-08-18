@@ -32,6 +32,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
+  ensureResultsTimezone,
   getTimeSeriesIntervalDuration,
   getTimezoneOrOffset,
   minTimeseriesUnit,
@@ -714,18 +715,19 @@ export function getTimeSeriesXAxisModel(
   const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
   const dimensionColumn = dimensionModel.column;
 
-  // Based on the actual data compute interval, range, etc.
-  const timeSeriesInfo = getTimeSeriesXAxisInfo(
-    xValues,
+  const { timezone, offsetMinutes } = getTimezoneOrOffset(
     rawSeries,
-    dimensionModel,
     showWarning,
   );
-  const {
-    interval: dataTimeSeriesInterval,
-    timezone,
-    offsetMinutes,
-  } = timeSeriesInfo;
+  const localize = (value: RowValue) =>
+    ensureResultsTimezone(value, timezone, offsetMinutes);
+
+  // Based on the actual data compute interval, range, etc.
+  const timeSeriesInfo = getTimeSeriesXAxisInfo(
+    xValues.map(localize), // need to localize so `range` is correct for naive strings
+    dimensionModel,
+  );
+  const { interval: dataTimeSeriesInterval } = timeSeriesInfo;
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
       unit ?? getFormatUnit(dimensionColumn, dataTimeSeriesInterval);
@@ -747,7 +749,7 @@ export function getTimeSeriesXAxisModel(
   // Although the dataset values are placed in the right place, ticks would look shifted based on where the user is from.
   // So as a workaround we enable useUTC option and shift all dates like they are in UTC timezone.
   const toEChartsAxisValue = (value: RowValue) => {
-    const date = tryGetDate(value);
+    const date = tryGetDate(localize(value));
     if (!date) {
       return null;
     }
@@ -769,6 +771,8 @@ export function getTimeSeriesXAxisModel(
     axisType: "time",
     toEChartsAxisValue,
     fromEChartsAxisValue,
+    timezone,
+    offsetMinutes,
     ...timeSeriesInfo,
   };
 }
@@ -949,9 +953,7 @@ const DAY_INTERVAL: TimeSeriesInterval = {
 
 function getTimeSeriesXAxisInfo(
   xValues: RowValue[],
-  rawSeries: RawSeries,
   dimensionModel: DimensionModel,
-  showWarning?: ShowWarning,
 ) {
   // We need three pieces of information to define a timeseries range:
   // 1. interval - it's really the "unit": month, day, etc
@@ -963,10 +965,6 @@ function getTimeSeriesXAxisInfo(
         isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
       )
       .filter(isNotNull),
-  );
-  const { timezone, offsetMinutes } = getTimezoneOrOffset(
-    rawSeries,
-    showWarning,
   );
   const interval = computeTimeseriesDataInterval(xValues, unit) ?? DAY_INTERVAL;
 
@@ -998,7 +996,7 @@ function getTimeSeriesXAxisInfo(
     );
   }
 
-  return { interval, timezone, offsetMinutes, intervalsCount, range, unit };
+  return { interval, intervalsCount, range, unit };
 }
 
 export function getScaledMinAndMax(

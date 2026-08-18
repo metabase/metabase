@@ -8,6 +8,7 @@ import type {
   TimeSeriesAxisFormatter,
   TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { isTimezoneNaiveWallClock } from "metabase/visualizations/lib/date-validation";
 import {
   multipleTimezoneWarning,
   unexpectedTimezoneWarning,
@@ -30,6 +31,33 @@ export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   const date = parseTimestamp(rowValue);
   return date.isValid() ? date : null;
 };
+
+/**
+ * Attach results_timezone to timezone-naive wall-clock strings so they parse as
+ * the intended local instant. Aware strings and non-strings are returned unchanged.
+ */
+export function ensureResultsTimezone(
+  value: RowValue,
+  timezone?: string,
+  offsetMinutes?: number,
+): RowValue {
+  if (typeof value !== "string" || !isTimezoneNaiveWallClock(value)) {
+    return value;
+  }
+
+  if (offsetMinutes != null) {
+    return dayjs
+      .utc(value)
+      .utcOffset(offsetMinutes, true)
+      .format("YYYY-MM-DDTHH:mm:ssZ");
+  }
+
+  if (timezone) {
+    return dayjs.tz(value, timezone).format("YYYY-MM-DDTHH:mm:ssZ");
+  }
+
+  return dayjs.utc(value).format("YYYY-MM-DDTHH:mm:ss[Z]");
+}
 
 export const msToDays = (ms: number) => ms / (24 * 60 * 60 * 1000);
 

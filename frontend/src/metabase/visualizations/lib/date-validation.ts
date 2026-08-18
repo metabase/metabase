@@ -1,5 +1,7 @@
 // based on https://github.com/Garbee/Iso8601/blob/main/src/index.ts
 
+import { hasExplicitTimezone } from "metabase/utils/time-dayjs";
+
 /**
  * Years are represented from the gregorian calendar only
  * as 0000 to 9999. (If anyone has to worry about after 9999
@@ -153,5 +155,22 @@ export function isValidIso8601(value: string | number): boolean {
     ordinalDatePattern.test(stringValue) ||
     isSpaceSeparatedDateTime.test(stringValue) ||
     compactDatePattern.test(stringValue)
+  );
+}
+
+/**
+ * Wall-clock date/datetime strings without a timezone designator.
+ * Excludes week (`2019-W33`) and ordinal (`2024-365`) forms
+ */
+export function isTimezoneNaiveWallClock(value: string): boolean {
+  if (hasExplicitTimezone(value)) {
+    return false;
+  }
+
+  return (
+    iso8601Date.test(value) ||
+    isIso8601DateTime.test(value) ||
+    isSpaceSeparatedDateTime.test(value) ||
+    compactDatePattern.test(value)
   );
 }
