@@ -10,6 +10,8 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
@@ -17,9 +19,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -27,9 +27,9 @@
   "Schema for creating a new card - simplified version to avoid circular dependencies"
   [:map
    [:name ms/NonBlankString]
-   [:dataset_query ms/Map]
+   [:dataset_query ::lib-be.schema/maybe-legacy-query]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
+   [:parameters {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
@@ -45,16 +45,19 @@
   saved without it. Decoding therefore sees a permissive `[:map-of :int :any]` — enough to turn the JSON string keys
   into ints — and the `:fn` re-checks the strict shape afterwards, so a bad card is a 400."
   [key-schema]
-  (let [strict [:map-of key-schema CardCreateSchema]]
-    [:and
-     [:map-of :int :any]
-     [:fn {:error/message "value must map a card placeholder id to a card"}
-      #(mr/validate strict %)]]))
+  [:schema
+   {:decode/normalize (fn [cards]
+                        (cond-> cards
+                          (map? cards)
+                          (-> (update-keys #(api.macros/decode-and-validate-params
+                                             :body key-schema (cond-> % (keyword? %) u/qualified-name)))
+                              (update-vals #(api.macros/decode-and-validate-params :body CardCreateSchema %)))))}
+   [:map-of key-schema CardCreateSchema]])
 
 (def ^:private DocumentCreateOptions
   [:map
    [:name m.document/DocumentName]
-   [:document :any]
+   [:document ::prose-mirror/ast]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
@@ -62,7 +65,7 @@
 (def ^:private DocumentUpdateOptions
   [:map
    [:name {:optional true} m.document/DocumentName]
-   [:document {:optional true} :any]
+   [:document {:optional true} [:maybe ::prose-mirror/ast]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
@@ -72,6 +75,7 @@
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (card/check-parameter-source-card-permissions (:parameters card))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
@@ -449,7 +453,8 @@
   [document-id card-id]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id :archived false))]
     (api/read-check document)
-    (api/check-404 (t2/exists? :model/Card :id card-id :document_id document-id :archived false))))
+    (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
+                        (t2/exists? :model/Card :id card-id :document_id document-id :archived false)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -480,16 +485,13 @@
     format-rows?   :format_rows
     :as            _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ms/Map]
-                                                 ms/JSONString]]]
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format
-   :parameters  (cond-> parameters
-                  (string? parameters) json/decode+kw)
+   :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

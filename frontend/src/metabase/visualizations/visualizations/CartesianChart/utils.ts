@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import type { EChartsCoreOption } from "echarts/core";
 
+import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";

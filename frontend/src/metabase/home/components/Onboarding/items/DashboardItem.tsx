@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Text } from "metabase/ui";
 
 import { ChecklistItem } from "../ChecklistItem";

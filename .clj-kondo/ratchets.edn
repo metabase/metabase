@@ -10,9 +10,9 @@
                  :clojure-lsp/unused-public-var                                       9
                  :def-fn                                                              1
                  :deprecated-namespace                                                95
-                 :deprecated-var                                                      79
+                 :deprecated-var                                                      84
                  :discouraged-java-method                                             3
-                 :discouraged-namespace                                               79
+                 :discouraged-namespace                                               80
                  :discouraged-var                                                     107
                  :equals-true                                                         1
                  :main-without-gen-class                                              1
@@ -44,5 +44,5 @@
                  :unused-binding                                                      9
                  :unused-excluded-var                                                 2
                  :unused-namespace                                                    1
-                 :unused-private-var                                                  8
+                 :unused-private-var                                                  9
                  :unused-value                                                        1}}

@@ -1,9 +1,9 @@
 import cx from "classnames";
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 import type {
   RevisionDiffKey,
   Revision as RevisionType,
