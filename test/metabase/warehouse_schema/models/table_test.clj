@@ -780,6 +780,12 @@
     (testing "sql-jdbc names it by the arrow-joined path; both normalize to the same dotted path"
       (is (= "payload.user.id" (#'table/field-path {:name "payload → user → id"
                                                     :nfc_path ["payload" "user" "id"]})))))
+  (testing "bigquery writes ancestors only, so there the leaf does have to be appended"
+    (is (= "r.a" (#'table/field-path {:name "a" :nfc_path ["r"]})))
+    (is (= "r.b" (#'table/field-path {:name "b" :nfc_path ["r"]}))))
   (testing "sibling leaves that share a name stay distinct once qualified — the reason to use the path"
-    (is (not= (#'table/field-path {:name "id" :nfc_path ["payload" "user" "id"]})
-              (#'table/field-path {:name "id" :nfc_path ["payload" "item" "id"]})))))
+    (doseq [[a b] [[{:name "id" :nfc_path ["payload" "user" "id"]}
+                    {:name "id" :nfc_path ["payload" "item" "id"]}]
+                   [{:name "id" :nfc_path ["payload" "user"]}
+                    {:name "id" :nfc_path ["payload" "item"]}]]]
+      (is (not= (#'table/field-path a) (#'table/field-path b))))))
