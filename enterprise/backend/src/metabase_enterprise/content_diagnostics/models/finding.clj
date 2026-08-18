@@ -30,3 +30,28 @@
                  :finding_type   [:in finding-types]
                  :invalidated_at nil}
                 {:invalidated_at (mi/now)})))
+
+(defn invalidate-for-entity!
+  "Soft-invalidate every still-active finding for a single entity (`entity-type` + `entity-id`) - e.g. when
+  the entity is archived or deleted through any path."
+  [entity-type entity-id]
+  (t2/update! :model/ContentDiagnosticsFinding
+              {:entity_type    entity-type
+               :entity_id      entity-id
+               :invalidated_at nil}
+              {:invalidated_at (mi/now)}))
+
+(defn invalidate-for-collection-subtree!
+  "Soft-invalidate active findings dropped when a collection subtree is archived: the archived collections
+  themselves and every entity scanned inside them."
+  [collection-ids]
+  (when (seq collection-ids)
+    (t2/update! :model/ContentDiagnosticsFinding
+                {:entity_type    :collection
+                 :entity_id      [:in collection-ids]
+                 :invalidated_at nil}
+                {:invalidated_at (mi/now)})
+    (t2/update! :model/ContentDiagnosticsFinding
+                {:scope_collection_id [:in collection-ids]
+                 :invalidated_at      nil}
+                {:invalidated_at (mi/now)})))

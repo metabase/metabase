@@ -1,0 +1,53 @@
+import { useCallback } from "react";
+
+import { useDeleteTransformMutation } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks/use-set-archive";
+import type {
+  ContentDiagnosticsBaseFinding,
+  ContentDiagnosticsEntityType,
+} from "metabase-types/api";
+
+export type BulkTrashResult = {
+  total: number;
+  failed: number;
+};
+
+// Cards (question/model/metric), dashboards, documents and collections archive
+// under a model that matches their entity type. Transforms have no archived
+// state, so they are hard-deleted instead.
+type ArchivableModel = Exclude<ContentDiagnosticsEntityType, "transform">;
+
+function getArchivableModel(
+  finding: ContentDiagnosticsBaseFinding,
+): ArchivableModel | null {
+  return finding.entity_type === "transform" ? null : finding.entity_type;
+}
+
+/**
+ * Trash a set of findings' entities: archive the archivable ones and hard-delete
+ * transforms, each through its existing endpoint.
+ */
+export function useBulkTrashFindings() {
+  const archive = useSetArchive();
+  const [deleteTransform] = useDeleteTransformMutation();
+
+  return useCallback(
+    async (
+      findings: ContentDiagnosticsBaseFinding[],
+    ): Promise<BulkTrashResult> => {
+      const results = await Promise.allSettled(
+        findings.map((finding) => {
+          const model = getArchivableModel(finding);
+          return model !== null
+            ? archive({ model, id: finding.entity_id }, true, { notify: false })
+            : deleteTransform(finding.entity_id).unwrap();
+        }),
+      );
+      const failed = results.filter(
+        (result) => result.status === "rejected",
+      ).length;
+      return { total: findings.length, failed };
+    },
+    [archive, deleteTransform],
+  );
+}

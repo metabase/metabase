@@ -3126,6 +3126,7 @@
    :uses #{api
            collections
            documents
+           events
            models
            premium-features
            queries
