@@ -771,10 +771,15 @@
             (is (= ["a" "b" "c"] (collect (shuffle names))))))))))
 
 (deftest field-path-test
-  (testing "a plain column is named by itself; a nested field by its nfc_path ancestors plus its own name"
+  (testing "a plain column is named by itself"
     (is (= "total" (#'table/field-path {:name "total"})))
-    (is (= "total" (#'table/field-path {:name "total" :nfc_path nil})))
-    (is (= "payload.user.id" (#'table/field-path {:name "id" :nfc_path ["payload" "user"]}))))
+    (is (= "total" (#'table/field-path {:name "total" :nfc_path nil}))))
+  (testing "nfc_path already includes the leaf, so it is the whole path and the name is not appended"
+    (testing "mongo names a nested field by its leaf"
+      (is (= "payload.user.id" (#'table/field-path {:name "id" :nfc_path ["payload" "user" "id"]}))))
+    (testing "sql-jdbc names it by the arrow-joined path; both normalize to the same dotted path"
+      (is (= "payload.user.id" (#'table/field-path {:name "payload → user → id"
+                                                    :nfc_path ["payload" "user" "id"]})))))
   (testing "sibling leaves that share a name stay distinct once qualified — the reason to use the path"
-    (is (not= (#'table/field-path {:name "id" :nfc_path ["payload" "user"]})
-              (#'table/field-path {:name "id" :nfc_path ["payload" "item"]})))))
+    (is (not= (#'table/field-path {:name "id" :nfc_path ["payload" "user" "id"]})
+              (#'table/field-path {:name "id" :nfc_path ["payload" "item" "id"]})))))
