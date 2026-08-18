@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [diehard.core :as dh]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -205,6 +204,23 @@
                         e)))))
   (log/info (u/format-color 'blue "[ok]")))
 
+(defn- execute-on-database!
+  "Like [[execute!]], but runs the SQL over `database`'s connection pool instead of a one-off connection.
+
+  Redshift propagates catalog changes to compute nodes asynchronously, so DDL issued on an unrelated connection can
+  be invisible to a later `describe-database`. Production DDL (`driver/create-table!`) runs on the Database's pool,
+  which sync then reads from, so it never observes that gap; tests that sync after DDL need the same pool."
+  [database format-string & args]
+  (let [sql (apply format format-string args)]
+    (log/info (u/format-color 'blue "[redshift] %s" sql))
+    (try
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database) sql)
+      (catch Throwable e
+        (throw (ex-info (format "Error executing SQL: %s" (ex-message e))
+                        {:sql sql}
+                        e)))))
+  (log/info (u/format-color 'blue "[ok]")))
+
 (deftest redshift-types-test
   (mt/test-driver
     :redshift
@@ -344,19 +360,15 @@
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
                 qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)]
-            (execute!
+            (execute-on-database!
+             database
              (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (dh/with-retry {:delay-ms    1000
-                              :max-retries 3}
-                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
-                  (when-not (contains? table-names mview-nm)
-                    (throw (ex-info "Materialized view not yet visible in describe-database results"
-                                    {:expected mview-nm :actual table-names})))
-                  (is (contains? table-names mview-nm)))))))))))
+              (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                (is (contains? table-names mview-nm))))))))))
 
 (mt/defdataset unix-timestamps
   ;; `:effective-type` is what fake sync uses for `base_type` when `:base-type` is a native type; without it the Field
