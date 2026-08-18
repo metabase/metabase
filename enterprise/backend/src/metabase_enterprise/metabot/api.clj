@@ -17,21 +17,23 @@
 
 (defn- meter-value
   [meters meter-key]
-  (some-> meter-key keyword meters))
+  (some->> meter-key keyword (get meters)))
 
-(defn- default-metabase-meter-key
+(defn- configured-metabase-meter-key
   []
-  (some-> metabot.settings/default-metabase-llm-metabot-provider
+  (let [provider (metabot.settings/llm-metabot-provider)]
+    (when (provider-util/metabase-provider? provider)
+      (-> provider
           provider-util/strip-metabase-prefix
           u/qualified-name
           (str/replace-first "/" ":")
-          (str ":tokens")))
+          (str ":tokens")))))
 
 (defn- meter-entry
   [token-status]
   (let [meters      (:meters token-status)
-        default-key (default-metabase-meter-key)]
-    (meter-value meters default-key)))
+        meter-key   (configured-metabase-meter-key)]
+    (meter-value meters meter-key)))
 
 (api.macros/defendpoint :get "/usage"
   :- metabot-usage-response-schema

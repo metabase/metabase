@@ -59,18 +59,41 @@
               (finally
                 (ee.metabot.usage/clear-limit-cache!)))))))))
 
-(deftest usage-get-returns-token-status-usage-test
+(deftest usage-get-returns-selected-managed-model-usage-test
   (mt/with-premium-features #{:metabot-v3}
-    (with-redefs [premium-features/token-status (constantly {:meters {(keyword (#'ee.metabot.api/default-metabase-meter-key))
-                                                                      {:meter-value      12345
-                                                                       :meter-free-units 1337
-                                                                       :meter-updated-at "2026-04-02T19:29:12Z"}}})]
-      (is (= {:tokens       12345
-              :free_tokens  1337
-              :updated_at   "2026-04-02T19:29:12Z"
-              :is_locked    nil}
-             (-> (mt/user-http-request :crowberto :get 200 "ee/metabot/usage")
-                 (update :updated_at str)))))))
+    (testing "a persisted legacy managed provider"
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                         "metabase/anthropic/claude-sonnet-4-6"]
+        (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                    (constantly
+                                     {:meters {:anthropic:claude-sonnet-4-6:tokens
+                                               {:meter-value      12345
+                                                :meter-free-units 1337
+                                                :meter-updated-at "2026-04-02T19:29:12Z"
+                                                :is-locked        false}}})]
+          (is (= {:tokens       12345
+                  :free_tokens  1337
+                  :updated_at   "2026-04-02T19:29:12Z"
+                  :is_locked    false}
+                 (-> (mt/user-http-request :crowberto :get 200 "ee/metabot/usage")
+                     (update :updated_at str)))))))
+    (testing "the default managed provider"
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                         metabot.settings/default-metabase-llm-metabot-provider]
+        (let [meter-key (keyword (#'ee.metabot.api/configured-metabase-meter-key))]
+          (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                      (constantly
+                                       {:meters {meter-key
+                                                 {:meter-value      54321
+                                                  :meter-free-units 7331
+                                                  :meter-updated-at "2026-08-18T17:22:55Z"
+                                                  :is-locked        true}}})]
+            (is (= {:tokens       54321
+                    :free_tokens  7331
+                    :updated_at   "2026-08-18T17:22:55Z"
+                    :is_locked    true}
+                   (-> (mt/user-http-request :crowberto :get 200 "ee/metabot/usage")
+                       (update :updated_at str))))))))))
 
 (deftest usage-permissions-test
   (mt/with-premium-features #{:metabot-v3}

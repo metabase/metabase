@@ -3312,3 +3312,22 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest migrate-managed-metabot-provider-to-sonnet-5-test
+  (testing "the legacy managed provider is migrated"
+    (impl/test-migrations ["v64.2026-08-18T17:22:55"] [migrate!]
+      (t2/insert! :setting {:key   "llm-metabot-provider"
+                            :value "metabase/anthropic/claude-sonnet-4-6"})
+      (migrate!)
+      (is (= "metabase/anthropic/claude-sonnet-5"
+             (t2/select-one-fn :value :setting :key "llm-metabot-provider")))
+      (migrate! :down 63)
+      (is (= "metabase/anthropic/claude-sonnet-4-6"
+             (t2/select-one-fn :value :setting :key "llm-metabot-provider")))))
+  (testing "a direct Anthropic provider is unchanged"
+    (impl/test-migrations ["v64.2026-08-18T17:22:55"] [migrate!]
+      (t2/insert! :setting {:key   "llm-metabot-provider"
+                            :value "anthropic/claude-sonnet-4-6"})
+      (migrate!)
+      (is (= "anthropic/claude-sonnet-4-6"
+             (t2/select-one-fn :value :setting :key "llm-metabot-provider"))))))
