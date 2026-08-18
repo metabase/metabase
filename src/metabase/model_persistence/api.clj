@@ -121,7 +121,7 @@
   (mu/with-api-error-message
    [:and
     ms/NonBlankString
-    [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
+    [:fn {:error/fn (fn [_ _] (str (deferred-tru "String representing a cron schedule")))} #(= 7 (count (str/split % #" ")))]]
    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

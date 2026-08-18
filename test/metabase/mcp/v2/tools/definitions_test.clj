@@ -429,10 +429,8 @@
 ;;; ------------------------------------------ Definition validation -----------------------------------------------
 
 (deftest ^:parallel definition-validation-teaching-test
-  (testing "GHY-4137: the model layer's raw Malli failures reach the caller as teaching errors rather than
-            \"Internal error\". The messages name the constraint that was broken; they stopped naming the
-            offending clause when master moved stage validation to a top-level `[:fn]`, which short-circuits
-            before malli descends far enough to produce the per-clause rule text"
+  (testing "GHY-4137: an invalid `definition` comes back as a teaching error stating the rules a definition
+            must satisfy — never \"Internal error\" or a generic placeholder"
     (testing "a segment definition with an aggregation"
       (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
                                         {:method "create" :table_id (mt/id :venues)
@@ -442,7 +440,9 @@
                                                       :query    {:source-table (mt/id :venues)
                                                                  :aggregation  [["count"]]
                                                                  :filter       ["=" 1 1]}}}))]
-        (is (str/includes? msg "A segment's stages must be segment stages"))
+        (is (str/includes? msg "a segment definition must be a single-stage query with a source table and filters"))
+        (is (not (str/includes? msg "unknown error"))
+            "the rules reach the caller instead of a placeholder")
         (is (not= "Internal error" msg))))
     (testing "a measure definition with two aggregations"
       (let [definition (update-in (count-definition (mt/id :venues)) [:stages 0 :aggregation]
