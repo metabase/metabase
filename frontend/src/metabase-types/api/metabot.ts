@@ -191,58 +191,6 @@ export type ListMetabotConversationsResponse = PaginationResponse & {
   data: MetabotConversation[];
 };
 
-export type MetabotProvider =
-  | "metabase"
-  | "anthropic"
-  | "azure"
-  | "bedrock"
-  | "mistral"
-  | "moonshot"
-  | "openai"
-  | "openrouter"
-  | "vllm"
-  | "zai";
-
-export interface BedrockCredentials {
-  "access-key-id"?: string | null;
-  "secret-access-key"?: string | null;
-  region?: string | null;
-  "session-token"?: string | null;
-}
-
-export interface AzureCredentials {
-  "api-key"?: string | null;
-  "base-url"?: string | null;
-}
-
-/** Base URL required, API key optional; an omitted field keeps the saved value. */
-export interface VllmCredentials {
-  "api-key"?: string | null;
-  "base-url"?: string | null;
-}
-
-/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure and vLLM send an API key and base URL. */
-export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials {}
-
-export interface MetabotSettingsResponse {
-  value: string | null;
-  "credentials-error"?: string | null;
-  models: {
-    id: string;
-    display_name: string;
-    group?: string | null;
-  }[];
-}
-
-export interface UpdateMetabotSettingsRequest {
-  provider: MetabotProvider;
-  model?: string;
-  "api-key"?: string | null;
-  credentials?: MetabotCredentials | null;
-}
-
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {

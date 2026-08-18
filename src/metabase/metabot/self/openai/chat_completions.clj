@@ -9,7 +9,6 @@
   which can post-process the body [[request-body]] returns."
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
@@ -97,16 +96,9 @@
 (defn- tool->cc-tool
   "Convert a tool definition map to Chat Completions tool format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params     (schema/filter-schema-by-features params)
-        doc        (if (str/starts-with? (or doc "") "Inputs: ")
-                     (second (str/split doc #"\n\n  " 2))
-                     doc)]
-    {:type     "function"
-     :function {:name        tool-name
-                :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
+  [tool]
+  {:type     "function"
+   :function (schema/tool-function tool)})
 
 ;;; Streaming response → AISDK v5 chunks
 

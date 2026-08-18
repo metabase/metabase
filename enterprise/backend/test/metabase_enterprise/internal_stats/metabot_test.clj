@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.example-question-generator :as eqg]
    [metabase.metabot.self.claude :as claude]
@@ -16,6 +17,11 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each (fn [thunk]
+                      (testing "with every provider type connected"
+                        (llm.tu/with-default-connections
+                          (thunk)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Helpers

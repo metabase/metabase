@@ -40,7 +40,8 @@ concurrency:
 jobs:
   get-cache-keys:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Get cache keys
@@ -53,6 +54,10 @@ jobs:
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-caches:
+    # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default
+    # cache keys but the cache would be innacessible to other branches since Github prevents cross-branch
+    # cache hits (except for the default branch), breaking the cache entirely.
+    if: ${{ github.ref_name == 'master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     needs: get-cache-keys
@@ -103,6 +108,7 @@ jobs:
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test
+            ":whitespace-linter"                                # whitespace linter
           )
           for combo in "${combos[@]}"; do
             echo "::group::clojure -P -A${combo}"
@@ -120,6 +126,8 @@ jobs:
           path: |
             ~/.m2
             ~/.gitlibs
+            ~/.deps.clj
+            bin/bb
           key: ${{ env.M2_CACHE_KEY }}
 
       # Frontend preparation and caches

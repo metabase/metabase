@@ -48,7 +48,7 @@ interface SourceFilters {
   userAttribute: (userAttribute: string) => boolean;
 }
 
-interface ExtraData {
+export interface ClickBehaviorExtraData {
   dashboard?: Dashboard;
   parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
@@ -273,7 +273,7 @@ export function formatSourceForTarget(
     clickBehavior,
   }: {
     data: ValueAndColumnForColumnNameDate;
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -364,7 +364,7 @@ export function getTargetForQueryParams(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -381,7 +381,7 @@ function getParameter(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ): Parameter | undefined {

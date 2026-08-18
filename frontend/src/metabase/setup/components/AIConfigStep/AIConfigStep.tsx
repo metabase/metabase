@@ -1,16 +1,13 @@
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
-  AIProviderConfigurationForm,
-  getProviderOptions,
-  parseProviderAndModel,
-} from "metabase/metabot";
-import { PLUGIN_METABOT } from "metabase/plugins";
+  useListLlmProviderTypesQuery,
+  useListLlmProvidersQuery,
+} from "metabase/api";
+import { AIProviderSetup } from "metabase/metabot";
 import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { Text } from "metabase/ui";
-import type { MetabotProvider } from "metabase-types/api";
+import { Button, Flex, Text } from "metabase/ui";
 
 import { skipAiConfig, submitAiConfig } from "../../actions";
 import { useStep } from "../../useStep";
@@ -21,16 +18,24 @@ import type { NumberedStepProps } from "../types";
 export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
   const { isStepActive, isStepCompleted } = useStep("ai_config");
   const dispatch = useDispatch();
-  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
 
-  const isConfigured = !!useSetting("llm-metabot-configured?");
-  const savedProviderValue = useSetting("llm-metabot-provider");
-  const connectedProvider = isConfigured
-    ? parseProviderAndModel(savedProviderValue)?.provider
-    : undefined;
+  const { data: connections = [], isLoading } = useListLlmProvidersQuery();
+  const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
 
-  const handleSubmit = (provider?: MetabotProvider) => {
-    dispatch(submitAiConfig(provider ?? connectedProvider));
+  // The provider this step reports is the one Metabot actually landed on, not the first usable
+  // connection: with several connected, the model picked in the picker decides.
+  const modelRef = useSetting("llm-metabot-provider");
+  const modelRefConnectionKey = modelRef?.split("/")[0];
+  const connectedProvider = connections.find(
+    (connection) =>
+      connection.usable && connection.key === modelRefConnectionKey,
+  );
+  const connectedLabel = providerTypes.find(
+    (providerType) => providerType.type === connectedProvider?.type,
+  )?.label;
+
+  const handleDone = () => {
+    dispatch(submitAiConfig(connectedProvider?.type));
   };
 
   const handleSkip = () => {
@@ -41,9 +46,9 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
     return (
       <InactiveStep
         title={getStepTitle({
-          connectedProvider,
+          connectedLabel,
+          hasConnectedProvider: connectedProvider != null,
           isStepCompleted,
-          offerMetabaseAiManaged,
         })}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
@@ -56,30 +61,35 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
       <Text mb="lg" c="text-secondary">
         {t`Select your AI provider to use AI explorations, SQL generation and Metabot.`}
       </Text>
-      <AIProviderConfigurationForm
-        isModal
-        defaultProvider={offerMetabaseAiManaged ? "metabase" : undefined}
-        onClose={handleSubmit}
-        onSkip={handleSkip}
-      />
+      <AIProviderSetup onDone={handleDone} />
+      {!isLoading && connectedProvider == null && (
+        <Flex justify="end" mt="md">
+          <Button variant="subtle" onClick={handleSkip}>
+            {t`I'll set this up later`}
+          </Button>
+        </Flex>
+      )}
     </ActiveStep>
   );
 };
 
 const getStepTitle = ({
-  connectedProvider,
+  connectedLabel,
+  hasConnectedProvider,
   isStepCompleted,
-  offerMetabaseAiManaged,
 }: {
-  connectedProvider: MetabotProvider | undefined;
+  connectedLabel: string | undefined;
+  hasConnectedProvider: boolean;
   isStepCompleted: boolean;
-  offerMetabaseAiManaged: boolean;
-}): string =>
-  match({ isStepCompleted, connectedProvider })
-    .with({ isStepCompleted: false }, () => t`Connect to an AI provider`)
-    .with({ connectedProvider: P.nonNullable }, ({ connectedProvider }) => {
-      return t`Connected to ${
-        getProviderOptions(offerMetabaseAiManaged)[connectedProvider]?.label
-      }`;
-    })
-    .otherwise(() => t`I'll set up AI later`);
+}): string => {
+  if (!isStepCompleted) {
+    return t`Connect to an AI provider`;
+  }
+  if (!hasConnectedProvider) {
+    return t`I'll set up AI later`;
+  }
+  // the label comes from a separate request, so a connected provider can briefly have no name
+  return connectedLabel
+    ? t`Connected to ${connectedLabel}`
+    : t`Connected to an AI provider`;
+};

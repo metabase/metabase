@@ -49,7 +49,7 @@
                                      [:= :active true]
                                      [:or
                                       [:= :visibility_type nil]
-                                      [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]}))
+                                      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
     #{}))
 
 (defn find-table-or-transform

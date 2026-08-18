@@ -75,7 +75,6 @@ const SankeyChartComponent = ({
     <>
       <ResponsiveEChartsRenderer
         ref={containerRef}
-        display="sankey"
         option={option}
         eventHandlers={eventHandlers}
         onInit={handleInit}

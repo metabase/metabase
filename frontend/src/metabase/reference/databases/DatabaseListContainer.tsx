@@ -4,7 +4,7 @@ import { useMount, usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { fetchRealDatabases } from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import DatabaseList from "metabase/reference/databases/DatabaseList";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
@@ -14,7 +14,7 @@ import { useLocation } from "metabase/router";
 import type { ClearStateProps, FetchProps } from "../reference";
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  fetchRealDatabases,
   ...actions,
 };
 

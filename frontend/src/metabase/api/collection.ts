@@ -1,8 +1,4 @@
-import {
-  CollectionSchema,
-  ObjectUnionSchema,
-  SnippetCollectionSchema,
-} from "metabase/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
   CollectionItemModel,
@@ -33,22 +29,6 @@ import {
 } from "./tags";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
-const flattenCollectionTree = (tree: Collection[]): Collection[] =>
-  tree.flatMap((collection) => [
-    collection,
-    ...flattenCollectionTree(collection.children ?? []),
-  ]);
-
-// Snippet collections live in their own entity slice (`snippetCollections`),
-// so hydrating them through `CollectionSchema` would clobber regular
-// collections. Hydrate through the matching schema instead.
-const collectionSchemaForRequest = (
-  request: { namespace?: string | null } | void,
-) =>
-  request?.namespace === "snippets"
-    ? SnippetCollectionSchema
-    : CollectionSchema;
-
 const getCollectionItemTagModels = (
   models: ListCollectionItemsRequest["models"],
 ): CollectionItemModel[] | undefined =>
@@ -71,11 +51,6 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
-        onQueryStarted: (request, lifecycle) =>
-          hydrateMetadataStore([collectionSchemaForRequest(request)])(
-            request,
-            lifecycle,
-          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -91,11 +66,6 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore<Collection[]>(
-          [collectionSchemaForRequest(request)],
-          flattenCollectionTree,
-        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -129,11 +99,6 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore(collectionSchemaForRequest(request))(
-          request,
-          lifecycle,
-        ),
     }),
     getCollectionPermissionsGraph: builder.query<
       CollectionPermissionsGraph,
