@@ -10,7 +10,6 @@ import type {
   Card,
   DatasetData,
   GoalSegment,
-  GoalValue,
   Measure,
   ReferencedEntityResult,
 } from "metabase-types/api";
@@ -112,21 +111,13 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   describe("bound errors", () => {
-    function setupBound(
-      min: GoalValue | null,
-      data: DatasetData,
-      entities?: Pick<SetupOpts, "card" | "measure">,
-    ) {
-      return setup({ value: [createMockSegment({ min })], data, ...entities });
-    }
-
     const DATA = createMockDatasetData({
       cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
       rows: [[10]],
     });
 
     it("reports a column of this question that no longer exists", () => {
-      setupBound("gone", DATA);
+      setup({ value: [createMockSegment({ min: "gone" })], data: DATA });
 
       expect(
         screen.getByText("This column no longer exists"),
@@ -190,15 +181,15 @@ describe("ChartSettingSegmentsEditor", () => {
           result?: ReferencedEntityResult,
           entities?: Pick<SetupOpts, "card" | "measure">,
         ) {
-          return setupBound(
-            { type, id, column },
-            createMockDatasetData({
+          return setup({
+            value: [createMockSegment({ min: { type, id, column } })],
+            data: createMockDatasetData({
               ...DATA,
               referenced_entities:
                 result != null ? createReferencedEntities(result) : undefined,
             }),
-            entities,
-          );
+            ...entities,
+          });
         }
 
         it("reports a referenced query that failed without saying why", () => {
