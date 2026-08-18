@@ -174,7 +174,7 @@ const config = {
         type: "asset/source",
       },
       {
-        test: /\.(tsx?|js)$/,
+        test: /\.tsx?$/,
         exclude: [
           /node_modules/,
           /cljs/,
@@ -233,7 +233,7 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [".js", ".ts", ".tsx", ".css", ".svg"],
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
     alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),

@@ -51,11 +51,9 @@ function getStagedFiles() {
 }
 
 function isE2ETestFile(fullPath) {
-  const dirName = path.dirname(fullPath);
-  const excludedPaths =
-    dirName.endsWith("/helpers") || dirName.endsWith("/shared");
-  // `includes`, not `startsWith`: lint-staged passes absolute paths
-  return dirName.includes(E2E_HOME) && !excludedPaths;
+  const isExcluded =
+    fullPath.includes("/helpers/") || fullPath.includes("/shared/");
+  return fullPath.includes(E2E_HOME) && !isExcluded;
 }
 
 function printHints() {
