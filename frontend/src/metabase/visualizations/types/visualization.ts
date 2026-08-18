@@ -652,11 +652,12 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-// TODO: add component property for the react component instead of the intersection
-export type Visualization = ComponentType<
+export type VisualizationComponent = ComponentType<
   VisualizationProps & VisualizationPassThroughProps
-> &
-  VisualizationDefinition;
+>;
+
+// TODO: add component property for the react component instead of the intersection
+export type Visualization = VisualizationComponent & VisualizationDefinition;
 
 export type VisualizationDefinition = {
   name?: string;
@@ -675,10 +676,6 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
-  // True for visualizations that render through the (lazily loaded)
-  // EChartsRenderer. Used to prefetch the echarts chunk while the chart's data
-  // is still loading. See prefetchEChartsRenderer.
-  usesEChartsRenderer?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

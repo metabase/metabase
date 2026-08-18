@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { getUserCanWriteToCollections } from "metabase/current-user";
 import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -11,7 +12,6 @@ import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualiz
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";

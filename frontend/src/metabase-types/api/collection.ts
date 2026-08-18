@@ -135,7 +135,6 @@ export interface CollectionItem {
   can_restore?: boolean;
   can_delete?: boolean;
   is_library_root?: boolean;
-  can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string | null;
   effective_location?: string;
@@ -177,7 +176,6 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;
   collection_type?: CollectionType;
-  include_can_run_adhoc_query?: boolean;
   show_dashboard_questions?: boolean;
   include_library?: boolean;
 } & PaginationRequest &

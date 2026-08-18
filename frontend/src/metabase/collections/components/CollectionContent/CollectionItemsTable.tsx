@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
@@ -22,6 +23,7 @@ import {
   FILTERS_VISIBILITY_THRESHOLD,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import { trackCollectionItemsFiltered } from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -37,13 +39,13 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
   CollectionItemModel,
+  Database,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
   SortingOptions,
@@ -162,6 +164,7 @@ export const CollectionItemsTable = ({
   );
   const trimmedSearchText =
     searchText.trim().length > 0 ? debouncedSearchText.trim() : "";
+  const previousTrimmedSearchText = usePrevious(trimmedSearchText);
 
   const [itemsSorting, setItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
@@ -176,6 +179,12 @@ export const CollectionItemsTable = ({
     setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
 
+  useEffect(() => {
+    if (previousTrimmedSearchText === "" && trimmedSearchText.length > 0) {
+      trackCollectionItemsFiltered({ collectionId, filter: "search" });
+    }
+  }, [collectionId, previousTrimmedSearchText, trimmedSearchText]);
+
   const handleSearchTextChange = useCallback(
     (value: string) => {
       setSearch({ collectionId, value });
@@ -186,10 +195,13 @@ export const CollectionItemsTable = ({
 
   const handleSelectedFiltersChange = useCallback(
     (nextFilters: CollectionItemModel[] | null) => {
+      if (selectedFilters == null && nextFilters != null) {
+        trackCollectionItemsFiltered({ collectionId, filter: "type" });
+      }
       setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
-    [collectionId, setPage],
+    [collectionId, selectedFilters, setPage],
   );
 
   const handleItemsSortingChange = useCallback(
