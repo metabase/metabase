@@ -73,4 +73,14 @@ describe("query canonicalization", () => {
     expect(normalized(first)).toBe(normalized(same));
     expect(normalized(first)).not.toBe(normalized(different));
   });
+
+  it("ignores empty Lib metadata that Card writes discard", () => {
+    expect(
+      getCanonicalQueryJson({
+        database: 1,
+        "lib/metadata": null,
+        stages: [],
+      }),
+    ).toBe(getCanonicalQueryJson({ database: 1, stages: [] }));
+  });
 });

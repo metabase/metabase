@@ -133,6 +133,24 @@
                                            :limit 5}]}}
                 response))))))
 
+(deftest resolved-query-metrics-are-card-api-serializable-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Card]
+      (create-app!)
+      (mt/with-temp [:model/Card {metric-id :id}
+                     {:name          "Venue count"
+                      :type          :metric
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (let [response (mt/user-http-request
+                        :crowberto :post 200 "apps/demo/query"
+                        {:stages [{:source      {:type "table" :id (mt/id :venues)}
+                                   :aggregation [["metric" {} metric-id]]}]})
+              metric (first (:metrics response))]
+          (is (= metric-id (:id metric)))
+          (is (not (contains? (:dataset_query metric) :lib/metadata))))))))
+
 (deftest resolved-query-includes-implicitly-joined-tables-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

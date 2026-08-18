@@ -4,6 +4,7 @@ import path from "node:path";
 import { isPositiveInteger, isRecord } from "./guards";
 import type {
   ActionLockEntry,
+  MetricLockEntry,
   ModelLockEntry,
   QueryLockEntry,
   ResourceLockfile,
@@ -43,6 +44,60 @@ function isModelLockEntry(value: unknown): value is ModelLockEntry {
     isHash(value.hash) &&
     Array.isArray(value.actions) &&
     value.actions.every(isActionLockEntry)
+  );
+}
+
+function isMetricLockEntry(value: unknown): value is MetricLockEntry {
+  return (
+    isRecord(value) &&
+    isPositiveInteger(value.sourceMetricId) &&
+    isPositiveInteger(value.copiedMetricId) &&
+    isHash(value.hash)
+  );
+}
+
+function parseMetrics(value: unknown): MetricLockEntry[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => !isMetricLockEntry(entry))
+  ) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid metric entry.`);
+  }
+  assertUnique(
+    value.map((entry) => entry.sourceMetricId),
+    "source metric ID",
+  );
+  assertUnique(
+    value.map((entry) => entry.copiedMetricId),
+    "copied metric ID",
+  );
+  return value;
+}
+
+function legacyMetrics(value: unknown): MetricLockEntry[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.flatMap((entry) =>
+    isRecord(entry) &&
+    entry.type === "metric" &&
+    isPositiveInteger(entry.sourceCardId) &&
+    isPositiveInteger(entry.copiedCardId) &&
+    isHash(entry.hash)
+      ? [
+          {
+            sourceMetricId: entry.sourceCardId,
+            copiedMetricId: entry.copiedCardId,
+            hash: entry.hash,
+          },
+        ]
+      : [],
   );
 }
 
@@ -112,7 +167,7 @@ export function readResourceLockfile(appRoot: string): ResourceLockfile {
   const lockfilePath = path.join(appRoot, RESOURCE_LOCKFILE);
 
   if (!fs.existsSync(lockfilePath)) {
-    return { queries: [], models: [] };
+    return { queries: [], models: [], metrics: [] };
   }
 
   let value: unknown;
@@ -139,6 +194,7 @@ export function readResourceLockfile(appRoot: string): ResourceLockfile {
       : { collectionId: value.collectionId }),
     queries: parseQueries(value.queries ?? []),
     models: parseModels(value.models),
+    metrics: parseMetrics(value.metrics ?? legacyMetrics(value.dependencies)),
   };
 }
 
