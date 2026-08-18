@@ -37,12 +37,10 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          REF_NAME: ${{ github.ref_name }}
           RUN_ALL: ${{ inputs.force-run }}
         with:
           script: | # js
-            const refName = process.env.REF_NAME;
-            const runAll = process.env.RUN_ALL;
+            const runAll = process.env.RUN_ALL === 'true';
 
             const versions = {
               mariadb: [
