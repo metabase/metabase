@@ -42,18 +42,15 @@
         {}))))
 
 (def ^:private connection-timeout-ms
-  "Cap on establishing a TCP connection to the runner. A hung connect means the runner is unreachable; without a
-  bound the calling (Jetty request) thread blocks indefinitely."
+  "Connection timeout for runner requests."
   (* 10 1000))
 
 (def ^:private socket-timeout-ms
-  "Read timeout for the short runner calls (logs, cancel). /execute allows this much read time *beyond* the runner's
-  own execution deadline, so a wedged runner can hold a Jetty thread for at most the run timeout plus this."
+  "Read timeout for the short runner requests (logs, cancel); /execute adds it as a margin on top of the run timeout."
   (* 60 1000))
 
 (defn- python-runner-request
-  "Helper function for making HTTP requests to the python runner service. Every request is bounded by a connection
-  and read timeout so a slow or unreachable runner can never pin the calling thread indefinitely."
+  "Helper function for making HTTP requests to the python runner service."
   [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
         base-options {:content-type       :json
@@ -239,8 +236,7 @@
                                                             {:body           (json/encode payload)
                                                              :socket-timeout (+ (* run-timeout-secs 1000)
                                                                                 socket-timeout-ms)})
-                                     ;; connect/read timed out -- surface it as a runner timeout so callers get the
-                                     ;; normal timed-out result instead of a 500, and the Jetty thread is freed.
+                                     ;; a connect/read timeout counts as a runner timeout
                                      (catch java.io.InterruptedIOException _
                                        {:status 408 :body {:timeout true}})))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
