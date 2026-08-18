@@ -560,7 +560,7 @@
     (with-search-items-in-root-collection "test"
       (is (= #{} (get-available-models :q "noresults"))))))
 
-(deftest ^{:parallel false} available-models-test
+(deftest ^:synchronized available-models-test
   ;; Porting these tests over earlier
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
@@ -1535,7 +1535,7 @@
                      :available_models
                      set))))))))
 
-(deftest ^{:parallel false} search-native-query-test
+(deftest ^:synchronized search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
       [:model/Card {mbql-card :id}             {:name search-term}
@@ -1866,7 +1866,7 @@
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
 
-(deftest ^{:parallel false} force-reindex-test
+(deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
@@ -1899,7 +1899,7 @@
   ([context params]
    (weights-url (assoc params :context (name context)))))
 
-(deftest ^{:parallel false} weights-test
+(deftest ^:synchronized weights-test
   (let [base-url         (weights-url)
         original-weights (search.config/weights)]
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
@@ -1913,7 +1913,7 @@
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
                (mt/user-http-request :crowberto :get 200 base-url)))))))
 
-(deftest ^{:parallel false} weights-test-2
+(deftest ^:synchronized weights-test-2
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "custom context"
       (let [context          :none-given
@@ -1931,7 +1931,7 @@
         (is (= (assoc original-weights :recency 5.0 :text 40.0)
                (mt/user-http-request :crowberto :get 200 context-url)))))))
 
-(deftest ^{:parallel false} weights-test-3
+(deftest ^:synchronized weights-test-3
   (let [base-url (weights-url)]
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "all weights (nested)"
@@ -1951,7 +1951,7 @@
           (mt/user-http-request :crowberto :put 400 (weights-url context {:text 30}))
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url))))))))
 
-(deftest ^{:parallel false} weights-test-4
+(deftest ^:synchronized weights-test-4
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "ranker parameters"
       (let [context    :just-for-fun
@@ -1963,7 +1963,7 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
-(deftest ^{:parallel false} weights-normalize-context-test
+(deftest ^:synchronized weights-normalize-context-test
   (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
     (testing "the /weights endpoints normalize context, so introspection and overrides match search"
       (testing "surfaces that share a normalized context report the same weights"
@@ -1973,7 +1973,7 @@
         (mt/user-http-request :crowberto :put 200 (weights-url :command-palette {:recency 9}))
         (is (= 9.0 (:recency (mt/user-http-request :crowberto :get 200 (weights-url :search-app {})))))))))
 
-(deftest ^{:parallel false} dashboard-questions
+(deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -2019,7 +2019,7 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
-(deftest ^{:parallel false} include-metadata
+(deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -2043,7 +2043,7 @@
                     first
                     :result_metadata))))))))
 
-(deftest ^{:parallel false} prometheus-response-metrics-test
+(deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls    (atom nil)
           observed (atom [])]
@@ -2071,7 +2071,7 @@
             (is (= 1 (count (filter (comp #{:metabase-search/response-results} first) @observed)))
                 "result count is not observed on error responses")))))))
 
-(deftest ^{:parallel false} multiple-limits-test
+(deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
     ;; This test is failing with "no index" for some reason, forcing the reindex
     (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
@@ -2083,7 +2083,7 @@
       (is (>= total-count result-count))
       (is (= 1 result-count)))))
 
-(deftest ^{:parallel false} delete-database-hides-cards-from-search-test
+(deftest ^:synchronized delete-database-hides-cards-from-search-test
   (testing "When deleting a database, cards referring to that database should be hidden from search"
     (let [card-name (str (random-uuid))]
       (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
@@ -2260,7 +2260,7 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 
-(deftest ^{:parallel false} measure-appdb-engine-test
+(deftest ^:synchronized measure-appdb-engine-test
   (when (search/supports-index?)
     (testing "Measures are indexed and returned by the appdb search engine"
       (let [measure-name (mt/random-name)]
@@ -2273,7 +2273,7 @@
                                          :search_engine "appdb"
                                          :models "measure")))))))))
 
-(deftest ^{:parallel false} search-results-do-not-expose-is-published-test
+(deftest ^:synchronized search-results-do-not-expose-is-published-test
   (testing "the internal is_published permission signal never carries a value in search API responses"
     (let [table-name (mt/random-name)]
       (mt/with-temp [:model/Table _ {:name table-name :is_published true}]

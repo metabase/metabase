@@ -550,7 +550,7 @@
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
 
-(deftest ^{:parallel false} clickhouse-parameterized-view-sync-resilience-test
+(deftest ^:synchronized clickhouse-parameterized-view-sync-resilience-test
   (testing "Sync should continue past parameterized views that cannot be introspected (#66395)"
     (mt/test-driver :clickhouse
       (mt/dataset metabase_db_scan_test

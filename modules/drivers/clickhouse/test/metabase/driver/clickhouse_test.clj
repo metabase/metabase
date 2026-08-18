@@ -221,7 +221,7 @@
     (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64")))
     (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
 
-(deftest ^{:parallel false} clickhouse-insert
+(deftest ^:synchronized clickhouse-insert
   (mt/test-driver :clickhouse
     (t2.with-temp/with-temp
       [:model/Database db
@@ -415,7 +415,7 @@
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
 
-(deftest ^{:parallel false} csv-upload-and-sync-test
+(deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
     (mt/test-driver :clickhouse
       (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true

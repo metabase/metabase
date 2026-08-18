@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^{:parallel false} can-connect-test
+(deftest ^:synchronized can-connect-test
   (mt/test-driver
     :mongo
     (testing "Mongo driver can connect to a sharded cluster"

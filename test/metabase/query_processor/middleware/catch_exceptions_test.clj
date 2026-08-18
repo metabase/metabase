@@ -107,7 +107,7 @@
     (is (= {:data {}, :row_count 0, :status :completed}
            (catch-exceptions (fn run []))))))
 
-(deftest ^{:parallel false} no-exception-test-2
+(deftest ^:synchronized no-exception-test-2
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
@@ -129,7 +129,7 @@
              :data       {:cols []}}
             (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
 
-(deftest ^{:parallel false} connection-pool-saturated-not-logged-test
+(deftest ^:synchronized connection-pool-saturated-not-logged-test
   (testing "connection-pool saturation is transient load shedding: fail the query (503 for clients) but don't log an error"
     (doseq [error-type [qp.error-type/connection-pool-checkout-timeout
                         qp.error-type/connection-pool-checkout-queue-full]]
@@ -147,7 +147,7 @@
       (is (=? [{:level :error, :message #"(?s)^Error processing query.*"}]
               (messages))))))
 
-(deftest ^{:parallel false} error-log-excludes-stack-trace-and-query-test
+(deftest ^:synchronized error-log-excludes-stack-trace-and-query-test
   (testing "the error log carries only the error message — no stack trace and nothing carrying the query/user data"
     (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
       (let [mp     (mt/metadata-provider)

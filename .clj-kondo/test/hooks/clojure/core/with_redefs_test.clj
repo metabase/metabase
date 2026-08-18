@@ -53,7 +53,7 @@
         {:node (hooks/parse-string (if (string? src) src (pr-str src)))}))
      @(:findings clj-kondo.impl.utils/*ctx*))))
 
-(deftest ^{:parallel false} flags-when-every-lhs-is-defn-test
+(deftest ^:synchronized flags-when-every-lhs-is-defn-test
   (testing "RHS shape doesn't matter — once every LHS resolves to a defn, the form is a
             migration candidate regardless of what's on the right. We deliberately stick
             to `IFn`-valued shapes here (fns, keywords, colls) — pairing a fn-var LHS
@@ -82,7 +82,7 @@
                                  plain-fn-2 (fn [] 2)]
                      (plain-fn)))))))
 
-(deftest ^{:parallel false} skips-multimethod-and-value-targets-test
+(deftest ^:synchronized skips-multimethod-and-value-targets-test
   (testing "defmulti — no arity in analysis, so don't nudge"
     (is (= [] (lint '(with-redefs [a-multimethod (fn [& _] nil)] :body))))
     (is (= [] (lint '(with-redefs [can-read? (constantly true)] :body))))
@@ -117,7 +117,7 @@
   (kondo/run! {:lint [(.getPath src-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})
   (:findings (kondo/run! {:lint [(.getPath test-file)] :cache-dir cache-dir :config-dir ".clj-kondo"})))
 
-(deftest ^{:parallel false} integration-arities-iff-defn-smoke-test
+(deftest ^:synchronized integration-arities-iff-defn-smoke-test
   (testing "real kondo run validates the load-bearing invariant: only `defn`-style vars
             get arities recorded — `defmulti` and plain `def` do not. If a future kondo
             release breaks this, the smoke test fails here rather than the hook silently

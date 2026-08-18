@@ -135,7 +135,7 @@
            (map first (#'semantic.index/vector-session-settings
                        {:vector-search-strategy :hnsw :vector-search-force-index? true}))))))
 
-(deftest ^{:parallel false} semantic-search-instrumentation-test
+(deftest ^:synchronized semantic-search-instrumentation-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
@@ -636,7 +636,7 @@
                  (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
 
-(deftest ^{:parallel false} semantic-search-analytics-test
+(deftest ^:synchronized semantic-search-analytics-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))

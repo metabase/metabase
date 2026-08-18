@@ -197,7 +197,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(deftest ^{:parallel false} edge-case-identifiers-test
+(deftest ^:synchronized edge-case-identifiers-test
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
@@ -2481,7 +2481,7 @@
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
 
-(deftest ^{:parallel false} reducible-query-streams-large-result-set-test
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
     (mt/test-driver :postgres
       ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).

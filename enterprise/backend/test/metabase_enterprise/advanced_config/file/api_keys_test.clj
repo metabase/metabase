@@ -1,4 +1,4 @@
-(ns ^{:parallel false} metabase-enterprise.advanced-config.file.api-keys-test
+(ns ^:synchronized metabase-enterprise.advanced-config.file.api-keys-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as config.file]

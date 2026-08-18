@@ -633,7 +633,7 @@
                                             :dimension    [:field 2 nil]}}}))))
 
 #?(:clj
-   (deftest ^{:parallel false} query-from-legacy-error-containment-test
+   (deftest ^:synchronized query-from-legacy-error-containment-test
      (let [legacy {:database (meta/id), :type :query, :query {:source-table (meta/id :venues)}}]
        (testing "an AssertionError thrown while converting a legacy query is contained (wrapped)"
          ;; ->mbql5 is a multimethod, which with-dynamic-fn-redefs refuses; plain with-redefs is required here.

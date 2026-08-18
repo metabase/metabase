@@ -241,7 +241,7 @@
     (testing "`test-data` timezone is `Etc/UTC`"
       (is (= "Etc/UTC" (:timezone (mt/db)))))))
 
-(deftest ^{:parallel false} date-time->results-local-date-time-test
+(deftest ^:synchronized date-time->results-local-date-time-test
   (mt/test-driver
     :databricks
     (mt/with-metadata-provider (mt/id)
@@ -257,7 +257,7 @@
             (is (= expected
                    (#'databricks/date-time->results-local-date-time (t/zoned-date-time 2024 8 29 17 20 30))))))))))
 
-(deftest ^{:parallel false} timezone-in-set-and-read-functions-test
+(deftest ^:synchronized timezone-in-set-and-read-functions-test
   (mt/test-driver
     :databricks
     ;;
@@ -311,7 +311,7 @@
               (is (= "2017-04-18T09:53:37.046-07:00"
                      (last (first rows)))))))))))
 
-(deftest ^{:parallel false} additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :databricks
     (testing "Connections with UserAgentEntry"

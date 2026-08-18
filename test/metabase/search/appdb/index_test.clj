@@ -505,7 +505,7 @@
       (model-index/add-values! model-index)
       (is (= "indexed-entity" (:model (u/rlast (search.ingestion/searchable-documents))))))))
 
-(deftest ^{:parallel false} table-cleanup-test
+(deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
     ;; this test destroys the actual current index, regrettably
     (let [related-table   :search_index_related_table_that_is_important

@@ -1,4 +1,4 @@
-(ns ^{:parallel false} metabase.indexes-rest.api-test
+(ns ^:synchronized metabase.indexes-rest.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver]

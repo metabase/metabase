@@ -1,4 +1,4 @@
-(ns ^{:parallel false} metabase-enterprise.remote-sync.card-api-test
+(ns ^:synchronized metabase-enterprise.remote-sync.card-api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.card-api-test]}}}}}}
   (:require
    [clojure.test :refer :all]

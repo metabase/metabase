@@ -34,7 +34,7 @@
            overrides))
    expected-model expected-id))
 
-(deftest ^{:parallel false} not-searchable-test
+(deftest ^:synchronized not-searchable-test
   (testing "A card inside a document is excluded by the spec's :where clause"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Doc"}
                    :model/Card {card-id :id} {:name "In A Document" :document_id doc-id}]
@@ -50,7 +50,7 @@
       (is (=? {:type :not-searchable :details {:reason :does-not-exist :search-model "card"}}
               (diagnose {:search-string "x"} "card" Integer/MAX_VALUE))))))
 
-(deftest ^{:parallel false} missing-from-index-test
+(deftest ^:synchronized missing-from-index-test
   (when (search/supports-index?)
     (testing "A card the spec would index but which is absent from the active index"
       (search.tu/with-temp-index-table
@@ -61,7 +61,7 @@
             (is (=? {:type :missing-from-index :details {:active-table some?}}
                     (diagnose {:search-string "quarterly"} "card" card-id)))))))))
 
-(deftest ^{:parallel false} filtered-test
+(deftest ^:synchronized filtered-test
   (when (search/supports-index?)
     (testing "Excluded by a structural filter (created-by)"
       (search.tu/with-temp-index-table
@@ -78,7 +78,7 @@
             (is (=? {:type :filtered :details {:excluded-by :models}}
                     (diagnose {:search-string "quarterly" :models #{"dashboard"}} "card" card-id)))))))))
 
-(deftest ^{:parallel false} not-permitted-test
+(deftest ^:synchronized not-permitted-test
   (when (search/supports-index?)
     (testing "A row the user cannot read is :not-permitted, not :filtered"
       (search.tu/with-temp-index-table
@@ -122,7 +122,7 @@
                                    :created-by    #{(mt/user->id :rasta)}}
                                   "card" card-id)))))))))))
 
-(deftest ^{:parallel false} not-matching-test
+(deftest ^:synchronized not-matching-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {card-id :id} {:name "Quarterly Revenue"}]
@@ -131,7 +131,7 @@
           (is (=? {:type :not-matching :details {:search-string "zzzznomatch"}}
                   (diagnose {:search-string "zzzznomatch"} "card" card-id))))))))
 
-(deftest ^{:parallel false} matched-test
+(deftest ^:synchronized matched-test
   (when (search/supports-index?)
     (testing "A card matching the query is reported as actually returned"
       (search.tu/with-temp-index-table
@@ -141,7 +141,7 @@
             (is (=? {:type :matched :details {:would-be-candidate? true}}
                     (diagnose {:search-string "quarterly"} "card" card-id)))))))))
 
-(deftest ^{:parallel false} endpoint-test
+(deftest ^:synchronized endpoint-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {card-id :id} {:name "Quarterly Revenue"}]
@@ -161,7 +161,7 @@
                                 :q "quarterly" :expected_result_type "card" :expected_result_id card-id
                                 :for_user_id Integer/MAX_VALUE))))))
 
-(deftest ^{:parallel false} for-user-id-test
+(deftest ^:synchronized for-user-id-test
   (when (search/supports-index?)
     (testing "An admin can diagnose from another user's perspective via for_user_id"
       (search.tu/with-temp-index-table

@@ -94,7 +94,7 @@
                                     #"Command.*failed.*11601"
                                     (qp/process-query query))))))))))
 
-(deftest ^{:parallel false} question-base-on-native-model-cache-test
+(deftest ^:synchronized question-base-on-native-model-cache-test
   (testing "Question based on native model is cacheable (#43901)"
     (mt/test-drivers
       #{:mongo}

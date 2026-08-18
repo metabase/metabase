@@ -335,7 +335,7 @@
 
 ;;; ---------------------------------- nested-JSON fields dispatch ----------------------------------
 
-(deftest ^{:parallel false} sync-fields-for-table!-routes-parent-id-fields-to-per-field-test
+(deftest ^:synchronized sync-fields-for-table!-routes-parent-id-fields-to-per-field-test
   (testing "Fields with :parent_id (nested-JSON unfolded) go through the per-field path even when
             the table is otherwise batch-able. Batching builds a CAST(name AS …) that doesn't
             qualify the column with its parent, so the SQL would target the wrong column AND the
@@ -376,7 +376,7 @@
 
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
 
-(deftest ^:mb/driver-tests ^{:parallel false} sync-fields-grouped-by-table!-test
+(deftest ^:mb/driver-tests ^:synchronized sync-fields-grouped-by-table!-test
   (testing "End-to-end: fetches via UNION, persists via persist-field-values!, returns counts"
     (mt/dataset test-data
       (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :state)
@@ -400,7 +400,7 @@
     (is (nil? (sync.field-values/sync-fields-grouped-by-table! [])))
     (is (nil? (sync.field-values/sync-fields-grouped-by-table! nil)))))
 
-(deftest ^:mb/driver-tests ^{:parallel false} union-batching-test
+(deftest ^:mb/driver-tests ^:synchronized union-batching-test
   (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
     (mt/dataset test-data
       (binding [distinct-batch/*batch-size* 2]

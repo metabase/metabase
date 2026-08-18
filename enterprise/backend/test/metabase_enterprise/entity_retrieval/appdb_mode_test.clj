@@ -57,7 +57,7 @@
   []
   (Boolean/parseBoolean (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
 
-(deftest ^{:parallel false} appdb-library-index-round-trip-test
+(deftest ^:synchronized appdb-library-index-round-trip-test
   (cond
     (not (opted-in?))
     (testing "destructive round trip requires the MB_APPDB_PGVECTOR_MODE_TEST opt-in — skipping"

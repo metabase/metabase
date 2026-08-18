@@ -92,7 +92,7 @@
             (binding [lib.metadata.calculation/*display-name-style* :long]
               (lib.metadata.calculation/returned-columns mbql5-query))))))
 
-(deftest ^{:parallel false} with-temp-source-question-metadata-test
+(deftest ^:synchronized with-temp-source-question-metadata-test
   (mt/with-temp [:model/Card card {:dataset_query
                                    (mt/mbql-query venues
                                      {:joins
@@ -157,7 +157,7 @@
               (map #(lib/display-info agg-query %)
                    (lib.metadata.calculation/returned-columns agg-query)))))))
 
-(deftest ^{:parallel false} external-remap-metadata-test
+(deftest ^:synchronized external-remap-metadata-test
   (mt/with-column-remappings [venues.id categories.name]
     (is (=? {:lib/type           :metadata/column
              :name               "ID"
@@ -169,7 +169,7 @@
              (mt/metadata-provider)
              (mt/id :venues :id))))))
 
-(deftest ^{:parallel false} internal-remap-metadata-test
+(deftest ^:synchronized internal-remap-metadata-test
   (mt/with-column-remappings [venues.id {1 "African", 2 "American", 3 "Artisan", 4 "BBQ"}]
     (is (=? {:lib/type           :metadata/column
              :name               "ID"
@@ -182,7 +182,7 @@
              (mt/metadata-provider)
              (mt/id :venues :id))))))
 
-(deftest ^{:parallel false} persisted-info-metadata-test
+(deftest ^:synchronized persisted-info-metadata-test
   (mt/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :venues)}}}
@@ -202,7 +202,7 @@
   (is (= (mt/metadata-provider)
          (mt/metadata-provider))))
 
-(deftest ^{:parallel false} all-methods-call-go-through-invocation-tracker-first-test
+(deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
   (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
     (let [mp (mt/metadata-provider)]
       (testing "sanity check"
@@ -227,7 +227,7 @@
           result (lib.metadata/tables mp)]
       (is (every? #(some % result) metadata-fns)))))
 
-(deftest ^{:parallel false} tables-not-present-test
+(deftest ^:synchronized tables-not-present-test
   (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
     (doseq [visibility-type table/visibility-types]
       (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}

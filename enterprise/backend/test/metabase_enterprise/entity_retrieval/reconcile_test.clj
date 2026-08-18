@@ -95,7 +95,7 @@
                                           (index-table/vectors-table) ", "
                                           (index-table/meta-table))])))))))
 
-(deftest ^:sequential with-index-read-lock-contention-integration-test
+(deftest ^:synchronized with-index-read-lock-contention-integration-test
   (when semantic.db.datasource/db-url
     (let [ds       (semantic.db.datasource/ensure-initialized-data-source!)
           lock-id  (var-get #'reconcile/reconcile-lock-id)
@@ -136,7 +136,7 @@
                                      [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" (index-table/meta-table))]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
-(deftest ^{:parallel false} reconcile-lifecycle-test
+(deftest ^:synchronized reconcile-lifecycle-test
   ;; :library lets us publish a Table into a library-data collection; the reconcile enumerates the
   ;; library tree via collections/library-collection + descendant-ids, so we build a real library root.
   (mt/with-premium-features #{:library :library-retrieval}
@@ -192,7 +192,7 @@
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
 
-(deftest ^{:parallel false} reconcile!-runs-to-completion-test
+(deftest ^:synchronized reconcile!-runs-to-completion-test
   (testing "reconcile! blocks until the run completes and a second run is idempotent"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -212,7 +212,7 @@
               (testing "a second run writes nothing"
                 (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model))))))))))))
 
-(deftest ^{:parallel false} rebuild-on-model-change-test
+(deftest ^:synchronized rebuild-on-model-change-test
   (mt/with-premium-features #{:library :library-retrieval}
     (with-isolated-index [ds]
       (let [model semantic.tu/mock-embedding-model]
@@ -345,7 +345,7 @@
                              :database_id (mt/id) :base_table_id orders :portable_entity_id string?}
                             (get by-key ["segment" segment-id])))))))))))))
 
-(deftest ^{:parallel false} failed-insert-spares-only-that-entitys-orphans-test
+(deftest ^:synchronized failed-insert-spares-only-that-entitys-orphans-test
   (testing "a failed insert spares that entity's orphans; an unrelated entity's orphans still GC"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -370,7 +370,7 @@
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"
               (is (empty? (docs-for ds "table" leaving))))))))))
 
-(deftest ^{:parallel false} reconcile-entity!-targets-one-slice-test
+(deftest ^:synchronized reconcile-entity!-targets-one-slice-test
   (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -393,7 +393,7 @@
                            (frequencies (map :doc_type (docs-for ds "table" a-id)))))
                     (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched")))))))))))
 
-(deftest ^{:parallel false} reconcile-entity!-leaving-library-deletes-all-test
+(deftest ^:synchronized reconcile-entity!-leaving-library-deletes-all-test
   (testing "reconcile-entity! on an entity that has left the library GCs all of its docs"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -412,7 +412,7 @@
                   (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
                   (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
 
-(deftest ^{:parallel false} reconcile-entity!-ai-context-removal-keeps-name-test
+(deftest ^:synchronized reconcile-entity!-ai-context-removal-keeps-name-test
   (testing "removing an entity's ai_context and reconciling it GCs synonym/example docs but keeps name/description"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -432,7 +432,7 @@
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))
 
-(deftest ^{:parallel false} reconcile!-keeps-ai-context-across-a-card-type-flip-test
+(deftest ^:synchronized reconcile!-keeps-ai-context-across-a-card-type-flip-test
   (testing "a full reconcile matches ai_context by entity class, so relabelling a card keeps its synonyms"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -454,7 +454,7 @@
                   (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "model" card-id))))
                       "the ai_context (stored under metric) is matched by class and kept, re-keyed under model"))))))))))
 
-(deftest ^{:parallel false} library-entity-matches-library-entities-test
+(deftest ^:synchronized library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
     (mt/with-premium-features #{:library :library-retrieval}
       (collections.tu/with-library [{data :data metrics :metrics}]
@@ -485,7 +485,7 @@
       (collections.tu/with-library [{library :library}]
         (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))
 
-(deftest ^{:parallel false} reconcile-entity!-on-first-build-repopulates-whole-library-test
+(deftest ^:synchronized reconcile-entity!-on-first-build-repopulates-whole-library-test
   (testing "a targeted reconcile that creates the index (first caller, empty table) repopulates the whole library"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -503,7 +503,7 @@
               (is (seq (docs-for ds "table" b-id))
                   "B indexed too: the empty-index build escalated to a full repopulate"))))))))
 
-(deftest ^{:parallel false} reconcile-entity!-on-rebuild-repopulates-whole-library-test
+(deftest ^:synchronized reconcile-entity!-on-rebuild-repopulates-whole-library-test
   (testing "a targeted reconcile that triggers a model/format rebuild repopulates the whole library, not just the one entity"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]

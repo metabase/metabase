@@ -687,7 +687,7 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
 
-(deftest ^{:parallel false} remote-sync-event-version-after-completion-test
+(deftest ^:synchronized remote-sync-event-version-after-completion-test
   (testing "remote-sync audit log entries include version when event is published after task completion (#73329)"
     (mt/when-ee-evailable
      (mt/with-current-user (mt/user->id :rasta)

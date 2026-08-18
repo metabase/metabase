@@ -100,7 +100,7 @@
 ;;; --------------------------------------- Live execute path ----------------------------------------
 
 ;; All tables here land in the connection's default database (created unqualified), so the catalog lookups filter on
-;; database = "default". Tests use `^{:parallel false}`: they create and drop tables in that shared database.
+;; database = "default". Tests use `^:synchronized`: they create and drop tables in that shared database.
 
 (defn- sorting-key
   "The MergeTree sorting key of `db`.`table` as ClickHouse reports it, e.g. \"a, b\" (or \"\" for an unsorted table)."
@@ -130,7 +130,7 @@
     :indexes  []
     :expected ""}])
 
-(deftest ^{:parallel false} order-by-inlined-live-test
+(deftest ^:synchronized order-by-inlined-live-test
   (testing "an inlined ORDER BY actually sets the sorting key at both creation seams"
     (mt/test-driver :clickhouse
       (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
@@ -160,7 +160,7 @@
                     (is (= expected (sorting-key conn-spec "default" crt-table)))
                     (finally (drop! crt-table))))))))))))
 
-(deftest ^{:parallel false} skip-index-live-test
+(deftest ^:synchronized skip-index-live-test
   (testing "the standalone-create path runs ADD INDEX + MATERIALIZE INDEX and the data-skipping index actually exists"
     (mt/test-driver :clickhouse
       (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})

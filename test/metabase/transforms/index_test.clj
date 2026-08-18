@@ -67,7 +67,7 @@
           (transforms.execute/execute! transform {:run-method :manual})
           (is (= expected (physical-indexes (mt/db) schema table-name))))))))
 
-(deftest ^{:parallel false} declared-indexes-applied-and-replayed-test
+(deftest ^:synchronized declared-indexes-applied-and-replayed-test
   (mt/test-drivers (index-util/index-test-drivers)
     (mt/dataset transforms-dataset/transforms-test
       (let [test-case (index-util/driver-cases driver/*driver*)]
@@ -75,7 +75,7 @@
         (when test-case
           (test-declared-indexes! test-case query-source))))))
 
-(deftest ^{:parallel false} ^:mb/transforms-python-test declared-indexes-applied-on-python-transform-test
+(deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-applied-on-python-transform-test
   (mt/test-drivers (index-util/python-index-test-drivers)
     (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/dataset transforms-dataset/transforms-test
@@ -84,7 +84,7 @@
           (when test-case
             (test-declared-indexes! test-case python-source)))))))
 
-(deftest ^{:parallel false} managed-indexes-verified-against-warehouse-after-run-test
+(deftest ^:synchronized managed-indexes-verified-against-warehouse-after-run-test
   (testing "real managed index rows are created by the run and then verified :succeeded against the warehouse"
     ;; Reuses the driver create-index cases, but instead of stubbing select-applicable-for-transform it persists real
     ;; :model/TableIndex rows. The run reads them (real hydrate), applies them, and verify-managed-indexes! confirms
@@ -109,7 +109,7 @@
                   (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "index?transform-id=" tid))]
                     (is (= (count indexes) (count (filter :metabase_managed data))))))))))))))
 
-(deftest ^{:parallel false} declared-index-failure-fails-the-run-test
+(deftest ^:synchronized declared-index-failure-fails-the-run-test
   (testing "a bad index declaration fails the whole run instead of being silently skipped"
     ;; The index points at a missing column, so creation fails (inline: the CTAS; standalone: the CREATE INDEX).
     ;; Either way it runs before the run is marked succeeded, so the throw surfaces and the run is recorded :failed.
@@ -137,7 +137,7 @@
                                              :transform_id (:id transform)
                                              {:order-by [[:id :desc]]})))))))))))))
 
-(deftest ^{:parallel false} declared-index-creation-is-idempotent-test
+(deftest ^:synchronized declared-index-creation-is-idempotent-test
   (testing "re-applying a target's indexes is a no-op (CREATE INDEX IF NOT EXISTS), not an error"
     ;; The standalone path normally meets a fresh table; this pins that re-running it against the live table (index
     ;; already there) doesn't throw. No-op for inline-only drivers (covered by the replay test above).
@@ -188,7 +188,7 @@
   [driver db stmts]
   (driver/execute-raw-queries! driver (driver/connection-spec driver db) (mapv vector stmts)))
 
-(deftest ^{:parallel false} fetch-table-indexes-correctness-test
+(deftest ^:synchronized fetch-table-indexes-correctness-test
   (testing "fetch-table-indexes reports each driver's popular index kinds in the normalized cross-driver shape"
     ;; The e2e tests above prove indexes Metabase *applies* land on the table; this proves the driver method the
     ;; GET /indexes API consumes reads them back correctly, including catalog shapes the apply path can't produce
@@ -234,7 +234,7 @@
 ;; metabase.indexes.reconcile-test/classify-index-outcomes-test (no warehouse, no stubbing). Here we cover the
 ;; write-back on real rows, and the whole create-then-verify loop against a live warehouse
 ;; (managed-indexes-verified-against-warehouse-after-run-test above).
-(deftest ^{:parallel false} apply-index-outcomes!-writes-each-bucket-test
+(deftest ^:synchronized apply-index-outcomes!-writes-each-bucket-test
   (testing "each classified outcome is written back: status, error message, last_executed_at, and row removal"
     (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
                                                :source             {:type "query"}
@@ -278,7 +278,7 @@
                                              :structured {:kind :btree :name "dropped_idx"
                                                           :columns [{:name "e"}]}})))))))
 
-(deftest ^{:parallel false} ddl-failure-marks-row-failed-test
+(deftest ^:synchronized ddl-failure-marks-row-failed-test
   (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
                                              :source {:type "query"}
                                              :source_database_id (mt/id)

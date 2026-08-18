@@ -26,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^{:parallel false} sync-test
+(deftest ^:synchronized sync-test
   (mt/test-driver
     :druid-jdbc
     (tqpt/with-flattened-dbdef
@@ -143,7 +143,7 @@
                      (catch Throwable t
                        [::failure t]))))))))
 
-(deftest ^{:parallel false} new-sync-test
+(deftest ^:synchronized new-sync-test
   (mt/test-driver
     :druid-jdbc
     (tqpt/with-flattened-dbdef
@@ -560,7 +560,7 @@
                     (lib/aggregate $q (lib/count)))]
         (is (seq (mt/rows (qp/process-query query))))))))
 
-(deftest ^{:parallel false} table-rows-sample-test
+(deftest ^:synchronized table-rows-sample-test
   (mt/test-driver
     :druid-jdbc
     (tqpt/with-flattened-dbdef

@@ -1082,7 +1082,7 @@
          "webapp@localhost"
          "SET ROLE 'webapp'@'localhost';")))))
 
-(deftest ^{:parallel false} cancel-slow-mysql-query-via-query-timeout-test
+(deftest ^:synchronized cancel-slow-mysql-query-via-query-timeout-test
   (mt/test-driver :mysql
     (testing "Slow MySQL query is cancelled server-side when *query-timeout-ms* elapses (GHY-3266)"
       ;; `SELECT SLEEP(60)` would normally take 60s. With `*query-timeout-ms*` of 2s the canceled-chan timer fires

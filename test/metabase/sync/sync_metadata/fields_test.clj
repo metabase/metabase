@@ -399,7 +399,7 @@
      {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
     [["Ghana" 1]]]])
 
-(deftest ^{:parallel false} sync-fks-and-fields-test
+(deftest ^:synchronized sync-fks-and-fields-test
   (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
                 "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)

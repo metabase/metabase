@@ -12,7 +12,7 @@
 ;;; filter-schema-by-features tests
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^{:parallel false} filter-schema-by-features-available-feature-test
+(deftest ^:synchronized filter-schema-by-features-available-feature-test
   (testing "entry with available feature is kept, :feature prop stripped"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input    [:map [:field {:feature :some-feature} :string]]
@@ -22,7 +22,7 @@
         (is (= :field (first (first children))))
         (is (not (contains? (second (first children)) :feature)))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-unavailable-feature-test
+(deftest ^:synchronized filter-schema-by-features-unavailable-feature-test
   (testing "entry with unavailable feature is removed"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map [:field {:feature :some-feature} :string]]
@@ -30,7 +30,7 @@
             children (mc/children result)]
         (is (= 0 (count children)))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-no-feature-annotation-test
+(deftest ^:synchronized filter-schema-by-features-no-feature-annotation-test
   (testing "entry without :feature annotation passes through unchanged"
     (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] (throw (ex-info "should not be called" {})))]
       (let [input    [:map [:field :string]]
@@ -40,7 +40,7 @@
         (is (= :field (first (first children))))
         (is (= :string (mc/type (last (first children)))))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-mixed-entries-test
+(deftest ^:synchronized filter-schema-by-features-mixed-entries-test
   (testing "map with mixed entries: only unavailable feature-gated entries removed"
     (mt/with-dynamic-fn-redefs [features/feature-available? #(= :available-feature %)]
       (let [input    [:map
@@ -55,7 +55,7 @@
         (is (contains? keys :gated-available))
         (is (not (contains? keys :gated-unavailable)))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-nested-maps-test
+(deftest ^:synchronized filter-schema-by-features-nested-maps-test
   (testing "nested map schemas are also filtered"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map
@@ -72,7 +72,7 @@
         (is (= 1 (count inner-children)))
         (is (= :inner-ungated (first (first inner-children))))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-non-map-schema-test
+(deftest ^:synchronized filter-schema-by-features-non-map-schema-test
   (testing "non-map schemas pass through unchanged"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [sequential-schema [:sequential :string]
@@ -82,7 +82,7 @@
         (is (= :string (mc/type (schema/filter-schema-by-features string-schema))))
         (is (= :enum (mc/type (schema/filter-schema-by-features enum-schema))))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-optional-and-feature-test
+(deftest ^:synchronized filter-schema-by-features-optional-and-feature-test
   (testing "entry with both :optional and :feature handles both properties"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input    [:map [:field {:optional true :feature :some-feature} :string]]
@@ -94,7 +94,7 @@
         (is (true? (:optional props)))
         (is (not (contains? props :feature)))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-all-entries-filtered-test
+(deftest ^:synchronized filter-schema-by-features-all-entries-filtered-test
   (testing "all feature-gated entries unavailable results in empty map"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map {:closed true}
@@ -106,7 +106,7 @@
         (is (= 0 (count children)))
         (is (= {:closed true} props))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-preserves-map-properties-test
+(deftest ^:synchronized filter-schema-by-features-preserves-map-properties-test
   (testing "map-level properties like :closed are preserved"
     (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input  [:map {:closed true} [:field :string]]
@@ -114,7 +114,7 @@
             props  (mc/properties result)]
         (is (= {:closed true} props))))))
 
-(deftest ^{:parallel false} filter-schema-by-features-complex-nested-structure-test
+(deftest ^:synchronized filter-schema-by-features-complex-nested-structure-test
   (testing "complex nesting with sequential containing map"
     (mt/with-dynamic-fn-redefs [features/feature-available? #(= :enabled %)]
       (let [input    [:map

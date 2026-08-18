@@ -101,7 +101,7 @@
     (cloud-migration.settings/read-only-mode! true)
     (mt/client :post 200 "session" (mt/user->credentials :rasta))))
 
-(deftest ^{:parallel false} store-url-test
+(deftest ^:synchronized store-url-test
   (testing "When not dev"
     (testing "get production store"
       (with-redefs [config/is-dev? false]

@@ -608,14 +608,14 @@
   (is (= [["Polo Lounge"]]
          (mt/rows (mt/run-mbql-query venues {:fields [$name] :filter [:= $id 60]})))))
 
-(deftest ^{:parallel false} test-ssh-tunnel-connection
+(deftest ^:synchronized test-ssh-tunnel-connection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is established"
       (with-tunnel-details!
         (is (true? (driver.u/can-connect-with-details? (tx/driver) (:details (mt/db)))))
         (check-row)))))
 
-(deftest ^{:parallel false} test-ssh-server-reconnection
+(deftest ^:synchronized test-ssh-server-reconnection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (with-tunnel-details!
@@ -627,7 +627,7 @@
         ;; check the query again; the tunnel should have been reestablished
         (check-row)))))
 
-(deftest ^{:parallel false} test-ssh-tunnel-reconnection
+(deftest ^:synchronized test-ssh-tunnel-reconnection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (with-tunnel-details!

@@ -22,7 +22,7 @@
 (deftest ^:parallel explicit-nonparallel-namespace-metadata-test
   (let [config {:linters {:metabase/validate-deftest {:level :warning}}}]
     (testing "Hawk's supported namespace marker passes"
-      (is (empty? (lint-ns '(ns ^{:parallel false} example.test) config))))
+      (is (empty? (lint-ns '(ns ^:synchronized example.test) config))))
     (testing "the legacy marker explains that Hawk ignores it"
       (is (=? [{:type    :metabase/validate-deftest
                 :message #(re-find #"`\^:synchronous` is ignored by Hawk" %)}]

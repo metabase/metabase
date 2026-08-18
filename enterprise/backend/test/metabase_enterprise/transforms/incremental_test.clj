@@ -719,7 +719,7 @@
   []
   (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
-(deftest ^{:parallel false} ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
+(deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
   (testing "incremental: the first (full) run creates the target's declared indexes; an append run preserves them"
     ;; The first run has no watermark, so it's a full rebuild that creates the indexes. The append run keeps the
     ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
@@ -753,7 +753,7 @@
                                                               {:run-method :manual})
                             (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))))))
 
-(deftest ^{:parallel false} index-added-mid-lifecycle-forces-rebuild-test
+(deftest ^:synchronized index-added-mid-lifecycle-forces-rebuild-test
   (testing "an index request created after the watermark is set forces the next run to rebuild and apply it"
     ;; Nothing resets the watermark here: the pending TableIndex row alone must flip `full-incremental-run?`, so a
     ;; broken pending-changes gate would leave this run an append and the index would never reach the warehouse.

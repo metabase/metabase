@@ -132,7 +132,7 @@
             query    (#'table-rows-sample/table-rows-sample-query mp table fields {:truncation-size 4})]
         (is (seq (lib/expressions query)))))))
 
-(deftest ^{:parallel false} coerced-field-substring-integration-test
+(deftest ^:synchronized coerced-field-substring-integration-test
   (testing "For coerced fields, effective type is used for fingerprinting (string -> number exmaple)"
     (mt/dataset
       coerced-string-nums-db

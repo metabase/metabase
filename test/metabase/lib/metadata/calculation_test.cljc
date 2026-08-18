@@ -1243,7 +1243,7 @@
      (throw (:throwable x))))
 
 #?(:clj
-   (deftest ^{:parallel false} suggested-name-vm-error-test
+   (deftest ^:synchronized suggested-name-vm-error-test
      (testing "a VM Error thrown while describing the query propagates out of suggested-name"
        (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (Error. "boom")))]
          (is (thrown? Error

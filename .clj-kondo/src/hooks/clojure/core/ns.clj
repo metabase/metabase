@@ -76,7 +76,7 @@
     (when (:synchronous (meta (hooks/sexpr ns-symb-node)))
       (hooks/reg-finding!
        (assoc (meta ns-symb-node)
-              :message (str "Use `^{:parallel false}` to mark this namespace explicitly non-parallel; "
+              :message (str "Use `^:synchronized` to mark this namespace explicitly non-parallel; "
                             "`^:synchronous` is ignored by Hawk. [:metabase/validate-deftest]")
               :type :metabase/validate-deftest)))))
 

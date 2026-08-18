@@ -153,7 +153,7 @@
   (search.spec/model-hooks)
   (is (identical? (search.spec/model-hooks) (search.spec/model-hooks))))
 
-(deftest ^{:parallel false} model-hooks-cache-invalidates-on-spec-redefinition-test
+(deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
   (testing "replacing a spec method invalidates the cached model-hooks"
     ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
     ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.

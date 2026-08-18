@@ -32,7 +32,7 @@
       (finally
         (analytics.interface/set-reporter! original-reporter)))))
 
-(deftest ^{:parallel false} no-op-when-no-reporter-test
+(deftest ^:synchronized no-op-when-no-reporter-test
   (let [original-reporter (analytics.interface/get-reporter)]
     (try
       (analytics.interface/set-reporter! nil)
@@ -49,7 +49,7 @@
       (finally
         (analytics.interface/set-reporter! original-reporter)))))
 
-(deftest ^{:parallel false} delegates-to-reporter-test
+(deftest ^:synchronized delegates-to-reporter-test
   (do-with-test-reporter!
    (fn [calls]
      (testing "inc! delegates to reporter"
@@ -77,7 +77,7 @@
        (is (= [{:op :clear! :metric :test/counter}]
               @calls))))))
 
-(deftest ^{:parallel false} inc!-arity-test
+(deftest ^:synchronized inc!-arity-test
   (do-with-test-reporter!
    (fn [calls]
      (testing "1-arity: metric only, defaults to nil labels and amount 1"
@@ -95,7 +95,7 @@
        (is (= [{:metric :test/counter :labels {:x "y"} :amount 1}]
               (mapv #(dissoc % :op) @calls)))))))
 
-(deftest ^{:parallel false} dec-gauge!-arity-test
+(deftest ^:synchronized dec-gauge!-arity-test
   (do-with-test-reporter!
    (fn [calls]
      (testing "1-arity: metric only, defaults to nil labels and amount 1"
@@ -113,7 +113,7 @@
        (is (= [{:metric :test/gauge :labels {:x "y"} :amount 1}]
               (mapv #(dissoc % :op) @calls)))))))
 
-(deftest ^{:parallel false} set-gauge!-arity-test
+(deftest ^:synchronized set-gauge!-arity-test
   (do-with-test-reporter!
    (fn [calls]
      (testing "2-arity: metric + amount, nil labels"

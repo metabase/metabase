@@ -612,7 +612,7 @@
               [[:= {} [:field {} 1] 7] "Saturday"]]]
             (#'lib.filter.desugar/desugar-expression [:day-name (opts) [:field (opts) 1]])))))
 #?(:clj
-   (deftest ^{:parallel false} desugar-month-quarter-day-name-i18n-test
+   (deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
      (metabase.test.util.i18n/with-user-locale "es"
        ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
        ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
@@ -634,7 +634,7 @@
                  (#'lib.filter.desugar/desugar-expression [:month-name (opts) [:field (opts) 1]])))))))
 
 #?(:clj
-   (deftest ^{:parallel false} desugar-month-quarter-day-name-i18n-test-2
+   (deftest ^:synchronized desugar-month-quarter-day-name-i18n-test-2
      (metabase.test.util.i18n/with-user-locale "es"
        (testing "`quarter-name` should desugar to a `:case` clause with values for each quarter"
          (is (=? [:case {:default ""}
@@ -645,7 +645,7 @@
                  (#'lib.filter.desugar/desugar-expression [:quarter-name (opts) [:field (opts) 1]])))))))
 
 #?(:clj
-   (deftest ^{:parallel false} desugar-month-quarter-day-name-i18n-test-3
+   (deftest ^:synchronized desugar-month-quarter-day-name-i18n-test-3
      (metabase.test.util.i18n/with-user-locale "es"
        (testing "`day-name` should desugar to a `:case` clause with values for each weekday"
          (is (=? [:case {:default ""}

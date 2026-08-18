@@ -54,7 +54,7 @@
   (testing "non-admins have no access"
     (mt/user-http-request :lucky :post 403 "logger/adjustment" {:duration 1, :duration_unit :days, :log_levels {"l" "debug"}})))
 
-(deftest ^{:parallel false} adjust-test
+(deftest ^:synchronized adjust-test
   (let [trace-ns (str (random-uuid))
         fatal-ns (str (random-uuid))
         other-ns (str (random-uuid))
@@ -107,7 +107,7 @@
         (logger/remove-ns-logger! fatal-ns)
         (logger/remove-ns-logger! other-ns)))))
 
-(deftest ^{:parallel false} delete-test
+(deftest ^:synchronized delete-test
   (let [trace-ns (str (random-uuid))
         fatal-ns (str (random-uuid))
         log-levels {trace-ns :trace, fatal-ns :fatal}
@@ -135,7 +135,7 @@
         (logger/remove-ns-logger! trace-ns)
         (logger/remove-ns-logger! fatal-ns)))))
 
-(deftest ^{:parallel false} invalid-adjustment-test
+(deftest ^:synchronized invalid-adjustment-test
   (testing "invalid level"
     (is (= {:specific-errors
             {:log_levels
@@ -163,7 +163,7 @@
       "ll"  "string"
       nil   "null")))
 
-(deftest ^{:parallel false} analytic-events-test
+(deftest ^:synchronized analytic-events-test
   (snowplow-test/with-fake-snowplow-collector
     (testing "Logger adjustments trigger snowplow events"
       (mt/user-http-request :crowberto :post 204 "logger/adjustment"
