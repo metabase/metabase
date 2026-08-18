@@ -321,7 +321,9 @@
           (is (= {:outer "kept"} @mdb.connection/*transaction-state*)))))))
 
 (deftest failed-rollback-only-rollback-discards-the-transaction-test
-  (testing "a requested rollback that fails discards the transaction rather than letting autocommit commit it"
+  (testing "an outermost rollback-only whose savepoint is gone discards what is pending instead of failing"
+    ;; the savepoint is normally gone because something in the body committed -- DDL does that implicitly on
+    ;; H2 and MySQL -- and those writes are already durable, so there is nothing left to fail over
     (let [calls     (atom [])
           mock-conn (reify Connection
                       (rollback [_ _savepoint]
@@ -332,10 +334,8 @@
                       (getAutoCommit [_] true)
                       (setSavepoint [_]))]
       (binding [t2.connection/*current-connectable* mock-conn]
-        (let [e (is (thrown? Exception
-                             (t2/with-transaction [_ nil {:rollback-only true}] :result)))]
-          (is (= "Error rolling back a rollback-only transaction" (ex-message e)))
-          (is (= "Savepoint rollback error" (-> e ex-cause ex-message)))))
+        (is (= :result (t2/with-transaction [_ nil {:rollback-only true}] :result))
+            "the body's result is still returned"))
       (is (= [:rollback] @calls)
           "the connection is rolled back outright, never committed"))))
 
