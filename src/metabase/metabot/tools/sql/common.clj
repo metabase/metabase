@@ -11,11 +11,9 @@
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
-   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -38,24 +36,6 @@
   [:map
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
-
-(defn metadata-provider-when-native-permitted
-  "Metadata provider for `database-id` when the current user has ad-hoc native query permissions on
-  it, else nil. Identifier casing correction reads table/field metadata through it, which makes
-  that metadata observable (a user can probe table/column existence and casing by watching what
-  gets corrected); it is gated on the same native-query permission the SQL action itself requires,
-  not on database read access, which is satisfied by weaker access levels. With no bound
-  `api/*current-user-id*` (internal callers; the HTTP and Slack entry points always bind one) the
-  provider is returned ungated. Without a provider validation runs uncorrected."
-  [database-id]
-  (when database-id
-    (try
-      (when (or (not api/*current-user-id*)
-                (= (perms/full-database-permission-for-user
-                    api/*current-user-id* :perms/create-queries database-id)
-                   :query-builder-and-native))
-        (lib-be/application-database-metadata-provider database-id))
-      (catch Exception _ nil))))
 
 (defn- maybe-normalize-query
   [query]

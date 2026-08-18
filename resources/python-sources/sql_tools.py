@@ -705,348 +705,6 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     return transformed.sql(dialect=dialect)
 
 
-def correct_identifier_casing(sql: str, tables_json: str, dialect: str | None = None) -> str:
-    """
-    Scope-aware, best-effort correction of identifier casing against synced metadata.
-
-    Rewrites unquoted table/schema/column identifiers whose only difference from the
-    metadata name is letter case, resolving each reference through its scope: physical
-    tables against synced metadata, CTE / derived-table / set-operation sources against
-    the output names they expose, and correlated references through the scope that owns
-    them. Everything else is left alone: quoted identifiers, catalog-qualified tables,
-    columns whose source cannot be uniquely established, and any name matching several
-    candidates case-insensitively. Multi-statement input and anything that fails to
-    parse is returned unchanged, so downstream validation still sees and rejects it.
-
-    Args:
-        sql: SQL query string
-        tables_json: JSON list of synced tables: [{"schema": s|null, "name": n, "columns": [c, ...]}]
-        dialect: SQL dialect string
-
-    Returns the corrected SQL string, or `sql` unchanged when nothing applies.
-    """
-    from sqlglot.optimizer.scope import build_scope, Scope
-
-    unquoted_fold = UNQUOTED_IDENTIFIER_FOLD.get(dialect)
-    if unquoted_fold is None:
-        return sql
-
-    def fold_matches(name, target):
-        """Whether `target` is what the database resolves `name` to when written unquoted.
-        A looser case-insensitive match is unprovable: the synced inventory can be filtered
-        by visibility, so the name the database would really fold to may not be in it."""
-        return unquoted_fold(name) == target
-
-    try:
-        statements = sqlglot.parse(sql, read=dialect)
-        if len(statements) != 1 or statements[0] is None:
-            return sql
-        root = build_scope(statements[0])
-        if root is None:
-            return sql
-
-        tables_by_lower = {}
-        for t in json.loads(tables_json):
-            tables_by_lower.setdefault(t["name"].lower(), []).append(t)
-
-        def match_table(node):
-            """The unique metadata entry a physical table node names, or None."""
-            if node.catalog or not isinstance(node.this, exp.Identifier):
-                return None
-            candidates = tables_by_lower.get(node.name.lower(), [])
-            if node.db:
-                candidates = [t for t in candidates
-                              if (t.get("schema") or "").lower() == node.db.lower()]
-            if len(candidates) != 1:
-                return None
-            entry = candidates[0]
-            # A quoted identifier denotes an exact object: same-case is a match, any
-            # case difference means a different object, not a casing mistake. An
-            # unquoted one is only a match when the metadata name is exactly its
-            # dialect fold - see fold_matches above.
-            if node.this.quoted:
-                if node.name != entry["name"]:
-                    return None
-            elif not fold_matches(node.name, entry["name"]):
-                return None
-            db_ident = node.args.get("db")
-            if (isinstance(db_ident, exp.Identifier) and db_ident.quoted
-                    and node.db != entry.get("schema")):
-                return None
-            return entry
-
-        modified = False
-
-        def set_ident(node, key, name):
-            nonlocal modified
-            node.set(key, exp.Identifier(this=name, quoted=False))
-            modified = True
-
-        def output_idents(expression):
-            """The output-name identifiers of a select, or None when any output name is
-            not statically known (stars, unaliased expressions). `selects` on a set
-            operation delegates to the first arm, which defines the output contract."""
-            outs = []
-            for sel in expression.selects:
-                if isinstance(sel, exp.Alias) and isinstance(sel.args.get("alias"), exp.Identifier):
-                    outs.append(sel.args["alias"])
-                elif isinstance(sel, exp.Column) and isinstance(sel.this, exp.Identifier):
-                    outs.append(sel.this)
-                else:
-                    return None
-            return outs
-
-        def visible_idents(source_scope):
-            """The column identifiers a CTE / derived table exposes to the scope using
-            it: its alias column list (`AS d(a, b)`) when present, else its output names."""
-            container = source_scope.expression.parent
-            alias = container and container.args.get("alias")
-            alias_columns = alias.args.get("columns") if alias else None
-            if alias_columns:
-                if all(isinstance(c, exp.Identifier) for c in alias_columns):
-                    return list(alias_columns)
-                return None
-            return output_idents(source_scope.expression)
-
-        def bindable(inventory, ref_name):
-            """The inventory spellings an unquoted reference could name once transpile
-            quotes everything: case-insensitive matches, except a spelling that demands
-            an exact fold (a synced column, a quoted output name) only binds when it is
-            exactly the fold of the reference."""
-            lower = ref_name.lower()
-            folded = unquoted_fold(ref_name)
-            return {spelling
-                    for spelling, exact in inventory
-                    if spelling.lower() == lower and (not exact or spelling == folded)}
-
-        handled = set()
-        REJECTED = object()
-
-        for scope in root.traverse():
-            if isinstance(scope.expression, exp.SetOperation):
-                # the set operation's own columns (an ORDER BY on the whole union)
-                # resolve against the first arm's output contract
-                idents = output_idents(scope.expression)
-                if not idents:
-                    continue
-                inventory = [(i.name, bool(i.quoted)) for i in idents]
-                for col in scope.columns:
-                    if (id(col) in handled or col.args.get("table")
-                            or not isinstance(col.this, exp.Identifier) or col.this.quoted):
-                        continue
-                    targets = bindable(inventory, col.name)
-                    if targets:
-                        handled.add(id(col))
-                    if len(targets) == 1:
-                        target = next(iter(targets))
-                        if target != col.name:
-                            set_ident(col, "this", target)
-                continue
-
-            # scope.sources also lists every visible outer CTE; only what FROM/JOIN
-            # actually selects may bind references in this scope
-            selected = {name: source
-                        for name, (_node, source) in scope.selected_sources.items()}
-            if not selected:
-                continue
-
-            cte_names_lower = {name.lower() for name in scope.cte_sources}
-
-            physical_entries = {}
-            # source name -> [(spelling, exact-fold-required)], or None when the
-            # visible columns can't be known (unmatched table, star outputs)
-            source_inventory = {}
-            # source name -> the qualifier text column references must use once
-            # transpile quotes everything: the alias / source name as written, or the
-            # corrected table name
-            qualifiers = {}
-            # sources whose alias / name was written quoted: an unquoted reference
-            # only binds one when the spelling is exactly the reference's fold
-            quoted_sources = set()
-            for name, (node, source) in scope.selected_sources.items():
-                qualifiers[name] = name
-                source_inventory[name] = None
-                alias = node.args.get("alias")
-                name_ident = alias.this if alias and isinstance(alias.this, exp.Identifier) else \
-                    (node.this if isinstance(node, exp.Table) else None)
-                if isinstance(name_ident, exp.Identifier) and name_ident.quoted:
-                    quoted_sources.add(name)
-                if isinstance(source, exp.Table):
-                    # sqlglot binds a FROM reference to a CTE only on an exact name
-                    # match while the database folds both, so a fold-equivalent
-                    # spelling of a visible CTE name reads the CTE, not the physical
-                    # table it shadows
-                    if (not source.db and not source.this.quoted
-                            and source.name.lower() in cte_names_lower):
-                        continue
-                    entry = match_table(source)
-                    if entry is None:
-                        continue
-                    physical_entries[name] = entry
-                    if not source.this.quoted and source.name != entry["name"]:
-                        set_ident(source, "this", entry["name"])
-                    db_ident = source.args.get("db")
-                    if (isinstance(db_ident, exp.Identifier) and not db_ident.quoted
-                            and entry.get("schema") and source.db != entry["schema"]
-                            and fold_matches(source.db, entry["schema"])):
-                        set_ident(source, "db", entry["schema"])
-                    if not source.alias:
-                        qualifiers[name] = entry["name"]
-                    alias_columns = alias.args.get("columns") if alias else None
-                    if alias_columns:
-                        # an explicit column-alias list (`AS o(a, b)`) redefines the
-                        # visible names entirely
-                        if all(isinstance(c, exp.Identifier) for c in alias_columns):
-                            source_inventory[name] = [(c.name, bool(c.quoted))
-                                                      for c in alias_columns]
-                    else:
-                        source_inventory[name] = [(c, True) for c in entry.get("columns") or []]
-                elif isinstance(source, Scope):
-                    idents = visible_idents(source)
-                    if idents is not None:
-                        source_inventory[name] = [(i.name, bool(i.quoted)) for i in idents]
-
-            sources_by_lower = {}
-            for name in selected:
-                sources_by_lower.setdefault(name.lower(), []).append(name)
-
-            def resolve_source(ident, sources=selected, by_lower=sources_by_lower,
-                               quoted=quoted_sources):
-                """The scope source a qualifier names: exact when quoted, case-folded when
-                not. None means nothing here matches (the reference may be correlated);
-                REJECTED means a match exists that the reference cannot legally bind, so
-                no scope may rewrite it."""
-                if ident.quoted:
-                    return ident.name if ident.name in sources else None
-                candidates = by_lower.get(ident.name.lower(), [])
-                if not candidates:
-                    return None
-                if len(candidates) > 1:
-                    return REJECTED
-                name = candidates[0]
-                if name in quoted and name != unquoted_fold(ident.name):
-                    return REJECTED
-                return name
-
-            all_known = all(inv is not None for inv in source_inventory.values())
-
-            def scope_bindable(ref_name, inventories=source_inventory):
-                targets = set()
-                for inv in inventories.values():
-                    if inv:
-                        targets |= bindable(inv, ref_name)
-                return targets
-
-            # qualified wildcards (orders.*) are exp.Columns too, but scope.columns excludes them
-            raw_columns = list(scope.find_all(exp.Column))
-            raw_ids = {id(c) for c in raw_columns}
-            star_columns = [c for c in raw_columns if isinstance(c.this, exp.Star)]
-            owned_columns = [c for c in scope.columns if id(c) in raw_ids]
-            # scope.columns also carries columns nested scopes could not resolve
-            # (correlated references, and unqualified names sqlglot can't place);
-            # anything a nested pass already resolved or claimed sits in `handled`
-            correlated_columns = [c for c in scope.columns
-                                  if id(c) not in raw_ids and id(c) not in handled]
-
-            # top-level ORDER BY / DISTINCT ON references resolve to an output name or
-            # a source column; they go to the combined pass below and never correlate
-            deferred = set()
-
-            for col in owned_columns + star_columns + correlated_columns:
-                table_ident = col.args.get("table")
-                if isinstance(table_ident, exp.Identifier):
-                    source_name = resolve_source(table_ident)
-                    if source_name is None:
-                        continue
-                    handled.add(id(col))
-                    if source_name is REJECTED:
-                        continue
-                    qualifier = qualifiers[source_name]
-                    if not table_ident.quoted and table_ident.name != qualifier:
-                        set_ident(col, "table", qualifier)
-                    entry = physical_entries.get(source_name)
-                    db_ident = col.args.get("db")
-                    if (entry is not None and isinstance(db_ident, exp.Identifier)
-                            and not db_ident.quoted and entry.get("schema")
-                            and db_ident.name != entry["schema"]
-                            and fold_matches(db_ident.name, entry["schema"])):
-                        set_ident(col, "db", entry["schema"])
-                    inventory = source_inventory[source_name]
-                    if (inventory is None or not isinstance(col.this, exp.Identifier)
-                            or col.this.quoted):
-                        continue
-                    targets = bindable(inventory, col.name)
-                    if len(targets) == 1:
-                        target = next(iter(targets))
-                        if target != col.name:
-                            set_ident(col, "this", target)
-                    continue
-                if not isinstance(col.this, exp.Identifier) or col.this.quoted:
-                    continue
-                ancestor = col.find_ancestor(exp.Order, exp.Distinct, exp.Select)
-                if (isinstance(ancestor, (exp.Order, exp.Distinct))
-                        and ancestor.parent is scope.expression):
-                    deferred.add(id(col))
-                    continue
-                if not all_known:
-                    handled.add(id(col))
-                    continue
-                targets = scope_bindable(col.name)
-                if not targets:
-                    # may be an output-alias reference (the pass below), or, when nothing
-                    # in this scope claims it, a correlated reference for an outer scope
-                    continue
-                handled.add(id(col))
-                if len(targets) == 1:
-                    target = next(iter(targets))
-                    if target != col.name:
-                        set_ident(col, "this", target)
-
-            # scope.columns leaves out ORDER BY/DISTINCT references matching a select name and
-            # everything under HAVING; those resolve to an output name, a source column, or both,
-            # so they are rewritten only when every candidate agrees on one casing
-            outs = {}
-            for s in scope.expression.named_selects:
-                outs.setdefault(s.lower(), set()).add(s)
-            for col in raw_columns:
-                if (id(col) in handled or col.args.get("table")
-                        or not isinstance(col.this, exp.Identifier) or col.this.quoted):
-                    continue
-                out_matches = outs.get(col.name.lower(), set())
-                if col.name in out_matches:
-                    handled.add(id(col))
-                    continue
-                candidates = out_matches | (scope_bindable(col.name) if all_known else set())
-                if len(candidates) == 1:
-                    handled.add(id(col))
-                    target = next(iter(candidates))
-                    if target != col.name:
-                        set_ident(col, "this", target)
-            handled.update(deferred)
-
-            # JOIN ... USING (id) holds bare identifiers that name a column in every joined
-            # source, so they are only rewritten when all sources are known and agree
-            if all_known:
-                for join in scope.expression.args.get("joins") or []:
-                    for ident in join.args.get("using") or []:
-                        if not isinstance(ident, exp.Identifier) or ident.quoted:
-                            continue
-                        per_source = [bindable(inv, ident.name)
-                                      for inv in source_inventory.values()]
-                        targets = set.intersection(*per_source) if per_source else set()
-                        if len(targets) == 1:
-                            target = next(iter(targets))
-                            if target != ident.name:
-                                ident.set("this", target)
-                                modified = True
-
-        if not modified:
-            return sql
-        return statements[0].sql(dialect=dialect)
-    except Exception:
-        return sql
-
-
 #############################################################################
 # Field References (Macaw-compatible output)
 #############################################################################
@@ -1990,26 +1648,14 @@ def has_metabase_templates(sql: str) -> bool:
     """
     return bool(_METABASE_TEMPLATE_RE.search(sql))
 
-# Dialects that require identifier quoting due to case sensitivity.
-# These dialects fold unquoted identifiers to uppercase or lowercase,
-# which can cause issues when the LLM generates mixed-case identifiers.
-CASE_SENSITIVE_DIALECTS: set[str] = {
-    "snowflake",  # Folds unquoted to UPPERCASE
-    "oracle",  # Folds unquoted to UPPERCASE
-    "redshift",  # PostgreSQL-based, folds to lowercase
-    "postgres",  # Folds unquoted to lowercase
-}
-
-UNQUOTED_IDENTIFIER_FOLD = {
-    "postgres": str.lower,
-    "redshift": str.lower,
-    "snowflake": str.upper,
-    "oracle": str.upper,
-}
-assert set(UNQUOTED_IDENTIFIER_FOLD) == CASE_SENSITIVE_DIALECTS
-
 def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.
+
+    Identifiers keep the quoting they were written with: an unquoted identifier stays
+    unquoted, so the database folds it exactly as it would have folded the input.
+    Quoting everything (identify=True) would instead freeze the written casing, which
+    breaks on dialects that fold unquoted identifiers (Snowflake uppercases, Postgres
+    lowercases).
 
     Args:
         sql: SQL query string
@@ -2017,8 +1663,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         to_dialect: target sql dialect
 
     Returns:
-        JSON string with keys transpiled and use_identify on success.
-        On failure the object contains keys is_valid and error_message.
+        JSON string with keys transpiled_sql and status on success.
+        On failure the object contains keys status and error_message.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -2031,15 +1677,11 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         result['reason'] = 'missing_dialect'
     else:
         try:
-            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
-                            or to_dialect in CASE_SENSITIVE_DIALECTS)
-
             transpiled = sqlglot.transpile(
                 sql,
                 read=from_dialect,
                 write=to_dialect,
                 pretty=True,
-                identify=use_identify,
             )
 
             if len(transpiled) > 1:

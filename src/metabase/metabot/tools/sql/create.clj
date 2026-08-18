@@ -60,10 +60,9 @@
   (validate-database-access database-id)
 
   (let [dialect (metabot.tools.sql.validation/database-id->dialect database-id)
-        mp (metabot.tools.sql.common/metadata-provider-when-native-permitted database-id)
 
         {:keys [valid? transpiled-sql] :as validation-result}
-        (metabot.tools.sql.validation/validate-sql dialect sql mp)]
+        (metabot.tools.sql.validation/validate-sql dialect sql)]
     (merge {:validation-result validation-result}
            (when valid?
              (let [;; Create the in-memory query structure

@@ -203,12 +203,6 @@
   [driver tables transforms spec]
   (common/find-table-or-transform driver tables transforms spec))
 
-(defn table-ids-by-name
-  "Ids of the active, non-hidden Tables in `database-id` whose name case-insensitively matches one
-  of `table-names`. See [[metabase.sql-tools.common/table-ids-by-name]]."
-  [database-id table-names]
-  (common/table-ids-by-name database-id table-names))
-
 (defn resolve-field
   "Resolve a field reference to one or more actual database fields.
   See [[metabase.sql-tools.common/resolve-field]] for details."

@@ -66,10 +66,9 @@
       (let [;; Apply edits sequentially
             new-sql (reduce apply-sql-edit current-sql edits)
             dialect (metabot.tools.sql.validation/query->dialect query)
-            mp (metabot.tools.sql.common/metadata-provider-when-native-permitted (:database query))
 
             {:keys [valid? transpiled-sql] :as validation-result}
-            (metabot.tools.sql.validation/validate-sql dialect new-sql mp)]
+            (metabot.tools.sql.validation/validate-sql dialect new-sql)]
         (merge {:validation-result validation-result}
                (when valid?
                  (let [updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
