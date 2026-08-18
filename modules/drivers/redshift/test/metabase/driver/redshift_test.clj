@@ -192,34 +192,80 @@
                               :target [:dimension [:template-tag "date"]]
                               :value  "past30years"}]})))))))
 
-(defn- execute! [format-string & args]
-  (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))]
+(defn- execute-with-spec!
+  "Format and run SQL on `spec`. `args` is the seq of `format` args, not varargs."
+  [spec format-string args]
+  (let [sql (apply format format-string args)]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
     (try
       (jdbc/execute! spec sql)
       (catch Throwable e
         (throw (ex-info (format "Error executing SQL: %s" (ex-message e))
                         {:sql sql}
-                        e)))))
-  (log/info (u/format-color 'blue "[ok]")))
+                        e))))
+    (log/info (u/format-color 'blue "[ok]"))))
 
-(defn- execute-on-database!
-  "Like [[execute!]], but runs the SQL over `database`'s connection pool instead of a one-off connection.
+(defn- execute-on-admin-connection!
+  "Execute SQL on a one-off connection using the superuser credentials from `tx/dbdef->connection-details`, outside
+  any Metabase Database's connection pool.
 
-  Redshift propagates catalog changes to compute nodes asynchronously, so DDL issued on an unrelated connection can
-  be invisible to a later `describe-database`. Production DDL (`driver/create-table!`) runs on the Database's pool,
-  which sync then reads from, so it never observes that gap; tests that sync after DDL need the same pool."
+  For cluster-level setup a Database cannot do to itself: `CREATE USER`, `GRANT`/`REVOKE`, or DDL that must run as a
+  different user than the Database under test connects as.
+
+  Not for DDL a later sync or `describe-database` has to see - use [[execute-on-database-pool!]] for that. Redshift
+  propagates catalog changes to compute nodes asynchronously, so objects created here can be invisible to a
+  Database's own connections."
+  [format-string & args]
+  (execute-with-spec! (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+                      format-string
+                      args))
+
+(defn- execute-on-database-pool!
+  "Execute SQL on `database`'s connection pool - the pool sync and `describe-database` also read from, so they see
+  this DDL. Matches production DDL (`driver/create-table!`), which likewise runs on the Database's pool.
+
+  `database` must connect with rights to run the SQL; for cluster-level setup use
+  [[execute-on-admin-connection!]]."
   [database format-string & args]
-  (let [sql (apply format format-string args)]
-    (log/info (u/format-color 'blue "[redshift] %s" sql))
-    (try
-      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database) sql)
-      (catch Throwable e
-        (throw (ex-info (format "Error executing SQL: %s" (ex-message e))
-                        {:sql sql}
-                        e)))))
-  (log/info (u/format-color 'blue "[ok]")))
+  (execute-with-spec! (sql-jdbc.conn/db->pooled-connection-spec database) format-string args))
+
+;;; TEMPORARY diagnostic for the v58 `sync-materialized-views-test` failures. Remove once the cause is known.
+;;;
+;;; The failing runs report only pre-existing `spectrum` external tables, meaning the `pg_catalog` half of
+;;; `redshift/get-tables-sql` returned nothing for the session schema. This snapshots the three things that could
+;;; cause that - schema missing, `USAGE` revoked, relations absent - from each connection separately.
+
+(defn- session-schema-snapshot
+  "What `spec`'s connection can see of the session schema."
+  [spec]
+  (let [schema (redshift.tx/unique-session-schema)]
+    {:current-user  (:usr (first (jdbc/query spec ["SELECT current_user AS usr"])))
+     :current-db    (:db (first (jdbc/query spec ["SELECT current_database() AS db"])))
+     :schema-exists (boolean (seq (jdbc/query spec ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema])))
+     :has-usage     (:has_usage (first (jdbc/query spec [(str "SELECT has_schema_privilege(oid, 'USAGE') AS has_usage "
+                                                              "FROM pg_namespace WHERE nspname = ?")
+                                                         schema])))
+     :relations     (let [rows (mapv (juxt :relname :relkind)
+                                     (jdbc/query spec [(str "SELECT c.relname, c.relkind FROM pg_class c "
+                                                            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                                                            "WHERE n.nspname = ? ORDER BY c.relname")
+                                                       schema]))]
+                      ;; A schema holding all of test-data would otherwise print an unreadable line.
+                      {:count (count rows) :sample (vec (take 50 rows))})}))
+
+(defn- print-session-schema-diagnostic!
+  "`log/info` is suppressed in the driver CI jobs, so this prints. Never throws: a failed probe must not mask the
+  failure being diagnosed."
+  [label spec]
+  (let [result (try
+                 (session-schema-snapshot spec)
+                 (catch Throwable e
+                   {:probe-failed (ex-message e)}))]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println (format "[mv-diagnostic %s] schema=%s %s"
+                     label
+                     (redshift.tx/unique-session-schema)
+                     (pr-str result)))))
 
 (deftest redshift-types-test
   (mt/test-driver
@@ -232,7 +278,8 @@
                 view-nm      (tx/db-qualified-table-name (:name database) "view")
                 qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
-            (execute!
+            (execute-on-database-pool!
+             database
              (str "DROP TABLE IF EXISTS %1$s;%n"
                   "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
                   "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
@@ -262,7 +309,8 @@
         (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
                 qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
-            (execute!
+            (execute-on-database-pool!
+             database
              (str "CREATE OR REPLACE VIEW %1$s AS ("
                   "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
                   "SELECT NULL as raw_null, "
@@ -294,8 +342,8 @@
             user-pw      "Password1234"
             details      (assoc (:details (mt/db)) :user user-name, :password user-pw)
             revoke-schema-usage (format "REVOKE USAGE ON SCHEMA \"%s\" FROM %s;%n" schema user-name)]
-        (try (execute! (str (format "CREATE USER %s PASSWORD '%s';%n" user-name user-pw)
-                            (format "CREATE TABLE %s (i INTEGER);%n" schema+table)))
+        (try (execute-on-admin-connection! (str (format "CREATE USER %s PASSWORD '%s';%n" user-name user-pw)
+                                                (format "CREATE TABLE %s (i INTEGER);%n" schema+table)))
              (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
                (let [table-is-in-results? (fn []
                                             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
@@ -307,20 +355,20 @@
                      revoke-table-select  (format "REVOKE SELECT ON TABLE %s FROM %s;%n" schema+table user-name)
                      grant-table-select   (format "GRANT SELECT ON TABLE %s TO %s;%n" schema+table user-name)]
                  (testing "with schema usage and table select grants, table should be in results"
-                   (execute! (str grant-schema-usage grant-table-select))
+                   (execute-on-admin-connection! (str grant-schema-usage grant-table-select))
                    (is (true? (table-is-in-results?))))
                  (testing "with no schema usage and no table select grants, table should not be in results"
-                   (execute! (str revoke-schema-usage revoke-table-select))
+                   (execute-on-admin-connection! (str revoke-schema-usage revoke-table-select))
                    (is (false? (table-is-in-results?))))
                  (testing "with no schema usage but table select grants, table should not be in results"
-                   (execute! (str revoke-schema-usage grant-table-select))
+                   (execute-on-admin-connection! (str revoke-schema-usage grant-table-select))
                    (is (false? (table-is-in-results?))))
                  (testing "with schema usage but no table select grants, table should not be in results"
-                   (execute! (str grant-schema-usage revoke-table-select))
+                   (execute-on-admin-connection! (str grant-schema-usage revoke-table-select))
                    (is (false? (table-is-in-results?))))))
              (finally
-               (execute! (str revoke-schema-usage
-                              (format "DROP USER IF EXISTS %s;%n" user-name)))))))))
+               (execute-on-admin-connection! (str revoke-schema-usage
+                                                  (format "DROP USER IF EXISTS %s;%n" user-name)))))))))
 
 (deftest describe-database-exclude-metabase-cache-test
   (mt/test-driver :redshift
@@ -360,14 +408,22 @@
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
                 qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)]
-            (execute-on-database!
-             database
+            ;; TEMPORARY: back on the admin connection so the failure reproduces while the diagnostic runs.
+            ;; Flip to `execute-on-database-pool!` (passing `database`) once the cause is known.
+            (execute-on-admin-connection!
              (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                (print-session-schema-diagnostic!
+                 "admin"
+                 (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift)))
+                (print-session-schema-diagnostic! "db-pool" (sql-jdbc.conn/db->pooled-connection-spec database))
+                #_{:clj-kondo/ignore [:discouraged-var]}
+                (println (format "[mv-diagnostic describe-database] expected=%s returned=%s"
+                                 (pr-str mview-nm) (pr-str table-names)))
                 (is (contains? table-names mview-nm))))))))))
 
 (mt/defdataset unix-timestamps
@@ -428,27 +484,28 @@
                                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
             (try
-              (execute! (format
-                         (str
-                          "CREATE TABLE %1$s (id INTEGER);\n"
-                          "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
-                          "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                          "CREATE TABLE %4$s (id INTEGER);\n"
-                          "CREATE TABLE %5$s (id INTEGER);\n"
-                          "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
-                          "GRANT SELECT ON %1$s TO \"%6$s\";\n"
-                          "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
-                          "GRANT SELECT ON %2$s TO \"%6$s\";\n"
-                          "GRANT SELECT ON %3$s TO \"%6$s\";\n"
-                          "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
-                          "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
-                         qual-tbl-name
-                         qual-view-name
-                         qual-mview-name
-                         qual-tbl-partial-select-name
-                         qual-tbl-partial-update-name
-                         username
-                         (get-in database [:details :password])))
+              (execute-on-admin-connection!
+               (format
+                (str
+                 "CREATE TABLE %1$s (id INTEGER);\n"
+                 "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
+                 "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
+                 "CREATE TABLE %4$s (id INTEGER);\n"
+                 "CREATE TABLE %5$s (id INTEGER);\n"
+                 "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
+                 "GRANT SELECT ON %1$s TO \"%6$s\";\n"
+                 "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
+                 "GRANT SELECT ON %2$s TO \"%6$s\";\n"
+                 "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                 "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                 "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
+                qual-tbl-name
+                qual-view-name
+                qual-mview-name
+                qual-tbl-partial-select-name
+                qual-tbl-partial-update-name
+                username
+                (get-in database [:details :password])))
               (testing "check that without USAGE privileges on the schema, nothing is returned"
                 (is (= #{}
                        (get-privileges))))
@@ -474,24 +531,25 @@
                                         :select true}]))
                        (get-privileges))))
               (finally
-                (execute! (format
-                           (str
-                            "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                            "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                            "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                            "DROP TABLE IF EXISTS %5$s CASCADE;\n"
-                            "DROP TABLE IF EXISTS %6$s CASCADE;\n"
-                            "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                            "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                            "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                            "DROP USER IF EXISTS \"%7$s\";")
-                           schema-name
-                           qual-tbl-name
-                           qual-view-name
-                           qual-mview-name
-                           qual-tbl-partial-select-name
-                           qual-tbl-partial-update-name
-                           username)))))))))
+                (execute-on-admin-connection!
+                 (format
+                  (str
+                   "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                   "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                   "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                   "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                   "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                   "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                   "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                   "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                   "DROP USER IF EXISTS \"%7$s\";")
+                  schema-name
+                  qual-tbl-name
+                  qual-view-name
+                  qual-mview-name
+                  qual-tbl-partial-select-name
+                  qual-tbl-partial-update-name
+                  username)))))))))
 
 (deftest ^:parallel date-plus-integer-test
   (testing "Can we add a {{date}} template tag parameter to an integer in SQL queries? (#40755)"
