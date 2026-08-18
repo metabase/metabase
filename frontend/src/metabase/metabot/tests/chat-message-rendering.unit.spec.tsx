@@ -376,7 +376,9 @@ describe("AgentMessage", () => {
         screen.getByText(/was cut off because it hit the maximum length/),
       ).toBeInTheDocument();
       await userEvent.click(await continueResponseButton());
-      expect(onContinue).toHaveBeenCalledWith("length");
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Pick up exactly where you left off/),
+      );
     });
 
     it("offers to continue a step-limited response", async () => {
@@ -387,7 +389,9 @@ describe("AgentMessage", () => {
         screen.getByText(/paused after reaching its step limit/),
       ).toBeInTheDocument();
       await userEvent.click(await continueResponseButton());
-      expect(onContinue).toHaveBeenCalledWith("tool-calls");
+      expect(onContinue).toHaveBeenCalledWith(
+        expect.stringMatching(/Continue working on my last request/),
+      );
     });
 
     it("explains a content-filtered response without offering to continue", () => {

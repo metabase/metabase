@@ -123,7 +123,6 @@
             (is (pos? (count result)))
             ;; Should have state data
             (is (some #(= :data (:type %)) result))
-            ;; Loop's stop classification closes the stream
             (is (= {:type :finish :finish-reason :stop} (last result))))))
       (testing "sql profile requests required tool choice"
         (let [captured (atom nil)]
@@ -200,25 +199,37 @@
 
 (deftest max-iterations-finish-reason-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (let [get-profile profiles/get-profile
-            call-count (atom 0)]
-        (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
-                                    openrouter/openrouter (fn [_]
-                                                            (mut/mock-llm-response
-                                                             [{:type      :tool-input
-                                                               :id        (str "t" (swap! call-count inc))
-                                                               :function  "search"
-                                                               :arguments {}}]))
-                                    metabot-search/search (constantly [])]
-          (let [finish (mt/with-log-level [metabase.metabot.agent.core :warn]
-                         (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
-                                                     :profile-id :embedding_next})
-                              (into [])
-                              last))]
+            call-count  (atom 0)
+            tool-call   (fn [n]
+                          [{:type      :tool-input
+                            :id        (str "t" n)
+                            :function  "search"
+                            :arguments {}}])
+            run-loop    (fn [responses]
+                          (reset! call-count 0)
+                          (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
+                                                      openrouter/openrouter (fn [_]
+                                                                              (let [n (swap! call-count inc)]
+                                                                                (mut/mock-llm-response
+                                                                                 ((nth responses (dec n)) n))))
+                                                      metabot-search/search (constantly [])]
+                            (mt/with-log-level [metabase.metabot.agent.core :warn]
+                              (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
+                                                          :profile-id :embedding_next})
+                                   (into [])
+                                   last))))]
+        (testing "still calling tools at the cap"
+          (let [finish (run-loop [tool-call tool-call])]
             (is (= 2 @call-count)
                 "stops calling the LLM once the iteration cap is reached")
-            (is (= {:type :finish :finish-reason :max-iterations} finish))))))))
+            (is (= {:type :finish :finish-reason :max-iterations} finish))))
+        (testing "plain answer on the last allowed iteration is a normal stop"
+          (let [finish (run-loop [tool-call (constantly [{:type :text :text "Done"}])])]
+            (is (= 2 @call-count))
+            (is (= {:type :finish :finish-reason :stop} finish))))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj

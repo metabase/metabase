@@ -384,7 +384,6 @@
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
            finish-reason     (volatile! nil)
-           ;; agent loop's stop reason (e.g. :max-iterations) provided by :finish part
            loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
