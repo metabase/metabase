@@ -31,13 +31,18 @@
 
 (def ^:private AiContextResponse
   "Lenient read shape for forward-compatible imports and rows created before the closed API write boundary.
-  One unknown key must not fail an entire list response during an upgrade."
+  One unknown key must not fail an entire list response during an upgrade.
+
+  The write caps and item types are deliberately absent, mirroring the tolerance the index reader already
+  applies (see [[metabase.entity-retrieval.spec/ai-context-by-entity]]). A row can predate a cap, arrive by
+  serdes, or be written straight to the appdb, and every other read path copes: instructions are truncated
+  on read, and index docs skip values they cannot use. Asserting the write limits here would fail the whole
+  response instead, so one legacy row could break a list for every other entity. [[AiContext]] is the shape
+  a client should send; this is only what we promise to hand back."
   [:map
-   [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
-   [:synonyms     {:optional true} [:sequential {:max entity-retrieval/max-list-len}
-                                    [:string {:max entity-retrieval/max-item-len}]]]
-   [:examples     {:optional true} [:sequential {:max entity-retrieval/max-list-len}
-                                    [:string {:max entity-retrieval/max-item-len}]]]])
+   [:instructions {:optional true} [:maybe :string]]
+   [:synonyms     {:optional true} [:maybe [:sequential :any]]]
+   [:examples     {:optional true} [:maybe [:sequential :any]]]])
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
