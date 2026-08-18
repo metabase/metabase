@@ -34,10 +34,9 @@ const SIDE_EFFECT_FREE_PATHS = [
  * whole import graph, is kept in every bundle that reaches it, so the list
  * should stay short and every file entry should be a fix candidate.
  *
- * A directory entry (trailing separator, like SIDE_EFFECT_FREE_PATHS) covers
- * every file under it. When a module with an `api/` folder is enrolled, list
- * `<module>/api` here: RTK endpoint injection at import is the endpoint
- * ownership pattern (D3), and it must never be tree-shaken away.
+ * A directory entry (trailing separator, like SIDE_EFFECT_FREE_PATHS) covers every file under it.
+ * List `<module>/api` here when a module is enrolled: those files register their endpoints on the shared Api at import,
+ * so a bundle has to evaluate them even when it only reaches them by name.
  */
 const SIDE_EFFECT_PATHS = [];
 
