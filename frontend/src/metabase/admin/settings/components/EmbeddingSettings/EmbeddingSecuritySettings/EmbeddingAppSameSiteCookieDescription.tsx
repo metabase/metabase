@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/redux";
@@ -28,10 +28,12 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
   return (
     <Stack gap="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
-      {/* Naming the two methods is accurate now that the card is paid-only:
-          guest embeds never set a session cookie, so SameSite is inert below
-          the paywall and the card is not rendered there. */}
-      <Text>{jt`Determines whether or not cookies are allowed to be sent on cross-site requests. Applies to Modular embedding and Full-app embedding. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure. If you set this to None, you'll have to use HTTPS, or browsers will reject the request. ${(
+      <Text c="text-secondary">{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
+
+      <Text c="text-secondary">{c(
+        "{0} is a 'Learn more' link to the embedding documentation",
+      )
+        .jt`If you set this to None, you'll have to use HTTPS, or browsers will reject the request. ${(
         <ExternalLink key="learn-more" href={docsUrl}>
           {t`Learn more`}
         </ExternalLink>
