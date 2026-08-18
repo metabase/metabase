@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { canAccessSettings } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
-import { canAccessSettings } from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -16,39 +16,36 @@ import {
   Text,
 } from "metabase/ui";
 
-import { AIProviderConfigurationForm } from "./AIProviderConfigurationForm";
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
 
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";
 
 type MetabotManagedProviderLimitActionsProps = {
   inline?: boolean;
-  onConfigure?: VoidFunction;
   onConfigureClose?: VoidFunction;
 } & FlexProps;
 
 export const MetabotManagedProviderLimitActions = ({
   inline = false,
-  onConfigure,
   onConfigureClose,
   ...rest
 }: MetabotManagedProviderLimitActionsProps) => {
   const canConfigureAi = useSelector(canAccessSettings);
-  const [isOpen, { open, close }] = useDisclosure(false, {
+  const [isOpen, { open: handleConfigure, close }] = useDisclosure(false, {
     onClose: onConfigureClose,
   });
-  const handleConfigure = useCallback(() => {
-    (onConfigure ?? open)();
-  }, [onConfigure, open]);
 
+  // The managed connection is left exactly as it is: running out of included tokens is a reason to add a provider
+  // alongside it, not to cancel the subscription behind it.
   const configureModal = (
     <Modal
-      title={t`Connect to an AI provider`}
+      title={t`Add an AI provider`}
       onClose={close}
       opened={isOpen}
       size="lg"
     >
-      <AIProviderConfigurationForm isModal onClose={close} />
+      <AIProviderSetup startOnConnectionForm onDone={close} />
     </Modal>
   );
 

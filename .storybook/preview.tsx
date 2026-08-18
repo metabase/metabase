@@ -29,6 +29,7 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 
 import { Global, css, useTheme } from "@emotion/react";
 
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
@@ -207,7 +208,11 @@ initialize({
 const preview = {
   parameters,
   decorators,
-  loaders: [mswLoader, fontsReady],
+  // Chart components are loaded on demand, so a story that renders through the
+  // registry would otherwise be captured mid-Suspense, showing the skeleton.
+  // Wrapped because a loader is called with the story context, which would
+  // otherwise be taken for the list of displays to load.
+  loaders: [mswLoader, fontsReady, () => loadVisualizationComponents()],
   argTypes,
 };
 

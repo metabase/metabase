@@ -10,7 +10,7 @@ describe("Metabot UI", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
@@ -123,7 +123,7 @@ describe("Metabot UI", () => {
       cy.signInAsAdmin();
       H.enableTracking();
       H.activateToken("pro-self-hosted");
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
     });
 
     afterEach(() => {
@@ -217,7 +217,7 @@ describe("Metabot in full-app embedding", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
   });
 
   it("should show the metabot button when embedded-metabot-enabled? is true", () => {

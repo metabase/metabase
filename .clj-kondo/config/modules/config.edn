@@ -835,6 +835,7 @@
            events
            lib-be
            models
+           parameters
            public-sharing
            queries
            query-permissions
@@ -988,6 +989,11 @@
            tiles
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+
+  embeddings
+  {:team "Metabot"
+   :api  #{metabase.embeddings.provider}
+   :uses #{util}}
 
   entity-retrieval
   {:team "Metabot"
@@ -1213,7 +1219,8 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util}
+           metabase.lib.util
+           metabase.lib.walk}
    :uses #{config
            graph
            legacy-mbql
@@ -1261,6 +1268,7 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
+           metabase.llm.provider
            metabase.llm.settings
            metabase.llm.startup}
    :uses #{analytics
@@ -1271,6 +1279,7 @@
            lib-be
            metabot
            models
+           permissions
            premium-features
            request
            settings
@@ -2267,6 +2276,7 @@
               channel
               formatter
               lib
+              llm
               metabot
               permissions
               query-processor
@@ -3109,7 +3119,7 @@
 
   enterprise/cloud-add-ons
   {:team "Cloud"
-   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :api  #{metabase-enterprise.cloud-add-ons.api metabase-enterprise.cloud-add-ons.core}
    :uses #{api
            events
            premium-features
@@ -3312,6 +3322,11 @@
            settings
            util}}
 
+  enterprise/embedder
+  {:team "Metabot"
+   :api  #{}
+   :uses #{classloader embeddings util}}
+
   enterprise/embedding-hub
   {:team "Embedding"
    :api  #{metabase-enterprise.embedding-hub.api}
@@ -3457,6 +3472,7 @@
               metabot}
    :uses    #{api
               lib-be
+              llm
               metabot
               models
               permissions
@@ -3464,6 +3480,7 @@
               settings
               task
               util
+              enterprise/cloud-add-ons
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog

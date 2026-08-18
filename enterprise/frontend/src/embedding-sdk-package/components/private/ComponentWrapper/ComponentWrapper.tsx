@@ -23,11 +23,13 @@ import {
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk-package/constants/error-messages";
+import {
+  ensureMetabaseProviderPropsStore,
+  useMetabaseProviderPropsStore,
+} from "embedding-sdk-package/lib/provider-props-store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import {
   SdkLoadingError,

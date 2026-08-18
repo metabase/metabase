@@ -11,8 +11,8 @@ import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {
   Comment,
