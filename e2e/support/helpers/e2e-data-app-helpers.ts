@@ -265,6 +265,35 @@ export const copySyncedDataAppsFixture = () =>
   });
 
 /**
+ * Gives a fixture app inside the test repo a resolvable `defineQuery`, so
+ * `sync-resources` can discover a declaration there. The repo is not an npm
+ * project, and only the host apps install the real package — resolution is what
+ * those specs cover, not this one.
+ */
+export function declareSyncedDataAppQuery(slug: string, tableId: number) {
+  const appRoot = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+  const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
+
+  cy.writeFile(
+    `${packageRoot}/package.json`,
+    JSON.stringify({
+      name: "@metabase/embedding-sdk-react",
+      exports: { "./data-app": "./data-app.js" },
+    }),
+  );
+  cy.writeFile(`${packageRoot}/data-app.js`, "exports.defineQuery = (q) => q;");
+
+  return cy.writeFile(
+    `${appRoot}/queries/orders.query.ts`,
+    [
+      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+      `export const Orders = defineQuery({ source: { type: "table", id: ${tableId} } });`,
+      "",
+    ].join("\n"),
+  );
+}
+
+/**
  * Provisions each synced fixture app the way an author does: `sync-resources`
  * creates the app's collection and group, then writes their entity IDs into its
  * `data_app.yaml`, which is what the repo sync resolves the resources from.
