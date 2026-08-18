@@ -302,7 +302,7 @@ export const GoalValueInput = ({
   return (
     <Box className={S.root}>
       <Menu
-        opened={isMenuOpen}
+        closeOnItemClick={false}
         // opening happens only via the hexagon trigger or the pill; the
         // target-wide toggle would otherwise open the menu on any input click
         onChange={(opened) => {
@@ -310,25 +310,25 @@ export const GoalValueInput = ({
             closeMenu();
           }
         }}
+        opened={isMenuOpen}
         position="bottom-end"
-        closeOnItemClick={false}
       >
         <Menu.Target>
           {hasRef ? (
             <div
-              className={S.refShell}
-              tabIndex={0}
-              role="group"
               aria-label={ariaLabel}
+              className={S.refShell}
               onKeyDown={handleShellKeyDown}
+              role="group"
+              tabIndex={0}
             >
-              <Tooltip label={pillTooltip} disabled={pillTooltip == null}>
+              <Tooltip disabled={pillTooltip == null} label={pillTooltip}>
                 <UnstyledButton
-                  className={S.pill}
                   aria-label={t`Change value source`}
+                  className={S.pill}
                   onClick={openMenuFromPill}
                 >
-                  <Icon name="hexagon" size={12} c="text-secondary" />
+                  <Icon c="text-secondary" name="hexagon" size={12} />
                   {resolved.isResolving ? (
                     <Loader size="xs" />
                   ) : (
@@ -341,12 +341,12 @@ export const GoalValueInput = ({
                 </UnstyledButton>
               </Tooltip>
               <ActionIcon
+                aria-label={t`Remove value source`}
                 className={S.trigger}
                 data-open={isMenuOpen}
-                size={ICON_BUTTON_SIZE}
                 ml="auto"
-                aria-label={t`Remove value source`}
                 onClick={() => commitValue(null)}
+                size={ICON_BUTTON_SIZE}
               >
                 <Icon name="close" size={16} />
               </ActionIcon>
@@ -357,20 +357,20 @@ export const GoalValueInput = ({
                 aria-label={ariaLabel}
                 id={id}
                 inputRef={numberInputRef}
-                value={value}
-                placeholder={placeholder}
                 onChange={onChange}
+                placeholder={placeholder}
                 rightSection={
                   <ActionIcon
+                    aria-label={t`Pick a dynamic value`}
                     className={S.trigger}
                     data-open={isMenuOpen || isEntityPickerOpen}
-                    size={ICON_BUTTON_SIZE}
-                    aria-label={t`Pick a dynamic value`}
                     onClick={openMenuFromTrigger}
+                    size={ICON_BUTTON_SIZE}
                   >
                     <Icon name="hexagon" size={16} />
                   </ActionIcon>
                 }
+                value={value}
               />
             </Box>
           )}
@@ -385,8 +385,8 @@ export const GoalValueInput = ({
               {selfColumns.length > 0 && (
                 <Menu.Item
                   leftSection={<ActiveSourceCheck isActive={isSelfRef} />}
-                  rightSection={<Icon name="chevronright" />}
                   onClick={selectSelfOption}
+                  rightSection={<Icon name="chevronright" />}
                 >
                   {t`Value from this question`}
                 </Menu.Item>
@@ -395,8 +395,8 @@ export const GoalValueInput = ({
                 leftSection={
                   <ActiveSourceCheck isActive={foreignRef != null} />
                 }
-                rightSection={<Icon name="chevronright" />}
                 onClick={openEntityPicker}
+                rightSection={<Icon name="chevronright" />}
               >
                 {t`Value from another question`}
               </Menu.Item>
@@ -417,10 +417,10 @@ export const GoalValueInput = ({
               {selfColumns.map((column) => (
                 <GoalColumnMenuItem
                   key={column.name}
-                  label={column.label}
-                  resolvedValue={resolveGoalValue(data, column.name).value}
                   isSelected={value === column.name}
+                  label={column.label}
                   onClick={() => commitValue(column.name)}
+                  resolvedValue={resolveGoalValue(data, column.name).value}
                 />
               ))}
             </>
@@ -447,7 +447,9 @@ export const GoalValueInput = ({
                 entityColumns.map((column) => (
                   <GoalColumnMenuItem
                     key={column.name}
+                    isSelected={foreignRef?.column === column.name}
                     label={column.label}
+                    onClick={() => selectEntityColumn(column.name)}
                     resolvedValue={
                       entity != null
                         ? resolveGoalValue(data, {
@@ -457,8 +459,6 @@ export const GoalValueInput = ({
                           }).value
                         : null
                     }
-                    isSelected={foreignRef?.column === column.name}
-                    onClick={() => selectEntityColumn(column.name)}
                   />
                 ))
               ) : (
@@ -470,24 +470,27 @@ export const GoalValueInput = ({
       </Menu>
 
       <MiniPicker
-        opened={isEntityPickerOpen}
-        onClose={entityPicker.close}
-        models={entityPickerModels}
         forceSearch
-        showSearchInput
-        searchInputPlaceholder={t`Search…`}
-        searchParams={getSearchParams}
-        onChange={handleEntityPicked}
+        menuProps={{ position: "bottom-start" }}
+        models={entityPickerModels}
         onBrowseAll={() => {
           entityPicker.close();
           browseModal.open();
         }}
-        menuProps={{ position: "bottom-start" }}
+        onChange={handleEntityPicked}
+        onClose={entityPicker.close}
+        opened={isEntityPickerOpen}
+        searchInputPlaceholder={t`Search…`}
+        searchParams={getSearchParams}
+        showSearchInput
       />
 
       {isBrowseModalOpen && (
         <EntityPickerModal
-          title={t`Pick a measure, metric, or saved question`}
+          isSelectableItem={(item: OmniPickerItem) =>
+            SELECTABLE_BROWSE_MODELS.includes(item.model) &&
+            typeof item.id === "number"
+          }
           models={BROWSE_ALL_MODELS}
           onChange={(item) =>
             handleEntityPicked({
@@ -497,15 +500,12 @@ export const GoalValueInput = ({
             })
           }
           onClose={browseModal.close}
-          isSelectableItem={(item: OmniPickerItem) =>
-            SELECTABLE_BROWSE_MODELS.includes(item.model) &&
-            typeof item.id === "number"
-          }
           options={{
             hasConfirmButtons: false,
             hasDatabases: true,
             disableSearchScope: true,
           }}
+          title={t`Pick a measure, metric, or saved question`}
         />
       )}
     </Box>
@@ -520,10 +520,10 @@ export const GoalValueInput = ({
 function ActiveSourceCheck({ isActive }: { isActive: boolean }) {
   return (
     <Icon
+      aria-hidden
+      className={cx({ [S.invisible]: !isActive })}
       name="check"
       size={12}
-      className={cx({ [S.invisible]: !isActive })}
-      aria-hidden
     />
   );
 }
