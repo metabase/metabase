@@ -156,9 +156,9 @@
   :- Entry
   "Request that the OSI generation job rewrite this entity's ai_context on its next run.
 
-  Revokes a human approval (`data_source` becomes `metabot`) and records the request, which forces the
-  rewrite even when nothing about the entity has changed since it was last generated. The current
-  `ai_context` is left in place and keeps serving until the job replaces it; nothing here calls an LLM.
+  Records the request, which forces the rewrite even when nothing about the entity has changed since it was
+  last generated. The current `ai_context` is left in place and keeps serving until the job replaces it;
+  nothing here calls an LLM.
 
   404 when the entity has no ai_context row — there is nothing to rewrite."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
@@ -182,10 +182,15 @@
             ;; column feeds an index doc, so there is nothing to nudge (regenerate-does-not-nudge-test).
             stamp (rewrite-request-stamp now (:generated_at entry))]
         (cond
+          ;; `data_source` is deliberately untouched: it describes the content sitting in the row, and that
+          ;; content does not change until the job actually rewrites it. Flipping it here would revoke the
+          ;; human approval that [[entity-retrieval/ai-context-instructions]] gates on, so the entity's
+          ;; instructions would stop reaching the agent the moment a rewrite was *requested* — the opposite
+          ;; of what this endpoint promises. The generator reads the request from `rewrite_requested_at`
+          ;; and flips `data_source` when it writes.
           (pos? (t2/update! :model/OsiAiContext
                             (assoc conditions :updated_at (:updated_at entry))
-                            {:data_source          :metabot
-                             :rewrite_requested_at stamp}))
+                            {:rewrite_requested_at stamp}))
           (get-entry entity-type entity-local-id)
 
           (< attempt 4)

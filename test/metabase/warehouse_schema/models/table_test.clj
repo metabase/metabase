@@ -754,3 +754,27 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(deftest keep-first-names-test
+  (testing "the :osi-context field-name accumulator keeps the alphabetically-first names within the cap"
+    (let [collect #(vec (reduce @#'table/keep-first-names (sorted-set) %))]
+      (testing "under the cap everything survives, sorted"
+        (is (= ["alpha" "mid" "zeta"] (collect ["zeta" "alpha" "mid"]))))
+      (testing "a repeated name collapses — a duplicate tells the prompt nothing"
+        (is (= ["alpha" "zeta"] (collect ["zeta" "alpha" "zeta"]))))
+      (testing "over the cap the survivors don't depend on arrival order: a set that shifted between runs
+               would restamp the basis and regenerate the table at LLM prices forever"
+        (with-redefs [table/max-field-names 3]
+          (let [names ["e" "b" "a" "d" "c"]]
+            (is (= ["a" "b" "c"] (collect names)))
+            (is (= ["a" "b" "c"] (collect (reverse names))))
+            (is (= ["a" "b" "c"] (collect (shuffle names))))))))))
+
+(deftest field-path-test
+  (testing "a plain column is named by itself; a nested field by its nfc_path ancestors plus its own name"
+    (is (= "total" (#'table/field-path {:name "total"})))
+    (is (= "total" (#'table/field-path {:name "total" :nfc_path nil})))
+    (is (= "payload.user.id" (#'table/field-path {:name "id" :nfc_path ["payload" "user"]}))))
+  (testing "sibling leaves that share a name stay distinct once qualified — the reason to use the path"
+    (is (not= (#'table/field-path {:name "id" :nfc_path ["payload" "user"]})
+              (#'table/field-path {:name "id" :nfc_path ["payload" "item"]})))))

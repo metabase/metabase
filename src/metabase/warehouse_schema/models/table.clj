@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
@@ -705,23 +706,61 @@
   [table]
   (entity-retrieval.spec/library-index-docs table))
 
+(def ^:private max-field-names
+  "Cap on the field names one table contributes to its prompt input and `basis`."
+  500)
+
+(defn- field-path
+  "The dotted path the prompt names a field by: a nested field's `nfc_path` ancestors plus its own name, a
+  plain column just its name.
+  Bare leaf names are ambiguous once a table has nested fields — a JSON column holding `user.id` and
+  `item.id` produces two fields both named `id` — and the path is also what has to be written to address
+  the column, so it is the more useful thing to hand the model."
+  [{field-name :name, :keys [nfc_path]}]
+  (if (seq nfc_path)
+    (str/join "." (conj (vec nfc_path) field-name))
+    field-name))
+
+(defn- keep-first-names
+  "Reducing fn over one table's field names, accumulating into a sorted set capped at [[max-field-names]].
+  Dropping the largest as it goes means a wide table never materializes more than the cap, and the
+  survivors are the alphabetically-first names rather than whichever ones the database happened to return
+  — a set that shifted between runs would stamp a new `basis` every time and regenerate forever.
+  Repeated names (nested fields sharing a leaf name under different parents) collapse; a duplicate tells
+  the prompt nothing."
+  [acc field-name]
+  (let [acc (conj acc field-name)]
+    (if (> (count acc) max-field-names)
+      (disj acc (first (rseq acc)))
+      acc)))
+
 (defn- table-field-names
   "Batch `:field-names` hydration for the Table `:osi-context` projection: map of
-  [[entity-retrieval.spec/hydration-key]] -> the table's active field names, sorted by name, capped at 500.
+  [[entity-retrieval.spec/hydration-key]] -> the table's active field paths (see [[field-path]]), sorted,
+  capped at [[max-field-names]].
   Deterministic and bounded by contract — an unstable or unbounded value here makes every table
   perpetually dirty at LLM prices, and nothing else bounds the stored `osi_ai_context.basis` blob."
   [tables]
   (when-let [ids (not-empty (into [] (keep :id) tables))]
     (into {}
-          (map (fn [[table-id fields]]
-                 [(entity-retrieval.spec/hydration-key "table" table-id)
-                  (into [] (take 500) (sort (map :name fields)))]))
-          ;; Exclude sensitive/retired fields — they are hidden from metadata by default, and these names
-          ;; are handed to an external LLM provider and stored in `basis`. Same filter sync/classify use.
-          (group-by :table_id (t2/select [:model/Field :table_id :name]
-                                         :table_id [:in ids]
-                                         :active true
-                                         :visibility_type [:not-in ["sensitive" "retired"]])))))
+          (mapcat (fn [id-chunk]
+                    (update-vals
+                     ;; Exclude sensitive/retired fields — they are hidden from metadata by default, and
+                     ;; these names are handed to an external LLM provider and stored in `basis`. Same
+                     ;; filter sync/classify use.
+                     (u/group-by #(entity-retrieval.spec/hydration-key "table" (:table_id %))
+                                 field-path
+                                 keep-first-names
+                                 (sorted-set)
+                                 (t2/select [:model/Field :table_id :name :nfc_path]
+                                            :table_id [:in (vec id-chunk)]
+                                            :active true
+                                            :visibility_type [:not-in ["sensitive" "retired"]]))
+                     vec)))
+          ;; Chunked for the app db's bind-parameter limit. Chunking by table id is what keeps the cap
+          ;; per-table: every field of a table lands in the one chunk holding its id, so no table is
+          ;; accumulated twice and no partial entry can clobber a full one.
+          (partition-all entity-retrieval.spec/hydration-query-chunk-size ids))))
 
 (defn- table->llm-input
   "The `:osi-context` projection for a Table: the deterministic map handed to the generation prompt.

@@ -158,8 +158,8 @@
   exclusion reason (unpublished / inactive / outside the library / archived / question-typed / on a
   non-member table) appears, and the `osi_ai_context` rows cover the doc-derivation edges (caps, blanks,
   duplicates, a synonym equal to the name, instructions, a row for a non-member).
-  `:library-retrieval` is deliberately not enabled, so `osi_ai_context` write hooks no-op instead of
-  racing a background targeted reconcile."
+  `:library-retrieval` is deliberately not enabled, so a targeted reconcile nudge no-ops instead of racing
+  this fixture in the background."
   [f]
   (mt/with-premium-features #{:library}
     ;; the corpus includes placements the live write path rejects — a model/question card in the Metrics
