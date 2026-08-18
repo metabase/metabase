@@ -5,7 +5,7 @@
 ;; to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts {:aliased-namespace-symbol                                            3
-                 :all                                                                 49
+                 :all                                                                 59
                  :case-symbol-test                                                    1
                  :clojure-lsp/unused-public-var                                       9
                  :def-fn                                                              1

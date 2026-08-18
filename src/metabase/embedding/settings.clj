@@ -325,10 +325,8 @@
   []
   (or
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
-   (enable-embedding-static)
-   (enable-embedding-interactive)
-   (enable-embedding-sdk)
-   (enable-embedding-simple)))
+   (enable-embedding-modular)
+   (enable-embedding-interactive)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

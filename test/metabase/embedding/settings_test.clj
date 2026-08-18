@@ -63,7 +63,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
             (embed.settings/enable-embedding-simple! true)
-            (is (true? (embed.settings/enable-embedding-simple)))
+            (is (true? #_:clj-kondo/ignore (embed.settings/enable-embedding-simple)))
             (is (not (str/blank? (embed.settings/embedding-secret-key))))
             (let [generated-key (embed.settings/embedding-secret-key)]
               (embed.settings/enable-embedding-static! true)
@@ -91,7 +91,7 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (is (not (and (embed.settings/enable-embedding-sdk)
+        (is (not (and #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)
                       (embed.settings/embedding-app-origins-sdk))))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
@@ -140,25 +140,25 @@
 (defn test-enabled-sync! [env expected-behavior]
   (let [unsyncd-settings {:enable-embedding             #_:clj-kondo/ignore (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
-                          :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
-                          :enable-embedding-static      (embed.settings/enable-embedding-static)}]
+                          :enable-embedding-sdk         #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)
+                          :enable-embedding-static      #_:clj-kondo/ignore (embed.settings/enable-embedding-static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
-          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (embed.settings/enable-embedding-sdk)]))
-          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (embed.settings/enable-embedding-static)])))
+          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-sdk)]))
-          (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior true] [:sets-all-true #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          (is (= [expected-behavior true] [:sets-all-true #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-sdk)]))
-          (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior false] [:sets-all-false #_:clj-kondo/ignore (embed.settings/enable-embedding-sdk)]))
+          (is (= [expected-behavior false] [:sets-all-false #_:clj-kondo/ignore (embed.settings/enable-embedding-static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
