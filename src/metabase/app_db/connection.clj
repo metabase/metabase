@@ -145,6 +145,11 @@
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
+;; Set when a requested rollback fails and leaves writes behind that the caller asked to discard. Shared by
+;; the whole tree like the accumulators above, so the outermost transaction cannot commit them even if the
+;; code between here and there catches the error.
+(def ^:private ^:dynamic *rollback-required* nil)
+
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
   nested-transaction tree and thrown away when the outermost transaction ends. Any subsystem can stash
@@ -157,20 +162,6 @@
   "Returns the current per-transaction [[*transaction-state*]] atom, or nil if not in a transaction."
   []
   *transaction-state*)
-
-(defn do-outside-transaction
-  "Run `thunk` detached from any surrounding transaction: on its own connection, at depth zero, and with its own
-  callback and state bindings. Writes it makes commit on their own, so they survive a rollback of the enclosing
-  scope. For work whose durability must not depend on the caller's transaction — global setup a caller happens to
-  trigger from inside a `:rollback-only` scope, which would otherwise be undone while something outside records it
-  as done."
-  [thunk]
-  (binding [t2.conn/*current-connectable* nil
-            *transaction-depth*           0
-            *before-commit-callbacks*     nil
-            *after-commit-callbacks*      nil
-            *transaction-state*           nil]
-    (thunk)))
 
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
@@ -257,8 +248,23 @@
                       (try
                         (rollback!)
                         (catch Exception rollback-e
+                          ;; the writes are still here, so nothing up the tree may commit them, however far
+                          ;; this error gets caught before it reaches the outermost scope
+                          (some-> *rollback-required* (reset! true))
                           (throw (ex-info "Error rolling back a rollback-only transaction" {} rollback-e))))
                       [result false])
+
+                    (and (= *transaction-depth* 1) (some-> *rollback-required* deref))
+                    (do
+                      ;; discard the whole tree rather than commit writes a rollback-only scope failed to undo,
+                      ;; and say so rather than returning as if the body's work had been kept
+                      (try
+                        (.rollback connection)
+                        (catch Throwable rollback-e
+                          (log/warnf "Failed to roll back transaction: %s" (ex-message rollback-e))))
+                      (throw (ex-info (str "Not committing: a rollback-only transaction in this tree failed to "
+                                           "roll back, so its writes are still present")
+                                      {})))
 
                     (= *transaction-depth* 1)
                     (try
@@ -356,6 +362,7 @@
                     ;; one set of accumulators + state for the whole tree, created at the outermost txn
                     *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
                     *transaction-state*       (if outermost? (atom {}) *transaction-state*)
+                    *rollback-required*       (if outermost? (atom false) *rollback-required*)
                     *after-commit-callbacks*  callbacks]
             (do-transaction connection rollback-only f))]
       (when (and outermost? committed?)

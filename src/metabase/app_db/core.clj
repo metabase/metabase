@@ -41,7 +41,6 @@
   db-type
   do-before-commit
   do-after-commit
-  do-outside-transaction
   in-transaction?
   quoting-style
   unique-identifier
