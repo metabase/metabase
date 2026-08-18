@@ -3,6 +3,8 @@ import type { ReactNode, Ref } from "react";
 import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
 
+const RIGHT_SECTION_WIDTH = 38;
+
 type Props = {
   "aria-label"?: string;
   id: string;
@@ -32,6 +34,7 @@ export function StaticGoalValueInput({
       placeholder={placeholder}
       rightSection={rightSection}
       rightSectionPointerEvents="all"
+      rightSectionWidth={RIGHT_SECTION_WIDTH}
       value={numericValue ?? ""}
       w="100%"
       onBlur={(event) => {

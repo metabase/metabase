@@ -7,7 +7,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
 
-const RIGHT_SECTION_WIDTH = "38px";
+const RIGHT_SECTION_WIDTH = 38;
 
 const inputStyles = {
   input: {
