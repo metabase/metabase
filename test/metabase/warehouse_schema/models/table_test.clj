@@ -783,6 +783,11 @@
   (testing "bigquery writes ancestors only, so there the leaf does have to be appended"
     (is (= "r.a" (#'table/field-path {:name "a" :nfc_path ["r"]})))
     (is (= "r.b" (#'table/field-path {:name "b" :nfc_path ["r"]}))))
+  (testing "a bigquery field sharing its parent's name collapses into the parent — the residual ambiguity
+           the TODO describes, pinned so it is a known limit rather than a surprise. BigQuery `a.b.b` and
+           Mongo `a.b` are the same row, so no per-row rule gets both right."
+    (is (= "r" (#'table/field-path {:name "r" :nfc_path ["r"]})) "wanted r.r, indistinguishable from mongo")
+    (is (= "a.b" (#'table/field-path {:name "b" :nfc_path ["a" "b"]})) "wanted a.b.b for bigquery"))
   (testing "sibling leaves that share a name stay distinct once qualified — the reason to use the path"
     (doseq [[a b] [[{:name "id" :nfc_path ["payload" "user" "id"]}
                     {:name "id" :nfc_path ["payload" "item" "id"]}]

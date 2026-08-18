@@ -723,8 +723,10 @@
   Appending the leaf unconditionally mangles the first pair; never appending it collapses distinct BigQuery
   siblings, since `r.a` and `r.b` would both become `r`."
   [{field-name :name, :keys [nfc_path]}]
-  ;; TODO (Chris 2026-08-18) -- Sniffing the convention per row is a workaround. BigQuery's
-  ;; {:name "r", :nfc_path ["r"]} is indistinguishable here from a full path and becomes `r`, not `r.r`.
+  ;; TODO (Chris 2026-08-18) -- No per-row rule can be correct here. BigQuery `a.b.b` and Mongo `a.b` both
+  ;; arrive as {:name "b", :nfc_path ["a" "b"]} and want different answers, so a BigQuery field sharing its
+  ;; parent's name collapses into that parent (pinned in field-path-test). Joining is the safer of the two
+  ;; guesses: appending would mangle every Mongo nested field rather than only same-named BigQuery ones.
   ;; An unrecognized third convention also falls into the :else branch and is silently misnamed. Sync should
   ;; store one canonical nfc_path across drivers, after which this is a join.
   (cond
