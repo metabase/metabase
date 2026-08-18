@@ -351,6 +351,9 @@
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.api.key=test-api-key"
+                 ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
+                 ;; that creates one breaks.
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  ;; Port 0 tells the OS to assign a random free port, allowing parallel test runs.
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}

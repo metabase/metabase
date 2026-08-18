@@ -19,6 +19,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -121,6 +122,73 @@
        (or (instance? java.net.ConnectException throwable)
            (recur (.getCause throwable)))))
 
+(def ^:private auth-provider-url-detail-keys
+  "Detail keys holding a URL that Metabase fetches over plain HTTP -- not through the warehouse connection and not
+  through the SSH tunnel -- while resolving an auth provider (see [[fetch-and-incorporate-auth-provider-details]])."
+  [:http-auth-url :oauth-token-url])
+
+(defn- hosts-metabase-will-connect-to
+  "The hosts Metabase itself resolves and connects to for `details`. With an SSH tunnel enabled Metabase connects to
+  the tunnel server and the tunnel server resolves the warehouse host on the far side, so `:host` is (legitimately)
+  often `localhost` there and only `:tunnel-host` is ours to check. That only holds for a driver that actually routes
+  its connection through the tunnel -- details are an open map, and for a driver that ignores the `:tunnel-*` keys
+  (BigQuery) believing them would leave the host it really connects to unchecked.
+
+  Eager on purpose: [[validate-connection-hosts!]] turns a failure to extract the hosts into a refusal, which it can
+  only do if the failure happens at the call and not later, when a lazy sequence is walked."
+  [driver details]
+  (into []
+        cat
+        [(if (and (:tunnel-enabled details)
+                  (driver/routes-connection-through-ssh-tunnel? driver))
+           (driver/hosts-from-details details [:tunnel-host])
+           ;; Fail closed if loading the driver or extracting its hosts fails. Falling back to generic keys here could
+           ;; turn a bug in a driver's implementation into an unchecked connection.
+           (vec (driver/connection-hosts driver details)))
+         ;; deliberately outside the tunnel branch: a tunnel rewrites the host detail, but the client still honors a
+         ;; host named in its connection parameters, so those are checked either way
+         (driver/connection-parameter-hosts driver details)
+         (when (:use-auth-provider details)
+           (driver/hosts-from-details details auth-provider-url-detail-keys))]))
+
+(defn- blocked-network-address-exception []
+  (let [message (str (deferred-tru "Cannot connect to a private or internal network address."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}})))
+
+(defn- unknown-connection-hosts-exception [cause]
+  (let [message (str (deferred-tru "Error resolving hosts: could not apply security policy."))]
+    (ex-info message
+             {:status-code 400
+              :message     message
+              :errors      {:host (str (deferred-tru "check your host settings"))}}
+             cause)))
+
+(defn validate-resolved-addresses!
+  "Throw when any of the already-resolved `addresses` is disallowed by [[driver.settings/warehouse-allowed-networks]].
+  Used by connection transports, such as Mongo's `InetAddressResolver`, that can enforce the policy on the exact
+  addresses used to open a socket."
+  [addresses]
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (when (some #(not (u.http/address-allowed-for-network-policy? policy %)) addresses)
+      (throw (blocked-network-address-exception)))))
+
+(defn validate-connection-hosts!
+  "Throw a 400 if `details` would have Metabase open a connection to an address disallowed by
+  [[driver.settings/warehouse-allowed-networks]]. Returns nil when the details are acceptable."
+  [driver details]
+  (let [policy (driver.settings/warehouse-allowed-networks)]
+    (when (not= policy :allow-all)
+      (let [hosts (try
+                    (hosts-metabase-will-connect-to driver details)
+                    (catch Throwable e
+                      (log/error e "Could not determine the hosts a connection to this database would open")
+                      (throw (unknown-connection-hosts-exception e))))]
+        (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
+          (throw (blocked-network-address-exception)))))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -131,27 +199,32 @@
   ^Boolean [driver details-map & [throw-exceptions]]
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
-    (try
-      (u/with-timeout (driver.settings/db-connection-timeout-ms)
-        (or (driver/can-connect? driver details-map)
-            (throw (Exception. "Failed to connect to Database"))))
-      ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
-      ;; first
-      (catch Throwable e
-        (log/error e "Failed to connect to Database")
-        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
-                                                   (driver/humanize-connection-error-message driver))]
-                 (let [error-data (cond
-                                    (keyword? humanized-message)
-                                    (tr-connection-error-messages humanized-message)
+    (do
+      ;; deliberately outside the `try` below: this error is already the message we want the caller to see, and
+      ;; running it through `humanize-connection-error-message` would let a driver turn it into something more
+      ;; revealing. The boolean arity reaches it through its own `try`, so that one still answers `false`.
+      (validate-connection-hosts! driver details-map)
+      (try
+        (u/with-timeout (driver.settings/db-connection-timeout-ms)
+          (or (driver/can-connect? driver details-map)
+              (throw (Exception. "Failed to connect to Database"))))
+        ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the
+        ;; message first
+        (catch Throwable e
+          (log/error e "Failed to connect to Database")
+          (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
+                                                     (driver/humanize-connection-error-message driver))]
+                   (let [error-data (cond
+                                      (keyword? humanized-message)
+                                      (tr-connection-error-messages humanized-message)
 
-                                    (connection-error? e)
-                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+                                      (connection-error? e)
+                                      (tr-connection-error-messages :cannot-connect-check-host-and-port)
 
-                                    :else
-                                    {:message humanized-message})]
-                   (ex-info (str (:message error-data)) error-data e))
-                 e))))
+                                      :else
+                                      {:message humanized-message})]
+                     (ex-info (str (:message error-data)) error-data e))
+                   e)))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e

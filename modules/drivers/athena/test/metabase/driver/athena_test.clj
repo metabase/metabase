@@ -142,6 +142,17 @@
       "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
       "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :athena details))
+    {:region "us-east-1"}
+    ["athena.us-east-1.amazonaws.com"]
+
+    {:region "cn-north-1"}
+    ["athena.cn-north-1.amazonaws.com.cn"]
+
+    {:region "us-east-1" :hostname "athena.internal.example"}
+    ["athena.internal.example"]))
+
 (deftest ^:parallel athena-subname-uses-hostname-test
   (mt/test-driver :athena
     (doseq [[test-desc details exp-subname]
