@@ -8,6 +8,12 @@
 
 (comment osi-generation.settings/keep-me)
 
+(deftest osi-generation-respects-global-ai-switch-test
+  (mt/with-temporary-setting-values [osi-generation.settings/osi-generation-enabled true
+                                     llm.settings/ai-features-enabled?                 false]
+    (is (false? (osi-generation.settings/osi-generation-enabled))
+        "the shared gate used by both Quartz and the manual trigger stays closed")))
+
 (deftest ^:parallel provider-and-model-falls-back-test
   (testing "unset osi-generation-provider inherits llm-metabot-provider; set returns its own value"
     (mt/with-dynamic-fn-redefs [osi-generation.settings/osi-generation-provider (constantly nil)
