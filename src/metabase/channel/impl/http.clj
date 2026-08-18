@@ -9,6 +9,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
+   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -55,22 +56,22 @@
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
   (let [strategy (channel.settings/http-channel-host-strategy)
-        resolver (u.http/network-policy-dns-resolver strategy)
-        protected-options (cond-> {:url url}
-                            ;; nil for :allow-all -- omitted so clj-http uses its default resolver
-                            resolver (assoc :dns-resolver resolver))]
+        resolver (u.http/network-policy-dns-resolver strategy)]
     (check-url! strategy url)
-    (let [req (merge
-               {:accept       :json
-                :content-type :json
-                :method       :post}
-               (when method
-                 {:method (keyword method)})
-               (cond-> request
-                 (= "request-body" auth-method) (update :body merge auth-info)
-                 (= "header" auth-method)       (update :headers merge auth-info)
-                 (= "query-param" auth-method)  (update :query-params merge auth-info))
-               protected-options)]
+    (let [req (-> (merge
+                   {:accept       :json
+                    :content-type :json
+                    :method       :post}
+                   (when method
+                     {:method (keyword method)})
+                   (cond-> request
+                     (= "request-body" auth-method) (update :body merge auth-info)
+                     (= "header" auth-method)       (update :headers merge auth-info)
+                     (= "query-param" auth-method)  (update :query-params merge auth-info)))
+                  (assoc :url url)
+                  ;; Remove an incoming resolver under :allow-all; rendered requests must not control
+                  ;; DNS resolution.
+                  (u/assoc-dissoc :dns-resolver resolver))]
       (http/request (cond-> req
                       (or (map? (:body req))
                           (sequential? (:body req))) (update :body json/encode))))))
