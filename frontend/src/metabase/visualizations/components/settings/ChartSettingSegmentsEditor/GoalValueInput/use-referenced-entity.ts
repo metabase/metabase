@@ -9,7 +9,6 @@ import type {
   ReferencedEntityInfo,
 } from "./types";
 
-/** The name and numeric columns of the card or measure a goal value references. */
 export function useReferencedEntity(
   entity: GoalEntityRef | null,
 ): ReferencedEntityInfo {
@@ -35,9 +34,11 @@ export function useReferencedEntity(
         label: field.display_name || field.name,
       }));
     }
+
     if (measure?.result_column_name) {
       return [{ name: measure.result_column_name, label: measure.name }];
     }
+
     return [];
   }, [entity?.type, card, measure]);
 
