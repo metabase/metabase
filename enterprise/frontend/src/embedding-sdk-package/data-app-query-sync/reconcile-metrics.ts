@@ -45,6 +45,63 @@ function rewriteMetricReferences(
   );
 }
 
+function removeMetricLockEntry(
+  appRoot: string,
+  lockfile: ResourceLockfile,
+  sourceMetricId: number,
+) {
+  const index = lockfile.metrics.findIndex(
+    (entry) => entry.sourceMetricId === sourceMetricId,
+  );
+
+  if (index >= 0) {
+    lockfile.metrics.splice(index, 1);
+    writeResourceLockfile(appRoot, lockfile);
+  }
+}
+
+async function reconcileRemovedMetrics({
+  appRoot,
+  collectionId,
+  previousEntries,
+  liveMetricIds,
+  lockfile,
+  client,
+  log,
+}: {
+  appRoot: string;
+  collectionId: number;
+  previousEntries: ResourceLockfile["metrics"];
+  liveMetricIds: Set<number>;
+  lockfile: ResourceLockfile;
+  client: Pick<MetabaseClient, "getCard" | "deleteCard">;
+  log: (message: string) => void;
+}) {
+  for (const entry of previousEntries) {
+    if (liveMetricIds.has(entry.sourceMetricId)) {
+      continue;
+    }
+
+    const copiedCard = await orNullOn404(client.getCard(entry.copiedMetricId));
+
+    if (copiedCard) {
+      if (
+        !isMetricCard(copiedCard) ||
+        copiedCard.collection_id !== collectionId
+      ) {
+        throw new Error(
+          `Metric copy Card ${copiedCard.id} belongs to a removed metric but is no longer an owned metric in data app collection ${collectionId}. Move it back or delete it manually, then run sync-resources again.`,
+        );
+      }
+
+      await client.deleteCard(copiedCard.id);
+      log(`deleted metric: card ${copiedCard.id}`);
+    }
+
+    removeMetricLockEntry(appRoot, lockfile, entry.sourceMetricId);
+  }
+}
+
 export async function reconcileMetrics({
   appRoot,
   collectionId,
@@ -57,9 +114,13 @@ export async function reconcileMetrics({
   collectionId: number;
   resolvedQueries: ResolvedQuery[];
   lockfile: ResourceLockfile;
-  client: Pick<MetabaseClient, "getCard" | "createMetric" | "updateMetric">;
+  client: Pick<
+    MetabaseClient,
+    "getCard" | "createMetric" | "updateMetric" | "deleteCard"
+  >;
   log: (message: string) => void;
 }) {
+  const previousEntries = [...lockfile.metrics];
   const metrics = [
     ...new Map(
       resolvedQueries.flatMap(({ metrics }) =>
@@ -67,6 +128,7 @@ export async function reconcileMetrics({
       ),
     ).values(),
   ];
+  const liveMetricIds = new Set(metrics.map((metric) => metric.id));
   const copiedMetricIdBySourceMetricId: Record<number, number> = {};
 
   for (const metric of metrics) {
@@ -129,6 +191,16 @@ export async function reconcileMetrics({
 
     writeResourceLockfile(appRoot, lockfile);
   }
+
+  await reconcileRemovedMetrics({
+    appRoot,
+    collectionId,
+    previousEntries,
+    liveMetricIds,
+    lockfile,
+    client,
+    log,
+  });
 
   for (const resolved of resolvedQueries) {
     const rewritten = rewriteMetricReferences(

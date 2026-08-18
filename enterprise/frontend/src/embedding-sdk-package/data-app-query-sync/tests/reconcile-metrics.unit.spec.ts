@@ -1,5 +1,5 @@
 import { reconcileMetrics } from "../reconcile-metrics";
-import type { ResourceLockfile } from "../types";
+import type { DataAppMetricCard, ResourceLockfile } from "../types";
 
 import { makeApp, setupResourceSyncTests } from "./setup";
 
@@ -22,6 +22,7 @@ describe("metric reconciliation", () => {
       }),
       updateMetric: jest.fn(),
       createMetric: jest.fn(),
+      deleteCard: jest.fn(),
     };
     const lockfile: ResourceLockfile = {
       queries: [],
@@ -61,5 +62,93 @@ describe("metric reconciliation", () => {
 
     expect(client.updateMetric).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith("unchanged metric: card 251 -> card 404");
+  });
+
+  it("copies a missing metric and rewrites nested metric references", async () => {
+    const client = {
+      getCard: jest.fn(),
+      updateMetric: jest.fn(),
+      createMetric: jest.fn().mockResolvedValue({ id: 404 }),
+      deleteCard: jest.fn(),
+    };
+    const lockfile: ResourceLockfile = {
+      queries: [],
+      models: [],
+      metrics: [],
+    };
+    const metric: DataAppMetricCard = {
+      id: 251,
+      name: "Lifetime value",
+      type: "metric",
+      collection_id: 1,
+      dataset_query: { database: 1, stages: [] },
+      display: "table",
+      visualization_settings: {},
+      description: null,
+    };
+    const resolvedQuery = {
+      dataset_query: {
+        stages: [{ aggregation: [["metric", {}, 251]] }],
+      },
+      metrics: [metric],
+    };
+
+    await reconcileMetrics({
+      appRoot: makeApp(),
+      collectionId: 35,
+      resolvedQueries: [resolvedQuery],
+      lockfile,
+      client,
+      log: jest.fn(),
+    });
+
+    expect(client.createMetric).toHaveBeenCalledWith({
+      name: "Lifetime value",
+      collectionId: 35,
+      datasetQuery: { database: 1, stages: [] },
+      display: "table",
+      visualizationSettings: {},
+      description: null,
+    });
+    expect(lockfile.metrics).toEqual([
+      { sourceMetricId: 251, copiedMetricId: 404, hash: expect.any(String) },
+    ]);
+    expect(resolvedQuery.dataset_query).toEqual({
+      stages: [{ aggregation: [["metric", {}, 404]] }],
+    });
+  });
+
+  it("deletes a copied metric when no query references it", async () => {
+    const client = {
+      getCard: jest.fn().mockResolvedValue({
+        id: 404,
+        name: "Lifetime value",
+        type: "metric",
+        collection_id: 35,
+        dataset_query: { database: 1, stages: [] },
+      }),
+      updateMetric: jest.fn(),
+      createMetric: jest.fn(),
+      deleteCard: jest.fn(),
+    };
+    const lockfile: ResourceLockfile = {
+      queries: [],
+      models: [],
+      metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
+    };
+    const log = jest.fn();
+
+    await reconcileMetrics({
+      appRoot: makeApp(),
+      collectionId: 35,
+      resolvedQueries: [],
+      lockfile,
+      client,
+      log,
+    });
+
+    expect(client.deleteCard).toHaveBeenCalledWith(404);
+    expect(lockfile.metrics).toEqual([]);
+    expect(log).toHaveBeenCalledWith("deleted metric: card 404");
   });
 });
