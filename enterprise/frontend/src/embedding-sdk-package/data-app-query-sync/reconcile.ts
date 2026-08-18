@@ -395,7 +395,12 @@ async function reconcileRemovedQueries(
       continue;
     }
 
-    if (card.type !== "question" || card.collection_id !== collectionId) {
+    // A trashed card reports the Trash as its collection; it is still the app's
+    // to delete, so only a card someone moved elsewhere is refused.
+    if (
+      card.type !== "question" ||
+      (card.archived !== true && card.collection_id !== collectionId)
+    ) {
       const recovery =
         card.type === "question"
           ? `Move card ${card.id} back to data app collection ${collectionId} or delete it manually`

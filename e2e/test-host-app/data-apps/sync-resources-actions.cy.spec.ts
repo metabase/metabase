@@ -7,6 +7,7 @@ import {
   dataAppHostAppRoot,
   dataAppPermissionGroupId,
   declareDataAppActions,
+  moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
   resetDataAppHostAppSources,
   syncDataAppResources,
@@ -274,7 +275,14 @@ describe(
       // The copy is the whole point of the model copy: an app's viewers hold
       // read on the app's collection, so only the copy is reachable to them.
       it("lets the app's group execute the copy but not the action it was copied from", () => {
-        syncOneAction().then(({ action, copiedAction }) => {
+        syncOneAction().then(({ modelId, action, copiedAction }) => {
+          // An action is readable through its model, and the fixture model sits
+          // in the root collection the normal user's groups can read.
+          moveDataAppModelToCollection({
+            modelId,
+            name: "Source models",
+            access: "none",
+          });
           joinAppGroup();
 
           cy.signInAsNormalUser();
@@ -317,6 +325,14 @@ describe(
 
       it("does not widen access to the model the copy was made from", () => {
         syncOneAction().then(({ modelId, copiedModel }) => {
+          // The fixture model is created in the root collection, which the
+          // normal user's groups can read, so close it before asking whether
+          // the app's group opened anything.
+          moveDataAppModelToCollection({
+            modelId,
+            name: "Source models",
+            access: "none",
+          });
           joinAppGroup();
 
           cy.signInAsNormalUser();
@@ -347,9 +363,15 @@ describe(
             });
 
           dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-            dataAppDatabasePermissions(groupId).should((permissions) => {
-              expect(permissions[String(SAMPLE_DB_ID)]).to.eq("blocked");
-            });
+            // The graph reports only what departs from a group's defaults, so a
+            // database the app does not read never appears as granted.
+            dataAppDatabasePermissions(groupId).should(
+              ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
+                expect(sampleDatabase, "never granted").not.to.eq(
+                  "unrestricted",
+                );
+              },
+            );
 
             cy.signInAsNormalUser();
             readsSampleDatabase().its("status").should("eq", 202);
@@ -392,22 +414,10 @@ describe(
                 expect(permissions[String(SAMPLE_DB_ID)]).to.eq("unrestricted");
               });
 
-              // Granting both databases is only worth anything if the copy then
-              // runs for a member of the group.
-              addUserToDataAppGroup(groupId, USERS.normal.email);
-
-              copiedModels().then(([copiedModel]) => {
-                actionsOnModel(copiedModel.id).then(([copiedAction]) => {
-                  cy.signInAsNormalUser();
-                  cy.request({
-                    method: "POST",
-                    url: `/api/action/${copiedAction.id}/execute`,
-                    body: { parameters: {} },
-                  })
-                    .its("status")
-                    .should("be.oneOf", [200, 204]);
-                });
-              });
+              // That a granted copy then runs for a member of the group is the
+              // sibling test's job; this one cannot execute its own action,
+              // since a query action against the read-only sample database has
+              // nothing to write.
             });
           });
         });

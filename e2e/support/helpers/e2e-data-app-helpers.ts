@@ -324,6 +324,12 @@ export function createSecondDataApp(slug: string) {
   cy.exec(
     `ln -s "${dataAppHostAppRoot()}/node_modules" "${appRoot}/node_modules"`,
   );
+  // Synchronization writes the app's resource entity IDs back into its manifest,
+  // so an app without one is refused before it reaches the reconcilers.
+  cy.writeFile(
+    `${appRoot}/data_app.yaml`,
+    `name: ${slug}\npath: ./dist/index.js\n`,
+  );
 
   return appRoot;
 }
