@@ -113,7 +113,6 @@ const setTimelineVisible = (
       sets.hiddenTimelineIds.add(timeline.id);
     }
   }
-
   timeline.events?.forEach((event) => sets.hiddenEventIds.delete(event.id));
 };
 
