@@ -1,6 +1,8 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
+
+let isExpressionWidgetLoaded = false;
 
 // The widget carries the expression editor and its CodeMirror extensions, which
 // no route needs on first paint.
@@ -8,7 +10,10 @@ const importExpressionWidget = () =>
   import(
     /* webpackChunkName: "expression-editor" */
     "./ExpressionWidget"
-  );
+  ).then((module) => {
+    isExpressionWidgetLoaded = true;
+    return module;
+  });
 
 /**
  * Start the download before the user asks for the widget, so opening it does not
@@ -19,6 +24,34 @@ const importExpressionWidget = () =>
  */
 export const prefetchExpressionWidget = () => {
   void importExpressionWidget();
+};
+
+/**
+ * Report whether the widget is ready to render. Callers that open a popover
+ * straight onto the widget use this to keep the popover shut until then, so it
+ * never appears as an empty box that the editor drops into later.
+ */
+export const useExpressionWidgetChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(isExpressionWidgetLoaded);
+
+  useEffect(() => {
+    if (isLoaded) {
+      return;
+    }
+
+    let isCancelled = false;
+    importExpressionWidget().then(() => {
+      if (!isCancelled) {
+        setIsLoaded(true);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isLoaded]);
+
+  return isLoaded;
 };
 
 const LazyExpressionWidget = lazy(() =>
