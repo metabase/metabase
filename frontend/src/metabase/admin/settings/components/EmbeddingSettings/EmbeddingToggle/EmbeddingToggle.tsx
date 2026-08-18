@@ -112,6 +112,7 @@ export function EmbeddingToggle({
       {isEmbeddingToggle && (
         <EmbeddingLegaleseModal
           setting={settingKey}
+          mergedSettingKeys={mergedSettingKeys}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />

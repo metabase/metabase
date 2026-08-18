@@ -24,6 +24,7 @@ const OSS_LABEL = "Enable embedding";
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
   envSettingKeys?: (keyof Settings)[];
+  showEmbedTerms?: boolean;
 } & Partial<
   Pick<
     Settings,
@@ -37,6 +38,7 @@ type SetupOpts = {
 async function setup({
   hasSimpleEmbedding = true,
   envSettingKeys = [],
+  showEmbedTerms = false,
   ...values
 }: SetupOpts = {}) {
   const settingValues = createMockSettings({
@@ -44,7 +46,7 @@ async function setup({
     "enable-embedding-sdk": false,
     "enable-embedding-static": false,
     "enable-embedding-interactive": false,
-    "show-simple-embed-terms": false,
+    "show-simple-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
     }),
@@ -135,6 +137,33 @@ describe("EmbeddingMethodsCard", () => {
         "enable-embedding-simple": true,
         "enable-embedding-sdk": true,
         "enable-embedding-static": true,
+      });
+    });
+
+    // The terms modal intercepts the first enable, so it writes the settings
+    // that switch stands for rather than the switch's own handler.
+    it("writes all three from the terms modal on the first enable", async () => {
+      await setup({ showEmbedTerms: true });
+
+      const switches = await screen.findAllByRole("switch");
+      await userEvent.click(switches[0]);
+
+      expect(await findRequests("PUT")).toHaveLength(0);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Agree" }),
+      );
+
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+
+      const [{ body }] = await findRequests("PUT");
+      expect(body).toEqual({
+        "enable-embedding-simple": true,
+        "enable-embedding-sdk": true,
+        "enable-embedding-static": true,
+        "show-simple-embed-terms": false,
       });
     });
 
