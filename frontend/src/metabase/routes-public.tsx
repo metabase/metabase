@@ -9,12 +9,25 @@ import type { RouteObject } from "metabase/router";
  * The public document page, in its own chunk. It renders the document with
  * tiptap, which the public question and dashboard pages have no use for.
  */
+const importPublicDocument = () =>
+  import("metabase/public/containers/PublicDocument");
+
 const publicDocument = () =>
-  import("metabase/public/containers/PublicDocument").then(
-    ({ PublicDocument }) => ({
-      Component: PublicDocument,
-    }),
-  );
+  importPublicDocument().then(({ PublicDocument }) => ({
+    Component: PublicDocument,
+  }));
+
+/**
+ * A public document is opened by link, so there is no hover to prefetch on. The
+ * path is known before the router mounts, so the fetch starts here instead: it
+ * then runs alongside the rest of startup rather than after it.
+ *
+ * Matched loosely because the app can be served under a path prefix. A path that
+ * only looks like a document link costs one chunk that is never rendered.
+ */
+if (window.location.pathname.includes("/public/document/")) {
+  importPublicDocument().catch(() => undefined);
+}
 
 export const getRoutes = (): RouteObject[] => [
   {
