@@ -1,5 +1,3 @@
-import type * as Lib from "metabase-lib";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
@@ -552,8 +550,10 @@ export type TestJoinSpec = {
   conditions?: TestJoinConditionSpec[];
 };
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 type TestJoinConditionSpec = {
-  operator: Lib.JoinConditionOperator;
+  operator: JoinConditionOperator;
   left: TestColumnWithBinningSpec | TestExpressionSpec;
   right: TestColumnWithBinningSpec | TestExpressionSpec;
 };
