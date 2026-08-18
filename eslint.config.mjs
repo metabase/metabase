@@ -1219,7 +1219,7 @@ const configs = [
     ],
     ignores: [
       // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
-      // It moves there with the explicit store composition (E8 PR2), and this ignore goes with it.
+      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
       "frontend/src/metabase/redux/store/mocks/api.ts",
     ],
     rules: {
