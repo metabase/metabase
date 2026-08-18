@@ -1,7 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn, dissoc } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -53,7 +52,11 @@ import {
   metabotReducer,
   setVisible,
 } from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
+import {
+  createAgentState,
+  createConversationForAgent,
+  getMetabotInitialState,
+} from "../state/reducer-utils";
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
 
@@ -79,24 +82,39 @@ export const convoForAgent = (
 export const testConversationId = (agentId: MetabotAgentId) =>
   `convo-${agentId}`;
 
-export const createTestMetabotState = (): MetabotState =>
-  fixedMetabotAgentIds.reduce((state, agentId) => {
-    const previousId = agentIn(state, agentId).conversationId;
-    const conversationId = testConversationId(agentId);
+export const createTestMetabotState = ({
+  visibleAgentIds = [],
+  conversationTitle,
+}: {
+  visibleAgentIds?: MetabotAgentId[];
+  conversationTitle?: string;
+} = {}): MetabotState => {
+  const agentConversations = fixedMetabotAgentIds.map((agentId) => ({
+    agentId,
+    conversationId: testConversationId(agentId),
+  }));
 
-    return {
-      ...state,
-      conversations: {
-        ...dissoc(state.conversations, previousId),
-        [conversationId]: { ...convoIn(state, previousId), conversationId },
-      },
-      agents: assocIn(
-        state.agents,
-        [agentId, "conversationId"],
+  return {
+    ...getMetabotInitialState(),
+    conversations: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
         conversationId,
-      ),
-    };
-  }, getMetabotInitialState());
+        createConversationForAgent(agentId, {
+          conversationId,
+          title: conversationTitle,
+        }),
+      ]),
+    ),
+    agents: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
+        agentId,
+        createAgentState(conversationId, {
+          visible: visibleAgentIds.includes(agentId),
+        }),
+      ]),
+    ),
+  };
+};
 
 const mockReducedMotion = () => {
   window.matchMedia = (query: string) =>
@@ -347,22 +365,12 @@ export function setup(
     initialRoute,
   } = options || {};
 
-  const visibleState = assocIn(
-    createTestMetabotState(),
-    ["agents", "omnibot", "visible"],
-    true,
-  );
   const metabotState =
     metabotInitialState ??
-    Object.keys(visibleState.conversations).reduce(
-      (state, conversationId) =>
-        assocIn(
-          state,
-          ["conversations", conversationId, "title"],
-          conversationTitle || undefined,
-        ),
-      visibleState,
-    );
+    createTestMetabotState({
+      visibleAgentIds: ["omnibot"],
+      conversationTitle: conversationTitle || undefined,
+    });
 
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,

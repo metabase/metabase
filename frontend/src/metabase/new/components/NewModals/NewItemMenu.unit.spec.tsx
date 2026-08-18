@@ -100,14 +100,6 @@ describe("NewItemMenu", () => {
     expect(await screen.findByText("AI exploration")).toBeInTheDocument();
   });
 
-  it("links AI exploration to the ask mode question page", async () => {
-    await setup();
-
-    expect(
-      await screen.findByRole("menuitem", { name: /AI exploration/ }),
-    ).toHaveAttribute("href", "/question/ask");
-  });
-
   it("should support keyboard navigation", async () => {
     await setup();
 

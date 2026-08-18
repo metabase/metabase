@@ -51,7 +51,6 @@ import {
   getDebugMode,
   getDeveloperMessage,
   getHasConversation,
-  getHasMessagedInSession,
   getIsConversationProcessing,
   getIsPollingForTitle,
   getMessageIdToRewind,
@@ -95,6 +94,7 @@ export const {
   createAgent,
   destroyAgent,
   attachAgentToConversation,
+  startNewConversation,
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   setIsPollingForTitle,
@@ -900,20 +900,6 @@ export const retryPrompt = createAsyncThunk<
         isFullPageMetabot,
       }),
     ).unwrap();
-  },
-);
-
-export const startNewConversation = createAsyncThunk(
-  "metabase/metabot/startNewConversation",
-  (payload: { agentId: MetabotAgentId }, { dispatch, getState }) => {
-    const state = getState();
-    const conversationId = getMetabotConversationId(state, payload.agentId);
-    // Only a conversation about to be evicted loses its stream. One written to here stays
-    // in the store, so it keeps streaming for whoever comes back to it.
-    if (!getHasMessagedInSession(state, conversationId)) {
-      dispatch(cancelInflightConversationRequests(conversationId));
-    }
-    dispatch(metabot.actions.startNewConversation(payload));
   },
 );
 

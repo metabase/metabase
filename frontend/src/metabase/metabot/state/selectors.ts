@@ -153,11 +153,6 @@ export const getIsConversationEmpty = createSelector(
   (messages) => messages.length === 0,
 );
 
-export const getHasMessagedInSession = createSelector(
-  getConversation,
-  (convo) => convo.hasMessagedInSession,
-);
-
 export const getConversationForkedFrom = createSelector(
   getConversation,
   (convo) => convo.forkedFromConversationId,
