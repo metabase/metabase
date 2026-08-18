@@ -16,7 +16,9 @@ import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import weekday from "dayjs/plugin/weekday";
 
-import parseZone from "./dayjs-parse-zone-plugin";
+import parseZone from "./parse-zone-plugin";
+
+export type { Dayjs, OpUnitType, QUnitType } from "dayjs";
 
 dayjs.extend(advancedFormat);
 dayjs.extend(customParseFormat);
@@ -35,3 +37,10 @@ dayjs.extend(parseZone);
 dayjs.extend(duration);
 dayjs.extend(isBetween);
 dayjs.extend(preParsePostFormat);
+
+export { dayjs };
+
+export function loadDayjsLocale(locale: string): void {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic locale loading
+  require(`dayjs/locale/${locale}.js`);
+}
