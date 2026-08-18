@@ -713,9 +713,12 @@
 (defn- field-path
   "The dotted path the prompt names a field by: a nested field's `nfc_path` ancestors plus its own name, a
   plain column just its name.
-  Bare leaf names are ambiguous once a table has nested fields — a JSON column holding `user.id` and
-  `item.id` produces two fields both named `id` — and the path is also what has to be written to address
-  the column, so it is the more useful thing to hand the model."
+  Bare leaf names go ambiguous as soon as a table has nested fields, since a JSON column holding `user.id`
+  and `item.id` yields two fields both named `id`, and the path is also what has to be written to address
+  the column.
+  Mongo-style nesting (a `parent_id` with no `nfc_path`) still falls back to the bare leaf name and stays
+  ambiguous. Resolving it means walking ancestors, which needs a whole table's fields in memory at once and
+  so gives up the incremental cap in [[keep-first-names]]."
   [{field-name :name, :keys [nfc_path]}]
   (if (seq nfc_path)
     (str/join "." (conj (vec nfc_path) field-name))
