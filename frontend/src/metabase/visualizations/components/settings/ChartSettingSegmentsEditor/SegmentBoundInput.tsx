@@ -36,7 +36,7 @@ export function SegmentBoundInput({
           id={id}
           placeholder={placeholder}
           value={value}
-          onCommit={onChange}
+          onChange={onChange}
         />
       ) : (
         <GoalValueInput

@@ -359,7 +359,7 @@ export const GoalValueInput = ({
                 inputRef={numberInputRef}
                 value={value}
                 placeholder={placeholder}
-                onCommit={onChange}
+                onChange={onChange}
                 rightSection={
                   <ActionIcon
                     className={S.trigger}

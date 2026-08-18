@@ -10,7 +10,7 @@ export type StaticGoalValueInputProps = {
   placeholder?: string;
   rightSection?: ReactNode;
   value: GoalValue | null;
-  onCommit: (value: number | null) => void;
+  onChange: (value: number | null) => void;
 };
 
 export function StaticGoalValueInput({
@@ -20,7 +20,7 @@ export function StaticGoalValueInput({
   placeholder,
   rightSection,
   value,
-  onCommit,
+  onChange,
 }: StaticGoalValueInputProps) {
   const numericValue = typeof value === "number" ? value : null;
 
@@ -38,7 +38,7 @@ export function StaticGoalValueInput({
         const rawValue = event.target.value;
         const newValue = rawValue === "" ? null : parseFloat(rawValue);
         if (newValue !== numericValue) {
-          onCommit(newValue);
+          onChange(newValue);
         }
       }}
     />
