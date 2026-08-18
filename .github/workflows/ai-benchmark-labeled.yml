@@ -53,7 +53,7 @@ jobs:
     secrets: inherit
     with:
       scope: smoke
-      sample: 5
+      sample: "5"
       evals_branch: main
       comment_id: ${{ needs.announce.outputs.comment_id }}
 
