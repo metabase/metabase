@@ -7,15 +7,18 @@ import {
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  Card,
   DatasetData,
   GoalSegment,
   GoalValue,
+  Measure,
   ReferencedEntityResult,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockField,
   createMockMeasure,
 } from "metabase-types/api/mocks";
 
@@ -36,9 +39,21 @@ const DEFAULT_VALUE = [
 const CARD_ID = 9;
 const MEASURE_ID = 4;
 
-function setup(props: Partial<ChartSettingSegmentsEditorProps> = {}) {
-  setupCardEndpoints(createMockCard({ id: CARD_ID, name: "Orders" }));
-  setupMeasureEndpoint(createMockMeasure({ id: MEASURE_ID, name: "Revenue" }));
+type EntityMocks = {
+  card?: Card;
+  measure?: Measure;
+};
+
+function setup(
+  props: Partial<ChartSettingSegmentsEditorProps> = {},
+  entities: EntityMocks = {},
+) {
+  setupCardEndpoints(
+    entities.card ?? createMockCard({ id: CARD_ID, name: "Orders" }),
+  );
+  setupMeasureEndpoint(
+    entities.measure ?? createMockMeasure({ id: MEASURE_ID, name: "Revenue" }),
+  );
 
   const onChange = jest.fn();
 
@@ -97,8 +112,12 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   describe("bound errors", () => {
-    function setupBound(min: GoalValue | null, data: DatasetData) {
-      return setup({ value: [createMockSegment({ min })], data });
+    function setupBound(
+      min: GoalValue | null,
+      data: DatasetData,
+      entities?: EntityMocks,
+    ) {
+      return setup({ value: [createMockSegment({ min })], data }, entities);
     }
 
     const DATA = createMockDatasetData({
@@ -121,6 +140,20 @@ describe("ChartSettingSegmentsEditor", () => {
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           card: { [CARD_ID]: result },
         }),
+        createEntityWithColumn: (column: string): EntityMocks => ({
+          card: createMockCard({
+            id: CARD_ID,
+            name: "Orders",
+            result_metadata: [
+              createMockField({
+                name: column,
+                display_name: column,
+                base_type: "type/Integer",
+              }),
+            ],
+          }),
+        }),
+        staleTooltip: "Orders → avg",
       },
       {
         type: "measure",
@@ -128,15 +161,30 @@ describe("ChartSettingSegmentsEditor", () => {
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           measure: { [MEASURE_ID]: result },
         }),
+        createEntityWithColumn: (column: string): EntityMocks => ({
+          measure: createMockMeasure({
+            id: MEASURE_ID,
+            name: "Revenue",
+            result_column_name: column,
+          }),
+        }),
+        staleTooltip: "Revenue → Revenue",
       },
     ] as const;
 
     describe.each(REFERENCES)(
       "$type reference",
-      ({ type, id, createReferencedEntities }) => {
+      ({
+        type,
+        id,
+        createReferencedEntities,
+        createEntityWithColumn,
+        staleTooltip,
+      }) => {
         function setupReference(
           column: string,
           result?: ReferencedEntityResult,
+          entities?: EntityMocks,
         ) {
           return setupBound(
             { type, id, column },
@@ -145,6 +193,7 @@ describe("ChartSettingSegmentsEditor", () => {
               referenced_entities:
                 result != null ? createReferencedEntities(result) : undefined,
             }),
+            entities,
           );
         }
 
@@ -191,7 +240,7 @@ describe("ChartSettingSegmentsEditor", () => {
           ).not.toBeInTheDocument();
         });
 
-        it("reports a referenced column that no longer exists", () => {
+        it("reports a referenced column that no longer exists", async () => {
           setupReference("avg", {
             status: "completed",
             data: {
@@ -201,8 +250,32 @@ describe("ChartSettingSegmentsEditor", () => {
           });
 
           expect(
-            screen.getByText("This column no longer exists"),
+            await screen.findByText("This column no longer exists"),
           ).toBeInTheDocument();
+        });
+
+        it("stays quiet while the dataset predates the referenced column", async () => {
+          setupReference(
+            "avg",
+            {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
+              },
+            },
+            createEntityWithColumn("avg"),
+          );
+
+          await userEvent.hover(
+            screen.getByRole("button", { name: "Change value source" }),
+          );
+          expect(await screen.findByText(staleTooltip)).toBeInTheDocument();
+
+          expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+          expect(
+            screen.queryByText(/no longer exists/),
+          ).not.toBeInTheDocument();
         });
       },
     );
@@ -242,7 +315,6 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
-        // Need to use objectContaining here to account for the 'key' values that are added
         expect.objectContaining(DEFAULT_VALUE[1]),
       ]),
     );
@@ -258,7 +330,6 @@ describe("ChartSettingSegmentsEditor", () => {
     );
 
     expect(onChange).toHaveBeenCalledWith([
-      // Need to use objectContaining here to account for the 'key' values that are added
       expect.objectContaining(DEFAULT_VALUE[1]),
     ]);
   });
@@ -298,7 +369,6 @@ describe("ChartSettingSegmentsEditor", () => {
     );
 
     expect(onChange).toHaveBeenCalledWith([
-      // Need to use objectContaining here to account for the 'key' values that are added
       expect.objectContaining(DEFAULT_VALUE[0]),
       expect.objectContaining(DEFAULT_VALUE[1]),
       expect.objectContaining({

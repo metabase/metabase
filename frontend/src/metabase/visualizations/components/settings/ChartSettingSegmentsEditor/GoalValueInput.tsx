@@ -50,6 +50,7 @@ import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import S from "./GoalValueInput.module.css";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import { useEntityPickerSearch } from "./use-entity-picker-search";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
 const ROOT_MENU_MIN_WIDTH = 225;
 const COLUMN_MENU_MIN_WIDTH = 256;
@@ -161,7 +162,7 @@ export const GoalValueInput = ({
     return [];
   }, [entity?.type, entityCard, entityMeasure]);
 
-  const resolved = resolveGoalValue(data, value);
+  const resolved = useResolvedGoalValue(data, value);
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))

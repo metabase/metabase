@@ -27,6 +27,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { GoalValueInput, type GoalValueInputProps } from "./GoalValueInput";
+import { SegmentBoundInput } from "./SegmentBoundInput";
 
 const DATA = createMockDatasetData({
   cols: [
@@ -200,6 +201,82 @@ describe("GoalValueInput", () => {
     setup({ value: { type: "card", id: 9, column: "total" } });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("keeps the loader while the dataset predates the referenced column", async () => {
+    setupCardEndpoints(
+      createMockCard({
+        id: 9,
+        name: "Orders",
+        result_metadata: [
+          createMockField({
+            name: "avg",
+            display_name: "Average",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setup(
+      { value: { type: "card", id: 9, column: "avg" } },
+      {
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+    expect(await screen.findByText("Orders → Average")).toBeInTheDocument();
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("shows an empty pill and an error for a referenced column that no longer exists", async () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    renderWithProviders(
+      <SegmentBoundInput
+        aria-label="Min"
+        data={createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        })}
+        id="goal-value"
+        placeholder="Min"
+        value={{ type: "card", id: 9, column: "avg" }}
+        onChange={jest.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("This column no longer exists"),
+    ).toBeInTheDocument();
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("—")).toBeInTheDocument();
   });
 
   it("clears the reference with the remove button", async () => {

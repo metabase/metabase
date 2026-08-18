@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { Box, Text } from "metabase/ui";
 import type { GoalRefError } from "metabase/visualizations/lib/dynamic-goals";
-import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import type { DatasetData, GoalValue } from "metabase-types/api";
 
 import { GoalValueInput } from "./GoalValueInput";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
+import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
 type Props = {
   "aria-label"?: string;
@@ -26,7 +26,7 @@ export function SegmentBoundInput({
   value,
   onChange,
 }: Props) {
-  const error = data != null ? resolveGoalValue(data, value).error : undefined;
+  const { error } = useResolvedGoalValue(data, value);
 
   return (
     <Box flex={1} miw={0}>
