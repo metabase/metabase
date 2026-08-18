@@ -50,7 +50,8 @@
 (defn- default-mysql-spec [db]
   {:classname                     "org.mariadb.jdbc.Driver"
    :subprotocol                   "mysql"
-   :subname                       (format "//localhost:3306/%s" db)})
+   :subname                       (format "//localhost:3306/%s?permitMysqlScheme=true" db)
+   :nullCatalogMeansCurrent       true})
 
 (deftest mysql-default-port-test
   (testing "Check that we default to port 3306 for MySQL databases, if `:port` is `nil`"

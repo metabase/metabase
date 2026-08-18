@@ -217,7 +217,7 @@
                                 (catch Exception e
                                   (result! [id :failed (:reason (ex-data e) :unknown)]))))
                             (catch Exception e
-                              (result! [:a :locking-failed e]))
+                              (result! [id :locking-failed e]))
                             (finally
                               (.countDown end-latch)))))
             a-started (CountDownLatch. 1)
@@ -227,10 +227,13 @@
         (thread! :a a-started a-ended
                  #(when-not (.await b-started 1 TimeUnit/SECONDS)
                     (throw (ex-info "B did not start while A was still running" {:reason :timeout}))))
-        (.await a-started)
+        ;; timed + asserted: if A fails to acquire the lock, a-started never counts down — an untimed
+        ;; await here hangs the whole run instead of failing with the acquisition error in @results
+        (is (.await a-started 5 TimeUnit/SECONDS))
         (thread! :b b-started b-ended
-                 #(.await a-ended))
-        (.await b-ended)
+                 #(when-not (.await a-ended 5 TimeUnit/SECONDS)
+                    (throw (ex-info "A did not finish while B held the lock" {:reason :timeout}))))
+        (is (.await b-ended 5 TimeUnit/SECONDS))
         (is (= [[:a :failed :timeout]
                 [:b :done]]
                @results))))))
