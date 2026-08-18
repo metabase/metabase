@@ -4,11 +4,11 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  EmbeddingMethodsCard,
-  EmbeddingSecurityWidgets,
-} from "metabase/admin/settings/components/EmbeddingSettings";
+import { EmbeddingMethodsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { EmbeddingSecretKeyWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget";
+import { CorsInputWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget";
+import { SameSiteSelectWidget } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget";
+import { SettingTitle } from "metabase/admin/settings/components/SettingHeader";
 import { EmbeddedResources } from "metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources";
 import {
   useListEmbeddableCardsQuery,
@@ -20,7 +20,7 @@ import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
-import { Box, Title } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 const UPSELL_CAMPAIGN = "embedding-hub";
 const UPSELL_LOCATION = "embedding-hub-security";
@@ -29,8 +29,9 @@ const UPSELL_LOCATION = "embedding-hub-security";
  * Card order comes from the design: embedding methods, CORS, SameSite, secret
  * key, then the two conditional cards.
  *
- * Security absorbs the standalone Guest embeds page -- the design has no
- * separate "Enable guest embeds" screen.
+ * The hub has no Guest embeds tab, so this page carries what admin settings'
+ * Guest embeds page holds today: the Enable guest embeds toggle, the secret
+ * key and the published embeds list.
  */
 export function EmbeddingHubSecurityPage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
@@ -71,7 +72,19 @@ export function EmbeddingHubSecurityPage() {
         />
       )}
 
-      <EmbeddingSecurityWidgets />
+      <SettingsSection>
+        <CorsInputWidget />
+      </SettingsSection>
+
+      {/* SameSite governs the metabase.SESSION cookie, and guest embeds never
+          set one (src/metabase/request/cookies.clj:71-81). Guest is the only
+          method below the paywall, so the setting is inert there -- showing it
+          invites an admin to change a value that cannot affect their embeds. */}
+      {hasSimpleEmbedding && (
+        <SettingsSection>
+          <SameSiteSelectWidget />
+        </SettingsSection>
+      )}
 
       <SettingsSection>
         <EmbeddingSecretKeyWidget />
@@ -81,7 +94,11 @@ export function EmbeddingHubSecurityPage() {
       {hasPublishedGuestEmbeds && (
         <SettingsSection>
           <Box data-testid="embedded-resources">
-            <Title order={4} mb="md">{t`Published guest embeds`}</Title>
+            <SettingTitle
+              id="static-embeds"
+              fz="lg"
+              mb="md"
+            >{t`Published guest embeds`}</SettingTitle>
 
             <EmbeddedResources />
           </Box>
