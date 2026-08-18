@@ -111,6 +111,7 @@ export type ContentDiagnosticsImbalancedUnit =
 export type ContentDiagnosticsStaleUserParams = {
   entity_types?: ContentDiagnosticsNonCollectionFilterType[];
   include_personal_collections?: boolean;
+  threshold_days?: number;
   sort_column?: ContentDiagnosticsStaleSortColumn;
   sort_direction?: SortDirection;
 };
@@ -169,7 +170,6 @@ export type ContentDiagnosticsStaleFinding = ContentDiagnosticsBaseFinding & {
 export type ContentDiagnosticsScanResult = {
   scan_id: string;
   finding_count: number;
-  entities_scanned: number;
   duration_ms: number;
 };
 
@@ -177,6 +177,7 @@ export type ListStaleFindingsRequest = {
   query?: string;
   "entity-types"?: ContentDiagnosticsNonCollectionFilterType[];
   "include-personal-collections"?: boolean;
+  "threshold-days"?: number;
   "sort-column"?: ContentDiagnosticsStaleSortColumn;
   "sort-direction"?: SortDirection;
 } & PaginationRequest;

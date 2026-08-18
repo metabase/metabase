@@ -56,6 +56,13 @@ describe("parseStaleUrlParams", () => {
     ).toEqual(["model"]);
   });
 
+  it("parses threshold-days", () => {
+    expect(
+      parseStaleUrlParams(createSearchParams({ "threshold-days": "90" }))
+        .thresholdDays,
+    ).toBe(90);
+  });
+
   it("parses sort-column and sort-direction", () => {
     const params = parseStaleUrlParams(
       createSearchParams({
@@ -80,11 +87,14 @@ describe("parseStaleUrlParams", () => {
 });
 
 describe("isEmptyStaleParams", () => {
-  it("returns true for an empty query string", () => {
+  it("returns true when the URL carries no recognized params", () => {
     expect(isEmptyStaleParams(createSearchParams({}))).toBe(true);
+    expect(isEmptyStaleParams(createSearchParams({ unrelated: "1" }))).toBe(
+      true,
+    );
   });
 
-  it("treats default params as empty", () => {
+  it("returns false when the URL explicitly asks for default values", () => {
     expect(
       isEmptyStaleParams(
         createSearchParams({
@@ -100,7 +110,7 @@ describe("isEmptyStaleParams", () => {
           "include-personal-collections": "true",
         }),
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns false for non-default params", () => {

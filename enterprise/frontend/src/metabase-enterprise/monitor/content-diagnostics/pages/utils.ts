@@ -6,8 +6,6 @@ import {
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
-
 export function parseStaleUrlParams(
   searchParams: URLSearchParams,
 ): Urls.StaleContentParams {
@@ -25,6 +23,7 @@ export function parseStaleUrlParams(
     includePersonalCollections: Urls.parseBooleanParam(
       searchParams.get("include-personal-collections"),
     ),
+    thresholdDays: Urls.parseNumberParam(searchParams.get("threshold-days")),
     sortColumn: Urls.parseEnumParam(
       searchParams.get("sort-column"),
       CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
@@ -42,6 +41,7 @@ export function getStaleUserParams(
   return {
     entity_types: params.entityTypes,
     include_personal_collections: params.includePersonalCollections,
+    threshold_days: params.thresholdDays,
     sort_column: params.sortColumn,
     sort_direction: params.sortDirection,
   };
@@ -57,13 +57,22 @@ export function parseStaleUserParams(
   return {
     entityTypes: params.entity_types,
     includePersonalCollections: params.include_personal_collections,
+    thresholdDays: params.threshold_days,
     sortColumn: params.sort_column,
     sortDirection: params.sort_direction,
   };
 }
 
+const STALE_URL_PARAM_KEYS = [
+  "page",
+  "query",
+  "entity-types",
+  "include-personal-collections",
+  "threshold-days",
+  "sort-column",
+  "sort-direction",
+] as const;
+
 export function isEmptyStaleParams(searchParams: URLSearchParams): boolean {
-  return Object.values(
-    getStaleParamsWithoutDefaults(parseStaleUrlParams(searchParams)),
-  ).every((value) => value == null);
+  return STALE_URL_PARAM_KEYS.every((key) => !searchParams.has(key));
 }

@@ -202,11 +202,11 @@ describe("SlowContentPage", () => {
   });
 
   it("sends the minimum duration filter to the server and reflects it in the Filter popover", async () => {
-    setup({ findings: FINDINGS, urlParams: { minDurationMs: 10000 } });
+    setup({ findings: FINDINGS, urlParams: { minDurationMs: 30000 } });
     await waitForListToLoad();
 
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
-      "10000",
+      "30000",
     );
 
     await userEvent.click(
@@ -214,7 +214,7 @@ describe("SlowContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     expect(
-      within(popover).getByDisplayValue("10 seconds or more"),
+      within(popover).getByDisplayValue("30 seconds or more"),
     ).toBeInTheDocument();
   });
 
@@ -315,5 +315,21 @@ describe("SlowContentPage", () => {
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
       "3000",
     );
+  });
+
+  it("lets an explicit default-valued URL win over the last-used filter", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { page: 0, includePersonalCollections: true },
+      lastUsedParams: { min_duration_ms: 3000 },
+    });
+
+    await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBeNull();
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("true");
+    expect(getUrlQuery(router)).toEqual({});
   });
 });
