@@ -20,21 +20,17 @@ type EmbeddingMethod = {
 /**
  * The embedding methods, as one card of rows rather than a card per method.
  *
- * Modular embedding, the SDK and guest embeds share one switch, per the design:
- * separate switches add complexity without adding security, since whoever can
- * embed also controls them, and guest is a property of modular rather than a
- * method beside it. Full-app keeps its own.
+ * Modular embedding, the SDK and guest embeds share one switch. Alessio's call
+ * in the Embedding Settings Reorganization thread, carried by EMB-2257:
+ * individual toggles add complexity without adding security, since whoever can
+ * embed also controls the toggles, and guest is a property of modular embedding
+ * rather than a method beside it. Full-app keeps its own.
  *
  * The merge is presentational for now -- the switch writes all three settings
  * and reads on when any is on, which is what the backend flag will do once
  * EMB-2257 replaces them with one.
  *
- * Guest embeds is the only free method, so OSS keeps a guest-only row. Modular
- * embedding, the SDK and full-app all need `embedding_simple`: the client only
- * registers the modular runtime when the token has it, so showing their toggles
- * below the paywall offers switches that turn nothing on. The settings
- * themselves carry no `:feature`, so nothing server-side stops an OSS admin
- * writing them -- see the note in the tech doc.
+ * Guest embeds is the only free method, so OSS keeps a guest-only row.
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
