@@ -1,12 +1,12 @@
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import type { ExportFormat } from "metabase/common/types/export";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];

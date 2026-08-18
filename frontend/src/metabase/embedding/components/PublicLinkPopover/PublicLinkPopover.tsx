@@ -1,10 +1,11 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import type { ExportFormat } from "metabase/common/types/export";
 import { getUserIsAdmin } from "metabase/current-user";
+import type { ExportFormat } from "metabase-types/api";
 import { useSelector } from "metabase/redux";
 import { Box, Popover, Text, Title } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
 
