@@ -2,9 +2,13 @@ import path from "node:path";
 
 import { discoverActions, discoverQueries } from "./discover";
 import { isPositiveInteger } from "./guards";
-import { RESOURCE_LOCKFILE, readResourceLockfile } from "./lockfile";
+import {
+  RESOURCE_LOCKFILE,
+  readResourceLockfile,
+  writeResourceLockfile,
+} from "./lockfile";
 import { addResourceEntityIdsToManifest } from "./manifest";
-import { MetabaseClient } from "./metabase-client";
+import { MetabaseClient, orNullOn404 } from "./metabase-client";
 import { reconcileQueries } from "./reconcile";
 import { reconcileModels } from "./reconcile-models";
 import type { DiscoveredAction, ResourceLockfile } from "./types";
@@ -105,6 +109,49 @@ export async function checkResourcesSynced(appRoot: string) {
   checkActionsSynchronized(appRoot, actions, lockfile);
 }
 
+/**
+ * Repointing `resource_collection_entity_id` in `data_app.yaml` moves the app to
+ * another collection, and that collection must be empty to claim, so the copies
+ * are left behind in the old one. They have to follow: read access to the app's
+ * current collection is what lets its viewers run them at all. Only a copy still
+ * sitting where synchronization last put it is the app's to move; anything else
+ * was displaced by hand, which the reconcilers still refuse.
+ */
+async function moveCopiesToAppCollection(
+  appRoot: string,
+  lockfile: ResourceLockfile,
+  collectionId: number,
+  client: MetabaseClient,
+  log: (message: string) => void,
+) {
+  const previousCollectionId = lockfile.collectionId;
+
+  if (previousCollectionId === collectionId) {
+    return;
+  }
+
+  if (previousCollectionId !== undefined) {
+    const copiedCardIds = [
+      ...lockfile.queries.map((entry) => entry.savedQuestionSourceId),
+      ...lockfile.models.map((entry) => entry.copiedModelId),
+    ];
+
+    for (const cardId of copiedCardIds) {
+      const card = await orNullOn404(client.getCard(cardId));
+
+      if (card?.collection_id !== previousCollectionId) {
+        continue;
+      }
+
+      await client.moveCardToCollection(cardId, collectionId);
+      log(`moved card ${cardId} into data app collection ${collectionId}`);
+    }
+  }
+
+  lockfile.collectionId = collectionId;
+  writeResourceLockfile(appRoot, lockfile);
+}
+
 export async function syncResources({
   appRoot,
   metabaseUrl,
@@ -128,6 +175,14 @@ export async function syncResources({
     resourceCollectionEntityId: app.resource_collection_entity_id,
     permissionGroupEntityId: app.permission_group_entity_id,
   });
+
+  await moveCopiesToAppCollection(
+    appRoot,
+    lockfile,
+    app.resource_collection_id,
+    client,
+    log,
+  );
 
   const queryDatabaseIds = await reconcileQueries({
     appRoot,

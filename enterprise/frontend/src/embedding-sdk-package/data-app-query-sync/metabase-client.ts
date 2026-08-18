@@ -137,6 +137,13 @@ export class MetabaseClient {
     });
   }
 
+  moveCardToCollection(id: number, collectionId: number) {
+    return this.request<MetabaseCard>(`card/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ collection_id: collectionId }),
+    });
+  }
+
   deleteCard(id: number) {
     return this.request<void>(`card/${id}`, { method: "DELETE" });
   }

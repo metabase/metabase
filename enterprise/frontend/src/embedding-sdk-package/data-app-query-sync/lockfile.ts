@@ -126,7 +126,17 @@ export function readResourceLockfile(appRoot: string): ResourceLockfile {
     throw new Error(`${RESOURCE_LOCKFILE} contains an invalid entry.`);
   }
 
+  if (
+    value.collectionId !== undefined &&
+    !isPositiveInteger(value.collectionId)
+  ) {
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid collection ID.`);
+  }
+
   return {
+    ...(value.collectionId === undefined
+      ? undefined
+      : { collectionId: value.collectionId }),
     queries: parseQueries(value.queries ?? []),
     models: parseModels(value.models),
   };

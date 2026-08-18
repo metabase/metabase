@@ -23,6 +23,12 @@ export interface ModelLockEntry {
 }
 
 export interface ResourceLockfile {
+  /**
+   * The app collection the copies were last synchronized into. It is what tells
+   * a copy the app itself moved apart from a copy someone moved by hand, so it
+   * is absent only in a lockfile written before this was recorded.
+   */
+  collectionId?: number;
   queries: QueryLockEntry[];
   models: ModelLockEntry[];
 }
