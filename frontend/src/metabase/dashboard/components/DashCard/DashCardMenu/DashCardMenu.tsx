@@ -169,13 +169,16 @@ export const DashCardMenu = ({
 type ShouldRenderDashcardMenuProps = {
   question: Question | null;
   result?: Dataset;
-} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu">;
+} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu"> &
+  Pick<DashCardMenuProps, "canEdit" | "openUnderlyingQuestionItems">;
 
 DashCardMenu.shouldRender = ({
   question,
   dashboard,
   dashcardMenu,
   result,
+  canEdit,
+  openUnderlyingQuestionItems,
 }: ShouldRenderDashcardMenuProps) => {
   if (!question || !dashboard || dashcardMenu === null) {
     return null;
@@ -189,6 +192,8 @@ DashCardMenu.shouldRender = ({
 
   return (
     !isInternalQuery &&
-    (canEditQuestion(question) || canDownloadResults(result))
+    ((canEdit && canEditQuestion(question)) ||
+      canDownloadResults(result) ||
+      !!openUnderlyingQuestionItems)
   );
 };

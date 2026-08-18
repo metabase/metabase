@@ -459,6 +459,11 @@ export function DashCardVisualization({
     const cardResult = cardId ? datasets?.[cardId] : undefined;
     // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
+    const isVisualizerCard = isVisualizerDashboardCard(dashcard);
+    // Visualizer cards hide their edit entries in view mode (#62611)
+    const canEdit = !isVisualizerCard;
+    const openUnderlyingQuestionItems =
+      onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems);
 
     const showMenu =
       question &&
@@ -467,6 +472,8 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
+        canEdit,
+        openUnderlyingQuestionItems,
       });
 
     const errorStatus =
@@ -499,15 +506,11 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
-            canEdit={!isVisualizerDashboardCard(dashcard)}
+            canEdit={canEdit}
             onEditVisualization={
-              isVisualizerDashboardCard(dashcard)
-                ? onEditVisualization
-                : undefined
+              isVisualizerCard ? onEditVisualization : undefined
             }
-            openUnderlyingQuestionItems={
-              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
-            }
+            openUnderlyingQuestionItems={openUnderlyingQuestionItems}
           />
         )}
       </Group>
