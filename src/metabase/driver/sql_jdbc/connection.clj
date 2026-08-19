@@ -251,7 +251,8 @@
         ;; before the tunnel is set up, since incorporating it rewrites `:host` to the local tunnel entrance. Checking
         ;; here as well as at connection-test time narrows the DNS-rebinding window and covers databases that never
         ;; went through a connection test (serialization import, config files).
-        _                   (driver.u/validate-connection-hosts! driver details)
+        _                   (driver.u/with-database-network-policy database
+                              (driver.u/validate-connection-hosts! driver details))
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
