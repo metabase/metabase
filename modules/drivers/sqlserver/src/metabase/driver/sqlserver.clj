@@ -244,18 +244,30 @@
     [:inline x]
     x))
 
+(def ^:private allowed-dateparts
+  "Allow-list of the temporal units this driver emits as SQL Server `DATEPART`/`DATEADD` tokens. These are interpolated
+  through `[:raw …]`, so a unit reaching a sink here must be a member of this closed set before
+  `(name unit)` is emitted."
+  #{:year :quarter :month :dayofyear :day :week :iso_week :weekday
+    :hour :minute :second :millisecond :microsecond :nanosecond})
+
+(defn- datepart-token [unit]
+  (when-not (contains? allowed-dateparts unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (-> [:datepart [:raw (name unit)] expr]
+  (-> [:datepart [:raw (datepart-token unit)] expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]]
+  (into [:dateadd [:raw (datepart-token unit)]]
         (map maybe-inline-number)
         exprs))
 
 (defn- date-diff [unit x y]
-  [:datediff_big [:raw (name unit)] x y])
+  [:datediff_big [:raw (datepart-token unit)] x y])
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -728,10 +740,12 @@
          (parent-method driver :filter honeysql-form))))
 
 ;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
-;; escape the `LIKE` metacharacters `%` and `_`.
+;; escape the `LIKE` metacharacters `[`, `%`, and `_`. `[` opens a character class, so it must be escaped first --
+;; the replacements below introduce `[` characters of their own that must not be re-escaped.
 (defmethod sql.qp/escape-like-pattern :sqlserver
   [_driver like-pattern]
   (-> like-pattern
+      (str/replace "["  "[[]")
       (str/replace "\\" "[\\]")
       (str/replace "%"  "[%]")
       (str/replace "_"  "[_]")))
@@ -1179,9 +1193,11 @@
 
 (defmethod driver/create-schema-if-needed! :sqlserver
   [driver conn-spec schema]
+  ;; The quoted identifier is spliced inside the single-quoted EXEC('…') literal, so it must also be
+  ;; single-quote-escaped.
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s;');"
                       (sql.u/escape-sql schema :ansi)
-                      (quote-schema schema))]]]
+                      (sql.u/escape-sql (quote-schema schema) :ansi))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :sqlserver

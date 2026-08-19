@@ -17,6 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -189,7 +190,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::queries.schema/query]]]
+                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
@@ -221,7 +222,8 @@
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                      :result_metadata :type :source_card_id :card_schema
-                                     [{:select   [:status]
+                                     [^:allow-subquery
+                                      {:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
                                                   [:= :moderated_item_type "card"]
@@ -552,6 +554,7 @@
 
 (defn- card-query
   [db-id model type-str]
+  ^:allow-subquery
   {:select [[:%count.* model]]
    :from   [:report_card]
    :where  [:and
@@ -572,14 +575,17 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
+  ^:allow-subquery
   {:select [[:%count.* :segment]]
    :from   [:segment]
-   :where  [:in :table_id {:select [:id]
-                           :from   [:metabase_table]
-                           :where  [:= :db_id db-id]}]})
+   :where  [:in :table_id ^:allow-subquery
+            {:select [:id]
+             :from   [:metabase_table]
+             :where  [:= :db_id db-id]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
+  ^:allow-subquery
   {:select [[:%count.* :transform]]
    :from   [:transform]
    :where  [:or
@@ -922,7 +928,8 @@
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe :string]]]]
+       [:provider_name     {:optional true}  [:maybe :string]]
+       [:is_stub           {:optional true}  [:maybe :boolean]]]]
   (api/check-superuser)
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -979,7 +986,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details :map]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1089,13 +1096,16 @@
        [:write_data_details {:optional true} [:maybe ms/Map]]
        [:admin_details      {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+       [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
        [:description        {:optional true} [:maybe :string]]
        [:caveats            {:optional true} [:maybe :string]]
        [:points_of_interest {:optional true} [:maybe :string]]
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/Map]]]]
+       [:settings           {:optional true} [:maybe ms/Map]]
+       [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
@@ -1346,6 +1356,7 @@
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {:delete-from :metabase_fieldvalues
                  :where      [:in :field_id
+                              ^:allow-subquery
                               {:select     [:f.id]
                                :from       [[:metabase_field :f]]
                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
@@ -1637,7 +1648,8 @@
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
-  (let [{:as database :keys [engine]} (t2/select-one :model/Database :id id)
+  (api/check-superuser)
+  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database :id id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

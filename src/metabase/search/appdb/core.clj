@@ -83,9 +83,9 @@
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
+                   [:!= :search_index.model "table"]
                    [:and
-                    [:= :search_index.model [:inline "table"]]
+                    [:= :search_index.model "table"]
                     clause]]))))
 
 (defn add-collection-join-and-where-clauses

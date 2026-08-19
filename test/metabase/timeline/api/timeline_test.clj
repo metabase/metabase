@@ -4,7 +4,8 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- collection-timelines-request
   [collection include-events?]
@@ -93,3 +94,25 @@
                  (mt/user-http-request :rasta :get 403 "timeline/collection/root" :include "events")))))
       (testing "If we grant perms, then we can read the timelines"
         (mt/user-http-request :rasta :get 200 "timeline/collection/root" :include "events")))))
+
+(deftest update-timeline-event-destination-permissions-test
+  (testing "PUT /api/timeline-event/:id"
+    (testing "cannot move an event into a Timeline the user cannot write"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection    {mine :id}     {}
+                       :model/Collection    {theirs :id}   {}
+                       :model/Timeline      {my-tl :id}    {:collection_id mine}
+                       :model/Timeline      {their-tl :id} {:collection_id theirs}
+                       :model/TimelineEvent {event-id :id} {:timeline_id my-tl
+                                                            :name        "event"
+                                                            :timestamp   :%now}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) mine)
+          (perms/revoke-collection-permissions! (perms-group/all-users) theirs)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "timeline-event/" event-id)
+                                       {:timeline_id their-tl})))
+          (is (= my-tl (t2/select-one-fn :timeline_id :model/TimelineEvent :id event-id)))
+          (testing "editing it in place is still allowed"
+            (is (some? (mt/user-http-request :rasta :put 200 (str "timeline-event/" event-id)
+                                             {:name "renamed"})))
+            (is (= "renamed" (t2/select-one-fn :name :model/TimelineEvent :id event-id)))))))))

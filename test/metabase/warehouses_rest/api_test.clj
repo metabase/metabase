@@ -626,23 +626,23 @@
               (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest reject-is-stub-in-create-test
-  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+  (testing "POST /api/database returns a 400 when :is_stub=true is in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (re-find #"is_stub"
-                     (mt/user-http-request :crowberto :post 400 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}
-                                            :is_stub true})))))))
+        (is (= "is_stub may not be set via the API"
+               (mt/user-http-request :crowberto :post 400 "database"
+                                     {:name    (mt/random-name)
+                                      :engine  (u/qualified-name ::test-driver)
+                                      :details {:db "my_db"}
+                                      :is_stub true})))))))
 
 (deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
+  (testing "PUT /api/database/:id returns a 400 when :is_stub=true is in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-      (is (re-find #"is_stub"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:is_stub true})))
+      (is (= "is_stub may not be set via the API"
+             (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                   {:is_stub true})))
       (testing "the row is unchanged"
         (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
@@ -2661,6 +2661,25 @@
     (testing "invalid connection-type value returns 400"
       (mt/with-temp [:model/Database {id :id} {}]
         (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
+
+(deftest healthcheck-requires-superuser
+  (testing "GET /api/database/:id/healthcheck"
+    (testing "reports whether a database exists and whether it is reachable, so it is for admins only"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (with-redefs [driver/available?   (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "database/" id "/healthcheck"))))
+          (testing "and a database the caller can otherwise query is no exception -- the reply says whether the
+                   connection is up, which is not theirs to know"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str "database/" (mt/id) "/healthcheck")))))
+          (testing "a database that doesn't exist is turned away the same way, rather than being distinguishable"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "database/999999999/healthcheck")))))))
+    (testing "an admin asking after a database that doesn't exist gets a 404"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "database/999999999/healthcheck"))))))
 
 (defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"

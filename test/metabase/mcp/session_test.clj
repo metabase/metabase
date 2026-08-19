@@ -197,6 +197,44 @@
       (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))
           "read-handle returns nil for unknown handles"))))
 
+(deftest session-id-sinks-reject-non-session-ids-test
+  (testing "the DB sinks that take a session id refuse anything that is not one, so a map cannot reach a query"
+    (let [user-id (mt/user->id :crowberto)
+          bad     [{:raw "(SELECT 1)"} :key_hashed 1 [:raw "1"] "not-a-uuid"]]
+      (doseq [not-a-session-id bad]
+        (testing (pr-str not-a-session-id)
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Invalid MCP session id"
+               (mcp.session/store-handle! not-a-session-id user-id "q")))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Invalid MCP session id"
+               (mcp.session/delete! not-a-session-id user-id)))))
+      (testing "a real session id is still accepted at both sinks"
+        (let [session-id (mcp.session/create! user-id)
+              handle     (mcp.session/store-handle! session-id user-id "q")]
+          (is (some? (parse-uuid handle)) "store-handle! returns a handle for a valid session id")
+          (is (= "q" (mcp.session/read-handle session-id user-id handle)))
+          (mcp.session/delete! session-id user-id)
+          (is (nil? (mcp.session/read-handle session-id user-id handle))
+              "delete! swept the handle"))))))
+
+(deftest handle-lookup-only-accepts-handles-test
+  (testing "a handle that is not one of ours resolves to nil rather than reaching the query"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          handle     (mcp.session/store-handle! session-id user-id "the query")]
+      (is (= "the query" (mcp.session/read-handle session-id user-id handle))
+          "sanity: a real handle still resolves")
+      (doseq [[label not-a-handle] [["a HoneySQL expression" {:raw "(SELECT 1)"}]
+                                    ["a nested expression"   {:select [1]}]
+                                    ["a keyword"             :mqh.id]
+                                    ["a number"              1]
+                                    ["a vector"              [:raw "1"]]
+                                    ["a non-UUID string"     "' OR 1=1 --"]]]
+        (testing (str "\n" label)
+          (is (nil? (mcp.session/read-handle session-id user-id not-a-handle)))
+          (is (nil? (mcp.session/resolve-query-handle session-id user-id not-a-handle))))))))
+
 (deftest read-handle-falls-back-across-the-users-sessions-test
   (testing "read-handle resolves a handle stored in one session when called from another session of the same user"
     (let [user-id        (mt/user->id :crowberto)

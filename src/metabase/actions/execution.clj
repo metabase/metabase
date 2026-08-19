@@ -189,49 +189,62 @@
                                                         :policy :model-action}))))
 
 (mu/defn execute-action!
-  "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
-  [action request-parameters]
-  (workspaces/check-not-in-workspace-mode! "Actions")
-  (let [;; if a value is supplied for a hidden parameter, it should raise an error
-        field-settings         (get-in action [:visualization_settings :fields])
-        hidden-param-ids       (->> (vals field-settings)
-                                    (filter :hidden)
-                                    (map :id))
-        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
-        _ (check-no-extra-parameters request-parameters destination-param-ids)
-        ;; add default values for missing parameters (including hidden ones)
-        all-param-ids          (set (map :id (:parameters action)))
-        provided-param-ids     (set (keys request-parameters))
-        missing-param-ids      (set/difference all-param-ids provided-param-ids)
-        missing-param-defaults (into {}
-                                     (keep (fn [param-id]
-                                             (when-let [default-value (get-in field-settings [param-id :defaultValue])]
-                                               [param-id default-value])))
-                                     missing-param-ids)
-        request-parameters     (merge missing-param-defaults request-parameters)]
-    (case (:type action)
-      :implicit
-      (execute-implicit-action! action request-parameters)
-      (:query :http)
-      (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
+  "Execute the given action with the given parameters of shape `{<parameter-id> <value>}`.
+
+  `opts` may set `:allow-http-actions?` to false to refuse `:http` actions. The public/unauthenticated execute
+  endpoints pass false."
+  ([action request-parameters]
+   (execute-action! action request-parameters nil))
+  ([action request-parameters {:keys [allow-http-actions?] :or {allow-http-actions? true}}]
+   (workspaces/check-not-in-workspace-mode! "Actions")
+   (when (and (= (:type action) :http) (not allow-http-actions?))
+     (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
+                     {:status-code 403})))
+   (let [;; if a value is supplied for a hidden parameter, it should raise an error
+         field-settings         (get-in action [:visualization_settings :fields])
+         hidden-param-ids       (->> (vals field-settings)
+                                     (filter :hidden)
+                                     (map :id))
+         destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+         _ (check-no-extra-parameters request-parameters destination-param-ids)
+         ;; add default values for missing parameters (including hidden ones)
+         all-param-ids          (set (map :id (:parameters action)))
+         provided-param-ids     (set (keys request-parameters))
+         missing-param-ids      (set/difference all-param-ids provided-param-ids)
+         missing-param-defaults (into {}
+                                      (keep (fn [param-id]
+                                              (when-let [default-value (get-in field-settings [param-id :defaultValue])]
+                                                [param-id default-value])))
+                                      missing-param-ids)
+         request-parameters     (merge missing-param-defaults request-parameters)]
+     (case (:type action)
+       :implicit
+       (execute-implicit-action! action request-parameters)
+       (:query :http)
+       (execute-custom-action! action request-parameters)
+       (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
-   of shape `{<parameter-id> <value>}."
-  [dashboard-id       :- ::lib.schema.id/dashboard
-   dashcard-id        :- ::lib.schema.id/dashcard
-   request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+   of shape `{<parameter-id> <value>}`.
+
+  `opts` is forwarded to [[execute-action!]] -- the public execute endpoint passes `:allow-http-actions? false`."
+  ([dashboard-id dashcard-id request-parameters]
+   (execute-dashcard! dashboard-id dashcard-id request-parameters nil))
+  ([dashboard-id       :- ::lib.schema.id/dashboard
+    dashcard-id        :- ::lib.schema.id/dashcard
+    request-parameters :- [:maybe [:map-of :string :any]]
+    opts]
+   (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
+                                                :id dashcard-id
+                                                :dashboard_id dashboard-id))
+         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+     (analytics/track-event! :snowplow/action
+                             {:event     :action-executed
+                              :source    :dashboard
+                              :type      (:type action)
+                              :action_id (:id action)})
+     (execute-action! action request-parameters opts))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]

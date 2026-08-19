@@ -492,6 +492,11 @@ function(bin) {
     (or (nil? value) (= value ""))
     value
 
+    (coll? value)
+    (throw (ex-info (tru "Invalid filter value: expected a scalar literal.")
+                    {:type driver-api/qp.error-type.invalid-query
+                     :value value}))
+
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
@@ -873,6 +878,9 @@ function(bin) {
                    [:>= field min-val]
                    [:<= field max-val]]))
 
+(defn- escape-regex-literal [s]
+  (str/replace (str s) #"[.*+?^${}()|\[\]\\]" "\\\\$0"))
+
 (defn- str-match-pattern [field options prefix value suffix]
   (if (driver-api/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
@@ -881,7 +889,7 @@ function(bin) {
               "Wrong prefix or suffix value.")
       {$regexMatch {"input" (->rvalue field)
                     "regex" (if (= (first value) :value)
-                              (str prefix (->rvalue value) suffix)
+                              (str prefix (escape-regex-literal (->rvalue value)) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
                                                                (->rvalue value)
                                                                (when (some? suffix) {$literal suffix})])})

@@ -114,3 +114,36 @@
     (is (= :none
            (lib/normalize ::lib.schema.parameter/widget-type "broken/=")
            (lib/normalize ::lib.schema.parameter/widget-type "broken")))))
+
+(deftest ^:parallel normalize-invalid-parameter-value-test
+  (testing "Normalize invalid parameter values to `nil`"
+    (are [parameter normalized] (= normalized
+                                   (lib/normalize ::lib.schema.parameter/parameter.value parameter))
+      {:k "v"}   nil
+      [{:k "v"}] [nil]
+      #{1}       nil
+      ["A" #{1}] ["A" nil]
+      [["A"]]    [nil])))
+
+(deftest ^:parallel normalize-invalid-parameter-default-test
+  (testing "A parameter with no value falls back to its `:default`, so a default is normalized like a value"
+    (are [parameter normalized] (= normalized
+                                   (lib/normalize ::lib.schema.parameter/parameter parameter))
+      {:type :category, :default {:k "v"}}   {:type :category, :default nil}
+      {:type :category, :default [{:k "v"}]} {:type :category, :default [nil]}
+      {:type :category, :default "A"}        {:type :category, :default "A"}
+      {:type :category, :default ["A" "B"]}  {:type :category, :default ["A" "B"]})))
+
+(deftest ^:parallel parameter-options-test
+  (testing ":options are spliced into the filter clause the parameter becomes, so a known option is typed"
+    (are [options valid?] (= valid?
+                             (mr/validate ::lib.schema.parameter/parameter
+                                          {:type :string/contains, :value ["A"], :options options}))
+      {:case-sensitive false}  true
+      {:include-current true}  true
+      {}                       true
+      {:case-sensitive "yes"}  false
+      ;; An unrecognized option is not a validation error: the map stays open so a new frontend option does not 400
+      ;; against an older backend. Such a key never reaches the clause either way, because request decoding strips
+      ;; it -- see `decode-strips-undeclared-keys-test` in [[metabase.api.macros-test]].
+      {:lib/uuid "not-yours"}  true)))

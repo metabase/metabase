@@ -14,7 +14,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve :as serdes.resolve]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,6 +69,14 @@
   ([obj] obj)
   ([entity id] {:model entity :id id})
   ([entity id & _conditions] {:model entity :id id}))
+
+(defn- query-check-denying
+  "An `api/query-check` stub that 403s on `denied-id` and passes everything else through."
+  [denied-id]
+  (fn [entity id]
+    (if (= id denied-id)
+      (throw (ex-info "You don't have permissions to do that." {:status-code 403}))
+      {:model entity :id id})))
 
 (defn- with-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
@@ -530,7 +539,7 @@
             (is (re-find #"no_such_column" (ex-message e)))))))))
 
 (deftest multi-stage-aggregation-display-name-recovered-end-to-end-test
-  (testing (str "BOT-1442 (Cynthia): a stage-1 breakout that references a previous stage's\n"
+  (testing (str "BOT-1442: a stage-1 breakout that references a previous stage's\n"
                 "aggregation column by its UI display label (`Max of Doubled`) instead of the\n"
                 "machine name (`max`) is recovered end-to-end: the tool succeeds, the ref is\n"
                 "rewritten to `max` with a stamped base-type, and the resolved query is runnable.")
@@ -1110,3 +1119,171 @@
               (testing "and the export round-trips: re-running the exported form yields an equal export"
                 (let [redo (construct/execute-representations-query (walk/keywordize-keys exported))]
                   (is (= exported (get-in redo [:structured-output :query-json]))))))))))))
+
+(defn- recording-query-check [checked]
+  (fn [entity id]
+    (swap! checked conj id)
+    {:model entity :id id}))
+
+(defn- with-mp-and-recorded-checks! [checked f]
+  (with-redefs [lib-be/application-database-metadata-provider   (fn [_db-id] mp)
+                construct/resolve-database-id-from-first-stage  (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 (recording-query-check checked)]
+    (f)))
+
+(deftest checks-query-permissions-for-cross-table-field-reference-test
+  (testing "a bare cross-table field reference is permission-checked, not just stages[0].source-table"
+    (let [checked (atom [])]
+      (with-mp-and-recorded-checks!
+        checked
+        (fn []
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))))
+      (is (= [10 20] @checked)
+          "ORDERS and the implicitly joined PRODUCTS are both checked"))))
+
+(deftest checks-query-permissions-for-join-source-table-test
+  (testing "an explicit join's source-table is permission-checked"
+    (let [checked (atom [])]
+      (with-mp-and-recorded-checks!
+        checked
+        (fn []
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "joins"        [{"lib/type"     "mbql/join"
+                                           "alias"        "p"
+                                           "stages"       [{"lib/type"     "mbql.stage/mbql"
+                                                            "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                                           "conditions"   [["=" {}
+                                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                            ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]}]}))))
+      (is (= [10 20] @checked)))))
+
+(deftest checks-query-permissions-for-options-less-field-reference-test
+  (testing "a cross-table field reference written without its options map is still permission-checked"
+    (let [checked (atom [])
+          result  (atom nil)]
+      (with-mp-and-recorded-checks!
+        checked
+        (fn []
+          (reset! result
+                  (construct/execute-representations-query
+                   (query-data
+                    {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "aggregation"  [["count" {}]]
+                                  "breakout"     [["field" ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]})))))
+      (testing "the reference does resolve to PRODUCTS.CATEGORY"
+        (is (= 201 (nth (get-in @result [:structured-output :query :stages 0 :breakout 0]) 2))))
+      (is (= [10 20] @checked)
+          "PRODUCTS is checked even though the LLM omitted the options map"))))
+
+(deftest checks-query-permissions-for-quoted-field-reference-test
+  (testing "a field reference whose portable FK segments carry stray double-quotes is repaired, not rejected"
+    (let [checked (atom [])
+          result  (atom nil)]
+      (with-mp-and-recorded-checks!
+        checked
+        (fn []
+          (reset! result
+                  (construct/execute-representations-query
+                   (query-data
+                    {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "aggregation"  [["count" {}]]
+                                  "breakout"     [["field" {}
+                                                   ["\"Sample\"" "\"PUBLIC\"" "\"PRODUCTS\"" "\"CATEGORY\""]]]}]})))))
+      (testing "the dequoted reference resolves to PRODUCTS.CATEGORY"
+        (is (= 201 (nth (get-in @result [:structured-output :query :stages 0 :breakout 0]) 2))))
+      (is (= [10 20] @checked)))))
+
+(deftest options-less-field-reference-permission-failure-is-not-an-agent-error-test
+  (testing "a 403 raised by the post-repair gate keeps its status code and is not downgraded"
+    (with-redefs [lib-be/application-database-metadata-provider  (fn [_db-id] mp)
+                  construct/resolve-database-id-from-first-stage (fn [_] 1)
+                  api/read-check                                 allow-read-check
+                  api/query-check                                (query-check-denying 20)]
+      (try
+        (construct/execute-representations-query
+         (query-data
+          {"lib/type" "mbql/query"
+           "database" "Sample"
+           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                        "aggregation"  [["count" {}]]
+                        "breakout"     [["field" ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))
+        (is false "expected the permission check to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= 403 (:status-code d)))
+            (is (not (:agent-error? d)))))))))
+
+(deftest cross-table-field-reference-permission-failure-is-not-an-agent-error-test
+  (testing "a 403 on the implicitly joined table stops construction and keeps its status code"
+    (with-redefs [lib-be/application-database-metadata-provider  (fn [_db-id] mp)
+                  construct/resolve-database-id-from-first-stage (fn [_] 1)
+                  api/read-check                                 allow-read-check
+                  api/query-check                                (query-check-denying 20)]
+      (try
+        (construct/execute-representations-query
+         (query-data
+          {"lib/type" "mbql/query"
+           "database" "Sample"
+           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                        "aggregation"  [["count" {}]]
+                        "breakout"     [["field" {} ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))
+        (is false "expected the permission check to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= 403 (:status-code d)))
+            (is (not (:agent-error? d)))))))))
+
+(deftest unexpected-table-fk-resolution-error-is-not-swallowed-test
+  (let [unused            (fn [method] (throw (ex-info (str method " is not part of this test") {})))
+        throwing-resolver (fn [ex]
+                            (reify serdes.resolve/SerdesImportResolver
+                              (import-table-fk [_ _path] (throw ex))
+                              ;; `resolve-table-fk` only ever calls `import-table-fk`. The rest of the
+                              ;; protocol is implemented so that stops being an assumption.
+                              (import-fk       [_ _eid _model]            (unused "import-fk"))
+                              (import-fk-keyed [_ _portable _model _field] (unused "import-fk-keyed"))
+                              (import-user     [_ _email]                 (unused "import-user"))
+                              (import-field-fk [_ _path]                  (unused "import-field-fk"))))
+        orders-fk         ["Sample" "PUBLIC" "ORDERS"]]
+    (testing "an error meaning \"this FK names no single table\" yields nil, which tells
+              `check-source-table-query-permissions!` there is nothing to check"
+      (doseq [error [:unknown-table :ambiguous-table]]
+        (testing (pr-str error)
+          (is (nil? (#'construct/resolve-table-fk
+                     (throwing-resolver (ex-info "no such table" {:agent-error? true :error error}))
+                     orders-fk))))))
+    (testing "any other failure propagates, so a resolution error with a different cause cannot silently
+              skip the permission check for that FK"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"resolver blew up"
+           (#'construct/resolve-table-fk
+            (throwing-resolver (ex-info "resolver blew up" {:agent-error? true :error :something-else}))
+            orders-fk))))
+    (testing "including one with no :error key at all"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"resolver blew up"
+           (#'construct/resolve-table-fk
+            (throwing-resolver (ex-info "resolver blew up" {:agent-error? true}))
+            orders-fk))))))

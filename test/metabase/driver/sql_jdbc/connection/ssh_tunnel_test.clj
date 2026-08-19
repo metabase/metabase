@@ -7,10 +7,13 @@
    [metabase.util.log :as log])
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
-   (java.net InetSocketAddress ServerSocket Socket)
+   (java.net InetAddress InetSocketAddress ServerSocket Socket)
    (java.security KeyPair PublicKey)
+   (org.apache.sshd.client.session ClientSession)
+   (org.apache.sshd.client.session.forward PortForwardingTracker)
    (org.apache.sshd.common.config.keys PublicKeyEntry)
    (org.apache.sshd.common.keyprovider KeyPairProvider)
+   (org.apache.sshd.common.util.net SshdSocketAddress)
    (org.apache.sshd.server SshServer)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
 
@@ -131,6 +134,24 @@
     :port        1234}))
 
 ;; incorrect password
+(deftest forwarded-port-binds-to-loopback-only
+  (testing "the forwarded local port must not be reachable from off-host"
+    (let [[session tracker] (#'ssh/start-ssh-tunnel!
+                             {:tunnel-user ssh-username
+                              :tunnel-host "127.0.0.1"
+                              :tunnel-port ssh-mock-server-with-password-port
+                              :tunnel-pass ssh-password
+                              :host        "127.0.0.1"
+                              :port        1234})]
+      (try
+        (let [^SshdSocketAddress bound (.getBoundAddress ^PortForwardingTracker tracker)
+              ^InetAddress inet        (.getAddress (.toInetSocketAddress bound))]
+          (is (.isLoopbackAddress inet)
+              "bound to loopback, not the wildcard address")
+          (is (not (.isAnyLocalAddress inet))))
+        (finally
+          (.close ^ClientSession session))))))
+
 (deftest throws-exception-on-incorrect-password
   (is (thrown?
        org.apache.sshd.common.SshException

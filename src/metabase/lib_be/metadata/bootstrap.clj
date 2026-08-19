@@ -1,6 +1,5 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
-   [clojure.set :as set]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -120,13 +119,10 @@
                           [:or
                            ::empty-map
                            [:map
-                            [:database ::maybe-unresolved-database-id]]
-                           [:map
-                            ["database" ::maybe-unresolved-database-id]]]]]
+                            [:database ::maybe-unresolved-database-id]]]]]
    (when (seq query)
      (if (pos-int? (:database query))
        query
-       (let [query       (set/rename-keys query {"database" :database})
-             database-id (resolved-database-id metadata-provider query)]
+       (let [database-id (resolved-database-id metadata-provider query)]
          (cond-> query
            database-id (assoc :database database-id)))))))

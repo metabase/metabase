@@ -433,26 +433,30 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                        :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
-          (t2/insert! :model/RemoteSyncObject
-                      [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id 999 :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
-          (is (= 3 (t2/count :model/RemoteSyncObject)))
-          (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
-                                    (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                    "collections/main/test_collection/test_card.yaml"
-                                    (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
-                mock-source (test-helpers/create-mock-source :initial-files test-files)
-                result (impl/import! (source.p/snapshot mock-source) task-id)]
-            (is (= :success (:status result)))
-            (let [entries (t2/select :model/RemoteSyncObject)]
-              (is (= 2 (count entries)))
-              (is (every? #(= "synced" (:status %)) entries))
-              (is (some #(and (= "Collection" (:model_type %))
-                              (= coll-id (:model_id %))) entries))
-              (is (some #(and (= "Card" (:model_type %))
-                              (= card-id (:model_id %))) entries))
-              (is (not (some #(= 999 (:model_id %)) entries))))))))))
+          ;; the entry that must not survive the import. Derived from the real IDs rather than hard-coded: a literal
+          ;; collided with `card-id` once the app DB's auto-increment happened to reach it, and the last assertion
+          ;; then failed because the *surviving* Card carried the id it was checking had gone
+          (let [stale-id (+ 1000 (max coll-id card-id))]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id stale-id :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
+            (is (= 3 (t2/count :model/RemoteSyncObject)))
+            (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
+                                      (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                      "collections/main/test_collection/test_card.yaml"
+                                      (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result)))
+              (let [entries (t2/select :model/RemoteSyncObject)]
+                (is (= 2 (count entries)))
+                (is (every? #(= "synced" (:status %)) entries))
+                (is (some #(and (= "Collection" (:model_type %))
+                                (= coll-id (:model_id %))) entries))
+                (is (some #(and (= "Card" (:model_type %))
+                                (= card-id (:model_id %))) entries))
+                (is (not (some #(= stale-id (:model_id %)) entries)))))))))))
 
 (deftest export!-updates-all-statuses-to-synced-test
   (testing "export! updates all RemoteSyncObject entries to synced status"

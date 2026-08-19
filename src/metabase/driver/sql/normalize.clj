@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.normalize
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]))
@@ -19,8 +20,9 @@
   "Normalizes the (primarily table/column) name passed in.
   Should return a value that matches the name listed in the appdb."
   [driver name-str]
-  (let [quote-style (sql.qp/quote-style driver)
-        quote-char (if (= quote-style :mysql) \` \")]
+  (let [;; quoting the empty string yields the dialect's delimiters -- `` for backtick dialects, "" for ANSI ones
+        quote-char (when-let [quote-fn (:quote (sql/get-dialect (sql.qp/quote-style driver)))]
+                     (first (quote-fn "")))]
     (if (and (= (first name-str) quote-char)
              (= (last name-str) quote-char))
       (let [quote-quote (str quote-char quote-char)

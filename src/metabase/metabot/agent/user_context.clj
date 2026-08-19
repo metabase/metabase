@@ -8,11 +8,14 @@
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -129,7 +132,8 @@
 ;; via HTTP callbacks.
 
 (defn- fetch-and-format
-  "Fetch entity details and format with llm-shape. Falls back to format-simple-entity on failure."
+  "Fetch entity details and format with llm-shape. Falls back to format-simple-entity on failure,
+  except a 403, which renders nothing."
   [entity preamble details-fn format-fn]
   (try
     (let [{:keys [structured-output]} (details-fn)]
@@ -137,8 +141,14 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (log/error e "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)})
-      (format-simple-entity entity))))
+      (if (= 403 (:status-code (ex-data e)))
+        (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
+                        (:type entity) (:id entity))
+            nil)
+        (do (log/error "Error fetching entity details for viewing context"
+                       {:type (:type entity) :id (:id entity)}
+                       (ex-message e))
+            (format-simple-entity entity))))))
 
 (defmethod format-entity "table"
   [entity]
@@ -239,6 +249,139 @@
                                                (map format-entity)
                                                te/lines)))))
 
+;;; The export path ([[repr.resolve/try-export-query]], below) rewrites app-DB ids into names: a table id
+;;; becomes `[db schema table]`, a field id becomes `[db schema table field]`, a card id becomes its
+;;; `entity_id`. The query it runs on is client-supplied, so every id it can resolve is a metadata leak
+;;; unless the caller may reach it. The three vectors below enumerate the id-bearing map keys
+;;; `metabase.models.serialization.resolve/export-mbql` rewrites and must stay in lockstep with it.
+;;;
+;;; Two id kinds are deliberately absent. Measures and Segments are exported through the
+;;; `ContentStore`, and [[shared.content-store/default-store]] read-checks them already. Snippets have no
+;;; export-resolver method at all, so a snippet id makes the whole export throw and drop out.
+
+(def ^:private exported-table-id-keys
+  "Map keys the export path rewrites into a portable `[db schema table]` path."
+  [:source-table :source_table])
+
+(def ^:private exported-card-id-keys
+  "Map keys the export path rewrites into a Card `entity_id`."
+  [:source-card :source_card :card-id :card_id])
+
+(def ^:private exported-field-id-keys
+  "Map keys the export path rewrites into a portable `[db schema table field]` path.
+
+  `:source-field` is the one a walker over `:field` clause slots misses: it names a column on a table the
+  query never lists as a source, so `[:field {:source-field <secret>} <readable>]` used to render the
+  secret column's fully-qualified name into the prompt."
+  [:source-field :metabase.models.visualization-settings/param-mapping-source])
+
+(defn- exported-entity-ids
+  "`{:table #{} :card #{} :field #{}}` — the app-DB ids in `normalized` that the export path can turn into
+  names.
+
+  Runs on the *normalized* query because that is what the export path runs on too. That correspondence is
+  what makes the gate complete, and is why it does not try to recognise raw client shapes: an id
+  normalization drops (`{:source-table \"77\"}`) cannot be exported either, and one it rewrites
+  (`\"card__7\"` into `:source-card 7`) arrives here in its canonical form."
+  [normalized]
+  (let [ids (fn [ks node] (into #{} (comp (map #(get node %)) (filter pos-int?)) ks))]
+    (reduce
+     (fn [acc node]
+       (cond
+         (map? node)
+         (-> acc
+             (update :table into (ids exported-table-id-keys node))
+             (update :card  into (ids exported-card-id-keys node))
+             (update :field into (ids exported-field-id-keys node)))
+
+         (and (vector? node) (not (map-entry? node)))
+         (case (keyword (first node))
+           ;; `[:field opts id]` (MBQL 5), `[:field id opts]` (legacy), `[:field id]`, `[:field-id id]` —
+           ;; the export path accepts every one of those shapes, so check both slots rather than guessing.
+           (:field :field-id) (update acc :field into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
+           ;; `[:metric opts id]` (MBQL 5) and `[:metric id]` (legacy) — a metric id is a Card id. The
+           ;; export path normalizes the clause before matching it, so both slots are checked here for
+           ;; the same reason `:field` checks both: which one holds the id is not ours to guess.
+           :metric            (update acc :card into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
+           acc)
+
+         :else acc))
+     {:table #{} :card #{} :field #{}}
+     (tree-seq coll? seq normalized))))
+
+(defn- native-stage?
+  [normalized]
+  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
+                 (tree-seq coll? seq normalized))))
+
+(defn- native-sql-table-ids
+  "Table ids the query analyzer positively recognises in `normalized`'s native SQL.
+
+  Not about the export: a native stage carries no ids to resolve, and the SQL body is the client's own
+  input echoed back. It is about not reasoning over a transform that selects from a table the caller
+  cannot query. Only tables the analyzer matched to a real row count — its fuzzy name matches are
+  guesses, and an analyzer that cannot answer at all (unsupported driver, unparseable SQL) is not
+  evidence of a restricted table, so neither denies on its own."
+  [normalized]
+  (try
+    (into #{}
+          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
+          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
+    (catch Exception e
+      (log/debugf "Could not analyze a viewing-context native query for permission gating: %s"
+                  (ex-message e))
+      #{})))
+
+(defn- sandbox-visible-fields?
+  "Whether every field in `field-id->table-id` survives its own table's column sandbox.
+
+  A column sandbox hides columns of a table the caller may otherwise query, so
+  [[metabot.perms/queryable-table-ids]] passing says nothing about them. The export path renders a field
+  id as `[db schema table field]`, which names the column, so one sandboxed away has to drop the whole
+  query. Same bar `entity-details/permission-filter-columns` and `field-stats/check-column-table-perms!`
+  apply to the columns they return."
+  [field-id->table-id]
+  (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
+    (every? (fn [[field-id table-id]]
+              (if-let [allowed (get restricted table-id)]
+                (contains? allowed field-id)
+                true))
+            field-id->table-id)))
+
+(defn- queryable-normalized-query
+  "`[normalized metadata-provider]` for the client-supplied `query`, or nil when the current user cannot
+  reach everything it names.
+
+  Fails closed. A query that will not normalize, or that names a Table the caller cannot query, a column
+  its sandbox hides, or a Card it cannot read, yields nil and the caller renders nothing rather than
+  handing the export path ids to resolve into names."
+  [query]
+  (let [raw-database-id (and (map? query) (:database query))]
+    ;; `:database` is client-supplied, so a non-integer would otherwise reach Toucan's queryable position
+    ;;. Checked before normalizing, so a bad shape costs no app-DB round trip.
+    (when (pos-int? raw-database-id)
+      (try
+        (let [normalized  (lib-be/normalize-query query)
+              database-id (:database normalized)]
+          (when (and (pos-int? database-id)
+                     (mi/can-query? :model/Database database-id))
+            (let [{:keys [table card field]} (exported-entity-ids normalized)
+                  ;; A field id with no row drops out here, which is not a hole: `export-field-fk` throws
+                  ;; on it, and that takes the whole export down with it.
+                  field-table (metabot.perms/field-id->table-id field)
+                  table-ids   (cond-> (into (set table) (vals field-table))
+                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
+              ;; `queryable-table-ids` answers `false` for a table id with no row, so an id the client
+              ;; invented drops out of the set and this comparison fails closed.
+              (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
+                         (sandbox-visible-fields? field-table)
+                         (every? #(mi/can-read? :model/Card %) card))
+                [normalized (lib-be/application-database-metadata-provider database-id)]))))
+        (catch Exception e
+          (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
+                      (ex-message e))
+          nil)))))
+
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM.
 
@@ -262,17 +405,14 @@
       (string? query) query
       (string? (:query-content query)) (:query-content query)
       (and (map? query) (:database query))
-      (try
-        (let [normalized (lib-be/normalize-query query)
-              database-id (:database normalized)
-              mp (when database-id
-                   (lib-be/application-database-metadata-provider database-id))
-              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-          (if exported
-            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-            (u/pprint-to-str normalized)))
-        (catch Exception _
-          (u/pprint-to-str query)))
+      (when-let [[normalized mp] (queryable-normalized-query query)]
+        (try
+          (let [exported (repr.resolve/try-export-query mp normalized shared.content-store/default-store)]
+            (if exported
+              (str "```json\n" (json/encode exported {:pretty true}) "\n```")
+              (u/pprint-to-str normalized)))
+          (catch Exception _
+            (u/pprint-to-str query))))
       ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
       ;; least sees the query body; if there's no :database we can't normalise / build a MP.
       (string? (get-in query [:native :query])) (get-in query [:native :query])

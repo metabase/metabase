@@ -20,9 +20,9 @@
                                          {:select [[:tablename :xi]]
                                           :from [:pg_tables]
                                           :where [:and
-                                                  [:<> :schemaname [:inline "information_schema"]]
-                                                  [:<> :schemaname [:inline "pg_catalog"]]
-                                                  [:<> :tablename  [:inline "migration"]]]})))]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "information_schema"]]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "pg_catalog"]]
+                                                  [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]]})))]
     (doseq [table table-names]
       (jdbc/execute! tx
                      (sql/format
@@ -124,8 +124,8 @@
              tbl-model-id       (keyword table-name "model_id")
              tbl-root-coll-type (keyword table-name "root_collection_type")
              gate-id            (keyword gate-table "id")
-             gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
+             gate-doc-root      [:->> (keyword gate-table "document") ^:allow-raw-sql [:inline "root_collection_type"]]
+             composite-gate-id  [:|| tbl-model ^:allow-raw-sql [:inline "_"] tbl-model-id]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
@@ -138,7 +138,7 @@
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
            (execute! {:update kw-tbl
-                      :set    {:root_collection_type [:inline root-type]}
+                      :set    {:root_collection_type ^:allow-raw-sql [:inline root-type]}
                       :where  [:and
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))

@@ -12,6 +12,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -147,11 +148,11 @@
 (mr/def ::state
   "Agent state containing queries, charts, chart-configs, todos, transforms, and link-registry."
   [:map
-   [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:queries {:optional true} [:map-of [:or :string :keyword] ms/Map]]
+   [:charts {:optional true} [:map-of [:or :string :keyword] ms/Map]]
+   [:chart-configs {:optional true} [:map-of [:or :string :keyword] ms/Map]]
+   [:todos {:optional true} [:sequential ms/Map]]
+   [:transforms {:optional true} [:map-of [:or :string :keyword] ms/Map]]
    [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
 
 (mr/def ::context
@@ -632,7 +633,10 @@
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
-                      scope/*current-loadable-skill-ids*       (atom #{})]
+                      scope/*current-loadable-skill-ids*       (atom #{})
+                      ;; One memo for the whole turn: the prompt render and every tool call ask the
+                      ;; same tables the same permission questions.
+                      metabot.perms/*cache*                    (atom {})]
               (try
                 (let [agent              (init-agent opts)
                       {result    :result
