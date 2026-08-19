@@ -1,3 +1,4 @@
+import { MetabaseApiError } from "../metabase-client";
 import {
   reconcileMetrics,
   reconcileRemovedMetrics,
@@ -125,6 +126,116 @@ describe("metric reconciliation", () => {
 
     expect(resolvedQuery.dataset_query).toEqual({
       stages: [{ aggregation: [["metric", {}, 404]] }],
+    });
+  });
+
+  it("updates a changed copied metric", async () => {
+    const client = {
+      getCard: jest.fn().mockResolvedValue({
+        id: 404,
+        name: "Old metric name",
+        type: "metric",
+        collection_id: 35,
+        dataset_query: { database: 1, stages: [] },
+        display: "table",
+        visualization_settings: {},
+        description: null,
+      }),
+      updateMetric: jest.fn(),
+      createMetric: jest.fn(),
+      deleteCard: jest.fn(),
+    };
+
+    const lockfile: ResourceLockfile = {
+      queries: [],
+      models: [],
+      metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
+    };
+
+    await reconcileMetrics({
+      appRoot: makeApp(),
+      collectionId: 35,
+      resolvedQueries: [
+        {
+          dataset_query: { aggregation: [["metric", {}, 251]] },
+          metrics: [
+            {
+              id: 251,
+              name: "Lifetime value",
+              type: "metric",
+              collection_id: 1,
+              dataset_query: { database: 1, stages: [] },
+              display: "table",
+              visualization_settings: {},
+              description: null,
+            },
+          ],
+        },
+      ],
+      lockfile,
+      client,
+      log: jest.fn(),
+    });
+
+    expect(client.updateMetric).toHaveBeenCalledWith(404, {
+      name: "Lifetime value",
+      collectionId: 35,
+      datasetQuery: { database: 1, stages: [] },
+      display: "table",
+      visualizationSettings: {},
+      description: null,
+    });
+  });
+
+  it("replaces a missing copied metric and rewrites its references", async () => {
+    const client = {
+      getCard: jest
+        .fn()
+        .mockRejectedValue(new MetabaseApiError(404, "Metric not found")),
+      updateMetric: jest.fn(),
+      createMetric: jest.fn().mockResolvedValue({ id: 405 }),
+      deleteCard: jest.fn(),
+    };
+
+    const lockfile: ResourceLockfile = {
+      queries: [],
+      models: [],
+      metrics: [{ sourceMetricId: 251, copiedMetricId: 404, hash: HASH }],
+    };
+
+    const resolvedQuery = {
+      dataset_query: { stages: [{ aggregation: [["metric", {}, 251]] }] },
+      metrics: [
+        {
+          id: 251,
+          name: "Lifetime value",
+          type: "metric" as const,
+          collection_id: 1,
+          dataset_query: { database: 1, stages: [] },
+          display: "table",
+          visualization_settings: {},
+          description: null,
+        },
+      ],
+    };
+
+    await reconcileMetrics({
+      appRoot: makeApp(),
+      collectionId: 35,
+      resolvedQueries: [resolvedQuery],
+      lockfile,
+      client,
+      log: jest.fn(),
+    });
+
+    expect(client.createMetric).toHaveBeenCalledTimes(1);
+
+    expect(lockfile.metrics).toEqual([
+      { sourceMetricId: 251, copiedMetricId: 405, hash: expect.any(String) },
+    ]);
+
+    expect(resolvedQuery.dataset_query).toEqual({
+      stages: [{ aggregation: [["metric", {}, 405]] }],
     });
   });
 

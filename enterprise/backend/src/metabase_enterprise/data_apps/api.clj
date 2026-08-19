@@ -228,7 +228,7 @@
   [query]
   (let [metric-ids (lib/all-source-card-ids query)
         metrics    (if (seq metric-ids)
-                     (t2/select :model/Card :id [:in metric-ids])
+                     (t2/select :model/Card :id [:in metric-ids] :type "metric")
                      [])]
     (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
                                    :database_id :display :visualization_settings :description])

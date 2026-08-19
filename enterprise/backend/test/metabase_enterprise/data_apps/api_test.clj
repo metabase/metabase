@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.api :as data-app.api]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.data-apps.test-util :as data-app.test-util]
@@ -133,27 +134,33 @@
                                            :limit 5}]}}
                 response))))))
 
-(deftest resolved-query-metrics-are-card-api-serializable-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Card]
-      (create-app!)
-      (let [metadata-provider (mt/metadata-provider)
-            venue-count-query (-> (lib/query metadata-provider
-                                             (lib.metadata/table metadata-provider (mt/id :venues)))
-                                  (lib/aggregate (lib/count)))]
-        (mt/with-temp [:model/Card {metric-id :id}
-                       {:name          "Venue count"
-                        :type          :metric
-                        :database_id   (mt/id)
-                        :table_id      (mt/id :venues)
-                        :dataset_query venue-count-query}]
-          (let [response (mt/user-http-request
-                          :crowberto :post 200 "apps/demo/query"
-                          {:stages [{:source      {:type "table" :id (mt/id :venues)}
-                                     :aggregation [["metric" {} metric-id]]}]})
-                metric (first (:metrics response))]
-            (is (= metric-id (:id metric)))
-            (is (not (contains? (:dataset_query metric) :lib/metadata)))))))))
+(deftest referenced-metrics-excludes-non-metric-cards-test
+  (mt/with-model-cleanup [:model/Card]
+    (let [metadata-provider (mt/metadata-provider)
+          venue-count-query (-> (lib/query metadata-provider
+                                           (lib.metadata/table metadata-provider (mt/id :venues)))
+                                (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card {question-id :id}
+                     {:name          "Venues"
+                      :type          :question
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query venue-count-query}
+                     :model/Card {metric-id :id}
+                     {:name          "Venue count"
+                      :type          :metric
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query venue-count-query}]
+        (let [query {:stages [{:aggregation [[:metric {} metric-id]]
+                               :joins       [{:stages [{:source-card question-id}]}]}]}]
+          (with-redefs [lib/all-source-card-ids (fn [actual-query]
+                                                  (is (= query actual-query))
+                                                  #{question-id metric-id})]
+            (let [metric (first (#'data-app.api/referenced-metrics query))]
+              (is (= [metric-id]
+                     (mapv :id (#'data-app.api/referenced-metrics query))))
+              (is (not (contains? (:dataset_query metric) :lib/metadata))))))))))
 
 (deftest resolved-query-includes-implicitly-joined-tables-test
   (mt/with-premium-features #{:data-apps-preview}
