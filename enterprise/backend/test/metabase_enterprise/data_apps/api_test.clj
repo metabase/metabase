@@ -133,6 +133,22 @@
                                            :limit 5}]}}
                 response))))))
 
+(deftest resolved-query-includes-implicitly-joined-tables-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [orders-id            (mt/id :orders)
+            products-id          (mt/id :products)
+            product-id-field-id  (mt/id :orders :product_id)
+            product-category-id  (mt/id :products :category)
+            response             (mt/user-http-request
+                                  :crowberto :post 200 "apps/demo/query"
+                                  {:stages [{:source   {:type "table" :id orders-id}
+                                             :breakout [[:field {:source-field product-id-field-id}
+                                                         product-category-id]]}]})]
+        (is (= #{orders-id products-id}
+               (set (:table_ids response))))))))
+
 (deftest superuser-can-reconcile-query-table-permissions-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -143,13 +159,13 @@
         (let [{group-id :permission_group_id}
               (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                     {:table_ids [first-table-id]})]
-          (is (= :blocked (view-data-permission group-id database-id nil)))
+          (is (nil? (view-data-permission group-id database-id nil)))
           (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (nil? (view-data-permission group-id database-id second-table-id)))
+          (is (= :blocked (view-data-permission group-id database-id second-table-id)))
           (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                 {:table_ids [second-table-id]})
-          (is (= :blocked (view-data-permission group-id database-id nil)))
-          (is (nil? (view-data-permission group-id database-id first-table-id)))
+          (is (nil? (view-data-permission group-id database-id nil)))
+          (is (= :blocked (view-data-permission group-id database-id first-table-id)))
           (is (= :unrestricted (view-data-permission group-id database-id second-table-id))))))))
 
 (deftest query-table-permission-reconciliation-rolls-back-on-error-test
@@ -173,9 +189,9 @@
                             (apply original-set-table-permissions! args)))]
             (mt/user-http-request :crowberto :put 500 "apps/demo/resources/permissions"
                                   {:table_ids [second-table-id]}))
-          (is (= :blocked (view-data-permission group-id database-id nil)))
+          (is (nil? (view-data-permission group-id database-id nil)))
           (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (nil? (view-data-permission group-id database-id second-table-id))))))))
+          (is (= :blocked (view-data-permission group-id database-id second-table-id))))))))
 
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}

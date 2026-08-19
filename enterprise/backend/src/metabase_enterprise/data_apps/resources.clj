@@ -142,9 +142,9 @@
            (t2/exists? :model/Permissions :group_id id))))
 
 (defn- validate-empty-rebind!
-  [app foreign-key field resource empty?]
+  [app foreign-key field resource empty-resource?]
   (when (and (not= (foreign-key app) (:id resource))
-             (not (empty? resource)))
+             (not (empty-resource? resource)))
     (throw (ex-info (format "%s '%s' must be empty before a data app can use it."
                             (name field) (:entity_id resource))
                     {:data-app (:name app)

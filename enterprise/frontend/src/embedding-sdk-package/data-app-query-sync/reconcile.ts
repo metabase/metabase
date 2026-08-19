@@ -8,7 +8,6 @@ import { RESOURCE_LOCKFILE, writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
-import { collectTableIds } from "./table-ids";
 import type {
   DiscoveredQuery,
   QueryLockEntry,
@@ -468,7 +467,7 @@ export async function reconcileQueries({
     writeResourceLockfile(appRoot, lockfile);
   }
 
-  return collectTableIds(
-    resolvedQueries.map(({ resolved }) => resolved.dataset_query),
-  );
+  return [
+    ...new Set(resolvedQueries.flatMap(({ resolved }) => resolved.table_ids)),
+  ].sort((a, b) => a - b);
 }

@@ -90,6 +90,7 @@ export class MetabaseClient {
     return this.request<{
       database_id: number;
       dataset_query: Record<string, unknown>;
+      table_ids: number[];
     }>(`apps/${encodeURIComponent(slug)}/query`, {
       method: "POST",
       body: JSON.stringify({ stages: [query] }),

@@ -103,7 +103,8 @@
 (def ^:private QueryResolutionResponse
   [:map
    [:database_id ms/PositiveInt]
-   [:dataset_query ms/Map]])
+   [:dataset_query ms/Map]
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 (def ^:private ResourcePermissionsRequest
   [:map
@@ -220,11 +221,14 @@
         _           (api/check-400 (= (keyword source-type) :table)
                                    "Data app query definitions must use a table source.")
         database-id (api/check-404 (t2/select-one-fn :db_id :model/Table :id table-id))
-        query        (-> (lib-be/application-database-metadata-provider database-id)
-                         (lib/test-query query-def)
-                         lib/prepare-for-serialization)]
+        query        (lib/test-query (lib-be/application-database-metadata-provider database-id) query-def)]
     {:database_id database-id
-     :dataset_query query}))
+     :dataset_query (lib/prepare-for-serialization query)
+     :table_ids     (->> (concat (lib/all-source-table-ids query)
+                                 (lib/all-implicitly-joined-table-ids query))
+                         set
+                         sort
+                         vec)}))
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
   "Create or reuse a data app draft before its first repository import."

@@ -52,6 +52,7 @@ describe("query reconciliation upserts", () => {
         return jsonResponse({
           database_id: 1,
           dataset_query: queryWithAggregationUuid("fresh-uuid"),
+          table_ids: [1],
         });
       }
       if (pathname === "/api/card/35" && method === "GET") {
@@ -109,7 +110,11 @@ describe("query reconciliation upserts", () => {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {
-        return jsonResponse({ database_id: 1, dataset_query: { database: 1 } });
+        return jsonResponse({
+          database_id: 1,
+          dataset_query: { database: 1 },
+          table_ids: [1],
+        });
       }
       if (pathname === "/api/card/80" && method === "GET") {
         return jsonResponse({
