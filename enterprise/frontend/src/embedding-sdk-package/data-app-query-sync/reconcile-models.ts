@@ -172,8 +172,9 @@ function assertOwnedModelCopy(card: MetabaseCard, collectionId: number) {
     );
   }
 
-  // A trashed card reports the Trash as its collection, so its real one says
-  // nothing here. Restoring it below puts both back.
+  // A trashed copy reports the Trash as its collection, so its real one says
+  // nothing here. Only the restore path reaches this with one, and it puts both
+  // the card and its collection back.
   if (card.archived !== true && card.collection_id !== collectionId) {
     throw new Error(
       `Card ${card.id} belongs to a synchronized model but is no longer in the data app collection, so it was left untouched. Move card ${card.id} back to data app collection ${collectionId} or delete it manually, then run sync-resources again.`,
@@ -367,7 +368,12 @@ async function removeUnusedModels(
 
     const copy = await orNullOn404(client.getCard(entry.copiedModelId));
 
-    if (copy) {
+    if (copy?.archived === true) {
+      // The trash masks a card's collection, so this reads the same as a copy
+      // moved out and trashed afterwards. Deleting is permanent, and the card is
+      // already where someone put it to be deleted.
+      log(`left in the trash: card ${copy.id}`);
+    } else if (copy) {
       assertOwnedModelCopy(copy, collectionId);
       // Deleting the copy cascades to the actions copied onto it.
       await client.deleteCard(copy.id);

@@ -212,6 +212,25 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     });
   });
 
+  // A card in the trash reports the Trash as its collection, so one moved out
+  // and trashed afterwards is indistinguishable from the app's own. Deleting is
+  // permanent, so neither is deleted.
+  it("leaves a trashed card in the trash when its declaration is removed", () => {
+    syncOneQuery().then((card) => {
+      cy.request("PUT", `/api/card/${card.id}`, { archived: true });
+      removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+
+      sync();
+
+      cy.request(`/api/card/${card.id}`)
+        .its("body.archived")
+        .should("eq", true);
+      cy.readFile(LOCKFILE()).then((lockfile) => {
+        expect(lockfile.queries, "no longer tracked").to.have.length(0);
+      });
+    });
+  });
+
   it("refuses to delete a card that was moved out of the app collection", () => {
     syncOneQuery().then((card) => {
       cy.request("POST", "/api/collection", { name: "Elsewhere" }).then(

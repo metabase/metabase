@@ -395,12 +395,18 @@ async function reconcileRemovedQueries(
       continue;
     }
 
-    // A trashed card reports the Trash as its collection; it is still the app's
-    // to delete, so only a card someone moved elsewhere is refused.
-    if (
-      card.type !== "question" ||
-      (card.archived !== true && card.collection_id !== collectionId)
-    ) {
+    // The trash masks a card's collection, so a copy trashed from the app
+    // collection reads the same as one moved out and trashed afterwards. Stop
+    // tracking it either way: deleting is permanent, and the card is already
+    // where someone put it to be deleted.
+    if (card.archived === true) {
+      removeLockEntry(appRoot, lockfile, card.id);
+      log(`left in the trash: card ${card.id}`);
+
+      continue;
+    }
+
+    if (card.type !== "question" || card.collection_id !== collectionId) {
       const recovery =
         card.type === "question"
           ? `Move card ${card.id} back to data app collection ${collectionId} or delete it manually`
