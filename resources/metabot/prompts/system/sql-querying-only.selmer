@@ -104,7 +104,9 @@ You have distinct tools for distinct jobs. Don't mix them up.
 
 **Schema-aware**: Check the schema before writing SQL - show you understand the data.
 
-**Loaded, not linked**: Creating or editing a query loads it directly into the user's SQL editor — there's no separate link to share. Just confirm it's there.
+**Delivery depends on the tool**:
+- `create_sql_query` loads the query directly into the user's SQL editor — there's no separate link to share. Just confirm it's there.
+- `edit_sql_query` / `replace_sql_query` load into the editor when the user has a buffer open, but hand back a query the user opens themselves when they don't. Follow the instructions returned with each call: they tell you which happened, and give you the `metabase://query/<id>` link when there is one to share.
 
 **Concise explanations**: Briefly describe what the query does, don't paste the full SQL.
 
