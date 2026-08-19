@@ -2,10 +2,30 @@
  * @fileoverview Files declared side-effect free (frontend/build/shared/rspack/side-effect-free-modules.js)
  * are dropped from production bundles once their exports go unused, so anything they do at import time is silently lost.
  * This reports module-scope code that does work at import.
+ * A dropped file also takes with it everything only it imports, so it also reports an import
+ * of a file that frontend/lint/side-effect-files.json classifies as having a global effect.
  * The config decides which files are linted, not the rule.
  */
 
+const fs = require("fs");
 const path = require("path");
+
+const {
+  DEFAULT_REGISTRY_PATH,
+  classify,
+  isFacade,
+  loadRegistry,
+} = require("../../side-effect-registry");
+
+const REPO_ROOT = path.resolve(__dirname, "../../../..");
+
+// The tsconfig `*` path roots: `metabase/x` is looked up under each in turn.
+const DEFAULT_SOURCE_ROOTS = ["frontend/src", "enterprise/frontend/src"];
+
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
+
+// Registry path -> parsed registry, so the file is read once per lint run rather than once per file.
+const registries = new Map();
 
 // Callees known to be pure, so a module-scope call to them needs no annotation.
 // A name matches the imported binding or a property called on one (`memo`, `Button.extend`).
@@ -155,6 +175,15 @@ module.exports = {
             // Import alias roots that resolve inside this repo, e.g. "metabase"
             items: { type: "string" },
           },
+          sideEffectRegistry: {
+            // Path to the registry of effect files, default frontend/lint/side-effect-files.json
+            type: "string",
+          },
+          sourceRoots: {
+            type: "array",
+            // Repo-relative directories a non-relative import is resolved under, default the tsconfig `*` roots
+            items: { type: "string" },
+          },
         },
         additionalProperties: false,
       },
@@ -174,6 +203,8 @@ module.exports = {
         "Top-level await runs at import time. Move it into a function that is called from an entry.",
       controlFlow:
         "`{{kind}}` at module scope means work runs at import time. Move it into a function, or into a registration module listed in SIDE_EFFECT_PATHS.",
+      importsGlobalEffect:
+        "'{{source}}' runs an effect at import that code outside it depends on. A side-effect-free file must not be the reason it loads; import it from an entry (or list it in SIDE_EFFECT_PATHS if this file is a registration module).",
     },
   },
 
@@ -189,6 +220,12 @@ module.exports = {
       options.sideEffectPaths || [],
     );
     const internalModules = new Set(options.internalModules || []);
+    const registry = getRegistry(
+      options.sideEffectRegistry || DEFAULT_REGISTRY_PATH,
+    );
+    const sourceRoots = (options.sourceRoots || DEFAULT_SOURCE_ROOTS).map(
+      (root) => path.resolve(REPO_ROOT, root),
+    );
 
     function isInternalModule(source) {
       return (
@@ -339,9 +376,33 @@ module.exports = {
       context.report({ node, messageId: "bareImport", data: { source } });
     }
 
+    // An import with bindings keeps its target alive only while this file is kept,
+    // so a target whose effect others depend on must not be reached this way.
+    function checkBindingImport(node) {
+      const source = node.source.value;
+      const target = resolveImport(source, path.dirname(filename), sourceRoots);
+      if (target == null || sideEffectPaths.allows(target)) {
+        return;
+      }
+      const relative = normalizePath(path.relative(REPO_ROOT, target));
+      const classification = classify(registry, relative);
+      if (
+        (classification === "global" || classification === "entry") &&
+        !isFacade(registry, relative)
+      ) {
+        context.report({
+          node,
+          messageId: "importsGlobalEffect",
+          data: { source },
+        });
+      }
+    }
+
     function checkTopLevelStatement(node) {
       if (node.type === "ImportDeclaration" && node.specifiers.length === 0) {
         checkBareImport(node);
+      } else if (node.type === "ImportDeclaration" && !isTypeOnly(node)) {
+        checkBindingImport(node);
       } else if (CONTROL_FLOW_STATEMENTS.has(node.type)) {
         context.report({
           node,
@@ -612,6 +673,56 @@ function statementKeyword(node) {
     default:
       return "a block";
   }
+}
+
+function getRegistry(registryPath) {
+  if (!registries.has(registryPath)) {
+    registries.set(registryPath, loadRegistry(registryPath));
+  }
+  return registries.get(registryPath);
+}
+
+// A type-only import is erased, so nothing loads.
+function isTypeOnly(node) {
+  return (
+    node.importKind === "type" ||
+    node.specifiers.every((specifier) => specifier.importKind === "type")
+  );
+}
+
+// The absolute file an import source names, or null when it is a package or does not resolve.
+// A relative source is resolved from the importing file, any other under each source root in turn.
+function resolveImport(source, fromDirectory, sourceRoots) {
+  const bases = source.startsWith(".")
+    ? [path.resolve(fromDirectory, source)]
+    : sourceRoots.map((root) => path.join(root, source));
+  for (const base of bases) {
+    const file = resolveSourceFile(base);
+    if (file != null) {
+      return normalizePath(file);
+    }
+  }
+  return null;
+}
+
+// `base`, `base.<ext>` or `base/index.<ext>`, whichever exists.
+function resolveSourceFile(base) {
+  const candidates = [
+    base,
+    ...SOURCE_EXTENSIONS.map((extension) => `${base}${extension}`),
+    ...SOURCE_EXTENSIONS.map((extension) =>
+      path.join(base, `index${extension}`),
+    ),
+  ];
+  return (
+    candidates.find((candidate) => {
+      try {
+        return fs.statSync(candidate).isFile();
+      } catch {
+        return false;
+      }
+    }) ?? null
+  );
 }
 
 // `metabase/lib/x` maps to `metabase`, `@scope/pkg/x` to `@scope/pkg`.

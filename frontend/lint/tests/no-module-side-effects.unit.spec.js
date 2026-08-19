@@ -1,3 +1,5 @@
+import path from "path";
+
 import { RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 
@@ -18,6 +20,16 @@ const REGISTRATION_FILE =
 const REGISTRATION_DIR = "/repo/frontend/src/metabase/widgets/api/";
 
 const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
+
+// Real files, because the import check resolves each import on disk before looking it up.
+// registry.json classifies effects/{global,entry,self,registration}.ts, leaves unclassified.ts
+// unclassified, and names facade/ a facade. pure.ts is not listed.
+const FIXTURES = path.resolve(__dirname, "fixtures/side-effect-files");
+const IMPORTER = path.join(FIXTURES, "importer/Widget.tsx");
+const registryOptions = {
+  sideEffectRegistry: path.join(FIXTURES, "registry.json"),
+  sourceRoots: ["frontend/lint/tests/fixtures/side-effect-files"],
+};
 
 const VALID_CASES = [
   {
@@ -303,6 +315,57 @@ const VALID_CASES = [
       export const now = dayjs();
     `,
     options: [{ pureCallees: [{ module: "dayjs", names: "*" }] }],
+  },
+  {
+    name: "imports a file whose effect is its own",
+    code: `import { self } from "../effects/self";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "imports a facade",
+    code: `import { facade } from "../facade";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "imports an unregistered file",
+    code: `import { pure } from "../effects/pure";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "imports a global-effect file listed in sideEffectPaths",
+    code: `import { registration } from "../effects/registration";`,
+    filename: IMPORTER,
+    options: [
+      {
+        ...registryOptions,
+        sideEffectPaths: [path.join(FIXTURES, "effects/registration.ts")],
+      },
+    ],
+  },
+  {
+    name: "type-only import of a global-effect file",
+    code: `
+      import type { Global } from "../effects/global";
+      import { type Entry } from "../effects/entry";
+      export type T = Global | Entry;
+    `,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "alias import of a self-effect file",
+    code: `import { self } from "effects/self";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "package import that resolves nowhere",
+    code: `import { effects } from "effects";`,
+    filename: IMPORTER,
+    options: [registryOptions],
   },
 ];
 
@@ -598,6 +661,41 @@ const INVALID_CASES = [
       export const thing = registerCustomThing();
     `,
     errors: [{ messageId: "callOnImport" }],
+  },
+  {
+    name: "imports a global-effect file",
+    code: `import { global } from "../effects/global";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffect" }],
+  },
+  {
+    name: "imports an entry",
+    code: `import entry from "../effects/entry";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffect" }],
+  },
+  {
+    name: "imports an unclassified file",
+    code: `import * as unclassified from "../effects/unclassified";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffect" }],
+  },
+  {
+    name: "alias import of a global-effect file",
+    code: `import { global } from "effects/global";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffect" }],
+  },
+  {
+    name: "value import beside a type import of a global-effect file",
+    code: `import { type Global, global } from "../effects/global";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffect" }],
   },
   {
     name: "extra pure callee only allows the listed name",
