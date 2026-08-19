@@ -141,14 +141,14 @@
     ;; setup for DIFFERENT application DBs at the same time, but CAN NOT run it for the SAME application DB. We can just
     ;; use the application DB object itself to lock on since that will be a different object for different application
     ;; DBs.
-    #_{:clj-kondo/ignore [:locking-suspicious-lock]}
-    (locking (mdb.connection/current-application-db)
-      (when-not (db-is-set-up?)
-        (let [db-type (db-type)
-              data-source (data-source)
-              auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
-        (finish-db-setup!))))
+    (let [app-db (mdb.connection/current-application-db)]
+      (locking app-db
+        (when-not (db-is-set-up?)
+          (let [db-type (db-type)
+                data-source (data-source)
+                auto-migrate? (config/config-bool :mb-db-automigrate)]
+            (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content?))
+          (finish-db-setup!)))))
   :done)
 
 (defn release-migration-locks!
