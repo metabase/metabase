@@ -348,7 +348,7 @@ describe("InteractiveQuestion", () => {
     expect(popover.getByTestId("chartsettings-sidebar")).toBeInTheDocument();
     await userEvent.click(screen.getByTestId("Test Column-settings-button"));
 
-    const columnTitle = screen.getByTestId("column_title");
+    const columnTitle = await screen.findByTestId("column_title");
     await userEvent.clear(columnTitle);
     await userEvent.paste("A New Test Column");
 

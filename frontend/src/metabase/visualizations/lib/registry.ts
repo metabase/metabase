@@ -27,12 +27,18 @@ export type RegisteredVisualization = Visualization | VisualizationDefinition;
 // its definition statics, the same as an eagerly registered visualization.
 export type VisualizationComponentLoader = () => Promise<Visualization>;
 
+// A setting widget is registered with a loader too, so the widgets stay out of
+// the initial bundle. They all live in one module, so one chunk covers them.
+export type SettingWidgetLoader = () => Promise<ComponentType<any>>;
+
 export const visualizations = new Map<
   VisualizationDisplay,
   RegisteredVisualization
 >();
 const aliases = new Map<string, RegisteredVisualization>();
 const settingWidgets = new Map<string, ComponentType<any>>();
+const settingWidgetLoaders = new Map<string, SettingWidgetLoader>();
+const lazySettingWidgets = new Map<string, ComponentType<any>>();
 const componentLoaders = new Map<
   VisualizationDisplay,
   VisualizationComponentLoader
@@ -222,16 +228,65 @@ export async function loadVisualizationComponents(
   );
 }
 
-export function registerSettingWidgets(
-  widgets: Record<string, ComponentType<any>>,
+export function registerSettingWidgetLoaders(
+  loaders: Record<string, SettingWidgetLoader>,
 ) {
-  for (const [key, widget] of Object.entries(widgets)) {
-    settingWidgets.set(key, widget);
+  for (const [key, loadWidget] of Object.entries(loaders)) {
+    settingWidgetLoaders.set(key, loadWidget);
   }
 }
 
+/**
+ * The component for a widget key, wrapped in `lazy` when the key was registered
+ * with a loader. Callers must render it inside a Suspense boundary.
+ */
 export function getSettingWidgetComponent(key: string) {
-  return settingWidgets.get(key);
+  const widget = settingWidgets.get(key);
+  if (widget) {
+    return widget;
+  }
+
+  const cachedComponent = lazySettingWidgets.get(key);
+  if (cachedComponent) {
+    return cachedComponent;
+  }
+
+  const loadWidget = settingWidgetLoaders.get(key);
+  if (!loadWidget) {
+    return undefined;
+  }
+
+  const component = lazy(() =>
+    retry(loadWidget, {
+      maxRetries: 2,
+      shouldRetry: () => true,
+      delayMs: (attempt) => 300 * 2 ** attempt,
+    })
+      .then((Widget) => ({ default: Widget }))
+      .catch((error) => {
+        // React keeps a rejected lazy rejected for the life of the object, so
+        // reusing this one would fail every later render until a reload. Drop
+        // it and the next render builds one that downloads again.
+        lazySettingWidgets.delete(key);
+        throw error;
+      }),
+  );
+  lazySettingWidgets.set(key, component);
+  return component;
+}
+
+/**
+ * Load the setting widgets and register them in place of their loaders, so the
+ * settings sidebar renders in one pass. Awaiting the loaders is not enough on
+ * its own: `lazy` suspends on its first render even when the module is already
+ * in memory. Tests and Storybook need this. The app does not.
+ */
+export async function loadSettingWidgets(): Promise<void> {
+  await Promise.all(
+    Array.from(settingWidgetLoaders, async ([key, loadWidget]) => {
+      settingWidgets.set(key, await loadWidget());
+    }),
+  );
 }
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;

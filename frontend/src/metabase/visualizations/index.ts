@@ -1,5 +1,6 @@
 export {
   type RegisteredVisualization,
+  type SettingWidgetLoader,
   type VisualizationComponentLoader,
   canSavePng,
   getDefaultSize,
@@ -12,9 +13,10 @@ export {
   getVisualizationRaw,
   getVisualizationTransformed,
   isCartesianChart,
+  loadSettingWidgets,
   loadVisualizationComponents,
   prefetchVisualizationComponent,
-  registerSettingWidgets,
+  registerSettingWidgetLoaders,
   registerVisualization,
   setDefaultVisualization,
   visualizations,

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
+import { loadSettingWidgets } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { isPopoverClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
@@ -20,6 +21,10 @@ import {
 } from "./ColumnFormattingAction";
 
 registerVisualizations();
+
+// Setting widgets are loaded on demand. Register them up front so each test
+// renders in one pass.
+beforeAll(() => loadSettingWidgets());
 
 // A text column with no semantic type gets 5 "Display as" options, which makes
 // the widget a Select rather than a radio group.

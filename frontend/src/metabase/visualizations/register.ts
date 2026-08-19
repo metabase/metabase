@@ -1,37 +1,11 @@
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import {
-  registerSettingWidgets,
+  registerSettingWidgetLoaders,
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
-import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
-import { ChartSettingColorPicker } from "./components/settings/ChartSettingColorPicker";
-import { ChartSettingColorsPicker } from "./components/settings/ChartSettingColorsPicker";
-import { ChartSettingEnumToggle } from "./components/settings/ChartSettingEnumToggle";
-import { ChartSettingFieldPicker } from "./components/settings/ChartSettingFieldPicker";
-import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
-import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
-import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
-import { ChartSettingIconRadio } from "./components/settings/ChartSettingIconRadio";
-import { ChartSettingInput } from "./components/settings/ChartSettingInput";
-import { ChartSettingInputNumeric } from "./components/settings/ChartSettingInputNumeric";
-import ChartSettingLinkUrlInput from "./components/settings/ChartSettingLinkUrlInput";
-import { ChartSettingMaxCategories } from "./components/settings/ChartSettingMaxCategories";
-import { ChartSettingMultiSelect } from "./components/settings/ChartSettingMultiSelect";
-import { chartSettingNestedSettings } from "./components/settings/ChartSettingNestedSettings";
-import { ChartSettingNumberInput } from "./components/settings/ChartSettingNumberInput";
-import { ChartSettingOrderedSimple } from "./components/settings/ChartSettingOrderedSimple";
-import { ChartSettingRadio } from "./components/settings/ChartSettingRadio";
-import { ChartSettingSegmentedControl } from "./components/settings/ChartSettingSegmentedControl";
-import { ChartSettingSegmentsEditor } from "./components/settings/ChartSettingSegmentsEditor";
-import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
-import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
-import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
-import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
-import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
+import type * as SettingWidgets from "./setting-widgets";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "./visualizations/BoxPlot/definition";
@@ -42,8 +16,6 @@ import { LINE_CHART_DEFINITION } from "./visualizations/LineChart/definition";
 import { LIST_DEFINITION } from "./visualizations/List/definition";
 import { MAP_VIZ_DEFINITION } from "./visualizations/Map/definition";
 import { OBJECT_DETAIL_DEFINITION } from "./visualizations/ObjectDetail/definition";
-import { DimensionsWidget } from "./visualizations/PieChart/DimensionsWidget";
-import { SliceNameWidget } from "./visualizations/PieChart/SliceNameWidget";
 import { PIE_CHART_DEFINITION } from "./visualizations/PieChart/definition";
 import { PIVOT_TABLE_DEFINITION } from "./visualizations/PivotTable/definition";
 import { PROGRESS_CHART_DEFINITION } from "./visualizations/Progress/definition";
@@ -51,10 +23,8 @@ import { ROW_CHART_DEFINITION } from "./visualizations/RowChart/definition";
 import { SANKEY_CHART_DEFINITION } from "./visualizations/SankeyChart/definition";
 import { SCALAR_CHART_DEFINITION } from "./visualizations/Scalar/definition";
 import { SCATTER_PLOT_DEFINITION } from "./visualizations/ScatterPlot/definition";
-import { SmartScalarComparisonWidget } from "./visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 import { SMART_SCALAR_CHART_DEFINITION } from "./visualizations/SmartScalar/definition";
 import { TABLE_DEFINITION } from "./visualizations/Table/definition";
-import { TreemapGroupsPicker } from "./visualizations/TreemapChart/TreemapGroupsPicker";
 import { TREEMAP_CHART_DEFINITION } from "./visualizations/TreemapChart/definition";
 import { WATERFALL_CHART_DEFINITION } from "./visualizations/WaterfallChart/definition";
 
@@ -172,38 +142,46 @@ function registerVisualizationComponents() {
   setDefaultVisualization(TABLE_DEFINITION);
 }
 
+// The settings sidebar is the only thing that needs these, so each key holds a
+// loader instead of the component. All the loaders name one module, so the
+// widgets share a single chunk.
+const settingWidget = (name: keyof typeof SettingWidgets) => () =>
+  import(
+    /* webpackChunkName: "chart-setting-widgets" */ "./setting-widgets"
+  ).then((module) => module[name]);
+
 function registerVisualizationSettingWidgets() {
-  registerSettingWidgets({
-    input: ChartSettingInput,
-    number: ChartSettingInputNumeric,
-    numberInput: ChartSettingNumberInput,
-    radio: ChartSettingRadio,
-    iconRadio: ChartSettingIconRadio,
-    select: ChartSettingSelect,
-    toggle: ChartSettingToggle,
-    segmentedControl: ChartSettingSegmentedControl,
-    field: ChartSettingFieldPicker,
-    fields: ChartSettingFieldsPicker,
-    fieldsPartition: ChartSettingFieldsPartition,
-    color: ChartSettingColorPicker,
-    colors: ChartSettingColorsPicker,
-    colorRangeSelector: ColorRangeSelector,
-    linkUrlInput: ChartSettingLinkUrlInput,
-    tableFormatting: ChartSettingsTableFormatting,
-    multiselect: ChartSettingMultiSelect,
-    enumToggle: ChartSettingEnumToggle,
-    goalInput: ChartSettingGoalInput,
-    maxCategories: ChartSettingMaxCategories,
-    orderedSimple: ChartSettingOrderedSimple,
-    segmentsEditor: ChartSettingSegmentsEditor,
-    seriesOrder: ChartSettingSeriesOrder,
-    tableColumns: ChartSettingTableColumns,
-    nestedColumns: chartSettingNestedSettings(ChartNestedSettingColumns),
-    nestedSeries: chartSettingNestedSettings(ChartNestedSettingSeries),
-    pieDimensions: DimensionsWidget,
-    pieSliceName: SliceNameWidget,
-    smartScalarComparison: SmartScalarComparisonWidget,
-    treemapGroups: TreemapGroupsPicker,
+  registerSettingWidgetLoaders({
+    input: settingWidget("ChartSettingInput"),
+    number: settingWidget("ChartSettingInputNumeric"),
+    numberInput: settingWidget("ChartSettingNumberInput"),
+    radio: settingWidget("ChartSettingRadio"),
+    iconRadio: settingWidget("ChartSettingIconRadio"),
+    select: settingWidget("ChartSettingSelect"),
+    toggle: settingWidget("ChartSettingToggle"),
+    segmentedControl: settingWidget("ChartSettingSegmentedControl"),
+    field: settingWidget("ChartSettingFieldPicker"),
+    fields: settingWidget("ChartSettingFieldsPicker"),
+    fieldsPartition: settingWidget("ChartSettingFieldsPartition"),
+    color: settingWidget("ChartSettingColorPicker"),
+    colors: settingWidget("ChartSettingColorsPicker"),
+    colorRangeSelector: settingWidget("ColorRangeSelector"),
+    linkUrlInput: settingWidget("ChartSettingLinkUrlInput"),
+    tableFormatting: settingWidget("ChartSettingsTableFormatting"),
+    multiselect: settingWidget("ChartSettingMultiSelect"),
+    enumToggle: settingWidget("ChartSettingEnumToggle"),
+    goalInput: settingWidget("ChartSettingGoalInput"),
+    maxCategories: settingWidget("ChartSettingMaxCategories"),
+    orderedSimple: settingWidget("ChartSettingOrderedSimple"),
+    segmentsEditor: settingWidget("ChartSettingSegmentsEditor"),
+    seriesOrder: settingWidget("ChartSettingSeriesOrder"),
+    tableColumns: settingWidget("ChartSettingTableColumns"),
+    nestedColumns: settingWidget("NestedSettingColumns"),
+    nestedSeries: settingWidget("NestedSettingSeries"),
+    pieDimensions: settingWidget("DimensionsWidget"),
+    pieSliceName: settingWidget("SliceNameWidget"),
+    smartScalarComparison: settingWidget("SmartScalarComparisonWidget"),
+    treemapGroups: settingWidget("TreemapGroupsPicker"),
   });
 }
 

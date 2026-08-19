@@ -6,6 +6,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
+import { loadSettingWidgets } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -16,6 +17,10 @@ import {
 import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 
 registerVisualizations();
+
+// Setting widgets are loaded on demand. Register them up front so each test
+// renders in one pass.
+beforeAll(() => loadSettingWidgets());
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

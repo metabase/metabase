@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ComponentType } from "react";
+import { type CSSProperties, type ComponentType, Suspense } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -83,7 +83,10 @@ const ChartSettingsWidget = ({
             widgetProps={{ ...extraWidgetProps, ...props }}
           />
         ) : (
-          <Widget {...extraWidgetProps} {...props} />
+          // A widget registered with a loader arrives as a lazy component.
+          <Suspense fallback={null}>
+            <Widget {...extraWidgetProps} {...props} />
+          </Suspense>
         ))}
     </Box>
   );

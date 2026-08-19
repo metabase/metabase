@@ -6,11 +6,16 @@ import {
   within,
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { loadSettingWidgets } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
 
 registerVisualizations();
+
+// Setting widgets are loaded on demand. Register them up front so each test
+// renders in one pass.
+beforeAll(() => loadSettingWidgets());
 
 function getSeries(): Series {
   // Unjustified type cast. FIXME

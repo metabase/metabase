@@ -4,6 +4,7 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { loadSettingWidgets } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockColumn,
@@ -13,6 +14,10 @@ import {
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
+
+// Setting widgets are loaded on demand. Register them up front so the modal
+// renders in one pass.
+beforeAll(() => loadSettingWidgets());
 
 const rows = [["John", "John Smith Jr"]];
 const MOCK_SERIES = [
