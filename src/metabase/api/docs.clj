@@ -92,19 +92,16 @@
   "Generate and write the OpenAPI specification to a local file.
   Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
   [root-handler]
-  (try
-    (let [spec (merge
-                (open-api-object root-handler)
-                {:servers [{:url         ""
-                            :description "Metabase API"}]})
-          file (io/file openapi-file-path)]
-      ;; Create parent directory if it doesn't exist
-      (when-let [parent-dir (.getParentFile file)]
-        (.mkdirs parent-dir))
-      (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
-      (log/info "OpenAPI specification written to" openapi-file-path))
-    (catch Throwable e
-      (log/errorf "Failed to write OpenAPI specification to file: %s" (ex-message e)))))
+  (let [spec (merge
+              (open-api-object root-handler)
+              {:servers [{:url         ""
+                          :description "Metabase API"}]})
+        file (io/file openapi-file-path)]
+    ;; Create parent directory if it doesn't exist
+    (when-let [parent-dir (.getParentFile file)]
+      (.mkdirs parent-dir))
+    (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
+    (log/info "OpenAPI specification written to" openapi-file-path)))
 
 (defonce ^:private openapi-regen-state
   (atom {:executing? false
