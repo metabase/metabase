@@ -12,10 +12,8 @@ const RESOLVING: ResolvedGoalValue = {
 };
 
 /**
- * Like `resolveGoalValue`, but a foreign column missing from the dataset
- * is reported as still-resolving rather than an error, while the referenced
- * entity's current metadata says the column exists: the dataset just predates
- * the reference, and the settings change that introduced it re-runs the query.
+ * Like `resolveGoalValue`, but a missing foreign column
+ * is reported as still-resolving rather than an error.
  */
 export function useResolvedGoalValue(
   data: DatasetData | undefined,

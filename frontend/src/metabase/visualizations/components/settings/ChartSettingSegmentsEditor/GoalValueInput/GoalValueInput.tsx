@@ -112,7 +112,7 @@ export const GoalValueInput = ({
       : foreignColumnLabel
     : selfColumnLabel;
 
-  const pickTokenRef = useRef(0); // useAsyncFn-like semaphore counter
+  const pickTokenRef = useRef(0); // useAsyncFn-like counting semaphore
   const abandonPendingPick = useCallback(() => {
     pickTokenRef.current += 1;
   }, []);
@@ -175,7 +175,7 @@ export const GoalValueInput = ({
   };
 
   // Resolves with string when entity only has 1 column - null otherwise
-  const fetchSoleColumn = async (
+  const fetchSingleColumn = async (
     type: ReferencedEntityType,
     entityId: CardId | MeasureId,
   ): Promise<string | null> => {
@@ -202,7 +202,7 @@ export const GoalValueInput = ({
       item.model === "measure" ? "measure" : "card";
     const pickToken = ++pickTokenRef.current;
 
-    const soleColumn = await fetchSoleColumn(type, item.id);
+    const soleColumn = await fetchSingleColumn(type, item.id);
 
     if (pickToken !== pickTokenRef.current) {
       return;

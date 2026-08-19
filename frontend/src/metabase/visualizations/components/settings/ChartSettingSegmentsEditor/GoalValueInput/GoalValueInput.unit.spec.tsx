@@ -514,7 +514,6 @@ describe("GoalValueInput", () => {
       }),
     );
     setup({
-      // the dataset carries a value for the referenced column only
       data: createMockDatasetData({
         ...DATA,
         referenced_entities: {
