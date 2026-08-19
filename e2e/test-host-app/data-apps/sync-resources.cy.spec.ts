@@ -13,6 +13,7 @@ import {
   removeDataAppQueryDeclaration,
   setDataAppCollectionAccess,
   syncDataAppResources,
+  syncDataAppResourcesConcurrently,
 } from "e2e/support/helpers";
 import type { DataApp } from "metabase-types/api";
 
@@ -355,16 +356,24 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    it("leaves one copy when the same app is synchronized again", () => {
+    // `reconcile-resources!` takes the global permissions lock, so one run can lose
+    // the race outright; what must never happen is a second copy of the same query.
+    it("is safe to synchronize twice at once", () => {
       declareDataAppQueries(APP_ROOT(), [
         { name: "Orders", tableId: ORDERS_ID },
       ]);
 
       cy.get<string>("@apiKey").then((apiKey) => {
-        // Cypress runs these one after the other, so this is re-entry rather than a
-        // race: the second run must find the first run's copy and reuse it.
-        syncDataAppResources(apiKey, APP_ROOT());
-        syncDataAppResources(apiKey, APP_ROOT());
+        syncDataAppResourcesConcurrently(apiKey, APP_ROOT(), 2).then((runs) => {
+          const failures = runs
+            .filter(({ ok }) => !ok)
+            .map(({ error }) => error);
+
+          expect(
+            failures.length,
+            `both runs failed: ${failures.join(" | ")}`,
+          ).to.be.lessThan(runs.length);
+        });
       });
 
       savedQuestions().should("have.length", 1);

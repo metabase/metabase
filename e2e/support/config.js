@@ -32,6 +32,7 @@ import {
   removeDataAppPaths,
   scaffoldDataApp,
   syncDataApp,
+  syncDataAppConcurrently,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
@@ -296,6 +297,7 @@ const defaultConfig = {
       stopCustomVizDevServer,
       buildDataApp,
       syncDataApp,
+      syncDataAppConcurrently,
       scaffoldDataApp,
       writeDataAppFiles,
       removeDataAppDeclaration,
