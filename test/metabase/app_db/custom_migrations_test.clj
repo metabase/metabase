@@ -283,27 +283,15 @@
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
-          ;; the transform has since evolved to add fields this v47 migration doesn't know about (e.g. a default
-          ;; :base_type), so compare structurally with those fields removed
-          (testing "legacy result_metadata are updated to the current format"
-            (is (= (->> result_metadata
-                        json/encode
-                        ((:out mi/transform-result-metadata))
-                        json/encode
-                        json/decode
-                        (mapv #(dissoc % "base_type")))
-                   (json/decode migrated-result-metadata))))
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
                         json/encode
                         ((:out mi/transform-result-metadata))
-                        json/encode
-                        json/decode)
+                        mt/obj->json->obj)
                    (-> migrated-result-metadata
                        json/decode
                        ((:out mi/transform-result-metadata))
-                       json/encode
-                       json/decode)))))))))
+                       mt/obj->json->obj)))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"

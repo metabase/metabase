@@ -47,8 +47,10 @@
         (f scheduler)
         (do
           (qs/start scheduler)
-          (f scheduler)
-          (qs/shutdown scheduler))))))
+          (try
+            (f scheduler)
+            (finally
+              (qs/shutdown scheduler))))))))
 
 (defmacro with-temp-schedule!
   "Execute the body with a temporary Quartz scheduler.
