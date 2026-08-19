@@ -63,22 +63,6 @@ export async function syncDataApp({
   }
 }
 
-/**
- * The same synchronization run N times at once, so the reconcilers actually
- * overlap — `cy.task` calls from a spec would queue one after another instead.
- */
-export async function syncDataAppConcurrently({
-  runs,
-  ...options
-}: {
-  appRoot: string;
-  metabaseUrl: string;
-  apiKey: string;
-  runs: number;
-}): Promise<Array<{ ok: boolean; error: string | null }>> {
-  return Promise.all(Array.from({ length: runs }, () => syncDataApp(options)));
-}
-
 export async function buildDataApp({
   appName,
 }: {

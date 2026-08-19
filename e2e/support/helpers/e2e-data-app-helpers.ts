@@ -241,18 +241,6 @@ export function removeDataAppActionDeclaration(
 }
 
 /** Runs the real `sync-resources` CLI against the instance under test. */
-/** `runs` synchronizations of one app in flight together, for the locking around them. */
-export function syncDataAppResourcesConcurrently(
-  apiKey: string,
-  appRoot: string,
-  runs: number,
-) {
-  return cy.task<Array<{ ok: boolean; error: string | null }>>(
-    "syncDataAppConcurrently",
-    { appRoot, metabaseUrl: Cypress.config("baseUrl"), apiKey, runs },
-  );
-}
-
 export function syncDataAppResources(apiKey: string, appRoot: string) {
   return cy.task<{ ok: boolean; error: string | null }>("syncDataApp", {
     appRoot,
