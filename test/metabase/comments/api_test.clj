@@ -476,6 +476,37 @@
                   (mention! (mt/user->id :rasta))
                   (is (contains? @mt/inbox (:email (mt/fetch-user :rasta)))))))))))))
 
+(deftest mention-entities-visibility-test
+  (testing "GET /api/comment/mentions applies the same visibility rules as GET /api/user/recipients"
+    (mt/with-premium-features #{:email-restrict-recipients}
+      (testing "user-visibility :none returns only the caller"
+        (mt/with-temporary-setting-values [user-visibility :none]
+          (is (= [(mt/user->id :rasta)]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (map :id))))
+          (testing "admins are unaffected"
+            (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :crowberto :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :group returns only users sharing a group with the caller"
+        (mt/with-temporary-setting-values [user-visibility :group]
+          (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
+                                                                           :group_id group-id}
+                         :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :lucky)
+                                                                           :group_id group-id}]
+            (is (= ["lucky@metabase.com" "rasta@metabase.com"]
+                   (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                        (filter mt/test-user?)
+                        (map :email)))))))
+      (testing "user-visibility :all returns everyone"
+        (mt/with-temporary-setting-values [user-visibility :all]
+          (is (= ["crowberto@metabase.com" "lucky@metabase.com" "rasta@metabase.com"]
+                 (->> (:data (mt/user-http-request :rasta :get 200 "comment/mentions"))
+                      (filter mt/test-user?)
+                      (map :email)))))))))
+
 (deftest mention-entities-test
   (testing "We can get users to mention"
     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}

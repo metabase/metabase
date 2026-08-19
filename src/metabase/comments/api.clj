@@ -16,6 +16,7 @@
    [metabase.request.core :as request]
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -306,6 +307,21 @@
                                 "Cannot react to comments on archived entities")))
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
+(defn- restrict-to-visible-users
+  "Narrow user-listing `clauses` to the users the current user should see, matching the scoping used by
+  `GET /api/user/recipients`: superusers see everyone; everyone else is limited to their own tenant and
+  further narrowed by the `user-visibility` setting."
+  [clauses]
+  (if api/*is-superuser?*
+    clauses
+    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+      (case (users.settings/user-visibility)
+        :all   clauses
+        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                                 (set)
+                                                                 (conj api/*current-user-id*))])
+        :none (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -315,10 +331,10 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-  (let [clauses (user/filter-clauses {:limit  (request/limit)
-                                      :offset (request/offset)})]
-    ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
-    ;; do not forget to uncomment tests (both api and e2e)
+  (let [clauses (->
+                 (user/filter-clauses {:limit  (request/limit)
+                                       :offset (request/offset)})
+                 restrict-to-visible-users)]
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
                              (-> clauses
                                  (sql.helpers/order-by [:%lower.first_name :asc]
