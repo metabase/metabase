@@ -100,7 +100,7 @@
       "blockquote"     (into [:blockquote] (children->hiccup content))
       "horizontalRule" [:hr]
       "hardBreak"      [:br]
-      "text"           (wrap-marks text (sanitize-marks marks))
+      "text"           (wrap-marks (str text) (sanitize-marks marks))
       "smartLink"      (smart-link->hiccup node))))
 
 (defn content->html
