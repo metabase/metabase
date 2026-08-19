@@ -46,6 +46,8 @@ jobs:
           needs.files-changed.outputs.yaml == 'true' ||
           needs.files-changed.outputs.openapi == 'true'
         uses: ./.github/actions/prepare-frontend
+        with:
+          restore-m2-cache: "false"
 
       # Always required by whitespace linter, also used by OpenAPI spec validation
       - name: Setup backend env
@@ -99,6 +101,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          # M2 cache is restored by `prepare-backend`
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Install xgettext if necessary

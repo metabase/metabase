@@ -144,6 +144,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
         with:
           node-version: "${{ needs.get-build-requirements.outputs.node_version || '22' }}"
+          # M2 cache is restored by `prepare-backend`
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:

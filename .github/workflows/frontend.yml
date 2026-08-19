@@ -47,6 +47,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          # M2 cache is restored by `prepare-backend`
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
@@ -78,6 +81,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          # M2 cache is restored by `prepare-backend`
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: bun run build-pure:cljs
@@ -101,6 +107,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          # M2 cache is restored by `prepare-backend`
+          restore-m2-cache: "false"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Resolve current job id
