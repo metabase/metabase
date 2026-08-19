@@ -217,7 +217,7 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 ## Embed an editable dashboard
 
-![Editable embedded dashboard in edit mode](./images/embedded-editable-dashboard.png)
+![Editable embedded dashboard in edit mode](./images/editabledashboard.png)
 
 An editable dashboard does everything an interactive dashboard does, and also lets people add and update questions and other cards, and rearrange the dashboard's layout.
 
