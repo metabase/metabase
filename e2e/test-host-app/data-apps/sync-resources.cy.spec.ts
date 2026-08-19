@@ -322,7 +322,11 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
           },
         );
 
-        savedQuestions().should("have.length", 0);
+        // The draft call is the one that creates the app, so a refusal leaves
+        // nothing behind at all — not even the app to hold copies.
+        cy.request({ url: `/api/apps/${APP_SLUG}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 404);
       });
     });
 
