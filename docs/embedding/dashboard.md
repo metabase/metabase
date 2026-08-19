@@ -360,9 +360,9 @@ To change the menu people get when they click a data point on a dashboard card, 
 
 To send people somewhere instead---another dashboard, a question, or an external URL---set up a [custom destination](../dashboards/interactive.md#custom-destinations). In guest embeds, you can only use the **URL** option, and external URLs open in a new tab or window. You can propagate filter values into the URL, unless the filter is locked.
 
-## Control dashboard filters from your app
+## Show people only their own data
 
-Say you want to show each customer only their own numbers. How you filter the results depends on how you authenticate the embed.
+Say you want to show each customer only their own numbers. How you restrict the rows depends on how you authenticate the embed.
 
 ### Lock a filter on a guest embed
 
@@ -388,9 +388,15 @@ A locked filter also narrows the options in every editable filter on the same da
 
 Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewing, you can apply [data permissions](../permissions/embedding.md) and let Metabase filter the rows, instead of locking filters by hand.
 
-### Set filter values from your app
+## Control dashboard filters from your app
 
-To set a starting value that people can still change, or to keep your app in sync as they change it, see [Modular embedding parameters](./parameters.md).
+To drive a dashboard's filters from your app's own code, set their values from the page. The embedding APIs call these values parameters. See [Modular embedding parameters](./parameters.md) for the props, attributes, and events:
+
+- **Set a starting value** that people can still change, with `initial-parameters` (web component) or `initialParameters` (SDK).
+- **Hold the values in your app**, with `parameters` plus the `parameters-change` event (web component), or `onParametersChange` (SDK). Your app becomes the source of truth for the filter values, which is what lets you build your own filter widgets instead of using Metabase's.
+- **Hide Metabase's filter widgets** with `hidden-parameters` (web component) or `hiddenParameters` (SDK), for when your app supplies the filter UI. See [Hide a dashboard filter](./parameters.md#hide-a-dashboard-filter).
+
+Your app sets these values in the browser, and people can change them, so they don't restrict what anyone can query. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
 
 ## Let people set up dashboard subscriptions
 

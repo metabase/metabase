@@ -241,9 +241,9 @@ You can also customize how custom actions look in the menu:
 
 To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
 
-## Control parameters from your app
+## Show people only their own data
 
-Say you want to show each customer only their own orders. How you filter the results depends on how you authenticate the embed.
+Say you want to show each customer only their own orders. How you restrict the rows depends on how you authenticate the embed.
 
 ### Lock a parameter on a guest embed
 
@@ -267,9 +267,9 @@ const token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 Embeds with **SSO** don't need to lock parameters. Since Metabase knows who's viewing, you can apply [data permissions](../permissions/embedding.md) and let Metabase filter the rows, instead of locking parameters by hand. This works for query builder questions and SQL questions alike.
 
-### Set parameter values from your app
+## Control question parameters from your app
 
-You can also pass values to a question's [SQL parameters](../questions/native-editor/sql-parameters.md) in the format `{parameter_name: parameter_value}`, and keep your app in sync as people change them. Set the values once on load, or hold the values in your app and get a callback whenever they change.
+To drive a question's parameters from your app's own code, pass values to its [SQL parameters](../questions/native-editor/sql-parameters.md) in the format `{parameter_name: parameter_value}`. Set the values once on load, or hold the values in your app and get a callback whenever they change. Holding the values in your app is what lets you build your own parameter widgets instead of using Metabase's.
 
 For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParametersChange`) and the web component equivalents, see [Modular embedding parameters](./parameters.md).
 
@@ -279,9 +279,7 @@ To hide a parameter from the question's UI, use the [`hidden-parameters`](./ques
 
 In practice you'll reach for them on [SSO embeds](./introduction.md#components-with-sso-authentication), where every parameter on the question shows up by default. On a [guest embed](./guest-embedding.md), a parameter that you haven't set to **Editable** or **Locked** is already hidden.
 
-Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. Instead, set [data permissions](../permissions/embedding.md).
-
-If you're using a guest embed, however, you can control a parameter value (that people can't see or change) with a [locked parameter](./guest-embedding.md#locked-parameters).
+Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. To restrict the data itself, see [Show people only their own data](#show-people-only-their-own-data).
 
 ## Let people set up alerts on a question
 
