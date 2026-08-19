@@ -9,7 +9,6 @@ import {
   dataAppPermissionGroupId,
   declareDataAppQueries,
   getPermissionByGroup,
-  getViewDataPermissionByGroup,
   removeDataAppQueryDeclaration,
   setDataAppCollectionAccess,
   syncDataAppResources,
@@ -73,9 +72,9 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         "number",
       );
       return cy
-        .request<{ data: AppCard[] }>(
-          `/api/collection/${app.resource_collection_id}/items?models=card`,
-        )
+        .request<{
+          data: AppCard[];
+        }>(`/api/collection/${app.resource_collection_id}/items?models=card`)
         .then(({ body }) => body.data);
     });
 
@@ -610,41 +609,45 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    it("grants the group view-data on the database its queries read", () => {
+    it("grants the group view-data only on the tables its queries read", () => {
       syncOneQuery().then(() => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase).to.eq("unrestricted");
-            },
-          );
+        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+            const viewData =
+              graph.groups[app.permission_group_id][SAMPLE_DB_ID]["view-data"];
+
+            expect(viewData).not.to.eq("unrestricted");
+            expect(
+              Object.values(viewData).flatMap(Object.keys).map(Number),
+            ).to.deep.eq([ORDERS_ID]);
+          });
         });
       });
     });
 
-    it("stops granting view-data once no declaration reads the database", () => {
+    it("stops granting view-data once no declaration reads the table", () => {
       syncOneQuery().then(() => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase, "granted by the first sync").to.eq(
-                "unrestricted",
-              );
-            },
-          );
+        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+            expect(
+              graph.groups[app.permission_group_id][SAMPLE_DB_ID]["view-data"],
+              "granted by the first sync",
+            ).not.to.eq("unrestricted");
+          });
 
           removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
           sync();
 
           // The graph reports only what departs from a group's defaults, so a
           // database the app no longer reads drops out of it entirely.
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase, "revoked by the second sync").not.to.eq(
-                "unrestricted",
-              );
-            },
-          );
+          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+            expect(
+              graph.groups[app.permission_group_id][SAMPLE_DB_ID]?.[
+                "view-data"
+              ],
+              "revoked by the second sync",
+            ).to.be.undefined;
+          });
         });
       });
     });
