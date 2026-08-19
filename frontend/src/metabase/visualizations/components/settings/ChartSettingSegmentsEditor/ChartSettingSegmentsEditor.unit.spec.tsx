@@ -163,7 +163,7 @@ describe("ChartSettingSegmentsEditor", () => {
             result_column_name: column,
           }),
         }),
-        pillTooltip: "Revenue → Revenue",
+        pillTooltip: "Revenue",
       },
     ] as const;
 

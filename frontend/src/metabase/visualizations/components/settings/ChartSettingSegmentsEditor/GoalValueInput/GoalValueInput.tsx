@@ -23,6 +23,7 @@ import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DatasetData,
+  GoalForeignColumnRef,
   GoalValue,
   MeasureId,
   ReferencedEntityType,
@@ -102,15 +103,12 @@ export const GoalValueInput = ({
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))
     : null;
-  const foreignColumnLabel = foreignRef
-    ? (entityInfo.columns.find((column) => column.name === foreignRef.column)
-        ?.label ?? foreignRef.column)
-    : null;
-  const pillTooltip = foreignRef
-    ? entityName
-      ? `${entityName} → ${foreignColumnLabel}`
-      : foreignColumnLabel
-    : selfColumnLabel;
+  const pillTooltip = getPillTooltip({
+    entityColumns: entityInfo.columns,
+    entityName,
+    foreignRef,
+    selfColumnLabel,
+  });
 
   const pickTokenRef = useRef(0); // useAsyncFn-like counting semaphore
   const abandonPendingPick = useCallback(() => {
@@ -371,3 +369,34 @@ export const GoalValueInput = ({
     </Box>
   );
 };
+
+function getPillTooltip({
+  entityColumns,
+  entityName,
+  foreignRef,
+  selfColumnLabel,
+}: {
+  entityColumns: ColumnOption[];
+  entityName: string | undefined;
+  foreignRef: GoalForeignColumnRef | null;
+  selfColumnLabel: string | null;
+}): string | null {
+  if (foreignRef == null) {
+    return selfColumnLabel;
+  }
+
+  const columnLabel =
+    entityColumns.find((column) => column.name === foreignRef.column)?.label ??
+    foreignRef.column;
+
+  if (entityName == null) {
+    return columnLabel;
+  }
+
+  // a measure has a single result column, so its column label is redundant
+  if (foreignRef.type === "measure") {
+    return entityName;
+  }
+
+  return `${entityName} → ${columnLabel}`;
+}
