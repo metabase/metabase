@@ -177,7 +177,7 @@
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (:where spec [:inline [:= 1 1]])
+      :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []
                          cat

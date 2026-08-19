@@ -7,6 +7,6 @@
 
 (defn load-namespaces
   "Runs the `:load-namespaces` alias, exiting with whatever it exited with."
-  [_cli-args]
+  []
   (let [{:keys [exit], :or {exit -1}} (shell/sh* "clojure" "-M:ee:drivers:load-namespaces")]
     (u/exit exit)))

@@ -12,6 +12,7 @@
   "enterprise/backend"
   "bin/build"
   "bin/lint-migrations-file"
+  "bin/load-namespaces"
   "bin/release-list"
   #_"mage/src"
   #_"mage/test"

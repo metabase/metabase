@@ -10,7 +10,6 @@
              [clojure.pprint :as pprint]
              ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
@@ -83,9 +82,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -200,6 +197,12 @@
       (str/ends-with? text "```") text
       (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
+
+(defn trimmed-string
+  "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
+  ^String [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in

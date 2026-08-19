@@ -17,7 +17,8 @@ on:
 
 jobs:
   setup-oss:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
@@ -64,7 +65,8 @@ jobs:
           flags: back-end
 
   setup-ee:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:

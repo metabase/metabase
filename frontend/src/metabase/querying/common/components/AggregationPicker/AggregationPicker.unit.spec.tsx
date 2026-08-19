@@ -345,7 +345,7 @@ describe("AggregationPicker", () => {
 
       await userEvent.click(screen.getByText("Custom Expression"));
       await userEvent.type(
-        screen.getByTestId("custom-expression-query-editor"),
+        await screen.findByTestId("custom-expression-query-editor"),
         expression,
       );
       await userEvent.type(

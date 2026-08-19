@@ -403,6 +403,7 @@
     metabase.channel.render.core              channel.render
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
+    metabase.llm.test-util                    llm.tu
     metabase.login-history.core               login-history
     metabase.model-persistence.core           model-persistence
     metabase.notification.core                notification

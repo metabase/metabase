@@ -70,7 +70,7 @@
     [:and
      [:or [:is (col :is_published) true]
       [:in (col :root_collection_type) (vec library-root-collection-types)]]
-     [:or [:not= (col :model) [:inline "table"]]
-      [:= (col :data_layer) [:inline "final"]]]]
-    [:= (col :data_authority) [:inline "authoritative"]]]
+     [:or [:not= (col :model) "table"]
+      [:= (col :data_layer) "final"]]]
+    [:= (col :data_authority) "authoritative"]]
    false])

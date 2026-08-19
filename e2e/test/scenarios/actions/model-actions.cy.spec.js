@@ -846,7 +846,9 @@ function assertQueryEditorDisabled() {
   H.NativeEditor.get().should("not.be.focused");
   H.NativeEditor.get().should("have.attr", "contenteditable", "false");
 
-  H.NativeEditor.type("QWERTY", { focus: false });
+  // Type straight into the page: the editor helper waits for focus, and this
+  // editor is read only, so it never takes it.
+  cy.realType("QWERTY");
   cy.findByText("QWERTY").should("not.exist");
 }
 

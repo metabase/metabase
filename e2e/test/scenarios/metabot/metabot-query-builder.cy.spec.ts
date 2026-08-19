@@ -20,12 +20,12 @@ describe("Metabot Query Builder", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
   it("should show setup guidance when llm-metabot-configured? is false", () => {
-    H.updateSetting("llm-anthropic-api-key", "");
+    H.clearLlmProviders();
     cy.visit("/question/ask");
     cy.url().should("include", "/question/ask");
     cy.findByRole("button", { name: "connect to a model" }).should(
