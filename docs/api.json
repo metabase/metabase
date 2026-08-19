@@ -1015,7 +1015,7 @@
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.time"
         }, {
           "anyOf" : [ {
             "const" : "default"
@@ -14128,6 +14128,9 @@
           "required" : [ "type", "cron_schedule" ]
         } ]
       },
+      "metabase.parameters.schema..api.parameter-values" : {
+        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-values"
+      },
       "metabase.parameters.schema.legacy-ref" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-expression-ref"
@@ -14279,6 +14282,12 @@
           "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
         }
       },
+      "metabase.parameters.schema.parameter-values" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
+        }
+      },
       "metabase.parameters.schema.parameter-with-value" : {
         "description" : "parameter must be a map with an :id key",
         "type" : "object",
@@ -14299,6 +14308,13 @@
           "options" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.options"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
             }, {
               "type" : "null"
             } ]
@@ -15024,13 +15040,6 @@
       "metabase.tiles.api.legacy-ref" : {
         "description" : "Form-encoded JSON-encoded legacy MBQL :field ref.",
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
-      },
-      "metabase.tiles.api.parameters" : {
-        "description" : "Form-encoded JSON-encoded array of parameter maps.",
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-        }
       },
       "metabase.tiles.api.query" : {
         "description" : "Form-encoded JSON-encoded MBQL query.",
@@ -19266,11 +19275,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "additionalProperties" : { }
-                      }
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -22898,15 +22903,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -23913,15 +23910,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -26115,12 +26104,7 @@
                           },
                           "parameters" : {
                             "oneOf" : [ {
-                              "type" : "array",
-                              "items" : {
-                                "description" : "Value must be a map.",
-                                "type" : "object",
-                                "properties" : { }
-                              }
+                              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                             }, {
                               "type" : "null"
                             } ]
@@ -26352,12 +26336,7 @@
                           },
                           "parameters" : {
                             "oneOf" : [ {
-                              "type" : "array",
-                              "items" : {
-                                "description" : "Value must be a map.",
-                                "type" : "object",
-                                "properties" : { }
-                              }
+                              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                             }, {
                               "type" : "null"
                             } ]
@@ -26496,17 +26475,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "description" : "Value must be a map.",
-                          "type" : "object",
-                          "properties" : { }
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -36451,9 +36420,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -36542,9 +36510,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -39176,11 +39143,318 @@
         "tags" : [ "/api/llm" ]
       }
     },
-    "/api/llm/list-models" : {
+    "/api/llm/models" : {
       "get" : {
-        "operationId" : "get-api-llm-list-models",
-        "summary" : "GET /api/llm/list-models",
-        "description" : "List available LLM models from the configured provider.\n\n   Requires LLM to be configured for the selected provider in admin settings.",
+        "operationId" : "get-api-llm-models",
+        "summary" : "GET /api/llm/models",
+        "description" : "List the models available from every configured connection, grouped by connection.\n\n  A connection whose credentials are rejected comes back with an empty model list and an `error`, so one bad\n  connection does not blank out the others.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "error" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "key" : {
+                        "type" : "string"
+                      },
+                      "models" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "display_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "id", "display_name" ]
+                        }
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "key", "name", "type", "models" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/provider-types" : {
+      "get" : {
+        "operationId" : "get-api-llm-provider-types",
+        "summary" : "GET /api/llm/provider-types",
+        "description" : "List the provider types a connection can be created for, with the credential fields each one needs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "managed" : {
+                        "type" : "boolean"
+                      },
+                      "singleton" : {
+                        "type" : "boolean"
+                      },
+                      "default_model" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "label" : {
+                        "type" : "string"
+                      },
+                      "type" : {
+                        "type" : "string"
+                      },
+                      "fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "prefix" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "placeholder" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "label" : {
+                              "type" : "string"
+                            },
+                            "show_when" : {
+                              "oneOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "field" : {
+                                    "type" : "string"
+                                  },
+                                  "value" : {
+                                    "type" : "string"
+                                  }
+                                },
+                                "required" : [ "field", "value" ]
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "key" : {
+                              "type" : "string"
+                            },
+                            "advanced" : {
+                              "type" : "boolean"
+                            },
+                            "docs_url" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "required" : {
+                              "type" : "boolean"
+                            },
+                            "type" : {
+                              "type" : "string",
+                              "enum" : [ "text", "password", "select", "segmented", "file" ]
+                            },
+                            "help" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "options" : {
+                              "oneOf" : [ {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "label" : {
+                                      "type" : "string"
+                                    },
+                                    "value" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "value", "label" ]
+                                }
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "default" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          },
+                          "required" : [ "key", "label", "type", "required", "advanced" ]
+                        }
+                      },
+                      "models" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "display_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "id", "display_name" ]
+                        }
+                      },
+                      "available" : {
+                        "type" : "boolean"
+                      },
+                      "required_any" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      }
+                    },
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "fields" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/providers" : {
+      "get" : {
+        "operationId" : "get-api-llm-providers",
+        "summary" : "GET /api/llm/providers",
+        "description" : "List the configured provider connections, with their secrets masked.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "config" : {
+                        "type" : "object",
+                        "additionalProperties" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      },
+                      "env_fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "env_vars" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "key" : {
+                        "type" : "string"
+                      },
+                      "name" : {
+                        "type" : "string"
+                      },
+                      "source" : {
+                        "type" : "string",
+                        "enum" : [ "db", "env" ]
+                      },
+                      "type" : {
+                        "type" : "string"
+                      },
+                      "usable" : {
+                        "type" : "boolean"
+                      }
+                    },
+                    "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      },
+      "post" : {
+        "operationId" : "post-api-llm-providers",
+        "summary" : "POST /api/llm/providers",
+        "description" : "Create a provider connection. The credentials are verified before the connection is saved.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -39190,23 +39464,242 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "models" : {
+                    "config" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "env_fields" : {
                       "type" : "array",
                       "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
+                        "type" : "string"
                       }
+                    },
+                    "env_vars" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "source" : {
+                      "type" : "string",
+                      "enum" : [ "db", "env" ]
+                    },
+                    "type" : {
+                      "type" : "string"
+                    },
+                    "usable" : {
+                      "type" : "boolean"
                     }
                   },
-                  "required" : [ "models" ]
+                  "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "config" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "key" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "type" : {
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      }
+    },
+    "/api/llm/providers/{key}" : {
+      "put" : {
+        "operationId" : "put-api-llm-providers-key",
+        "summary" : "PUT /api/llm/providers/{key}",
+        "description" : "Update a provider connection. Secret fields the client echoes back masked keep their stored value.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "config" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "env_fields" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "env_vars" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "name" : {
+                      "type" : "string"
+                    },
+                    "source" : {
+                      "type" : "string",
+                      "enum" : [ "db", "env" ]
+                    },
+                    "type" : {
+                      "type" : "string"
+                    },
+                    "usable" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "key", "type", "name", "source", "usable", "env_vars", "env_fields", "config" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "config" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/llm" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-llm-providers-key",
+        "summary" : "DELETE /api/llm/providers/{key}",
+        "description" : "Delete a provider connection.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
                 }
               }
             }
@@ -40951,253 +41444,6 @@
           }
         },
         "tags" : [ "/api/metabot/permissions" ]
-      }
-    },
-    "/api/metabot/settings" : {
-      "get" : {
-        "operationId" : "get-api-metabot-settings",
-        "summary" : "GET /api/metabot/settings",
-        "description" : "Return available models for a provider using its configured credentials.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "provider",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "credentials-error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "models" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "group" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
-                      }
-                    },
-                    "value" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "value", "models" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/metabot" ]
-      },
-      "put" : {
-        "operationId" : "put-api-metabot-settings",
-        "summary" : "PUT /api/metabot/settings",
-        "description" : "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "credentials-error" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "models" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "display_name" : {
-                            "type" : "string"
-                          },
-                          "group" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "id", "display_name" ]
-                      }
-                    },
-                    "value" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "value", "models" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "api-key" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "credentials" : {
-                    "oneOf" : [ {
-                      "type" : "object",
-                      "properties" : {
-                        "base-url" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "access-key-id" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "secret-access-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "project-id" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "api-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "service-account-key" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "location" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "region" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "oauth-access-token" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "session-token" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        }
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "model" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "provider" : {
-                    "type" : "string",
-                    "enum" : [ "google", "anthropic", "openai", "mistral", "azure", "moonshot", "bedrock", "zai", "metabase", "openrouter" ]
-                  }
-                },
-                "required" : [ "provider" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/metabot" ]
       }
     },
     "/api/metabot/slack/events" : {
@@ -45580,9 +45826,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -45671,9 +45916,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -46006,8 +46250,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46081,8 +46324,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46192,8 +46434,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46294,10 +46535,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                      }
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -46625,8 +46863,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46707,15 +46944,7 @@
                   },
                   "parameters" : {
                     "oneOf" : [ {
-                      "anyOf" : [ {
-                        "type" : "array",
-                        "items" : {
-                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-with-value"
-                        }
-                      }, {
-                        "description" : "value must be a valid JSON string.",
-                        "type" : "string"
-                      } ]
+                      "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
                     }, {
                       "type" : "null"
                     } ]
@@ -46812,8 +47041,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46882,8 +47110,7 @@
           "required" : false,
           "schema" : {
             "oneOf" : [ {
-              "description" : "value must be a valid JSON string.",
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
             }, {
               "type" : "null"
             } ]
@@ -46957,9 +47184,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -47050,9 +47276,8 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
@@ -50793,7 +51018,7 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
           }
         }, {
           "in" : "query",
@@ -50879,7 +51104,7 @@
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+            "$ref" : "#/components/schemas/metabase.parameters.schema..api.parameter-values"
           }
         }, {
           "in" : "query",
