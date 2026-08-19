@@ -28,6 +28,7 @@ import {
   SIDE_EFFECT_PATHS,
 } from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import { NO_MODULE_SIDE_EFFECTS_OPTIONS } from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
@@ -1181,24 +1182,7 @@ const configs = [
     rules: {
       "metabase/no-module-side-effects": [
         "error",
-        {
-          sideEffectPaths: SIDE_EFFECT_PATHS,
-          // Alias roots that resolve inside the repo (the tsconfig `paths` roots),
-          // so a module-scope call into them counts as our own code
-          internalModules: [
-            "metabase",
-            "metabase-lib",
-            "metabase-types",
-            "metabase-enterprise",
-            "embedding-sdk-bundle",
-            "embedding-sdk-shared",
-            "embedding-sdk-package",
-            "embedding",
-            "custom-viz",
-            "cljs",
-            "__support__",
-          ],
-        },
+        NO_MODULE_SIDE_EFFECTS_OPTIONS,
       ],
     },
   },
