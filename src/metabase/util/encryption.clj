@@ -64,19 +64,14 @@
 ;;; Keyed HMAC signing of stored values
 ;;; ---------------------------------------------------------------------------
 
-;; validated eagerly at load so a misconfigured secret fails at startup rather than on the first request
+;; Same secret [[metabase.session.models.session]] uses to sign session keys, so one env var enables
+;; every keyed-hash protection. Validated eagerly at load so a misconfigured secret fails at startup.
 (defonce ^:private ^{:tag 'bytes} default-hmac-signing-secret
-  (let [dedicated (env/env :mb-session-hash-secret-key)]
-    (if-not (str/blank? dedicated)
-      (do (assert (>= (count dedicated) 16)
-                  (str (trs "MB_SESSION_HASH_SECRET_KEY must be at least 16 characters.")))
-          (secret-key->hash dedicated))
-      ;; nil for a nil/blank encryption key; a too-short one already failed the load-time assert above
-      (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))))
+  (validate-and-hash-secret-key (env/env :mb-session-secret-key) "MB_SESSION_SECRET_KEY"))
 
 (defn hmac-signing-secret
-  "Server-side secret used to keyed-hash stored values. Read from `MB_SESSION_HASH_SECRET_KEY`,
-  falling back to `MB_ENCRYPTION_SECRET_KEY`. Nil when neither is set."
+  "Server-side secret used to keyed-hash stored values. Read from `MB_SESSION_SECRET_KEY`. Nil when it
+  is not set."
   ^bytes []
   default-hmac-signing-secret)
 
