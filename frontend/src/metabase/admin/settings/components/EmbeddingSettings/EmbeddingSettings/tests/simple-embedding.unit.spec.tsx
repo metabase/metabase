@@ -86,6 +86,25 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
   });
 
+  // Guest embeds are free and prompt for nothing, so an OSS admin can turn
+  // embedding on and arrive on Pro with the terms never accepted. The toggle
+  // prompts on off -> on only, so it stays quiet here by design -- the embed
+  // flow asks for the terms instead. Agreed in EMB-2253.
+  it("does not prompt for the terms when embedding is already on, as after an upgrade from OSS", async () => {
+    await setup({
+      isEmbeddingEnabled: true,
+      showModularEmbedTerms: true,
+    });
+
+    expect(
+      await screen.findByRole("switch", {
+        name: "Enable modular embedding toggle",
+      }),
+    ).toBeChecked();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("should show embed button and docs when simple embedding is available", async () => {
     await setup({
       isEmbeddingEnabled: true,
