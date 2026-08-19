@@ -104,6 +104,9 @@
       :pulse             (with-timestamped
                            {:name       (mt/random-name)
                             :parameters "{}"})
+      :report_dashboard  (with-timestamped
+                           {:name       (mt/random-name)
+                            :parameters "[]"})
       :pulse_channel     (with-timestamped
                            {:channel_type  "slack"
                             :details       (json/encode {:channel "general"})
@@ -400,6 +403,7 @@
                                                                     :visualization_settings (json/encode
                                                                                              {:virtual_card {:display "text"}
                                                                                               :text         "A text card"})
+                                                                    :parameter_mappings     "[]"
                                                                     :created_at             :%now
                                                                     :updated_at             :%now}
                                                                    props))))
@@ -794,6 +798,7 @@
             dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
                                                    {:dashboard_id           dashboard-id
                                                     :visualization_settings (json/encode visualization-settings)
+                                                    :parameter_mappings     "[]"
                                                     :card_id                card-id
                                                     :size_x                 4
                                                     :size_y                 4
@@ -892,6 +897,7 @@
             dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
                                                    {:dashboard_id           dashboard-id
                                                     :visualization_settings (json/encode visualization-settings)
+                                                    :parameter_mappings     "[]"
                                                     :card_id                card-id
                                                     :size_x                 4
                                                     :size_y                 4
@@ -1479,6 +1485,7 @@
                 [dashcard-id]  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
                                                          {:dashboard_id           dashboard-id
                                                           :visualization_settings dashcard-vis
+                                                          :parameter_mappings     "[]"
                                                           :card_id                card-id
                                                           :size_x                 4
                                                           :size_y                 4
@@ -1827,8 +1834,13 @@
       (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
         ;; these inserts run at the fully-migrated schema, where entity_id is NOT NULL and no model hook fills it in
         (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
-              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id
-                                                               :entity_id  (u/generate-nano-id)}))
+              ;; the pulse must be a dashboard subscription: init-dashboard-subscription-triggers! only creates
+              ;; triggers for pulses with a dashboard_id now that alerts have been migrated to notifications
+              dash-id  (:id (new-instance-with-default :report_dashboard {:creator_id user-id
+                                                                          :entity_id  (u/generate-nano-id)}))
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id   user-id
+                                                               :dashboard_id dash-id
+                                                               :entity_id    (u/generate-nano-id)}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id  pulse-id
                                                                   :entity_id (u/generate-nano-id)})]
           ;; trigger this so we schedule a trigger for send-pulse
@@ -2183,6 +2195,7 @@
             dashcard-id (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
                                                   {:dashboard_id           dashboard-id
                                                    :visualization_settings (json/encode viz-settings-with-field-ref-keys)
+                                                   :parameter_mappings     "[]"
                                                    :card_id                card-id
                                                    :size_x                 4
                                                    :size_y                 4
