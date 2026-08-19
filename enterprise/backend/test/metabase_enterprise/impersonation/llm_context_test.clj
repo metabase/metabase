@@ -8,27 +8,26 @@
    [metabase.llm.context :as llm.context]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- delete-per-role-field-values!
-  "Deletes every per-role FieldValues row cached against the fields of the test database."
-  []
-  (let [table-ids (t2/select-pks-vec :model/Table :db_id (mt/id))
-        field-ids (when (seq table-ids)
-                    (t2/select-pks-vec :model/Field :table_id [:in table-ids]))]
-    (when (seq field-ids)
-      (t2/delete! :model/FieldValues :type :advanced :field_id [:in field-ids]))))
+(defn- do-without-leaving-per-role-field-values!
+  "Runs `thunk`, then deletes the per-role FieldValues it cached, leaving any that were there beforehand."
+  [thunk]
+  (let [before (set (t2/select-pks-set :model/FieldValues :type :advanced))]
+    (try
+      (thunk)
+      (finally
+        (when-let [created (seq (remove before (t2/select-pks-set :model/FieldValues :type :advanced)))]
+          (t2/delete! :model/FieldValues :id [:in created]))))))
 
 ;; Building the schema context caches FieldValues per impersonation role. `with-temp-copy-of-db` copies every
 ;; FieldValues row of a table into the copy it makes, so rows left behind on the shared test-data fields turn up
 ;; in the counts other namespaces make against their own copy.
-(use-fixtures :each (fn [thunk]
-                      (try
-                        (thunk)
-                        (finally
-                          (delete-per-role-field-values!)))))
+(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each do-without-leaving-per-role-field-values!)
 
 (defn- do-with-full-field-values!
   "Sets the full (unrestricted) FieldValues of `field-id` to `values` for the duration of `thunk`.
