@@ -75,7 +75,7 @@ Then add the component for the item you want to embed:
 <metabase-question token="YOUR_JWT_TOKEN"></metabase-question>
 ```
 
-> Never hardcode JWT tokens directly in your HTML. Always fetch the token from your backend and pass the token to the web component programmatically.
+> Don't paste a fixed JWT into your HTML and leave it there. Tokens expire, so that embed will stop working. Either sign a fresh token on your server for each page load and render it into the `token` attribute, or set [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) and let the embed fetch and refresh its own token.
 
 ### Server-side code
 
@@ -177,10 +177,8 @@ You set default parameters on the client side with the `initial-parameters` key.
 </script>
 
 <!--
-THIS IS THE EXAMPLE!
-NEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!
-
-Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
+This token is a placeholder. Don't paste a fixed JWT into your HTML: sign a
+fresh one on your server for each page load, or use guestEmbedProviderUri.
 -->
 <metabase-dashboard
   token="YOUR SIGNED TOKEN"
@@ -242,8 +240,8 @@ The parameter is set by the JWT:
 </script>
 
 <!--
-IMPORTANT: Never hardcode JWT tokens directly in your HTML!
-Fetch the token from your backend and pass it to the component programmatically.
+This token is a placeholder. Don't paste a fixed JWT into your HTML: sign a
+fresh one on your server for each page load, or use guestEmbedProviderUri.
 -->
 <metabase-dashboard
   token="YOUR_JWT_TOKEN"
@@ -309,6 +307,8 @@ Because Metabase doesn't render locked parameters as filter widgets, you can use
 - Reuse one dashboard in different ways in different parts of your app. For example, a sales dashboard that's locked by "region" in one place and by "team" in another.
 
 When the end-user changes a value in your custom widget, re-sign a new JWT on your server with the updated `params` and swap it onto the web component's `token` attribute. The embed will re-request the data with the new locked value.
+
+Render an initial token on the component for this flow, rather than letting [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) supply the first one. An embed that starts without a token fetches one from your endpoint on load, and that token would overwrite whatever your widget had just set.
 
 ## Refreshing or initializing the JWT from your server
 

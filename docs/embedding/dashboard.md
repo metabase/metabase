@@ -49,9 +49,14 @@ Three things need to happen: you publish the dashboard embed in Metabase, you pa
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
-11. Remove the hardcoded JWT from your HTML. Your server signs the token---see [Server-side code](./guest-embedding.md#server-side-code) for the signing code---and your app sets it on the component programmatically.
+11. Replace the JWT the wizard pasted into your HTML. That token is a fixed string with an expiration baked into it, so an embed that ships with it will stop working.
 
-Rather than render a token in your HTML at all, you can point [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) at an endpoint in your app. The embed will fetch its first token on load, and a fresh one each time the current token expires, which also keeps the embed alive past that expiration.
+You have two ways to hand the component a token that won't go stale:
+
+- **Sign a token per page load.** Your server signs a fresh JWT for each request and renders it into the `token` attribute. See [Server-side code](./guest-embedding.md#server-side-code) for the signing code.
+- **Let the embed fetch its own.** Leave the `token` attribute off, and point [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) at an endpoint in your app. The embed calls that endpoint for its first token on load, and again whenever the current token expires, so the embed keeps working past that expiration.
+
+The example below takes the second route.
 
 #### Web component view-only dashboard example
 
@@ -75,6 +80,9 @@ Here's the frontend code:
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase.example.com",
     isGuest: true,
+    // Your app's token endpoint. The embed calls it for its first token on
+    // load, and again whenever the current token expires.
+    guestEmbedProviderUri: "/api/metabase-guest-token",
     theme: {
       colors: {
         brand: "#509EE3",
@@ -84,28 +92,17 @@ Here's the frontend code:
   });
 </script>
 
-<!-- No token attribute here: the script below fetches one and sets it. -->
+<!-- No token in the HTML. The embed gets one from your endpoint. -->
 <metabase-dashboard
-  id="sales-dashboard"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
   with-title="true"
   with-downloads="true"
->
-</metabase-dashboard>
-
-<script>
-  // Ask your server for a signed token, then set it on the element.
-  // Your server decides which customer the token is for---the page never says.
-  fetch("/api/metabase-token")
-    .then((response) => response.json())
-    .then(({ jwt }) => {
-      document.getElementById("sales-dashboard").setAttribute("token", jwt);
-    });
-</script>
+></metabase-dashboard>
 ```
 
 The `theme` key sets the dashboard's appearance. For the full theme object with all the options, check out [Appearance](./appearance.md).
 
-And here's the server code that signs the token:
+And here's the endpoint that signs the token. The embed posts the dashboard's ID to it, along with your app's session cookie, so your server knows both which dashboard to sign for and who's asking:
 
 ```javascript
 const jwt = require("jsonwebtoken");
@@ -113,22 +110,31 @@ const jwt = require("jsonwebtoken");
 // Your embedding secret key. Keep it on your server; it never reaches the browser.
 const METABASE_SECRET_KEY = process.env.METABASE_SECRET_KEY;
 
-// Call this with the customer whose account page your app is rendering,
-// from your app's own session---not from anything the page sent you.
-function signDashboardToken(customerId) {
-  return jwt.sign(
-    {
-      resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
-      params: {
-        // Key each param by the filter's slug. Here, the locked Customer filter.
-        customer: [customerId],
-      },
-      exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minutes
+app.post("/api/metabase-guest-token", (req, res) => {
+  // Work out the customer from your app's own session, not from the request
+  // body---the page never says whose account page it's on.
+  const customerId = req.session?.customerId;
+
+  if (!customerId) {
+    return res.status(403).json({ error: "Not signed in" });
+  }
+
+  const { entityType, entityId } = req.body;
+
+  const payload = {
+    resource: { [entityType]: entityId },
+    params: {
+      // Key each param by the filter's slug. Here, the locked Customer filter.
+      customer: [customerId],
     },
-    METABASE_SECRET_KEY,
-  );
-}
+    exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minutes
+  };
+
+  res.json({ jwt: jwt.sign(payload, METABASE_SECRET_KEY) });
+});
 ```
+
+Your endpoint has to return an object with a single `jwt` field. Return anything else and the embed shows an error instead of the dashboard.
 
 For more on signing, check out [Locked parameters](./guest-embedding.md#locked-parameters) and the [example token endpoint](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To get the signing code from the in-app wizard, set the **Customer** filter to **Locked**. To see the whole thing running, check out our [sample apps](./securing-embeds.md#sample-apps).
 

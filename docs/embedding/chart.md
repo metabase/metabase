@@ -49,9 +49,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the ch
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
-11. Remove the hardcoded JWT tokens in your HTML. Fetch the token from your backend and pass the token to the component programmatically.
-
-To keep an embed alive after its token expires, configure a token endpoint with [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
+11. Replace the JWT the wizard pasted into your HTML. That token is a fixed string with an expiration baked into it, so an embed that ships with it will stop working. Either sign a fresh token on your server for each page load and render it into the `token` attribute, or leave the attribute off and point [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) at an endpoint in your app, which also keeps the embed alive past the expiration. The example below takes the first route; for the second, see [Embed a dashboard](./dashboard.md#web-component-view-only-dashboard-example).
 
 #### View-only chart example with web components
 
@@ -92,7 +90,8 @@ Now say you want to embed this question on each customer's account page in your 
 </script>
 
 <!--
-Fetch the JWT token from your backend and programmatically pass it to the 'metabase-question'.
+Your server signs this token for each page load and renders it here. Don't
+paste a fixed JWT into your HTML: it'll stop working once it expires.
 -->
 <metabase-question
   token="PASS_SIGNED_TOKEN_FROM_SERVER"
