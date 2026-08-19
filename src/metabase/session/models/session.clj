@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
@@ -26,16 +27,20 @@
 
 ;; validated eagerly at load so a misconfigured secret fails at startup instead of 500ing the first auth request
 (defonce ^:private ^{:tag 'bytes} default-session-hash-secret
-  (let [dedicated (env/env :mb-session-hash-secret-key)]
-    (if-not (str/blank? dedicated)
-      (do (assert (>= (count dedicated) 16) "MB_SESSION_HASH_SECRET_KEY must be at least 16 characters.")
-          (encryption/secret-key->hash dedicated))
-      ;; returns nil for a nil/blank encryption key; a too-short one already failed the encryption ns load assert
-      (encryption/validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))))
+  (let [secret (env/env :mb-session-hash-secret-key)]
+    (when-not (str/blank? secret)
+      (assert (>= (count secret) 16) "MB_SESSION_HASH_SECRET_KEY must be at least 16 characters.")
+      (encryption/secret-key->hash secret))))
+
+(when-not *compile-files*
+  (when-not default-session-hash-secret
+    (log/warn (str "MB_SESSION_HASH_SECRET_KEY is not set. Session keys are stored with an unkeyed hash, so anyone"
+                   " with write access to the application database can forge a session. Set it to a random string of"
+                   " at least 16 characters to prevent this. Setting or changing it logs out all active sessions."))))
 
 (defn- session-hash-secret
   "Secret used to HMAC session keys before they are stored in or looked up from the app DB. Read from
-  `MB_SESSION_HASH_SECRET_KEY`, falling back to `MB_ENCRYPTION_SECRET_KEY`. Nil when neither is set."
+  `MB_SESSION_HASH_SECRET_KEY`. Nil when it is not set."
   ^bytes []
   default-session-hash-secret)
 
@@ -51,9 +56,8 @@
 (defn hash-session-key
   "Hash the session-key for storage in (and lookup from) the database.
 
-  When a secret is configured this is an HMAC-SHA512 keyed by that secret, so a valid `key_hashed` value cannot be
-  computed with app-db (SQL) access alone. Without a secret this falls back to a plain SHA-512; such instances also
-  store their credentials unencrypted, so the keyed hash would add no protection there."
+  When `MB_SESSION_HASH_SECRET_KEY` is set this is an HMAC-SHA512 keyed by that secret, so a valid `key_hashed` value
+  cannot be computed with app-db (SQL) access alone. Without it this is a plain SHA-512."
   [session-key]
   (hash-session-key* (session-hash-secret) session-key))
 
