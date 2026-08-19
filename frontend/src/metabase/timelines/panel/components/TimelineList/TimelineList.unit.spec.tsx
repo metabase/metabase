@@ -27,6 +27,8 @@ const getProps = (opts?: Partial<TimelineListProps>): TimelineListProps => ({
   onArchiveEvent: jest.fn(),
   onShowTimelineEvents: jest.fn(),
   onHideTimelineEvents: jest.fn(),
+  onShowTimeline: jest.fn(),
+  onHideTimeline: jest.fn(),
 
   ...opts,
 });
