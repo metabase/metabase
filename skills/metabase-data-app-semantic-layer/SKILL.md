@@ -131,6 +131,8 @@ const { data, isLoading, error } = useMetabaseQuery({
 
 For direct row access, prefer letting `useMetabaseQuery(...)` infer the query shape from the inline query object. If you need a reusable query object and table ownership checks, type the object with `satisfies MetabaseQueryOptions<OrdersTable>`, then pass it to `useMetabaseQuery(query)`. Avoid forcing the hook generic on selected-field queries when you need precise row keys from `data.rows`.
 
+**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
+
 Use keyed schema objects:
 
 - Tables: `source: schema.tables.<table>`
@@ -275,7 +277,7 @@ When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `or
 
 ## Interactive Metabase Views
 
-Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
+Whether an element is an SDK question at all — and whether it is `StaticQuestion` or `InteractiveQuestion` — is decided in the data-app setup skill (*Rendering a chart: Metabase first*). Once it is: build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
 
 `useMetabaseQueryObject` supports generated table queries, including metric aggregations, and generated saved question queries. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
@@ -325,35 +327,7 @@ const chartRows = (data?.rows ?? []).map((row) => ({
 }));
 ```
 
-### SDK Components Or Custom Charts
-
-Prefer `InteractiveQuestion` for:
-
-- standard charts, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
-- trends, category comparisons, grouped summaries, geographic views, scatter plots, funnels, gauges, progress, waterfall, boxplot, and sankey-shaped queries
-- bar, line, area, row, and trend charts whenever a semantic query with measures and breakouts can produce the needed result
-- tables where users benefit from Metabase interactions such as sorting, column inspection, drill-through, downloading, or changing visualization settings
-- cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
-
-Default to the SDK components. If the requested chart can be produced by a Metabase display type — with visualization settings and the app's theme on top — build it that way, whatever it is meant to look like. "A pie chart of registrants" is a Metabase pie chart; only reach past the SDK once you have established that nothing it renders can express the request.
-
-Build a custom React visualization when the presentation genuinely does not fit any display type or visualization setting, or when the user asks for a custom visualization rather than a Metabase chart. Their asking is the decision — do not infer it from a design reference, brand colours, or a screenshot of something bespoke.
-
-Decide per element, never per row or per section. One tile that needs custom code makes a row with one custom tile in it, not a row of them; the rest still render as SDK components and keep their formatting, theming and drill-through. Consistent heights and card chrome come from the container each tile sits in, so "the others should match it" is not a reason to hand-build the others.
-
-A single-value KPI is a scalar — or smartscalar, gauge, progress. If the tile wants a number plus something Metabase does not draw, such as a star row, a caption, or a total from a second query, render the scalar for the number and put the extra beside it. Hand-build the tile only when the number itself cannot come from one.
-
-Good custom visualization reasons:
-
-- the user asked for a custom visualization, or for something Metabase demonstrably has no display for
-- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards that cannot be represented as a normal Metabase chart/table
-- combining multiple Metabase queries into one visual unit
-- custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
-- unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
-
-For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. A bespoke summary that needs direct row data belongs on `useMetabaseQuery`; a single-value KPI does not, per the scalar rule above.
-
-If you build a custom chart, map typed SDK rows into an explicit local view model before rendering. Read typed row values with known result keys, such as `schema.tables.orders.fields.orderedAt.name` (`ordered_at`) or aggregation names like `count`/`sum`; do not read generated schema object property names such as `row.orderedAt` unless the returned column name is actually `orderedAt`. If the key only comes from `data.columns` at runtime, use `rawRows` with the matching column position or narrow the key to a literal before indexing `data.rows`. Do not write generic chart components that assume positional rows.
+If the result key only comes from `data.columns` at runtime, use `rawRows` with the matching column position, or narrow the key to a literal before indexing `data.rows`.
 
 ### Rendering With SDK Components
 
@@ -427,58 +401,6 @@ return (
   </InteractiveQuestion>
 );
 ```
-
-Do not invent alternate prop names for generated queries. If the SDK type says a prop does not exist, believe it and use the documented `card` prop shape.
-
-```tsx
-const { query, isLoading, error } = useMetabaseQueryObject({
-  source: eventsTable,
-  aggregations: [eventsTable.measures.totalAmount],
-  breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
-});
-
-if (error) {
-  return null;
-}
-
-if (isLoading || !query) {
-  return null;
-}
-
-return <InteractiveQuestion card={{ query }} height="500px" />;
-```
-
-Static question:
-
-```tsx
-const { query, isLoading, error } = useMetabaseQueryObject({
-  source: eventsTable,
-  aggregations: [eventsTable.measures.totalAmount],
-  breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
-});
-
-if (error) {
-  return null;
-}
-
-if (isLoading || !query) {
-  return null;
-}
-
-return <StaticQuestion card={{ query }} height="500px" />;
-```
-
-### SDK Chart Heights
-
-When an SDK-rendered chart lives in a card, panel, dashboard cell, or any other area that needs a specific height, pass that height to the SDK component that owns the visualization. Setting only the outer container or card height is not enough — the chart can render taller than the card and get cut off.
-
-- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
-- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
-- Static question: pass `height` to `StaticQuestion`.
-
-Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"` to the SDK component.
-
-Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow. If a parent card has a fixed height, also pass the matching available height to `InteractiveQuestion`, `StaticQuestion`, or `InteractiveQuestion.QuestionVisualization`; never rely on the parent height alone.
 
 ## Filters And Breakouts
 

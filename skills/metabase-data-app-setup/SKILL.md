@@ -445,16 +445,20 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 
 ### Rendering a chart: Metabase first
 
-This is a per-element decision, not one taken once for a row, a section, or the app. A built-in visualization carries the instance's theming, accessibility, tooltips, formatting and drill-through. A chart built in React carries none of that, and drifts from every other chart in the app as soon as either changes. So the question is never "which looks closer to my design" — it is **can Metabase display this at all?**
+This is a per-element decision, not one taken once for a row, a section, or the app. One tile that needs custom code makes a row with one custom tile in it, not a row of them — the rest stay SDK components and keep their formatting, theming and drill-through. Consistent heights and card chrome come from the container each tile sits in, so "the others should match it" is not a reason to hand-build the others.
 
-- **Yes → `useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`.** Bar, line, area, combo, row, **pie/donut**, scalar/smartscalar, gauge, progress, funnel, pivot, map, sortable table, and anything else in the chart-type list. Build the semantic query from generated schema objects, destructure the returned `query`, and pass only that value in a card object — `<StaticQuestion card={{ query }} visualization="pie" ... />`. Never pass the whole `{ query, error, isLoading }` hook result as `card.query`.
-- **No → `useMetabaseQuery` and your own component.** Only for renderings Metabase has no display for, or where React genuinely needs the row values: KPI numbers, custom controls, bespoke summary cards, or combining several queries into one element. Keep the row handling typed.
+A built-in visualization carries the instance's theming, accessibility, tooltips, formatting and drill-through. A chart built in React carries none of that, and drifts from every other chart in the app as soon as either changes. So the question is never "which looks closer to my design" — it is **can Metabase display this at all?**
 
-"It has to match our styling" is not a reason to hand-build one: pass `visualization` for the chart type, `visualizationSettings` for setting-level changes, and theme the SDK for the rest. A pie chart in a data app is a Metabase pie chart — unless the user asked for a custom one, which is their call to make, not one to infer from a design reference.
+- **Yes → `useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`.** Bar, line, area, combo, row, trend, **pie/donut**, scalar/smartscalar, gauge, progress, funnel, scatter, waterfall, boxplot, sankey, pivot, map, object/list views, sortable table, and anything else in the chart-type list. Also whenever visualization settings can carry the presentation — axes, labels, stacking, goals, trendlines, split panels, series, formatting, table/pie/pivot/list settings — or the user benefits from sorting, column inspection, drill-through, or downloading. Build the semantic query from generated schema objects, destructure the returned `query`, and pass only that value in a card object — `<StaticQuestion card={{ query }} visualization="pie" ... />`. Never pass the whole `{ query, error, isLoading }` hook result as `card.query`.
+- **No → `useMetabaseQuery` and your own component.** Only when the user asked for a custom visualization, or nothing Metabase renders can express the request: bespoke scorecards, alert panels, narrative layouts or mixed-content cards, custom interactions its chart/table chrome cannot express, unusual forms such as calendar grids, timelines, heat strips, radial views, custom maps or domain-specific diagrams, and elements combining several queries into one visual unit. Keep the row handling typed. Use a charting dependency the app already has; otherwise SVG is fine.
+
+**`StaticQuestion` is the default of the two.** It renders the visualization and nothing else — no query bar, no editor, no save — and takes `withChartTypeSelector`, `withDownloads`, `title` and the sizing props. Use `InteractiveQuestion` when the element is meant to be explored: drill-through, filtering, switching the chart type, or the notebook editor. It shows a Save button unless you turn it off — `isSaveEnabled` defaults to `true` — which offers viewers a save-to-collection flow that belongs in Metabase, not in an app, so pass `isSaveEnabled={false}` unless the app is deliberately an editing surface. That applies to the default layout; giving `InteractiveQuestion` its own children replaces the layout, so a composed `<InteractiveQuestion.QuestionVisualization />` renders no toolbar and no Save button.
+
+"It has to match our styling" is not a reason to hand-build one: pass `visualization` for the chart type, `visualizationSettings` for setting-level changes, and theme the SDK for the rest. A pie chart in a data app is a Metabase pie chart — unless the user asked for a custom one, which is their call to make, not one to infer from a design reference, brand colours, or a screenshot of something bespoke.
+
+**A single-value KPI is a scalar** — or smartscalar, gauge, progress. If the tile wants a number plus something Metabase does not draw, such as a star row, a caption, or a total from a second query, render the scalar for the number and put the extra beside it. Hand-build it only when the number itself cannot come from one.
 
 **Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted / derived queries (pass `isLoading` down) and for `useAction`'s `isExecuting` (spinner in the button + `disabled={isExecuting}`).
-
-**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
 For the hook contract itself — generics, table sources, segments, measures, breakouts, sorting, and debugging — use skill discovery before authoring schema-backed data-layer code.
 
@@ -466,10 +470,16 @@ So the app's outermost element carries `minHeight: "100vh"` (plus `boxSizing: "b
 
 ## SDK component sizing
 
-SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
+SDK components do NOT auto-fit their parent — without `height`/`width` they render at their intrinsic size and overflow. Setting only the outer container or card height is not enough either; the height goes on the SDK component that owns the visualization:
+
+- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
+- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
+- Static question: pass `height` to `StaticQuestion`.
+
+Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"`.
 
 ```tsx
-<div style={{ height: 360, overflow: "hidden" }}>
+<div style={{ height: 360 }}>
   <StaticQuestion
     questionId={1}
     height="100%"
@@ -479,7 +489,7 @@ SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
 </div>
 ```
 
-Without `height`/`width`, the SDK component renders at its intrinsic size and overflows.
+Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
 
 ## Sync to Metabase
 
