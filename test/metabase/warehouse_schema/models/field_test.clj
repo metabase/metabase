@@ -345,3 +345,16 @@
       (encryption-test/with-secret-key "field-fingerprint-encryption-test-key"
         (is (= warehouse-fingerprint
                (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))))))
+
+(deftest fingerprint-cache-tracks-updates-test
+  (testing "the decrypt cache is keyed on the stored value, so re-analyzing a field is reflected on the next read"
+    (encryption-test/with-secret-key "field-fingerprint-encryption-test-key"
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    table {:db_id (u/the-id db)}
+                     :model/Field    field {:table_id (u/the-id table) :fingerprint warehouse-fingerprint}]
+        (is (= warehouse-fingerprint
+               (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))
+        (let [refingerprinted (assoc-in warehouse-fingerprint [:global :distinct-count] 99)]
+          (t2/update! :model/Field (u/the-id field) {:fingerprint refingerprinted})
+          (is (= refingerprinted
+                 (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))))))
