@@ -283,9 +283,16 @@
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
-          ;; note: we don't assert that the migrated value matches today's normalized format byte-for-byte -- the
-          ;; transform has since evolved (e.g. it now adds a default :base_type) and this v47 migration will never
-          ;; track it. What matters is that the migrated value normalizes to the same thing the original does.
+          ;; the transform has since evolved to add fields this v47 migration doesn't know about (e.g. a default
+          ;; :base_type), so compare structurally with those fields removed
+          (testing "legacy result_metadata are updated to the current format"
+            (is (= (->> result_metadata
+                        json/encode
+                        ((:out mi/transform-result-metadata))
+                        json/encode
+                        json/decode
+                        (mapv #(dissoc % "base_type")))
+                   (json/decode migrated-result-metadata))))
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
                         json/encode

@@ -37,7 +37,6 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -896,7 +895,9 @@
 
 (deftest ^:mb/old-migrations-test populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+    ;; note: range endpoints must not be dbms-scoped changesets (like v49.2024-06-27T00:00:00, mysql/mariadb only) --
+    ;; they are invisible in the parsed changelog on other app DBs
+    (impl/test-migrations ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"] [migrate!]
       (when (= (mdb/db-type) :postgres)
         ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
         ;; then rolled back to 49 again. The rollback to 48 will cause the
@@ -977,7 +978,7 @@
 
 (deftest ^:mb/old-migrations-test is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+    (impl/test-migrations ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"] [migrate!]
       (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"
                                             :created_at :%now
@@ -1057,7 +1058,7 @@
       (let [original-app-db-type (mdb/db-type)]
         (impl/test-migrations-for-driver!
          :h2
-         ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
+         ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"]
          (fn [migrate!]
            (let [db-id (t2/insert-returning-pk! :metabase_database
                                                 {:details    "{}"
@@ -2469,7 +2470,9 @@
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
+  ;; note: range endpoints must not be dbms-scoped changesets (like v50.2024-05-29T18:42:15, mariadb only) -- they are
+  ;; invisible in the parsed changelog on other app DBs
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-30T16:04:20"] [migrate!]
     (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Silly Collection"
@@ -2500,7 +2503,7 @@
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-make-archive-operation-ids-correctly
-  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-30T16:04:20"] [migrate!]
     (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
             parent-id (fn [id]
