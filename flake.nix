@@ -22,6 +22,24 @@
           pkgs = import nixpkgs { inherit system; };
           lib = pkgs.lib;
 
+          frontendDepsSource = lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions [
+              ./bun.lock
+              ./bunfig.toml
+              ./package.json
+              ./patches
+            ];
+          };
+
+          clojureDepsSource = lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions [
+              ./deps.edn
+              (lib.fileset.fileFilter (file: file.name == "deps.edn") ./modules/drivers)
+            ];
+          };
+
           defaultVersion =
             if self ? shortRev then
               "0.0.0-${self.shortRev}"
@@ -162,23 +180,9 @@
 
           frontendDeps = pkgs.stdenv.mkDerivation {
             pname = "metabase-frontend-deps";
-            version = defaultVersion;
+            version = "0";
 
-            src = lib.cleanSourceWith {
-              src = ./.;
-              filter =
-                path: type:
-                let
-                  baseName = baseNameOf path;
-                in
-                !(lib.elem baseName [
-                  ".git"
-                  ".cache"
-                  "node_modules"
-                  "result"
-                  "target"
-                ]);
-            };
+            src = frontendDepsSource;
 
             nativeBuildInputs = with pkgs; [
               bun
@@ -225,23 +229,9 @@
 
           clojureDeps = pkgs.stdenv.mkDerivation {
             pname = "metabase-clojure-deps";
-            version = defaultVersion;
+            version = "0";
 
-            src = lib.cleanSourceWith {
-              src = ./.;
-              filter =
-                path: type:
-                let
-                  baseName = baseNameOf path;
-                in
-                !(lib.elem baseName [
-                  ".git"
-                  ".cache"
-                  "node_modules"
-                  "result"
-                  "target"
-                ]);
-            };
+            src = clojureDepsSource;
 
             nativeBuildInputs = with pkgs; [
               cacert
@@ -252,7 +242,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-WuXuU2tVnBXIwOKUSdZ3BVnWEQQW9sAAZXBjPfvFAaI=";
+            outputHash = "sha256-G658jo7epB43ZYpR9l5tEruweE6rPwJHg70GFNj6ZaA=";
 
             dontConfigure = true;
             dontFixup = true;
