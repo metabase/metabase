@@ -34,32 +34,35 @@ export const PolicySidePanel = ({
     data-testid="cache-policy-panel"
   >
     <Group justify="space-between" px="2rem" pt="1.5rem">
-      <Group gap="sm">
-        <ActionIcon
-          size="lg"
-          c="text-secondary"
-          bd="1px solid var(--mb-color-border-neutral)"
-          disabled={onPrevious === undefined}
-          aria-label={t`Previous item`}
-          onClick={onPrevious}
-        >
-          <Icon name="chevronup" />
-        </ActionIcon>
-        <ActionIcon
-          size="lg"
-          c="text-secondary"
-          bd="1px solid var(--mb-color-border-neutral)"
-          disabled={onNext === undefined}
-          aria-label={t`Next item`}
-          onClick={onNext}
-        >
-          <Icon name="chevrondown" />
-        </ActionIcon>
-      </Group>
+      {(onPrevious !== undefined || onNext !== undefined) && (
+        <Group gap="sm">
+          <ActionIcon
+            size="lg"
+            c="text-secondary"
+            bd="1px solid var(--mb-color-border-neutral)"
+            disabled={onPrevious === undefined}
+            aria-label={t`Previous item`}
+            onClick={onPrevious}
+          >
+            <Icon name="chevronup" />
+          </ActionIcon>
+          <ActionIcon
+            size="lg"
+            c="text-secondary"
+            bd="1px solid var(--mb-color-border-neutral)"
+            disabled={onNext === undefined}
+            aria-label={t`Next item`}
+            onClick={onNext}
+          >
+            <Icon name="chevrondown" />
+          </ActionIcon>
+        </Group>
+      )}
       <ActionIcon
         variant="subtle"
         c="text-secondary"
         size="lg"
+        ml="auto"
         aria-label={t`Close`}
         onClick={onClose}
       >

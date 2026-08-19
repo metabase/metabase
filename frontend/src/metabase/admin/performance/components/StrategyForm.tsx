@@ -518,6 +518,11 @@ export const StrategySelectorHeading = ({
   </Stack>
 );
 
+const EMPTY_FIELDS_BY_STRATEGY: Partial<Record<string, string[]>> = {
+  duration: ["duration"],
+  ttl: ["min_duration_seconds", "multiplier"],
+};
+
 const StrategySelector = ({
   targetId,
   model,
@@ -553,7 +558,17 @@ const StrategySelector = ({
         mt={showHeading ? "xl" : 0}
         data={data}
         value={values.type}
-        onChange={(value) => value && setFieldValue("type", value)}
+        onChange={(value) => {
+          if (!value) {
+            return;
+          }
+          setFieldValue("type", value);
+          for (const fieldName of EMPTY_FIELDS_BY_STRATEGY[value] ?? []) {
+            if (!(fieldName in values)) {
+              setFieldValue(fieldName, null);
+            }
+          }
+        }}
         allowDeselect={false}
         aria-labelledby={headingId}
         data-testid="cache-strategy-select"

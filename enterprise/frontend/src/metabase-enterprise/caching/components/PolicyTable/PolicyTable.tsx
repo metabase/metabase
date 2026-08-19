@@ -51,6 +51,10 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
       const next = typeof updater === "function" ? updater(sorting) : updater;
+      if (next.length === 0 && sorting[0] !== undefined) {
+        onSortingChange([{ id: sorting[0].id, desc: false }]);
+        return;
+      }
       onSortingChange(next);
     },
     [sorting, onSortingChange],

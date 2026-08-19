@@ -273,6 +273,32 @@ describe("StrategyEditorForDatabases", () => {
     expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 
+  it("does not silently save default values when saving right after switching strategies", async () => {
+    // Database 4 inherits the default policy
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 4'/),
+    );
+
+    await selectCacheStrategy(/^Duration/i);
+    const saveButton = await screen.findByTestId("strategy-form-submit-button");
+    await waitFor(() => expect(saveButton).toBeDisabled());
+    await userEvent.click(saveButton);
+    expect(
+      fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+    ).toHaveLength(0);
+
+    await selectCacheStrategy(/Adaptive/i);
+    await waitFor(() =>
+      expect(screen.getByTestId("strategy-form-submit-button")).toBeDisabled(),
+    );
+
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
+    await waitFor(() =>
+      expect(screen.getByTestId("strategy-form-submit-button")).toBeEnabled(),
+    );
+  });
+
   it("does not allow saving an empty cache duration", async () => {
     await userEvent.click(
       await screen.findByLabelText(
