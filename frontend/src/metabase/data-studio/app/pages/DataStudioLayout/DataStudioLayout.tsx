@@ -4,7 +4,7 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { trackDataStudioCleanupOpened } from "metabase/common/data-studio/analytics";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/current-user";
+import { getUserIsAdmin, useUserKeyValue } from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,
@@ -18,7 +18,6 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";

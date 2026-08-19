@@ -60,7 +60,7 @@
                                      [:= :active true]
                                      [:= :visibility_type nil]
                                      [:or [:= :data_layer nil]
-                                      [:not= :data_layer [:inline "hidden"]]]]}))
+                                      [:not= :data_layer "hidden"]]]}))
         db-ids (into #{} (keep :db_id) tables)
         dbs     (when (seq db-ids)
                   (u/index-by :id
