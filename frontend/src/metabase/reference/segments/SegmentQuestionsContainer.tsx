@@ -14,7 +14,7 @@ import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
@@ -31,7 +31,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentQuestionsContainerProps extends FetchProps, ClearStateProps {
+interface SegmentQuestionsContainerProps extends ClearStateProps {
   fetchQuestions: () => Promise<unknown>;
 }
 

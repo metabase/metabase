@@ -11,7 +11,7 @@ import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getField,
@@ -26,8 +26,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentFieldDetailContainerProps
-  extends FetchProps, ClearStateProps {}
+type SegmentFieldDetailContainerProps = ClearStateProps;
 
 function SegmentFieldDetailContainer(props: SegmentFieldDetailContainerProps) {
   const { pathname } = useLocation();
@@ -40,7 +39,9 @@ function SegmentFieldDetailContainer(props: SegmentFieldDetailContainerProps) {
   const field = useSelector((state) => getField(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  useReferenceFetch(() => fetchSegmentFieldsData(dispatch, segmentId));
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentFieldsData(dispatch, segmentId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -56,7 +57,11 @@ function SegmentFieldDetailContainer(props: SegmentFieldDetailContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<SegmentFieldSidebar segment={segment} field={field} />}
     >
-      <SegmentFieldDetail params={params} />
+      <SegmentFieldDetail
+        params={params}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }

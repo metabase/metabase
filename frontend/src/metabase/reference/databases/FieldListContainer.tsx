@@ -11,7 +11,7 @@ import * as actions from "metabase/reference/reference";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -26,7 +26,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface FieldListContainerProps extends FetchProps, ClearStateProps {}
+type FieldListContainerProps = ClearStateProps;
 
 function FieldListContainer(props: FieldListContainerProps) {
   const { pathname } = useLocation();
@@ -39,7 +39,9 @@ function FieldListContainer(props: FieldListContainerProps) {
   const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  useReferenceFetch(() => fetchTableData(dispatch, tableId));
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchTableData(dispatch, tableId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -55,7 +57,11 @@ function FieldListContainer(props: FieldListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<TableSidebar database={database} table={table} />}
     >
-      <FieldList params={params} />
+      <FieldList
+        params={params}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }
