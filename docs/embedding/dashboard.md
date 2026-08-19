@@ -460,7 +460,7 @@ Set `autoRefreshInterval`:
 
 ## Customize dashboard appearance
 
-You can toggle parts of an embedded dashboard's UI and set how tall it renders.
+You can customize colors, UI, and more.
 
 - [Web component](#web-component-dashboard-appearance)
 - [React SDK](#react-sdk-dashboard-appearance)
