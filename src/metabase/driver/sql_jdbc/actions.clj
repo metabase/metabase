@@ -99,10 +99,13 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- driver-api/schema.actions.row
+(mu/defn- cast-values :- [:map-of :string :any]
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
-  types that do not need casting like integer or string."
+  types that do not need casting like integer or string.
+
+  The returned row is not a request-layer row: its values are honeysql cast forms, so it is held only to
+  `[:map-of :string :any]` rather than the scalar-valued `schema.actions.row` that guards the incoming `column->value`."
   [driver        :- :keyword
    column->value :- driver-api/schema.actions.row
    database-id   :- driver-api/schema.id.database

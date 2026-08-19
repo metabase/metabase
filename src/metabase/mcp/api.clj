@@ -4,6 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.response :as compojure.response]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -169,7 +170,7 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [user-id request]
-  (let [body        (:body request)
+  (let [body        (walk/keywordize-keys (:body request))
         session-id  (get-in request [:headers "mcp-session-id"])
         batch?      (sequential? body)
         session-err (delay (session-error-response session-id))]

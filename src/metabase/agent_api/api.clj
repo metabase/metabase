@@ -11,6 +11,7 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -342,6 +343,10 @@
 ;; Request schemas for the Agent API.
 ;; These use snake_case keys for validation and OpenAPI generation,
 ;; with :encode/tool-api-request transformers for converting to the internal format.
+;;
+;; Each is an `:and` of a `[:map ...]` carrying the entries and a keyless `[:map ...]` carrying the
+;; kebab-casing encoder. The carrier is explicitly `{:closed false}`: declaring no keys, it would
+;; otherwise strip the whole request map while decoding.
 
 (mr/def ::bucket
   (into [:enum {:error/message           "Valid bucket"
@@ -357,7 +362,7 @@
                  "is-null"         "is-not-null"
                  "string-is-empty" "string-is-not-empty"
                  "is-true"         "is-false"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-extraction-filter
   [:and
@@ -372,7 +377,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:value :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-extraction-filter
   [:and
@@ -387,7 +392,7 @@
                  "minute-equals"      "minute-not-equals"
                  "second-equals"      "second-not-equals"]]
     [:values [:sequential :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::temporal-filter
   [:and
@@ -399,7 +404,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-temporal-filter
   [:and
@@ -411,7 +416,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:values [:sequential [:or :string :int]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::string-filter
   [:and
@@ -422,7 +427,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-string-date-filter
   [:and
@@ -433,7 +438,7 @@
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:values [:sequential :string]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::numeric-filter
   [:and
@@ -444,7 +449,7 @@
                  "greater-than" "greater-than-or-equal"
                  "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::disjunctive-numeric-filter
   [:and
@@ -453,14 +458,14 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::segment-filter
   "Filter using a pre-defined segment."
   [:and
    [:map
     [:segment_id :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::filter
   [:or
@@ -478,7 +483,7 @@
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::count-aggregation
   "Count aggregation — counts rows, no field_id needed.
@@ -488,7 +493,7 @@
     [:function [:= {:encode/tool-api-request keyword} "count"]]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-aggregation
   "Aggregation using a field and function. field_id is required.
@@ -500,7 +505,7 @@
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count-distinct" "max" "min" "sum"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
   "Aggregation using a pre-defined measure."
@@ -508,7 +513,7 @@
    [:map
     [:measure_id :int]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
   "Aggregation — count (field optional), field-based (field required), or measure-based."
@@ -519,7 +524,7 @@
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::order-by
   "Order by item specifying a field and sort direction."
@@ -548,7 +553,7 @@
                     :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
      [:maybe [:sequential ::order-by]]]
     [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-metric-request
   "Request schema for constructing a query from a metric.
@@ -558,7 +563,7 @@
     [:metric_id ms/PositiveInt]
     [:filters  {:optional true} [:maybe [:sequential ::filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-request
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
@@ -702,13 +707,18 @@
     (assoc-in query-map [:stages last-idx :page] {:page page :items items})))
 
 (defn- prepare-agent-query
-  "Apply standard Agent API query preparation: middleware defaults and execution info."
+  "Apply standard Agent API query preparation: middleware defaults and execution info.
+
+  `:info` is assoc'd rather than merged so it comes entirely from the server. `execute_query` runs a whole query
+  decoded straight out of the request, and every `:info` key the server does not itself supply would otherwise be the
+  caller's: `:card-id` names the Card whose `result_metadata` gets rewritten once the query finishes, and whose
+  `visualization_settings` the QP loads."
   [query]
   (-> query
       (update-in [:middleware :js-int-to-string?] (fnil identity true))
       qp/userland-query-with-default-constraints
-      (update :info merge {:executed-by api/*current-user-id*
-                           :context     :agent})))
+      (assoc :info {:executed-by api/*current-user-id*
+                    :context     :agent})))
 
 (defn- prepare-combined-query
   "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
@@ -726,13 +736,14 @@
     - construct params (table_id or metric_id + filters, aggregations, etc.), same shape as
       /v1/construct-query.
 
-  The `:continuation` and `:handle` branches are closed maps: extra top-level keys (e.g. sending
-  `:query` and `:continuation_token` simultaneously) are rejected with a 400."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (string? (:query m))    :handle
-                         :else                   :fresh))}
+  The `:continuation` and `:handle` branches are closed maps, so top-level keys they don't declare
+  (e.g. a `:query` sent alongside a `:continuation_token`) are dropped before the handler runs."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (fn [m]
+                               (cond
+                                 (:continuation_token m) :continuation
+                                 (string? (:query m))    :handle
+                                 :else                   :fresh))}
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])

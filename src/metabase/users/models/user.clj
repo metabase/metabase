@@ -378,7 +378,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
+  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -572,6 +572,7 @@
                                                                   :core_user.is_data_analyst
                                                                   :core_user.is_superuser
                                                                   [:in :core_user.id
+                                                                   ^:allow-subquery
                                                                    {:select-distinct [:pgm.user_id]
                                                                     :from [[:permissions_group_membership :pgm]]
                                                                     :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
@@ -582,6 +583,7 @@
                                                                   [:not :core_user.is_data_analyst]
                                                                   [:not :core_user.is_superuser]
                                                                   [:not-in :core_user.id
+                                                                   ^:allow-subquery
                                                                    {:select-distinct [:pgm.user_id]
                                                                     :from [[:permissions_group_membership :pgm]]
                                                                     :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]

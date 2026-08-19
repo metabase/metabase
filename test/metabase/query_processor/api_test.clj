@@ -75,10 +75,6 @@
             (Thread/sleep 100)
             (recur (dec retries)))))))
 
-(def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true
-                :js-int-to-string? true}})
-
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
@@ -95,11 +91,13 @@
                   :row_count              1
                   :status                 "completed"
                   :context                "ad-hoc"
-                  :json_query             (-> (mt/mbql-query checkins
-                                                {:aggregation [[:count]]})
-                                              (assoc-in [:query :aggregation] [["count"]])
-                                              (assoc :type "query")
-                                              (merge query-defaults))
+                  :json_query             {:lib/type   "mbql/query"
+                                           :database   (mt/id)
+                                           :stages     [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table (mt/id :checkins)
+                                                         :aggregation  [["count" {:lib/uuid string?}]]}]
+                                           :middleware {:add-default-userland-constraints? true
+                                                        :js-int-to-string?                 true}}
                   :started_at             true
                   :running_time           true
                   :average_execution_time nil
@@ -156,9 +154,10 @@
                          [:error       #"Syntax error in SQL statement"]
                          [:json_query  [:map
                                         [:database   [:= (mt/id)]]
-                                        [:type       [:= "native"]]
-                                        [:native     [:map
-                                                      [:query [:= "foobar"]]]]
+                                        [:lib/type   [:= "mbql/query"]]
+                                        [:stages     [:sequential [:map
+                                                                   [:lib/type [:= "mbql.stage/native"]]
+                                                                   [:native   [:= "foobar"]]]]]
                                         [:middleware [:map
                                                       [:add-default-userland-constraints? [:= true]]
                                                       [:js-int-to-string?                 [:= true]]]]]]
@@ -299,7 +298,12 @@
                     :row_count   5
                     :status      "completed"
                     :context     "ad-hoc"
-                    :json_query  (merge query-defaults card-query)
+                    :json_query  {:lib/type   "mbql/query"
+                                  :database   (mt/id)
+                                  :stages     [{:lib/type    "mbql.stage/mbql"
+                                                :source-card (u/the-id card)}]
+                                  :middleware {:add-default-userland-constraints? true
+                                               :js-int-to-string?                 true}}
                     :database_id (mt/id)}
                    (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
                        (update-in [:data :native_form :query]
@@ -1028,6 +1032,19 @@
                                            {:query query})]
           ;; The venues table has 100+ rows, so we should get more than default constraints (10)
           (is (> (count (csv/read-csv result)) 10)))))))
+
+(deftest ^:parallel adhoc-pivot-download-json-encoded-query-test
+  (testing "POST /api/dataset/csv accepts the JSON-encoded MBQL 5 :json_query from a pivot response (metabase#70757)"
+    (let [{:keys [json_query]} (mt/user-http-request :crowberto :post 202 "dataset/pivot"
+                                                     (qp.pivot.test-util/pivot-query))
+          {:keys [visualization_settings]} (qp.pivot.test-util/pivot-card)
+          result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                       {:query                  (json/encode json_query)
+                                        :pivot_results          true
+                                        :format_rows            true
+                                        :visualization_settings (json/encode visualization_settings)})
+          rows   (csv/read-csv result)]
+      (is (> (count rows) 1)))))
 
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"

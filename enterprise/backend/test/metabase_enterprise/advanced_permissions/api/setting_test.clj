@@ -5,9 +5,13 @@
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
    [metabase.geojson.api-test :as geojson-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -307,3 +311,52 @@
               (set-interval! :crowberto 204)
               (set-interval! user 204)
               (set-interval! :rasta 403))))))))
+
+(deftest publish-card-requires-superuser-test
+  (testing "POST /api/card/:id/public_link"
+    (testing "a public link serves the card to anyone with the URL, so the `setting` application permission does not
+             authorize it -- not even for a card the holder can run themselves"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (mt/with-user-in-groups
+            [group {:name "New Group"}
+             user  [group]]
+            (perms/grant-application-permissions! group :setting)
+            (let [mp    (mt/metadata-provider)
+                  query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+              (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+                (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                               :create-queries :no}}
+                  (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+                  (doseq [[label create-queries] [["without permission to run the card" :no]
+                                                  ["with permission to run the card"    :query-builder]]]
+                    (testing label
+                      (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-queries)
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request user :post 403 (format "card/%d/public_link" card-id))))
+                      (is (nil? (t2/select-one-fn :public_uuid :model/Card :id card-id))
+                          "and the card stayed unpublished")))
+                  (testing "an admin can publish it"
+                    (is (=? {:uuid string?}
+                            (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" card-id))))))))))))))
+
+(deftest settings-manager-cannot-write-admin-only-settings-test
+  (testing "the :setting application permission does not authorize writes to :internal or :admin-write-authed-read
+           settings"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (mt/with-premium-features #{:advanced-permissions}
+        (perms/grant-application-permissions! group :setting)
+        (testing "PUT /api/setting/:key -- :internal settings are not writable via the API"
+          (doseq [k ["reset-token-ttl-hours" "mfa-challenge-signing-key" "store-api-url"]]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :put 403 (str "setting/" k) {:value "87600"})))))
+        (testing "PUT /api/setting/:key -- :admin-write-authed-read settings are writable only by admins"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user :put 403 "setting/read-only-mode" {:value true}))))
+        (testing "PUT /api/setting/ -- the bulk endpoint enforces the same rules"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user :put 403 "setting" {:reset-token-ttl-hours 87600
+                                                                :store-api-url        "https://attacker.example"})))
+          (is (not= "87600" (t2/select-one-fn :value :model/Setting :key "reset-token-ttl-hours"))))))))

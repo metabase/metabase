@@ -1,6 +1,9 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -15,13 +18,28 @@ type MetricCardVisualizationProps = {
   card: Card;
   data: Dataset | undefined;
   isLoading: boolean;
+  error?: unknown;
   className?: string;
 };
+
+function getQueryErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error != null &&
+    "status" in error &&
+    error.status === 403
+  ) {
+    return t`Sorry, you don’t have permission to see that.`;
+  }
+
+  return getErrorMessage(error, t`An error occurred`);
+}
 
 export function MetricCardVisualization({
   card,
   data,
   isLoading,
+  error,
   className,
 }: MetricCardVisualizationProps) {
   const metadata = useSelector(getMetadata);
@@ -37,17 +55,24 @@ export function MetricCardVisualization({
 
   return (
     <DebouncedFrame className={S.root}>
-      <QueryVisualization
-        className={className ?? S.visualization}
-        question={question}
-        result={data}
-        rawSeries={rawSeries}
-        queryBuilderMode="dataset"
-        isRunnable={false}
-        isRunning={isLoading}
-        isDirty
-        isResultDirty={false}
-      />
+      {error ? (
+        <LoadingAndErrorWrapper
+          error={error}
+          renderError={() => getQueryErrorMessage(error)}
+        />
+      ) : (
+        <QueryVisualization
+          className={className ?? S.visualization}
+          question={question}
+          result={data}
+          rawSeries={rawSeries}
+          queryBuilderMode="dataset"
+          isRunnable={false}
+          isRunning={isLoading}
+          isDirty
+          isResultDirty={false}
+        />
+      )}
     </DebouncedFrame>
   );
 }
@@ -57,9 +82,14 @@ type OverviewVisualizationProps = {
 };
 
 export function OverviewVisualization({ card }: OverviewVisualizationProps) {
-  const { data, isLoading } = useCardQueryData(card);
+  const { data, isLoading, error } = useCardQueryData(card);
 
   return (
-    <MetricCardVisualization card={card} data={data} isLoading={isLoading} />
+    <MetricCardVisualization
+      card={card}
+      data={data}
+      isLoading={isLoading}
+      error={error}
+    />
   );
 }

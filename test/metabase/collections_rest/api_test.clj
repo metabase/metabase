@@ -1121,6 +1121,74 @@
                  (into #{} (map #(select-keys % [:name :authority_level]))
                        items))))))))
 
+(deftest collection-items-include-datasets-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Includes datasets"
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
+                     :model/Collection _                   {:name "subcollection"
+                                                            :location (format "/%d/" collection-id)
+                                                            :authority_level "official"}
+                     :model/Card       _                   {:name "card" :collection_id collection-id}
+                     :model/Card       _                   {:name "dataset" :type :model :collection_id collection-id}
+                     :model/Dashboard  _                   {:name "dash" :collection_id collection-id}]
+        (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                 :models ["dashboard" "card" "collection"]))]
+          (is (= #{"card" "dash" "subcollection"}
+                 (into #{} (map :name) items))))
+        (let [items  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
+                                                  :models ["dashboard" "card" "collection" "dataset"]))]
+          (is (= #{"card" "dash" "subcollection" "dataset"}
+                 (into #{} (map :name) items))))
+        (let [items (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))]
+          (is (= #{"card" "dash" "subcollection" "dataset"}
+                 (into #{} (map :name) items))))))))
+
+(deftest collection-items-include-here-and-below-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
+                   :model/Collection {id2 :id} {:name "subcollection"
+                                                :location (format "/%d/" id1)}]
+      (let [item #(first (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" id1))))]
+        (testing "the item has nothing in or below it"
+          (is (nil? (:here (item))))
+          (is (nil? (:below (item)))))
+        (mt/with-temp [:model/Collection {id3 :id} {:location (format "/%d/%d/" id1 id2)}]
+          (testing "now the item has a collection in it"
+            (is (= ["collection"] (:here (item)))))
+          (testing "but nothing :below"
+            (is (nil? (:below (item)))))
+          (mt/with-temp [:model/Collection _ {:location (format "/%d/%d/%d/" id1 id2 id3)}]
+            (testing "the item still has a collection in it"
+              (is (= ["collection"] (:here (item)))))
+            (testing "the item now has a collection below it"
+              (is (= ["collection"] (:below (item))))))
+          (mt/with-temp [:model/Card _ {:name "card" :collection_id id2}
+                         :model/Card _ {:name "dataset" :type :model :collection_id id2}]
+            (testing "when the item has a card/dataset, that's reflected in `here` too"
+              (is (= #{"collection" "card" "dataset"} (set (:here (item)))))
+              (is (nil? (:below (item)))))
+            (mt/with-temp [:model/Card _ {:name "card" :collection_id id3}]
+              (testing "when the item contains a collection that contains a card, that's `below`"
+                (is (= #{"card"} (set (:below (item))))))))
+          (mt/with-temp [:model/Dashboard _ {:collection_id id2}]
+            (testing "when the item has a dashboard, that's reflected in `here` too"
+              (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+
+(deftest dashboards-include-here
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (testing "sanity check, only the dashboard is there"
+        (is (= 1 (:total (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))))))
+      (testing "the dashboard has 'here'"
+        (is (= [{:here ["card"]
+                 :id dash-id}]
+               (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+                    :data
+                    (map #(select-keys % [:here :id])))))))))
+
 (deftest collection-items-include-can-run-adhoc-query-test
   (testing "GET /api/collection/:id/items and GET /api/collection/root/items"
     (testing "include_can_run_adhoc_query parameter controls hydration of can_run_adhoc_query flag"
@@ -1215,74 +1283,6 @@
                 ;; User doesn't have data permissions, so all should be false
                 (is (= 3 (count items)))
                 (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
-
-(deftest collection-items-include-datasets-test
-  (testing "GET /api/collection/:id/items"
-    (testing "Includes datasets"
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
-                     :model/Collection _                   {:name "subcollection"
-                                                            :location (format "/%d/" collection-id)
-                                                            :authority_level "official"}
-                     :model/Card       _                   {:name "card" :collection_id collection-id}
-                     :model/Card       _                   {:name "dataset" :type :model :collection_id collection-id}
-                     :model/Dashboard  _                   {:name "dash" :collection_id collection-id}]
-        (let [items (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
-                                                 :models ["dashboard" "card" "collection"]))]
-          (is (= #{"card" "dash" "subcollection"}
-                 (into #{} (map :name) items))))
-        (let [items  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)
-                                                  :models ["dashboard" "card" "collection" "dataset"]))]
-          (is (= #{"card" "dash" "subcollection" "dataset"}
-                 (into #{} (map :name) items))))
-        (let [items (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))]
-          (is (= #{"card" "dash" "subcollection" "dataset"}
-                 (into #{} (map :name) items))))))))
-
-(deftest collection-items-include-here-and-below-test
-  (testing "GET /api/collection/:id/items"
-    (mt/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
-                   :model/Collection {id2 :id} {:name "subcollection"
-                                                :location (format "/%d/" id1)}]
-      (let [item #(first (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" id1))))]
-        (testing "the item has nothing in or below it"
-          (is (nil? (:here (item))))
-          (is (nil? (:below (item)))))
-        (mt/with-temp [:model/Collection {id3 :id} {:location (format "/%d/%d/" id1 id2)}]
-          (testing "now the item has a collection in it"
-            (is (= ["collection"] (:here (item)))))
-          (testing "but nothing :below"
-            (is (nil? (:below (item)))))
-          (mt/with-temp [:model/Collection _ {:location (format "/%d/%d/%d/" id1 id2 id3)}]
-            (testing "the item still has a collection in it"
-              (is (= ["collection"] (:here (item)))))
-            (testing "the item now has a collection below it"
-              (is (= ["collection"] (:below (item))))))
-          (mt/with-temp [:model/Card _ {:name "card" :collection_id id2}
-                         :model/Card _ {:name "dataset" :type :model :collection_id id2}]
-            (testing "when the item has a card/dataset, that's reflected in `here` too"
-              (is (= #{"collection" "card" "dataset"} (set (:here (item)))))
-              (is (nil? (:below (item)))))
-            (mt/with-temp [:model/Card _ {:name "card" :collection_id id3}]
-              (testing "when the item contains a collection that contains a card, that's `below`"
-                (is (= #{"card"} (set (:below (item))))))))
-          (mt/with-temp [:model/Dashboard _ {:collection_id id2}]
-            (testing "when the item has a dashboard, that's reflected in `here` too"
-              (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
-
-(deftest dashboards-include-here
-  (testing "GET /api/collection/:id/items"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Card {card-id :id} {:dashboard_id dash-id}
-                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (testing "sanity check, only the dashboard is there"
-        (is (= 1 (:total (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))))))
-      (testing "the dashboard has 'here'"
-        (is (= [{:here ["card"]
-                 :id dash-id}]
-               (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
-                    :data
-                    (map #(select-keys % [:here :id])))))))))
 
 (deftest ^:parallel children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
@@ -3415,3 +3415,19 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+(deftest update-collection-cannot-set-type-test
+  (testing "PUT /api/collection/:id"
+    (testing "cannot change a Collection's :type -- enrolling it in remote sync hands it to the auto-import job"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta :put 200 (str "collection/" coll-id)
+                                {:type "remote-synced", :name "renamed"})
+          (is (nil? (t2/select-one-fn :type :model/Collection :id coll-id)))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id)))
+          (testing "the rest of the update still applies"
+            (is (= "renamed" (t2/select-one-fn :name :model/Collection :id coll-id))))
+          (testing "and an admin cannot either"
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:type "remote-synced"})
+            (is (nil? (t2/select-one-fn :type :model/Collection :id coll-id)))))))))

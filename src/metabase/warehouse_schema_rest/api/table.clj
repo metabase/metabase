@@ -3,9 +3,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -25,7 +27,8 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -89,7 +92,7 @@
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
-                       [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
+                       [::h2x/collate [:like field pattern] "utf8mb4_unicode_ci"]))
         pattern    (some-> term
                            (str/replace "\\" "\\\\")
                            (str/replace "_" "\\_")
@@ -111,11 +114,12 @@
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      (and unused-only (premium-features/has-feature? :dependencies))
-                     (conj [:not-exists {:select [:*]
-                                         :from   [[:dependency :d]]
-                                         :where  [:and
-                                                  [:= :d.to_entity_id :metabase_table.id]
-                                                  [:= :d.to_entity_type "table"]]}]))
+                     (conj [:not-exists ^:allow-subquery
+                            {:select [:*]
+                             :from   [[:dependency :d]]
+                             :where  [:and
+                                      [:= :d.to_entity_id :metabase_table.id]
+                                      [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
                      (premium-features/has-feature? :transforms-basic) (conj :transform))]
@@ -191,7 +195,7 @@
    body]
   (when-let [changes (-> body
                          (u/select-keys-when
-                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
                                     :data_layer :data_authority :data_source :owner_email :owner_user_id])
                          (u/update-some :data_layer keyword)
@@ -226,11 +230,27 @@
              (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
                                        (:name database))))))))))
 
+(defn- check-can-publish-tables-to-collection!
+  "Check that the current user may publish `tables` into the Collection with `collection-id`.
+
+  Publishing a Table is what makes it queryable by everyone who can read that Collection, so it is held to the same
+  bar as `POST /api/ee/data-studio/table/publish-tables`: the caller is a data analyst, the destination is a
+  Library/Data Collection, and they can already query every Table involved. Permission to edit a Table's metadata is
+  not permission to hand out access to its data."
+  [tables collection-id]
+  (api/check-data-analyst)
+  (let [collection (api/check-404 (t2/select-one :model/Collection :id collection-id))]
+    (api/check-400 (= (:type collection) collections/library-data-collection-type)
+                   (tru "Tables can only be published to Library/Data collections."))
+    (api/check-403 (every? mi/can-query? tables))))
+
 (defn- update-tables!
-  [ids {:keys [visibility_type] :as body}]
+  [ids {:keys [collection_id visibility_type] :as body}]
   (let [existing-tables (t2/select :model/Table :id [:in ids])]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
+    (when collection_id
+      (check-can-publish-tables-to-collection! existing-tables collection_id))
     (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
@@ -262,7 +282,8 @@
             [:data_source             {:optional true} [:maybe :string]]
             [:data_layer              {:optional true} [:maybe :string]]
             [:owner_email             {:optional true} [:maybe :string]]
-            [:owner_user_id           {:optional true} [:maybe :int]]]]
+            [:owner_user_id           {:optional true} [:maybe :int]]
+            [:collection_id           {:optional true} [:maybe ms/PositiveInt]]]]
   (first (update-tables! [id] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -360,9 +381,13 @@
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
-          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
-                                 (update :table schema.table/present-table))]
-          :when (-> origin-field :table :active)]
+          :let [origin-field (t2/hydrate origin-field [:table :db])]
+          ;; the origin Fields point *at* this Table but live in other ones, and each row carries that Field's name,
+          ;; description and fingerprint -- min/max/avg/distinct-count of the data behind it. Reading this Table says
+          ;; nothing about those, so each one is held to its own Table's read permission.
+          :when (and (-> origin-field :table :active)
+                     (mi/can-read? origin-field))
+          :let [origin-field (update origin-field :table schema.table/present-table)]]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
@@ -450,6 +475,21 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(def ^:private CsvUploadParts
+  "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped:
+  `::mc/default` keeps the extra parts, and the check below refuses them."
+  [:and
+   [:map
+    ["file"
+     [:map
+      [:filename :string]
+      [:tempfile (ms/InstanceOfClass java.io.File)]]]
+    ["collection_id" {:optional true} :string]
+    [::mc/default [:map-of :string :any]]]
+   (mu/with-api-error-message
+    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    (deferred-tru "unexpected multipart part"))])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -463,12 +503,7 @@
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -487,12 +522,7 @@
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
