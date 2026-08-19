@@ -45,7 +45,7 @@
                              {:source-table (str "card__" (:id inner-card))})
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-maintenance-test-1-new-card
+(deftest ^:synchronized card-deps-maintenance-test-1-new-card
   (testing "upstream deps of a card are updated correctly"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -85,7 +85,7 @@
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))))))))))
 
-(deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
+(deftest ^:synchronized card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -123,7 +123,7 @@
                                lib/->legacy-MBQL)
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+(deftest ^:synchronized card-deps-graph-test-2-native-card-chain
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -154,7 +154,7 @@
                                        deps.graph/transitive-dependents
                                        :card))))))))))))
 
-(deftest ^:sequential card-deps-graph-metric-test
+(deftest ^:synchronized card-deps-graph-metric-test
   (testing "deps graph is connected properly for a question using a metric"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]

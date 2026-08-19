@@ -1363,6 +1363,38 @@
       (let [direct-dependents (get all-remote-synced-descendants [(name (t2/model model)) id] [])]
         (filter-eligible-dependents direct-dependents)))))
 
+(defn ineligible-dependencies
+  "Finds dependencies of a model that are not eligible for remote sync, along with the context needed to
+   explain why. Uses spec-based eligibility rules which account for special cases like snippets
+   (eligible when Library is synced, not by collection).
+
+  Takes model (the model to check dependencies for).
+
+  Returns a vector of maps, one per ineligible dependency:
+
+    {:model \"Card\", :id 412, :instance <row>}
+
+  `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`.
+  It falls out of the traversal that [[non-remote-synced-dependencies]] already runs, so reporting it
+  costs no extra queries."
+  [{:keys [id] :as model}]
+  (if (t2/exists? :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
+    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
+      (into []
+            (for [m (collectable-models)
+                  :let [model-name (name m)
+                        descendant-ids (set (get descendants model-name))]
+                  :when (seq descendant-ids)
+                  :let [instances (select-for-eligibility-check m descendant-ids)
+                        by-id (into {} (map (juxt :id identity)) instances)
+                        eligibility-map (remote-sync/batch-model-eligible? m instances)]
+                  [inst-id eligible?] eligibility-map
+                  :when (not eligible?)]
+              {:model    model-name
+               :id       inst-id
+               :instance (get by-id inst-id)})))
+    []))
+
 (defn non-remote-synced-dependencies
   "Finds dependencies of a model that are not eligible for remote sync.
    Uses spec-based eligibility rules which account for special cases like
@@ -1370,21 +1402,10 @@
 
   Takes model (the model to check dependencies for).
 
-  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync."
-  [{:keys [id] :as model}]
-  (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
-      (apply set/union
-             (for [m (collectable-models)
-                   :let [key (name m)
-                         descendant-ids (set (get descendants key))]
-                   :when (seq descendant-ids)]
-               (let [instances (select-for-eligibility-check m descendant-ids)
-                     eligibility-map (remote-sync/batch-model-eligible? m instances)]
-                 (into #{}
-                       (keep (fn [[inst-id eligible?]] (when-not eligible? inst-id)))
-                       eligibility-map)))))
-    #{}))
+  Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync.
+  See [[ineligible-dependencies]] for the same set with the containing collection attached."
+  [model]
+  (into #{} (map :id) (ineligible-dependencies model)))
 
 (defn check-non-remote-synced-dependencies
   "Checks if a model has non-remote-synced-dependencies and throws if it does.

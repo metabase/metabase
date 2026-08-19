@@ -282,16 +282,7 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [
-      ".webpack.js",
-      ".web.js",
-      ".js",
-      ".jsx",
-      ".ts",
-      ".tsx",
-      ".css",
-      ".svg",
-    ],
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
     alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),

@@ -116,7 +116,9 @@ export function AddDimensionsPanel({
             }
           />
         ) : (
-          <ScrollArea className={S.scrollArea} offsetScrollbars="present">
+          <ScrollArea
+            classNames={{ viewport: S.scrollAreaViewport, root: S.scrollArea }}
+          >
             <Accordion
               key={groupIds.join(",")}
               className={S.accordion}

@@ -94,10 +94,7 @@ const baseConfig = {
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
     "<rootDir>/release/.*",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -130,7 +127,6 @@ const baseConfig = {
   ],
   coveragePathIgnorePatterns: [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
     "/target/cljs_dev/",
     "/target/cljs_release/",
     "/frontend/test/",
@@ -156,9 +152,9 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{ts,tsx}",
       ],
 
       setupFiles: [

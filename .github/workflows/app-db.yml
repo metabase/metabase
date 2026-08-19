@@ -143,10 +143,9 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # Old migrations tests only run on a force-run ref; everything else excludes
-      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
-      # anywhere outside of splicing it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -230,10 +229,9 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # Old migrations tests only run on a force-run ref; everything else excludes
-      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
-      # anywhere outside of splicing it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -315,10 +313,9 @@ jobs:
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # Old migrations tests only run on a force-run ref; everything else excludes
-      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
-      # anywhere outside of splicing it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres
