@@ -25,7 +25,7 @@
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog ChangeLogHistoryServiceFactory ChangeLogIterator ChangeSet ChangeSet$ExecType)
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
@@ -557,6 +557,9 @@
            latest-available (latest-available-major-version liquibase)
            latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))
            lb-db (.getDatabase liquibase)
+           ;; the history service is cached across Liquibase instances for equal Databases, so its ran-changeset
+           ;; cache can be stale if migrations ran through another connection; reset it before reading
+           _ (.reset (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) lb-db))
            ran-changesets   (.getRanChangeSetList lb-db)
            changelog (.getDatabaseChangeLog liquibase)
            changeset-filter (proxy [ChangeSetFilter] []
