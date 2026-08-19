@@ -51,6 +51,24 @@ export interface UploadFileProps {
   onUploadComplete?: () => void;
 }
 
+async function fetchTableName(
+  dispatch: Dispatch,
+  tableId: TableId,
+): Promise<string | undefined> {
+  try {
+    const table: { name?: string } = await runRtkEndpoint(
+      { id: tableId },
+      dispatch,
+      tableApi.endpoints.getTable,
+      { forceRefetch: false },
+    );
+    return table.name;
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
@@ -64,6 +82,12 @@ export const uploadFile = createThunkAction(
     async (dispatch: Dispatch) => {
       const id = Date.now();
 
+      // Resolved before the upload starts, so the status has its destination
+      // on its first render. Fetching it alongside the upload would race the
+      // upload itself, and the status would miss the window it reports on.
+      const tableName =
+        tableId == null ? undefined : await fetchTableName(dispatch, tableId);
+
       const clear = () =>
         setTimeout(() => {
           dispatch(clearUpload({ id }));
@@ -75,6 +99,7 @@ export const uploadFile = createThunkAction(
           name: file.name,
           collectionId,
           tableId,
+          tableName,
         }),
       );
 
