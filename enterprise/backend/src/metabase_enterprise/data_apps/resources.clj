@@ -181,20 +181,26 @@
          (assoc links :changed? changed?))))))
 
 (defn reconcile-view-data!
-  "Make `database-ids` the authoritative view-data permission set for `app`."
-  [app database-ids]
+  "Make `table-ids` the authoritative view-data permission set for `app`."
+  [app table-ids]
   (ensure-resources! app)
   (let [app (t2/select-one :model/DataApp :id (:id app))]
     (perms/with-global-permissions-lock
       (t2/with-transaction [_conn]
         (let [group            (permission-group! app)
               all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})]
+              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
+              tables-by-db     (group-by :db_id (t2/select :model/Table))]
           (doseq [database-id all-database-ids]
-            (perms/set-database-permission! permissions group database-id :perms/view-data
-                                            (if (contains? database-ids database-id)
-                                              :unrestricted
-                                              :blocked))))))))
+            (perms/set-database-permission! permissions group database-id :perms/view-data :blocked))
+          (doseq [[_ tables] tables-by-db
+                  :let [table-permissions (into {}
+                                                (keep (fn [{:keys [id]}]
+                                                        (when (contains? table-ids id)
+                                                          [id :unrestricted])))
+                                                tables)]
+                  :when (seq table-permissions)]
+            (perms/set-table-permissions! group :perms/view-data table-permissions)))))))
 
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."

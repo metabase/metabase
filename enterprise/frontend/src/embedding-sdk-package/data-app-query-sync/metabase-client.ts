@@ -76,12 +76,12 @@ export class MetabaseClient {
     );
   }
 
-  reconcilePermissions(slug: string, databaseIds: number[]) {
+  reconcilePermissions(slug: string, tableIds: number[]) {
     return this.request<DataAppMetadata>(
       `apps/${encodeURIComponent(slug)}/resources/permissions`,
       {
         method: "PUT",
-        body: JSON.stringify({ database_ids: databaseIds }),
+        body: JSON.stringify({ table_ids: tableIds }),
       },
     );
   }

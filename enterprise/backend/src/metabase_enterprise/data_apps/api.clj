@@ -107,7 +107,7 @@
 
 (def ^:private ResourcePermissionsRequest
   [:map
-   [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -237,14 +237,14 @@
     (merge app (data-app.resources/resource-entity-ids app))))
 
 (api.macros/defendpoint :put ["/:slug/resources/permissions" :slug slug-regex] :- DataAppResponse
-  "Reconcile the database view-data permissions required by a data app's synchronized
+  "Reconcile the table view-data permissions required by a data app's synchronized
    queries and actions."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   {database-ids :database_ids} :- ResourcePermissionsRequest]
+   {table-ids :table_ids} :- ResourcePermissionsRequest]
   (api/check-superuser)
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (data-app.resources/reconcile-view-data! app (set database-ids)))
+    (data-app.resources/reconcile-view-data! app (set table-ids)))
   (data-app/select-one-non-blob :name slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
