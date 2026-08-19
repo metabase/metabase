@@ -5,6 +5,7 @@ import * as Yup from "yup";
 
 import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +14,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Text } from "metabase/ui";
+import { Box, Select, Text } from "metabase/ui";
+import { type CalendarId, DEFAULT_CALENDAR } from "metabase/utils/calendar";
 import * as Errors from "metabase/utils/errors";
 import type { LocaleData, User } from "metabase-types/api";
 
@@ -69,6 +71,7 @@ const UserProfileForm = ({
   return (
     <Box>
       <ColorSchemeSwitcher />
+      <CalendarSwitcher />
       <FormProvider
         initialValues={initialValues}
         validationSchema={schema}
@@ -144,6 +147,36 @@ const ColorSchemeSwitcher = () => {
       </Text>
 
       <ColorSchemeSelect />
+    </Box>
+  );
+};
+
+const CalendarSwitcher = () => {
+  const { value, setValue, isMutating } = useUserKeyValue({
+    namespace: "calendar",
+    key: "display_calendar",
+    defaultValue: DEFAULT_CALENDAR,
+  });
+
+  const handleChange = (calendar: CalendarId | null) => {
+    if (calendar) {
+      void setValue(calendar);
+    }
+  };
+
+  return (
+    <Box mb="md" data-testid="user-calendar-select">
+      <Select<CalendarId>
+        label={t`Calendar`}
+        description={t`Choose how dates are displayed. This does not change stored dates or query results.`}
+        data={[
+          { value: "gregory", label: t`Gregorian` },
+          { value: "persian", label: t`Persian (Jalali)` },
+        ]}
+        value={value}
+        disabled={isMutating}
+        onChange={handleChange}
+      />
     </Box>
   );
 };
