@@ -13,7 +13,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.updateSetting("show-sdk-embed-terms", false);
+    H.updateSetting("show-modular-embed-terms", false);
   });
 
   it("should not offer to share or embed models (metabase#20815)", () => {

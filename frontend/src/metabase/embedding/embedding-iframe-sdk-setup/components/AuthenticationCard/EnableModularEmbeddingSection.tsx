@@ -37,7 +37,7 @@ export const EnableModularEmbeddingSection = ({
     try {
       await updateSettings({
         "enable-embedding-modular": true,
-        ...(!termsAccepted && { "show-simple-embed-terms": false }),
+        ...(!termsAccepted && { "show-modular-embed-terms": false }),
       });
     } catch (error) {
       sendToast({ message: t`Failed to enable modular embedding` });

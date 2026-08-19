@@ -36,8 +36,7 @@ const setup = async ({
   ];
   const settingValues = createMockSettings({
     [settingKey]: value,
-    "show-sdk-embed-terms": false,
-    "show-simple-embed-terms": false,
+    "show-modular-embed-terms": false,
   });
 
   setupSettingsEndpoints(settings);

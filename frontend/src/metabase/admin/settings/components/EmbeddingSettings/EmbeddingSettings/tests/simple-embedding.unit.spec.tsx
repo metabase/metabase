@@ -20,7 +20,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
     });
 
     const toggles = screen.getAllByRole("switch");
@@ -43,7 +43,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: true,
     });
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -68,7 +68,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: true,
     });
 
     const toggle = await screen.findByRole("switch", {
@@ -85,8 +85,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     const [{ body }] = puts;
     expect(body).toEqual({
       "enable-embedding-modular": true,
-      "show-sdk-embed-terms": false,
-      "show-simple-embed-terms": false,
+      "show-modular-embed-terms": false,
     });
   });
 
@@ -94,7 +93,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
     });
 
     const card = screen
