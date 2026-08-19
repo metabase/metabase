@@ -14,7 +14,6 @@ import type { NormalizedDatabase } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { StateWithReference } from "../selectors";
-import { getError, getLoading } from "../selectors";
 
 interface DatabaseListProps {
   entities: Record<string, NormalizedDatabase>;
@@ -24,8 +23,6 @@ interface DatabaseListProps {
 
 const mapStateToProps = (state: StateWithReference) => ({
   entities: getDatabases(state),
-  loading: getLoading(state),
-  loadingError: getError(state),
 });
 
 class DatabaseList extends Component<DatabaseListProps> {

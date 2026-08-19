@@ -1186,7 +1186,22 @@
                                     impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                {:collections {remote-synced-coll-id true}})]
-            (is (= "Uses content that is not remote synced." (:error response)))))))))
+            (is (= "Uses content that is not remote synced." (:error response)))
+            (testing "the structured failure survives the endpoint's rewrap, keyed by error_code"
+              (is (=? {:error_code "unsynced-dependencies"
+                       :errors     {:collections [{:collection   {:id remote-synced-coll-id :name "Remote Synced"}
+                                                   :dependencies [{:model      "card"
+                                                                   :id         source-card-id
+                                                                   :name       "Source Card"
+                                                                   :collection {:id regular-coll-id :name "Regular"}
+                                                                   :remedy     {:type       "collection"
+                                                                                :collection {:id       regular-coll-id
+                                                                                             :name     "Regular"
+                                                                                             :personal false}}}]}]}}
+                      response)))
+            (testing "the body is the ex-data itself, not a stacktrace dump"
+              (is (nil? (:trace response)))
+              (is (nil? (:via response))))))))))
 
 (deftest settings-collections-errors-on-remote-synced-dependents-test
   (testing "PUT /api/ee/remote-sync/settings with collections errors when disabling a collection that has remote-synced dependents"
@@ -1205,7 +1220,16 @@
                                     impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                {:collections {coll1-id false}})]
-            (is (= "Used by remote synced content." (:error response)))))))))
+            (is (= "Used by remote synced content." (:error response)))
+            (testing "the structured failure survives the endpoint's rewrap, keyed by error_code"
+              (is (=? {:error_code "remote-synced-dependents"
+                       :errors     {:collections [{:collection {:id coll1-id :name "Collection 1"}
+                                                   :dependents [{:model "card"
+                                                                 :name  "Dependent Card"}]}]}}
+                      response)))
+            (testing "the body is the ex-data itself, not a stacktrace dump"
+              (is (nil? (:trace response)))
+              (is (nil? (:via response))))))))))
 
 (deftest settings-collections-empty-is-no-op-test
   (testing "PUT /api/ee/remote-sync/settings with empty collections is a no-op"

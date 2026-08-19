@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
+(ns ^:synchronized metabase-enterprise.custom-viz-plugin.cache-test
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]

@@ -1,9 +1,9 @@
-import dayjs from "dayjs";
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { getUser } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
 import { connect } from "metabase/redux";
 import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";

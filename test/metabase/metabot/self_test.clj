@@ -6,13 +6,19 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.mistral :as mistral]
+   [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.usage :as usage]
@@ -28,6 +34,25 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;;; provider resolution tests
+
+(def ^:private supported-models-by-provider-type
+  {"anthropic"  #'self.claude/supported-models
+   "bedrock"    #'bedrock/supported-models
+   "mistral"    #'mistral/supported-models
+   "moonshot"   #'moonshot/supported-models
+   "openai"     #'openai/supported-models
+   "openrouter" #'openrouter/supported-models
+   "zai"        #'zai/supported-models})
+
+(deftest ^:parallel registry-models-are-listable-test
+  (testing (str "`list-models` hands the admin picker the intersection of the adapter's whitelist with the "
+                "provider's own catalog, so a model the registry names but the whitelist omits is never offered: "
+                "the picker renders it as a blank selection. Azure and the managed provider are absent because "
+                "neither adapter filters against a whitelist.")
+    (doseq [[provider-type supported] supported-models-by-provider-type]
+      (testing provider-type
+        (is (contains? @supported (llm.provider/default-model provider-type)))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections

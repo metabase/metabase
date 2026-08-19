@@ -6,12 +6,22 @@ import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { useAdminSetting } from "metabase/settings";
 import { DefaultSelectItem, Select, Stack } from "metabase/ui";
 
-export function LlmModelPicker() {
+export type LlmModelSettingKey = "llm-metabot-provider" | "llm-mini-model";
+
+export function LlmModelPicker({
+  settingKey = "llm-metabot-provider",
+  label = t`Model`,
+  description = t`Metabot uses this model by default. Models are listed per connected provider.`,
+}: {
+  settingKey?: LlmModelSettingKey;
+  label?: string;
+  description?: string;
+}) {
   const {
     value: modelRef,
     updateSetting,
     settingDetails,
-  } = useAdminSetting("llm-metabot-provider");
+  } = useAdminSetting(settingKey);
   const { modelOptions, modelNameByRef, isLoading, error } =
     useLlmConnectionModels();
 
@@ -22,14 +32,14 @@ export function LlmModelPicker() {
     if (!value) {
       return;
     }
-    await updateSetting({ key: "llm-metabot-provider", value });
+    await updateSetting({ key: settingKey, value });
   };
 
   return (
     <Stack gap="sm">
       <Select
-        label={t`Model`}
-        description={t`Metabot uses this model by default. Models are listed per connected provider.`}
+        label={label}
+        description={description}
         placeholder={isLoading ? t`Loading models...` : t`Select a model`}
         error={error ? getErrorMessage(error, t`Unable to load models.`) : null}
         data={modelOptions}

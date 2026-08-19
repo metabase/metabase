@@ -64,7 +64,7 @@
              {:values [[1] [2] [3]]}
              {:values [[4 "A"] [2 "B"] [5 "C"]]}])))))
 
-(deftest ^:sequential dashboard-parameters
+(deftest ^:synchronized dashboard-parameters
   (mt/dataset test-data
     (let [created-at (mt/id :orders :created_at)]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
@@ -87,7 +87,7 @@
                                                                 :type "date/all-options"}]})]
               (is (= "completed" (:status response))))))))))
 
-(deftest ^:sequential dashboard-remapping-multi-field-permissions-test
+(deftest ^:synchronized dashboard-remapping-multi-field-permissions-test
   "Test for issue #47951: Dashboard filters should show remapped values even when
    user has view-data but not create-queries permissions on the target table."
   (testing "Dashboard parameter remapping with multi-field FK scenario"
@@ -127,7 +127,7 @@
                        (is (= [1 "Rustic Paper Wallet"]
                               (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))))))
 
-(deftest ^:sequential dashboard-remapping-restricted-permissions-test
+(deftest ^:synchronized dashboard-remapping-restricted-permissions-test
   ;; Test for issue #47951: Dashboard filters should show remapped values even when
   ;; user has view-data but not create-queries permissions on the target table.
   (testing "Dashboard parameter remapping"
@@ -187,7 +187,7 @@
                                 (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))
                                "Querying fails due to insufficient permissions")))))))))))))))
 
-(deftest ^:sequential dashboard-remapping-parallel-fks-test
+(deftest ^:synchronized dashboard-remapping-parallel-fks-test
   (testing "two FKs to the same table, same remap, but pointing to different rows (#65838)"
     (testing "always shows parameter values using the correct FK"
       ;; Before this bug was fixed, the logic chose a parallel edge at random, so one of the two parameter bindings
@@ -228,7 +228,7 @@
                                            (keys expected))]
                         (is (= expected actual))))))))))))))
 
-(deftest ^:sequential dashboard-remapping-conflict-scenarios-test
+(deftest ^:synchronized dashboard-remapping-conflict-scenarios-test
   ;; Test various scenarios where FK1, FK2, and PK have different remapping configurations.
   ;; This tests the logic in find-common-remapping-target and documents that it was
   ;; by design.
@@ -341,7 +341,7 @@
                    (#'parameters.dashboard/find-common-remapping-target [orders-product-id-field-id]))
                 "Should return target for single FK with remapping")))))))
 
-(deftest ^:sequential field-values-without-create-queries-perms-test
+(deftest ^:synchronized field-values-without-create-queries-perms-test
   (testing "a user with view-data but no create-queries permissions still gets field-values for a mapped dashboard param (#47097)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query (mt/metadata-provider)
@@ -369,7 +369,7 @@
                (is (= #{["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]}
                       (set values)))))))))))
 
-(deftest ^:sequential remapped-param-value-with-model-card-test
+(deftest ^:synchronized remapped-param-value-with-model-card-test
   (testing "remapped id-param values work when the mapped source card is a model (#44231)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {model-id :id} {:type          :model
@@ -397,7 +397,7 @@
                  (is (= [1 "Rustic Paper Wallet"]
                         (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))
 
-(deftest ^:sequential implicit-fk-pk-name-remapped-value-single-field-test
+(deftest ^:synchronized implicit-fk-pk-name-remapped-value-single-field-test
   (testing "a single-field id param on an FK column resolves via the implicit fk->pk->name remap"
     (mt/dataset test-data
       (let [mp           (mt/metadata-provider)
