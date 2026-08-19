@@ -17,6 +17,9 @@ jobs:
   codeql:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
+    env:
+      # disables overlay DB cache
+      CODEQL_OVERLAY_DATABASE_MODE: none
     steps:
       - uses: actions/checkout@v6
 
