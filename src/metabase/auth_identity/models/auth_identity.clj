@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
