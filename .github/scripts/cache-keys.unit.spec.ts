@@ -5,9 +5,13 @@ const SCRIPT = join(__dirname, "cache-keys.sh");
 
 const CACHES = ["m2", "bun-store", "cypress", "eslint"];
 
-const run = (args: string[] = [], env: NodeJS.ProcessEnv = {}) =>
+// stderr is inherited by default, so the deliberate-failure case below would print a literal
+// `::error::` line - which GitHub Actions reads as an annotation directive, making a passing run
+// annotate itself with an error.
+const run = (args: string[] = [], env: NodeJS.ProcessEnv = {}, quiet = false) =>
   execFileSync(SCRIPT, args, {
     encoding: "utf8",
+    stdio: quiet ? ["ignore", "pipe", "ignore"] : "pipe",
     env: { ...process.env, RUNNER_OS: "Linux", GITHUB_SHA: "abc123", ...env },
   });
 
@@ -30,7 +34,7 @@ describe("cache-keys.sh", () => {
   // Silently returning "" for a name that does not exist is how a caller ends up building a key with a
   // hole in it.
   it("fails on an unknown output name", () => {
-    expect(() => run(["no-such-output"])).toThrow();
+    expect(() => run(["no-such-output"], {}, true)).toThrow();
   });
 
   // A key equal to its own restore prefix points every dependency set at one entry, and nothing reports

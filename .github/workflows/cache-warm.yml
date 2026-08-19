@@ -40,6 +40,8 @@ concurrency:
 
 jobs:
   warm:
+    # Forks read the upstream default branch's caches and cannot usefully write their own, so warming
+    # there would burn a runner for nothing.
     if: ${{ github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
@@ -135,6 +137,10 @@ jobs:
       # `prepare-frontend` installs bun, points it at the store path, and runs a frozen-lockfile install,
       # which is what fills the store. Patches are deliberately not applied: a store cached with patches
       # already in place breaks any pull request that changes or upgrades a patched dependency.
+      #
+      # This also runs when only the Cypress cache is missing, because `bun run cypress install` below
+      # needs the node_modules this step creates. Narrowing the condition to the bun store alone would
+      # leave that step with no Cypress binary to run.
       - name: Install front-end dependencies
         if: steps.bun-lookup.outputs.cache-hit != 'true' || steps.cypress-lookup.outputs.cache-hit != 'true'
         uses: ./.github/actions/prepare-frontend

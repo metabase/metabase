@@ -57,12 +57,18 @@ DEPS_HASH="$(digest "${DEPS_FILES[@]}")"
 LOCK_HASH="$(digest bun.lock)"
 
 # The Cypress binary depends on the Cypress version alone, so keying it on the whole lockfile would
-# rebuild a 200MB download's worth of cache misses every time any frontend dependency moved.
-CYPRESS_VERSION="$(sed -n 's/.*"cypress": \["cypress@\([^"]*\)".*/\1/p' bun.lock | head -1)"
-if [ -z "$CYPRESS_VERSION" ]; then
-  echo "::error::cache-keys.sh: no resolved cypress version found in bun.lock" >&2
+# throw away a 200MB download every time any frontend dependency moved.
+#
+# Reading a version out of a lockfile with a regex is only safe while exactly one line matches. Insist
+# on that rather than taking the first of several: a second match means the format moved under us, and
+# picking one at random would key the binary under a version it is not.
+CYPRESS_VERSIONS="$(sed -n 's/.*"cypress": \["cypress@\([^"]*\)".*/\1/p' bun.lock)"
+CYPRESS_MATCHES="$(printf '%s\n' "$CYPRESS_VERSIONS" | grep -c . || true)"
+if [ "$CYPRESS_MATCHES" != "1" ]; then
+  echo "::error::cache-keys.sh: expected exactly one resolved cypress version in bun.lock, found $CYPRESS_MATCHES" >&2
   exit 1
 fi
+CYPRESS_VERSION="$CYPRESS_VERSIONS"
 
 # An incremental lint cache is only ever an accelerator, so it keys on the commit and always falls back
 # to the newest entry on the prefix. The exact key never pre-exists, which keeps the entry current.
