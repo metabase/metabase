@@ -167,19 +167,4 @@ describe("scenarios > data apps > sync-resources in production", () => {
       });
     });
   });
-
-  // `mockDataApp` serves `/api/apps/:slug` itself, so the app-level 403 gate
-  // ("You don't have access to this data app") never runs here; what this proves is
-  // that the copy stays unreadable to a non-member.
-  it("fails the app's query for a user outside the permission group", () => {
-    syncApp().then(() => {
-      cy.signInAsNormalUser();
-      mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-      cy.visit(`/apps/${APP_SLUG}`);
-
-      dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("synced-app-error", { timeout: 30000 }).should("exist");
-      });
-    });
-  });
 });

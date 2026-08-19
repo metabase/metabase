@@ -609,6 +609,18 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
+    // `read-check-data-app` 403s a non-member, and the app view turns that status
+    // into its own empty state instead of loading the bundle.
+    it("tells a viewer outside the group that the app is not theirs to open", () => {
+      syncOneQuery().then(() => {
+        cy.signInAsNormalUser();
+        cy.visit(`/apps/${APP_SLUG}`);
+
+        cy.findByText("You don’t have access to this data app").should("exist");
+        cy.get("iframe").should("not.exist");
+      });
+    });
+
     it("grants the group view-data on the database its queries read", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
