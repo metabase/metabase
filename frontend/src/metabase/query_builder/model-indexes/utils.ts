@@ -32,6 +32,4 @@ export const fieldHasIndex = (
   modelIndexes: ModelIndex[] | undefined,
   field: Pick<Field, "field_ref">,
 ) =>
-  !!modelIndexes?.some((index: any) =>
-    _.isEqual(index.value_ref, field.field_ref),
-  );
+  !!modelIndexes?.some((index) => _.isEqual(index.value_ref, field.field_ref));

@@ -375,7 +375,7 @@ function DatasetFieldMetadataSidebarInner({
                       label={t`This column should appear in…`}
                       // These are pulled from the form-field variant in ChartSettingsWidget.tsx
                       labelProps={{
-                        fz: "0.88em",
+                        fz: "0.75rem",
                         lh: "0.875rem",
                       }}
                       onChange={handleVisibilityTypeChange}
