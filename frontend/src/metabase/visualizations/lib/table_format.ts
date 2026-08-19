@@ -7,6 +7,11 @@ import Color from "color";
 import { alpha } from "metabase/ui/colors";
 import { getSafeColor } from "metabase/ui/colors/safe-color";
 import { isNumber } from "metabase/utils/types";
+import {
+  isBoolean,
+  isNumeric,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,
@@ -18,6 +23,10 @@ import type {
 import type { Extent, Formatter } from "../types";
 
 import { getLinearColorScale } from "./color-scales";
+
+// predicate for columns that can be formatted
+export const isFormattable = (col: DatasetColumn) =>
+  isNumeric(col) || isString(col) || isBoolean(col);
 
 type Formatters = Record<string, Formatter[]>;
 

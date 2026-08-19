@@ -13,7 +13,10 @@ import {
   tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import {
+  isFormattable,
+  makeCellBackgroundGetter,
+} from "metabase/visualizations/lib/table_format";
 import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
@@ -41,8 +44,6 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { isFormattable } from "../../components/settings/ChartSettingsTableFormatting";
 
 export const TABLE_DEFINITION = {
   getUiName: () => t`Table`,
