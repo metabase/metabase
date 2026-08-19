@@ -6,6 +6,7 @@ import { trackDataStudioCleanupOpened } from "metabase/common/data-studio/analyt
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canAccessDataModel as canAccessDataModelSelector,
+  getUserIsAdmin,
   useUserKeyValue,
 } from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
@@ -17,7 +18,6 @@ import {
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";

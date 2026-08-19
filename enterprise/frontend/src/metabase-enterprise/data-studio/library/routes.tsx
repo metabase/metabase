@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import { Route } from "metabase/router";
 
 import { getDataStudioCleanupRoutes } from "../cleanup/routes";
+
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
