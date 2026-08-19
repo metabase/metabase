@@ -178,6 +178,57 @@ describe("StaleContentPage", () => {
     expect(within(readonlyRow).getByRole("checkbox")).toBeDisabled();
   });
 
+  it("archives the selected findings and refetches the list", async () => {
+    fetchMock.put("path:/api/card/1", { status: 200, body: {} });
+    fetchMock.put("path:/api/card/2", { status: 200, body: {} });
+    setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_type: "card",
+          entity_id: 1,
+          entity_display_name: "First card",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_type: "card",
+          entity_id: 2,
+          entity_display_name: "Second card",
+          can_write: true,
+        }),
+      ],
+    });
+
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to trash" }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/card/1")).toHaveLength(1);
+    });
+    expect(fetchMock.callHistory.calls("path:/api/card/2")).toHaveLength(1);
+    // the two archive requests set archived
+    for (const id of [1, 2]) {
+      const [call] = fetchMock.callHistory.calls(`path:/api/card/${id}`);
+      expect(JSON.parse(String(call.options?.body))).toMatchObject({
+        archived: true,
+      });
+    }
+    // the findings list is refetched once the entities are archived
+    expect(
+      fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
+        .length,
+    ).toBeGreaterThan(1);
+  });
+
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {
     const finding = createMockContentDiagnosticsStaleFinding({
       entity_id: 42,

@@ -97,6 +97,10 @@ export function ImbalancedContent({
 
   const clearRowSelection = () => setRowSelection({});
 
+  // Crowded content is over-full, not a cleanup target, so that tab has no
+  // bulk-trash action (per GDGT-3084).
+  const enableBulkTrash = mode !== "crowded";
+
   const handleQueryChange = (query: string | undefined) => {
     clearRowSelection();
     onParamsChange({ ...params, query, page: undefined });
@@ -170,6 +174,7 @@ export function ImbalancedContent({
               emptyStateLabel={getImbalancedEmptyStateLabel(mode)}
               isFetching={isFetching}
               isLoading={isLoading}
+              enableSelection={enableBulkTrash}
               rowSelection={rowSelection}
               onSelect={(finding) => setSelectedFindingId(finding.id)}
               onSortOptionsChange={handleSortOptionsChange}
@@ -194,11 +199,13 @@ export function ImbalancedContent({
           </Sidebar>
         )}
       </Flex>
-      <ContentDiagnosticsBulkTrashBar
-        selectedFindings={selectedFindings}
-        onClear={clearRowSelection}
-        onTrashed={refetch}
-      />
+      {enableBulkTrash && (
+        <ContentDiagnosticsBulkTrashBar
+          selectedFindings={selectedFindings}
+          onClear={clearRowSelection}
+          onTrashed={refetch}
+        />
+      )}
     </>
   );
 }
