@@ -15,10 +15,10 @@ The collection browser lets people navigate through collections they have permis
 
 There are two ways to embed a collection browser:
 
-- [Web component](#web-component-collection-browser): a browser with breadcrumbs, navigation, and buttons for creating new content, all built for you.
-- [React SDK](#react-sdk-collection-browser): a list of collection items that you wire into your own app.
+- [Web component](#web-component-collection-browser)
+- [React SDK](#react-sdk-collection-browser)
 
-People need to be signed in to your Metabase to view the collection browser, because the browser shows them what their [collection permissions](../permissions/collections.md) allow and nothing else. That means [SSO](./introduction.md#components-with-sso-authentication) only; a collection browser won't work in a [guest embed](./guest-embedding.md).
+To see a collection browser, people need Metabase accounts, because Metabase uses [collection permissions](../permissions/collections.md) to work out what each person can see. So a collection browser only works in an [embed that signs people in with SSO](./introduction.md#components-with-sso-authentication); it won't work in a [guest embed](./guest-embedding.md).
 
 ## Web component collection browser
 
@@ -37,34 +37,52 @@ Point `<metabase-browser>` at the collection you want people to start in:
 
 For the full list of attributes, see [web component attributes](./browser-reference.md#web-component-metabase-browser-attributes).
 
+### Clicking an item opens it inside the embed
+
+Clicking a dashboard or question opens it inside the embed, with breadcrumbs back to the collection. People can filter, summarize, and drill through anything they open.
+
+By default, people won't be able to save questions to the collection.
+
 ### Let people save changes
 
-`read-only` controls how much people can do with the content they open, and it defaults to `true`. People can filter, summarize, and drill through everything they open, but they can't save any of it. Set `read-only="false"` and they can edit _and_ save dashboards and questions.
+Set `read-only="false"`, and people can edit _and_ save the dashboards and questions they open:
 
 ```html
 <metabase-browser initial-collection="123" read-only="false"></metabase-browser>
 ```
 
-Under the hood, the `read-only` attribute decides which dashboard component people land on: a read-only browser opens dashboards for exploring, while `read-only="false"` opens them for [editing](./dashboard.md#web-component-editable-dashboard).
+Under the hood, `read-only` decides which dashboard component people land on: a read-only browser opens dashboards for exploring, while `read-only="false"` opens them for [editing](./dashboard.md#web-component-editable-dashboard).
 
-There's no attribute for pinning the save target to a fixed collection. (In the SDK, the question components take a `targetCollection` prop that pre-selects a collection and hides the picker. See [Let people save their changes](./chart.md#let-people-save-their-changes).) What people can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've not given people [curate access](../permissions/collections.md#curate-access) to any collection.
+Which collection people can save something to depends on whether it's a new item or not:
+
+- **A new question or dashboard** will be saved in the collection they're browsing. The save dialog preselects that collection, and people can pick any other collection they can write to, which comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've not given people [curate access](../permissions/collections.md#curate-access) to any collection.
+- **Changes to a dashboard or question they opened from the browser** overwrite the original, wherever it lives. If they save a question as a new question instead, it goes to the collection they're browsing. Either way, there's no collection picker, so people can't file it somewhere else.
+
+People in a [tenant](./tenants.md) see two writable options in that picker: their tenant collection, which Metabase labels **Our data**, and their own personal collection. Tenant collections and personal collections both give people curate access that you can't turn off, so a tenant collection browser will always offer somewhere to save. People in a tenant have no access to **Our analytics**, so it won't show up.
+
+There's no `<metabase-browser>` attribute that fixes the save target to one collection, the way `target-collection` does on `<metabase-question>`. Check out [Let people save their changes](./chart.md#let-people-save-their-changes).
 
 ### Add new question and new dashboard buttons
 
-The web component browser comes with a **New question** button. Set `read-only="false"` and people also get a **New dashboard** button. Metabase shows or hides either button based on whether the person can write to the collection you named in `initial-collection`.
+The browser can show a **New question** button and a **New dashboard** button above the list of items.
 
-Both buttons are on by default, so turn either one off with `with-new-question` or `with-new-dashboard`. Here, only the new question button shows:
+- `with-new-question` defaults to `true`. **New question** ignores `read-only`, so the button shows up even on a read-only browser.
+- `with-new-dashboard` also defaults to `true`, but **New dashboard** only shows up when you set `read-only="false"`.
+- Either button only shows up for people with [curate access](../permissions/collections.md#curate-access) to the collection you named in `initial-collection`.
+
+So a default `<metabase-browser>` gives people **New question** and nothing else. Add `read-only="false"` and they get both buttons. To turn a button off, set its attribute to `false`. Here, people get **New question** but not **New dashboard**:
 
 ```html
 <metabase-browser
   initial-collection="123"
   read-only="false"
-  with-new-question="true"
   with-new-dashboard="false"
 ></metabase-browser>
 ```
 
-**New question** ignores `read-only` entirely, so on a read-only browser people can still open the query builder and explore, but they won't be able to save a new question, or overwrite an existing question. The new question button also opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models.md), for example, means they build on your curated data rather than on raw tables:
+Because **New question** ignores `read-only`, people on a read-only browser can open the query builder and explore, but they won't be able to save what they build, or overwrite an existing question.
+
+The new question button opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models.md), for example, means they build on your curated data rather than on raw tables:
 
 ```html
 <metabase-browser
@@ -73,8 +91,6 @@ Both buttons are on by default, so turn either one off with `with-new-question` 
   data-picker-entity-types="['model']"
 ></metabase-browser>
 ```
-
-If the buttons don't appear, check that the people using the embed have [curate access](../permissions/collections.md#curate-access) to the starting collection.
 
 ### Let people follow links to other dashboards and questions
 
@@ -99,7 +115,7 @@ The SDK's `CollectionBrowser` lists what's in a collection and tells you when so
 {% include_file "{{ dirname }}/sdk/snippets/collections/collection-browser.tsx" %}
 ```
 
-`collectionId` takes the same values as `initial-collection`: a collection ID (sequential or entity), or one of `"root"`, `"personal"`, or `"tenant"`. It defaults to `"personal"`, so unless you want people to start in their own personal collection, you should pass an explicit value.
+`collectionId` takes a collection ID (sequential or entity), or one of `"root"`, `"personal"`, or `"tenant"`. It defaults to `"personal"`, so unless you want people to start in their own personal collection, you should pass an explicit value.
 
 For the full list of props, see [`CollectionBrowser` props](./browser-reference.md#react-sdk-collectionbrowser-props).
 
