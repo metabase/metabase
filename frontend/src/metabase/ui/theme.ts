@@ -71,10 +71,6 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-// Figma elevation tokens include their shadow colors.
-const TOOLTIP_SHADOW_LIGHT = "0 5px 15px #0000001a, 0 1px 4px #0000000d";
-const TOOLTIP_SHADOW_DARK = "0 5px 15px #00000033, 0 1px 4px #00000012";
-
 export const getThemeOverrides = (
   colorScheme: "light" | "dark" = "light",
   whitelabelColors?: ColorSettings | null,
@@ -96,8 +92,6 @@ export const getThemeOverrides = (
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
     // eslint-disable-next-line metabase/no-color-literals
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
-    tooltip:
-      colorScheme === "dark" ? TOOLTIP_SHADOW_DARK : TOOLTIP_SHADOW_LIGHT,
   },
   spacing: {
     xs: rem(4),
