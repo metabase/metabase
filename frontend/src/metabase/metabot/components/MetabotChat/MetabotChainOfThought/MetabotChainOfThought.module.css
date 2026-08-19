@@ -72,6 +72,7 @@
 .stepLoader {
   flex-shrink: 0;
   margin-right: -0.0625rem;
+
   --loader-color: currentcolor;
 }
 
