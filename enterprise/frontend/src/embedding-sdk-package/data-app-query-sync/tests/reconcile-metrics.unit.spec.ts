@@ -9,25 +9,29 @@ import { makeApp, setupResourceSyncTests } from "./setup";
 
 const HASH = `v1:sha256:${"0".repeat(64)}`;
 
+const createMockClient = () => ({
+  getCard: jest.fn(),
+  updateMetric: jest.fn(),
+  createMetric: jest.fn(),
+  deleteCard: jest.fn(),
+});
+
 describe("metric reconciliation", () => {
   setupResourceSyncTests();
 
   it("does not update an unchanged copied metric", async () => {
-    const client = {
-      getCard: jest.fn().mockResolvedValue({
-        id: 404,
-        name: "Lifetime value",
-        type: "metric",
-        collection_id: 35,
-        dataset_query: { database: 1, stages: [] },
-        display: "table",
-        visualization_settings: {},
-        description: null,
-      }),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn(),
-      deleteCard: jest.fn(),
-    };
+    const client = createMockClient();
+
+    client.getCard.mockResolvedValue({
+      id: 404,
+      name: "Lifetime value",
+      type: "metric",
+      collection_id: 35,
+      dataset_query: { database: 1, stages: [] },
+      display: "table",
+      visualization_settings: {},
+      description: null,
+    });
 
     const lockfile: ResourceLockfile = {
       queries: [],
@@ -71,12 +75,8 @@ describe("metric reconciliation", () => {
   });
 
   it("copies a missing metric and rewrites metric references", async () => {
-    const client = {
-      getCard: jest.fn(),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn().mockResolvedValue({ id: 404 }),
-      deleteCard: jest.fn(),
-    };
+    const client = createMockClient();
+    client.createMetric.mockResolvedValue({ id: 404 });
 
     const lockfile: ResourceLockfile = {
       queries: [],
@@ -130,21 +130,18 @@ describe("metric reconciliation", () => {
   });
 
   it("updates a changed copied metric", async () => {
-    const client = {
-      getCard: jest.fn().mockResolvedValue({
-        id: 404,
-        name: "Old metric name",
-        type: "metric",
-        collection_id: 35,
-        dataset_query: { database: 1, stages: [] },
-        display: "table",
-        visualization_settings: {},
-        description: null,
-      }),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn(),
-      deleteCard: jest.fn(),
-    };
+    const client = createMockClient();
+
+    client.getCard.mockResolvedValue({
+      id: 404,
+      name: "Old metric name",
+      type: "metric",
+      collection_id: 35,
+      dataset_query: { database: 1, stages: [] },
+      display: "table",
+      visualization_settings: {},
+      description: null,
+    });
 
     const lockfile: ResourceLockfile = {
       queries: [],
@@ -188,14 +185,13 @@ describe("metric reconciliation", () => {
   });
 
   it("replaces a missing copied metric and rewrites its references", async () => {
-    const client = {
-      getCard: jest
-        .fn()
-        .mockRejectedValue(new MetabaseApiError(404, "Metric not found")),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn().mockResolvedValue({ id: 405 }),
-      deleteCard: jest.fn(),
-    };
+    const client = createMockClient();
+
+    client.getCard.mockRejectedValue(
+      new MetabaseApiError(404, "Metric not found"),
+    );
+
+    client.createMetric.mockResolvedValue({ id: 405 });
 
     const lockfile: ResourceLockfile = {
       queries: [],
@@ -240,12 +236,7 @@ describe("metric reconciliation", () => {
   });
 
   it("fails before copying metrics when a resolved query omits a metric", async () => {
-    const client = {
-      getCard: jest.fn(),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn(),
-      deleteCard: jest.fn(),
-    };
+    const client = createMockClient();
 
     await expect(
       reconcileMetrics({
@@ -273,19 +264,15 @@ describe("metric reconciliation", () => {
 
   it("deletes a copied metric when no query references it", async () => {
     const appRoot = makeApp();
+    const client = createMockClient();
 
-    const client = {
-      getCard: jest.fn().mockResolvedValue({
-        id: 404,
-        name: "Lifetime value",
-        type: "metric",
-        collection_id: 35,
-        dataset_query: { database: 1, stages: [] },
-      }),
-      updateMetric: jest.fn(),
-      createMetric: jest.fn(),
-      deleteCard: jest.fn(),
-    };
+    client.getCard.mockResolvedValue({
+      id: 404,
+      name: "Lifetime value",
+      type: "metric",
+      collection_id: 35,
+      dataset_query: { database: 1, stages: [] },
+    });
 
     const lockfile: ResourceLockfile = {
       queries: [],
