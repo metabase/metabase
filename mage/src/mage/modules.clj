@@ -144,6 +144,7 @@
      formatter
      funnysql
      geojson
+     global-system
      indexed-entities
      interestingness
      lib.types

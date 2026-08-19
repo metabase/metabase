@@ -5,6 +5,7 @@
    [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -263,10 +264,12 @@
     (let [exhausted-pool (reify javax.sql.DataSource
                            (getConnection [_]
                              (throw (SQLException. "An attempt by a client to checkout a Connection has timed out."))))]
-      (mdb/with-application-db exhausted-pool
-        (is (#'sut/fall-back-in-band? (try
-                                        (#'sut/checkout-connection!)
-                                        (catch Exception e e))))))))
+      (mc/binding (mdb/application-db-handle)
+        exhausted-pool
+        (fn []
+          (is (#'sut/fall-back-in-band? (try
+                                          (#'sut/checkout-connection!)
+                                          (catch Exception e e)))))))))
 
 (deftest checkout-failure-still-acquires-a-first-time-lock-test
   (testing "a first-time lock is acquired even when the pool cannot provide a second connection"

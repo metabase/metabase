@@ -5,6 +5,8 @@
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
    [metabase.config.core :as config]
+   [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -71,10 +73,11 @@
 
 (defn application-db
   "Create a new Metabase application database (type and [[javax.sql.DataSource]]). For use in combination
-  with [[*application-db*]]:
+  with [[application-db-handle]]:
 
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 my-data-source)]
-      ...)
+    (mc/binding (mdb.connection/application-db-handle)
+      (mdb.connection/application-db :h2 my-data-source)
+      (fn [] ...))
 
   Options:
 
@@ -100,16 +103,24 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^ApplicationDB *application-db*
-  "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
-  with [[application-db]]."
-  (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
+(defonce ^:private application-db-component
+  (doto (system/mutable-component-handle ::application-db)
+    (mc/alter-root (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))))
+
+(defn application-db-handle
+  "Return a mutable component handle to the application db"
+  []
+  application-db-component)
+
+(defn current-application-db
+  "The application DB currently visible to this thread."
+  ^ApplicationDB []
+  @(application-db-handle))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type *application-db*))
+  (.db-type (current-application-db)))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -121,21 +132,20 @@
     :h2       :h2
     :mysql    :mysql))
 
-;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source *application-db*))
+  (.data-source (current-application-db)))
 
 (defn quartz-data-source
-  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the current [[*application-db*]]'s
+  "Get a [[javax.sql.DataSource]] for the Quartz JDBC job store, backed by the [[current-application-db]]'s
   dedicated Quartz connection pool (or its regular data source if it was created without pooling).
 
   Like connections acquired through the [[ApplicationDB]] itself, acquiring a connection through this takes the
   application DB's read lock, so the testing API can block new connections while restoring the app DB."
   ^javax.sql.DataSource []
-  (let [^ApplicationDB app-db            *application-db*
+  (let [^ApplicationDB app-db            (current-application-db)
         ^ReentrantReadWriteLock lock     (.lock app-db)
         ^javax.sql.DataSource data-source (.quartz-data-source app-db)]
     (reify javax.sql.DataSource
@@ -163,11 +173,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id *application-db*))
+  (.id (current-application-db)))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection *application-db* f))
+  (t2.conn/do-with-connection (current-application-db) f))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *transaction-depth* 0)
@@ -600,8 +610,8 @@
 (defn do-with-unshared-connection
   "Impl for [[with-unshared-connection]]."
   [f]
-  ;; through *application-db* (not the raw data source) so its connection read-lock gate applies
-  (with-open [conn (.getConnection *application-db*)]
+  ;; through the ApplicationDB (not the raw data source) so its connection read-lock gate applies
+  (with-open [conn (.getConnection (current-application-db))]
     (f (t2.conn/unshared-connection! conn))))
 
 (defmacro with-unshared-connection

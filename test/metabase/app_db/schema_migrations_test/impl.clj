@@ -23,6 +23,7 @@
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -74,10 +75,11 @@
   app DB needs: no work handed to Quartz, and no test dataset prewarmed into it."
   [driver ^javax.sql.DataSource data-source f]
   ;; Quartz would outlive the throwaway DB, and the DB must hold only what the test loads.
-  (binding [mdb.connection/*application-db*                (mdb.connection/application-db driver data-source)
-            custom-migrations.util/*allow-temp-scheduling* false
+  (binding [custom-migrations.util/*allow-temp-scheduling* false
             data.impl/*skip-dataset-prewarm?*              true]
-    (f)))
+    (mc/binding (mdb.connection/application-db-handle)
+      (mdb.connection/application-db driver data-source)
+      f)))
 
 (defn do-with-temp-empty-app-db
   "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the

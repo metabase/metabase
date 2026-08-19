@@ -13,6 +13,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.i18n.impl :as i18n.impl]))
@@ -37,14 +38,16 @@
                               :classname   "org.h2.Driver"}
                              (let [details (tx/dbdef->connection-details driver/*driver* :db {:database-name db-name})]
                                (mdb/spec driver/*driver* details))))]
-          (binding [config/*disable-setting-cache*  true
-                    mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
-            (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
-              (when-not (= driver/*driver* :h2)
-                (tx/create-db! driver/*driver* {:database-name db-name}))
-              (binding [copy/*copy-h2-database-details* true]
-                (load-from-h2/load-from-h2! h2-fixture-db-file)
-                (dump-to-h2/dump-to-h2! h2-file))
-              (is (not (compare-h2-dbs/different-contents?
-                        h2-file
-                        h2-fixture-db-file))))))))))
+          (binding [config/*disable-setting-cache* true]
+            (mc/binding (mdb/application-db-handle)
+              (mdb.connection/application-db driver/*driver* data-source)
+              (fn []
+                (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+                  (when-not (= driver/*driver* :h2)
+                    (tx/create-db! driver/*driver* {:database-name db-name}))
+                  (binding [copy/*copy-h2-database-details* true]
+                    (load-from-h2/load-from-h2! h2-fixture-db-file)
+                    (dump-to-h2/dump-to-h2! h2-file))
+                  (is (not (compare-h2-dbs/different-contents?
+                            h2-file
+                            h2-fixture-db-file))))))))))))
