@@ -18,7 +18,7 @@ There are two ways to embed a collection browser:
 - [Web component](#web-component-collection-browser): a browser with breadcrumbs, navigation, and buttons for creating new content, all built for you.
 - [React SDK](#react-sdk-collection-browser): a list of collection items that you wire into your own app.
 
-People need to be signed in to your Metabase to view the collection browser, because the browser shows them what their [collection permissions](../permissions/collections.md) allow and nothing else. That means [SSO](./introduction.md#sso-embeds) only; a collection browser won't work in a [guest embed](./guest-embedding.md).
+People need to be signed in to your Metabase to view the collection browser, because the browser shows them what their [collection permissions](../permissions/collections.md) allow and nothing else. That means [SSO](./introduction.md#components-with-sso-authentication) only; a collection browser won't work in a [guest embed](./guest-embedding.md).
 
 ## Web component collection browser
 

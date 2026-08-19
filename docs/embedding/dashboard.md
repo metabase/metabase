@@ -26,10 +26,10 @@ A view-only (a.k.a. "static") dashboard displays results without letting people 
 
 View-only isn't tied to one kind of embed:
 
-- **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
-- **[SSO embeds](./introduction.md#sso-embeds)**: interactive by default. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
+- **[Guest embeds](./introduction.md#components-with-guest-authentication)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
+- **[SSO embeds](./introduction.md#components-with-sso-authentication)**: interactive by default. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
 
-For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay for each person viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
+For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay for each person viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-authentication).
 
 ### Web component view-only dashboard
 
