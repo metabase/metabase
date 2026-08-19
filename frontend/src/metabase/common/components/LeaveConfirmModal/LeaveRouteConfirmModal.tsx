@@ -9,6 +9,7 @@ import { LeaveConfirmModal } from "./LeaveConfirmModal";
 interface LeaveRouteConfirmModalProps {
   isEnabled: boolean;
   isLocationAllowed?: (location?: Location) => boolean;
+  isBlocking?: (location?: Location) => boolean;
   onConfirm?: () => void;
   onOpenChange?: (opened: boolean) => void;
 }
@@ -16,12 +17,14 @@ interface LeaveRouteConfirmModalProps {
 export const LeaveRouteConfirmModal = ({
   isEnabled,
   isLocationAllowed,
+  isBlocking,
   onConfirm,
   onOpenChange,
 }: LeaveRouteConfirmModalProps) => {
   const { opened, close, confirm } = useConfirmRouteLeaveModal({
     isEnabled,
     isLocationAllowed,
+    isBlocking,
   });
   const previousIsOpened = usePrevious(opened);
 
