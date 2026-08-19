@@ -186,7 +186,11 @@
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
+    ;; a nil/blank schema means the target uses the database's default schema, so there is nothing to create --
+    ;; and the drivers' create-schema-if-needed! implementations quote the name, which requires one (upstream
+    ;; guards this the same way)
+    (when (and (not (str/blank? output-schema))
+               (not (driver/schema-exists? driver db-id output-schema)))
       (driver/create-schema-if-needed! driver conn-spec output-schema))
     (let [source-range-params (get-source-range-params transform)]
       (save-run-checkpoint-range! run-id source-range-params)

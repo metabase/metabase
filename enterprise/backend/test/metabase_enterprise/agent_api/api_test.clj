@@ -366,6 +366,34 @@
                                              (t2/select-one :model/QueryExecution :executor_id user-id))]
           (is (= :agent (:context query-execution))))))))
 
+(deftest execute-query-cannot-write-another-cards-result-metadata-test
+  (with-agent-api-setup!
+    (testing "/v1/execute runs a whole query decoded out of the request, so its :info must come from the server"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Card       {card-id :id}       {:collection_id   collection-id
+                                                              :dataset_query   (orders-count-query)
+                                                              :result_metadata [{:name         "SECRET"
+                                                                                 :display_name "Secret"
+                                                                                 :base_type    :type/Text}]}]
+          (testing "sanity: the caller cannot even read the Card"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (str "card/" card-id)))))
+          (testing "a forged :info :card-id does not rewrite that Card's result_metadata"
+            (let [handle (:query (agent-client :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id (mt/id :orders)
+                                                :limit    5}))
+                  forged (-> handle
+                             u/decode-base64
+                             json/decode+kw
+                             (assoc :info {:card-id card-id})
+                             json/encode
+                             u/encode-base64)]
+              (is (=? {:status "completed"}
+                      (agent-client :rasta :post 202 "agent/v1/execute" {:query forged})))
+              (is (= ["SECRET"]
+                     (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
+
 (deftest get-metric-field-values-test
   (with-agent-api-setup!
     (ensure-fresh-field-values! (mt/id :orders :quantity))

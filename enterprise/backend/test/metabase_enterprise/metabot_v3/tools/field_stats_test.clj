@@ -3,9 +3,13 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
+   [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -200,3 +204,215 @@
                 (is (= full-distinct-count (get-in new-fp [:global :distinct-count]))))))
           (finally
             (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
+
+;;; ------------------------------- column-table permission gate -------------------------------
+
+(defn- indexed-field-id
+  "The agent field-id (prefix + index) of the column in `columns` whose metadata `:id` is `real-field-id`."
+  [columns prefix real-field-id]
+  (->> columns
+       (keep-indexed (fn [i col] (when (= (:id col) real-field-id) i)))
+       first
+       (str prefix)))
+
+(defn- table-agent-field-id
+  "Resolve the agent field-id for `real-field-id` among the visible columns of the table with `table-id`,
+  exactly as `field-values` resolves it."
+  [table-id real-field-id]
+  (let [mp (mt/metadata-provider)
+        q  (table-query mp table-id)]
+    (indexed-field-id (lib/visible-columns q)
+                      (metabot-v3.tools.u/table-field-id-prefix table-id)
+                      real-field-id)))
+
+(defn- question-agent-field-id
+  "Resolve the agent field-id for `real-field-id` among the visible columns of the question with `card-id`,
+  exactly as `field-values` resolves it (questions are resolved via their dataset-query)."
+  [card-id real-field-id]
+  (let [mp (mt/metadata-provider)
+        q  (lib/query mp (:dataset-query (lib.metadata/card mp card-id)))]
+    (indexed-field-id (lib/visible-columns q)
+                      (metabot-v3.tools.u/card-field-id-prefix card-id)
+                      real-field-id)))
+
+(defn- model-agent-field-id
+  "Resolve the agent field-id for `real-field-id` among the visible columns of the model with `card-id`."
+  [card-id real-field-id]
+  (let [mp (mt/metadata-provider)
+        q  (lib/query mp (lib.metadata/card mp card-id))]
+    (indexed-field-id (lib/visible-columns q)
+                      (metabot-v3.tools.u/card-field-id-prefix card-id)
+                      real-field-id)))
+
+(deftest field-values-blocked-implicitly-joinable-field-test
+  (testing "a field reached through an FK cannot be drilled into when its own table is Blocked, even when
+            the user manages that table's metadata"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (let [state-id    (table-agent-field-id (mt/id :orders) (mt/id :people :state))
+          quantity-id (table-agent-field-id (mt/id :orders) (mt/id :orders :quantity))]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/manage-table-metadata :yes)
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "PEOPLE.STATE is not readable via the ORDERS table it is joinable from"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (metabot-v3.tools.field-stats/field-values
+                                   {:entity-type "table" :entity-id (mt/id :orders)
+                                    :field-id state-id :limit 5}))))
+          (testing "ORDERS' own columns are unaffected"
+            (is (=? {:structured-output {:statistics map?}}
+                    (metabot-v3.tools.field-stats/field-values
+                     {:entity-type "table" :entity-id (mt/id :orders)
+                      :field-id quantity-id :limit 5})))))))))
+
+(deftest field-values-blocked-own-table-field-test
+  (testing "the table the caller named takes the same data-access bar as any other. Its entry check is
+            `api/read-check`, which a `manage-table-metadata` grant satisfies with `view-data` still
+            Blocked, so exempting it would hand that user the column's fingerprint and cached values"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (let [state-id    (table-agent-field-id (mt/id :people) (mt/id :people :state))
+          quantity-id (table-agent-field-id (mt/id :orders) (mt/id :orders :quantity))]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/manage-table-metadata :yes)
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "the metadata grant admits the caller to the table but not to its column statistics"
+            (is (true? (mi/can-read? (t2/select-one :model/Table :id (mt/id :people)))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (metabot-v3.tools.field-stats/field-values
+                                   {:entity-type "table" :entity-id (mt/id :people)
+                                    :field-id state-id :limit 5}))))
+          (testing "a table the caller can query is unaffected"
+            (is (=? {:structured-output {:statistics map?}}
+                    (metabot-v3.tools.field-stats/field-values
+                     {:entity-type "table" :entity-id (mt/id :orders)
+                      :field-id quantity-id :limit 5})))))))))
+
+(deftest field-values-readable-implicitly-joinable-field-test
+  (testing "control: an FK-reachable field on a readable table is still drillable"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (let [state-id (table-agent-field-id (mt/id :orders) (mt/id :people :state))]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (=? {:structured-output {:values ["AK" "AL" "AR" "AZ" "CA"]}}
+                  (metabot-v3.tools.field-stats/field-values
+                   {:entity-type "table" :entity-id (mt/id :orders)
+                    :field-id state-id :limit 5}))))))))
+
+(defn- orders-joined-to-people-query
+  "An ORDERS query that explicitly joins PEOPLE and returns its columns."
+  []
+  (mt/mbql-query orders
+    {:joins [{:fields       :all
+              :source-table $$people
+              :condition    [:= $user_id &People.people.id]
+              :alias        "People"}]}))
+
+(defn- do-with-people-blocked!
+  "Run `thunk` as rasta with every table readable except PEOPLE, which is Blocked."
+  [thunk]
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+    (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+    (mt/with-current-user (mt/user->id :rasta)
+      (thunk))))
+
+(deftest field-values-blocked-explicitly-joined-field-test
+  (testing "a field explicitly joined into a saved question cannot be drilled into when its own table is Blocked"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                              :dataset_query (orders-joined-to-people-query)}]
+      (let [state-id    (question-agent-field-id card-id (mt/id :people :state))
+            quantity-id (question-agent-field-id card-id (mt/id :orders :quantity))]
+        (do-with-people-blocked!
+         (fn []
+           (testing "PEOPLE.STATE is not readable via the question that joins PEOPLE"
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                   (metabot-v3.tools.field-stats/field-values
+                                    {:entity-type "report" :entity-id card-id
+                                     :field-id state-id :limit 5}))))
+           (testing "the question's own columns still resolve, so the card read-check did pass"
+             (is (=? {:structured-output {:statistics map?}}
+                     (metabot-v3.tools.field-stats/field-values
+                      {:entity-type "report" :entity-id card-id
+                       :field-id quantity-id :limit 5}))))))))))
+
+(deftest field-values-readable-explicitly-joined-field-test
+  (testing "control: an explicitly joined field on a readable table is still drillable"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                              :dataset_query (orders-joined-to-people-query)}]
+      (let [state-id (question-agent-field-id card-id (mt/id :people :state))]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:structured-output {:values ["AK" "AL" "AR" "AZ" "CA"]}}
+                    (metabot-v3.tools.field-stats/field-values
+                     {:entity-type "report" :entity-id card-id
+                      :field-id state-id :limit 5})))))))))
+
+(deftest field-values-blocked-model-join-field-test
+  (testing "a blocked table joined by a model is not drillable through the model"
+    (ensure-fresh-field-values! (mt/id :people :state))
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (orders-joined-to-people-query)}]
+      (let [state-id    (model-agent-field-id model-id (mt/id :people :state))
+            quantity-id (model-agent-field-id model-id (mt/id :orders :quantity))]
+        (do-with-people-blocked!
+         (fn []
+           (testing "the model discloses neither values nor statistics for the blocked column"
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                   (metabot-v3.tools.field-stats/field-values
+                                    {:entity-type "model" :entity-id model-id
+                                     :field-id state-id :limit 5}))))
+           (testing "the model's own columns still resolve, so the card read-check did pass"
+             (is (=? {:structured-output {:statistics map?}}
+                     (metabot-v3.tools.field-stats/field-values
+                      {:entity-type "model" :entity-id model-id
+                       :field-id quantity-id :limit 5}))))))))))
+
+(deftest field-values-card-as-permissions-boundary-test
+  (testing "a model stays drillable for a user who may see its table's data but not query it directly,
+            since running the model is all the query processor asks of them"
+    (ensure-fresh-field-values! (mt/id :orders :quantity))
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (mt/mbql-query orders)}]
+      (let [quantity-id (model-agent-field-id model-id (mt/id :orders :quantity))]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :no)
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "the user genuinely cannot read the table directly"
+              (is (false? (mi/can-read? (t2/select-one :model/Table :id (mt/id :orders))))))
+            (testing "but the model still resolves its columns"
+              (is (=? {:structured-output {:statistics map?}}
+                      (metabot-v3.tools.field-stats/field-values
+                       {:entity-type "model" :entity-id model-id
+                        :field-id quantity-id :limit 5}))))))))))
+
+(deftest sandbox-restricted-column-on-own-table-is-not-drillable-test
+  (testing "a column the sandbox's source card omits is not drillable on the sandboxed table itself"
+    (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+      (let [name-field-id  (mt/id :venues :name)
+            name-agent-id  (table-agent-field-id (mt/id :venues) name-field-id)
+            price-agent-id (table-agent-field-id (mt/id :venues) (mt/id :venues :price))]
+        (try
+          (testing "PRICE is outside the sandbox's column set"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                 (metabot-v3.tools.field-stats/field-values
+                  {:entity-type "table" :entity-id (mt/id :venues) :field-id price-agent-id}))))
+          (testing "a column the sandbox does expose is still drillable"
+            (is (=? {:structured-output map?}
+                    (metabot-v3.tools.field-stats/field-values
+                     {:entity-type "table" :entity-id (mt/id :venues) :field-id name-agent-id}))))
+          (finally
+            (t2/delete! :model/FieldValues :field_id name-field-id :type :advanced)))))))

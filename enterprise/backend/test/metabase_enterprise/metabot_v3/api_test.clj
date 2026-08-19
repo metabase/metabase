@@ -68,6 +68,34 @@
                           :data         [{:role "assistant" :content "Hello from streaming!"}]}]
                         messages))))))))))
 
+(deftest agent-streaming-keeps-state-test
+  (testing "the agent state the FE hands back is forwarded to the AI service as it arrived"
+    (mt/with-premium-features #{:metabot-v3}
+      (let [mock-response   (client-test/make-mock-text-stream-response ["ok"] {})
+            conversation-id (str (random-uuid))
+            ;; the FE echoes back whatever the agent streamed to it; a bare `:map` used to strip all of this to `{}`
+            state           {:queries       {:q1 {:database 1}}
+                             :charts        {:c1 {:display "bar"}}
+                             :chart-configs {:c1 {:title "Sales"}}
+                             :todos         [{:text "check the numbers"}]
+                             :transforms    {:t1 {:name "Daily"}}
+                             :link-registry {:l1 "/question/1"}}
+            ai-requests     (atom [])]
+        (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
+                                                   (swap! ai-requests conj (-> (String. ^bytes (:body opts) "UTF-8")
+                                                                               json/decode+kw))
+                                                   ((client-test/mock-post! mock-response) url opts))]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                  {:message         "Test state"
+                                   :context         {}
+                                   :conversation_id conversation-id
+                                   :history         []
+                                   :state           state})
+            (is (= [state]
+                   (mapv :state @ai-requests)))))))))
+
 (deftest closing-connection-test
   (let [messages   (atom nil)
         cnt        (atom 30)

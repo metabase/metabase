@@ -49,6 +49,7 @@
   native-download-permission-for-user
   permissions-for-user
   prime-db-cache
+  prime-table-perms-cache
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!

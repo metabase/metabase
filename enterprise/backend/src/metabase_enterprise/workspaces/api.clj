@@ -23,8 +23,8 @@
    ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -74,7 +74,7 @@
    [:query
     [:map
      [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
+     [:query ::lib-be.schema/maybe-legacy-or-empty-query]]]
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
@@ -835,9 +835,12 @@
    body :- [:map #_{:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
+            [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
             [:source ::transform-source]
-            ;; Not sure why this schema is giving trouble
-            #_[:target ::transform-target]]]
+            ;; `::transform-target` is too strict for what the FE sends (e.g. incremental targets), so the value is
+            ;; passed through as it arrived. The key still has to be declared or it gets stripped from the body.
+            #_[:target ::transform-target]
+            [:target ms/Map]]]
   (create-workspace-transform! ws-id body))
 
 ;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
@@ -890,6 +893,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
+            ;; Declared so it reaches the model, which rejects any attempt to change it.
+            [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   ;; We use explicit check-then-branch rather than app-db/update-or-insert! because:

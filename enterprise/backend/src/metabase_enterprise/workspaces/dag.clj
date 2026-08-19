@@ -37,11 +37,12 @@
                     ;; Note: use string "transform" in SQL WHERE clause (db stores strings)
                     {:where [:not [:and
                                    [:= "transform" :to_entity_type]
-                                   [:exists {:select [1]
-                                             :from   [[:workspace_transform :wt]]
-                                             :where  [:and
-                                                      [:= :wt.workspace_id ws-id]
-                                                      [:= :wt.global_id :to_entity_id]]}]]]}))
+                                   [:exists ^:allow-subquery
+                                    {:select [1]
+                                     :from   [[:workspace_transform :wt]]
+                                     :where  [:and
+                                              [:= :wt.workspace_id ws-id]
+                                              [:= :wt.global_id :to_entity_id]]}]]]}))
 
 ;; Workaround for change in how Dependencies table works (inlining of transform dependencies)
 (defn- global-tx-parents
@@ -73,6 +74,7 @@
                     :workspace_id ws-id
                     :ref_id ref-id
                     {:where [:= :transform_version
+                             ^:allow-subquery
                              {:select [[:%max.transform_version]]
                               :from   [:workspace_input]
                               :where  [:and

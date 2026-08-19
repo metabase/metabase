@@ -1,19 +1,6 @@
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
-import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
-
-/**
- * check if a card can be used as the starting point for a new query
- */
-export const canCollectionCardBeUsed = (
-  item: CollectionItem | OmniPickerItem,
-): boolean => {
-  if (item.model === "card") {
-    return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
-  }
-
-  return true;
-};
+import type { OmniPickerCollectionItem } from "./EntityPicker";
 
 /**
  * Returns true if the item is the collection itself or a descendant of it.

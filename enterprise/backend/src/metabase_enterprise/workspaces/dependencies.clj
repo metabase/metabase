@@ -297,9 +297,10 @@
   (t2/with-transaction [_conn]
     (when-not (transform-output-exists-for-version? workspace-id ref-id transform-version)
       (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
-                                                :id [:in {:select [:database_id]
-                                                          :from   [:workspace]
-                                                          :where  [:= :id workspace-id]}])
+                                                :id [:in ^:allow-subquery
+                                                     {:select [:database_id]
+                                                      :from   [:workspace]
+                                                      :where  [:= :id workspace-id]}])
             normalize         (partial sql.normalize/normalize-name driver)
             default-schema    (driver.sql/default-schema driver)
             ;; Normalize external inputs so schemas are consistent

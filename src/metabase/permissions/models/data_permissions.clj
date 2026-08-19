@@ -226,6 +226,19 @@
              *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
+(defn prime-table-perms-cache
+  "Eagerly load permissions for the databases the given tables belong to, so that a run of per-table checks costs one
+  query instead of one per table. A no-op for superusers, whose checks never read the cache.
+
+  Takes `{:db-ids #{…} :table-ids #{…}}`; `:table-ids` are resolved to their databases and primed together with any
+  `:db-ids` supplied."
+  [{:keys [db-ids table-ids]}]
+  (when-not api/*is-superuser?*
+    (let [table-db-ids (when (seq table-ids)
+                         (t2/select-fn-set :db_id :model/Table :id [:in (set table-ids)]))]
+      (when-let [all-db-ids (not-empty (into (set db-ids) table-db-ids))]
+        (prime-db-cache all-db-ids)))))
+
 (def ^:dynamic *use-perms-cache?*
   "Bind to `false` to intentionally bypass the permissions cache and fetch data straight from the DB."
   true)
