@@ -272,7 +272,6 @@ export const createMockSettings = (
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  engines: createMockEngines(),
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",

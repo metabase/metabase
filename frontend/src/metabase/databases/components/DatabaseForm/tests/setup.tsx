@@ -1,6 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   DatabaseData,
@@ -105,15 +106,17 @@ export interface SetupOpts {
   isAdvanced?: boolean;
 }
 
-export const setup = ({
+export const setup = async ({
   settings,
   enterprisePlugins,
   engines = TEST_ENGINES,
   initialValues = {},
   isAdvanced = true,
 }: SetupOpts = {}) => {
+  setupEnginesEndpoint(engines);
+
   const state = createMockState({
-    settings: mockSettings({ ...settings, engines }),
+    settings: mockSettings({ ...settings }),
   });
 
   if (enterprisePlugins) {
@@ -138,6 +141,8 @@ export const setup = ({
       storeInitialState: state,
     },
   );
+
+  await screen.findByTestId("database-form");
 
   return { onSubmit };
 };

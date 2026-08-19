@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
+  useListEnginesQuery,
 } from "metabase/api";
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
 import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";
@@ -22,7 +22,7 @@ export const DatabaseListApp = (props: DatabaseListAppProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const deletes = useSelector(getDeletes);
   const deletionError = useSelector(getDeletionError);
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
 
   const [addSampleDb, addSampleDbResult] = useAddSampleDatabaseMutation();
 

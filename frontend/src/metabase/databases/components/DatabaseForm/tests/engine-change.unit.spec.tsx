@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { mockSettings } from "__support__/settings";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { DatabaseData, Engine } from "metabase-types/api";
@@ -26,7 +26,7 @@ const selectDatabaseType = async (driverName: string) => {
 
 describe("DatabaseForm engine change", () => {
   it("should keep the values that already have been entered (metabase#74569)", async () => {
-    setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
+    await setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
 
     await userEvent.type(screen.getByLabelText("Display name"), "My database");
     await userEvent.type(screen.getByLabelText("Host"), "localhost");
@@ -44,7 +44,7 @@ describe("DatabaseForm engine change", () => {
   });
 
   it("should submit the values that were entered before the engine changed (metabase#74569)", async () => {
-    const { onSubmit } = setup({
+    const { onSubmit } = await setup({
       engines: ENGINES,
       initialValues: { engine: "postgres" },
     });
@@ -77,7 +77,7 @@ describe("DatabaseForm engine change", () => {
   });
 
   it("should discard the details that the newly selected engine does not have", async () => {
-    setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
+    await setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
 
     await userEvent.type(screen.getByLabelText("Host"), "localhost");
 
@@ -112,10 +112,10 @@ describe("DatabaseForm engine change", () => {
       );
     };
 
+    setupEnginesEndpoint(ENGINES);
+
     renderWithProviders(<LateLoadingForm />, {
-      storeInitialState: createMockState({
-        settings: mockSettings({ engines: ENGINES }),
-      }),
+      storeInitialState: createMockState(),
     });
 
     expect(await screen.findByDisplayValue("PostgreSQL")).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe("DatabaseForm engine change", () => {
   });
 
   it("should discard the connection string, which is engine specific", async () => {
-    setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
+    await setup({ engines: ENGINES, initialValues: { engine: "postgres" } });
 
     const connectionStringInput = () =>
       screen.getByLabelText("Connection string (optional)");
