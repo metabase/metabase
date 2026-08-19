@@ -253,14 +253,14 @@
 (def ^:private supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 1050000}
-   "gpt-5.6-terra" {:display-name "GPT-5.6 Terra" :context-window 1050000}
-   "gpt-5.6-luna"  {:display-name "GPT-5.6 Luna"  :context-window 1050000}
-   "gpt-5.5"       {:display-name "GPT-5.5"       :context-window 1050000}
-   "gpt-5.5-pro"   {:display-name "GPT-5.5 Pro"   :context-window 1050000}
-   "gpt-5.4"       {:display-name "GPT-5.4"       :context-window 1050000}
-   "gpt-5.4-pro"   {:display-name "GPT-5.4 Pro"   :context-window 1050000}
-   "gpt-5.4-mini"  {:display-name "GPT-5.4 Mini"  :context-window  272000}})
+  {"gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}
+   "gpt-5.6-terra" {:display-name "GPT-5.6 Terra" :context-window 922000}
+   "gpt-5.6-luna"  {:display-name "GPT-5.6 Luna"  :context-window 922000}
+   "gpt-5.5"       {:display-name "GPT-5.5"       :context-window 922000}
+   "gpt-5.5-pro"   {:display-name "GPT-5.5 Pro"   :context-window 922000}
+   "gpt-5.4"       {:display-name "GPT-5.4"       :context-window 922000}
+   "gpt-5.4-pro"   {:display-name "GPT-5.4 Pro"   :context-window 922000}
+   "gpt-5.4-mini"  {:display-name "GPT-5.4 Mini"  :context-window 272000}})
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."

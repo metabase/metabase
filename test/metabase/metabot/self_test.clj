@@ -920,8 +920,8 @@
   (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"
     (let [parts  [{:type :start :id "m"}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
-                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :finish}]
           finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
@@ -933,9 +933,16 @@
                                                :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
                                                                    :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
                                 :contextWindowTokens 1000000
-                                ;; claude-sonnet's final call alone: (10-5) prompt + (5-1) completion
+                                ;; the turn's last call alone: (10-5) prompt + (5-1) completion
                                 :contextTokens 9}}
              finish))))
+  (testing "contextTokens follows the turn's last call, not its biggest"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 900 :completionTokens 100}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 7 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= 10 (get-in finish [:messageMetadata :contextTokens])))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
                         :messageMetadata)))))
@@ -943,10 +950,10 @@
 (deftest parts->aisdk-sse-xf-usage-cache-test
   (testing "Anthropic cache breakdown flows onto finish.messageMetadata; non-cache models contribute 0"
     (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :usage :model "claude-sonnet-4-6"
                    :usage {:promptTokens 1540 :completionTokens 10
                            :cacheCreationTokens 300 :cacheReadTokens 1200}}
-                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :finish}]
           finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"

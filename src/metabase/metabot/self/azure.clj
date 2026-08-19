@@ -55,7 +55,8 @@
 
 (def ^:private model-context-windows
   "Input context windows for the models Azure sells, keyed by model id.
-  Values: https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
+  GPT values are max input tokens (Microsoft's listed windows are input + output totals):
+  https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"
   {"claude-fable-5"    1000000
    "claude-opus-5"     1000000
    "claude-opus-4-8"   1000000
@@ -67,16 +68,16 @@
    "claude-sonnet-4-6" 1000000
    "claude-sonnet-4-5"  200000
    "claude-haiku-4-5"   200000
-   "gpt-5.6-sol"       1050000
-   "gpt-5.6-terra"     1050000
-   "gpt-5.6-luna"      1050000
-   "gpt-5.6"           1050000
-   "gpt-5.5-pro"       1050000
-   "gpt-5.5"           1050000
-   "gpt-5.4-pro"       1050000
+   "gpt-5.6-sol"        922000
+   "gpt-5.6-terra"      922000
+   "gpt-5.6-luna"       922000
+   "gpt-5.6"            922000
+   "gpt-5.5-pro"        922000
+   "gpt-5.5"            922000
+   "gpt-5.4-pro"        922000
    "gpt-5.4-mini"       272000
    "gpt-5.4-nano"       272000
-   "gpt-5.4"           1050000})
+   "gpt-5.4"            922000})
 
 (defn context-window-tokens
   "The input context window for a `{family}/{deployment}` model string. Deployment names

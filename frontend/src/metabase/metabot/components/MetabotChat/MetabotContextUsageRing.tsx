@@ -1,9 +1,6 @@
-import cx from "classnames";
 import { c, t } from "ttag";
 
-import { Box, RingProgress, Tooltip } from "metabase/ui";
-
-import S from "./MetabotContextUsageRing.module.css";
+import { Center, RingProgress, Tooltip } from "metabase/ui";
 
 const SIZE = 17;
 const THICKNESS = 2.5;
@@ -24,8 +21,8 @@ export const MetabotContextUsageRing = ({
       label={c("{0} is a percentage").t`${percent}% context used`}
       position="top-end"
     >
-      <Box
-        className={cx(S.indicator, className)}
+      <Center
+        className={className}
         data-testid="metabot-context-usage-ring"
         aria-label={t`${percent}% of the context window used`}
       >
@@ -36,7 +33,7 @@ export const MetabotContextUsageRing = ({
           rootColor="border-neutral-subtle"
           sections={[{ value: percent, color: "brand" }]}
         />
-      </Box>
+      </Center>
     </Tooltip>
   );
 };

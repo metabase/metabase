@@ -37,7 +37,7 @@
 (def ^:private supported-models
   "Z.AI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"glm-5.2" {:display-name "GLM-5.2" :context-window 200000}})
+  {"glm-5.2" {:display-name "GLM-5.2" :context-window 1048576}})
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."

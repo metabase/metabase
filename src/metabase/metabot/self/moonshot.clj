@@ -46,7 +46,7 @@
 
   The `kimi-k2.7-code` models the catalog also carries are coding models, not agent models, and are excluded."
   {"kimi-k2.6" {:display-name "Kimi K2.6" :context-window 262144}
-   "kimi-k3"   {:display-name "Kimi K3"   :context-window 262144}})
+   "kimi-k3"   {:display-name "Kimi K3"   :context-window 1048576}})
 
 (defn context-window-tokens
   "The input context window for `model`, or nil when it isn't one we know."

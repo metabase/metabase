@@ -19,7 +19,6 @@ export const MetabotChatSuggestions = () => {
   const shouldShowSuggestedPrompts =
     metabot.messages.length === 0 &&
     !metabot.isDoingScience &&
-    !metabot.isContextWindowFull &&
     suggestedPrompts.length > 0;
 
   if (!shouldShowSuggestedPrompts) {

@@ -101,7 +101,13 @@
 
 (defn context-window-tokens
   "Input context window (tokens) for a `connection-key/model` string, or nil when the
-  connection, provider, or model isn't one we know."
+  connection, provider, or model isn't one we know.
+
+  This is the ceiling a conversation's context (`contextTokens`, the last call's
+  prompt + completion) cannot grow past: the max *input* tokens for providers that
+  publish split input/output limits (OpenAI's 1,050,000 window is 922,000 input +
+  128,000 output), and the shared context window for providers whose output counts
+  against the window itself (Anthropic et al.)."
   [model-ref]
   (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
         window-fn            (resolve-context-window-fn type)]

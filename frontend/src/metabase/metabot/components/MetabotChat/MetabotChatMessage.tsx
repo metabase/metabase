@@ -520,6 +520,8 @@ const IncompleteTurnAlert = ({
   onContinue?: (resumePrompt: string) => void;
 }) => {
   const metabotName = useSetting("metabot-name");
+  // "length" is overloaded, occurs when context window has been met (unrecoverable)
+  // or when the max_tokens has been met (recoverable)
   const { message, resumePrompt } =
     finishReason === "length" && contextWindowFull
       ? {

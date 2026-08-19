@@ -308,9 +308,9 @@
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
 
-  Input: `usage-by-model` and `last-call-by-model` are both
-  `{\"provider/model\" {:promptTokens N :completionTokens N}}` — cumulative over
-  the turn and for the final LLM call alone, respectively.
+  Input: `usage-by-model` is `{\"provider/model\" {:promptTokens N :completionTokens N}}`
+  cumulative over the turn; `last-call` is `{:promptTokens N :completionTokens N}` for the
+  turn's final LLM call alone.
 
   Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
                     :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
@@ -318,12 +318,13 @@
             :contextWindowTokens N
             :contextTokens N}`
 
-  `:contextTokens` is the primary model's final call (prompt + completion) — how much of the
-  window the conversation now occupies. Both context keys are omitted when unknown.
+  `:contextTokens` is the final call's prompt + completion — how much of the window the
+  conversation now occupies, measured against the same model `:contextWindowTokens`
+  describes. Both context keys are omitted when unknown.
 
   Returns nil if no usage was observed. The cache counts are a subset of
   :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
-  [usage-by-model last-call-by-model context-window-tokens]
+  [usage-by-model last-call context-window-tokens]
   (when (seq usage-by-model)
     (let [by-model (update-vals
                     usage-by-model
@@ -342,8 +343,7 @@
                             :cacheCreationTokens 0 :cacheReadTokens 0
                             :cachedInputTokens 0}
                            (vals by-model))
-          primary-model (key (apply max-key (comp :inputTokens val) (seq by-model)))
-          {:keys [promptTokens completionTokens]} (get last-call-by-model primary-model)]
+          {:keys [promptTokens completionTokens]} last-call]
       (cond-> {:usage        totals
                :usageByModel by-model}
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
@@ -414,9 +414,9 @@
            loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
-           ;; per-model usage of the latest LLM call alone — the delta between
-           ;; consecutive cumulative snapshots
-           last-call-by-model (volatile! {})
+           ;; usage of the latest LLM call alone — the delta between consecutive
+           ;; cumulative snapshots for that call's model
+           last-call         (volatile! nil)
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
@@ -450,7 +450,7 @@
        (fn
          ([] (rf))
          ([result]
-          (let [metadata (merge (->message-metadata @usage-by-model @last-call-by-model context-window-tokens)
+          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
                                 (when @finish-error-code {:errorCode @finish-error-code}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
@@ -552,9 +552,9 @@
               (let [model (or (:model part) "unknown")
                     usage (:usage part)
                     prev  (get @usage-by-model model)]
-                (vswap! last-call-by-model assoc model
-                        {:promptTokens     (- (:promptTokens usage 0) (:promptTokens prev 0))
-                         :completionTokens (- (:completionTokens usage 0) (:completionTokens prev 0))})
+                (vreset! last-call
+                         {:promptTokens     (- (:promptTokens usage 0) (:promptTokens prev 0))
+                          :completionTokens (- (:completionTokens usage 0) (:completionTokens prev 0))})
                 (vswap! usage-by-model assoc model usage)
                 (when-let [fr (:finish-reason part)]
                   (vreset! finish-reason fr))
