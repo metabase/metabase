@@ -1,5 +1,6 @@
 import { createAction } from "redux-actions";
 
+import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import {
   DESELECT_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
@@ -7,7 +8,6 @@ import {
   SHOW_TIMELINE_EVENTS,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getCollectionTimelines } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { CollectionId } from "metabase-types/api";
 
 import { getFetchedTimelines } from "../selectors";

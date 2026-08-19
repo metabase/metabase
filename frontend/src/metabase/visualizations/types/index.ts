@@ -4,5 +4,7 @@ export * from "./computed-settings";
 export * from "./definition";
 export * from "./hover";
 export * from "./rendering";
+export * from "./timeline-events";
+export * from "./timeseries";
 export * from "./visualization";
 export * from "./widget-props";
