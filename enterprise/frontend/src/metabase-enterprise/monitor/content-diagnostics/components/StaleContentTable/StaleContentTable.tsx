@@ -88,7 +88,7 @@ export function StaleContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
-      enableRowSelection: true,
+      enableRowSelection: (row) => row.original.can_write,
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,

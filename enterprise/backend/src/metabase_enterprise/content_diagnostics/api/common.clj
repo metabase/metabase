@@ -413,6 +413,19 @@
 (defmethod finalize-finding :sparse  [_ base row _ctx] (merge base (select-keys row [:content_count])))
 (defmethod finalize-finding :crowded [_ base row _ctx] (merge base (select-keys row [:content_count])))
 
+(defn- can-write-by-entity
+  "`{[entity-type entity-id] → can_write bool}` for the page's findings, each entity hydrated with its own
+  model's `:can_write` - collection curate for card/dashboard/document/collection, DB-transforms permission
+  for transform."
+  [findings]
+  (into {}
+        (for [[etype rows] (group-by :entity_type findings)
+              :let  [model (common/entity-type->model etype)
+                     ids   (into #{} (map :entity_id) rows)]
+              :when (and model (seq ids))
+              row   (t2/hydrate (t2/select model :id [:in ids]) :can_write)]
+          [[etype (:id row)] (boolean (:can_write row))])))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
@@ -432,6 +445,7 @@
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)
+        can-write   (can-write-by-entity findings)
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
@@ -458,6 +472,7 @@
                                      :detected_at         detected_at
                                      :entity_display_name entity_name
                                      :created_at          entity_created_at
+                                     :can_write           (get can-write [entity_type entity_id] false)
                                      :details             details*}
                               ;; keyed on entity type so a card row with NULL card_type still serves
                               ;; the key, as null

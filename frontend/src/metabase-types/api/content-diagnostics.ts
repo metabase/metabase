@@ -152,6 +152,7 @@ export type ContentDiagnosticsBaseFinding = {
   detected_at: string;
   entity_display_name: string | null;
   created_at: string | null;
+  can_write: boolean;
   details: ContentDiagnosticsBaseFindingDetails;
 };
 

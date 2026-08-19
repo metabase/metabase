@@ -144,6 +144,40 @@ describe("StaleContentPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("only lets findings the user can trash be selected", async () => {
+    setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_display_name: "Can trash",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_display_name: "Read only",
+          can_write: false,
+        }),
+      ],
+    });
+
+    const list = await screen.findByRole("treegrid");
+    await within(list).findByText("Can trash");
+
+    const rows = within(list).getAllByRole("row");
+    const writableRow = rows.find((row) =>
+      within(row).queryByText("Can trash"),
+    );
+    const readonlyRow = rows.find((row) =>
+      within(row).queryByText("Read only"),
+    );
+    if (writableRow == null || readonlyRow == null) {
+      throw new Error("expected both finding rows to render");
+    }
+
+    expect(within(writableRow).getByRole("checkbox")).toBeEnabled();
+    expect(within(readonlyRow).getByRole("checkbox")).toBeDisabled();
+  });
+
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {
     const finding = createMockContentDiagnosticsStaleFinding({
       entity_id: 42,
