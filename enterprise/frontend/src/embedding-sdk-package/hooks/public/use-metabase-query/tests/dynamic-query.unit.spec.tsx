@@ -10,6 +10,7 @@ import { count, filter, orderBy } from "..";
 
 beforeEach(resetTestState);
 afterEach(() => {
+  EMBEDDING_SDK_CONFIG.isDataApp = false;
   EMBEDDING_SDK_CONFIG.isDataAppDev = false;
 });
 
@@ -24,7 +25,45 @@ const statusFilter = filter(
   "paid",
 );
 
+describe("an unsynchronized table source", () => {
+  const UNSYNCHRONIZED_QUERY = { source: TEST_SCHEMA.tables.orders };
+
+  it("is refused in a deployed data app", async () => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(UNSYNCHRONIZED_QUERY),
+    ).rejects.toThrow("has not been synchronized");
+  });
+
+  it("still runs in the dev preview, before the first sync", async () => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(
+        UNSYNCHRONIZED_QUERY,
+      );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
+  });
+
+  it("still runs outside a data app, where the SDK addresses tables directly", async () => {
+    const datasetQuery =
+      await resolveDatasetQueryInBundle(createMockStore())(
+        UNSYNCHRONIZED_QUERY,
+      );
+
+    expect(stagesOf(datasetQuery)).toMatchObject([{ "source-table": 1 }]);
+  });
+});
+
 describe("dynamic query clauses", () => {
+  // The swap these cover is a data-app rule; elsewhere the table is what runs.
+  beforeEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = true;
+  });
+
   it("runs the published card in production and layers the dynamic stage on top", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
       STATIC_QUERY,
@@ -111,7 +150,9 @@ describe("dynamic query clauses", () => {
     expect(stagesOf(datasetQuery)).toMatchObject([{ "source-card": 41 }]);
   });
 
-  it("ignores the published card for a query that has none", async () => {
+  it("layers the dynamic stage on a preview query that has no card", async () => {
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())(
       { source: TEST_SCHEMA.tables.orders },
       { filters: [statusFilter] },

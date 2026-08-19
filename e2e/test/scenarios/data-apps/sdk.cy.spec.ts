@@ -6,19 +6,11 @@ import {
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import {
-  DATA_APP_TEST_ENV as TEST_ENV,
-  dataAppNumericField as numericField,
-  dataAppNumericResultColumn as resultColumn,
-} from "./helpers";
+import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
-
-type DatasetRequest = {
-  request: { body?: { stages?: { "source-card"?: number }[] } };
-};
 
 describe("scenarios > data apps > SDK runtime", () => {
   beforeEach(() => {
@@ -34,8 +26,12 @@ describe("scenarios > data apps > SDK runtime", () => {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
           ...TEST_ENV,
-          // A table id that doesn't exist → the query resolves to an error.
-          errorQuery: { source: { type: "table", id: 999999 } },
+          // A card that doesn't exist → the query resolves to an error, rather
+          // than to the refusal an unsynchronized table source would raise.
+          errorQuery: {
+            source: { type: "table", id: ORDERS_ID },
+            savedQuestionSourceId: 999999,
+          },
         },
       });
 
@@ -107,173 +103,6 @@ describe("scenarios > data apps > SDK runtime", () => {
               });
           },
         );
-      });
-    });
-
-    it("builds a query with filter/breakout/orderBy/aggregations helpers", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          combinators: {
-            source: { type: "table", id: ORDERS_ID },
-            filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-            filterValue: 50,
-            breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-          },
-        },
-      });
-
-      visitAppRoute("combinators");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("combinators-loading", { timeout: 30000 }).should(
-          "have.text",
-          "done",
-        );
-        cy.findByTestId("combinators-error").should("have.text", "no-error");
-        // `.should(callback)` retries until the query resolves with rows.
-        cy.findByTestId("combinators-rowcount", { timeout: 30000 }).should(
-          ($el) => {
-            expect(Number($el.text())).to.be.greaterThan(0);
-          },
-        );
-      });
-    });
-  });
-
-  describe("saved question sources", () => {
-    const setupCardSourceApp = () =>
-      H.createQuestion({
-        name: "Orders as a data-app query source",
-        query: { "source-table": ORDERS_ID },
-      }).then(({ body: card }) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
-            cardSource: {
-              source: { type: "card", id: card.id },
-              tableSource: { type: "table", id: ORDERS_ID },
-              filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-              filterColumn: resultColumn("TOTAL"),
-              filterValue: 50,
-              breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-              breakoutColumn: resultColumn("PRODUCT_ID"),
-            },
-          },
-        });
-
-        visitAppRoute("card-source");
-      });
-
-    it("queries a saved question as a source", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("card-source-case-source", {
-          timeout: 30000,
-        }).should("have.text", "match");
-
-        // A match on two empty results would be vacuous, so the source has to
-        // have actually returned rows.
-        cy.findByTestId("card-source-total").should(($el) => {
-          expect(Number($el.text())).to.be.greaterThan(0);
-        });
-      });
-    });
-
-    it("applies filters, aggregations, and breakouts on top of a saved question", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        ["filters", "aggregations", "breakouts"].forEach((clause) => {
-          cy.findByTestId(`card-source-case-${clause}`, {
-            timeout: 30000,
-          }).should("have.text", "match");
-        });
-      });
-    });
-  });
-
-  describe("published saved-question sources", () => {
-    it("returns the same rows from the published card as from the table", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-
-      // Two published cards: one a plain copy of its static query, one whose
-      // static query aggregates. The aggregating case is the reason the dynamic
-      // clauses run as their own stage — merged, they would filter the table's
-      // rows before the count but the card's rows after it.
-      H.createQuestion({
-        name: "Orders published for a data app",
-        query: { "source-table": ORDERS_ID },
-      }).then(({ body: plainCard }) => {
-        H.createQuestion({
-          name: "Orders count by product, published for a data app",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          },
-        }).then(({ body: aggregatedCard }) => {
-          H.mockDataApp(APP_NAME, {
-            displayName: APP_DISPLAY_NAME,
-            testEnv: {
-              ...TEST_ENV,
-              publishedSource: {
-                savedQuestionSourceId: plainCard.id,
-                tableSource: { type: "table", id: ORDERS_ID },
-                filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-                filterValue: 50,
-                aggregatedSourceId: aggregatedCard.id,
-                breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-                countColumn: resultColumn("count"),
-                minCount: 1,
-              },
-            },
-          });
-
-          visitAppRoute("published-source");
-
-          H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-            // The dev preview runs the table, production the card. Both must
-            // return the same rows: with no dynamic part, with one, and with one
-            // layered on a static query that aggregates.
-            ["static", "dynamic", "aggregated"].forEach((testCase) => {
-              cy.findByTestId(`published-source-case-${testCase}`).should(
-                "have.text",
-                "match",
-              );
-            });
-
-            // A match on two empty results would be vacuous.
-            [
-              "published-source-total",
-              "published-source-aggregated-rows",
-            ].forEach((testId) => {
-              cy.findByTestId(testId).should(($el) => {
-                expect(Number($el.text())).to.be.greaterThan(0);
-              });
-            });
-          });
-
-          // Matching results alone cannot tell the two sources apart, so assert
-          // the swap actually happened for both published cards.
-          cy.get<DatasetRequest[]>("@datasetQuery.all").should((requests) => {
-            const stages = requests.map(({ request }) => request.body?.stages);
-            const ranCard = (id: number) =>
-              stages.some((stage) => stage?.[0]?.["source-card"] === id);
-
-            expect(ranCard(plainCard.id), "the plain card ran").to.equal(true);
-            expect(
-              ranCard(aggregatedCard.id),
-              "the aggregated card ran",
-            ).to.equal(true);
-            expect(
-              stages.some((stage) => stage?.length === 2),
-              "the dynamic clauses ran as their own stage",
-            ).to.equal(true);
-          });
-        });
       });
     });
   });

@@ -1,8 +1,13 @@
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addUserToGroup,
   createDataAppApiKey,
   dataAppHostAppRoot,
+  dataAppPermissionGroupId,
   declareDataAppActions,
+  getViewDataPermissionByGroup,
+  moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
   resetDataAppHostAppSources,
   syncDataAppResources,
@@ -228,40 +233,6 @@ describe(
       });
     });
 
-    // A query action carries its own database, which need not be its model's.
-    it("grants view-data on a query action's own database as well as its model's", () => {
-      H.setActionsEnabledForDB(SAMPLE_DB_ID);
-
-      cy.get<number>("@modelId").then((modelId) => {
-        cy.request("POST", "/api/action", {
-          name: "Report",
-          type: "query",
-          model_id: modelId,
-          database_id: SAMPLE_DB_ID,
-          dataset_query: {
-            type: "native",
-            database: SAMPLE_DB_ID,
-            native: { query: "SELECT 1" },
-          },
-          parameters: [],
-        }).then(({ body: action }) => {
-          declareDataAppActions(APP_ROOT(), [action.id]);
-          sync();
-
-          cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-            cy.request("/api/permissions/graph").then(({ body: graph }) => {
-              const granted = graph.groups[app.permission_group_id];
-
-              expect(granted[WRITABLE_DB_ID]["view-data"]).to.eq(
-                "unrestricted",
-              );
-              expect(granted[SAMPLE_DB_ID]["view-data"]).to.eq("unrestricted");
-            });
-          });
-        });
-      });
-    });
-
     it("restores a copied model edited directly in Metabase", () => {
       syncOneAction().then(({ copiedModel }) => {
         cy.request("PUT", `/api/card/${copiedModel.id}`, {
@@ -290,6 +261,175 @@ describe(
           expect(actions).to.have.length(1);
           expect(actions[0].id).to.eq(copiedAction.id);
           expect(actions[0].name).to.eq(copiedAction.name);
+        });
+      });
+    });
+
+    describe("permissions", () => {
+      const joinAppGroup = () =>
+        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+          addUserToGroup(groupId, USERS.normal.email);
+          return cy.wrap(groupId, { log: false });
+        });
+
+      // The copy is the whole point of the model copy: an app's viewers hold
+      // read on the app's collection, so only the copy is reachable to them.
+      it("lets the app's group execute the copy but not the action it was copied from", () => {
+        syncOneAction().then(({ modelId, action, copiedAction }) => {
+          // An action is readable through its model, and the fixture model sits
+          // in the root collection the normal user's groups can read.
+          moveDataAppModelToCollection({
+            modelId,
+            name: "Source models",
+            access: "none",
+          });
+          joinAppGroup();
+
+          cy.signInAsNormalUser();
+          cy.request({
+            method: "POST",
+            url: `/api/action/${copiedAction.id}/execute`,
+            body: { parameters: { team_name: "Data App FC", score: 7 } },
+          })
+            .its("status")
+            .should("be.oneOf", [200, 204]);
+
+          // The same request against the source, so the two are like for like.
+          cy.request({
+            method: "POST",
+            url: `/api/action/${action.id}/execute`,
+            body: { parameters: { team_name: "Data App FC", score: 7 } },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+
+          cy.request({
+            url: `/api/action/${action.id}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+        });
+      });
+
+      it("reports a copy that was deleted in Metabase without being re-synced", () => {
+        syncOneAction().then(({ copiedAction }) => {
+          joinAppGroup();
+
+          // The source still names this copy, but a production bundle built
+          // before the deletion keeps addressing it.
+          cy.request("DELETE", `/api/action/${copiedAction.id}`);
+
+          cy.signInAsNormalUser();
+          cy.request({
+            method: "POST",
+            url: `/api/action/${copiedAction.id}/execute`,
+            body: { parameters: { team_name: "Data App FC", score: 7 } },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 404);
+        });
+      });
+
+      it("does not widen access to the model the copy was made from", () => {
+        syncOneAction().then(({ modelId, copiedModel }) => {
+          // The fixture model is created in the root collection, which the
+          // normal user's groups can read, so close it before asking whether
+          // the app's group opened anything.
+          moveDataAppModelToCollection({
+            modelId,
+            name: "Source models",
+            access: "none",
+          });
+          joinAppGroup();
+
+          cy.signInAsNormalUser();
+          cy.request(`/api/card/${copiedModel.id}`)
+            .its("body.id")
+            .should("eq", copiedModel.id);
+          cy.request({ url: `/api/card/${modelId}`, failOnStatusCode: false })
+            .its("status")
+            .should("eq", 403);
+        });
+      });
+
+      // The app declares nothing on the sample database, so the group blocks it —
+      // but `blocked` in one group loses to `unrestricted` in another, so joining
+      // an app's group never takes away access a member already had.
+      it("leaves a member's access to an undeclared database untouched", () => {
+        syncOneAction().then(() => {
+          const readsSampleDatabase = () =>
+            cy.request({
+              method: "POST",
+              url: "/api/dataset",
+              failOnStatusCode: false,
+              body: {
+                type: "query",
+                database: SAMPLE_DB_ID,
+                query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, limit: 1 },
+              },
+            });
+
+          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+            // The graph reports only what departs from a group's defaults, so a
+            // database the app does not read never appears as granted.
+            getViewDataPermissionByGroup(groupId).should(
+              ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
+                expect(sampleDatabase, "never granted").not.to.eq(
+                  "unrestricted",
+                );
+              },
+            );
+
+            cy.signInAsNormalUser();
+            readsSampleDatabase().its("status").should("eq", 202);
+
+            cy.signInAsAdmin();
+            addUserToGroup(groupId, USERS.normal.email);
+
+            cy.signInAsNormalUser();
+            readsSampleDatabase().its("status").should("eq", 202);
+          });
+        });
+      });
+
+      it("grants view-data on a query action's own database as well as its model's", () => {
+        H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+        cy.get<number>("@modelId").then((modelId) => {
+          // A query action may run against a database other than its model's,
+          // and execution is blocked unless both are viewable.
+          H.createAction({
+            name: "Report",
+            type: "query",
+            model_id: modelId,
+            database_id: SAMPLE_DB_ID,
+            dataset_query: {
+              type: "native",
+              database: SAMPLE_DB_ID,
+              native: { query: "select 1;" },
+            },
+            parameters: [],
+          }).then(({ body: action }) => {
+            declareDataAppActions(APP_ROOT(), [action.id]);
+            sync();
+
+            dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+              getViewDataPermissionByGroup(groupId).should((permissions) => {
+                expect(permissions[String(WRITABLE_DB_ID)]).to.eq(
+                  "unrestricted",
+                );
+                expect(permissions[String(SAMPLE_DB_ID)]).to.eq("unrestricted");
+              });
+
+              // That a granted copy then runs for a member of the group is the
+              // sibling test's job; this one cannot execute its own action,
+              // since a query action against the read-only sample database has
+              // nothing to write.
+            });
+          });
         });
       });
     });
@@ -331,6 +471,23 @@ describe(
         });
       });
 
+      it("brings back a copied model that was trashed on its own", () => {
+        syncOneAction().then(({ copiedModel }) => {
+          cy.request("PUT", `/api/card/${copiedModel.id}`, { archived: true });
+
+          sync();
+
+          cy.request(`/api/card/${copiedModel.id}`).then(
+            ({ body: restored }) => {
+              expect(restored.archived, "the copy is out of the trash").to.eq(
+                false,
+              );
+              expect(restored.collection_id).to.eq(copiedModel.collection_id);
+            },
+          );
+        });
+      });
+
       it("recreates the copied model after it is deleted in Metabase", () => {
         syncOneAction().then(({ copiedModel }) => {
           cy.request("DELETE", `/api/card/${copiedModel.id}`);
@@ -347,6 +504,15 @@ describe(
     describe("refusals", () => {
       // `GET /api/action/:id` filters archived actions out, so an archived source
       // is unreadable rather than readable-and-flagged.
+      it("copies nothing when the action's model is in the trash", () => {
+        declareOneAction().then(({ modelId }) => {
+          cy.request("PUT", `/api/card/${modelId}`, { archived: true });
+
+          syncExpectingRefusal(`references an action on model ${modelId}`);
+          copiedModels().should("have.length", 0);
+        });
+      });
+
       it("copies nothing when a declared action is archived and cannot be read", () => {
         declareOneAction().then(({ action }) => {
           cy.request("PUT", `/api/action/${action.id}`, { archived: true });

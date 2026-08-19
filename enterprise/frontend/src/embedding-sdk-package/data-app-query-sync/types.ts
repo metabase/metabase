@@ -60,6 +60,7 @@ export interface MetabaseCard {
   name: string;
   type: string;
   collection_id: number | null;
+  archived?: boolean;
   dataset_query: Record<string, unknown>;
   database_id?: number | null;
   display?: string | null;
