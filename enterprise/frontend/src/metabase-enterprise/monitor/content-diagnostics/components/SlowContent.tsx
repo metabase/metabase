@@ -62,7 +62,6 @@ export function SlowContent({
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
-    refetch,
   } = useListSlowFindingsQuery(
     {
       query,
@@ -192,7 +191,6 @@ export function SlowContent({
       <ContentDiagnosticsBulkTrashBar
         selectedFindings={selectedFindings}
         onClear={clearRowSelection}
-        onTrashed={refetch}
       />
     </>
   );

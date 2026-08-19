@@ -57,7 +57,6 @@ export function StaleContent({
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
-    refetch,
   } = useListStaleFindingsQuery(
     {
       query,
@@ -187,7 +186,6 @@ export function StaleContent({
       <ContentDiagnosticsBulkTrashBar
         selectedFindings={selectedFindings}
         onClear={clearRowSelection}
-        onTrashed={refetch}
       />
     </>
   );

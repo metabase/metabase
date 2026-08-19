@@ -222,11 +222,13 @@ describe("StaleContentPage", () => {
         archived: true,
       });
     }
-    // the findings list is refetched once the entities are archived
-    expect(
-      fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
-        .length,
-    ).toBeGreaterThan(1);
+    // archiving invalidates the findings cache, so the list refetches
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
+          .length,
+      ).toBeGreaterThan(1);
+    });
   });
 
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {

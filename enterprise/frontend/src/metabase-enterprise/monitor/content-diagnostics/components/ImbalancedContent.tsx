@@ -66,7 +66,6 @@ export function ImbalancedContent({
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
-    refetch,
   } = useListImbalancedFindingsQuery(
     {
       query,
@@ -203,7 +202,6 @@ export function ImbalancedContent({
         <ContentDiagnosticsBulkTrashBar
           selectedFindings={selectedFindings}
           onClear={clearRowSelection}
-          onTrashed={refetch}
         />
       )}
     </>

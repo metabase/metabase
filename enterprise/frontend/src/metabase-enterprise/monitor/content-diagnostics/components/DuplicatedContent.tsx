@@ -60,7 +60,6 @@ export function DuplicatedContent({
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
-    refetch,
   } = useListDuplicatedFindingsQuery(
     {
       query,
@@ -190,7 +189,6 @@ export function DuplicatedContent({
       <ContentDiagnosticsBulkTrashBar
         selectedFindings={selectedFindings}
         onClear={clearRowSelection}
-        onTrashed={refetch}
       />
     </>
   );

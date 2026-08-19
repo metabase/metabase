@@ -16,7 +16,6 @@ import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 type ContentDiagnosticsBulkTrashBarProps = {
   selectedFindings: ContentDiagnosticsBaseFinding[];
   onClear: () => void;
-  onTrashed: () => void;
 };
 
 type TrashCopy = {
@@ -86,7 +85,6 @@ function getTrashCopy(
 export function ContentDiagnosticsBulkTrashBar({
   selectedFindings,
   onClear,
-  onTrashed,
 }: ContentDiagnosticsBulkTrashBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
@@ -114,7 +112,6 @@ export function ContentDiagnosticsBulkTrashBar({
       );
     }
     setIsConfirmOpen(false);
-    onTrashed();
     onClear();
   };
 
