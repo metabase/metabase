@@ -3,6 +3,12 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
+(defn request-jwt
+  "JWT from the request `:params` (which includes both query string and form body) or JSON body (`:body`), in that order."
+  [req]
+  (or (get-in req [:params :jwt])
+      (get-in req [:body :jwt])))
+
 (defn- select-sso-backend
   [req]
   (let [preferred-method (get-in req [:params :preferred_method])]

@@ -92,7 +92,8 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {:join  [[{:select [:id :name :type]
+        base-query (cond-> {:join  [[^:allow-subquery
+                                     {:select [:id :name :type]
                                       :from   [[(metabot-v3.tools.u/metabot-metrics-and-models-query id)
                                                 :scope]]}
                                      :card]

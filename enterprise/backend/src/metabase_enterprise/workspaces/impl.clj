@@ -24,34 +24,37 @@
              {:where [:and
                       [:= :workspace_input.access_granted false]
                       ;; Ignore tables that will be shadowed by outputs of other transforms.
-                      [:not [:exists {:select [1]
-                                      :from   [[:workspace_output :wo]]
-                                      :where  [:and
-                                               [:= :wo.workspace_id :workspace_input.workspace_id]
-                                               [:= :wo.db_id :workspace_input.db_id]
-                                               [:or
-                                                [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
-                                                [:= :wo.global_schema :workspace_input.schema]]
-                                               [:= :wo.global_table :workspace_input.table]]}]]
-                      [:not [:exists {:select [1]
-                                      :from   [[:workspace_output_external :woe]]
-                                      :where  [:and
-                                               [:= :woe.workspace_id :workspace_input.workspace_id]
-                                               [:= :woe.db_id :workspace_input.db_id]
-                                               [:or
-                                                [:and [:= :woe.global_schema nil] [:= :workspace_input.schema nil]]
-                                                [:= :woe.global_schema :workspace_input.schema]]
-                                               [:= :woe.global_table :workspace_input.table]]}]]
+                      [:not [:exists ^:allow-subquery
+                             {:select [1]
+                              :from   [[:workspace_output :wo]]
+                              :where  [:and
+                                       [:= :wo.workspace_id :workspace_input.workspace_id]
+                                       [:= :wo.db_id :workspace_input.db_id]
+                                       [:or
+                                        [:and [:= :wo.global_schema nil] [:= :workspace_input.schema nil]]
+                                        [:= :wo.global_schema :workspace_input.schema]]
+                                       [:= :wo.global_table :workspace_input.table]]}]]
+                      [:not [:exists ^:allow-subquery
+                             {:select [1]
+                              :from   [[:workspace_output_external :woe]]
+                              :where  [:and
+                                       [:= :woe.workspace_id :workspace_input.workspace_id]
+                                       [:= :woe.db_id :workspace_input.db_id]
+                                       [:or
+                                        [:and [:= :woe.global_schema nil] [:= :workspace_input.schema nil]]
+                                        [:= :woe.global_schema :workspace_input.schema]]
+                                       [:= :woe.global_table :workspace_input.table]]}]]
                       ;; Ignore tables that don't currently exist.
-                      [:exists {:select [1]
-                                :from [[:metabase_table :t]]
-                                :where [:and
-                                        [:= :active true]
-                                        [:= :t.db_id :workspace_input.db_id]
-                                        [:or
-                                         [:and [:= :t.schema nil] [:= :workspace_input.schema nil]]
-                                         [:= :t.schema :workspace_input.schema]]
-                                        [:= :t.name :workspace_input.table]]}]]}))
+                      [:exists ^:allow-subquery
+                       {:select [1]
+                        :from [[:metabase_table :t]]
+                        :where [:and
+                                [:= :active true]
+                                [:= :t.db_id :workspace_input.db_id]
+                                [:or
+                                 [:and [:= :t.schema nil] [:= :workspace_input.schema nil]]
+                                 [:= :t.schema :workspace_input.schema]]
+                                [:= :t.name :workspace_input.table]]}]]}))
 
 (defn- external-input->table
   [{:keys [schema table]}]
@@ -468,11 +471,12 @@
                 :workspace_id ws-id
                 :ref_id ref-id
                 ;; Use a subselect to avoid left over gunk from race conditions.
-                {:where [:< :transform_version {:select [:analysis_version]
-                                                :from   [:workspace_transform]
-                                                :where  [:and
-                                                         [:= :workspace_id ws-id]
-                                                         [:= :ref_id ref-id]]}]})))
+                {:where [:< :transform_version ^:allow-subquery
+                         {:select [:analysis_version]
+                          :from   [:workspace_transform]
+                          :where  [:and
+                                   [:= :workspace_id ws-id]
+                                   [:= :ref_id ref-id]]}]})))
 
 (defn- cleanup-old-graph-versions!
   "Delete obsolete graph-level rows."
@@ -483,9 +487,10 @@
     (t2/delete! model
                 :workspace_id ws-id
                 ;; Use a subselect to avoid left over gunk from race conditions.
-                {:where [:< :graph_version {:select [:graph_version]
-                                            :from   [:workspace]
-                                            :where  [:= :id ws-id]}]})))
+                {:where [:< :graph_version ^:allow-subquery
+                         {:select [:graph_version]
+                          :from   [:workspace]
+                          :where  [:= :id ws-id]}]})))
 
 (defn- analyze-transform!
   "Analyze a transform and write its outputs/inputs with the given transform_version.
@@ -508,6 +513,7 @@
                                      :where    [:and
                                                 [:= :workspace_transform.workspace_id ws-id]
                                                 [:not [:exists
+                                                       ^:allow-subquery
                                                        {:select [1]
                                                         :from   [[:workspace_output :wo]]
                                                         :where  [:and

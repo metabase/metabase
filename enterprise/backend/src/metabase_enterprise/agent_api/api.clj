@@ -306,7 +306,7 @@
                     :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
      [:maybe [:sequential ::tools.api/order-by]]]
     [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-metric-request
   "Request schema for constructing a query from a metric.
@@ -316,7 +316,7 @@
     [:metric_id ms/PositiveInt]
     [:filters  {:optional true} [:maybe [:sequential ::tools.api/filter]]]
     [:group_by {:optional true} [:maybe [:sequential ::tools.api/group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+   [:map {:closed false, :encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::construct-query-request
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
@@ -407,6 +407,10 @@
   (let [query (-> encoded-query
                   u/decode-base64
                   json/decode+kw)
+        ;; `:info` is assoc'd rather than merged so it comes entirely from the server. This endpoint runs a whole
+        ;; query decoded straight out of the request, and every `:info` key the server does not itself supply would
+        ;; otherwise be the caller's: `:card-id` names the Card whose `result_metadata` gets rewritten once the query
+        ;; finishes, and whose `visualization_settings` the QP loads.
         info  {:executed-by api/*current-user-id*
                :context     :agent}]
     (qp.streaming/streaming-response [rff :api]
@@ -414,7 +418,7 @@
        (-> query
            (update-in [:middleware :js-int-to-string?] (fnil identity true))
            qp/userland-query-with-default-constraints
-           (update :info merge info))
+           (assoc :info info))
        rff))))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------

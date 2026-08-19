@@ -223,7 +223,6 @@ export const getCollectionItemsOptions = ({
 }) => {
   return {
     models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
   };
 };
 

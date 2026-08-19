@@ -65,7 +65,8 @@
 (defn- bookmarks-union-query
   [user-id]
   (let [as-null (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
-        base-queries [{:select [:card_id
+        base-queries [^:allow-subquery
+                      {:select [:card_id
                                 [as-null :dashboard_id]
                                 [as-null :collection_id]
                                 [as-null :document_id]
@@ -74,6 +75,7 @@
                                 :created_at]
                        :from   [:card_bookmark]
                        :where  [:= :user_id user-id]}
+                      ^:allow-subquery
                       {:select [[as-null :card_id]
                                 :dashboard_id
                                 [as-null :collection_id]
@@ -83,6 +85,7 @@
                                 :created_at]
                        :from   [:dashboard_bookmark]
                        :where  [:= :user_id user-id]}
+                      ^:allow-subquery
                       {:select [[as-null :card_id]
                                 [as-null :dashboard_id]
                                 :collection_id
@@ -92,7 +95,9 @@
                                 :created_at]
                        :from   [:collection_bookmark]
                        :where [:= :user_id user-id]}]]
+    ^:allow-subquery
     {:union-all (conj base-queries
+                      ^:allow-subquery
                       {:select [[as-null :card_id]
                                 [as-null :dashboard_id]
                                 [as-null :collection_id]

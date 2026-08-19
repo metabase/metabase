@@ -30,6 +30,15 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+(defn- transform-database-permissions?
+  "Whether the current user has transforms permission on both databases `instance` touches: the one its `:source`
+  reads from and the one its `:target` writes to, each derived from the instance rather than its stored columns."
+  [instance]
+  (let [source-db-id (or (transforms.i/source-db-id instance) (:source_database_id instance))
+        target-db-id (transforms.i/target-db-id instance)]
+    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+            (distinct (keep identity [source-db-id target-db-id])))))
+
 (defmethod mi/can-read? :model/Transform
   ([instance]
    (and (api/is-data-analyst?)
@@ -42,7 +51,7 @@
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (and (mi/can-read? instance)
-        (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+        (transform-database-permissions? instance)
         (remote-sync/transforms-editable?)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
@@ -60,12 +69,11 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (let [source-db-id (or (:source_database_id instance) (transforms.i/source-db-id instance))]
-    (and (or api/*is-superuser?*
-             (and api/*is-data-analyst?*
-                  (transforms.util/source-tables-readable? instance)))
-         (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
-         (remote-sync/transforms-editable?))))
+  (and (or api/*is-superuser?*
+           (and api/*is-data-analyst?*
+                (transforms.util/source-tables-readable? instance)))
+       (transform-database-permissions? instance)
+       (remote-sync/transforms-editable?)))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."

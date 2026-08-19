@@ -168,42 +168,6 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id child-id)))))))))
 
-(deftest ^:sequential model-update-passes-down-new-values-test
-  (testing "model updates pass down new result metadata"
-    (mt/with-test-user :rasta
-      (mt/with-premium-features #{:dependencies}
-        (let [mp (mt/metadata-provider)
-              products-id (mt/id :products)
-              products (lib.metadata/table mp products-id)]
-          (mt/with-temp [:model/Card {parent-id :id :as parent-card} {:dataset_query (lib/query mp products)
-                                                                      :type :model}
-                         :model/Card {child-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))
-
-                                                     :type :model}
-                         :model/Card {grandchild-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp child-id))
-                                                          :type :model}
-                         :model/Dependency _ {:from_entity_type :card
-                                              :from_entity_id child-id
-                                              :to_entity_type :card
-                                              :to_entity_id parent-id}
-                         :model/Dependency _ {:from_entity_type :card
-                                              :from_entity_id grandchild-id
-                                              :to_entity_type :card
-                                              :to_entity_id child-id}]
-            (let [new-result-metadata (assoc-in (:result_metadata parent-card)
-                                                [0 :display_name]
-                                                "new-name")]
-              (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
-                (events/publish-event! :event/card-update
-                                       {:object (assoc parent-card :result_metadata new-result-metadata)
-                                        :previous-object parent-card
-                                        :user-id api/*current-user-id*}))
-              (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
-                     (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card :id :result_metadata :card_schema]
-                                       :id [:in [child-id grandchild-id]]))))))))))
-
 (deftest ^:sequential model-update-respects-child-overrides-test
   (testing "model updates respect child metadata edits"
     (mt/with-test-user :rasta

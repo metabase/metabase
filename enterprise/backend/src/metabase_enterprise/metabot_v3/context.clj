@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.metadata-perms :as metabot-v3.perms]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
@@ -198,9 +199,12 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (-> context
-       enhance-context-with-schema
-       annotate-transform-source-types
-       add-backend-capabilities
-       add-recent-views
-       (set-user-time opts))))
+   ;; Every viewing item asks the same tables the same permission questions, so memoize the
+   ;; permission lookups for the duration of this context build.
+   (metabot-v3.perms/with-cache
+     (-> context
+         enhance-context-with-schema
+         annotate-transform-source-types
+         add-backend-capabilities
+         add-recent-views
+         (set-user-time opts)))))
