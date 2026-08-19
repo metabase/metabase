@@ -3,7 +3,8 @@
  * are dropped from production bundles once their exports go unused, so anything they do at import time is silently lost.
  * This reports module-scope code that does work at import.
  * A dropped file also takes with it everything only it imports, so it also reports an import
- * of a file that frontend/lint/side-effect-files.json classifies as having a global effect.
+ * of a file that frontend/lint/side-effect-files.json classifies as having a global effect,
+ * or of a third-party package the registry lists as doing global work at import.
  * The config decides which files are linted, not the rule.
  */
 
@@ -13,6 +14,7 @@ const path = require("path");
 const {
   DEFAULT_REGISTRY_PATH,
   classify,
+  classifyPackage,
   isFacade,
   loadRegistry,
 } = require("../../side-effect-registry");
@@ -205,6 +207,8 @@ module.exports = {
         "`{{kind}}` at module scope means work runs at import time. Move it into a function, or into a registration module listed in SIDE_EFFECT_PATHS.",
       importsGlobalEffect:
         "'{{source}}' runs an effect at import that code outside it depends on. A side-effect-free file must not be the reason it loads; import it from an entry (or list it in SIDE_EFFECT_PATHS if this file is a registration module).",
+      importsGlobalEffectPackage:
+        "'{{source}}' does work at import that code outside it depends on (a polyfill, a plugin on a host, global CSS). A side-effect-free file must not be the reason it loads; import it from an entry, or through the vendor's facade.",
     },
   },
 
@@ -398,11 +402,34 @@ module.exports = {
       }
     }
 
-    function checkTopLevelStatement(node) {
-      if (node.type === "ImportDeclaration" && node.specifiers.length === 0) {
+    // A listed package is reported the same way whether the import is bare or has bindings,
+    // unless this file is a registration module, where loading it is the point.
+    function checkImport(node) {
+      const bare = node.specifiers.length === 0;
+      if (!bare && isTypeOnly(node)) {
+        return;
+      }
+      const source = node.source.value;
+      if (
+        !isInternalModule(source) &&
+        classifyPackage(registry, source) === "global" &&
+        !sideEffectPaths.allows(normalizePath(filename))
+      ) {
+        context.report({
+          node,
+          messageId: "importsGlobalEffectPackage",
+          data: { source },
+        });
+      } else if (bare) {
         checkBareImport(node);
-      } else if (node.type === "ImportDeclaration" && !isTypeOnly(node)) {
+      } else {
         checkBindingImport(node);
+      }
+    }
+
+    function checkTopLevelStatement(node) {
+      if (node.type === "ImportDeclaration") {
+        checkImport(node);
       } else if (CONTROL_FLOW_STATEMENTS.has(node.type)) {
         context.report({
           node,

@@ -101,6 +101,33 @@ function scanEffectFiles() {
   return findings;
 }
 
+// Listed packages that no source file imports, so the list cannot keep dead entries.
+// A specifier is imported when it appears quoted, alone or with a subpath, anywhere in a source file.
+function unimportedPackages(registry, files) {
+  const unseen = new Map(
+    Object.keys(registry.packages).map((specifier) => [
+      specifier,
+      new RegExp(`["'\`]${escapeRegExp(specifier)}(/[^"'\`]*)?["'\`]`),
+    ]),
+  );
+  for (const file of files) {
+    if (unseen.size === 0) {
+      break;
+    }
+    const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+    for (const [specifier, pattern] of unseen) {
+      if (pattern.test(source)) {
+        unseen.delete(specifier);
+      }
+    }
+  }
+  return [...unseen.keys()];
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // { missing: effect files the registry does not list, stale: exact entries whose file is clean }
 function diffRegistry(registry, effectFiles) {
   const effectSet = new Set(effectFiles);
@@ -137,7 +164,12 @@ function main(argv) {
   const effectFiles = [...findings.keys()];
   const registry = loadRegistry(DEFAULT_REGISTRY_PATH);
   const diff = diffRegistry(registry, effectFiles);
-  const problems = validateRegistry(registry, effectFiles);
+  const problems = [
+    ...validateRegistry(registry, effectFiles),
+    ...unimportedPackages(registry, listSourceFiles()).map(
+      (specifier) => `packages: nothing imports "${specifier}"`,
+    ),
+  ];
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
     `${effectFiles.length} files with import-time effects (${seconds}s)`,
@@ -179,6 +211,7 @@ module.exports = {
   listSourceFiles,
   scanEffectFiles,
   diffRegistry,
+  unimportedPackages,
 };
 
 if (require.main === module) {

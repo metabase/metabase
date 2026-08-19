@@ -1,7 +1,12 @@
 import fs from "fs";
 import path from "path";
 
-import { diffRegistry, scanEffectFiles } from "../scripts/side-effect-files";
+import {
+  diffRegistry,
+  listSourceFiles,
+  scanEffectFiles,
+  unimportedPackages,
+} from "../scripts/side-effect-files";
 import {
   DEFAULT_REGISTRY_PATH,
   loadRegistry,
@@ -31,6 +36,10 @@ describe("side-effect-files.json", () => {
 
   it("is well formed", () => {
     expect(validateRegistry(registry, effectFiles)).toEqual([]);
+  });
+
+  it("only lists packages something imports", () => {
+    expect(unimportedPackages(registry, listSourceFiles())).toEqual([]);
   });
 
   it("only names facades that exist", () => {

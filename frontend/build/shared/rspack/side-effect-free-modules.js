@@ -19,6 +19,9 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
  * fails silently, in production only, by dropping code that was meant to run, so
  * the `metabase/no-module-side-effects` lint rule is applied to every directory
  * listed here (see eslint.config.mjs) and reports the import-time work it can see.
+ * Third-party imports are assumed self-contained: a package whose import-time work non-importers rely on
+ * is listed in the registry's `packages` (frontend/lint/side-effect-files.json),
+ * and a vendor with host-extending plugins gets a facade.
  *
  * Only applies to production builds, where `optimization.sideEffects` is on.
  */

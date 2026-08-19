@@ -4,6 +4,16 @@
     "frontend/src/metabase/ui/",
     "frontend/src/metabase/redux/"
   ],
+  "packages": {
+    "@mantine/core/styles.css": "global",
+    "@mantine/dates/styles.css": "global",
+    "@xyflow/react/dist/style.css": "global",
+    "fast-text-encoding": "global",
+    "leaflet-draw": "global",
+    "leaflet/dist/leaflet.css": "global",
+    "react-grid-layout/css/styles.css": "global",
+    "react-resizable/css/styles.css": "global"
+  },
   "files": {
     "frontend/src/metabase/app*.ts*": "entry",
     "**/routes.tsx": "global",

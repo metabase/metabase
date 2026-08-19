@@ -23,7 +23,8 @@ const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
 
 // Real files, because the import check resolves each import on disk before looking it up.
 // registry.json classifies effects/{global,entry,self,registration}.ts, leaves unclassified.ts
-// unclassified, and names facade/ a facade. pure.ts is not listed.
+// unclassified, names facade/ a facade, and lists the packages leaflet-draw and @mantine/core/styles.css.
+// pure.ts is not listed.
 const FIXTURES = path.resolve(__dirname, "fixtures/side-effect-files");
 const IMPORTER = path.join(FIXTURES, "importer/Widget.tsx");
 const registryOptions = {
@@ -367,6 +368,32 @@ const VALID_CASES = [
     filename: IMPORTER,
     options: [registryOptions],
   },
+  {
+    name: "imports packages the registry does not list",
+    code: `
+      import React from "react";
+      import cx from "classnames";
+      import * as d3 from "d3";
+      export const all = [React, cx, d3];
+    `,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "type-only import of a listed package",
+    code: `import type { DrawEvents } from "leaflet-draw";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+  },
+  {
+    name: "imports a listed package from a file in sideEffectPaths",
+    code: `
+      import { Draw } from "leaflet-draw";
+      export { Draw };
+    `,
+    filename: REGISTRATION_FILE,
+    options: [{ ...registryOptions, sideEffectPaths: [REGISTRATION_FILE] }],
+  },
 ];
 
 const INVALID_CASES = [
@@ -455,7 +482,7 @@ const INVALID_CASES = [
   },
   {
     name: "bare package import",
-    code: `import "leaflet-draw";`,
+    code: `import "some-polyfill";`,
     errors: [{ messageId: "bareImport" }],
   },
   {
@@ -696,6 +723,27 @@ const INVALID_CASES = [
     filename: IMPORTER,
     options: [registryOptions],
     errors: [{ messageId: "importsGlobalEffect" }],
+  },
+  {
+    name: "imports a listed package with bindings",
+    code: `import { Draw } from "leaflet-draw";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffectPackage" }],
+  },
+  {
+    name: "bare import of a listed package",
+    code: `import "@mantine/core/styles.css";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffectPackage" }],
+  },
+  {
+    name: "bare import of a subpath of a listed package",
+    code: `import "leaflet-draw/dist/leaflet.draw.css";`,
+    filename: IMPORTER,
+    options: [registryOptions],
+    errors: [{ messageId: "importsGlobalEffectPackage" }],
   },
   {
     name: "extra pure callee only allows the listed name",

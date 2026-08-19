@@ -11,6 +11,13 @@
  * `unclassified` files are treated as "global" until someone classifies them.
  * `facades` are directory prefixes whose effect is their own exports (`metabase/ui`, `metabase/dayjs`),
  * so importing them with bindings is always fine.
+ * `packages` are bare specifiers of third-party packages whose import-time work is consumed by code
+ * that does not import them (a polyfill, a plugin on a host like `leaflet-draw` on `L`, global CSS).
+ * It is hand-maintained: node_modules are not scanned, and a package it does not list is assumed
+ * self-contained, its import-time work serving only its own exports.
+ * A key matches its exact specifier and every subpath under it (`leaflet-draw` covers `leaflet-draw/x`).
+ * A vendor whose plugins extend the host (dayjs) gets a facade, and other rules forbid importing it raw,
+ * so it needs no entry here.
  * Keys are repo-relative paths; a key containing `*` is a micromatch pattern, and an exact key wins over a pattern.
  * `scripts/side-effect-files.js --check` keeps the file in step with the tree.
  */
@@ -24,6 +31,8 @@ const DEFAULT_REGISTRY_PATH = path.resolve(__dirname, "side-effect-files.json");
 
 const CLASSIFICATIONS = ["self", "global", "entry"];
 
+const PACKAGE_CLASSIFICATIONS = ["global"];
+
 function loadRegistry(registryPath = DEFAULT_REGISTRY_PATH) {
   const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
   const files = registry.files || {};
@@ -31,6 +40,7 @@ function loadRegistry(registryPath = DEFAULT_REGISTRY_PATH) {
   return {
     facades: registry.facades || [],
     files,
+    packages: registry.packages || {},
     patterns,
     unclassified: new Set(registry.unclassified || []),
   };
@@ -54,6 +64,14 @@ function isFacade(registry, file) {
   return registry.facades.some((prefix) => file.startsWith(prefix));
 }
 
+// The classification of a package import source, or null when the registry does not list the package.
+function classifyPackage(registry, source) {
+  const listed = Object.keys(registry.packages).find(
+    (specifier) => source === specifier || source.startsWith(`${specifier}/`),
+  );
+  return listed == null ? null : registry.packages[listed];
+}
+
 // Problems a hand-edited registry can have. Empty when it is well formed.
 function validateRegistry(registry, effectFiles) {
   const problems = [];
@@ -63,6 +81,14 @@ function validateRegistry(registry, effectFiles) {
     }
     if (registry.unclassified.has(key)) {
       problems.push(`${key}: both classified and unclassified`);
+    }
+  }
+  for (const [specifier, value] of Object.entries(registry.packages)) {
+    if (specifier === "" || specifier.startsWith(".")) {
+      problems.push(`packages: "${specifier}" is not a bare specifier`);
+    }
+    if (!PACKAGE_CLASSIFICATIONS.includes(value)) {
+      problems.push(`${specifier}: unknown package classification "${value}"`);
     }
   }
   for (const file of effectFiles) {
@@ -88,6 +114,7 @@ module.exports = {
   CLASSIFICATIONS,
   loadRegistry,
   classify,
+  classifyPackage,
   isFacade,
   validateRegistry,
 };

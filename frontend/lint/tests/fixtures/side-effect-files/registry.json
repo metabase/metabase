@@ -1,5 +1,9 @@
 {
   "facades": ["frontend/lint/tests/fixtures/side-effect-files/facade/"],
+  "packages": {
+    "leaflet-draw": "global",
+    "@mantine/core/styles.css": "global"
+  },
   "files": {
     "frontend/lint/tests/fixtures/side-effect-files/effects/global.ts": "global",
     "frontend/lint/tests/fixtures/side-effect-files/effects/entry.ts": "entry",
