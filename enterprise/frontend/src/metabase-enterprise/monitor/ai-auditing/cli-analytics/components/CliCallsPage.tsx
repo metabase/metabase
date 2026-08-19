@@ -1,10 +1,10 @@
-import { useCliAnalyticsContext } from "./CliAnalyticsSectionLayout";
 import { CliEventsTable } from "./CliEventsTable";
+import { useCliAnalyticsContext } from "./context";
 
 export function CliCallsPage() {
   const {
-    dataSources,
-    chartFilters,
+    dataSources: { provider, table, groupMembersTable },
+    chartFilters: { dateFilter, userId, groupId, tenantId },
     hasTenants,
     hasPii,
     page,
@@ -16,8 +16,13 @@ export function CliCallsPage() {
 
   return (
     <CliEventsTable
-      {...dataSources}
-      {...chartFilters}
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      dateFilter={dateFilter}
+      userId={userId}
+      groupId={groupId}
+      tenantId={tenantId}
       hasTenants={hasTenants}
       hasPii={hasPii}
       page={page}

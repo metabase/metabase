@@ -1,8 +1,7 @@
-import { type ReactNode, createContext, useContext, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { PatchUrlStateOptions } from "metabase/common/hooks/use-url-state";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import {
   type MonitorHeaderTab,
@@ -19,62 +18,57 @@ import {
   VIEW_MCP_TOOL_CALLS,
 } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
 import { useMcpHasData } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/hooks/useMcpHasData";
-import type { McpEventSortColumn } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 import { mcpUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/url-state";
 import {
   ConversationFilters as McpToolCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
-import type { SortingOptions } from "metabase-types/api";
 
 import { McpAnalyticsEmptyState } from "./McpAnalyticsEmptyState";
+import {
+  McpAnalyticsContextProvider,
+  type McpAnalyticsContextValue,
+} from "./context";
 
-type McpDataSources = {
-  provider: MetadataProvider | null;
-  table: TableMetadata | CardMetadata | null;
-  groupMembersTable: TableMetadata | CardMetadata | null;
+type McpAnalyticsRouteContentProps = {
+  context: McpAnalyticsContextValue;
+  error: unknown;
+  isInitialLoading: boolean;
+  showEmpty: boolean;
 };
 
-type McpChartFilters = {
-  dateFilter: ReturnType<typeof useFilterOptions>["dateFilter"];
-  userId: number | undefined;
-  groupId: number | undefined;
-  tenantId: number | undefined;
-};
-
-export type McpAnalyticsContextValue = {
-  dataSources: McpDataSources;
-  chartFilters: McpChartFilters;
-  hasTenants: boolean;
-  hasPii: boolean;
-  hasErrors: boolean;
-  page: number;
-  total: number;
-  onPageChange: (page: number, options?: PatchUrlStateOptions) => void;
-  sortingOptions: SortingOptions<McpEventSortColumn>;
-  onSortingOptionsChange: (
-    sortingOptions: SortingOptions<McpEventSortColumn>,
-  ) => void;
-};
-
-const McpAnalyticsContext = createContext<McpAnalyticsContextValue | null>(
-  null,
-);
-
-export function useMcpAnalyticsContext(): McpAnalyticsContextValue {
-  const context = useContext(McpAnalyticsContext);
-  if (context == null) {
-    throw new Error(
-      "useMcpAnalyticsContext must be used within McpAnalyticsSectionLayout",
+function McpAnalyticsRouteContent({
+  context,
+  error,
+  isInitialLoading,
+  showEmpty,
+}: McpAnalyticsRouteContentProps) {
+  if (error != null) {
+    return (
+      <Flex mih="60vh" align="center" justify="center">
+        <LoadingAndErrorWrapper loading={false} error={error} />
+      </Flex>
     );
   }
-  return context;
+
+  if (isInitialLoading) {
+    return (
+      <Flex mih="60vh" align="center" justify="center">
+        <Loader size="lg" />
+      </Flex>
+    );
+  }
+
+  if (showEmpty) {
+    return <McpAnalyticsEmptyState />;
+  }
+
+  return (
+    <McpAnalyticsContextProvider value={context}>
+      <Outlet />
+    </McpAnalyticsContextProvider>
+  );
 }
 
 export function McpAnalyticsSectionLayout(): ReactNode {
@@ -100,13 +94,18 @@ export function McpAnalyticsSectionLayout(): ReactNode {
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
-  const dataSources = {
-    provider: toolCallsAudit.provider,
-    table: toolCallsAudit.table,
-    groupMembersTable: groupMembersAudit.table,
-  };
-  const chartFilters = { dateFilter, userId, groupId, tenantId };
-
+  const dataSources = useMemo(
+    () => ({
+      provider: toolCallsAudit.provider,
+      table: toolCallsAudit.table,
+      groupMembersTable: groupMembersAudit.table,
+    }),
+    [groupMembersAudit.table, toolCallsAudit.provider, toolCallsAudit.table],
+  );
+  const chartFilters = useMemo(
+    () => ({ dateFilter, userId, groupId, tenantId }),
+    [dateFilter, groupId, tenantId, userId],
+  );
   const sortingOptions = useMemo(
     () => ({ sort_column, sort_direction }),
     [sort_column, sort_direction],
@@ -123,7 +122,6 @@ export function McpAnalyticsSectionLayout(): ReactNode {
 
   const usagePath = Urls.monitorAiAuditingMcpUsage();
   const eventsPath = Urls.monitorAiAuditingMcpEvents();
-
   const tabs: MonitorHeaderTab[] = [
     {
       label: t`Usage`,
@@ -138,25 +136,37 @@ export function McpAnalyticsSectionLayout(): ReactNode {
   ];
 
   const isEventsRoute = location.pathname === eventsPath;
-
-  const outletContext: McpAnalyticsContextValue = {
-    dataSources,
-    chartFilters,
-    hasTenants,
-    hasPii,
-    hasErrors,
-    page,
-    total: count,
-    onPageChange: (newPage, options) =>
-      patchUrlState({ page: newPage }, options),
-    sortingOptions,
-    onSortingOptionsChange: (newSorting) =>
-      patchUrlState({
-        sort_column: newSorting.sort_column,
-        sort_direction: newSorting.sort_direction,
-        page: 0,
-      }),
-  };
+  const outletContext = useMemo<McpAnalyticsContextValue>(
+    () => ({
+      dataSources,
+      chartFilters,
+      hasTenants,
+      hasPii,
+      hasErrors,
+      page,
+      total: count,
+      onPageChange: (newPage) =>
+        patchUrlState({ page: newPage }, { immediate: true }),
+      sortingOptions,
+      onSortingOptionsChange: (newSorting) =>
+        patchUrlState({
+          sort_column: newSorting.sort_column,
+          sort_direction: newSorting.sort_direction,
+          page: 0,
+        }),
+    }),
+    [
+      chartFilters,
+      count,
+      dataSources,
+      hasErrors,
+      hasPii,
+      hasTenants,
+      page,
+      patchUrlState,
+      sortingOptions,
+    ],
+  );
 
   const content = (
     <MonitorMain>
@@ -192,21 +202,12 @@ export function McpAnalyticsSectionLayout(): ReactNode {
             hasTenants={hasTenants}
           />
 
-          {error != null ? (
-            <Flex mih="60vh" align="center" justify="center">
-              <LoadingAndErrorWrapper loading={false} error={error} />
-            </Flex>
-          ) : isInitialLoading ? (
-            <Flex mih="60vh" align="center" justify="center">
-              <Loader size="lg" />
-            </Flex>
-          ) : showEmpty ? (
-            <McpAnalyticsEmptyState />
-          ) : (
-            <McpAnalyticsContext.Provider value={outletContext}>
-              <Outlet />
-            </McpAnalyticsContext.Provider>
-          )}
+          <McpAnalyticsRouteContent
+            context={outletContext}
+            error={error}
+            isInitialLoading={isInitialLoading}
+            showEmpty={showEmpty}
+          />
         </Stack>
       </Stack>
     </MonitorMain>

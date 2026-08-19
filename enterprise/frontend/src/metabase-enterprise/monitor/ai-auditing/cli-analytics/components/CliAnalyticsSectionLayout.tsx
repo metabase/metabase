@@ -1,8 +1,7 @@
-import { type ReactNode, createContext, useContext, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { PatchUrlStateOptions } from "metabase/common/hooks/use-url-state";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import {
   type MonitorHeaderTab,
@@ -19,62 +18,57 @@ import {
   VIEW_GROUP_MEMBERS,
 } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/constants";
 import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliHasData";
-import type { CliEventSortColumn } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import {
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
-import type {
-  CardMetadata,
-  MetadataProvider,
-  TableMetadata,
-} from "metabase-lib";
-import type { SortingOptions } from "metabase-types/api";
 
 import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
+import {
+  CliAnalyticsContextProvider,
+  type CliAnalyticsContextValue,
+} from "./context";
 
-type CliDataSources = {
-  provider: MetadataProvider | null;
-  table: TableMetadata | CardMetadata | null;
-  groupMembersTable: TableMetadata | CardMetadata | null;
+type CliAnalyticsRouteContentProps = {
+  context: CliAnalyticsContextValue;
+  error: unknown;
+  isInitialLoading: boolean;
+  showEmpty: boolean;
 };
 
-type CliChartFilters = {
-  dateFilter: ReturnType<typeof useFilterOptions>["dateFilter"];
-  userId: number | undefined;
-  groupId: number | undefined;
-  tenantId: number | undefined;
-};
-
-export type CliAnalyticsContextValue = {
-  dataSources: CliDataSources;
-  chartFilters: CliChartFilters;
-  hasTenants: boolean;
-  hasPii: boolean;
-  hasErrors: boolean;
-  page: number;
-  total: number;
-  onPageChange: (page: number, options?: PatchUrlStateOptions) => void;
-  sortingOptions: SortingOptions<CliEventSortColumn>;
-  onSortingOptionsChange: (
-    sortingOptions: SortingOptions<CliEventSortColumn>,
-  ) => void;
-};
-
-const CliAnalyticsContext = createContext<CliAnalyticsContextValue | null>(
-  null,
-);
-
-export function useCliAnalyticsContext(): CliAnalyticsContextValue {
-  const context = useContext(CliAnalyticsContext);
-  if (context == null) {
-    throw new Error(
-      "useCliAnalyticsContext must be used within CliAnalyticsSectionLayout",
+function CliAnalyticsRouteContent({
+  context,
+  error,
+  isInitialLoading,
+  showEmpty,
+}: CliAnalyticsRouteContentProps) {
+  if (error != null) {
+    return (
+      <Flex mih="60vh" align="center" justify="center">
+        <LoadingAndErrorWrapper loading={false} error={error} />
+      </Flex>
     );
   }
-  return context;
+
+  if (isInitialLoading) {
+    return (
+      <Flex mih="60vh" align="center" justify="center">
+        <Loader size="lg" />
+      </Flex>
+    );
+  }
+
+  if (showEmpty) {
+    return <CliAnalyticsEmptyState />;
+  }
+
+  return (
+    <CliAnalyticsContextProvider value={context}>
+      <Outlet />
+    </CliAnalyticsContextProvider>
+  );
 }
 
 export function CliAnalyticsSectionLayout(): ReactNode {
@@ -100,13 +94,18 @@ export function CliAnalyticsSectionLayout(): ReactNode {
   const callsAudit = useAuditTable(VIEW_AGENT_API_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
 
-  const dataSources = {
-    provider: callsAudit.provider,
-    table: callsAudit.table,
-    groupMembersTable: groupMembersAudit.table,
-  };
-  const chartFilters = { dateFilter, userId, groupId, tenantId };
-
+  const dataSources = useMemo(
+    () => ({
+      provider: callsAudit.provider,
+      table: callsAudit.table,
+      groupMembersTable: groupMembersAudit.table,
+    }),
+    [callsAudit.provider, callsAudit.table, groupMembersAudit.table],
+  );
+  const chartFilters = useMemo(
+    () => ({ dateFilter, userId, groupId, tenantId }),
+    [dateFilter, groupId, tenantId, userId],
+  );
   const sortingOptions = useMemo(
     () => ({ sort_column, sort_direction }),
     [sort_column, sort_direction],
@@ -123,8 +122,6 @@ export function CliAnalyticsSectionLayout(): ReactNode {
 
   const usagePath = Urls.monitorAiAuditingCliUsage();
   const callsPath = Urls.monitorAiAuditingCliCalls();
-
-  // Tab links carry the current query string so the filters survive a tab switch.
   const tabs: MonitorHeaderTab[] = [
     {
       label: t`Usage`,
@@ -139,25 +136,37 @@ export function CliAnalyticsSectionLayout(): ReactNode {
   ];
 
   const isEventsRoute = location.pathname === callsPath;
-
-  const outletContext: CliAnalyticsContextValue = {
-    dataSources,
-    chartFilters,
-    hasTenants,
-    hasPii,
-    hasErrors,
-    page,
-    total: count,
-    onPageChange: (newPage, options) =>
-      patchUrlState({ page: newPage }, options),
-    sortingOptions,
-    onSortingOptionsChange: (newSorting) =>
-      patchUrlState({
-        sort_column: newSorting.sort_column,
-        sort_direction: newSorting.sort_direction,
-        page: 0,
-      }),
-  };
+  const outletContext = useMemo<CliAnalyticsContextValue>(
+    () => ({
+      dataSources,
+      chartFilters,
+      hasTenants,
+      hasPii,
+      hasErrors,
+      page,
+      total: count,
+      onPageChange: (newPage) =>
+        patchUrlState({ page: newPage }, { immediate: true }),
+      sortingOptions,
+      onSortingOptionsChange: (newSorting) =>
+        patchUrlState({
+          sort_column: newSorting.sort_column,
+          sort_direction: newSorting.sort_direction,
+          page: 0,
+        }),
+    }),
+    [
+      chartFilters,
+      count,
+      dataSources,
+      hasErrors,
+      hasPii,
+      hasTenants,
+      page,
+      patchUrlState,
+      sortingOptions,
+    ],
+  );
 
   const content = (
     <MonitorMain>
@@ -193,21 +202,12 @@ export function CliAnalyticsSectionLayout(): ReactNode {
             hasTenants={hasTenants}
           />
 
-          {error != null ? (
-            <Flex mih="60vh" align="center" justify="center">
-              <LoadingAndErrorWrapper loading={false} error={error} />
-            </Flex>
-          ) : isInitialLoading ? (
-            <Flex mih="60vh" align="center" justify="center">
-              <Loader size="lg" />
-            </Flex>
-          ) : showEmpty ? (
-            <CliAnalyticsEmptyState />
-          ) : (
-            <CliAnalyticsContext.Provider value={outletContext}>
-              <Outlet />
-            </CliAnalyticsContext.Provider>
-          )}
+          <CliAnalyticsRouteContent
+            context={outletContext}
+            error={error}
+            isInitialLoading={isInitialLoading}
+            showEmpty={showEmpty}
+          />
         </Stack>
       </Stack>
     </MonitorMain>

@@ -80,8 +80,8 @@ const cliCallsPage = () =>
  * hand by the time the click lands.
  *
  * `/usage` renders the stats page or the upsell page depending on the license,
- * so hovering it asks for both. Section links prefetch their shared layout and
- * default usage page; nested links prefetch their matching leaf page.
+ * so hovering it asks for both. Section registrations match nested paths by
+ * prefix; leaf registrations only add the chunk unique to that route.
  */
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);
@@ -92,27 +92,9 @@ registerPagePrefetch(
 );
 registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
 registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpUsagePage);
-registerPagePrefetch(
-  Urls.monitorAiAuditingMcpUsage(),
-  mcpAnalyticsSectionLayout,
-);
-registerPagePrefetch(Urls.monitorAiAuditingMcpUsage(), mcpUsagePage);
-registerPagePrefetch(
-  Urls.monitorAiAuditingMcpEvents(),
-  mcpAnalyticsSectionLayout,
-);
 registerPagePrefetch(Urls.monitorAiAuditingMcpEvents(), mcpEventsPage);
 registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
 registerPagePrefetch(Urls.monitorAiAuditingCli(), cliUsagePage);
-registerPagePrefetch(
-  Urls.monitorAiAuditingCliUsage(),
-  cliAnalyticsSectionLayout,
-);
-registerPagePrefetch(Urls.monitorAiAuditingCliUsage(), cliUsagePage);
-registerPagePrefetch(
-  Urls.monitorAiAuditingCliCalls(),
-  cliAnalyticsSectionLayout,
-);
 registerPagePrefetch(Urls.monitorAiAuditingCliCalls(), cliCallsPage);
 
 function getMcpAnalyticsRoutes() {

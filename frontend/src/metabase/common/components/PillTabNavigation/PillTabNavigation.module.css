@@ -26,7 +26,4 @@
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: 1.15;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
 }

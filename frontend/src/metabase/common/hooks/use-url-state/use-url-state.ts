@@ -16,7 +16,7 @@ export type UrlStateConfig<State extends BaseState> = {
   serialize: (state: State) => UrlStateQuery;
 };
 
-export type PatchUrlStateOptions = {
+type PatchUrlStateOptions = {
   /**
    * Sync this patch to the URL right away instead of waiting out the debounce.
    */

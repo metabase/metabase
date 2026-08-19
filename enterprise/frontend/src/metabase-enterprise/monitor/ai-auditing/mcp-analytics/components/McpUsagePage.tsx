@@ -3,32 +3,51 @@ import { t } from "ttag";
 import { SimpleGrid, Stack, Title } from "metabase/ui";
 import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 
-import { useMcpAnalyticsContext } from "./McpAnalyticsSectionLayout";
 import { McpBreakoutChart } from "./McpBreakoutChart";
 import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
+import { useMcpAnalyticsContext } from "./context";
 
 export function McpUsagePage() {
-  const { dataSources, chartFilters, hasErrors } = useMcpAnalyticsContext();
+  const {
+    dataSources: { provider, table, groupMembersTable },
+    chartFilters: { dateFilter, userId, groupId, tenantId },
+    hasErrors,
+  } = useMcpAnalyticsContext();
 
   return (
     <Stack gap="lg">
       <McpCallsTimelineChart
-        {...dataSources}
-        {...chartFilters}
+        provider={provider}
+        table={table}
+        groupMembersTable={groupMembersTable}
+        dateFilter={dateFilter}
+        userId={userId}
+        groupId={groupId}
+        tenantId={tenantId}
         title={t`Calls by client over time`}
       />
       <SimpleGrid cols={2} spacing="lg">
         <McpBreakoutChart
-          {...dataSources}
-          {...chartFilters}
+          provider={provider}
+          table={table}
+          groupMembersTable={groupMembersTable}
+          dateFilter={dateFilter}
+          userId={userId}
+          groupId={groupId}
+          tenantId={tenantId}
           title={t`Calls by tool`}
           display="pie"
           breakoutColumn="tool_name"
           h={500}
         />
         <McpBreakoutChart
-          {...dataSources}
-          {...chartFilters}
+          provider={provider}
+          table={table}
+          groupMembersTable={groupMembersTable}
+          dateFilter={dateFilter}
+          userId={userId}
+          groupId={groupId}
+          tenantId={tenantId}
           title={t`Calls by user`}
           display="row"
           breakoutColumn="user_display_name"
@@ -40,15 +59,25 @@ export function McpUsagePage() {
         <>
           <Title order={3} mt="md">{t`Errors`}</Title>
           <McpCallsTimelineChart
-            {...dataSources}
-            {...chartFilters}
+            provider={provider}
+            table={table}
+            groupMembersTable={groupMembersTable}
+            dateFilter={dateFilter}
+            userId={userId}
+            groupId={groupId}
+            tenantId={tenantId}
             title={t`Calls by status over time`}
             buildQuery={buildCallsByDayByStatusQuery}
           />
           <SimpleGrid cols={2} spacing="lg">
             <McpBreakoutChart
-              {...dataSources}
-              {...chartFilters}
+              provider={provider}
+              table={table}
+              groupMembersTable={groupMembersTable}
+              dateFilter={dateFilter}
+              userId={userId}
+              groupId={groupId}
+              tenantId={tenantId}
               title={t`Errors by type`}
               display="pie"
               breakoutColumn="error_type"
@@ -56,8 +85,13 @@ export function McpUsagePage() {
               h={500}
             />
             <McpBreakoutChart
-              {...dataSources}
-              {...chartFilters}
+              provider={provider}
+              table={table}
+              groupMembersTable={groupMembersTable}
+              dateFilter={dateFilter}
+              userId={userId}
+              groupId={groupId}
+              tenantId={tenantId}
               title={t`Errors by tool`}
               display="row"
               breakoutColumn="tool_name"

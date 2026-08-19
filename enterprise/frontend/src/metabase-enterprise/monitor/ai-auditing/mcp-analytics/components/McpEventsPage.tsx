@@ -1,10 +1,10 @@
-import { useMcpAnalyticsContext } from "./McpAnalyticsSectionLayout";
 import { McpEventsTable } from "./McpEventsTable";
+import { useMcpAnalyticsContext } from "./context";
 
 export function McpEventsPage() {
   const {
-    dataSources,
-    chartFilters,
+    dataSources: { provider, table, groupMembersTable },
+    chartFilters: { dateFilter, userId, groupId, tenantId },
     hasTenants,
     hasPii,
     page,
@@ -16,13 +16,18 @@ export function McpEventsPage() {
 
   return (
     <McpEventsTable
-      {...dataSources}
-      {...chartFilters}
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
+      dateFilter={dateFilter}
+      userId={userId}
+      groupId={groupId}
+      tenantId={tenantId}
       hasTenants={hasTenants}
       hasPii={hasPii}
       page={page}
       total={total}
-      onPageChange={(newPage) => onPageChange(newPage, { immediate: true })}
+      onPageChange={onPageChange}
       sortingOptions={sortingOptions}
       onSortingOptionsChange={onSortingOptionsChange}
     />
