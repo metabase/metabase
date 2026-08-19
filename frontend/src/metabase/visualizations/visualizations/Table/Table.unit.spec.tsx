@@ -224,34 +224,14 @@ describe("table.pivot", () => {
       throw new Error("table.pivot getHidden should be defined");
     }
 
-    it("should be hidden when table.pivot is false and cols.length is not 3", () => {
+    it("should be hidden when cols.length is not 3", () => {
       expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": false,
-      });
-
-      expect(isHidden).toBe(true);
+      expect(getHidden(fourCols)).toBe(true);
     });
 
-    it("should not be hidden when table.pivot is true, regardless of cols.length", () => {
+    it("should not be hidden when cols.length is 3", () => {
       expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(fourCols, {
-        "table.pivot": true,
-      });
-
-      expect(isHidden).toBe(false);
-    });
-
-    it("should not be hidden when cols.length is 3 and table.pivot is false", () => {
-      expect(getHidden).toBeDefined();
-
-      const isHidden = getHidden(threeCols, {
-        "table.pivot": false,
-      });
-
-      expect(isHidden).toBe(false);
+      expect(getHidden(threeCols)).toBe(false);
     });
   });
 

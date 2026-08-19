@@ -220,6 +220,17 @@ describe("metabase/visualization/lib/utils", () => {
         getColumnCardinality(postRemapRows, 1, "count", jsonQuery),
       ).toEqual(1);
     });
+
+    it("should not reuse cardinality when the same json query is attached to series with a different row count", () => {
+      const jsonQuery = createMockStructuredDatasetQuery();
+
+      expect(
+        getColumnCardinality([["a"], ["b"]], 0, "category", jsonQuery),
+      ).toEqual(2);
+      expect(
+        getColumnCardinality([["x"], ["y"], ["z"]], 0, "category", jsonQuery),
+      ).toEqual(3);
+    });
   });
 
   describe("computeMaxDecimalsForValues", () => {

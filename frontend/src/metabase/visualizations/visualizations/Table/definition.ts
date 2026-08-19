@@ -151,10 +151,7 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
+      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
       getDefault: ([series]: Series) => {
         const { card, data } = series;
         let native: boolean;

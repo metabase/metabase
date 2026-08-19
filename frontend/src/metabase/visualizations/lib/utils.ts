@@ -177,15 +177,16 @@ export function isSameSeries(
   );
 }
 
+interface CardinalityCacheEntry {
+  rowCount: number;
+  columnCardinalityMap: Map<string, number>;
+}
+
 // cache computed cardinalities since they are computationally expensive
-const cardinalityCache = new WeakMap<JsonQuery, Map<string, number>>();
+const cardinalityCache = new WeakMap<JsonQuery, CardinalityCacheEntry>();
 
 function computeColumnCardinality(rows: RowValues[], colIndex: number): number {
-  const uniqueValues = new Set();
-  for (const row of rows) {
-    uniqueValues.add(row[colIndex]);
-  }
-  return uniqueValues.size;
+  return new Set(rows.map((row) => row[colIndex])).size;
 }
 
 export function getColumnCardinality(
@@ -198,19 +199,29 @@ export function getColumnCardinality(
     return computeColumnCardinality(rows, colIndex);
   }
 
-  let cache = cardinalityCache.get(jsonQuery);
-  if (!cache) {
-    cache = new Map<string, number>();
-    cardinalityCache.set(jsonQuery, cache);
+  let cardinalityCacheEntry = cardinalityCache.get(jsonQuery);
+
+  if (
+    !cardinalityCacheEntry ||
+    // check the row count to guard against jsonQuery being copied onto a series with changed data
+    cardinalityCacheEntry.rowCount !== rows.length
+  ) {
+    cardinalityCacheEntry = {
+      rowCount: rows.length,
+      columnCardinalityMap: new Map<string, number>(),
+    };
+    cardinalityCache.set(jsonQuery, cardinalityCacheEntry);
   }
 
-  const cachedCardinality = cache.get(colName);
+  const { columnCardinalityMap } = cardinalityCacheEntry;
+
+  const cachedCardinality = columnCardinalityMap.get(colName);
   if (cachedCardinality !== undefined) {
     return cachedCardinality;
   }
 
   const computedCardinality = computeColumnCardinality(rows, colIndex);
-  cache.set(colName, computedCardinality);
+  columnCardinalityMap.set(colName, computedCardinality);
   return computedCardinality;
 }
 
