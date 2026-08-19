@@ -1,4 +1,5 @@
 .tooltip {
+  box-shadow: var(--mantine-shadow-tooltip);
   color: var(--mb-color-tooltip-text);
   font-size: var(--mantine-font-size-sm);
   font-weight: normal;
