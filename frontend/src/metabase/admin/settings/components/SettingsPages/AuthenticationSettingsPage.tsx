@@ -7,9 +7,8 @@ import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_MULTI_FACTOR_AUTH,
 } from "metabase/plugins";
-import { useGetSettingsQuery } from "metabase/settings";
+import { hasAnySsoFeature, useGetSettingsQuery } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
-import { hasAnySsoFeature } from "metabase/utils/plan";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
 import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthCard";

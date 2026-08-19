@@ -15,9 +15,8 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { getSetting, getTokenFeature } from "metabase/settings";
+import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import { getPlan } from "metabase/utils/plan";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
   Database,

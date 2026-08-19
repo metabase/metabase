@@ -20,3 +20,10 @@ export {
 } from "./selectors";
 export { useAdminSetting, useAdminSettings } from "./use-admin-setting";
 export { useSetting, useUserSetting } from "./use-setting";
+export {
+  getPlan,
+  hasAnySsoFeature,
+  isProPlan,
+  type Plan,
+  type ProPlan,
+} from "./plan";

@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/settings";
+import { getPlan, getSetting, isProPlan } from "metabase/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -16,7 +16,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { getPlan, isProPlan } from "metabase/utils/plan";
 import type { IconName } from "metabase-types/api";
 export function EnableTransformsCard({
   onEnableClick,

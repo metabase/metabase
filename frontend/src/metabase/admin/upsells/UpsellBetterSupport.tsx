@@ -4,9 +4,8 @@ import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/settings";
+import { getPlan, getSetting } from "metabase/settings";
 import { Text } from "metabase/ui";
-import { getPlan } from "metabase/utils/plan";
 
 export const UpsellBetterSupport = ({ location }: { location: string }) => {
   const campaign = "better-hosting";

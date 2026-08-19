@@ -4,12 +4,6 @@ import { t } from "ttag";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
-import {
-  type ExportFormat,
-  type TableExportFormat,
-  exportFormatPng,
-  exportFormats,
-} from "metabase-types/api";
 import CS from "metabase/css/core/index.css";
 import { useUserKeyValue } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

@@ -2,8 +2,8 @@ import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 
 import type { PrintContextValue } from "metabase/documents/contexts/PrintContext";
+import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { delay } from "metabase/utils/promise";
-import { waitUntilNextFramePainted } from "metabase/utils/wait-until-next-frame-paints";
 
 const READINESS_TIMEOUT_MS = 15_000;
 const POLL_INTERVAL_MS = 100;

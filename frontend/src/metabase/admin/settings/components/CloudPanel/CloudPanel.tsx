@@ -4,8 +4,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getSetting, useLazyGetSettingsQuery } from "metabase/settings";
+import { type Plan, getPlan } from "metabase/settings";
 import { Box } from "metabase/ui";
-import { type Plan, getPlan } from "metabase/utils/plan";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import {

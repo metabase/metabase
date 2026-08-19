@@ -6,8 +6,7 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getSetting, useSetting } from "metabase/settings";
-import { getPlan } from "metabase/utils/plan";
+import { getPlan, getSetting, useSetting } from "metabase/settings";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { useSendProductFeedbackMutation } from "../../api/product-feedback";

@@ -15,12 +15,11 @@ import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
-import { openSaveDialog } from "metabase/utils/dom";
+import { openSaveDialog, waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
-import { waitUntilNextFramePainted } from "metabase/utils/wait-until-next-frame-paints";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,

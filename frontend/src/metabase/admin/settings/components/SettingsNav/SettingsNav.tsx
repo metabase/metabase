@@ -4,16 +4,14 @@ import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
-import { getPlan, isProPlan } from "metabase/utils/plan";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_SECURITY_CENTER,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
+import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
-import { getPlan, isProPlan } from "metabase/utils/plan";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
 import { DataAppsNav } from "./DataAppsNav";

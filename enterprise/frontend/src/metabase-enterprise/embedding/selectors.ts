@@ -1,6 +1,5 @@
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/settings";
-import { getPlan } from "metabase/utils/plan";
+import { getPlan, getSetting } from "metabase/settings";
 
 export const isInteractiveEmbeddingEnabled = (state: State) => {
   const plan = getPlan(getSetting(state, "token-features"));

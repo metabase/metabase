@@ -27,8 +27,8 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { waitUntilNextFramePainted } from "metabase/utils/wait-until-next-frame-paints";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";

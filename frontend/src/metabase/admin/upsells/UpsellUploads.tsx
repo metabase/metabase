@@ -4,8 +4,7 @@ import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/settings";
-import { getPlan } from "metabase/utils/plan";
+import { getPlan, getSetting } from "metabase/settings";
 
 export const UpsellUploads = ({ location }: { location: string }) => {
   const campaign = "manage-uploads";
