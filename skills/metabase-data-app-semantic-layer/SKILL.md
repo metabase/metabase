@@ -28,6 +28,7 @@ Keep the semantic layer and presentation layer separate.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
 - Visualization data must come from Metabase through `useMetabaseQuery` or `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
+- Render charts with `InteractiveQuestion`/`StaticQuestion` unless the user asked for a custom visualization, or no display type can express the request. A hand-built chart loses the instance's theming, accessibility and drill-through, and wanting it to match the app's styling is not a reason to build one — that is what `visualization`, `visualizationSettings` and the SDK theme are for.
 - When wrapping an SDK-rendered question in a card or section that already has its own title, pass `title={false}` to the SDK question component to avoid duplicate generated question titles.
 - `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass only the `query` property as `card={{ query }}` to `InteractiveQuestion` or `StaticQuestion`; never pass the whole hook result as `card.query`.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
@@ -342,12 +343,13 @@ Prefer `InteractiveQuestion` for:
 - tables where users benefit from Metabase interactions such as sorting, column inspection, drill-through, downloading, or changing visualization settings
 - cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
 
-Generated dashboards should use Metabase charts as much as possible. Do not replace a normal bar, line, area, row, trend, pivot, map, or sortable table with a custom SVG/React visualization just to make it look more bespoke.
+Default to the SDK components. If the requested chart can be produced by a Metabase display type — with visualization settings and the app's theme on top — build it that way, whatever it is meant to look like. "A pie chart of registrants" is a Metabase pie chart; only reach past the SDK once you have established that nothing it renders can express the request.
 
-Use custom React visualizations only when the user's requested presentation does not fit Metabase display types or visualization settings.
+Build a custom React visualization when the presentation genuinely does not fit any display type or visualization setting, or when the user asks for a custom visualization rather than a Metabase chart. Their asking is the decision — do not infer it from a design reference, brand colours, or a screenshot of something bespoke.
 
 Good custom visualization reasons:
 
+- the user asked for a custom visualization, or for something Metabase demonstrably has no display for
 - bespoke scorecards, alert panels, narrative layouts, or mixed-content cards that cannot be represented as a normal Metabase chart/table
 - combining multiple Metabase queries into one visual unit
 - custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
