@@ -175,7 +175,7 @@
   failure so [[fall-back-in-band?]] can retry on the caller's connection."
   ^Connection []
   (try
-    (.getConnection ^javax.sql.DataSource mdb.connection/*application-db*)
+    (.getConnection ^javax.sql.DataSource (mdb.connection/current-application-db))
     (catch Exception e
       (throw (ex-info "Could not check out a connection to insert the cluster lock row"
                       {::checkout-failed true}

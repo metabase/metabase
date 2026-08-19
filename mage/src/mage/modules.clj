@@ -162,6 +162,7 @@
      formatter
      funnysql
      geojson
+     global-system
      glossary
      indexed-entities
      core.initialization-status

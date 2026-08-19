@@ -18,6 +18,7 @@
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -41,7 +42,8 @@
        (copy.h2/delete-existing-h2-database-files! h2-filename))
      (copy/copy! (mdb/db-type) (mdb/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (mdb/with-application-db (mdb/application-db :h2 h2-data-source)
-         (rotate-encryption/rotate-encryption-key! nil)))
+       (mc/binding (mdb/application-db-handle)
+         (mdb/application-db :h2 h2-data-source)
+         (fn [] (rotate-encryption/rotate-encryption-key! nil))))
      ;; Flush h2 to disk
      (jdbc/execute! {:datasource h2-data-source} "CHECKPOINT SYNC"))))
