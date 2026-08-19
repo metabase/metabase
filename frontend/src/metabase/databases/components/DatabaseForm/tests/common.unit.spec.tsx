@@ -10,7 +10,7 @@ import { TEST_ENGINES, setup } from "./setup";
 
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
-    const { onSubmit } = setup();
+    const { onSubmit } = await setup();
     const expectedDatabaseName = "My H2 Database";
     const expectedConnectionString = "file:/somewhere";
     await userEvent.type(
@@ -41,7 +41,7 @@ describe("DatabaseForm", () => {
   });
 
   it("should not allow to configure cache ttl", async () => {
-    setup();
+    await setup();
     await userEvent.click(screen.getByText("Show advanced options"));
     expect(
       screen.getByText("Choose when syncs and scans happen"),
@@ -49,7 +49,7 @@ describe("DatabaseForm", () => {
   });
 
   it("should not render hidden fields", async () => {
-    setup();
+    await setup();
     await userEvent.click(screen.getByText("Show advanced options"));
     expect(screen.queryByText("Destination database")).not.toBeInTheDocument();
   });
@@ -93,7 +93,7 @@ describe("DatabaseForm", () => {
           }) || [],
       },
     };
-    setup({ engines: mockEngines });
+    await setup({ engines: mockEngines });
     await userEvent.click(screen.getByText("Show advanced options"));
     expect(screen.queryByText("Destination database")).not.toBeInTheDocument();
     expect(
@@ -102,7 +102,7 @@ describe("DatabaseForm", () => {
   });
 
   it("should allow tab navigation through form fields", async () => {
-    setup();
+    await setup();
 
     // tabs ou tof the search
     await userEvent.tab();
@@ -115,7 +115,7 @@ describe("DatabaseForm", () => {
 
   describe("updating existing database", () => {
     it("should mark form as dirty only when actual fields are changed (#66684)", async () => {
-      setup({
+      await setup({
         initialValues: {
           id: 1,
           name: "My Original H2 Database name",
@@ -155,7 +155,7 @@ describe("DatabaseForm", () => {
 
 describe("DatabaseForm with provider name", () => {
   it("submits provider name", async () => {
-    const { onSubmit } = setup({
+    const { onSubmit } = await setup({
       initialValues: {
         engine: "postgres",
       },
@@ -181,7 +181,7 @@ describe("DatabaseForm with provider name", () => {
   });
 
   it("submits empty provider name if not matched", async () => {
-    const { onSubmit } = setup({
+    const { onSubmit } = await setup({
       initialValues: {
         engine: "postgres",
       },
@@ -206,8 +206,12 @@ describe("DatabaseForm with provider name", () => {
   });
 
   describe("Connection error handling", () => {
-    const errorHandlingSetup = ({ isAdvanced }: { isAdvanced?: boolean }) => {
-      setup({
+    const errorHandlingSetup = async ({
+      isAdvanced,
+    }: {
+      isAdvanced?: boolean;
+    }) => {
+      await setup({
         engines: TEST_ENGINES,
         isAdvanced,
       });
@@ -218,16 +222,16 @@ describe("DatabaseForm with provider name", () => {
       jest.spyOn(utils, "useHasConnectionError").mockImplementation(() => true);
     });
 
-    it("shows error message in the footer if isAdvanced is false (setup page)", () => {
-      errorHandlingSetup({ isAdvanced: false });
+    it("shows error message in the footer if isAdvanced is false (setup page)", async () => {
+      await errorHandlingSetup({ isAdvanced: false });
       // Check error is rendered in the footer
       expect(
         within(screen.getByTestId("form-footer")).getByText(errorMessage),
       ).toBeInTheDocument();
     });
 
-    it("shows error message outside the footer if isAdvanced is true (admin page)", () => {
-      errorHandlingSetup({ isAdvanced: true });
+    it("shows error message outside the footer if isAdvanced is true (admin page)", async () => {
+      await errorHandlingSetup({ isAdvanced: true });
       // Check error is rendered
       expect(screen.getByText(errorMessage)).toBeInTheDocument();
       // But not in the footer
