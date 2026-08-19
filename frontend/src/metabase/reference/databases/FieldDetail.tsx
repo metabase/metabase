@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -128,7 +129,7 @@ interface FieldDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: FieldDetailFormFields, props: any) => void;
+  onSubmit: (fields: FieldDetailFormFields, props: any) => Promise<void>;
 }
 
 const FieldDetail = (props: FieldDetailProps) => {
@@ -146,6 +147,8 @@ const FieldDetail = (props: FieldDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -154,8 +157,14 @@ const FieldDetail = (props: FieldDetailProps) => {
     handleReset,
   } = useFormik<FieldDetailFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -190,8 +199,8 @@ const FieldDetail = (props: FieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>

@@ -43,7 +43,7 @@ export interface FetchProps {
   setError: (error: unknown) => void;
 }
 
-interface UpdateProps extends FetchProps {
+interface UpdateProps {
   resetForm: () => void;
   endEditing: () => void;
   entity: Record<string, unknown>;
@@ -76,31 +76,26 @@ export const clearState = (props: ClearStateProps) => {
 // This is called on the success or failure of a form triggered update
 const resetForm = (props: UpdateProps) => {
   props.resetForm();
-  props.endLoading();
   props.endEditing();
 };
 
-// Update actions. These drive the same loading state during a save, through
-// props rather than dispatch. Fetching goes through `useReferenceFetch`.
+// Update actions. Failures reach the caller, which reports them next to the
+// form. Progress is formik's `isSubmitting`.
 
 const updateDataWrapper = (
   props: UpdateProps,
   fn: (entity: Record<string, unknown>) => Promise<unknown>,
 ) => {
   return async (fields: Record<string, unknown>) => {
-    props.clearError();
-    props.startLoading();
     try {
       const editedFields = filterUntouchedFields(fields, props.entity);
       if (!isEmptyObject(editedFields)) {
         const newEntity = { ...props.entity, ...editedFields };
         await fn(newEntity);
       }
-    } catch (error) {
-      console.error(error);
-      props.setError(error);
+    } finally {
+      resetForm(props);
     }
-    resetForm(props);
   };
 };
 
@@ -145,7 +140,6 @@ export const rUpdateFields = (
   props: UpdateFieldsProps,
 ) => {
   return async () => {
-    props.startLoading();
     try {
       const updatedFields = Object.keys(formFields)
         .map((fieldId) => ({
@@ -159,12 +153,9 @@ export const rUpdateFields = (
         .map(({ field, formField }) => ({ ...field, ...formField }));
 
       await Promise.all(updatedFields.map(props.updateField));
-    } catch (error) {
-      props.setError(error);
-      console.error(error);
+    } finally {
+      resetForm(props);
     }
-
-    resetForm(props);
   };
 };
 

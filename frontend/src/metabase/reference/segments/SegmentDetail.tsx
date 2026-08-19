@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -121,7 +122,7 @@ interface SegmentDetailProps {
   loadingError?: unknown;
   metadata: Metadata;
 
-  onSubmit: (fields: SegmentDetailFormFields, props: any) => void;
+  onSubmit: (fields: SegmentDetailFormFields, props: any) => Promise<void>;
 }
 
 const SegmentDetail = (props: SegmentDetailProps) => {
@@ -142,6 +143,8 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -152,8 +155,14 @@ const SegmentDetail = (props: SegmentDetailProps) => {
     validate,
     initialValues: {},
     initialErrors: validate({}),
-    onSubmit: (fields): void => {
-      onSubmit(fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -196,8 +205,8 @@ const SegmentDetail = (props: SegmentDetailProps) => {
         />
       )}
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() => (
           <div className={CS.wrapper}>

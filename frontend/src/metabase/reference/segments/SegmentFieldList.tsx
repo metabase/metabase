@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -103,6 +104,8 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -111,8 +114,17 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     handleReset,
   } = useFormik<SegmentFieldListFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit?.(entities, fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit?.(entities, fields, {
+          ...props,
+          resetForm: handleReset,
+        });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -148,8 +160,8 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
         startEditing={startEditing}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() =>
           Object.keys(entities).length > 0 ? (
