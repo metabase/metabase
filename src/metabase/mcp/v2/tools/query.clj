@@ -550,9 +550,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
    :args        run-saved-question-args-schema}
   [{:keys [id parameters row_limit]} _context]
   (let [row-limit   (or row_limit default-row-limit)
-        card        (common/resolve-and-read :model/Card id
-                                             (fn [card-id]
-                                               (api/read-check :model/Card card-id)))
+        card        (common/resolve-and-read :model/Card id)
         mbql-params (when (seq parameters)
                       (resolve-card-parameters card parameters))
         ;; One row past the limit, so truncation is *observed* rather than inferred from a full

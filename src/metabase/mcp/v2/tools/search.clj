@@ -298,11 +298,7 @@
    ids only, so entity_ids are translated here."
   [collection-id]
   (when-let [id (common/resolve-collection-id collection-id)]
-    (:id (common/resolve-and-read :model/Collection id
-                                  (fn [id]
-                                    (when-let [collection (t2/select-one :model/Collection :id id)]
-                                      (when (mi/can-read? collection)
-                                        collection)))))))
+    (:id (common/resolve-and-read :model/Collection id))))
 
 ;;; ------------------------------------------------ Recents mode --------------------------------------------------
 

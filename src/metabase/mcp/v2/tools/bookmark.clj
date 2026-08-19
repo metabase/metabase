@@ -47,7 +47,7 @@
    right type."
   [type id-or-eid]
   (let [{:keys [model card-type]} (type->spec type)
-        row (common/resolve-and-read model id-or-eid #(api/read-check model %))]
+        row (common/resolve-and-read model id-or-eid)]
     (when card-type
       (let [actual (card-type->tool-type (:type row))]
         (when (not= actual type)

@@ -205,8 +205,7 @@
 
 (defn- create!
   [{:keys [dashboard_id channel parameters skip_if_empty] :as args}]
-  (let [dashboard (-> (common/resolve-and-read :model/Dashboard dashboard_id
-                                               (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+  (let [dashboard (-> (common/resolve-and-read :model/Dashboard dashboard_id)
                       (t2/hydrate [:dashcards :card]))
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)

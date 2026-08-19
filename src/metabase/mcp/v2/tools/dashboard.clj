@@ -16,7 +16,6 @@
    transactionality, and event publishing are inherited, never reimplemented."
   (:require
    [malli.error :as me]
-   [metabase.api.common :as api]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
@@ -37,8 +36,7 @@
 (defn- fetch-dashboard
   "The dashboard behind its read check, hydrated for the compiler."
   [id-or-eid]
-  (-> (common/resolve-and-read :model/Dashboard id-or-eid
-                               (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+  (-> (common/resolve-and-read :model/Dashboard id-or-eid)
       (t2/hydrate [:dashcards :series :card] :tabs)))
 
 (defn- referenced-card-ids

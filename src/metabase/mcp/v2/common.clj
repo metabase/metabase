@@ -193,21 +193,28 @@
                                   (pr-str id-or-eid)))))
 
 (defn resolve-and-read
-  "Resolve `id-or-eid` for `model`, then run `read-check-fn` (which must perform the same
-   read check the corresponding REST endpoint runs, and return the object). \"Doesn't exist\"
-   and \"exists but not readable\" collapse into the same not-found error, so the response
-   never leaks existence across the permission boundary."
-  [model id-or-eid read-check-fn]
-  (let [id (resolve-id-or-404 model id-or-eid)]
-    (try
-      (let [result (read-check-fn id)]
-        (if (nil? result)
-          (throw-not-found model id-or-eid)
-          result))
-      (catch clojure.lang.ExceptionInfo e
-        (if (contains? #{403 404} (:status-code (ex-data e)))
-          (throw-not-found model id-or-eid)
-          (throw e))))))
+  "Resolve `id-or-eid` for `model` and return the row from behind its read check. \"Doesn't
+   exist\" and \"exists but not readable\" collapse into the same not-found error, so the
+   response never leaks existence across the permission boundary.
+
+   The 2-arity is the default and does what nearly every read needs: fetch the row and
+   `api/read-check` it. Pass `read-check-fn` only when the read genuinely differs (a module
+   fetch fn that runs its own checks, a write check, an extra existence predicate) — it must
+   enforce at least what the corresponding REST endpoint enforces, and return the object."
+  ([model id-or-eid]
+   (resolve-and-read model id-or-eid
+                     (fn [id] (api/read-check (t2/select-one model :id id)))))
+  ([model id-or-eid read-check-fn]
+   (let [id (resolve-id-or-404 model id-or-eid)]
+     (try
+       (let [result (read-check-fn id)]
+         (if (nil? result)
+           (throw-not-found model id-or-eid)
+           result))
+       (catch clojure.lang.ExceptionInfo e
+         (if (contains? #{403 404} (:status-code (ex-data e)))
+           (throw-not-found model id-or-eid)
+           (throw e)))))))
 
 (defn resolve-collection-id
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root

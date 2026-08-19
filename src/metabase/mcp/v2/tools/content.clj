@@ -15,7 +15,6 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -32,6 +31,7 @@
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -42,14 +42,7 @@
   "Batch cap for one get_content call."
   10)
 
-(defn- compact
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 ;;; --------------------------------------------- question / model / metric ----------------------------------------
-
-(def ^:private card-type->tool-type
-  {:question "question" :model "model" :metric "metric"})
 
 (defn- card-query
   "The card's own saved query as a lib query, or nil when the stored `dataset_query` is
@@ -88,12 +81,11 @@
 
 (defn- fetch-card
   [tool-type id-or-eid]
-  (let [card   (common/resolve-and-read :model/Card id-or-eid
-                                        (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
-        actual (card-type->tool-type (:type card))]
-    (when (not= actual tool-type)
-      (common/throw-teaching-error
-       (format "Card %s is a %s — request it with type: \"%s\"." (:id card) actual actual)))
+  (let [card   (common/resolve-and-read :model/Card id-or-eid)]
+    (when (not= (:type card) tool-type)
+      (let [actual (name (:type card))]
+        (common/throw-teaching-error
+         (format "Card %s is a %s — request it with type: \"%s\"." (:id card) actual actual))))
     (card-content-row card)))
 
 (defn- card-definition
@@ -129,8 +121,7 @@
 
 (defn- fetch-measure-or-segment
   [model id-or-eid]
-  (common/resolve-and-read model id-or-eid
-                           (fn [id] (api/read-check (t2/select-one model :id id)))))
+  (common/resolve-and-read model id-or-eid))
 
 (defn- measure-or-segment-definition
   "The measure's aggregation clause / segment's filter clauses in the numeric-id MBQL 5 shape,
@@ -157,21 +148,20 @@
    the tool's `readOnlyHint` contract."
   [type row]
   (let [[metadata-type model] (case type
-                                "metric"  [:metadata/metric :model/Card]
-                                "measure" [:metadata/measure :model/Measure])]
+                                :metric  [:metadata/metric :model/Card]
+                                :measure [:metadata/measure :model/Measure])]
     (when-let [computed (metrics/compute-dimensions metadata-type (:id row))]
       (let [fresh (-> (t2/select-one model :id (:id row))
                       (merge computed)
                       metrics/filter-dimensions-for-user)]
-        (compact {:dimensions         (vec (:dimensions fresh))
-                  :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))})))))
+        (u/remove-nils {:dimensions         (vec (:dimensions fresh))
+                        :dimension_mappings (not-empty (vec (:dimension_mappings fresh)))})))))
 
 ;;; -------------------------------------------------- collection --------------------------------------------------
 
 (defn- fetch-collection
   [id-or-eid]
-  (common/resolve-and-read :model/Collection id-or-eid
-                           (fn [id] (api/read-check :model/Collection id))))
+  (common/resolve-and-read :model/Collection id-or-eid))
 
 ;;; --------------------------------------------------- snippet ----------------------------------------------------
 
@@ -187,8 +177,7 @@
 
 (defn- fetch-snippet
   [id-or-eid]
-  (common/resolve-and-read :model/NativeQuerySnippet id-or-eid
-                           (fn [id] (api/read-check (t2/select-one :model/NativeQuerySnippet :id id)))))
+  (common/resolve-and-read :model/NativeQuerySnippet id-or-eid))
 
 ;;; --------------------------------------------------- document ---------------------------------------------------
 
@@ -229,20 +218,20 @@
    embedded card id for cardEmbed nodes and the block's flattened text."
   [row]
   (mapv (fn [node]
-          (compact {:type    (:type node)
-                    :card_id (when (= (:type node) prose-mirror/card-embed-type)
-                               (get-in node [:attrs :id]))
-                    :text    (not-empty (prose-mirror/ast->text node))}))
+          (u/remove-nils {:type    (:type node)
+                          :card_id (when (= (:type node) prose-mirror/card-embed-type)
+                                     (get-in node [:attrs :id]))
+                          :text    (not-empty (prose-mirror/ast->text node))}))
         (get-in row [::document :document :content])))
 
 (defn- comment-thread-row
   [comment-row]
-  (compact {:id                (:id comment-row)
-            :parent_comment_id (:parent_comment_id comment-row)
-            :creator           (get-in comment-row [:creator :common_name])
-            :created_at        (:created_at comment-row)
-            :is_resolved       (:is_resolved comment-row)
-            :text              (prose-mirror/ast->text (:content comment-row))}))
+  (u/remove-nils {:id                (:id comment-row)
+                  :parent_comment_id (:parent_comment_id comment-row)
+                  :creator           (get-in comment-row [:creator :common_name])
+                  :created_at        (:created_at comment-row)
+                  :is_resolved       (:is_resolved comment-row)
+                  :text              (prose-mirror/ast->text (:content comment-row))}))
 
 (defn- node-id->ancestor-ids
   "Every `_id` in the document mapped to its ancestors' `_id`s, nearest first. Blocks nested inside
@@ -277,7 +266,7 @@
                         (group-by :child_target_id)
                         (sort-by (fn [[_ cs]] ((juxt :created_at :id) (first cs))))
                         (mapv (fn [[child-id cs]]
-                                (compact
+                                (u/remove-nils
                                  {:child_target_id child-id
                                   :anchor          (when-let [{:keys [start end]}
                                                               (some span-by-id (cons child-id (ancestor-ids child-id)))]
@@ -295,8 +284,7 @@
 
 (defn- fetch-dashboard
   [id-or-eid]
-  (let [dash (-> (common/resolve-and-read :model/Dashboard id-or-eid
-                                          (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+  (let [dash (-> (common/resolve-and-read :model/Dashboard id-or-eid)
                  (t2/hydrate [:dashcards :series :card] :tabs)
                  redaction/redact-dashboard)]
     (assoc (projections/dashboard-row dash) ::dashboard dash)))
@@ -314,7 +302,7 @@
                                              :visualization_settings])
                             (update :visualization_settings
                                     #(cond-> % (map? (:link %)) (update :link dissoc :entity)))
-                            compact))
+                            u/remove-nils))
                       (:dashcards dash))}))
 
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
@@ -378,7 +366,7 @@
         (assoc :target   (:target transform)
                :last_run (some-> (:last_run transform)
                                  (select-keys [:id :status :start_time :end_time :message])
-                                 compact)
+                                 u/remove-nils)
                ;; The target table is hydrated without its own permission check (the transform
                ;; read-check verifies source tables only), so gate it here.
                :table    (when-let [table (:table transform)]
@@ -439,16 +427,16 @@
    `agent:resource:read`, and the `:includes` sections it supports (section name -> a
    `(row -> fragment)` builder). `:proj` (the projection key) defaults to `(keyword type)` and is
    only spelled out when it differs — a model reads with the question projection."
-  {"question"     {:fetch #(fetch-card "question" %)
+  {"question"     {:fetch #(fetch-card :question %)
                    :includes {"definition" card-definition-include "fields" fields-include}}
-   "model"        {:proj :question   :fetch #(fetch-card "model" %)
+   "model"        {:proj :question   :fetch #(fetch-card :model %)
                    :includes {"definition" card-definition-include "fields" fields-include}}
-   "metric"       {:fetch #(fetch-card "metric" %)
+   "metric"       {:fetch #(fetch-card :metric %)
                    :includes {"definition" card-definition-include
-                              "dimensions" #(dimensions-section "metric" %)}}
+                              "dimensions" #(dimensions-section :metric %)}}
    "measure"      {:fetch #(fetch-measure-or-segment :model/Measure %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :measure %))
-                              "dimensions" #(dimensions-section "measure" %)}}
+                              "dimensions" #(dimensions-section :measure %)}}
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard

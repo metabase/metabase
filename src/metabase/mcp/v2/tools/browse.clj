@@ -595,8 +595,7 @@
 
 (defn- read-checked-collection
   [id-or-eid]
-  (common/resolve-and-read :model/Collection id-or-eid
-                           (fn [id] (api/read-check :model/Collection id))))
+  (common/resolve-and-read :model/Collection id-or-eid))
 
 (defn- read-checked-trash
   []

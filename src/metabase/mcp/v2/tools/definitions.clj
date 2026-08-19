@@ -16,7 +16,6 @@
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
-   [metabase.models.interface :as mi]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -54,22 +53,14 @@
   "Resolve a numeric `table_id` behind the table's read check. \"Doesn't exist\" and \"exists but
    not readable\" collapse into the same not-found error."
   [table-id]
-  (common/resolve-and-read :model/Table table-id
-                           (fn [id]
-                             (when-let [table (t2/select-one :model/Table :id id)]
-                               (when (mi/can-read? table)
-                                 table)))))
+  (common/resolve-and-read :model/Table table-id))
 
 (defn- resolve-existing
   "Resolve an update's `id` (numeric or entity_id) to the row behind `model`'s read check, with
    the same not-found collapse as [[resolve-table]]. The domain update fn still runs its own
    write check."
   [model id-or-eid]
-  (common/resolve-and-read model id-or-eid
-                           (fn [id]
-                             (when-let [row (t2/select-one model :id id)]
-                               (when (mi/can-read? row)
-                                 row)))))
+  (common/resolve-and-read model id-or-eid))
 
 (defn- check-method-args!
   "Reject arguments that don't apply to the dispatched method, so a caller never believes an

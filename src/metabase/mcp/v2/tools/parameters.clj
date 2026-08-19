@@ -15,7 +15,6 @@
    constraints). A dropped constraint would hand back values the agent believes were filtered."
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -101,8 +100,7 @@
 
 (defn- dashboard-values
   [id-or-eid parameter-id query constraints]
-  (let [dash            (-> (common/resolve-and-read :model/Dashboard id-or-eid
-                                                     (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+  (let [dash            (-> (common/resolve-and-read :model/Dashboard id-or-eid)
                             (t2/hydrate :resolved-params))
         resolved-params (:resolved-params dash)
         constraints     (update-keys constraints u/qualified-name)]
@@ -130,8 +128,7 @@
 
 (defn- question-values
   [id-or-eid parameter-id query]
-  (let [card   (common/resolve-and-read :model/Card id-or-eid
-                                        (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
+  (let [card   (common/resolve-and-read :model/Card id-or-eid)
         params (card-parameters card)]
     (check-parameter-id! "question" parameter-id params)
     (let [param (some #(when (= parameter-id (u/qualified-name (:id %))) %) params)]

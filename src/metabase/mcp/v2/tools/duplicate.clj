@@ -13,8 +13,7 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,8 +32,7 @@
 
 (defn- fetch-question
   [id-or-eid]
-  (let [card   (->> (common/resolve-and-read :model/Card id-or-eid
-                                             (fn [id] (api/read-check (t2/select-one :model/Card :id id))))
+  (let [card   (->> (common/resolve-and-read :model/Card id-or-eid)
                     (check-not-archived! :model/Card))]
     (when (not= :question (:type card))
       (common/throw-teaching-error
@@ -56,8 +54,7 @@
 
 (defn- fetch-dashboard
   [id-or-eid]
-  (->> (common/resolve-and-read :model/Dashboard id-or-eid
-                                (fn [id] (api/read-check (t2/select-one :model/Dashboard :id id))))
+  (->> (common/resolve-and-read :model/Dashboard id-or-eid)
        (check-not-archived! :model/Dashboard)))
 
 (defn- copy-dashboard!
@@ -75,8 +72,7 @@
   ;; Selected without an `:archived false` filter so a trashed-but-readable document earns the
   ;; teaching error below rather than the not-found collapse, which would wrongly imply the caller
   ;; can't see it.
-  (->> (common/resolve-and-read :model/Document id-or-eid
-                                (fn [id] (api/read-check (t2/select-one :model/Document :id id))))
+  (->> (common/resolve-and-read :model/Document id-or-eid)
        (check-not-archived! :model/Document)))
 
 (defn- copy-document!

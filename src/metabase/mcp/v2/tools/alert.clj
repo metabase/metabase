@@ -245,11 +245,7 @@
    same read, but resolving here lets the goal-line check see the card and collapses a missing
    card into the shared not-found error."
   [card-id]
-  (common/resolve-and-read :model/Card card-id
-                           (fn [id]
-                             (when-let [card (t2/select-one :model/Card :id id)]
-                               (when (mi/can-read? card)
-                                 card)))))
+  (common/resolve-and-read :model/Card card-id))
 
 (defn- alert-response
   [notification]

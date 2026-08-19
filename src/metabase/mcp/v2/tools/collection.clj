@@ -12,9 +12,7 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.metabot.scope :as metabot.scope]
-   [metabase.models.interface :as mi]
-   [toucan2.core :as t2]))
+   [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,11 +51,7 @@
    the response never leaks existence across the permission boundary. `update-collection!` still
    runs its own write check."
   [id-or-eid]
-  (common/resolve-and-read :model/Collection id-or-eid
-                           (fn [id]
-                             (when-let [collection (t2/select-one :model/Collection :id id)]
-                               (when (mi/can-read? collection)
-                                 collection)))))
+  (common/resolve-and-read :model/Collection id-or-eid))
 
 (defn- create!
   [{:keys [name description parent_id authority_level], coll-namespace :namespace, :as args}]
