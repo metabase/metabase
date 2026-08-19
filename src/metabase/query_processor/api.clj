@@ -60,12 +60,14 @@
   (span/with-span!
     {:name "run-query-async"}
     ;; (backport) the schema already guarantees `:database` for non-internal queries; this branch's
-    ;; explicit read-check on the database is kept.
-    (let [database (:database query)]
-      (when (and (not= (lib/normalized-query-type query) :internal)
-                 (not= database lib.schema.id/saved-questions-virtual-database-id))
-        (when-not (mi/can-read? :model/Database database)
-          (api/throw-403))))
+    ;; explicit read-check on the database is kept. Normalization resolves a query sent against the
+    ;; saved-questions virtual database to the source Card's real database, so ask whether the query
+    ;; reads a Card rather than comparing the id: a query built on a Card is gated by that Card's
+    ;; collection, not by the database underneath it.
+    (when (and (not= (lib/normalized-query-type query) :internal)
+               (not (lib/source-card-id query)))
+      (when-not (mi/can-read? :model/Database (:database query))
+        (api/throw-403)))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/source-table-id query))]
