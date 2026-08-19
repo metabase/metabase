@@ -48,7 +48,7 @@ type MockDataAppOptions<TestEnv> = {
    */
   testEnv?: TestEnv;
   /** Delays the bundle response, so a loading assertion has a window to catch. */
-  bundleDelay?: number;
+  bundleDelayMs?: number;
 };
 
 export const mockDataApp = <TestEnv = DataAppTestEnv>(
@@ -92,7 +92,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
         body: prelude + bundleCode,
-        ...(options.bundleDelay ? { delay: options.bundleDelay } : {}),
+        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
       },
     );
 
