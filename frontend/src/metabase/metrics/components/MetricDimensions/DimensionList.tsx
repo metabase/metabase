@@ -118,7 +118,9 @@ export function DimensionList({
             }
           />
         ) : (
-          <ScrollArea className={S.scrollArea} offsetScrollbars="present">
+          <ScrollArea
+            classNames={{ viewport: S.scrollAreaViewport, root: S.scrollArea }}
+          >
             <Stack gap="sm">
               <SortableList
                 items={dimensions}

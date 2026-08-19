@@ -15,7 +15,6 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -34,13 +33,17 @@ const emptyStateData = {
 };
 
 interface SegmentListProps {
+  loading?: boolean;
+  loadingError?: unknown;
   style?: CSSProperties;
 }
 
-export function SegmentList({ style }: SegmentListProps) {
+export function SegmentList({
+  style,
+  loading,
+  loadingError,
+}: SegmentListProps) {
   const entities = useSelector(getShallowSegments);
-  const loading = useSelector(getLoading);
-  const loadingError = useSelector(getError);
   const adminLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments",

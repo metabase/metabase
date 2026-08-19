@@ -23,6 +23,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -31,9 +32,18 @@
 
 (def ^:private test-entity-ids (atom 0))
 
-(defmethod semantic-search/get-embeddings-batch ::dimension-translation-test
-  [embedding-model _texts & _opts]
-  [embedding-model])
+(def ^:private captured-translation-model
+  "Descriptor the provider layer receives, captured by the dimension-translation test." (atom nil))
+
+;; A capturing provider so the dimension-translation test can inspect the descriptor the client hands down.
+(embeddings.provider/register-provider!
+ "dimension-translation-test"
+ {:embedding-spi-version embeddings.provider/embedding-spi-version
+  :readiness             (constantly {:ready? true})
+  :resolve-model         embeddings.provider/legacy-resolved-model
+  :embed-texts           (fn [model texts _opts]
+                           (reset! captured-translation-model model)
+                           (mapv (fn [_] (vec (repeat (:vector-dimensions model) 0.0))) texts))})
 
 (defn- entity
   "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
@@ -266,7 +276,7 @@
           (is (= {:error expected} (synonym-of embedder))
               (format ":error must be a nonblank string when the throwable's message is %s" label)))))))
 
-(deftest ^:sequential complexity-scores-metabot-scope-opt-test
+(deftest ^:synchronized complexity-scores-metabot-scope-opt-test
   (testing ":curated-only? true flows the caller's metabot-scope through to enumerate-catalogs"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -316,7 +326,7 @@
             (is (= 1.0 (get-in metabot  [:components :size :components :entity-count :measurement])))
             (is (= 2.0 (get-in universe [:components :size :components :entity-count :measurement])))))))))
 
-(deftest ^:sequential metabot-catalog-excludes-hidden-tables-test
+(deftest ^:synchronized metabot-catalog-excludes-hidden-tables-test
   (testing ":metabot tables filter out hidden (`visibility_type` non-nil) and routed-DB tables so the
            catalog matches what Metabot/search can actually surface"
     ;; Regression: `:metabot` used to count every active non-audit table, which overcounted on
@@ -353,7 +363,7 @@
           (is (not (contains? ids routed))
               "tables whose db has router_database_id are filtered out"))))))
 
-(deftest ^:sequential metabot-catalog-curated-scope-test
+(deftest ^:synchronized metabot-catalog-curated-scope-test
   (testing "{:curated-only? true} restricts the :metabot catalog to curated Cards AND Tables,
            mirroring the `curated` filter Metabot search applies when use_verified_content is on"
     (collections.tu/with-library [{:keys [metrics]}]
@@ -407,7 +417,7 @@
               "curated Cards (verified / official / library) and curated Tables (authoritative /
                published-final) are in; uncurated entities and hidden tables stay out"))))))
 
-(deftest ^:sequential metabot-collection-scope-ids-test
+(deftest ^:synchronized metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"
     (is (nil? (#'complexity/metabot-collection-scope-ids nil))))
   (testing "valid collection-id returns the id plus its descendants"
@@ -439,7 +449,7 @@
                "bar" (known-vectors "bar")}
               result)))))
 
-(deftest ^:sequential library-empty-when-no-library-collection-test
+(deftest ^:synchronized library-empty-when-no-library-collection-test
   (testing "on an instance with no Library collection, the library score is zero and universe still reports"
     (collections.tu/without-library
      (mt/with-temp [:model/Database {db-id :id} {:name "No-library Test DB"}
@@ -458,7 +468,7 @@
          (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
            (is (pos? (:score universe)))))))))
 
-(deftest ^:sequential library-excludes-audit-content-test
+(deftest ^:synchronized library-excludes-audit-content-test
   (testing "published audit-db content in the Library tree is excluded so :library stays a subset of :universe"
     ;; Regression: library-entities previously didn't filter on audit/audit-db-id while universe/metabot did.
     ;; An audit card/table placed in the Library could push :library past :universe and break the new
@@ -505,7 +515,7 @@
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
 
-(deftest ^:sequential complexity-scores-with-real-search-index-embedder-test
+(deftest ^:synchronized complexity-scores-with-real-search-index-embedder-test
   (testing "complexity-scores drives the real search-index-embedder + pgvector end-to-end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this;
     ;; locally with pgvector running it exercises the pgvector read path that all other
@@ -529,7 +539,7 @@
                 @captured)
             "embedder returned vectors from pgvector and the synonym axis produced a real measurement")))))
 
-(deftest ^:sequential search-index-embedder-propagates-read-failures-test
+(deftest ^:synchronized search-index-embedder-propagates-read-failures-test
   (testing "pgvector read failures propagate so the caller can flag a degraded synonym axis"
     ;; Regression guard: before this, the embedder swallowed read exceptions and returned {}, which
     ;; looked indistinguishable from \"no synonym matches.\" A transient search-index failure
@@ -566,7 +576,7 @@
                                            (pr-str k) (pr-str @unseen))
                                    {:pairs k :remaining @unseen})))))}))
 
-(deftest ^:sequential search-index-embedder-global-dedup-test
+(deftest ^:synchronized search-index-embedder-global-dedup-test
   (testing "global dedup picks lowest numeric model_id regardless of batch boundaries"
     ;; Stub at fetch-batch so the real batching path executes. With batch-size 1, each entity
     ;; pair lands in its own SQL batch, so the two duplicates come back from separate partitions
@@ -619,7 +629,7 @@
             (is (empty? @unseen)
                 "every expected fetch-batch pair-set must be requested")))))))
 
-(deftest ^:sequential search-index-embedder-cross-batch-dedup-test
+(deftest ^:synchronized search-index-embedder-cross-batch-dedup-test
   (testing "duplicates split across separate fetch batches are resolved globally"
     ;; Mock at fetch-batch so the real partition-all fold executes. With batch-size 1, each entity
     ;; pair lands in its own SQL batch. The stub is keyed by the expected `(model, model_id)`
@@ -652,7 +662,7 @@
             (is (empty? @unseen)
                 "every expected fetch-batch pair-set must be requested")))))))
 
-(deftest ^:sequential search-index-embedder-cross-batch-dedup-test-2
+(deftest ^:synchronized search-index-embedder-cross-batch-dedup-test-2
   (testing "cross-batch, cross-model duplicates: model_id primary, model secondary"
     ;; Same normalized name from three different batches and three different model types.
     ;; model_id "5" appears twice (card + dataset); model_id "12" is in a third batch.
@@ -703,7 +713,7 @@
       true?  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:sequential meta-passes-through-caller-supplied-model-and-variant-test
+(deftest ^:synchronized meta-passes-through-caller-supplied-model-and-variant-test
   (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                               (constantly {:library [] :universe [] :metabot []})]
     (testing ":embedding-model and :text-variant are published in :meta when the caller passes them"
@@ -722,7 +732,7 @@
         (is (not (contains? meta :embedding-model)))
         (is (not (contains? meta :text-variant)))))))
 
-(deftest ^:sequential synonym-source-default-opts-pin-minilm-via-ai-service-test
+(deftest ^:synchronized synonym-source-default-opts-pin-minilm-via-ai-service-test
   (testing "at default settings, synonym-source produces the MiniLM-L6-v2 ai-service descriptor + names-split text variant"
     (test-util/with-synonym-source []
       (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
@@ -734,7 +744,25 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
-(deftest ^:sequential provider-embedder-suppresses-token-tracking-test
+(deftest ^:synchronized synonym-source-in-process-opts-pin-bundled-minilm-test
+  (testing "the in-process synonym provider selects the bundled MiniLM model, not Library retrieval's Arctic model"
+    (test-util/with-synonym-source [:provider "in-process"]
+      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)
+            bundled-minilm {:provider         "in-process"
+                            :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+                            :model-dimensions 384}
+            captured       (atom nil)]
+        (is (= bundled-minilm embedding-model-meta))
+        (is (= :names-split text-variant))
+        (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                    (fn [model texts & _opts]
+                                      (reset! captured model)
+                                      (repeat (count texts) [1.0]))]
+          (embedder [{:id 1 :name "orders" :kind :table}]))
+        (is (= bundled-minilm @captured)
+            "the embedder asks the provider SPI for the bundled MiniLM model")))))
+
+(deftest ^:synchronized provider-embedder-suppresses-token-tracking-test
   (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
     ;; Complexity scoring isn't user-driven search traffic; the score itself is the analytics
     ;; signal, so embedding calls here shouldn't write to `semantic_search_token_tracking`
@@ -749,13 +777,12 @@
         (is (false? (:record-tokens? @captured)))))))
 
 (deftest ^:parallel embeddings-client-translates-neutral-dimension-key-test
-  (let [[translated]
-        (embeddings/get-embeddings-batch
-         {:provider ::dimension-translation-test, :model-name "fake", :model-dimensions 384}
-         ["orders"])]
-    (is (= 384 (:vector-dimensions translated)))))
+  (embeddings/get-embeddings-batch
+   {:provider "dimension-translation-test", :model-name "fake", :model-dimensions 384}
+   ["orders"])
+  (is (= 384 (:vector-dimensions @captured-translation-model))))
 
-(deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
+(deftest ^:synchronized provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"
     (let [captured (atom nil)
           embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
@@ -774,7 +801,7 @@
                 "metabase v2 foo"]
                @captured))))))
 
-(deftest ^:sequential provider-embedder-propagates-provider-errors-test
+(deftest ^:synchronized provider-embedder-propagates-provider-errors-test
   (testing "provider errors bubble up so score-synonym-pairs can report nil measurements + :error"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 4})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
@@ -782,7 +809,7 @@
         (is (thrown-with-msg? Throwable #"ai-service down"
                               (embedder [{:id 1 :name "orders" :kind :table}])))))))
 
-(deftest ^:sequential provider-embedder-zips-by-position-test
+(deftest ^:synchronized provider-embedder-zips-by-position-test
   (testing "vectors come back keyed by the normalized name; nil slots are dropped"
     (let [embedder (embedders/provider-embedder {:provider "ai-service" :model-name "fake" :model-dimensions 2})]
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
@@ -795,7 +822,7 @@
           (is (= #{"keep me" "another"} (set (keys result))))
           (is (every? #(instance? (Class/forName "[F") %) (vals result))))))))
 
-(deftest ^:sequential active-embedding-model-reads-from-active-index-test
+(deftest ^:synchronized active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
     (let [active-model {:provider "openai" :model-name "text-embedding-ada-002" :vector-dimensions 1536}]
       (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
@@ -838,7 +865,7 @@
                              [(str (snake group) "." (snake leaf)) score]))]
            event))))
 
-(deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
+(deftest ^:synchronized emit-snowplow-publishes-total-and-each-subscore-test
   (testing "one event per (catalog × key) — grand total, group rollups, and leaves — with correct scores"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -872,7 +899,7 @@
                                (number?  (get-in e ["parameters" "synonym_threshold"]))))
                         events))))))))
 
-(deftest ^:sequential emit-snowplow-includes-measurement-for-sub-components-test
+(deftest ^:synchronized emit-snowplow-includes-measurement-for-sub-components-test
   (testing "each leaf event carries the raw pre-score measurement; totals and group-totals do not"
     (snowplow-test/with-fake-snowplow-collector
       ;; Library: 3 entities, one collision pair, 5 fields total.
@@ -899,7 +926,7 @@
             (is (= 0.0 (get-in by-key ["ambiguity.synonym_pairs"     "measurement"])))
             (is (= 0.0 (get-in by-key ["ambiguity.repeated_measures" "measurement"])))))))))
 
-(deftest ^:sequential emit-snowplow-cascades-nil-on-embedder-failure-test
+(deftest ^:synchronized emit-snowplow-cascades-nil-on-embedder-failure-test
   (testing "embedder failure cascades nil through aggregates without skipping any events"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -927,7 +954,7 @@
             ;; when ambiguity falls through. Catches a regression where the cascade goes too far.
             (is (number? (get-in by-key ["size.total" "score"])))))))))
 
-(deftest ^:sequential emit-snowplow-truncates-error-to-schema-max-test
+(deftest ^:synchronized emit-snowplow-truncates-error-to-schema-max-test
   (testing "a pathologically long exception message is truncated so it doesn't fail schema validation"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -945,7 +972,7 @@
             (is (= 1024 (count err))
                 "error is clipped to the schema's maxLength of 1024")))))))
 
-(deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
+(deftest ^:synchronized emit-snowplow-includes-embedding-model-and-text-variant-meta-test
   (testing "every event's parameters carry the nested embedding_model + text_variant from synonym-source"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch (fn [& _] [])
@@ -963,7 +990,7 @@
           (is (every? #(= expected-model (get-in % ["parameters" "embedding_model"])) events))
           (is (every? #(= "names_split"  (get-in % ["parameters" "text_variant"])) events)))))))
 
-(deftest ^:sequential emit-snowplow-batch-id-test
+(deftest ^:synchronized emit-snowplow-batch-id-test
   (testing "scoring stamps every event with a UUID batch_id, constant within a pass and fresh between passes"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -988,7 +1015,7 @@
             (let [batch-2 (drain-and-check-pass!)]
               (is (not= batch-1 batch-2)))))))))
 
-(deftest ^:sequential emit-snowplow-failure-is-swallowed-test
+(deftest ^:synchronized emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
     (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                                 (constantly {:library  [(entity :name "orders")]
@@ -1008,7 +1035,7 @@
                     (messages))
               "a warning about the publish failure was logged"))))))
 
-(deftest ^:sequential complexity-scores-emit-snowplow-false-skips-publish-test
+(deftest ^:synchronized complexity-scores-emit-snowplow-false-skips-publish-test
   (testing ":emit-snowplow? false bypasses Snowplow entirely and stamps ::snowplow-published? false"
     ;; Pins the CLI/appdb path: the standalone scorer disables telemetry, so we must not call
     ;; into the analytics tracker at all (catching failures upstream isn't enough — the cost is
@@ -1027,7 +1054,7 @@
           (is (false? (::complexity/snowplow-published? (meta result)))
               "result metadata reflects that nothing was published"))))))
 
-(deftest ^:sequential complexity-score-library-hermetic-test
+(deftest ^:synchronized complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
     ;; The library tree gets a fixed set of tables, fields, measures, and metric cards. One extra
     ;; collection + table + card sit outside the library so the universe is a strict superset.
@@ -1141,7 +1168,7 @@
     :metabot {:score 0 :components {}} :meta {}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
 
-(deftest ^:sequential latest-score-filters-by-fingerprint-test
+(deftest ^:synchronized latest-score-filters-by-fingerprint-test
   (testing "the overview cache only returns scores matching the current scoring fingerprint"
     (mt/initialize-if-needed! :db)
     (let [other-fingerprint "latest-score-test/other"
@@ -1157,7 +1184,7 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
 
-(deftest ^:sequential latest-score-filters-by-source-test
+(deftest ^:synchronized latest-score-filters-by-source-test
   (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
     ;; The CLI's representation mode writes under the same `task.complexity-score/current-fingerprint`
     ;; as the cron/API so that an admin re-running the cron after a CLI scoring still benefits from
@@ -1179,7 +1206,7 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
-(deftest ^:sequential scored-within-cooldown-uses-db-time-test
+(deftest ^:synchronized scored-within-cooldown-uses-db-time-test
   (testing "scored-within-cooldown? counts only same-fingerprint, same-source rows inside the window"
     ;; created_at defaults to the DB's current_timestamp, so the cutoff is computed in DB time. We
     ;; seed rows relative to real wall-clock (H2's clock ≈ the JVM's) with 1h/13h offsets — far from
@@ -1209,7 +1236,7 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [fp other]]))))))
 
-(deftest ^:sequential run-scoring-persists-latest-score-snapshot-test
+(deftest ^:synchronized run-scoring-persists-latest-score-snapshot-test
   (testing "every successful computation persists a fresh snapshot for the overview endpoint"
     (mt/initialize-if-needed! :db)
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
@@ -1227,7 +1254,7 @@
                 (is (> id before-id)
                     "a new append-only snapshot should be written for each run")))))))))
 
-(deftest ^:sequential run-scoring-advances-fingerprint-only-on-confirmed-publish-test
+(deftest ^:synchronized run-scoring-advances-fingerprint-only-on-confirmed-publish-test
   (testing "fingerprint advances only when Snowplow accepted the event; any other outcome leaves it stale to retry"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (testing "successful publish → fingerprint advances to the claim's fingerprint"
@@ -1254,7 +1281,7 @@
             (is (= "stale" (settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved so the next boot / cron retries the failed cache write")))))))
 
-(deftest ^:sequential scoring-gate-matrix-test
+(deftest ^:synchronized scoring-gate-matrix-test
   (testing "scoring runs iff :data-complexity-score premium feature OR deprecated setting is on"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (doseq [[label premium-features setting-value should-run?]
@@ -1286,7 +1313,7 @@
                       (format "with-scoring-claim! should %sacquire a claim for [%s]"
                               (if should-run? "" "NOT ") label)))))))))))
 
-(deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
+(deftest ^:synchronized maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
   (testing "boot-time emission never advances the last-successful fingerprint on failure — the
            success fingerprint is separate from the in-progress scoring claim, so a scoring/publish
            failure (or a crash mid-run) leaves the fingerprint stale and the next boot retries"
@@ -1312,7 +1339,7 @@
             (is (= "" (settings/data-complexity-scoring-claim))
                 "scoring claim released after successful run")))))))
 
-(deftest ^:sequential maybe-emit-boot-score-claim-protocol-test
+(deftest ^:synchronized maybe-emit-boot-score-claim-protocol-test
   (testing "the shared scoring claim serializes boot-time emission against sibling nodes and cron ticks"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (testing "a fresh claim (sibling node or concurrent cron tick) blocks duplicate emission even when last-fp is stale"
@@ -1368,7 +1395,7 @@
               (is (= sibling-claim (settings/data-complexity-scoring-claim))
                   "replacement claim preserved — our release was a compare-and-clear and the owners didn't match"))))))))
 
-(deftest ^:sequential claim-scoring-run-mode-selection-test
+(deftest ^:synchronized claim-scoring-run-mode-selection-test
   (testing "the cron cooldown gate resolves to :skip / :republish / :recompute by publish state"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
       (let [current (#'task.complexity-score/current-fingerprint)]
@@ -1393,7 +1420,7 @@
               (is (=? {:mode :recompute :fingerprint current}
                       (#'task.complexity-score/claim-scoring-run! {:cooldown-hours 12}))))))))))
 
-(deftest ^:sequential republish-cached-score-test
+(deftest ^:synchronized republish-cached-score-test
   (testing "the re-publish path re-emits the cached snapshot without recomputing"
     (mt/initialize-if-needed! :db)
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
@@ -1435,7 +1462,7 @@
               (#'task.complexity-score/republish-cached-score! "missing-fp")
               (is (true? @recompute?) "a missing snapshot must trigger a recompute"))))))))
 
-(deftest ^:sequential cron-run-claim-path-test
+(deftest ^:synchronized cron-run-claim-path-test
   (testing "the cron path — with-scoring-claim! + run-claim!, exactly what the Quartz job body calls"
     (mt/initialize-if-needed! :db)
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
@@ -1480,7 +1507,7 @@
               (finally
                 (t2/delete! :model/DataComplexityScore :fingerprint current :source "appdb")))))))))
 
-(deftest ^:sequential publish-tagging-test
+(deftest ^:synchronized publish-tagging-test
   (testing "::snowplow-published? metadata records publish success/failure for schedule/boot callers"
     (testing "complexity-scores (fresh compute + publish)"
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
@@ -1517,7 +1544,7 @@
               (is (false? (::complexity/snowplow-published? (meta result))))
               (is (= score result) "the score value is returned untouched"))))))))
 
-(deftest ^:sequential republish-from-cached-snapshot-round-trip-test
+(deftest ^:synchronized republish-from-cached-snapshot-round-trip-test
   (testing "the real latest-score → republish-score! → emit-snowplow! round-trip emits events from a cached snapshot"
     (mt/initialize-if-needed! :db)
     (let [fingerprint "republish-round-trip-test/fp"

@@ -10,13 +10,17 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
+   [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
@@ -66,6 +70,15 @@
   never runs implicitly against whatever Postgres app db happens to be around."
   []
   (Boolean/parseBoolean (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
+
+(defn- in-process-embedder-opted-in?
+  []
+  (Boolean/parseBoolean (System/getenv "MB_IN_PROCESS_EMBEDDER_SEMANTIC_SEARCH_TEST")))
+
+(def ^:private in-process-embedding-model
+  {:provider          "in-process"
+   :model-name        "Snowflake/snowflake-arctic-embed-xs"
+   :vector-dimensions 384})
 
 (deftest ^:synchronized appdb-pgvector-round-trip-test
   (cond
@@ -118,7 +131,7 @@
                     (is (contains? tables "index_metadata"))
                     (is (contains? tables "index_control"))
                     (is (contains? tables "index_gate"))
-                    (is (contains? tables "index_mock_model_4"))
+                    (is (contains? tables (semantic.index/model-table-name semantic.tu/mock-embedding-model)))
                     (is (some #(str/starts-with? % "dlq_") tables))))
                 (testing "search round-trips through the app-db pool"
                   ;; results are reconstructed from legacy_input, so the mock card comes back as model+id
@@ -133,3 +146,54 @@
                   (is (= public-before (tables-in-schema app-db "public")))))
               (finally
                 (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])))))))))
+
+(deftest ^:synchronized appdb-pgvector-in-process-embedder-round-trip-test
+  (cond
+    (not (in-process-embedder-opted-in?))
+    (testing "real in-process inference requires its dedicated CI opt-in — skipping"
+      (is true))
+
+    (not (opted-in?))
+    (testing "the in-process round trip requires the app-db pgvector opt-in"
+      (is false "MB_IN_PROCESS_EMBEDDER_SEMANTIC_SEARCH_TEST requires MB_APPDB_PGVECTOR_MODE_TEST"))
+
+    (not (appdb-can-host-pgvector?))
+    (testing "opted in, but the app db can't host pgvector"
+      (is false "the in-process round trip expects a pgvector-capable Postgres app db"))
+
+    (schema-exists? (mdb/data-source) "semantic_search")
+    (testing "opted in, but a semantic_search schema already exists"
+      (is false "the appdb-mode job should start from a fresh app db with no semantic_search schema"))
+
+    :else
+    (mt/with-premium-features #{:semantic-search}
+      (embeddings.startup/ensure-in-process-provider!)
+      (is (embeddings.provider/registered? "in-process"))
+      (is (semantic.embedding/embedding-supported? in-process-embedding-model))
+      (with-redefs [semantic.db.datasource/db-url                   nil
+                    semantic.db.datasource/data-source              (atom nil)
+                    semantic.db.datasource/app-db-pgvector-support  (atom nil)
+                    semantic.db.datasource/probe-cooldown-timer     (atom nil)
+                    semantic.db.datasource/logged-pgvector-absent?  (atom false)
+                    semantic.embedding/get-configured-model        (constantly in-process-embedding-model)]
+        (let [app-db (mdb/data-source)]
+          (try
+            (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                  index-metadata (semantic.env/get-index-metadata)
+                  documents      (mapv #(assoc % :archived false) (semantic.tu/mock-documents))]
+              (is (semantic.core/supported?) "the semantic search engine accepts the registered provider")
+              (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
+                                                           (semantic.env/get-configured-embedding-model))
+              (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
+              (testing "real in-process embeddings flow through indexing and semantic querying"
+                (is (= {:model "card" :id 123}
+                       (-> (semantic.tu/with-weights {:semantic-distance 1}
+                             (mt/with-test-user :crowberto
+                               (semantic.pgvector-api/query pgvector index-metadata
+                                                            {:search-string "puppy"
+                                                             :vector-search-strategy :brute-force})))
+                           :results
+                           first
+                           (select-keys [:model :id]))))))
+            (finally
+              (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"]))))))))

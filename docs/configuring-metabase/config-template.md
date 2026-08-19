@@ -226,6 +226,7 @@ config:
     llm-google-service-account-key: null
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1

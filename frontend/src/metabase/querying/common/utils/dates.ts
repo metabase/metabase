@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type {
   DateFilterDisplayOpts,
   DateFilterValue,
