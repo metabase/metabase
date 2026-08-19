@@ -1,8 +1,10 @@
 (ns metabase.transforms.models.transform-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [toucan2.core :as t2]))
@@ -111,3 +113,28 @@
               (t2/update! :model/Transform transform-id {:name "Deserialized Update"})
               (t2/delete! :model/Transform transform-id)))
           (is (empty? @events-published)))))))
+
+(deftest write-checks-the-databases-the-instance-will-touch-test
+  (testing "can-write? derives the databases from the instance being saved, not from its stored columns"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Database {allowed-db :id}   {}
+                     :model/Database {forbidden-db :id} {}
+                     :model/Transform transform {:name   "T"
+                                                 :source {:type  "query"
+                                                          :query {:database allowed-db
+                                                                  :type     "native"
+                                                                  :native   {:query "SELECT 1"}}}}]
+        (let [stored (t2/select-one :model/Transform (:id transform))]
+          (is (= allowed-db (:source_database_id stored)))
+          (with-redefs [perms/has-db-transforms-permission?
+                        (fn [_user-id db-id] (= db-id allowed-db))]
+            (mt/with-current-user (mt/user->id :rasta)
+              (with-redefs [api/is-data-analyst? (constantly true)]
+                (testing "leaving the source alone is writable"
+                  (is (mi/can-write? stored)))
+                (testing "repointing the source at a database without transforms permission is not"
+                  (is (not (mi/can-write?
+                            (assoc stored :source {:type  "query"
+                                                   :query {:database forbidden-db
+                                                           :type     "native"
+                                                           :native   {:query "SELECT 1"}}})))))))))))))

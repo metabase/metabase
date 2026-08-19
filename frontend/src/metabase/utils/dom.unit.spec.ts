@@ -3,6 +3,7 @@ import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
+  getSitePath,
   getUrlTarget,
   open,
   shouldOpenInBlankWindow,
@@ -142,5 +143,31 @@ describe("open()", () => {
     });
 
     expect(handleLink).not.toHaveBeenCalled();
+  });
+});
+
+describe("getSitePath", () => {
+  it("returns the lower-cased path of site-url", () => {
+    mockSettings({ "site-url": "https://example.com/Analytics" });
+    expect(getSitePath()).toBe("/analytics");
+  });
+
+  it("returns the root path for a site-url without a sub-path", () => {
+    mockSettings({ "site-url": "https://example.com" });
+    expect(getSitePath()).toBe("/");
+  });
+
+  // site-url is null on instances where it was never set; throwing here used to white-screen the whole app.
+  it.each([null, undefined, ""])(
+    "falls back to the root path when site-url is %p",
+    (siteUrl) => {
+      mockSettings({ "site-url": siteUrl as unknown as string });
+      expect(getSitePath()).toBe("/");
+    },
+  );
+
+  it("falls back to the root path when site-url is not a parseable URL", () => {
+    mockSettings({ "site-url": "not a url" });
+    expect(getSitePath()).toBe("/");
   });
 });

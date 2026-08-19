@@ -19,6 +19,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -112,7 +113,7 @@
    ;; this is my attempt to guess it
    [:source {:optional true} [:maybe [:map
                                       [:type {:optional true} :keyword]
-                                      [:query {:optional true} ::queries.schema/query]]]]
+                                      [:query {:optional true} ::lib-be.schema/maybe-legacy-or-empty-query]]]]
    [:target {:optional true} [:maybe ms/Map]]])
 
 (api.macros/defendpoint :post "/check-transform" :- ::broken-cards-response
@@ -352,19 +353,20 @@
                      (when api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]])
+                        [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
 
                      :model/Transform
                      (cond
                        api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]]
+                        [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
 
                        api/*is-data-analyst?*
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field
+                         ^:allow-subquery
                          {:select [:id]
                           :from   [table-name]
                           :where  [:in :source_database_id
@@ -383,20 +385,22 @@
                                                 api/*current-user-id* :perms/create-queries))))
                          [:and
                           [:= entity-type-field (name entity-type)]
-                          [:in entity-id-field {:select [:id]
-                                                :from   [table-name]
-                                                :where  [:and
-                                                         ;; Filter by collection visibility
-                                                         (collection/visible-collection-filter-clause
-                                                          (keyword (name table-name) "collection_id")
-                                                          {:include-archived-items include-archived-items}
-                                                          {:current-user-id api/*current-user-id*
-                                                           :is-superuser?   api/*is-superuser?*})
-                                                         ;; Filter by entity archived status
-                                                         (case include-archived-items
-                                                           :exclude [:= archived-column false]
-                                                           :only [:= archived-column true]
-                                                           :all nil)]}]]))
+                          [:in entity-id-field
+                           ^:allow-subquery
+                           {:select [:id]
+                            :from   [table-name]
+                            :where  [:and
+                                     ;; Filter by collection visibility
+                                     (collection/visible-collection-filter-clause
+                                      (keyword (name table-name) "collection_id")
+                                      {:include-archived-items include-archived-items}
+                                      {:current-user-id api/*current-user-id*
+                                       :is-superuser?   api/*is-superuser?*})
+                                     ;; Filter by entity archived status
+                                     (case include-archived-items
+                                       :exclude [:= archived-column false]
+                                       :only [:= archived-column true]
+                                       :all nil)]}]]))
 
                      ;; Table with visible-filter-clause and active/visibility_type filtering
                      :model/Table
@@ -404,21 +408,23 @@
                            visibility-type-column (keyword (name table-name) "visibility_type")]
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from   [table-name]
-                                              :where  [:and
-                                                       [:in id-column
-                                                        (perms/visible-table-filter-select
-                                                         :id
-                                                         {:user-id       api/*current-user-id*
-                                                          :is-superuser? api/*is-superuser?*}
-                                                         {:perms/view-data      :unrestricted
-                                                          :perms/create-queries :query-builder})]
-                                                       (case include-archived-items
-                                                         :exclude [:and
-                                                                   [:= active-column true]
-                                                                   [:= visibility-type-column nil]]
-                                                         (:only :all) nil)]}]])
+                        [:in entity-id-field
+                         ^:allow-subquery
+                         {:select [:id]
+                          :from   [table-name]
+                          :where  [:and
+                                   [:in id-column
+                                    (perms/visible-table-filter-select
+                                     :id
+                                     {:user-id       api/*current-user-id*
+                                      :is-superuser? api/*is-superuser?*}
+                                     {:perms/view-data      :unrestricted
+                                      :perms/create-queries :query-builder})]
+                                   (case include-archived-items
+                                     :exclude [:and
+                                               [:= active-column true]
+                                               [:= visibility-type-column nil]]
+                                     (:only :all) nil)]}]])
 
                      ;; Segment/Measure with table permissions and archived filtering
                      (:model/Segment :model/Measure)
@@ -426,28 +432,31 @@
                            table-id-column (keyword (name table-name) "table_id")]
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from   [table-name]
-                                              :where  [:and
-                                                       ;; Check that user can see the table this entity belongs to
-                                                       [:in table-id-column
-                                                        {:select [:metabase_table.id]
-                                                         :from   [:metabase_table]
-                                                         ;; using this clause because we had to change the mi/visible-filter-clause
-                                                         ;; to allow returning CTE based filters
-                                                         ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                                         :where  [:in :metabase_table.id
-                                                                  (perms/visible-table-filter-select
-                                                                   :id
-                                                                   {:user-id       api/*current-user-id*
-                                                                    :is-superuser? api/*is-superuser?*}
-                                                                   {:perms/view-data      :unrestricted
-                                                                    :perms/create-queries :query-builder})]}]
-                                                       ;; Filter by archived status
-                                                       (case include-archived-items
-                                                         :exclude [:= archived-column false]
-                                                         :only [:= archived-column true]
-                                                         :all nil)]}]])))))
+                        [:in entity-id-field
+                         ^:allow-subquery
+                         {:select [:id]
+                          :from   [table-name]
+                          :where  [:and
+                                   ;; Check that user can see the table this entity belongs to
+                                   [:in table-id-column
+                                    ^:allow-subquery
+                                    {:select [:metabase_table.id]
+                                     :from   [:metabase_table]
+                                     ;; using this clause because we had to change the mi/visible-filter-clause
+                                     ;; to allow returning CTE based filters
+                                     ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
+                                     :where  [:in :metabase_table.id
+                                              (perms/visible-table-filter-select
+                                               :id
+                                               {:user-id       api/*current-user-id*
+                                                :is-superuser? api/*is-superuser?*}
+                                               {:perms/view-data      :unrestricted
+                                                :perms/create-queries :query-builder})]}]
+                                   ;; Filter by archived status
+                                   (case include-archived-items
+                                     :exclude [:= archived-column false]
+                                     :only [:= archived-column true]
+                                     :all nil)]}]])))))
          deps.dependency-types/dependency-type->model)))
 
 (defn- broken-entities-filter-clause
@@ -464,11 +473,13 @@
         (keep (fn [[entity-type _model]]
                 [:and
                  [:= entity-type-field (name entity-type)]
-                 [:in entity-id-field {:select [:analyzed_entity_id]
-                                       :from [:analysis_finding]
-                                       :where [:and
-                                               [:= :analysis_finding.analyzed_entity_type (name entity-type)]
-                                               [:= :analysis_finding.result false]]}]])
+                 [:in entity-id-field
+                  ^:allow-subquery
+                  {:select [:analyzed_entity_id]
+                   :from [:analysis_finding]
+                   :where [:and
+                           [:= :analysis_finding.analyzed_entity_type (name entity-type)]
+                           [:= :analysis_finding.result false]]}]])
               deps.dependency-types/dependency-type->model)))
 
 (defn- readable-graph-dependencies
@@ -806,9 +817,9 @@
                         :card [:case
                                [:not= :entity.dashboard_id nil] :dashboard.name
                                [:not= :entity.document_id nil] :document.name
-                               :else [:coalesce :collection.name [:inline (:name root-collection)]]]
+                               :else [:coalesce :collection.name (:name root-collection)]]
                         :table :database.name
-                        (:transform :snippet :dashboard :document) [:coalesce :collection.name [:inline (:name root-collection)]]
+                        (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                         (:segment :measure) :table.display_name)}))
 
@@ -909,25 +920,27 @@
   (case sort-column
     :location {:sort-column location-column
                :sort-joins (location-joins-for-entity entity-type)}
-    :dependents-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                                     [:concat :error_type [:inline "-"] [:coalesce :error_detail [:inline ""]]]
-                                                                     [:composite :error_type :error_detail])]]]]
-                                      :from [:analysis_finding_error]
-                                      :where [:and
-                                              [:= :source_entity_id :entity.id]
-                                              [:= :source_entity_type (name entity-type)]
-                                              (visible-entities-filter-clause
-                                               :analyzed_entity_type :analyzed_entity_id)]}
+    :dependents-errors {:sort-column ^:allow-subquery
+                        {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                        [:concat :error_type "-" [:coalesce :error_detail ""]]
+                                                        [:composite :error_type :error_detail])]]]]
+                         :from [:analysis_finding_error]
+                         :where [:and
+                                 [:= :source_entity_id :entity.id]
+                                 [:= :source_entity_type (name entity-type)]
+                                 (visible-entities-filter-clause
+                                  :analyzed_entity_type :analyzed_entity_id)]}
                         :sort-joins #{}}
-    :dependents-with-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                                          [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
-                                                                          [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
-                                           :from [:analysis_finding_error]
-                                           :where [:and
-                                                   [:= :source_entity_id :entity.id]
-                                                   [:= :source_entity_type (name entity-type)]
-                                                   (visible-entities-filter-clause
-                                                    :analyzed_entity_type :analyzed_entity_id)]}
+    :dependents-with-errors {:sort-column ^:allow-subquery
+                             {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                                             [:concat :analyzed_entity_id "-" :analyzed_entity_type]
+                                                             [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
+                              :from [:analysis_finding_error]
+                              :where [:and
+                                      [:= :source_entity_id :entity.id]
+                                      [:= :source_entity_type (name entity-type)]
+                                      (visible-entities-filter-clause
+                                       :analyzed_entity_type :analyzed_entity_id)]}
                              :sort-joins #{}}
     {:sort-column name-column
      :sort-joins #{}}))
@@ -951,9 +964,10 @@
         visible-filter (visible-entities-filter-clause (name entity-type) :entity.id
                                                        {:include-archived-items include-archived-items})
         all-required-joins (set/union filter-joins sort-joins)
-        select-clause [[[:inline (name entity-type)] :entity_type]
+        select-clause [[^:allow-raw-sql [:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
                        [sort-column :sort_key]]]
+    ^:allow-subquery
     {(if (= query-type :breaking) :select-distinct :select) select-clause
      :from [[table-name :entity]]
      :left-join (build-left-joins join all-required-joins)
@@ -1027,7 +1041,7 @@
                                                      :include-personal-collections include-personal-collections
                                                      :sort-column sort-column})
                            selected-types)
-        union-query {:union-all union-queries}
+        union-query ^:allow-subquery {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
                                       :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset
@@ -1088,7 +1102,7 @@
                                                      :include-personal-collections include-personal-collections
                                                      :sort-column sort-column})
                            selected-types)
-        union-query {:union-all union-queries}
+        union-query ^:allow-subquery {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
                                       :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                                       :offset offset
@@ -1178,7 +1192,7 @@
                                {:include-archived-items :exclude})]
                        dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
                        card-types (conj [:or
-                                         [:!= :afe.analyzed_entity_type [:inline "card"]]
+                                         [:!= :afe.analyzed_entity_type "card"]
                                          [:in :rc.type card-types]]))
         broken-entity-pairs
         (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
@@ -1191,7 +1205,7 @@
                            :where where-clause}
                     card-types (assoc :left-join [[:report_card :rc]
                                                   [:and
-                                                   [:= :afe.analyzed_entity_type [:inline "card"]]
+                                                   [:= :afe.analyzed_entity_type "card"]
                                                    [:= :rc.id :afe.analyzed_entity_id]]])))
         nodes (map (fn [{:keys [entity_type entity_id]}]
                      [(keyword entity_type) entity_id])

@@ -4,8 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
+   [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -20,7 +19,7 @@
    [:id                  ms/PositiveInt]
    [:name                ms/NonBlankString]
    [:table_id            ms/PositiveInt]
-   [:definition          :map]
+   [:definition          ms/Map]
    [:description         {:optional true} [:maybe :string]]
    [:archived            :boolean]
    [:creator_id          ms/PositiveInt]
@@ -32,24 +31,6 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- normalize-input-definition
-  "Normalize measure definition from API input to MBQL5.
-  Accepts MBQL4 definitions for Cypress e2e test support:
-  - MBQL5 full queries (passed through)
-  - MBQL4 full queries (converted to MBQL5)
-  - MBQL4 fragments (wrapped in full query, then converted to MBQL5)"
-  [definition table-id database-id]
-  (if (seq definition)
-    (-> (case (lib/normalized-mbql-version definition)
-          (:mbql-version/mbql5 :mbql-version/legacy)
-          definition
-          ;; default: MBQL4 fragment - wrap it in a full query
-          {:database database-id
-           :type :query
-           :query (merge {:source-table table-id} definition)})
-        lib-be/normalize-query)
-    {}))
-
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`."
   [_route-params
@@ -57,18 +38,16 @@
    {:keys [name description table_id definition], :as body} :- [:map
                                                                 [:name        ms/NonBlankString]
                                                                 [:table_id    ms/PositiveInt]
-                                                                [:definition  ms/Map]
+                                                                [:definition  ::measures.schema/definition]
                                                                 [:description {:optional true} [:maybe :string]]]]
   (api/create-check :model/Measure body)
-  (let [database-id (t2/select-one-fn :db_id :model/Table :id table_id)
-        normalized-definition (normalize-input-definition definition table_id database-id)
-        measure (api/check-500
+  (let [measure (api/check-500
                  (first (t2/insert-returning-instances! :model/Measure
                                                         :table_id    table_id
                                                         :creator_id  api/*current-user-id*
                                                         :name        name
                                                         :description description
-                                                        :definition  normalized-definition)))]
+                                                        :definition  definition)))]
     (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
     (t2/hydrate measure :creator)))
 
@@ -100,13 +79,7 @@
         clean-body (u/select-keys-when body
                                        :present #{:description}
                                        :non-nil #{:archived :definition :name})
-        new-def    (when-let [def (:definition clean-body)]
-                     (let [table-id (:table_id existing)
-                           database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-                       (normalize-input-definition def table-id database-id)))
-        new-body   (merge
-                    (dissoc clean-body :revision_message)
-                    (when new-def {:definition new-def}))
+        new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
     (when changes
@@ -122,7 +95,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe :map]]
+            [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]

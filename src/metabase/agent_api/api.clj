@@ -14,6 +14,7 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
@@ -529,13 +530,18 @@
     (assoc-in query-map [:stages last-idx :page] {:page page :items items})))
 
 (defn- prepare-agent-query
-  "Apply standard Agent API query preparation: middleware defaults and execution info."
+  "Apply standard Agent API query preparation: middleware defaults and execution info.
+
+  `:info` is assoc'd rather than merged so it comes entirely from the server. `execute_query` runs a whole query
+  decoded straight out of the request, and every `:info` key the server does not itself supply would otherwise be the
+  caller's: `:card-id` names the Card whose `result_metadata` gets rewritten once the query finishes, and whose
+  `visualization_settings` the QP loads."
   [query]
   (-> query
       (update-in [:middleware :js-int-to-string?] (fnil identity true))
       qp/userland-query-with-default-constraints
-      (update :info merge {:executed-by api/*current-user-id*
-                           :context     :agent})))
+      (assoc :info {:executed-by api/*current-user-id*
+                    :context     :agent})))
 
 (defn- prepare-combined-query
   "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
@@ -555,13 +561,15 @@
       /v2/construct-query.
 
   The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a
-  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`
-  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (string? (:query m))    :handle
-                         :else                   :fresh))}
+  closed map, so top-level keys it doesn't declare (e.g. the legacy `source_entity` /
+  `referenced_entities` envelope, or a `:query` sent alongside a `:continuation_token`) are
+  dropped before the handler runs."
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (fn [m]
+                               (cond
+                                 (:continuation_token m) :continuation
+                                 (string? (:query m))    :handle
+                                 :else                   :fresh))}
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::program-request]])
@@ -768,7 +776,7 @@
    [:display                {:optional true} [:maybe :string]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-   [:visualization_settings {:optional true} [:maybe :map]]])
+   [:visualization_settings {:optional true} [:maybe ms/Map]]])
 
 (mr/def ::create-question-response
   [:map

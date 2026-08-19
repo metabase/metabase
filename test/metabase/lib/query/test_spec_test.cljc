@@ -24,6 +24,40 @@
                            :source-table (meta/id :venues)}]}
               query)))))
 
+(deftest ^:parallel test-query-string-keys-test
+  (testing "test-query accepts a spec exactly as it arrives from a JSON request body: string keys and values"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {"stages" [{"source" {"type" "table"
+                                       "id"   (meta/id :venues)}}]})]
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table (meta/id :venues)}]}
+              query)))))
+
+(deftest ^:parallel test-query-string-keys-full-spec-test
+  (testing "a full string-keyed camelCase spec with aggregations, breakouts, and order bys decodes"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {"stages" [{"source"       {"type" "table", "id" (meta/id :orders)}
+                             "aggregations" [{"type" "operator", "operator" "count"}
+                                             {"type" "operator", "operator" "sum"
+                                              "args" [{"type" "column", "name" "SUBTOTAL"}]}]
+                             "breakouts"    [{"type" "column", "name" "CREATED_AT"
+                                              "sourceName" "ORDERS", "unit" "year"}]
+                             "orderBys"     [{"direction" "desc", "type" "column"
+                                              "name" "sum", "displayName" "Sum of Subtotal"}]}]})]
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table (meta/id :orders)
+                           :aggregation  [[:count {}]
+                                          [:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :breakout     [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
+                           :order-by     [[:desc {} [:aggregation {} string?]]]}]}
+              query)))))
+
 (deftest ^:parallel test-query-with-card-source-test
   (testing "test-query creates a query from a card source"
     (let [query (lib.query.test-spec/test-query

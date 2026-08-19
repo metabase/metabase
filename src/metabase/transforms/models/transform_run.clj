@@ -38,9 +38,10 @@
   ([] (latest-run-cte nil))
   ([where]
    [[:latest_runs
-     (-> {:select [:*
-                   [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
-          :from   [:transform_run]}
+     (-> ^:allow-subquery
+      {:select [:*
+                [[:over [[:row_number] ^:allow-subquery {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
+       :from   [:transform_run]}
          (m/assoc-some :where where))]]))
 
 (defn- latest-runs-query [transform-ids]
@@ -151,11 +152,12 @@
   [age unit]
   (u/prog1 (t2/update! :model/TransformRun
                        :is_active true
-                       :id [:in {:select :run_id
-                                 :from   :transform_run_cancelation
-                                 :where  [:<
-                                          :transform_run_cancelation.time
-                                          (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
+                       :id [:in ^:allow-subquery
+                            {:select :run_id
+                             :from   :transform_run_cancelation
+                             :where  [:<
+                                      :transform_run_cancelation.time
+                                      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
                        {:status    :canceled
                         :end_time  :%now
                         :is_active nil
@@ -210,9 +212,10 @@
                      (conj [:in :transform_id transform-ids])
 
                      (seq transform-tag-ids)
-                     (conj [:in :transform_id {:select [:transform_id]
-                                               :from   [:transform_transform_tag]
-                                               :where  [:in :tag_id transform-tag-ids]}])
+                     (conj [:in :transform_id ^:allow-subquery
+                            {:select [:transform_id]
+                             :from   [:transform_transform_tag]
+                             :where  [:in :tag_id transform-tag-ids]}])
 
                      (seq statuses)
                      (conj [:in :status (set statuses)])
@@ -263,14 +266,16 @@
   "Returns a correlated subquery that selects the translated name of the first tag
    (by minimum position) assigned to the transform for a transform run."
   []
+  ^:allow-subquery
   {:select [[(translate-tag-name-clause :tt.name :tt.built_in_type) :tag_name]]
    :from   [[:transform_transform_tag :ttt]]
    :join   [[:transform_tag :tt] [:= :ttt.tag_id :tt.id]]
    :where  [:and
             [:= :ttt.transform_id :transform_run.transform_id]
-            [:= :ttt.position {:select [[[:min :ttt2.position]]]
-                               :from   [[:transform_transform_tag :ttt2]]
-                               :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
+            [:= :ttt.position ^:allow-subquery
+             {:select [[[:min :ttt2.position]]]
+              :from   [[:transform_transform_tag :ttt2]]
+              :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
 
 (defn- paged-runs-order-by-clause
   "Builds a HoneySQL `:order-by` clause for transform runs, translating display values for sortable columns."

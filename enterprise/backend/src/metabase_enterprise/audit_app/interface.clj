@@ -28,11 +28,20 @@
   (throw (ex-info (str (tru "Unable to run internal query function: cannot resolve {0}" query-type))
                   {:status-code 400})))
 
+(def ^:private loadable-namespaces
+  "Every namespace an `:internal` query may cause to be loaded, in full.
+
+  `query-type` is the `:fn` of an `:internal` query -- a string straight off the request -- and requiring a namespace
+  runs its load-time side effects, so requiring whatever it names is a way to load any namespace on the classpath.
+  These are the namespaces that register [[internal-query]] methods on load, and so the only ones worth loading on
+  demand. Add to this when you add an audit page; forgetting to is a 400 on that page, not a silent hole."
+  #{"metabase-enterprise.audit-app.pages.queries"})
+
 (defn resolve-internal-query
   "Invoke the internal query with `query-type` (invokes the corresponding implementation of [[internal-query]])."
   [query-type & args]
   (let [query-type (keyword query-type)
         ns-str     (namespace query-type)]
-    (when ns-str
+    (when (contains? loadable-namespaces ns-str)
       (classloader/require (symbol ns-str)))
     (apply internal-query query-type args)))

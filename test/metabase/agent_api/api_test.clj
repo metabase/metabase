@@ -330,6 +330,32 @@
     (testing "Returns 404 for non-existent field on metric"
       (is (= "Field 999999 not found"
              (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
+(deftest execute-query-cannot-write-another-cards-result-metadata-test
+  (testing "/v1/execute runs a whole query decoded out of the request, so its :info must come from the server"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id   collection-id
+                                                            :dataset_query   (orders-count-query)
+                                                            :result_metadata [{:name         "SECRET"
+                                                                               :display_name "Secret"
+                                                                               :base_type    :type/Text}]}]
+        (testing "sanity: the caller cannot even read the Card"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "card/" card-id)))))
+        (testing "a forged :info :card-id does not rewrite that Card's result_metadata"
+          (let [handle (:query (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                     {:source     {:type "table" :id (mt/id :orders)}
+                                                      :operations [["limit" 5]]}))
+                forged (-> handle
+                           u/decode-base64
+                           json/decode+kw
+                           (assoc :info {:card-id card-id})
+                           json/encode
+                           u/encode-base64)]
+            (is (=? {:status "completed"}
+                    (mt/user-http-request :rasta :post 202 "agent/v1/execute" {:query forged})))
+            (is (= ["SECRET"]
+                   (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
