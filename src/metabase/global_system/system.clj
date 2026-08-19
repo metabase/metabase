@@ -22,8 +22,9 @@
   roots
   (atom {}))
 
-(def ^{:doc "Component key -> atom holding that component's value for this thread. Holds only the
-             components bound on this thread; everything else resolves against [[roots]]."
+(def ^{:doc "Component key -> atom holding that component's value for this thread and any thread the
+             binding is conveyed to. Holds only the components bound here; everything else resolves
+             against [[roots]]."
        :dynamic true
        :private true}
   *bound-boxes*
@@ -33,8 +34,10 @@
   "Every component's value as of a single instant, as this thread sees it: `(get (snapshot) k)` agrees with
    dereferencing that component's handle.
 
-   Consistent even though it is assembled from both slots -- the roots come from one atomic read, and the
-   thread-local values are only ever written from inside the [[mc/binding]] scope that created them."
+   Roots are read atomically, so components nobody has bound here can never disagree. Bound components are
+   read one box at a time: a [[mc/binding]] conveyed to another thread (`future`, `pmap`, `send`) that
+   mutates it while this runs can make those entries disagree. Snapshot from the thread that owns the
+   binding to avoid that."
   []
   (merge @roots (update-vals *bound-boxes* deref)))
 
