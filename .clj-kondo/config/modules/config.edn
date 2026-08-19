@@ -3791,6 +3791,7 @@
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
+           app-db
            auth-identity
            events
            models

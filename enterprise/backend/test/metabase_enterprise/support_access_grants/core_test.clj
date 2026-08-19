@@ -5,10 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.core :as grants]
+   [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag.model]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.events.core :as events]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -440,6 +442,57 @@
               (grants/expire-ended-grants!)
               (is (:is_superuser (t2/select-one :model/User :id other-user-id)))
               (is (t2/exists? :model/Session :user_id other-user-id)))))))))
+
+(deftest expire-ended-grants-does-not-tear-down-a-concurrently-created-grant-test
+  (testing "grant creation waits for an in-progress natural-expiry teardown"
+    (let [support-email "support-expiry-race@example.com"]
+      ;; the creator is an admin so the support user isn't the last one, and can actually be demoted
+      (mt/with-temp [:model/User {creator-id :id} {:is_superuser true}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
+            (let [ended-grant                  (grants/create-grant! creator-id 60 "SEC-730-ENDED" nil)
+                  support-user-id              (t2/select-one-pk :model/User :email support-email)
+                  teardown-started             (promise)
+                  allow-teardown               (promise)
+                  create-started               (promise)
+                  original-revoke-user-access! (dynamic-redefs/original-fn
+                                                #'sag.model/revoke-support-user-access!)]
+              (t2/update! :model/SupportAccessGrantLog (:id ended-grant)
+                          {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+              (mt/with-dynamic-fn-redefs
+                [sag.model/revoke-support-user-access!
+                 (fn [user-id ended-at]
+                   (deliver teardown-started true)
+                   (when (= ::timeout (deref allow-teardown 5000 ::timeout))
+                     (throw (ex-info "Timed out waiting to finish support access teardown" {})))
+                   (original-revoke-user-access! user-id ended-at))]
+                (let [expire-result (future (grants/expire-ended-grants!))]
+                  (is (true? (deref teardown-started 5000 ::timeout))
+                      "Expiry should reach credential teardown")
+                  (let [create-result (future
+                                        (deliver create-started true)
+                                        (grants/create-grant! creator-id 60 "SEC-730-NEW" nil))]
+                    (try
+                      (is (true? (deref create-started 5000 ::timeout)))
+                      (is (= ::timeout (deref create-result 250 ::timeout))
+                          "Grant creation must wait until the expiry teardown releases its lifecycle lock")
+                      (deliver allow-teardown true)
+                      (is (not= ::timeout (deref expire-result 5000 ::timeout)))
+                      (let [new-grant (deref create-result 5000 ::timeout)
+                            support-user (t2/select-one :model/User support-user-id)
+                            auth-identity (t2/select-one :model/AuthIdentity
+                                                         :user_id support-user-id
+                                                         :provider "support-access-grant")]
+                        (is (map? new-grant) "Concurrent grant creation should complete")
+                        (is (= "SEC-730-NEW" (:ticket_number new-grant)))
+                        (is (:is_superuser support-user)
+                            "The new grant should restore support admin access")
+                        (is (= (:grant_end_timestamp new-grant) (:expires_at auth-identity))
+                            "The new grant's credentials must survive the old grant's expiry sweep"))
+                      (finally
+                        (deliver allow-teardown true)
+                        (future-cancel expire-result)
+                        (future-cancel create-result)))))))))))))
 
 (deftest expire-ended-grants-no-support-user-test
   (testing "the natural-expiry sweep is a no-op when no support user exists"

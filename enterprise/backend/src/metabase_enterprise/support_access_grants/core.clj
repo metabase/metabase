@@ -5,11 +5,15 @@
    [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag.model]
    [metabase-enterprise.support-access-grants.provider :as sag.provider]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.events.core :as events]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(def ^:private grant-lifecycle-lock
+  ::grant-lifecycle)
 
 (defn- active-grant-exists?
   "Check if there is an active (non-revoked, non-expired) grant."
@@ -32,36 +36,38 @@
 
   Throws if an active grant already exists."
   [user-id grant-duration-minutes ticket-number notes]
-  (when (active-grant-exists?)
-    (throw (ex-info (tru "Cannot create grant: an active grant already exists")
-                    {:status-code 409})))
-  (t2/with-transaction [_]
-    (let [now (t/instant)
-          grant-end (t/plus now (t/minutes grant-duration-minutes))
-          grant-record {:user_id user-id
-                        :ticket_number ticket-number
-                        :notes notes
-                        :grant_start_timestamp now
-                        :grant_end_timestamp grant-end}
-          grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-                    (t2/hydrate :user_info))
-          support-email (sag.settings/support-access-grant-email)
-          support-user (sag.model/fetch-or-create-support-user!)
-          token (sag.provider/create-support-access-reset! (:id support-user) grant)
-          password-reset-url (when token
-                               (str (system/site-url) "/auth/reset_password/" token))]
-      ;; Publish event - the notification system handles email sending automatically
-      (when (and token password-reset-url)
-        (events/publish-event! :event/support-access-grant-created
-                               {:support_email support-email
-                                :ticket_number ticket-number
-                                :duration_minutes grant-duration-minutes
-                                :grant_end_time grant-end
-                                :password_reset_url password-reset-url
-                                :notes notes}))
-      ;; Return grant with token
-      (cond-> grant
-        token (assoc :token token)))))
+  (cluster-lock/with-cluster-lock grant-lifecycle-lock
+    (when (active-grant-exists?)
+      (throw (ex-info (tru "Cannot create grant: an active grant already exists")
+                      {:status-code 409})))
+    ;; The cluster lock supplies a transaction on server app DBs, but not on H2.
+    (t2/with-transaction [_]
+      (let [now (t/instant)
+            grant-end (t/plus now (t/minutes grant-duration-minutes))
+            grant-record {:user_id user-id
+                          :ticket_number ticket-number
+                          :notes notes
+                          :grant_start_timestamp now
+                          :grant_end_timestamp grant-end}
+            grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
+                      (t2/hydrate :user_info))
+            support-email (sag.settings/support-access-grant-email)
+            support-user (sag.model/fetch-or-create-support-user!)
+            token (sag.provider/create-support-access-reset! (:id support-user) grant)
+            password-reset-url (when token
+                                 (str (system/site-url) "/auth/reset_password/" token))]
+        ;; Publish event - the notification system handles email sending automatically
+        (when (and token password-reset-url)
+          (events/publish-event! :event/support-access-grant-created
+                                 {:support_email support-email
+                                  :ticket_number ticket-number
+                                  :duration_minutes grant-duration-minutes
+                                  :grant_end_time grant-end
+                                  :password_reset_url password-reset-url
+                                  :notes notes}))
+        ;; Return grant with token
+        (cond-> grant
+          token (assoc :token token))))))
 
 (defn revoke-grant!
   "Revoke an existing support access grant.
@@ -98,11 +104,14 @@
   (when-let [{support-user-id :id, superuser? :is_superuser}
              (t2/select-one [:model/User :id :is_superuser] :email (sag.settings/support-access-grant-email))]
     (when (or superuser? (t2/exists? :model/Session :user_id support-user-id))
-      (t2/with-transaction [_]
-        ;; Re-check inside the transaction so a grant created concurrently isn't immediately torn down.
+      (cluster-lock/with-cluster-lock grant-lifecycle-lock
+        ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
+        ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.
         (when-not (active-grant-exists?)
-          (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
-          (sag.model/revoke-support-user-access! support-user-id (t/instant)))))))
+          ;; The cluster lock supplies a transaction on server app DBs, but not on H2.
+          (t2/with-transaction [_]
+            (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
+            (sag.model/revoke-support-user-access! support-user-id (t/instant))))))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.
