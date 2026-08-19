@@ -159,6 +159,33 @@
         ;; rather than a cryptic JSON parse stacktrace.
         {:_raw_arguments raw}))))
 
+(defn- try-decode-json-string
+  "If `v` is a string that looks like a JSON object or array, decode it.
+  Returns the decoded value on success, or the original value on failure."
+  [v]
+  (if (and (string? v)
+           (let [trimmed (str/trim v)]
+             (or (str/starts-with? trimmed "{")
+                 (str/starts-with? trimmed "["))))
+    (try
+      (json/decode+kw v)
+      (catch Exception _ v))
+    v))
+
+(defn- coerce-stringified-json
+  "Walk tool arguments and decode any string values that are actually stringified
+  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
+  [args]
+  (if (map? args)
+    (reduce-kv (fn [m k v]
+                 (assoc m k (cond
+                              (string? v) (try-decode-json-string v)
+                              (map? v)    (coerce-stringified-json v)
+                              :else       v)))
+               {}
+               args)
+    args))
+
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
     :start                 {:type :start
@@ -258,16 +285,17 @@
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
-  optional `:title-fn`, which sees the same arguments the tool will run with:
-  the tool's `:decode` is applied first, when it has one. A throwing title-fn
-  or decode leaves the part untitled."
+  optional `:title-fn`. Stringified JSON is coerced and the tool's `:decode` is
+  applied first, when it has one, so the title describes the arguments the tool
+  will run with. A throwing title-fn or decode leaves the part untitled."
   [tools]
   (map (fn [part]
          (let [{:keys [title-fn decode]} (when (= :tool-input (:type part))
                                            (get tools (:function part)))]
            (if title-fn
              (let [title (try
-                           (title-fn (cond-> (:arguments part) decode decode))
+                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                                       decode decode))
                            (catch Throwable e
                              (log/debug e "tool title-fn failed" {:tool (:function part)})
                              nil))]
@@ -578,33 +606,6 @@
       (str "Invalid tool arguments: " (pr-str humanized))
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
-
-(defn- try-decode-json-string
-  "If `v` is a string that looks like a JSON object or array, decode it.
-  Returns the decoded value on success, or the original value on failure."
-  [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
-    (try
-      (json/decode+kw v)
-      (catch Exception _ v))
-    v))
-
-(defn- coerce-stringified-json
-  "Walk tool arguments and decode any string values that are actually stringified
-  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
-  [args]
-  (if (map? args)
-    (reduce-kv (fn [m k v]
-                 (assoc m k (cond
-                              (string? v) (try-decode-json-string v)
-                              (map? v)    (coerce-stringified-json v)
-                              :else       v)))
-               {}
-               args)
-    args))
 
 (def ^:private stringified-scalar-transformer
   "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.

@@ -870,6 +870,10 @@
     (testing "a throwing :decode leaves the part untitled"
       (is (= [{:type :tool-input :id "c6" :function "badcode" :arguments {}}]
              (stamp {:type :tool-input :id "c6" :function "badcode" :arguments {}}))))
+    (testing "a double-encoded argument is coerced before :decode, as it is before the tool runs"
+      (is (= [{:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}
+               :title "Greeting Sam, Kim"}]
+             (stamp {:type :tool-input :id "c7" :function "decoded" :arguments {:who "[\"Sam\",\"Kim\"]"}}))))
     (testing "non-tool-input parts pass through"
       (is (= [{:type :text :id "t1" :text "hi"}]
              (stamp {:type :text :id "t1" :text "hi"}))))))

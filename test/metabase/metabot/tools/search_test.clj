@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
@@ -469,17 +470,33 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
+(defn- registered-search-tool
+  [tool-var]
+  (-> (metabot.tools/wrap-tools-with-state {"search" tool-var} (atom {}) nil nil)
+      (get "search")))
+
+(deftest ^:parallel tool-registered-decode-test
+  (testing "every search tool variant reaches the agent loop with its decoder attached"
+    (doseq [tool-var [#'metabot.tools/search-tool
+                      #'metabot.tools/sql-search-tool
+                      #'metabot.tools/nlq-search-tool
+                      #'metabot.tools/transform-search-tool]]
+      (testing (str tool-var)
+        (is (= {:keyword_queries ["metabot byok"]}
+               ((:decode (registered-search-tool tool-var)) {:keyword_queries "metabot byok"})))))))
+
 (deftest tool-decoded-string-query-test
   (testing "a query the model sent as a bare string is searched as one phrase, not one search per character"
     (mt/with-test-user :rasta
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (let [captured (atom [])]
+        (let [captured (atom [])
+              decode   (:decode (registered-search-tool #'metabot.tools/search-tool))]
           (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                            (swap! captured conj (:search-string context))
                                                            {:data []})]
-            (search/search-tool (#'search/decode-search-args {:keyword_queries "metabot byok"})))
+            (search/search-tool (decode {:keyword_queries "metabot byok"})))
           (is (= ["metabot byok"] @captured)))))))
 
 (deftest other-user-collection-test
