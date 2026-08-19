@@ -4,6 +4,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.sample-data.core :as sample-data]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -78,6 +79,43 @@
            :config  {:databases [{:name    (str test-db-name "-in-memory")
                                   :engine  "h2"
                                   :details {:db "mem:some-in-memory-db"}}]}})))))
+
+(deftest init-attached-dwh-from-config-file-under-external-only-networks-test
+  (mt/with-premium-features #{:config-text-file :attached-dwh}
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (let [entry->config (fn [entry] {:version 1, :config {:databases [entry]}})]
+            (try
+              (testing "an attached-DWH entry on a private address is provisioned"
+                (is (= :ok
+                       (advanced-config.file/initialize!
+                        (entry->config {:name            test-db-name
+                                        :engine          "postgres"
+                                        :is_attached_dwh true
+                                        :details         {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
+                (is (partial= {:is_attached_dwh true}
+                              (t2/select-one :model/Database :name test-db-name)))
+                (testing "and updated in place on a later boot"
+                  (is (= :ok
+                         (advanced-config.file/initialize!
+                          (entry->config {:name            test-db-name
+                                          :engine          "postgres"
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.142", :port 5432, :dbname "dwh"}}))))
+                  (is (partial= {:details {:host "10.224.7.142"}}
+                                (t2/select-one :model/Database :name test-db-name)))))
+              (finally
+                (t2/delete! :model/Database :name test-db-name)))
+            (testing "an ordinary entry with the same private address is still refused"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"private or internal network address"
+                   (advanced-config.file/initialize!
+                    (entry->config {:name    "not-the-attached-dwh"
+                                    :engine  "postgres"
+                                    :details {:host "10.224.7.141", :port 5432, :dbname "dwh"}}))))
+              (is (nil? (t2/select-one :model/Database :name "not-the-attached-dwh"))))))))))
 
 (deftest init-from-config-file-stub-test
   (testing "stub databases skip the connection test and never trigger sync"
