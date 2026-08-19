@@ -149,7 +149,7 @@
    update check stack before persisting. A `definition`/`query_handle` re-runs the metric shape
    gate; omitting both leaves the stored query untouched."
   [id {:keys [name description collection_position archived] :as args} session-id]
-  (let [card-before  (common/resolve-and-read
+  (let [card-before  (common/resolve-and-read-with
                       :model/Card id
                       (fn [cid] (api/write-check :model/Card cid)))
         _            (check-is-metric! card-before)

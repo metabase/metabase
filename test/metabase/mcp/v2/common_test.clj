@@ -147,11 +147,11 @@
 
 (deftest ^:parallel resolve-and-read-collapses-existence-test
   (testing "\"exists but unreadable\" throws the same not-found error as \"doesn't exist\""
-    (let [denied  (try (common/resolve-and-read :model/Card 7
-                                                (fn [_] (throw (ex-info "You don't have permission." {:status-code 403}))))
+    (let [denied  (try (common/resolve-and-read-with :model/Card 7
+                                                     (fn [_] (throw (ex-info "You don't have permission." {:status-code 403}))))
                        (catch Exception e (ex-message e)))
-          missing (try (common/resolve-and-read :model/Card 7
-                                                (fn [_] (throw (ex-info "Not found." {:status-code 404}))))
+          missing (try (common/resolve-and-read-with :model/Card 7
+                                                     (fn [_] (throw (ex-info "Not found." {:status-code 404}))))
                        (catch Exception e (ex-message e)))]
       (is (= denied missing))
       (is (str/includes? denied "not found")))))
@@ -172,10 +172,10 @@
   (mt/with-temp [:model/Collection coll {}]
     (let [eid (:entity_id coll)]
       (testing "returns the object when the read check yields it"
-        (is (= coll (common/resolve-and-read :model/Collection eid (fn [_] coll)))))
+        (is (= coll (common/resolve-and-read-with :model/Collection eid (fn [_] coll)))))
       (testing "a nil read check collapses to the not-found error"
         (is (thrown-with-msg? Exception #"not found"
-                              (common/resolve-and-read :model/Collection eid (fn [_] nil))))))))
+                              (common/resolve-and-read-with :model/Collection eid (fn [_] nil))))))))
 
 (deftest resolve-id-or-404-entity-id-404-collapse-test
   (testing "a well-formed entity_id that resolves to no row throws the collapsed not-found error"

@@ -287,7 +287,7 @@
               card_type archived column_metadata dashboard_id] :as args}
    session-id]
   (check-dashboard-collection-exclusive! dashboard_id args)
-  (let [card-before  (common/resolve-and-read
+  (let [card-before  (common/resolve-and-read-with
                       :model/Card id
                       (fn [cid] (api/write-check :model/Card cid)))
         dashboard-id (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))

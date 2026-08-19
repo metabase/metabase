@@ -193,8 +193,8 @@
 
 (defn- fetch-document
   [id-or-eid]
-  (let [doc (common/resolve-and-read :model/Document id-or-eid
-                                     (fn [id] (documents/get-document id)))
+  (let [doc (common/resolve-and-read-with :model/Document id-or-eid
+                                          (fn [id] (documents/get-document id)))
         ;; The Metabase-flavored Markdown body — the same text document_write's old_str edits
         ;; match against — plus the node-id -> character-offset spans the comments include
         ;; anchors threads with. A body the serializer can't render (e.g. an unrecognized node
@@ -358,8 +358,8 @@
 
 (defn- fetch-transform
   [id-or-eid]
-  (let [transform (common/resolve-and-read :model/Transform id-or-eid
-                                           (fn [id] (transforms/get-transform id)))]
+  (let [transform (common/resolve-and-read-with :model/Transform id-or-eid
+                                                (fn [id] (transforms/get-transform id)))]
     (-> (select-keys transform [:id :name :description :source_type :collection_id :entity_id
                                 :source_database_id :target_db_id :run_trigger :creator_id
                                 :owner_user_id :owner_email :tag_ids :created_at :updated_at])

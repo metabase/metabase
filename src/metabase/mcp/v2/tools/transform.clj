@@ -236,7 +236,7 @@
    the shared REST update path, which re-runs feature, database, schema, target-conflict, and cycle
    checks against the merged transform."
   [id {:keys [name description tag_ids] :as args} session-id]
-  (let [transform  (common/resolve-and-read
+  (let [transform  (common/resolve-and-read-with
                     :model/Transform id
                     (fn [tid] (api/write-check :model/Transform tid)))
         _          (check-is-query-transform! transform)

@@ -345,8 +345,8 @@
     (common/throw-teaching-error
      (str "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text "
           "edits). To change only collection_id/collection_position/archived, pass edits: [].")))
-  (let [existing (common/resolve-and-read :model/Document id
-                                          (fn [document-id] (documents/get-document document-id)))]
+  (let [existing (common/resolve-and-read-with :model/Document id
+                                               (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
       (api/check-not-archived existing))
     (api/write-check existing)

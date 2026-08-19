@@ -232,7 +232,7 @@
   "The subscription behind its read check, hydrated. Alerts share the Pulse id space but are a
    different concept with their own tool, so one collapses to not-found here."
   [id-or-eid]
-  (common/resolve-and-read
+  (common/resolve-and-read-with
    :model/Pulse id-or-eid
    (fn [id]
      (when (t2/exists? :model/Pulse :id id :alert_condition nil)
