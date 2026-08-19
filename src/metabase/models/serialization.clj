@@ -1272,7 +1272,7 @@
     (m :guard map?)
     (import-mbql-map m)))
 
-;; Unfortunately, settings depend on ser
+;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)
