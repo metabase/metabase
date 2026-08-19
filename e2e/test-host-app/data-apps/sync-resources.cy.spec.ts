@@ -1,15 +1,15 @@
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addUserToDataAppGroup,
+  addUserToGroup,
   buildDataAppHostApp,
   createDataAppApiKey,
   createSecondDataApp,
-  dataAppDatabaseGraph,
-  dataAppDatabasePermissions,
   dataAppHostAppRoot,
   dataAppPermissionGroupId,
   declareDataAppQueries,
+  getPermissionByGroup,
+  getViewDataPermissionByGroup,
   removeDataAppQueryDeclaration,
   setDataAppCollectionAccess,
   syncDataAppResources,
@@ -23,7 +23,7 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const APP_SLUG = "vite-6-data-app-host-app";
 
 /** The fields these specs read off a card the app collection holds. */
-type AppCard = { id: number; name: string };
+type AppCard = { id: number; name: string; collection_id: number | null };
 
 const APP_ROOT = () => dataAppHostAppRoot();
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
@@ -355,13 +355,14 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    it("is safe to synchronize twice at once", () => {
+    it("leaves one copy when the same app is synchronized again", () => {
       declareDataAppQueries(APP_ROOT(), [
         { name: "Orders", tableId: ORDERS_ID },
       ]);
 
       cy.get<string>("@apiKey").then((apiKey) => {
-        // Two runs racing over the same app must not leave two copies behind.
+        // Cypress runs these one after the other, so this is re-entry rather than a
+        // race: the second run must find the first run's copy and reuse it.
         syncDataAppResources(apiKey, APP_ROOT());
         syncDataAppResources(apiKey, APP_ROOT());
       });
@@ -395,7 +396,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             expect(otherApp.permission_group_id).not.to.eq(groupId);
 
             // Joining one app's group must not reach the other app's copy.
-            addUserToDataAppGroup(groupId, USERS.normal.email);
+            addUserToGroup(groupId, USERS.normal.email);
 
             cy.request(
               `/api/collection/${otherApp.resource_collection_id}/items?models=card`,
@@ -459,7 +460,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     /** Puts the normal user in the app's group, as granting app access does. */
     const joinAppGroup = () =>
       dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-        addUserToDataAppGroup(groupId, USERS.normal.email);
+        addUserToGroup(groupId, USERS.normal.email);
         return cy.wrap(groupId, { log: false });
       });
 
@@ -468,7 +469,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     it("gives the group data to read but no right to write queries with it", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          dataAppDatabaseGraph(groupId).should((graph) => {
+          getPermissionByGroup(groupId).should((graph) => {
             const database = graph[String(SAMPLE_DB_ID)];
 
             expect(database?.["view-data"], "data is readable").to.eq(
@@ -598,7 +599,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             .should("eq", 403);
 
           cy.signInAsAdmin();
-          addUserToDataAppGroup(groupId, USERS.normal.email);
+          addUserToGroup(groupId, USERS.normal.email);
 
           cy.signInAsNormalUser();
           cy.request(`/api/card/${card.id}`)
@@ -611,7 +612,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     it("grants the group view-data on the database its queries read", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          dataAppDatabasePermissions(groupId).should(
+          getViewDataPermissionByGroup(groupId).should(
             ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
               expect(sampleDatabase).to.eq("unrestricted");
             },
@@ -623,7 +624,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     it("stops granting view-data once no declaration reads the database", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          dataAppDatabasePermissions(groupId).should(
+          getViewDataPermissionByGroup(groupId).should(
             ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
               expect(sampleDatabase, "granted by the first sync").to.eq(
                 "unrestricted",
@@ -636,7 +637,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
           // The graph reports only what departs from a group's defaults, so a
           // database the app no longer reads drops out of it entirely.
-          dataAppDatabasePermissions(groupId).should(
+          getViewDataPermissionByGroup(groupId).should(
             ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
               expect(sampleDatabase, "revoked by the second sync").not.to.eq(
                 "unrestricted",

@@ -306,15 +306,9 @@ export function createDataAppApiKey() {
  * published SDK, and its directory name becomes the app's slug.
  */
 export function createSecondDataApp(slug: string) {
-  const appRoot = `${Cypress.config("projectRoot")}/e2e/tmp/${slug}`;
+  cy.task("scaffoldDataApp", { appName: slug, sdkFrom: dataAppHostAppRoot() });
 
-  cy.task("scaffoldDataApp", {
-    appRoot,
-    slug,
-    sdkFrom: dataAppHostAppRoot(),
-  });
-
-  return appRoot;
+  return `${Cypress.config("projectRoot")}/e2e/tmp/${slug}`;
 }
 
 /**
@@ -342,47 +336,6 @@ export function dataAppPermissionGroupId(slug: string) {
 }
 
 /** Puts a user in the app's own permission group, as granting app access does. */
-export function addUserToDataAppGroup(groupId: number, email: string) {
-  return cy
-    .request<{ data: Array<{ id: number; email: string }> }>("/api/user")
-    .then(({ body }) => {
-      const user = body.data.find((candidate) => candidate.email === email);
-
-      if (!user) {
-        throw new Error(`No user with the email ${email}`);
-      }
-
-      return cy.request("POST", "/api/permissions/membership", {
-        group_id: groupId,
-        user_id: user.id,
-      });
-    });
-}
-
-/** The group's view-data level per database, as the permissions graph reports it. */
-export function dataAppDatabasePermissions(groupId: number) {
-  return dataAppDatabaseGraph(groupId).then((graph) =>
-    Object.fromEntries(
-      Object.entries(graph).map(([databaseId, permissions]) => [
-        databaseId,
-        permissions["view-data"],
-      ]),
-    ),
-  );
-}
-
-/** The group's whole per-database entry, `create-queries` included. */
-export function dataAppDatabaseGraph(groupId: number) {
-  return cy
-    .request<{
-      groups: Record<
-        string,
-        Record<string, { "view-data"?: string; "create-queries"?: string }>
-      >;
-    }>("GET", "/api/permissions/graph")
-    .then(({ body }) => body.groups[String(groupId)] ?? {});
-}
-
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 

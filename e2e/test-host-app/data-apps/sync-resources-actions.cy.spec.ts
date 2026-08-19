@@ -1,12 +1,12 @@
 import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addUserToDataAppGroup,
+  addUserToGroup,
   createDataAppApiKey,
-  dataAppDatabasePermissions,
   dataAppHostAppRoot,
   dataAppPermissionGroupId,
   declareDataAppActions,
+  getViewDataPermissionByGroup,
   moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
   resetDataAppHostAppSources,
@@ -268,7 +268,7 @@ describe(
     describe("permissions", () => {
       const joinAppGroup = () =>
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToDataAppGroup(groupId, USERS.normal.email);
+          addUserToGroup(groupId, USERS.normal.email);
           return cy.wrap(groupId, { log: false });
         });
 
@@ -293,6 +293,16 @@ describe(
           })
             .its("status")
             .should("be.oneOf", [200, 204]);
+
+          // The same request against the source, so the two are like for like.
+          cy.request({
+            method: "POST",
+            url: `/api/action/${action.id}/execute`,
+            body: { parameters: { team_name: "Data App FC", score: 7 } },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
 
           cy.request({
             url: `/api/action/${action.id}`,
@@ -365,7 +375,7 @@ describe(
           dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
             // The graph reports only what departs from a group's defaults, so a
             // database the app does not read never appears as granted.
-            dataAppDatabasePermissions(groupId).should(
+            getViewDataPermissionByGroup(groupId).should(
               ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
                 expect(sampleDatabase, "never granted").not.to.eq(
                   "unrestricted",
@@ -377,7 +387,7 @@ describe(
             readsSampleDatabase().its("status").should("eq", 202);
 
             cy.signInAsAdmin();
-            addUserToDataAppGroup(groupId, USERS.normal.email);
+            addUserToGroup(groupId, USERS.normal.email);
 
             cy.signInAsNormalUser();
             readsSampleDatabase().its("status").should("eq", 202);
@@ -407,7 +417,7 @@ describe(
             sync();
 
             dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-              dataAppDatabasePermissions(groupId).should((permissions) => {
+              getViewDataPermissionByGroup(groupId).should((permissions) => {
                 expect(permissions[String(WRITABLE_DB_ID)]).to.eq(
                   "unrestricted",
                 );

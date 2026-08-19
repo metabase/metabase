@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addUserToDataAppGroup,
+  addUserToGroup,
   createDataAppApiKey,
   dataAppIframe,
   dataAppPermissionGroupId,
@@ -18,6 +18,11 @@ const APP_DISPLAY_NAME = "Synced App";
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
 const QUERY_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
+const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
+const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
+
+/** The manifest as source control holds it, before a sync writes entity IDs into it. */
+const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
 
 /** The declaration as source control holds it, with no generated ID yet. */
 const AUTHORED_DECLARATION = [
@@ -45,18 +50,25 @@ const AUTHORED_DECLARATION = [
  * app's viewers are permitted to read — rather than the authored source.
  */
 describe("scenarios > data apps > sync-resources in production", () => {
+  // Sync writes entity IDs into the manifest and a lockfile beside it. `H.restore()`
+  // drops what those IDs name, so leftovers fail the next run's sync.
+  const restoreAuthoredFixture = () => {
+    cy.writeFile(QUERY_FILE(), `${AUTHORED_DECLARATION}\n`);
+    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+    cy.task("removeDataAppPaths", { paths: [LOCKFILE()] });
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    cy.writeFile(QUERY_FILE(), `${AUTHORED_DECLARATION}\n`);
+    restoreAuthoredFixture();
     createDataAppApiKey().as("apiKey");
   });
 
   after(() => {
-    // The fixture is checked in, so hand back its authored state.
-    cy.writeFile(QUERY_FILE(), `${AUTHORED_DECLARATION}\n`);
+    restoreAuthoredFixture();
   });
 
   /** Synchronizes the fixture and returns the card the app must now address. */
@@ -139,7 +151,7 @@ describe("scenarios > data apps > sync-resources in production", () => {
   it("serves the app to a member of its permission group", () => {
     syncApp().then(() => {
       dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-        addUserToDataAppGroup(groupId, USERS.normal.email);
+        addUserToGroup(groupId, USERS.normal.email);
 
         cy.signInAsNormalUser();
         mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
@@ -156,7 +168,10 @@ describe("scenarios > data apps > sync-resources in production", () => {
     });
   });
 
-  it("shows an error to a user outside the permission group", () => {
+  // `mockDataApp` serves `/api/apps/:slug` itself, so the app-level 403 gate
+  // ("You don't have access to this data app") never runs here; what this proves is
+  // that the copy stays unreadable to a non-member.
+  it("fails the app's query for a user outside the permission group", () => {
     syncApp().then(() => {
       cy.signInAsNormalUser();
       mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });

@@ -98,15 +98,18 @@ function inRepo(target: string) {
  * shell string.
  */
 export async function scaffoldDataApp({
-  appRoot,
-  slug,
+  appName,
   sdkFrom,
 }: {
-  appRoot: string;
-  slug: string;
+  appName: string;
   sdkFrom: string;
 }): Promise<string> {
-  const root = inRepo(appRoot);
+  // The task owns the location so a caller cannot aim the `rmSync` below elsewhere.
+  if (path.basename(appName) !== appName) {
+    throw new Error(`A scaffolded app is named, not located: ${appName}`);
+  }
+
+  const root = path.join(REPO_ROOT, "e2e", "tmp", appName);
 
   fs.rmSync(root, { recursive: true, force: true });
   fs.mkdirSync(root, { recursive: true });
@@ -119,7 +122,7 @@ export async function scaffoldDataApp({
   // so an app without one is refused before it reaches the reconcilers.
   fs.writeFileSync(
     path.join(root, "data_app.yaml"),
-    `name: ${slug}\npath: ./dist/index.js\n`,
+    `name: ${appName}\npath: ./dist/index.js\n`,
   );
 
   return root;

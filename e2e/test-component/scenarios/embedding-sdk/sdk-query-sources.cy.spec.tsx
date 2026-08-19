@@ -34,7 +34,7 @@ const totalField = {
 const totalColumn = {
   type: "column" as const,
   name: "TOTAL",
-  jsType: "number",
+  jsType: "number" as const,
 };
 const productField = {
   type: "column" as const,
@@ -46,7 +46,7 @@ const productField = {
 const productColumn = {
   type: "column" as const,
   name: "PRODUCT_ID",
-  jsType: "number",
+  jsType: "number" as const,
 };
 
 const describeResult = (
@@ -85,8 +85,8 @@ function QueryComparison({
   return (
     <>
       <div data-testid="comparison">{status}</div>
-      <div data-testid="row-count">
-        {String(fromCard.data?.rawRows?.length ?? "")}
+      <div data-testid="first-aggregate">
+        {String(fromCard.data?.rawRows?.[0]?.at(-1) ?? "")}
       </div>
     </>
   );
@@ -132,8 +132,10 @@ describe("scenarios > embedding-sdk > query sources", () => {
         "have.text",
         "match",
       );
-      // A match on two empty results would be vacuous.
-      cy.findByTestId("row-count").should(($el) =>
+      // Every comparison ends in an aggregation, and breakout columns come first, so
+      // the first row's last cell is an aggregate. An empty result renders "" and a
+      // zero count renders 0 — both vacuous matches, and both fail here.
+      cy.findByTestId("first-aggregate").should(($el) =>
         expect(Number($el.text())).to.be.greaterThan(0),
       );
     });

@@ -1,6 +1,6 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  addUserToDataAppGroup,
+  addUserToGroup,
   createDataAppApiKey,
   dataAppIframe,
   dataAppPermissionGroupId,
@@ -19,6 +19,11 @@ const APP_DISPLAY_NAME = "Synced Actions App";
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
 const ACTION_FILE = () => `${APP_ROOT()}/actions/orders.action.ts`;
+const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
+const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
+
+/** The manifest as source control holds it, before a sync writes entity IDs into it. */
+const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
 
 /** The declaration as source control holds it, with no generated ID yet. */
 const declaration = (sourceActionId: number) =>
@@ -40,6 +45,14 @@ describe(
   "scenarios > data apps > sync-resources in production (actions)",
   { tags: ["@external", "@actions"] },
   () => {
+    // Sync writes entity IDs into the manifest and a lockfile beside it. `H.restore()`
+    // drops what those IDs name, so leftovers fail the next run's sync.
+    const restoreAuthoredFixture = () => {
+      cy.writeFile(ACTION_FILE(), declaration(1));
+      cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+      cy.task("removeDataAppPaths", { paths: [LOCKFILE()] });
+    };
+
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -53,12 +66,12 @@ describe(
         modelName: MODEL_NAME,
       });
 
+      restoreAuthoredFixture();
       createDataAppApiKey().as("apiKey");
     });
 
     after(() => {
-      // The fixture is checked in, so hand back its authored state.
-      cy.writeFile(ACTION_FILE(), declaration(1));
+      restoreAuthoredFixture();
     });
 
     /** Declares the model's action, synchronizes, and returns both action IDs. */
@@ -119,7 +132,7 @@ describe(
     it("lets a member of the app's group execute it", () => {
       syncApp().then(({ copiedActionId }) => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToDataAppGroup(groupId, USERS.normal.email);
+          addUserToGroup(groupId, USERS.normal.email);
 
           cy.signInAsNormalUser();
           cy.intercept("POST", "/api/action/*/execute").as("execute");
