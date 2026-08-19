@@ -36,6 +36,7 @@
   :visibility :internal
   :encryption :no
   :type       :string
+  :export?    false
   :doc        false)
 
 (defsetting session-cookies
