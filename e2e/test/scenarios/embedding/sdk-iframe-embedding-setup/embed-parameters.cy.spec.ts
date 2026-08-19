@@ -22,7 +22,6 @@ describe(suiteTitle, () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-modular", true);
-    H.updateSetting("enable-embedding-modular", false);
     H.mockEmbedJsToDevServer();
   });
 
