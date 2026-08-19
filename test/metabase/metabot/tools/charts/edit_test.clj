@@ -88,7 +88,7 @@
       (is (= "query-xyz" (:query-id result)))
       (is (= query (:query result))))))
 
-(deftest edit-chart-result-survives-update-memory-test
+(deftest ^:parallel edit-chart-result-survives-update-memory-test
   (testing "update-memory stores the edited chart's real query, not [nil]"
     (let [mp           (mt/metadata-provider)
           query        (lib/native-query mp "SELECT * FROM orders")
