@@ -158,7 +158,7 @@ export function moveDataAppModelToCollection({
 export const dataAppHostAppRoot = () =>
   `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
 
-const actionsFileIn = (appRoot: string) =>
+const actionDeclarationsFile = (appRoot: string) =>
   `${appRoot}/actions/orders.action.ts`;
 
 /**
@@ -184,7 +184,7 @@ export function declareDataAppActions(
 ) {
   return cy.task("writeDataAppFiles", {
     files: {
-      [actionsFileIn(appRoot)]: [
+      [actionDeclarationsFile(appRoot)]: [
         'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
         ...sourceActionIds.map(
           (id) =>
@@ -195,7 +195,8 @@ export function declareDataAppActions(
   });
 }
 
-const queriesFileIn = (appRoot: string) => `${appRoot}/queries/orders.query.ts`;
+const queryDeclarationsFile = (appRoot: string) =>
+  `${appRoot}/queries/orders.query.ts`;
 
 /** Declares one `defineQuery` per entry, as an app author would. */
 export function declareDataAppQueries(
@@ -204,7 +205,7 @@ export function declareDataAppQueries(
 ) {
   return cy.task("writeDataAppFiles", {
     files: {
-      [queriesFileIn(appRoot)]: [
+      [queryDeclarationsFile(appRoot)]: [
         'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
         ...declarations.map(({ name, tableId, limit }) => {
           const clauses = limit === undefined ? "" : `, limit: ${limit}`;
@@ -226,14 +227,17 @@ function removeDeclaration(filePath: string, exportName: string) {
 }
 
 export function removeDataAppQueryDeclaration(appRoot: string, name: string) {
-  return removeDeclaration(queriesFileIn(appRoot), name);
+  return removeDeclaration(queryDeclarationsFile(appRoot), name);
 }
 
 export function removeDataAppActionDeclaration(
   appRoot: string,
   sourceActionId: number,
 ) {
-  return removeDeclaration(actionsFileIn(appRoot), `Action${sourceActionId}`);
+  return removeDeclaration(
+    actionDeclarationsFile(appRoot),
+    `Action${sourceActionId}`,
+  );
 }
 
 /** Runs the real `sync-resources` CLI against the instance under test. */
