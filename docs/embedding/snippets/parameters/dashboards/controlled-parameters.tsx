@@ -5,7 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
-const dashboardId = "Xk3YzAbCdEfGhIjKlMnOp";
+const dashboardId = 1;
 
 const ExampleControlled = () => {
   // [<snippet example-controlled>]

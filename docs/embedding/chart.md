@@ -116,7 +116,7 @@ const METABASE_SECRET_KEY = "YOUR_SECRET_KEY";
 
 // Here we lock a customer_id parameter to 13
 const payload = {
-  resource: { question: "Pq7RsTuVwXyZaBcDeFgHi" },
+  resource: { question: 40956 },
   params: {
     customer_id: [
       13, // set this programmatically, based on whose account page your app is rendering
@@ -163,10 +163,10 @@ Interactive charts require SSO, which you can set up with either web components 
 Reference an existing question by ID. [Drill-through](../questions/visualizations/drill-through.md) is on by default:
 
 ```html
-<metabase-question question-id="Pq7RsTuVwXyZaBcDeFgHi"></metabase-question>
+<metabase-question question-id="1"></metabase-question>
 ```
 
-You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
+`question-id` takes the question's sequential ID — the number in the question's URL. On Pro and Enterprise plans, you can use the question's [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; entity IDs stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 To control what people can do with the chart, check out [web component attributes](./question-reference.md#web-component-metabase-question-attributes). For example, you can show or hide download buttons, the question's title, or the chart type selector.
 
@@ -196,9 +196,9 @@ With a web component, turn saving on with `is-save-enabled="true"`, and set the 
 
 ```html
 <metabase-question
-  question-id="Pq7RsTuVwXyZaBcDeFgHi"
+  question-id="1"
   is-save-enabled="true"
-  target-collection="Mn4OpQrStUvWxYzAbCdEf"
+  target-collection="5"
 ></metabase-question>
 ```
 
@@ -253,7 +253,7 @@ Locked parameters need a question written in SQL, with a [field filter or variab
 
 ```javascript
 const payload = {
-  resource: { question: "Pq7RsTuVwXyZaBcDeFgHi" },
+  resource: { question: 5 },
   params: {
     category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
   },
@@ -286,17 +286,14 @@ Hiding a parameter declutters the UI; it doesn't restrict what people can query.
 You can let people set up [alerts](../questions/alerts.md) on a saved question with the [`with-alerts`](./question-reference.md#web-component-metabase-question-attributes) attribute on the web component:
 
 ```html
-<metabase-question
-  question-id="Pq7RsTuVwXyZaBcDeFgHi"
-  with-alerts="true"
-></metabase-question>
+<metabase-question question-id="42" with-alerts="true"></metabase-question>
 ```
 
 Or by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion` in the SDK:
 
 ```tsx
 <MetabaseProvider authConfig={authConfig}>
-  <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi" withAlerts />
+  <InteractiveQuestion questionId={42} withAlerts />
 </MetabaseProvider>
 ```
 

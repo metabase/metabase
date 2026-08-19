@@ -12,10 +12,7 @@ const authConfig = defineMetabaseAuthConfig({
 export default function App() {
   return (
     <MetabaseProvider authConfig={authConfig}>
-      <InteractiveQuestion
-        questionId="Pq7RsTuVwXyZaBcDeFgHi"
-        isSaveEnabled={false}
-      />
+      <InteractiveQuestion questionId={1} isSaveEnabled={false} />
     </MetabaseProvider>
   );
 }

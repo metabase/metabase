@@ -2,7 +2,7 @@ import React from "react";
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
 export default function TablesOnlyDashboard() {
-  const dashboardId = "Xk3YzAbCdEfGhIjKlMnOp"; // Entity ID of the dashboard you want to embed. A sequential ID like 1 works too.
+  const dashboardId = 1; // This is the dashboard ID you want to embed
 
   return (
     <EditableDashboard

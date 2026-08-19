@@ -23,7 +23,7 @@ export default function App() {
 
   return (
     <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>
-      <InteractiveDashboard dashboardId="Xk3YzAbCdEfGhIjKlMnOp" />
+      <InteractiveDashboard dashboardId={1} />
     </MetabaseProvider>
   );
   // [<endsnippet example>]

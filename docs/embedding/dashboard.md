@@ -94,7 +94,7 @@ Here's the frontend code:
 
 <!-- No token in the HTML. The embed gets one from your endpoint. -->
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="1"
   with-title="true"
   with-downloads="true"
 ></metabase-dashboard>
@@ -174,10 +174,10 @@ Interactive dashboards require SSO, which you can set up with either web compone
 Reference an existing dashboard by ID. [Drill-through](../questions/visualizations/drill-through.md) is on by default:
 
 ```html
-<metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
+<metabase-dashboard dashboard-id="1"></metabase-dashboard>
 ```
 
-You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
+`dashboard-id` takes the dashboard's sequential ID — the number in the dashboard's URL. On Pro and Enterprise plans, you can use the dashboard's [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; entity IDs stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes).
 
@@ -187,7 +187,7 @@ By default, clicking a link to another dashboard or question does nothing, so pe
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="1"
   drills="true"
   enable-entity-navigation="true"
 ></metabase-dashboard>
@@ -247,10 +247,7 @@ There's no `<metabase-dashboard>` attribute that turns on editing, so there's no
 Depending on your app, you may be able to get there with the [collection browser](./browser.md) instead. Set `read-only="false"`, and every dashboard people open from that browser comes with the editing pencil icon:
 
 ```html
-<metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
-  read-only="false"
-></metabase-browser>
+<metabase-browser initial-collection="123" read-only="false"></metabase-browser>
 ```
 
 The tradeoff: people have to find the dashboard by navigating the collection you point `initial-collection` at, since there's no attribute that opens the browser on one specific dashboard. That works if browsing is something you wanted in your app anyway; it's a detour if you only ever wanted to show one dashboard.
@@ -372,7 +369,7 @@ Unlike a question, which needs a SQL variable to lock onto, any dashboard filter
 
 ```javascript
 const payload = {
-  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
+  resource: { dashboard: 1 },
   params: {
     category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
   },
@@ -421,7 +418,7 @@ Set the [`with-subscriptions`](./dashboard-reference.md#web-component-metabase-d
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="1"
   with-subscriptions="true"
 ></metabase-dashboard>
 ```
@@ -451,7 +448,7 @@ Set `auto-refresh-interval`:
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="1"
   auto-refresh-interval="60"
 ></metabase-dashboard>
 ```
@@ -485,7 +482,7 @@ To set the height, style the `<metabase-dashboard>` element with CSS. The elemen
   }
 </style>
 
-<metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
+<metabase-dashboard dashboard-id="1"></metabase-dashboard>
 ```
 
 The embed won't render shorter than 600 pixels, no matter which height you set.

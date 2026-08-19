@@ -6,7 +6,7 @@ import {
 const Example = () => (
   // [<snippet example-1>]
   <InteractiveDashboard
-    dashboardId="Xk3YzAbCdEfGhIjKlMnOp"
+    dashboardId={95}
     renderDrillThroughQuestion={QuestionView}
   />
   // [<endsnippet example-1>]

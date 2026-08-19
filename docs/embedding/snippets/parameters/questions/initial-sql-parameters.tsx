@@ -1,6 +1,6 @@
 import { StaticQuestion } from "@metabase/embedding-sdk-react";
 
-const questionId = "Pq7RsTuVwXyZaBcDeFgHi";
+const questionId = 1;
 
 const Example = () => (
   // [<snippet example>]

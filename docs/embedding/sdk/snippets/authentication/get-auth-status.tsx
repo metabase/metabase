@@ -12,7 +12,7 @@ const Example = () => {
   }
 
   if (auth?.status === "success") {
-    return <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi" />;
+    return <InteractiveQuestion questionId={110} />;
   }
   // [<endsnippet example>]
 };

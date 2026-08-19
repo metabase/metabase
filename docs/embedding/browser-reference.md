@@ -22,13 +22,13 @@ Depending on the framework you're using, you may need to stringify attributes be
 
 ```html
 <metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
+  initial-collection="123"
   collection-entity-types="['collection', 'dashboard']"
   data-picker-entity-types="['model']"
 ></metabase-browser>
 ```
 
-The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 ## React SDK `CollectionBrowser` props
 

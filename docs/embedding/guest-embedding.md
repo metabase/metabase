@@ -87,7 +87,7 @@ const jwt = require("jsonwebtoken");
 const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 
 const payload = {
-  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" }, // or { question: "Pq7RsTuVwXyZaBcDeFgHi" } for questions
+  resource: { dashboard: 10 }, // or { question: 5 } for questions
   params: {},
   exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
@@ -95,7 +95,7 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key). The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
+Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key). These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 ### Component attributes
 
@@ -150,7 +150,7 @@ const jwt = require("jsonwebtoken");
 const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 
 const payload = {
-  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
+  resource: { dashboard: 10 },
   params: {},
   exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
@@ -216,7 +216,7 @@ const jwt = require("jsonwebtoken");
 const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
 
 const payload = {
-  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
+  resource: { dashboard: 10 },
   params: {
     category: ["Gadget"], // Set the locked parameter value to Gadget
   },
@@ -266,7 +266,7 @@ If you don't want the locked filter to apply for a given token, pass an empty ar
 
 ```javascript
 const payload = {
-  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
+  resource: { dashboard: 10 },
   params: {
     category: [], // locked filter is bypassed for this token
   },
@@ -340,7 +340,7 @@ Request:
 ```json
 {
   "entityType": "dashboard",
-  "entityId": "Xk3YzAbCdEfGhIjKlMnOp",
+  "entityId": 10,
   "customContext": "..."
 }
 ```
@@ -378,7 +378,7 @@ Pre-render an initial JWT on the component (just like a regular guest embed) and
 If you don't want to render the JWT in the HTML at all, omit the `token` attribute and use `dashboard-id` (or `question-id`) instead. If you've set the `guestEmbedProviderUri`, then the embed will call that endpoint on load to fetch the first JWT.
 
 ```html
-<metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
+<metabase-dashboard dashboard-id="10"></metabase-dashboard>
 ```
 
 This way you can keep all your token-issuing logic in one place on your server.
@@ -421,7 +421,7 @@ For example, two copies of the same dashboard scoped to different categories:
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="10"
   custom-context="gadgets-tab"
 ></metabase-dashboard>
 ```
@@ -430,7 +430,7 @@ You can also pass a JSON-stringified object (the embed parses it before forwardi
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="10"
   custom-context='{"tab":"gadgets","region":"us-east"}'
 ></metabase-dashboard>
 ```

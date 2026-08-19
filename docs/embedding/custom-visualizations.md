@@ -58,10 +58,10 @@ Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
   });
 </script>
 
-<metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
+<metabase-dashboard dashboard-id="1"></metabase-dashboard>
 ```
 
-The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 If you create your embed through the [embed wizard](./modular-embedding.md#create-a-new-embed), Metabase fills in the allowlist with the custom visualizations that the dashboard or question you picked already uses, so the generated snippet works as-is.
 

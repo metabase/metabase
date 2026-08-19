@@ -30,7 +30,7 @@ const Example = () => {
         }
       }}
     >
-      <StaticDashboard dashboardId="Xk3YzAbCdEfGhIjKlMnOp" />
+      <StaticDashboard dashboardId={1} />
     </MetabaseProvider>
     // [<endsnippet example>]
   );

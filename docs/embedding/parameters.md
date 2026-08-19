@@ -75,17 +75,17 @@ Set values on mount via attributes. The component reads them once on load and ig
 
 ```html
 <metabase-dashboard
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  dashboard-id="1"
   initial-parameters='{"state": "NY"}'
 ></metabase-dashboard>
 
 <metabase-question
-  question-id="Pq7RsTuVwXyZaBcDeFgHi"
+  question-id="42"
   initial-sql-parameters='{"product_id": 50}'
 ></metabase-question>
 ```
 
-The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions). See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
 
@@ -94,10 +94,7 @@ Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards
 For controlled behavior, set the JS property on the element instead of the attribute. The component re-renders to apply the new values.
 
 ```html
-<metabase-dashboard
-  id="my-dashboard"
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
-></metabase-dashboard>
+<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
 
 <script>
   const el = document.getElementById("my-dashboard");
@@ -135,10 +132,7 @@ To clear every parameter, assign an empty object `{}`.
 Listen for events to keep your page in sync with what's actually applied:
 
 ```html
-<metabase-dashboard
-  id="my-dashboard"
-  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
-></metabase-dashboard>
+<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
 
 <script>
   const el = document.getElementById("my-dashboard");

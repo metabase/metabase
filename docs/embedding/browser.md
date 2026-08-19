@@ -25,12 +25,12 @@ People need to be signed in to your Metabase to view the collection browser, bec
 Point `<metabase-browser>` at the collection you want people to start in:
 
 ```html
-<metabase-browser initial-collection="Mn4OpQrStUvWxYzAbCdEf"></metabase-browser>
+<metabase-browser initial-collection="123"></metabase-browser>
 ```
 
 `initial-collection` is the only required attribute. It takes:
 
-- A collection ID. A sequential ID like `14` works, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
+- A collection ID, like `123` — the number in the collection's URL. On Pro and Enterprise plans, you can use the collection's [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead, which stays the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another.
 - `"root"` for the top-level **Our analytics** collection.
 - `"personal"` for the personal collection of whoever's viewing.
 - `"tenant"` for the [tenant](./tenants.md) collection of whoever's viewing. People who aren't tenant members will get an error.
@@ -42,10 +42,7 @@ For the full list of attributes, see [web component attributes](./browser-refere
 `read-only` controls how much people can do with the content they open, and it defaults to `true`. People can filter, summarize, and drill through everything they open, but they can't save any of it. Set `read-only="false"` and they can edit _and_ save dashboards and questions.
 
 ```html
-<metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
-  read-only="false"
-></metabase-browser>
+<metabase-browser initial-collection="123" read-only="false"></metabase-browser>
 ```
 
 Under the hood, the `read-only` attribute decides which dashboard component people land on: a read-only browser opens dashboards for exploring, while `read-only="false"` opens them for [editing](./dashboard.md#web-component-editable-dashboard).
@@ -60,7 +57,7 @@ Both buttons are on by default, so turn either one off with `with-new-question` 
 
 ```html
 <metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
+  initial-collection="123"
   read-only="false"
   with-new-question="true"
   with-new-dashboard="false"
@@ -71,7 +68,7 @@ Both buttons are on by default, so turn either one off with `with-new-question` 
 
 ```html
 <metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
+  initial-collection="123"
   read-only="false"
   data-picker-entity-types="['model']"
 ></metabase-browser>
@@ -85,7 +82,7 @@ By default, clicking a link (like from a [link card](../dashboards/introduction.
 
 ```html
 <metabase-browser
-  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
+  initial-collection="123"
   enable-entity-navigation="true"
 ></metabase-browser>
 ```
