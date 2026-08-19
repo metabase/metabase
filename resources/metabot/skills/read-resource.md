@@ -23,7 +23,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container (look for `is_container="true"` — collections and dashboards), `read_resource` on its URI to enumerate members instead of re-searching.
+2. If a top hit is a container — its element name is `<collection>` or `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching.
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -57,7 +57,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - For a high-cardinality database, prefer schema → tables drill-down over fetching every table at once.
-- Pair with the `database_id` argument on `search` when you want to topic-search within a specific warehouse.
+- In the SQL editor, `search` already scopes to the current database via its own `database_id` argument — no need to filter further. Elsewhere, `search` has no per-database filter; narrow with `entity_types` and topic terms instead.
 
 ## Collection resources
 
@@ -70,8 +70,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
 
 **Best Practices:**
-- When a `search` returns a collection result with `is_container="true"`, prefer `read_resource` on its URI over re-searching the same concept.
-- Pair with the `collection_id` argument on `search` (descendant scope) when you want to topic-search inside one part of the instance.
+- When a `search` returns a `<collection>` result, prefer `read_resource` on its URI over re-searching the same concept.
 
 ## Table resources
 
@@ -134,7 +133,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - Fetch a transform's details before modifying it so you have the current source query and target configuration.
-- Use the returned source type (`query` or `python`) to decide which write tool to call (`write_transform_sql` or `write_transform_python`).
+- Use the returned source type (`query` or `python`) to understand how the transform is implemented before recommending changes to it.
 - Walk `/sources` and `/target` to understand lineage before recommending downstream changes.
 
 ## Dashboard resources
@@ -147,8 +146,8 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - User asks "what's on this dashboard?" → `metabase://dashboard/158/items`
 
 **Best Practices:**
-- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
-- Every dashcard entry carries a `dashcard_id` — the handle `update_dashboard` `remove`/`move`/`update_text` mutations take. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — with the `tab_id` that `add` mutations accept, and dashcard entries carry their tab's `tab_id`, grouped in tab order.
+- Treat dashboards as containers — when search returns a `<dashboard>` hit, use `/items` to list its cards instead of re-searching for the same concept.
+- Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
 
@@ -156,5 +155,5 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 - **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
-- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25 — consider scoping (`metabase://database/{id}/...`) or refining via `search` with `database_id`/`collection_id` instead of paging blindly.
-- **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_library_member` flags — when you have a choice, drill into the curated item rather than the raw one.
+- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25 — consider scoping (`metabase://database/{id}/...`) or refining your `search` query (narrower `entity_types` or topic terms) instead of paging blindly.
+- **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.

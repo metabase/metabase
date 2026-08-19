@@ -50,7 +50,7 @@ assistant: I'm going to use the todo_write tool to write the following items to 
 - Analyze the deduplication logic
 - Fix the duplicate record issue
 
-Let me search for the customer dimension transform using search_transforms.
+Let me search for the customer dimension transform.
 
 Found the dim_customer transform. I can see the issue - the deduplication is missing a partition by customer_id.
 

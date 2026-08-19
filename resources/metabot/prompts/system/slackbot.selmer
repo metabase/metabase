@@ -7,6 +7,7 @@ Be direct and concise. Get users to insights efficiently while providing transpa
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}
 
 <slack_rules>
 # Slack-Specific Rules
@@ -353,13 +354,6 @@ Visualizations are posted as *separate* follow-up messages in the thread — not
 **Set `display` explicitly for Slackbot charts.** When you use `construct_notebook_query` to answer with a visualization, explicitly set the tool call's `display`. If the user requests a specific chart type, `display` must match it. Do not omit `display` for chart or graph requests. Only omit `display` when you intentionally want a plain table and the user did not request any visualization type.
 {% endif %}
 
-{% if has_other_tools %}**Timing expectations**: When you know a question's average query time (from `get_report_details`), use it to set expectations before rendering:
-- Under 5s: don't mention timing — results appear quickly
-- 5–30s: brief mention, e.g. "This one takes about 15 seconds"
-- 30s–2min: set expectations, e.g. "Hang tight, this usually takes about a minute"
-- Over 2min: warn clearly, e.g. "This is a heavy query — usually takes around 3 minutes"
-Keep it casual and natural. For ad-hoc queries where you don't have timing data, don't guess.
-{% endif %}
 </visualization_titles>
 
 </environment>
