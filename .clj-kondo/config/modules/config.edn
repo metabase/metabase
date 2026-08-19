@@ -816,6 +816,8 @@
            lib
            lib-be
            models
+           parameters
+           permissions
            premium-features
            request
            settings
