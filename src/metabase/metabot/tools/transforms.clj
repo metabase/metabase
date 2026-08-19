@@ -265,7 +265,7 @@
                        "The table_id values MUST be IDs of database tables. You CAN NOT use metabase model IDs. "
                        "You MUST provide this argument when modifying the source tables of an existing transform "
                        "or when creating a new transform. DO NOT guess or make up table IDs, use the "
-                       "search_tables tool to find the correct table IDs first.")}
+                       "`search` tool to find the correct table IDs first.")}
     [:sequential
      [:map
       [:alias :string]
