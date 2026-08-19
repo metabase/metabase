@@ -26,16 +26,15 @@ import type { User } from "metabase-types/api";
 import S from "../components/Detail.module.css";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getSegment,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
+  ReferenceLoadingProps,
   StubbedSegment,
   StubbedTable,
 } from "../types";
@@ -87,9 +86,6 @@ const mapStateToProps = (
     table: getTable(state, props),
     metadataFields: fields,
     metadata: getMetadata(state),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -313,4 +309,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(SegmentDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

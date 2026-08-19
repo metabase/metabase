@@ -27,10 +27,8 @@ import type {
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getFieldsBySegment,
   getIsEditing,
-  getLoading,
   getSegment,
   getUser,
 } from "../selectors";
@@ -57,8 +55,6 @@ const mapStateToProps = (
   return {
     segment: getSegment(state, props),
     entities: data,
-    loading: getLoading(state),
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
   };
@@ -227,7 +223,7 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
 // `table` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type SegmentFieldListOwnProps = ReferenceRouteProps &
-  Pick<SegmentFieldListProps, "table">;
+  Pick<SegmentFieldListProps, "table" | "loading" | "loadingError">;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(

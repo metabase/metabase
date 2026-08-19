@@ -25,14 +25,16 @@ import type {
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getFieldsByTable,
   getIsEditing,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
-import type { FieldFormFieldsValues, StubbedTable } from "../types";
+import type {
+  FieldFormFieldsValues,
+  ReferenceLoadingProps,
+  StubbedTable,
+} from "../types";
 
 type FieldListFormFields = Record<string, FieldFormFieldsValues>;
 
@@ -51,8 +53,6 @@ const mapStateToProps = (
   return {
     table: getTable(state, props),
     entities: data,
-    loading: getLoading(state),
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
   };
@@ -229,4 +229,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(FieldList as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  FieldList as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

@@ -4,24 +4,12 @@ import { createAction, handleActions } from "metabase/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils";
 
-export const SET_ERROR = "metabase/reference/SET_ERROR";
-export const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
-export const START_LOADING = "metabase/reference/START_LOADING";
-export const END_LOADING = "metabase/reference/END_LOADING";
 export const START_EDITING = "metabase/reference/START_EDITING";
 export const END_EDITING = "metabase/reference/END_EDITING";
 export const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
 export const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
 export const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
 export const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
-
-export const setError = createAction(SET_ERROR);
-
-export const clearError = createAction(CLEAR_ERROR);
-
-export const startLoading = createAction(START_LOADING);
-
-export const endLoading = createAction(END_LOADING);
 
 export const startEditing = createAction(START_EDITING);
 
@@ -36,13 +24,6 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
-export interface FetchProps {
-  clearError: () => void;
-  startLoading: () => void;
-  endLoading: () => void;
-  setError: (error: unknown) => void;
-}
-
 interface UpdateProps {
   resetForm: () => void;
   endEditing: () => void;
@@ -51,8 +32,6 @@ interface UpdateProps {
 
 export interface ClearStateProps {
   endEditing: () => void;
-  endLoading: () => void;
-  clearError: () => void;
   collapseFormula: () => void;
 }
 
@@ -68,8 +47,6 @@ interface UpdateEntityProps extends UpdateProps {
 // components where the old code re-used the same component
 export const clearState = (props: ClearStateProps) => {
   props.endEditing();
-  props.endLoading();
-  props.clearError();
   props.collapseFormula();
 };
 
@@ -160,16 +137,12 @@ export const rUpdateFields = (
 };
 
 interface ReferenceState {
-  error: unknown;
-  isLoading: boolean;
   isEditing: boolean;
   isFormulaExpanded: boolean;
   isDashboardModalOpen: boolean;
 }
 
 const initialState: ReferenceState = {
-  error: null,
-  isLoading: false,
   isEditing: false,
   isFormulaExpanded: false,
   isDashboardModalOpen: false,
@@ -177,19 +150,6 @@ const initialState: ReferenceState = {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default handleActions(
   {
-    [SET_ERROR]: {
-      throw: (state: ReferenceState, { payload }: { payload: unknown }) =>
-        assoc(state, "error", payload),
-    },
-    [CLEAR_ERROR]: {
-      next: (state: ReferenceState) => assoc(state, "error", null),
-    },
-    [START_LOADING]: {
-      next: (state: ReferenceState) => assoc(state, "isLoading", true),
-    },
-    [END_LOADING]: {
-      next: (state: ReferenceState) => assoc(state, "isLoading", false),
-    },
     [START_EDITING]: {
       next: (state: ReferenceState) => assoc(state, "isEditing", true),
     },

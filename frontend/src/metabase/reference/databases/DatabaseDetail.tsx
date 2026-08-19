@@ -17,10 +17,8 @@ import type { User } from "metabase-types/api";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getUser,
 } from "../selectors";
 import type { BaseDetailFormFields, StubbedDatabase } from "../types";
@@ -39,9 +37,6 @@ const mapStateToProps = (
   return {
     entity,
     metadataFields: fields,
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),

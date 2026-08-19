@@ -22,15 +22,17 @@ import type { User } from "metabase-types/api";
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
-import type { BaseDetailFormFields, StubbedTable } from "../types";
+import type {
+  BaseDetailFormFields,
+  ReferenceLoadingProps,
+  StubbedTable,
+} from "../types";
 import { getQuestionUrl } from "../utils";
 
 interface TableDetailFormFields extends BaseDetailFormFields {
@@ -73,9 +75,6 @@ const mapStateToProps = (
     table: getTable(state, props),
     metadataFields: fields,
     metadata: getMetadata(state),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state, props),
@@ -253,4 +252,11 @@ export default connect(
   mapStateToProps,
   mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(TableDetail as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableDetail as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

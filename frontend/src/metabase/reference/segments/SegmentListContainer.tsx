@@ -12,14 +12,14 @@ import { SegmentList } from "metabase/reference/segments/SegmentList";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import { getIsEditing } from "../selectors";
 
 const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentListContainerProps extends FetchProps, ClearStateProps {}
+type SegmentListContainerProps = ClearStateProps;
 
 function SegmentListContainer(props: SegmentListContainerProps) {
   const { pathname } = useLocation();
@@ -28,7 +28,9 @@ function SegmentListContainer(props: SegmentListContainerProps) {
   const dispatch = useDispatch();
   const isEditing = useSelector(getIsEditing);
 
-  useReferenceFetch(() => fetchSegmentListData(dispatch));
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentListData(dispatch),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -44,7 +46,7 @@ function SegmentListContainer(props: SegmentListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<BaseSidebar />}
     >
-      <SegmentList />
+      <SegmentList loading={loading} loadingError={loadingError} />
     </SidebarLayout>
   );
 }

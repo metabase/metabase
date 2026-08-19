@@ -8,10 +8,9 @@ import { connect, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableDetail from "metabase/reference/databases/TableDetail";
 import * as actions from "metabase/reference/reference";
-import { useReferenceFetchState } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -26,7 +25,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface TableDetailContainerProps extends FetchProps, ClearStateProps {}
+type TableDetailContainerProps = ClearStateProps;
 
 function TableDetailContainer(props: TableDetailContainerProps) {
   const { pathname } = useLocation();
@@ -42,7 +41,6 @@ function TableDetailContainer(props: TableDetailContainerProps) {
     id: databaseId,
     skip_fields: true,
   });
-  useReferenceFetchState({ isFetching, error });
 
   useEffect(() => {
     const pathnameChanged =
@@ -58,7 +56,7 @@ function TableDetailContainer(props: TableDetailContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<TableSidebar database={database} table={table} />}
     >
-      <TableDetail params={params} />
+      <TableDetail params={params} loading={isFetching} loadingError={error} />
     </SidebarLayout>
   );
 }

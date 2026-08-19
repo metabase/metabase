@@ -20,17 +20,16 @@ import type { FieldId, User } from "metabase-types/api";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
   getDatabase,
-  getError,
   getField,
   getIsEditing,
   getIsFormulaExpanded,
-  getLoading,
   getTable,
   getUser,
 } from "../selectors";
 import type {
   BaseDetailFormFields,
   FieldFormFieldsValues,
+  ReferenceLoadingProps,
   StubbedDatabase,
   StubbedField,
   StubbedTable,
@@ -100,9 +99,6 @@ const mapStateToProps = (
     field: entity,
     table: getTable(state, props),
     database: getDatabase(state, props),
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
     isFormulaExpanded: getIsFormulaExpanded(state),
@@ -297,7 +293,8 @@ const FieldDetail = (props: FieldDetailProps) => {
 // `metadata` is read here but selected by the container. Naming it keeps that
 // contract type-checked.
 type FieldDetailOwnProps = ReferenceRouteProps &
-  Pick<FieldDetailProps, "metadata">;
+  Pick<FieldDetailProps, "metadata"> &
+  ReferenceLoadingProps;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
