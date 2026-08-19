@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-apps.resources
   "Lifecycle for the permission group and resource collection owned by a data app."
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
    [toucan2.core :as t2]))
@@ -36,6 +37,24 @@
                                         :perm_value)]
             :when (not= current-value :no)]
       (perms/set-database-permission! permissions group database-id :perms/create-queries :no))))
+
+(defn- restore-trashed-collection!
+  "Bring `collection` back out of the trash, with everything archived alongside it.
+
+   Trashing it archives every copy inside, and an app is served from those copies,
+   so a sync that left it there would report success over an app whose viewers see
+   nothing. It goes back to the root, where the app created it: restoring in place
+   fails outright when an ancestor is still in the trash.
+
+   The restore runs with full permissions because a repository import reaches this
+   from a scheduled task, where no user is bound; the collection is the app's own,
+   so there is no one else's decision to weigh."
+  [collection]
+  (when (:archived collection)
+    (binding [api/*is-superuser?*              true
+              api/*current-user-permissions-set* (atom #{"/"})]
+      (collection/archive-or-unarchive-collection! collection
+                                                   {:archived false, :parent_id nil}))))
 
 (defn- apply-resource-permissions!
   [group collection]
@@ -76,6 +95,7 @@
                   {:name (resource-name app)})
       (t2/update! :model/Collection :id (:id collection)
                   {:name (resource-name app)})
+      (restore-trashed-collection! collection)
       (apply-resource-permissions! group collection)
       {:permission_group_id     (:id group)
        :resource_collection_id (:id collection)})))
@@ -156,6 +176,7 @@
                                  collection/collection-empty?)
          (when (or changed? (seq app-changes))
            (t2/update! :model/DataApp :id (:id app) (merge app-changes links)))
+         (restore-trashed-collection! collection)
          (apply-resource-permissions! group collection)
          (assoc links :changed? changed?))))))
 

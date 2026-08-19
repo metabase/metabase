@@ -57,8 +57,7 @@ const isActionDefinition = (
  */
 function toExecutableActionId(input: SdkActionInput): SdkActionId {
   if (!isActionDefinition(input)) {
-    // Raw ids address the authored action, which an app's viewers cannot read.
-    if (isDataApp() && !isDataAppDev()) {
+    if (isDataApp()) {
       throw new Error(
         `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the synchronized action runs.`,
       );
@@ -67,7 +66,7 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
     return input;
   }
 
-  if (isDataAppDev()) {
+  if (isDataAppDev() || !isDataApp()) {
     return input.action.id;
   }
 

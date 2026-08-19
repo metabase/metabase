@@ -44,20 +44,12 @@ type MockDataAppOptions<TestEnv> = {
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
   /**
-   * Config a fixture reads at runtime, so it doesn't hard-code values that track
-   * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
-   * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
-   * bundle is evaluated as one script in the sandbox realm, the app reads it as a
-   * plain global. Typed by `DataAppTestEnv` by default; pass another fixture's
-   * type as `TestEnv` if it differs.
+   * Config a fixture reads at runtime, rather than hard-coding ids that track the
+   * Cypress snapshot.
    */
   testEnv?: TestEnv;
-  /**
-   * Hold the bundle response for this many ms, so the app's loading window is
-   * long enough to assert on. Without it a small mocked bundle can render before
-   * the test ever queries, making any "still loading" assertion racy.
-   */
-  bundleDelay?: number;
+  /** Delays the bundle response, so a loading assertion has a window to catch. */
+  bundleDelayMs?: number;
 };
 
 export const mockDataApp = <TestEnv = DataAppTestEnv>(
@@ -101,7 +93,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
         body: prelude + bundleCode,
-        ...(options.bundleDelay ? { delay: options.bundleDelay } : {}),
+        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
       },
     );
 
@@ -167,7 +159,7 @@ export function moveDataAppModelToCollection({
 export const dataAppHostAppRoot = () =>
   `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
 
-const actionsFileIn = (appRoot: string) =>
+const actionDeclarationsFile = (appRoot: string) =>
   `${appRoot}/actions/orders.action.ts`;
 
 /**
@@ -177,44 +169,52 @@ const actionsFileIn = (appRoot: string) =>
  */
 export function resetDataAppHostAppSources() {
   const appRoot = dataAppHostAppRoot();
-  return cy.exec(
-    `rm -rf "${appRoot}/queries" "${appRoot}/actions" "${appRoot}/resources_metadata.json"`,
-  );
+
+  return cy.task("removeDataAppPaths", {
+    paths: [
+      `${appRoot}/queries`,
+      `${appRoot}/actions`,
+      `${appRoot}/resources_metadata.json`,
+    ],
+  });
 }
 
 export function declareDataAppActions(
   appRoot: string,
   sourceActionIds: number[],
 ) {
-  return cy.writeFile(
-    actionsFileIn(appRoot),
-    [
-      'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
-      ...sourceActionIds.map(
-        (id) =>
-          `export const Action${id} = defineAction({ action: { id: ${id}, parameters: [] } });`,
-      ),
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [actionDeclarationsFile(appRoot)]: [
+        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+        ...sourceActionIds.map(
+          (id) =>
+            `export const Action${id} = defineAction({ action: { id: ${id}, parameters: [] } });`,
+        ),
+      ].join("\n"),
+    },
+  });
 }
 
-const queriesFileIn = (appRoot: string) => `${appRoot}/queries/orders.query.ts`;
+const queryDeclarationsFile = (appRoot: string) =>
+  `${appRoot}/queries/orders.query.ts`;
 
 /** Declares one `defineQuery` per entry, as an app author would. */
 export function declareDataAppQueries(
   appRoot: string,
   declarations: Array<{ name: string; tableId: number; limit?: number }>,
 ) {
-  return cy.writeFile(
-    queriesFileIn(appRoot),
-    [
-      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-      ...declarations.map(({ name, tableId, limit }) => {
-        const clauses = limit === undefined ? "" : `, limit: ${limit}`;
-        return `export const ${name} = defineQuery({ source: { type: "table", id: ${tableId} }${clauses} });`;
-      }),
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [queryDeclarationsFile(appRoot)]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        ...declarations.map(({ name, tableId, limit }) => {
+          const clauses = limit === undefined ? "" : `, limit: ${limit}`;
+          return `export const ${name} = defineQuery({ source: { type: "table", id: ${tableId} }${clauses} });`;
+        }),
+      ].join("\n"),
+    },
+  });
 }
 
 /**
@@ -224,29 +224,21 @@ export function declareDataAppQueries(
  * ID lands on its own line and makes a declaration span several.
  */
 function removeDeclaration(filePath: string, exportName: string) {
-  return cy.readFile(filePath).then((contents: string) => {
-    const [imports, ...declarations] = contents.split("export const ");
-
-    cy.writeFile(
-      filePath,
-      imports +
-        declarations
-          .filter((declaration) => !declaration.startsWith(`${exportName} `))
-          .map((declaration) => `export const ${declaration}`)
-          .join(""),
-    );
-  });
+  return cy.task("removeDataAppDeclaration", { filePath, exportName });
 }
 
 export function removeDataAppQueryDeclaration(appRoot: string, name: string) {
-  return removeDeclaration(queriesFileIn(appRoot), name);
+  return removeDeclaration(queryDeclarationsFile(appRoot), name);
 }
 
 export function removeDataAppActionDeclaration(
   appRoot: string,
   sourceActionId: number,
 ) {
-  return removeDeclaration(actionsFileIn(appRoot), `Action${sourceActionId}`);
+  return removeDeclaration(
+    actionDeclarationsFile(appRoot),
+    `Action${sourceActionId}`,
+  );
 }
 
 /** Runs the real `sync-resources` CLI against the instance under test. */
@@ -271,23 +263,20 @@ export function declareSyncedDataAppQuery(slug: string, tableId: number) {
   const appRoot = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
   const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
 
-  cy.writeFile(
-    `${packageRoot}/package.json`,
-    JSON.stringify({
-      name: "@metabase/embedding-sdk-react",
-      exports: { "./data-app": "./data-app.js" },
-    }),
-  );
-  cy.writeFile(`${packageRoot}/data-app.js`, "exports.defineQuery = (q) => q;");
-
-  return cy.writeFile(
-    `${appRoot}/queries/orders.query.ts`,
-    [
-      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-      `export const Orders = defineQuery({ source: { type: "table", id: ${tableId} } });`,
-      "",
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${packageRoot}/package.json`]: JSON.stringify({
+        name: "@metabase/embedding-sdk-react",
+        exports: { "./data-app": "./data-app.js" },
+      }),
+      [`${packageRoot}/data-app.js`]: "exports.defineQuery = (q) => q;",
+      [`${appRoot}/queries/orders.query.ts`]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        `export const Orders = defineQuery({ source: { type: "table", id: ${tableId} } });`,
+        "",
+      ].join("\n"),
+    },
+  });
 }
 
 /** Provisions each fixture app the way an author does, so its manifest carries the entity IDs the repo sync resolves. */
@@ -312,6 +301,42 @@ export function createDataAppApiKey() {
     .then(({ body }) => body.unmasked_key);
 }
 
+/**
+ * A second app beside the host app, for cases that need two of them. It reuses
+ * the host app's `node_modules`, so `defineQuery` still resolves through the
+ * published SDK, and its directory name becomes the app's slug.
+ */
+export function createSecondDataApp(slug: string) {
+  cy.task("scaffoldDataApp", { appName: slug, sdkFrom: dataAppHostAppRoot() });
+
+  return `${Cypress.config("projectRoot")}/e2e/tmp/${slug}`;
+}
+
+/**
+ * Runs the host app's own production build. The SDK's `metabase-resource-sync-check`
+ * plugin runs on `buildStart`, so this is what refuses to bundle a stale app.
+ */
+export function buildDataAppHostApp() {
+  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
+    failOnNonZeroExit: false,
+    timeout: 180_000,
+  });
+}
+
+/** The app's own permission group — the one its viewers are given. */
+export function dataAppPermissionGroupId(slug: string) {
+  return cy.request<DataApp>(`/api/apps/${slug}`).then(({ body }) => {
+    const groupId = body.permission_group_id;
+
+    if (typeof groupId !== "number") {
+      throw new Error(`Data app ${slug} has no permission group.`);
+    }
+
+    return cy.wrap(groupId, { log: false });
+  });
+}
+
+/** Puts a user in the app's own permission group, as granting app access does. */
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
@@ -336,24 +361,25 @@ export function setUpDataAppDevServer(clientHost: string) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
 
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
     group_id: USER_GROUPS.ADMIN_GROUP,
   }).then(({ body }) => {
-    cy.writeFile(
-      DATA_APP_DEV_ENV_PATH,
-      `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
-    );
+    cy.task("writeDataAppFiles", {
+      files: {
+        [DATA_APP_DEV_ENV_PATH]: `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
+      },
+    });
   });
 
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  return cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
 }
 
 // `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has

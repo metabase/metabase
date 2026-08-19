@@ -8,7 +8,7 @@ import {
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { isDataAppDev } from "metabase/embedding-sdk/config";
+import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
@@ -61,13 +61,20 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
  * already baked into the card, so only the source and the dynamic stage remain.
  */
 function toSourceInput(input: QueryInput): QueryInput {
-  if (
-    !isTableInput(input) ||
-    input.savedQuestionSourceId == null ||
-    // We need to do the swap only for production data apps
-    isDataAppDev()
-  ) {
+  // Only a data app runs published cards. In the dev preview they do not exist
+  // yet, and outside a data app they never do, so the table is what runs.
+  if (!isTableInput(input) || isDataAppDev() || !isDataApp()) {
     return input;
+  }
+
+  if (
+    input.savedQuestionSourceId === null ||
+    input.savedQuestionSourceId === undefined
+  ) {
+    // An app's viewers can only read the published cards, so a table source 403s.
+    throw new Error(
+      "This query has not been synchronized. Define it with `defineQuery(...)` in `queries/`, run `npm run sync-resources`, and rebuild.",
+    );
   }
 
   return { source: { type: "card", id: input.savedQuestionSourceId } };

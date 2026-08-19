@@ -59,6 +59,8 @@ describe("executeAction", () => {
     };
 
     it("runs the copy in a production build", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
       await expectExecuted(COPIED_ID, definition);
     });
 
@@ -68,7 +70,13 @@ describe("executeAction", () => {
       await expectExecuted(AUTHORED_ID, definition);
     });
 
+    it("runs the authored action outside a data app, where no copy exists", async () => {
+      await expectExecuted(AUTHORED_ID, { action: { id: AUTHORED_ID } });
+    });
+
     it("refuses an unsynchronized definition in a production build", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
       await expect(
         executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
       ).rejects.toThrow("has not been synchronized");
@@ -82,11 +90,13 @@ describe("executeAction", () => {
       ).rejects.toThrow("passed to `useAction` as a raw id");
     });
 
-    it("runs a raw id in the dev preview", async () => {
+    it("refuses a raw id in the dev preview, before it can reach production", async () => {
       EMBEDDING_SDK_CONFIG.isDataApp = true;
       EMBEDDING_SDK_CONFIG.isDataAppDev = true;
 
-      await expectExecuted(AUTHORED_ID, AUTHORED_ID);
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
     });
   });
 
