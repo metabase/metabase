@@ -9,7 +9,7 @@
    [toucan2.core :as t2]))
 
 (deftest lifecycle-test
-  (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+  (t2/with-transaction [conn t2.connection/*current-connectable* {:rollback-only true}]
     (let [engine  :something-futureproof
           [version
            index-1
@@ -21,6 +21,8 @@
       (testing "You can create a pending index."
         (is (search-index-metadata/create-pending! engine version index-1)))
       (is (= {:pending index-1} (indexes)))
+      (is (= {:pending index-1}
+             (search-index-metadata/indexes-on-current-connection conn engine version)))
       (testing "You cannot make a new index while there is already one pending."
         (is (false? (search-index-metadata/create-pending! engine version index-2))))
       (testing "You can activate an index"
