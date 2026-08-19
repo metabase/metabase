@@ -1847,7 +1847,7 @@
 
 (deftest ^:mb/old-migrations-test cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
-    (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])

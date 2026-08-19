@@ -1567,8 +1567,9 @@
 
 (deftest ^:mb/old-migrations-test check-data-migrations-rollback
   ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
-  ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
-  (impl/test-migrations ["v48.00-000"] [migrate!]
+  ;; after rolling back to 47, so we're using `v48.00-001` (the first v48 changeset still in the changelog) as the
+  ;; start of the migration range in `test-migrations`
+  (impl/test-migrations ["v48.00-001"] [migrate!]
     (testing "we can migrate even if data_migrations is empty"
       ;; 0 because we removed them and fresh db won't trigger any
       (is (= 0 (t2/count :data_migrations)))
@@ -1603,7 +1604,9 @@
 ;;;
 
 (deftest ^:mb/old-migrations-test unify-type-of-time-columns-test
-  (impl/test-migrations ["v49.00-054"] [migrate!]
+  ;; v49.00-059 is the UnifyTimeColumnsType custom migration; the changesets before it that this test used to
+  ;; reference (v49.00-054 through 058) have since been removed from the changelog.
+  (impl/test-migrations ["v49.00-059"] [migrate!]
     (let [db-type       (mdb/db-type)
           datetime-type (case db-type
                           :postgres "timestamp without time zone"
@@ -2539,8 +2542,9 @@
 
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
 (deftest ^:mb/old-migrations-test migrate-alert-to-notification-test
-  (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
-    (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+  ;; the migration was originally v53.2024-12-12T08:05:00 but has since been re-versioned to v54
+  (testing "v54.2025-02-14T08:05:00: migrate alerts from pulse to notification"
+    (impl/test-migrations ["v54.2025-02-14T08:05:00"] [migrate!]
       (binding [custom-migrations.util/*allow-temp-scheduling* true]
         (let [user-id     (:id (new-instance-with-default :core_user))
               database-id (:id (new-instance-with-default :metabase_database))
