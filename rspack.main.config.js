@@ -140,16 +140,18 @@ class PreloadAssetTags {
             }
 
             const hints = data.headTags
-              .map((tag) => {
-                if (tag.tagName === "script") {
-                  return { url: tag.attributes.src, as: "script" };
+              .flatMap((tag) => {
+                if (tag.tagName === "script" && tag.attributes.src) {
+                  return [{ url: tag.attributes.src, as: "script" }];
                 }
-                if (tag.attributes.rel === "stylesheet") {
-                  return { url: tag.attributes.href, as: "style" };
+                if (
+                  tag.attributes.rel === "stylesheet" &&
+                  tag.attributes.href
+                ) {
+                  return [{ url: tag.attributes.href, as: "style" }];
                 }
-                return null;
+                return [];
               })
-              .filter((hint) => hint?.url)
               .map(
                 (hint) =>
                   `<link rel="preload" href="${hint.url}" as="${hint.as}">`,
