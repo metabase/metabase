@@ -21,16 +21,10 @@ runs:
       shell: bash
       run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
 
-    - name: Restore M2 cache
-      uses: actions/cache/restore@v5
-      with:
-        path: ${{ steps.cache-spec.outputs.m2-path }}
-        key: ${{ steps.cache-spec.outputs.m2-key }}
-        restore-keys: ${{ steps.cache-spec.outputs.m2-restore-key }}
-
     # The spec names the store path rather than discovering it, so that a job can restore the cache
-    # before bun exists. Point bun at it and confirm it agreed: if the variable stopped taking effect,
-    # bun would fill its default directory and the cache would silently save an empty tree.
+    # before bun exists. Exported job-wide rather than per-step because every later bun invocation has
+    # to resolve against the same store. Confirm bun agreed: if the variable stopped taking effect, bun
+    # would fill its default directory and the cache would silently save an empty tree.
     - name: Point bun at the cached store
       shell: bash
       env:
