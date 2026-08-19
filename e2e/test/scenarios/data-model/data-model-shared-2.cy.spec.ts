@@ -22,7 +22,7 @@ const { ORDERS_ID, ORDERS, FEEDBACK_ID, FEEDBACK, PRODUCTS, PRODUCTS_ID } =
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
-const areas: ("admin" | "data studio")[] = ["admin"]; //, "data studio"];
+const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
 type Area = (typeof areas)[number];
 
 describe.each<Area>(areas)("data model > %s", (area: Area) => {

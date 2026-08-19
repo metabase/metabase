@@ -1,10 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
   type ClickObject,
+  type ComputedVisualizationSettings,
   isCustomClickAction,
 } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
-import { createMockColumn } from "metabase-types/api/mocks";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import {
+  createMockColumn,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
@@ -12,12 +17,33 @@ import {
 
 import { CopyValueAction } from "./CopyValueAction";
 
-const setup = (clicked: ClickObject | undefined) => {
+const setup = (
+  clicked: ClickObject | undefined,
+  settings: ComputedVisualizationSettings = {},
+) => {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
   });
   const question = new Question(createSavedStructuredCard(), metadata);
-  return CopyValueAction({ question, clicked, settings: {} });
+  return CopyValueAction({ question, clicked, settings });
+};
+
+const copyValue = (
+  clicked: ClickObject,
+  settings?: ComputedVisualizationSettings,
+) => {
+  const writeText = jest.fn().mockResolvedValue(undefined);
+  Object.assign(navigator, { clipboard: { writeText } });
+  const closePopover = jest.fn();
+
+  const [action] = setup(clicked, settings);
+
+  if (!isCustomClickAction(action)) {
+    throw new Error("expected a custom click action");
+  }
+  action.onClick?.({ dispatch: jest.fn(), closePopover });
+
+  return { writeText, closePopover };
 };
 
 describe("CopyValueAction", () => {
@@ -56,22 +82,40 @@ describe("CopyValueAction", () => {
   });
 
   it("copies the formatted value to the clipboard and closes the popover", () => {
-    const writeTextMock = jest.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: writeTextMock,
-      },
-    });
-    const closePopover = jest.fn();
+    const { writeText, closePopover } = copyValue({ column, value: "hello" });
 
-    const [action] = setup({ column, value: "hello" });
-
-    if (!isCustomClickAction(action)) {
-      throw new Error("expected a custom click action");
-    }
-    action.onClick?.({ dispatch: jest.fn(), closePopover });
-
-    expect(writeTextMock).toHaveBeenCalledWith("hello");
+    expect(writeText).toHaveBeenCalledWith("hello");
     expect(closePopover).toHaveBeenCalledTimes(1);
+  });
+
+  describe("column settings", () => {
+    const numericColumn = createMockNumericColumn({
+      name: "DISCOUNT",
+      display_name: "Discount",
+    });
+
+    it("copies the value formatted by the computed column settings", () => {
+      const { writeText } = copyValue(
+        { column: numericColumn, value: 0.8567 },
+        {
+          column: () => ({ prefix: "~", number_style: "percent", decimals: 1 }),
+        },
+      );
+
+      expect(writeText).toHaveBeenCalledWith("~85.7%");
+    });
+
+    it("falls back to the saved column settings when there are no computed settings", () => {
+      const { writeText } = copyValue(
+        { column: numericColumn, value: 1234.5 },
+        {
+          column_settings: {
+            [getColumnKey(numericColumn)]: { prefix: "$", decimals: 2 },
+          },
+        },
+      );
+
+      expect(writeText).toHaveBeenCalledWith("$1,234.50");
+    });
   });
 });
