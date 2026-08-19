@@ -3,12 +3,12 @@ import {
   type MetabasePluginsConfig,
 } from "@metabase/embedding-sdk-react";
 
-const dashboardId = 1;
+const dashboardId = "Xk3YzAbCdEfGhIjKlMnOp";
 
 const ExampleBase2 = () => (
   // [<snippet example-base-2>]
   <InteractiveDashboard
-    dashboardId={1}
+    dashboardId="Xk3YzAbCdEfGhIjKlMnOp"
     plugins={{
       dashboard: {
         dashboardCardMenu: {

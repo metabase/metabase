@@ -10,7 +10,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 
 export default function App() {
-  const collectionId = 123; // This is the collection ID you want people to browse
+  const collectionId = "Mn4OpQrStUvWxYzAbCdEf"; // Entity ID of the collection you want people to browse. A sequential ID like 14 works too.
 
   return (
     <MetabaseProvider authConfig={authConfig}>

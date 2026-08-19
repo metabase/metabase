@@ -13,8 +13,6 @@ There are two ways you can embed a chart (called a question, in Metabase parlanc
 - [View-only chart](#embed-a-view-only-chart): people see the results, filter them, and that's it.
 - [Interactive chart](#embed-an-interactive-chart): people can drill through the chart and change the query behind it.
 
-To embed a whole dashboard instead, check out [Embed a dashboard](./dashboard.md). To let people build questions from scratch, check out [Embed the query builder](./query-builder.md). To embed an AI chat component, check out [AI chat](./sdk/ai-chat.md).
-
 ## Embed a view-only chart
 
 ![Static question](./images/static-question.png)
@@ -45,7 +43,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the ch
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
-5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
+5. Click the **Publish** button. Publishing only applies to guest embeds.
 6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./question-reference.md#web-component-metabase-question-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
 7. If you're embedding a SQL question with a variable, set the parameter to **Editable** or **Locked**. Parameters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
@@ -119,7 +117,7 @@ const METABASE_SECRET_KEY = "YOUR_SECRET_KEY";
 
 // Here we lock a customer_id parameter to 13
 const payload = {
-  resource: { question: 40956 },
+  resource: { question: "Pq7RsTuVwXyZaBcDeFgHi" },
   params: {
     customer_id: [
       13, // set this programmatically, based on whose account page your app is rendering
@@ -166,7 +164,7 @@ Interactive charts require SSO, which you can set up with either web components 
 Reference an existing question by ID. [Drill-through](../questions/visualizations/drill-through.md) is on by default:
 
 ```html
-<metabase-question question-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-question>
+<metabase-question question-id="Pq7RsTuVwXyZaBcDeFgHi"></metabase-question>
 ```
 
 You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
@@ -199,9 +197,9 @@ With a web component, turn saving on with `is-save-enabled="true"`, and set the 
 
 ```html
 <metabase-question
-  question-id="Xk3YzAbCdEfGhIjKlMnOp"
+  question-id="Pq7RsTuVwXyZaBcDeFgHi"
   is-save-enabled="true"
-  target-collection="5"
+  target-collection="Mn4OpQrStUvWxYzAbCdEf"
 ></metabase-question>
 ```
 
@@ -256,7 +254,7 @@ Locked parameters need a question written in SQL, with a [field filter or variab
 
 ```javascript
 const payload = {
-  resource: { question: 5 },
+  resource: { question: "Pq7RsTuVwXyZaBcDeFgHi" },
   params: {
     category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
   },
@@ -278,9 +276,11 @@ For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParam
 
 ### Hide a parameter
 
-To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both are meant for SSO embeds on a Pro or Enterprise plan. 
+To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both work in any modular embed, on any plan.
 
-Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.  Instead, set [data permissions](../permissions/embedding.md).
+In practice you'll reach for them on [SSO embeds](./introduction.md#sso-embeds), where every parameter on the question shows up by default. On a [guest embed](./guest-embedding.md), a parameter that you haven't set to **Editable** or **Locked** is already hidden.
+
+Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. Instead, set [data permissions](../permissions/embedding.md).
 
 If you're using a guest embed, however, you can control a parameter value (that people can't see or change) with a [locked parameter](./guest-embedding.md#locked-parameters).
 
@@ -289,14 +289,17 @@ If you're using a guest embed, however, you can control a parameter value (that 
 You can let people set up [alerts](../questions/alerts.md) on a saved question with the [`with-alerts`](./question-reference.md#web-component-metabase-question-attributes) attribute on the web component:
 
 ```html
-<metabase-question question-id="42" with-alerts="true"></metabase-question>
+<metabase-question
+  question-id="Pq7RsTuVwXyZaBcDeFgHi"
+  with-alerts="true"
+></metabase-question>
 ```
 
 Or by passing `withAlerts` to `StaticQuestion` or `InteractiveQuestion` in the SDK:
 
 ```tsx
 <MetabaseProvider authConfig={authConfig}>
-  <InteractiveQuestion questionId={42} withAlerts />
+  <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi" withAlerts />
 </MetabaseProvider>
 ```
 

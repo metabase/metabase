@@ -9,7 +9,7 @@ const authConfig = {} as MetabaseAuthConfig;
 const Example = () => {
   // [<snippet example>]
   // You can provide a custom action with your own `onClick` logic.
-  const createCustomAction = clicked => ({
+  const createCustomAction = (clicked) => ({
     buttonType: "horizontal",
     name: "client-custom-action",
     section: "custom",
@@ -23,7 +23,7 @@ const Example = () => {
   });
 
   // Or customize the appearance of the custom action to suit your need.
-  const createCustomActionWithView = clicked => ({
+  const createCustomActionWithView = (clicked) => ({
     name: "client-custom-action-2",
     section: "custom",
     type: "custom",
@@ -54,7 +54,7 @@ const Example = () => {
     },
   };
 
-  const questionId = 1; // This is the question ID you want to embed
+  const questionId = "Pq7RsTuVwXyZaBcDeFgHi"; // Entity ID of the question you want to embed. A sequential ID like 1 works too.
 
   return (
     <MetabaseProvider authConfig={authConfig} pluginsConfig={plugins}>

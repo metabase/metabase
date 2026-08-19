@@ -37,27 +37,32 @@ You can use the in-app wizard to set up a view-only dashboard using web componen
 
 ![In-app embedding wizard](./images/in-app-embedding-wizard.png)
 
-Three things need to happen: you publish the dashboard embed in Metabase, you paste the dashboard code into your app (both frontend and backend), and your server signs a JWT. The wizard writes most of the code for you, so the list below is longer than the work.
+Three things need to happen: you publish the dashboard embed in Metabase, you paste the dashboard code into your app (both frontend and backend), and your server signs a JWT. The in-app wizard writes most of the code for you.
 
 1. Visit the dashboard in your Metabase.
 2. Click the **Share** icon in the upper right.
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase. An admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase) first.
-5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an interactive/SSO embed, because in that case people can explore the data based on their data and collection permissions.)
-6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. With guest embeds, you can only control whether people can download the data. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
-7. If your dashboard has filters, set each filter to **Editable** or **Locked**, or leave as **Disabled**. Filters are disabled by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
+5. Click the **Publish** button (publishing only applies to embeds with guest authentication).
+6. Under **Behavior**, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each attribute does. With guest embeds, you can only control whether people can download the data. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
+7. If your dashboard has filters, set each filter to **Editable** or **Locked**, or leave it as **Disabled**. Filters are disabled by default, which hides the filter and blocks both sides from setting it: your server can't pass a value for it in the JWT, and the person viewing can't change it in the UI. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
 10. Copy the client code and paste it in your app.
-11. Remove the hardcoded JWT tokens in your HTML. Fetch the token from your backend and pass the token to the component programmatically.
+11. Remove the hardcoded JWT from your HTML. Your server signs the token---see [Server-side code](./guest-embedding.md#server-side-code) for the signing code---and your app sets it on the component programmatically.
 
-To keep an embed alive after its token expires, configure a token endpoint with [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
+Rather than render a token in your HTML at all, you can point [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server) at an endpoint in your app. The embed will fetch its first token on load, and a fresh one each time the current token expires, which also keeps the embed alive past that expiration.
 
 #### Web component view-only dashboard example
 
-Say you have a sales dashboard with a **Customer** filter, and you want to put it on each customer's account page in your app, showing only that customer's numbers. Here's the frontend code.
+Say you have a sales dashboard with a **Customer** filter, and you want to put it on each customer's account page in your app, showing only that customer's numbers.
+
+Set the **Customer** filter to **Locked** in the dashboard's embed settings. Locked means your server picks the filter's value and puts it in the signed token, so the value never reaches the browser: the person on the page can't see it, and they can't change it. An embed on customer 13's account page returns customer 13's rows and nothing else. It has to work this way, because a guest embed doesn't sign anyone in to your Metabase---only your app knows whose account page this is.
+
+Here's the frontend code:
 
 ```html
+<!-- embed.js defines the <metabase-dashboard> element -->
 <script defer src="https://your-metabase.example.com/app/embed.js"></script>
 <script>
   function defineMetabaseConfig(config) {
@@ -66,6 +71,7 @@ Say you have a sales dashboard with a **Customer** filter, and you want to put i
 </script>
 
 <script>
+  // Page-level config, shared by every Metabase component on the page
   defineMetabaseConfig({
     instanceUrl: "https://your-metabase.example.com",
     isGuest: true,
@@ -78,24 +84,55 @@ Say you have a sales dashboard with a **Customer** filter, and you want to put i
   });
 </script>
 
-<!--
-Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
--->
+<!-- No token attribute here: the script below fetches one and sets it. -->
 <metabase-dashboard
-  token="PASS_SIGNED_TOKEN_FROM_SERVER"
+  id="sales-dashboard"
   with-title="true"
   with-downloads="true"
 >
 </metabase-dashboard>
+
+<script>
+  // Ask your server for a signed token, then set it on the element.
+  // Your server decides which customer the token is for---the page never says.
+  fetch("/api/metabase-token")
+    .then((response) => response.json())
+    .then(({ jwt }) => {
+      document.getElementById("sales-dashboard").setAttribute("token", jwt);
+    });
+</script>
 ```
 
 The `theme` key sets the dashboard's appearance. For the full theme object with all the options, check out [Appearance](./appearance.md).
 
-On your app's server, sign a token that sets the **Customer** filter to whoever's account page your app is rendering. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's numbers. To be clear, with guest embeds, only your app would know who's viewing the page, as you're not using SSO to also sign the person in to your Metabase.
+And here's the server code that signs the token:
 
-For the signing code, see [Locked parameters](./guest-embedding.md#locked-parameters). To get this code from the in-app wizard, set the **Customer** filter to **Locked**.
+```javascript
+const jwt = require("jsonwebtoken");
 
-For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+// Your embedding secret key. Keep it on your server; it never reaches the browser.
+const METABASE_SECRET_KEY = process.env.METABASE_SECRET_KEY;
+
+// Call this with the customer whose account page your app is rendering,
+// from your app's own session---not from anything the page sent you.
+function signDashboardToken(customerId) {
+  return jwt.sign(
+    {
+      resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
+      params: {
+        // Key each param by the filter's slug. Here, the locked Customer filter.
+        customer: [customerId],
+      },
+      exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minutes
+    },
+    METABASE_SECRET_KEY,
+  );
+}
+```
+
+For more on signing, check out [Locked parameters](./guest-embedding.md#locked-parameters) and the [example token endpoint](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To get the signing code from the in-app wizard, set the **Customer** filter to **Locked**. To see the whole thing running, check out our [sample apps](./securing-embeds.md#sample-apps).
+
+For all modular embeds, you can also set a `locale` in your page-level configuration. Metabase translates its own UI automatically; to translate content strings like dashboard names and filter labels, upload a [translation dictionary](./translations.md).
 
 For the full list of attributes, see [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes).
 
@@ -117,6 +154,8 @@ For the full list of props, see [`StaticDashboard` props](./dashboard-reference.
 
 {% include plans-blockquote.html feature="Interactive dashboards" convert_pro_link_to_embedding=true is_plural=true %}
 
+![Interactive embedded dashboard, with tabs and filters](./images/embedded-example-dashboard.png)
+
 An interactive dashboard lets people explore their data: they can drill through the charts on the dashboard, filter results, and open the questions behind the cards to summarize and group them.
 
 Interactive dashboards require SSO, which you can set up with either web components or the React SDK.
@@ -132,7 +171,7 @@ Reference an existing dashboard by ID. [Drill-through](../questions/visualizatio
 <metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
 ```
 
-You can pass a sequential ID like `1`, but prefer an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding).
+You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
 
 To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes).
 
@@ -148,13 +187,13 @@ By default, clicking a link to another dashboard or question does nothing, so pe
 ></metabase-dashboard>
 ```
 
-Entity navigation needs `drills` set to `true`. In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. People can still only open content they have [collection permissions](../permissions/collections.md) for.
+Entity navigation needs `drills` set to `true`, because `drills="false"` renders a [view-only dashboard](#embed-a-view-only-dashboard) instead of an interactive one, and a view-only dashboard has nowhere to navigate to.
+
+In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. Either way, people can still only open content they have [collection permissions](../permissions/collections.md) for.
 
 ### React SDK interactive dashboard
 
 Use `InteractiveDashboard` when you want people to explore their data.
-
-![Embedded dashboard](./images/embedded-example-dashboard.png)
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/interactive-dashboard.tsx" %}
@@ -178,6 +217,8 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 ## Embed an editable dashboard
 
+![Editable embedded dashboard in edit mode](./images/embedded-editable-dashboard.png)
+
 An editable dashboard does everything an interactive dashboard does, and also lets people add and update questions and other cards, and rearrange the dashboard's layout.
 
 - [Web component](#web-component-editable-dashboard)
@@ -195,13 +236,20 @@ If the dashboard renders but the edit pencil doesn't appear, the person viewing 
 
 {% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
 
-There's no `<metabase-dashboard>` attribute that turns on editing. With web components, editing comes from the [collection browser](./browser.md): set `read-only="false"`, and every dashboard people open from that browser comes with the editing pencil icon.
+There's no `<metabase-dashboard>` attribute that turns on editing, so there's no built-in way to embed one editable dashboard with a web component. If you're building in React, [`EditableDashboard`](#react-sdk-editable-dashboard) in the SDK is the direct route.
+
+Depending on your app, you may be able to get there with the [collection browser](./browser.md) instead. Set `read-only="false"`, and every dashboard people open from that browser comes with the editing pencil icon:
 
 ```html
-<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+<metabase-browser
+  initial-collection="Mn4OpQrStUvWxYzAbCdEf"
+  read-only="false"
+></metabase-browser>
 ```
 
-People get to a dashboard by navigating the collection you point `initial-collection` at, so the browser is the whole embed. There's no attribute that opens the browser on one specific dashboard.
+The tradeoff: people have to find the dashboard by navigating the collection you point `initial-collection` at, since there's no attribute that opens the browser on one specific dashboard. That works if browsing is something you wanted in your app anyway; it's a detour if you only ever wanted to show one dashboard.
+
+If you only want people editing one dashboard, give that dashboard a collection of its own and point `initial-collection` at it. People land on a one-item list and click through to an editable dashboard. The detour is one click, and there's nowhere else to wander.
 
 Setting `read-only="false"` also adds a **New dashboard** button, so the same embed lets people create dashboards. Check out [Add new question and new dashboard buttons](./browser.md#add-new-question-and-new-dashboard-buttons).
 
@@ -217,7 +265,7 @@ For the full list of attributes, see [web component attributes](./browser-refere
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard.tsx" %}
 ```
 
-When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker. For example, limiting people to [models](../data-modeling/models.md) means they build on your curated data rather than on raw tables:
+When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker: `"table"`, `"question"`, or `"model"`. For example, limiting people to tables keeps them building on the data you point them at, rather than on other people's saved questions:
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard-data-picker.tsx" %}
@@ -318,7 +366,7 @@ Unlike a question, which needs a SQL variable to lock onto, any dashboard filter
 
 ```javascript
 const payload = {
-  resource: { dashboard: 10 },
+  resource: { dashboard: "Xk3YzAbCdEfGhIjKlMnOp" },
   params: {
     category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
   },
@@ -361,12 +409,12 @@ Set the [`with-subscriptions`](./dashboard-reference.md#web-component-metabase-d
 
 ```html
 <metabase-dashboard
-  dashboard-id="42"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
   with-subscriptions="true"
 ></metabase-dashboard>
 ```
 
-Drill-through also has to be on. Setting `drills="false"` renders a view-only dashboard, which has no subscriptions button.
+Drill-through also has to be on: `drills="false"` renders a view-only dashboard, and the web component doesn't pass `with-subscriptions` through to it.
 
 ### React SDK dashboard subscriptions
 
@@ -391,7 +439,7 @@ Set `auto-refresh-interval`:
 
 ```html
 <metabase-dashboard
-  dashboard-id="42"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
   auto-refresh-interval="60"
 ></metabase-dashboard>
 ```
@@ -425,7 +473,7 @@ To set the height, style the `<metabase-dashboard>` element with CSS. The elemen
   }
 </style>
 
-<metabase-dashboard dashboard-id="42"></metabase-dashboard>
+<metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
 ```
 
 The embed won't render shorter than 600 pixels, no matter which height you set.

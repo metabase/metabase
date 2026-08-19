@@ -19,11 +19,13 @@ Depending on the framework you're using, you may need to stringify attributes be
 
 ```html
 <metabase-question
-  question-id="42"
+  question-id="Pq7RsTuVwXyZaBcDeFgHi"
   initial-sql-parameters="{ 'productId': '42' }"
   hidden-parameters="['productId']"
 ></metabase-question>
 ```
+
+The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
 
 ## React SDK `StaticQuestion` props
 

@@ -8,7 +8,7 @@ import {
 const authConfig = {} as MetabaseAuthConfig;
 const theme = {} as MetabaseTheme;
 
-const questionId = 1;
+const questionId = "Pq7RsTuVwXyZaBcDeFgHi";
 
 const Example = () => (
   // [<snippet example>]

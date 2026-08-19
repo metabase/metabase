@@ -135,10 +135,15 @@ Here's an example snippet:
 </script>
 
 <!--Embedded entities -->
-<metabase-question question-id="1"></metabase-question>
+<metabase-question question-id="Pq7RsTuVwXyZaBcDeFgHi"></metabase-question>
 
-<metabase-dashboard dashboard-id="2" with-title="false"></metabase-dashboard>
+<metabase-dashboard
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+  with-title="false"
+></metabase-dashboard>
 ```
+
+The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
 
 Note the `defer` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
@@ -172,7 +177,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Show title**: what it says on the tin.
 
-- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results. This option only shows up when you're embedding a collection browser; checking it sets `read-only="false"` on `<metabase-browser>`. There's no equivalent attribute on `<metabase-dashboard>`, so see [Web component editable dashboard](./dashboard.md#web-component-editable-dashboard) for how to embed an editable dashboard.
 
 - **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
 

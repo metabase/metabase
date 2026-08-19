@@ -20,7 +20,7 @@ const authConfig = defineMetabaseAuthConfig({
 export default function App() {
   return (
     <MetabaseProvider authConfig={authConfig}>
-      <InteractiveDashboard dashboardId={1} />
+      <InteractiveDashboard dashboardId="Xk3YzAbCdEfGhIjKlMnOp" />
     </MetabaseProvider>
   );
 }

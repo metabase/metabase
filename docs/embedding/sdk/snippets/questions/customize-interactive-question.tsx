@@ -10,7 +10,7 @@ const theme = {} as MetabaseTheme;
 
 const ExampleDefaultInteractiveQuestion = () => (
   // [<snippet example-default-interactive-question>]
-  <InteractiveQuestion questionId={95} />
+  <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi" />
   // [<endsnippet example-default-interactive-question>]
 );
 
@@ -26,7 +26,7 @@ const ExampleCustomizedInteractiveQuestion = () => (
     }}
   >
     <MetabaseProvider authConfig={authConfig} theme={theme}>
-      <InteractiveQuestion questionId={95}>
+      <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi">
         <div
           style={{
             display: "flex",

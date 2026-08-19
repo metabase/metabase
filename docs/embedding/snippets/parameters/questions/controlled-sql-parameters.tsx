@@ -5,7 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
-const questionId = 1;
+const questionId = "Pq7RsTuVwXyZaBcDeFgHi";
 
 const ExampleControlled = () => {
   // [<snippet example-controlled>]

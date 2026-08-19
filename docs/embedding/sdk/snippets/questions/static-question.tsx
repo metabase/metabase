@@ -10,7 +10,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 
 export default function App() {
-  const questionId = 1; // This is the question ID you want to embed
+  const questionId = "Pq7RsTuVwXyZaBcDeFgHi"; // Entity ID of the question you want to embed. A sequential ID like 1 works too.
 
   return (
     <MetabaseProvider authConfig={authConfig}>

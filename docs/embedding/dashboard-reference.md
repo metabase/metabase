@@ -19,11 +19,13 @@ Depending on the framework you're using, you may need to stringify attributes be
 
 ```html
 <metabase-dashboard
-  dashboard-id="1"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
   initial-parameters="{ 'productId': '42' }"
   hidden-parameters="['productId']"
 ></metabase-dashboard>
 ```
+
+The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 

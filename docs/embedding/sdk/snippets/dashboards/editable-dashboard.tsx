@@ -10,7 +10,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 
 export default function App() {
-  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const dashboardId = "Xk3YzAbCdEfGhIjKlMnOp"; // Entity ID of the dashboard you want to embed. A sequential ID like 1 works too.
 
   return (
     <MetabaseProvider authConfig={authConfig}>

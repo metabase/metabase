@@ -68,9 +68,11 @@ With a web component, turn saving on with `is-save-enabled="true"`. `target-coll
 <metabase-question
   question-id="new"
   is-save-enabled="true"
-  target-collection="5"
+  target-collection="Mn4OpQrStUvWxYzAbCdEf"
 ></metabase-question>
 ```
+
+The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
 
 ### Saving with the React SDK
 

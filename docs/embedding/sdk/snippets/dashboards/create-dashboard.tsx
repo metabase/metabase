@@ -10,7 +10,7 @@ const ExampleHook = () => {
   const options = {
     name: "New dashboard",
     description: null,
-    collectionId: 1,
+    collectionId: "Mn4OpQrStUvWxYzAbCdEf",
   };
 
   // [<snippet example-hook>]

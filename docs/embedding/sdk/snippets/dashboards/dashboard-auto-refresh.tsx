@@ -1,6 +1,6 @@
 import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
-const dashboardId = 1;
+const dashboardId = "Xk3YzAbCdEfGhIjKlMnOp";
 
 const Example = () => (
   // [<snippet example>]

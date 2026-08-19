@@ -39,7 +39,7 @@ const Example = () => {
         },
       }}
     >
-      <InteractiveQuestion questionId={1} />
+      <InteractiveQuestion questionId="Pq7RsTuVwXyZaBcDeFgHi" />
     </MetabaseProvider>
   );
   // [<endsnippet example>]

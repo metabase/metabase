@@ -75,15 +75,17 @@ Set values on mount via attributes. The component reads them once on load and ig
 
 ```html
 <metabase-dashboard
-  dashboard-id="1"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
   initial-parameters='{"state": "NY"}'
 ></metabase-dashboard>
 
 <metabase-question
-  question-id="42"
+  question-id="Pq7RsTuVwXyZaBcDeFgHi"
   initial-sql-parameters='{"product_id": 50}'
 ></metabase-question>
 ```
+
+The IDs in these examples are [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding). Sequential IDs work too, but entity IDs stay the same when you move content between instances, like from staging to production.
 
 Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards) or SQL variable names (questions). See [How parameter values are resolved](#how-parameter-values-are-resolved) for null / missing-slug semantics.
 
@@ -92,7 +94,10 @@ Attributes carry JSON. Pass an object whose keys are parameter slugs (dashboards
 For controlled behavior, set the JS property on the element instead of the attribute. The component re-renders to apply the new values.
 
 ```html
-<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
+<metabase-dashboard
+  id="my-dashboard"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+></metabase-dashboard>
 
 <script>
   const el = document.getElementById("my-dashboard");
@@ -130,7 +135,10 @@ To clear every parameter, assign an empty object `{}`.
 Listen for events to keep your page in sync with what's actually applied:
 
 ```html
-<metabase-dashboard id="my-dashboard" dashboard-id="1"></metabase-dashboard>
+<metabase-dashboard
+  id="my-dashboard"
+  dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"
+></metabase-dashboard>
 
 <script>
   const el = document.getElementById("my-dashboard");
@@ -181,7 +189,9 @@ Delivered to `onSqlParametersChange` (SDK) and as `event.detail` for the `sql-pa
 
 ## Hide a dashboard filter
 
-To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both are meant for SSO embeds on a Pro or Enterprise plan.
+To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK).
+
+Hiding filters can be useful when you're embedding a dashboard with SSO authentication, where every filter on the dashboard shows up by default. On a [guest embed](./guest-embedding.md), a filter that you haven't set to **Editable** or **Locked** is already hidden, so there's usually nothing left to hide.
 
 Hiding a filter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.
 
