@@ -62,6 +62,15 @@
       (if (identical? m m')
         this
         (->SnakeHatingMap m'))))
+  (equiv [this x]
+    (if (or (instance? java.util.Map x) (map? x))
+      (and (= (count this) (count x))
+           (reduce-kv (fn [res k v]
+                        (if (= (get x (normalize-key k) ::empty) v)
+                          true
+                          (reduced false)))
+                      true this))
+      false))
 
   clojure.lang.IKVReduce
   (kvreduce [this f init]
