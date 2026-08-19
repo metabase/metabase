@@ -77,12 +77,20 @@
   ^bytes []
   default-hmac-signing-secret)
 
+;; Length-prefix each stringified part ("<byte-count>:<utf8-bytes>") so the encoding is unambiguous:
+;; distinct part lists always map to distinct bytes.
 (defn- sig-input-bytes ^bytes [parts]
-  (.getBytes (str/join " " (map str parts)) java.nio.charset.StandardCharsets/UTF_8))
+  (let [out (java.io.ByteArrayOutputStream.)]
+    (doseq [p parts]
+      (let [^bytes b      (.getBytes (str p) java.nio.charset.StandardCharsets/UTF_8)
+            ^bytes prefix (.getBytes (str (alength b) ":") java.nio.charset.StandardCharsets/UTF_8)]
+        (.write out prefix 0 (alength prefix))
+        (.write out b 0 (alength b))))
+    (.toByteArray out)))
 
 (defn hmac-signature
-  "Hex HMAC-SHA512 of `parts` (stringified, space-joined) keyed by [[hmac-signing-secret]]. Nil when no
-  secret is configured. Use on the write path and to backfill existing rows."
+  "Hex HMAC-SHA512 of `parts` (each stringified and length-prefixed) keyed by [[hmac-signing-secret]].
+  Nil when no secret is configured. Use on the write path and to backfill existing rows."
   ^String [& parts]
   (when-let [secret (hmac-signing-secret)]
     (codecs/bytes->hex (mac/hash (sig-input-bytes parts) {:key secret :alg :hmac+sha512}))))

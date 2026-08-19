@@ -74,21 +74,42 @@
                            credentials))
       (dissoc :plaintext_password)))
 
+(defn- ts-part
+  "Normalize a timestamp field for signing: truncate to seconds and stringify so the signed value is
+  identical whether it comes straight off the write path or is re-parsed from the JSON column. Nil-safe."
+  [ts]
+  (some-> ts t/instant (.truncatedTo java.time.temporal.ChronoUnit/SECONDS) str))
+
+(defn- credentials-sig-parts
+  "The signed tuple for an auth_identity row. Covers the secret material (`password_hash`, `token_hash`)
+  and the reset-token state fields (`expires_at`, `consumed_at`) that the emailed-secret provider gates on."
+  [user-id provider {:keys [password_hash token_hash expires_at consumed_at]}]
+  ["auth_identity.credentials" user-id provider password_hash token_hash
+   (ts-part expires_at) (ts-part consumed_at)])
+
 (defn- credentials-signature
-  "Keyed signature bound to `(user-id, provider, password_hash, token_hash)`. Recomputed on the
-  model write path."
+  "Keyed signature over [[credentials-sig-parts]]. Recomputed on the model write path."
   [user-id provider credentials]
-  (encryption/hmac-signature "auth_identity.credentials"
-                             user-id provider
-                             (:password_hash credentials) (:token_hash credentials)))
+  (apply encryption/hmac-signature (credentials-sig-parts user-id provider credentials)))
 
 (defn credentials-signature-valid?
   "True when `auth-identity`'s `credentials_sig` verifies against its credentials, or when no signing
   secret is configured. Providers call this before honoring the stored credentials."
   [{:keys [user_id provider credentials credentials_sig]}]
-  (encryption/hmac-signature-valid? credentials_sig "auth_identity.credentials"
-                                    user_id provider
-                                    (:password_hash credentials) (:token_hash credentials)))
+  (apply encryption/hmac-signature-valid? credentials_sig
+         (credentials-sig-parts user_id provider credentials)))
+
+(defn resign-credentials-signatures!
+  "Re-stamp `credentials_sig` for every auth_identity from the current row value. Run when the signing
+  secret changes so existing rows stay verifiable. No-op when no secret is configured."
+  []
+  (when (encryption/hmac-signing-secret)
+    (run! (fn [{:keys [id user_id provider credentials]}]
+            (t2/query-one {:update :auth_identity
+                           :set    {:credentials_sig (credentials-signature user_id provider credentials)}
+                           :where  [:= :id id]}))
+          ;; select through the model so `credentials` is decrypted + timestamp-parsed, matching the write path
+          (t2/select :model/AuthIdentity))))
 
 (t2/define-before-insert :model/AuthIdentity
   [{:keys [user_id provider credentials] :as auth-identity}]

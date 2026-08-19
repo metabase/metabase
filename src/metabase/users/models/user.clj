@@ -242,6 +242,17 @@
   [id superuser?]
   (encryption/hmac-signature "core_user.is_superuser" id (boolean superuser?)))
 
+(defn resign-superuser-signatures!
+  "Re-stamp `is_superuser_sig` for every user from the current row value. Run when the signing secret
+  changes so existing rows stay verifiable. No-op when no secret is configured."
+  []
+  (when (encryption/hmac-signing-secret)
+    (run! (fn [{:keys [id is_superuser]}]
+            (t2/query-one {:update :core_user
+                           :set    {:is_superuser_sig (superuser-signature id is_superuser)}
+                           :where  [:= :id id]}))
+          (t2/reducible-query {:select [:id :is_superuser] :from [:core_user]}))))
+
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)

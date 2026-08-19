@@ -344,6 +344,7 @@
     (when-let [{:keys [uid sid] :as claims}
                (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
       (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
+              check-superuser-signature
               (m/update-existing :is-group-manager? boolean)
               ;; Endpoint scope middleware treats this as session-like auth, but the
               ;; route allowlist above is the actual authorization boundary.
