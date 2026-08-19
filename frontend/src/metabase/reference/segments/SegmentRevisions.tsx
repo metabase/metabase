@@ -20,14 +20,8 @@ import type {
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getError,
-  getLoading,
-  getSegment,
-  getSegmentRevisions,
-  getUser,
-} from "../selectors";
-import type { StubbedSegment } from "../types";
+import { getSegment, getSegmentRevisions, getUser } from "../selectors";
+import type { ReferenceLoadingProps, StubbedSegment } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -44,8 +38,6 @@ const mapStateToProps = (
     segment: getSegment(state, props),
     tables: getTables(state),
     user: getUser(state),
-    loading: getLoading(state),
-    loadingError: getError(state),
   };
 };
 
@@ -139,4 +131,11 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 export default connect(
   mapStateToProps,
   // Unjustified type cast. FIXME
-)(SegmentRevisions as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentRevisions as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

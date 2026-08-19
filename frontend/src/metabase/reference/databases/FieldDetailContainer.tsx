@@ -12,7 +12,7 @@ import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state"
 import { useLocation, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -28,7 +28,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface FieldDetailContainerProps extends FetchProps, ClearStateProps {}
+type FieldDetailContainerProps = ClearStateProps;
 
 function FieldDetailContainer(props: FieldDetailContainerProps) {
   const { pathname } = useLocation();
@@ -44,7 +44,9 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   // `FieldDetail` reads `metadata` but doesn't select it itself.
   const metadata = useSelector(getMetadata);
 
-  useReferenceFetch(() => fetchTableData(dispatch, tableId));
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchTableData(dispatch, tableId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -60,7 +62,12 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<FieldSidebar database={database} table={table} field={field} />}
     >
-      <FieldDetail params={params} metadata={metadata} />
+      <FieldDetail
+        params={params}
+        metadata={metadata}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }

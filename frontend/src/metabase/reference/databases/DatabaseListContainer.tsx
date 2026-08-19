@@ -9,23 +9,21 @@ import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import DatabaseList from "metabase/reference/databases/DatabaseList";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
-import { useReferenceFetchState } from "metabase/reference/use-reference-fetch-state";
 import { useLocation } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 
 const mapDispatchToProps = {
   ...actions,
 };
 
-interface DatabaseListContainerProps extends FetchProps, ClearStateProps {}
+type DatabaseListContainerProps = ClearStateProps;
 
 function DatabaseListContainer(props: DatabaseListContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
 
   const { isFetching, error } = useListDatabasesQuery({ include: "tables" });
-  useReferenceFetchState({ isFetching, error });
 
   useEffect(() => {
     const pathnameChanged =
@@ -40,7 +38,7 @@ function DatabaseListContainer(props: DatabaseListContainerProps) {
       className={cx(CS.flexFull, CS.relative)}
       sidebar={<BaseSidebar />}
     >
-      <DatabaseList />
+      <DatabaseList loading={isFetching} loadingError={error} />
     </SidebarLayout>
   );
 }

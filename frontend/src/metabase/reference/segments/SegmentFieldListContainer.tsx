@@ -11,7 +11,7 @@ import SegmentFieldList from "metabase/reference/segments/SegmentFieldList";
 import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
@@ -27,7 +27,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface SegmentFieldListContainerProps extends FetchProps, ClearStateProps {}
+type SegmentFieldListContainerProps = ClearStateProps;
 
 function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
   const { pathname } = useLocation();
@@ -42,7 +42,9 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
   // `SegmentFieldList` reads `table.db_id` but doesn't select the table itself.
   const table = useSelector((state) => getTable(state, { params }));
 
-  useReferenceFetch(() => fetchSegmentFieldsData(dispatch, segmentId));
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentFieldsData(dispatch, segmentId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -58,7 +60,12 @@ function SegmentFieldListContainer(props: SegmentFieldListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<SegmentSidebar segment={segment} user={user} />}
     >
-      <SegmentFieldList params={params} table={table} />
+      <SegmentFieldList
+        params={params}
+        table={table}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }

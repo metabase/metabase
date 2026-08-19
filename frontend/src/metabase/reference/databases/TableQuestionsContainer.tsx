@@ -8,10 +8,9 @@ import { connect, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
-import { useReferenceFetchState } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -26,7 +25,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-interface TableQuestionsContainerProps extends FetchProps, ClearStateProps {}
+type TableQuestionsContainerProps = ClearStateProps;
 
 function TableQuestionsContainer(props: TableQuestionsContainerProps) {
   const { pathname } = useLocation();
@@ -43,10 +42,6 @@ function TableQuestionsContainer(props: TableQuestionsContainerProps) {
   const { isFetching: isFetchingCards, error: cardsError } = useListCardsQuery(
     {},
   );
-  useReferenceFetchState({
-    isFetching: isFetchingMetadata || isFetchingCards,
-    error: metadataError ?? cardsError,
-  });
 
   useEffect(() => {
     const pathnameChanged =
@@ -62,7 +57,11 @@ function TableQuestionsContainer(props: TableQuestionsContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<TableSidebar database={database} table={table} />}
     >
-      <TableQuestions params={params} />
+      <TableQuestions
+        params={params}
+        loading={isFetchingMetadata || isFetchingCards}
+        loadingError={metadataError ?? cardsError}
+      />
     </SidebarLayout>
   );
 }
