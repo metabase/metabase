@@ -33,6 +33,7 @@ interface DashCardMenuProps {
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
   canEdit?: boolean;
+  withTimelineEvents?: boolean;
 }
 
 function isDashCardMenuEmpty(
@@ -57,6 +58,7 @@ export const DashCardMenu = ({
   onEditVisualization,
   openUnderlyingQuestionItems,
   canEdit,
+  withTimelineEvents = false,
 }: DashCardMenuProps) => {
   const store = useStore();
 
@@ -123,6 +125,7 @@ export const DashCardMenu = ({
           onDownload={() => setMenuView("download")}
           onEditVisualization={onEditVisualization}
           canEdit={canEdit}
+          withTimelineEvents={withTimelineEvents}
         />
         {openUnderlyingQuestionItems && (
           <Menu.Sub position="right" shadow="md">
@@ -169,6 +172,7 @@ export const DashCardMenu = ({
 type ShouldRenderDashcardMenuProps = {
   question: Question | null;
   result?: Dataset;
+  withTimelineEvents?: boolean;
 } & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu">;
 
 DashCardMenu.shouldRender = ({
@@ -176,6 +180,7 @@ DashCardMenu.shouldRender = ({
   dashboard,
   dashcardMenu,
   result,
+  withTimelineEvents = false,
 }: ShouldRenderDashcardMenuProps) => {
   if (!question || !dashboard || dashcardMenu === null) {
     return null;
@@ -189,6 +194,8 @@ DashCardMenu.shouldRender = ({
 
   return (
     !isInternalQuery &&
-    (canEditQuestion(question) || canDownloadResults(result))
+    (canEditQuestion(question) ||
+      canDownloadResults(result) ||
+      withTimelineEvents)
   );
 };
