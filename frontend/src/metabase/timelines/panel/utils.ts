@@ -11,7 +11,7 @@ import type {
   DateRange,
   TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { TimeseriesXAxis } from "metabase/visualizations/lib/timeseries-x-axis";
+import type { TimeseriesXAxis } from "metabase/visualizations/types";
 import type {
   DateTimeAbsoluteUnit,
   Timeline,
@@ -75,12 +75,12 @@ export const filterVisibleTimelineEvents = (
   visibleEventIds: TimelineEventId[],
 ): TimelineEvent[] => {
   const visibleIds = new Set(visibleEventIds);
-  return _.chain(timelines)
-    .map((timeline) => timeline.events ?? [])
-    .flatten()
-    .filter((event) => visibleIds.has(event.id))
-    .sortBy((event) => event.timestamp)
-    .value();
+  return _.sortBy(
+    timelines
+      .flatMap((timeline) => timeline.events ?? [])
+      .filter((event) => visibleIds.has(event.id)),
+    (event) => event.timestamp,
+  );
 };
 
 export const getFocusedTimelines = (
