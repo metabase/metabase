@@ -10,7 +10,10 @@ import {
   useRestore,
   useSetArchive,
 } from "metabase/archive/hooks";
-import { trackCollectionItemBookmarked } from "metabase/common/collections/analytics";
+import {
+  setCollectionItemPinnedAndTrack,
+  trackCollectionItemBookmarked,
+} from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -27,7 +30,6 @@ import {
   isItemPinned,
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { EntityItem } from "metabase/common/components/EntityItem";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import {
   canMoveItem,
@@ -46,6 +48,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./ActionMenu.module.css";
+import { EntityItemMenu } from "./EntityItemMenu";
 
 export interface ActionMenuProps {
   className?: string;
@@ -101,7 +104,13 @@ function ActionMenuInner({
 
   const handlePin = useCallback(() => {
     if (isPinnable(item)) {
-      setPinned(item, !isItemPinned(item));
+      const pinned = !isItemPinned(item);
+      void setCollectionItemPinnedAndTrack({
+        item,
+        pinned,
+        triggeredFrom: "item_menu",
+        setPinned: () => setPinned(item, pinned),
+      });
     }
   }, [item, setPinned]);
 
@@ -151,7 +160,7 @@ function ActionMenuInner({
 
   return (
     <>
-      <EntityItem.Menu
+      <EntityItemMenu
         className={`${S.EntityItemMenu} ${className || ""}`}
         item={item}
         isBookmarked={isBookmarked}

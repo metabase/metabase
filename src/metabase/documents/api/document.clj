@@ -11,6 +11,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
@@ -18,7 +19,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -29,7 +29,7 @@
    [:name ms/NonBlankString]
    [:dataset_query ::lib-be.schema/maybe-legacy-query]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
+   [:parameters {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
@@ -485,16 +485,13 @@
     format-rows?   :format_rows
     :as            _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ms/Map]
-                                                 ms/JSONString]]]
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format
-   :parameters  (cond-> parameters
-                  (string? parameters) json/decode+kw)
+   :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

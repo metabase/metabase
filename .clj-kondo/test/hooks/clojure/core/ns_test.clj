@@ -43,6 +43,16 @@
            '{:metabase/modules {api    {:uses #{search}}
                                 search {:api  #{metabase.search.core}}}}))))
 
+(deftest ^:parallel module-checker-empty-api-test
+  (is (=? [{:message "Namespace metabase.embeddings.core is not an allowed external API namespace for the embeddings module. [:metabase/modules embeddings :api]"
+            :type :metabase/modules}]
+          (lint-modules
+           '(ns metabase.metabot.core
+              (:require
+               [metabase.embeddings.core :as embeddings]))
+           '{:metabase/modules {metabot   {:uses #{embeddings}}
+                                embeddings {:api #{}}}}))))
+
 (deftest ^:parallel module-checker-friends-test
   (is (= []
          (lint-modules

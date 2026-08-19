@@ -273,9 +273,7 @@
   [identifier]
   (if (<= (count identifier) 63)
     identifier
-    (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
-      (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
-      hashed-name)))
+    (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))))
 
 (defn model-table-suffix
   "Returns a new suffix for a table name, based on current timestamp"

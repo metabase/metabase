@@ -281,14 +281,6 @@
         points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
-(mr/def ::parameters
-  "Form-encoded JSON-encoded array of parameter maps."
-  [:schema
-   {:decode/api (fn [s]
-                  (when (string? s)
-                    (json/decode+kw s)))}
-   [:sequential ::parameters.schema/parameter-with-value]])
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -303,7 +295,7 @@
        [:y ms/Int]]
    {:keys [parameters], lat-field :latField lon-field :lonField}
    :- [:map
-       [:parameters {:optional true} ::parameters]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
   (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card card-id))
@@ -325,7 +317,7 @@
        [:y ms/Int]]
    {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
    :- [:map
-       [:parameters {:optional true} ::parameters]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
   (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))

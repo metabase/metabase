@@ -350,7 +350,6 @@
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
-                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -865,6 +864,12 @@
   ;;    clojure -X:build:build/verify-driver :driver :mongo
   :build/verify-driver
   {:exec-fn verify-driver/verify-driver}
+
+  ;; Build the separately installed in-process embedder plugin jar.
+  ;;
+  ;;    clojure -X:build:build/embedder-plugin
+  :build/embedder-plugin
+  {:exec-fn build-embedder-plugin/build-plugin!}
 
   ;; Build i18n artifacts.
   ;;

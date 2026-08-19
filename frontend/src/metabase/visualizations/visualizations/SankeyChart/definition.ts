@@ -34,7 +34,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.source,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     getSection: () => t`Data`,
@@ -44,7 +45,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.target,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.target,
   }),
   ...metricSetting("sankey.value", {
     getSection: () => t`Data`,
@@ -54,7 +56,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.metric,
+    getDefault: ([series]) =>
+      findSensibleSankeyColumns(series.data, series.json_query)?.metric,
   }),
   "sankey.node_align": {
     getSection: () => t`Display`,
