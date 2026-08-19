@@ -1,6 +1,6 @@
 name: Files changed
 description: >
-  Answer questions about a commit — did it touch these parts of the repo? —
+  Answer one question about a commit — did it touch these parts of the repo? —
   using dorny/paths-filter against .github/file-paths.yaml. Runs the diff once
   and turns it into plain booleans, so a caller states which filters it cares
   about instead of spelling the same OR out across a job's `if:` conditions.
@@ -25,21 +25,6 @@ inputs:
       Filter names, in the same forms `any-of` accepts, that must *all* have
       matched. Give both and the commit has to satisfy the `any-of` OR and the
       `all-of` AND together.
-    required: false
-    default: ""
-  questions:
-    description: >
-      Several named questions of one diff, answered into the `answers` JSON:
-
-        frontend:
-          all-of: frontend_sources
-        backend:
-          any-of: backend_all, drivers
-        docs: documentation
-
-      Each name takes `any-of` and/or `all-of` with the same meaning they have
-      above; the last line is shorthand for a question that is only an `any-of`.
-      Mutually exclusive with the top-level `any-of`/`all-of`.
     required: false
     default: ""
   filters:
@@ -67,16 +52,8 @@ outputs:
   changed:
     description: >
       'true' when the commit satisfied `any-of` (at least one matched) and
-      `all-of` (every one matched). Under `questions`, 'true' when any question
-      answered yes — a cheap gate for "is there anything to do at all?".
-      'false' when no question was asked.
+      `all-of` (every one matched). 'false' when neither input is given.
     value: ${{ steps.evaluate.outputs.changed }}
-  answers:
-    description: >
-      One JSON boolean per named question, for use as
-      fromJSON(steps.<id>.outputs.answers).frontend. `{}` unless `questions`
-      was given.
-    value: ${{ steps.evaluate.outputs.answers }}
   files:
     description: >
       Files matched by the named filters, in the `list-files` format. Empty
@@ -102,7 +79,7 @@ runs:
         list-files: ${{ inputs.list-files }}
         base: ${{ inputs.base }}
 
-    - name: Answer the questions
+    - name: Answer the question
       id: evaluate
       shell: bash
       env:
@@ -110,7 +87,6 @@ runs:
         FILTERS: ${{ inputs.filters }}
         ANY_OF: ${{ inputs.any-of }}
         ALL_OF: ${{ inputs.all-of }}
-        QUESTIONS: ${{ inputs.questions }}
         LIST_FILES: ${{ inputs.list-files }}
       run: |
         set -euo pipefail
@@ -118,17 +94,11 @@ runs:
         # A delimiter no file list can accidentally terminate.
         delim="ghadelim-$RANDOM$RANDOM-$$"
         emit() { printf '%s<<%s\n%s\n%s\n' "$1" "$delim" "$2" "$delim" >> "$GITHUB_OUTPUT"; }
-        blank() { [ -z "${1//[[:space:]]/}" ]; }
 
         # Parked on disk so the jq lookups below can all read the same file.
         FILE="$RUNNER_TEMP/files-changed-results.json"
         printf '%s' "$RESULTS" | jq -c . > "$FILE"
         emit results "$(cat "$FILE")"
-
-        if ! blank "$QUESTIONS" && { ! blank "$ANY_OF" || ! blank "$ALL_OF"; }; then
-          echo "::error::Ask with questions or with any-of/all-of, not both." >&2
-          exit 1
-        fi
 
         # Filter names: `a, b`, one per line, or the `a: true` map form. Anything
         # other than `true` on the right is a typo we would rather not guess at.
@@ -149,63 +119,38 @@ runs:
           done < <(printf '%s\n' "$1" | tr ',' '\n')
         }
 
-        # `questions` is a deliberately small YAML subset — a name, then any-of
-        # and/or all-of under it, or a name with the any-of inline. Anything else
-        # is rejected rather than guessed at.
-        q_names=(); q_any=(); q_all=(); current=-1
-        while IFS= read -r line; do
-          trimmed="${line#"${line%%[![:space:]]*}"}"
-          if [ -z "$trimmed" ] || [ "${trimmed:0:1}" = "#" ]; then
-            continue
-          fi
-          if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*$ ]]; then
-            q_names+=("${BASH_REMATCH[1]}"); q_any+=(""); q_all+=("")
-            current=$(( ${#q_names[@]} - 1 ))
-          elif [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]+(.+)$ ]]; then
-            q_names+=("${BASH_REMATCH[1]}"); q_any+=("${BASH_REMATCH[2]}"); q_all+=("")
-            current=$(( ${#q_names[@]} - 1 ))
-          elif [[ "$line" =~ ^[[:space:]]+(any-of|all-of):[[:space:]]*(.*)$ ]]; then
-            if [ "$current" -lt 0 ]; then
-              echo "::error::questions: '$trimmed' is not under a question name." >&2
-              exit 1
+        # Fills the `names` global; a parse failure takes the whole step down.
+        read_names() {
+          local raw line
+          names=()
+          raw="$(parse "$1" "$2")" || exit 1
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              names+=("$line")
             fi
-            if [ "${BASH_REMATCH[1]}" = "any-of" ]; then
-              q_any[$current]="${BASH_REMATCH[2]}"
-            else
-              q_all[$current]="${BASH_REMATCH[2]}"
-            fi
-          else
-            echo "::error::questions: don't know what to do with '$trimmed'." >&2
-            exit 1
-          fi
-        done <<< "$QUESTIONS"
+          done <<< "$raw"
+        }
 
-        # The shorthand inputs are just a single question with no name.
-        if [ ${#q_names[@]} -eq 0 ]; then
-          q_names=(""); q_any=("$ANY_OF"); q_all=("$ALL_OF")
+        read_names "$ANY_OF" any-of
+        any_names=("${names[@]+"${names[@]}"}")
+        read_names "$ALL_OF" all-of
+        all_names=("${names[@]+"${names[@]}"}")
+
+        if [ ${#any_names[@]} -eq 0 ] && [ ${#all_names[@]} -eq 0 ]; then
+          emit changed false
+          emit files ""
+          echo "Neither any-of nor all-of given; read the answer from the results output."
+          exit 0
         fi
 
-        # Every filter any question mentions, in order, without repeats. Parsed in
-        # one pass so a syntax error stops us before we start answering.
-        combined=""
-        for i in "${!q_names[@]}"; do
-          combined="$combined${q_any[$i]}"$'\n'"${q_all[$i]}"$'\n'
-        done
-        parsed="$(parse "$combined" question)" || exit 1
+        # Every name either side asked about, in order, without repeats.
         referenced=()
         while IFS= read -r name; do
           if [ -n "$name" ]; then
             referenced+=("$name")
           fi
-        done < <(printf '%s\n' "$parsed" | awk 'NF && !seen[$0]++')
-
-        if [ ${#referenced[@]} -eq 0 ]; then
-          emit changed false
-          emit answers "{}"
-          emit files ""
-          echo "Nothing asked; read the answer from the results output."
-          exit 0
-        fi
+        done < <(printf '%s\n' "${any_names[@]+"${any_names[@]}"}" \
+                                "${all_names[@]+"${all_names[@]}"}" | awk 'NF && !seen[$0]++')
 
         # A name with no filter behind it would otherwise report false forever,
         # quietly switching off whatever job depends on it.
@@ -221,49 +166,24 @@ runs:
         matched() { [ "$(jq -r --arg k "$1" '.[$k]' "$FILE")" = "true" ]; }
 
         # any-of is an OR, all-of an AND, and asking both means both must hold.
-        answer() {
-          local -a any=() all=()
-          local name raw line ok=true
-          raw="$(parse "$1" any-of)" || return 1
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then any+=("$line"); fi
-          done <<< "$raw"
-          raw="$(parse "$2" all-of)" || return 1
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then all+=("$line"); fi
-          done <<< "$raw"
-
-          if [ ${#any[@]} -eq 0 ] && [ ${#all[@]} -eq 0 ]; then
-            printf 'false'
-            return 0
-          fi
-          if [ ${#any[@]} -gt 0 ]; then
-            ok=false
-            for name in "${any[@]}"; do
-              if matched "$name"; then ok=true; break; fi
-            done
-          fi
-          if [ "$ok" = true ] && [ ${#all[@]} -gt 0 ]; then
-            for name in "${all[@]}"; do
-              if ! matched "$name"; then ok=false; break; fi
-            done
-          fi
-          printf '%s' "$ok"
-        }
-
-        answers="{}"
-        changed=false
-        for i in "${!q_names[@]}"; do
-          verdict="$(answer "${q_any[$i]}" "${q_all[$i]}")" || exit 1
-          if [ "$verdict" = true ]; then
-            changed=true
-          fi
-          if [ -n "${q_names[$i]}" ]; then
-            answers="$(printf '%s' "$answers" |
-              jq -c --arg k "${q_names[$i]}" --argjson v "$verdict" '.[$k] = $v')"
-            echo "${q_names[$i]}=$verdict"
-          fi
-        done
+        changed=true
+        if [ ${#any_names[@]} -gt 0 ]; then
+          changed=false
+          for name in "${any_names[@]}"; do
+            if matched "$name"; then
+              changed=true
+              break
+            fi
+          done
+        fi
+        if [ "$changed" = true ] && [ ${#all_names[@]} -gt 0 ]; then
+          for name in "${all_names[@]}"; do
+            if ! matched "$name"; then
+              changed=false
+              break
+            fi
+          done
+        fi
 
         parts=()
         for name in "${referenced[@]}"; do
@@ -286,6 +206,5 @@ runs:
         fi
 
         emit changed "$changed"
-        emit answers "$answers"
         emit files "$files"
         echo "changed=$changed for: ${referenced[*]}"

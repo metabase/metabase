@@ -23,22 +23,6 @@ on:
           both and the commit has to satisfy the OR and the AND together.
         type: string
         default: ""
-      questions:
-        description: >
-          Several named questions of one diff, answered into the `answers` JSON:
-
-            frontend:
-              all-of: frontend_sources
-            backend:
-              any-of: backend_all, drivers
-            docs: documentation
-
-          Each name takes `any-of` and/or `all-of`; the last line is shorthand
-          for a question that is only an `any-of`. Read the answers with
-          fromJSON(needs.<job>.outputs.answers).frontend. Mutually exclusive
-          with the top-level any-of/all-of.
-        type: string
-        default: ""
       filters:
         description: "Path to the paths-filter configuration, relative to the repo root."
         type: string
@@ -51,9 +35,6 @@ on:
       changed:
         description: "'true' when the commit satisfied `any-of` and `all-of`."
         value: ${{ jobs.check.outputs.changed }}
-      answers:
-        description: "One JSON boolean per named question; `{}` unless `questions` was given."
-        value: ${{ jobs.check.outputs.answers }}
       files:
         description: "Files matched by the named filters, in the `list-files` format."
         value: ${{ jobs.check.outputs.files }}
@@ -71,7 +52,6 @@ jobs:
       pull-requests: read
     outputs:
       changed: ${{ steps.changes.outputs.changed }}
-      answers: ${{ steps.changes.outputs.answers }}
       files: ${{ steps.changes.outputs.files }}
       results: ${{ steps.changes.outputs.results }}
     steps:
@@ -88,6 +68,5 @@ jobs:
         with:
           any-of: ${{ inputs.any-of }}
           all-of: ${{ inputs.all-of }}
-          questions: ${{ inputs.questions }}
           filters: ${{ inputs.filters }}
           list-files: ${{ inputs.list-files }}
