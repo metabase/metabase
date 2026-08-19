@@ -11,6 +11,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
@@ -72,10 +73,18 @@
    [:archived {:optional true} [:maybe :boolean]]])
 
 (defn- create-card!
-  "Checks that the query is runnable by the current user then saves"
+  "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
+  checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
+  read access to any card the parameters draw values from, and query permission on the fields the parameter targets
+  name."
   [{query :dataset_query :as card} creator]
+  (api/create-check :model/Card {:collection_id (:collection_id card)})
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/check-parameter-source-card-permissions (:parameters card))
+  (query-perms/check-parameter-field-permissions
+   (into []
+         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
+         (:parameters card)))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
@@ -320,6 +329,10 @@
    new-collection-id :- [:or :nil ms/PositiveInt]]
   (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
     (reduce (fn [accum card]
+              ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
+              ;; collection the caller cannot read. Read-check each card before copying, mirroring
+              ;; `clone-cards-in-document!`.
+              (api/read-check card)
               (let [new-card (create-card! (-> card
                                                (dissoc :id :entity_id :created_at :updated_at :creator_id
                                                        :public_uuid :made_public_by_id :cache_invalidated_at)
