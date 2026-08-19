@@ -140,6 +140,9 @@
     {:username email
      :password password}))
 
+;; Keyed on the app db as well as the user: [[metabase.test.data/with-empty-h2-app-db!]] swaps in a
+;; different one, where a token minted against the previous database names a session that does not
+;; exist -- and the token minted inside it would otherwise leak back out when the original is restored.
 (defonce ^:private tokens (atom {}))
 
 ;;; This is done by hitting the app DB directly instead of hitting [[metabase.test.http-client/authenticate]] to avoid
@@ -166,13 +169,14 @@
 (mu/defn username->token :- ms/UUIDString
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
-  (or (@tokens username)
-      (locking tokens
-        (or (@tokens username)
-            (u/prog1 (authenticate! username)
-              (swap! tokens assoc username <>))))
-      (throw (Exception. (format "Authentication failed for %s with credentials %s"
-                                 username (user->credentials username))))))
+  (let [cache-key [(mdb/unique-identifier) username]]
+    (or (@tokens cache-key)
+        (locking tokens
+          (or (@tokens cache-key)
+              (u/prog1 (authenticate! username)
+                (swap! tokens assoc cache-key <>))))
+        (throw (Exception. (format "Authentication failed for %s with credentials %s"
+                                   username (user->credentials username)))))))
 
 (defn clear-cached-session-tokens!
   "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
