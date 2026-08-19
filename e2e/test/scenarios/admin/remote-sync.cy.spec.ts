@@ -1,7 +1,10 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import type { Collection } from "metabase-types/api";
+import type {
+  Collection,
+  RemoteSyncDependencyErrorResponse,
+} from "metabase-types/api";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -10,6 +13,13 @@ const { H } = cy;
 const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
+
+const BLOCKED_COLLECTION_NAME = "Blocked Collection";
+const SECOND_BLOCKED_COLLECTION_NAME = "Also Blocked Collection";
+const SOURCE_COLLECTION_NAME = "Dependency Source";
+const SOURCE_QUESTION_NAME = "Dependency Source Question";
+const DEPENDENT_QUESTION_NAME = "Dependent Question";
+const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
 
 describe("Remote Sync", () => {
   beforeEach(() => {
@@ -601,6 +611,89 @@ describe("Remote Sync", () => {
 
       ensureSyncedCollectionIsVisible();
     });
+
+    describe("unsynced dependency modal", () => {
+      beforeEach(() => {
+        H.configureGit("read-write");
+        cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
+      });
+
+      it("reports every blocked collection, re-opens after a dismissal, syncs them all, and stays hidden for unrelated errors", () => {
+        createDependencyFixture().then(({ source, blocked, alsoBlocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.button("Save changes").should("be.disabled");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+          cy.findByLabelText(`Sync ${SECOND_BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          cy.log("Both collections are refused in a single pass");
+          saveAndExpectRefusal().then((interception) => {
+            const body: RemoteSyncDependencyErrorResponse =
+              interception.response?.body;
+            expect(
+              body.errors.collections.map((failure) => failure.collection.name),
+            ).to.have.members([
+              BLOCKED_COLLECTION_NAME,
+              SECOND_BLOCKED_COLLECTION_NAME,
+            ]);
+          });
+
+          H.modal().within(() => {
+            // Every remedy here is a collection we can switch on, so the modal asks rather than refuses.
+            cy.findByText("Sync collections with dependencies?").should(
+              "be.visible",
+            );
+            // Both failures resolve to the same remedy, so it is offered once.
+            cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
+            cy.button("Cancel").click();
+          });
+          H.modal().should("not.exist");
+
+          cy.log("Saving the same selection again brings it back");
+          saveAndExpectRefusal();
+
+          H.modal().within(() => {
+            cy.button("Sync required collections").click();
+          });
+
+          cy.wait("@saveSettings").then(({ request, response }) => {
+            expect(response?.statusCode).to.eq(200);
+            expect(request.body.collections).to.deep.equal({
+              [blocked.id]: true,
+              [alsoBlocked.id]: true,
+              [source.id]: true,
+            });
+          });
+
+          H.modal().should("not.exist");
+
+          cy.reload();
+          [
+            BLOCKED_COLLECTION_NAME,
+            SECOND_BLOCKED_COLLECTION_NAME,
+            SOURCE_COLLECTION_NAME,
+          ].forEach((name) => {
+            cy.findByLabelText(`Sync ${name}`).should("be.checked");
+          });
+
+          // The dependents error carries no error_code, so the modal must ignore it.
+          cy.log("Un-syncing the source is a plain error, not the modal");
+          cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`).click({
+            force: true,
+          });
+          cy.button("Save changes").should("be.enabled").click();
+
+          cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
+          H.undoToast().should("contain.text", "Used by remote synced content");
+          H.modal().should("not.exist");
+        });
+      });
+    });
   });
 
   describe("read-only mode", () => {
@@ -1019,3 +1112,62 @@ const ensureSyncedCollectionIsVisible = () => {
     cy.findByRole("treeitem", { name: /Synced Collection/ }).should("exist");
   });
 };
+
+const createCollection = (name: string) =>
+  cy
+    .request<Collection>("POST", "/api/collection", { name })
+    .then(({ body }) => cy.wrap(body));
+
+// Saves, clears the toast  and yields the refusal for inspection.
+const saveAndExpectRefusal = () => {
+  cy.findByRole("button", { name: "Save changes", timeout: 6000 })
+    .should("be.enabled")
+    .click(); // action button text
+  return cy.wait("@saveSettings").then((interception) => {
+    expect(interception.response?.statusCode).to.eq(400);
+    H.undoToast()
+      .should("contain.text", "Uses content that is not remote synced")
+      .icon("close")
+      .click();
+    return cy.wrap(interception, { log: false });
+  });
+};
+
+const createDependentQuestion = (
+  name: string,
+  sourceQuestionId: number,
+  collectionId: Collection["id"],
+) =>
+  H.createQuestion({
+    name,
+    query: { "source-table": `card__${sourceQuestionId}` },
+    collection_id: collectionId,
+  });
+
+// Two collections that each depend on a question in a third, so syncing either alone is refused.
+const createDependencyFixture = () =>
+  createCollection(SOURCE_COLLECTION_NAME).then((source) =>
+    createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+      createCollection(SECOND_BLOCKED_COLLECTION_NAME).then((alsoBlocked) =>
+        H.createQuestion({
+          name: SOURCE_QUESTION_NAME,
+          query: { "source-table": PRODUCTS_ID },
+          collection_id: source.id,
+        })
+          .then(({ body: sourceQuestion }) =>
+            createDependentQuestion(
+              DEPENDENT_QUESTION_NAME,
+              sourceQuestion.id,
+              blocked.id,
+            ).then(() =>
+              createDependentQuestion(
+                SECOND_DEPENDENT_QUESTION_NAME,
+                sourceQuestion.id,
+                alsoBlocked.id,
+              ),
+            ),
+          )
+          .then(() => ({ source, blocked, alsoBlocked })),
+      ),
+    ),
+  );

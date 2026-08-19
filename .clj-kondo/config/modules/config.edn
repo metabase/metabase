@@ -992,8 +992,8 @@
 
   embeddings
   {:team "Metabot"
-   :api  #{metabase.embeddings.provider}
-   :uses #{util}}
+   :api  #{metabase.embeddings.provider metabase.embeddings.startup}
+   :uses #{plugins util}}
 
   entity-retrieval
   {:team "Metabot"
@@ -1279,6 +1279,7 @@
            lib-be
            metabot
            models
+           parameters
            permissions
            premium-features
            request
@@ -3209,6 +3210,7 @@
            collections
            config
            driver
+           embeddings
            metabot
            models
            premium-features
@@ -3702,6 +3704,7 @@
            collections
            config
            connection-pool
+           embeddings
            events
            health-inspector
            lib-be
@@ -3721,7 +3724,10 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
+   :api  #{metabase-enterprise.serialization.api
+           metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.init}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3736,6 +3742,7 @@
            premium-features
            search
            server
+           settings
            setup
            util}
    :model-imports :bypass}

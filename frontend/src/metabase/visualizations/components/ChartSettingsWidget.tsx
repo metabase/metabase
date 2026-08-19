@@ -58,7 +58,7 @@ const ChartSettingsWidget = ({
           <Text
             component="label"
             fw="bold"
-            fz={isFormField ? "0.88em" : undefined}
+            fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
             htmlFor={extraWidgetProps.id}
           >
