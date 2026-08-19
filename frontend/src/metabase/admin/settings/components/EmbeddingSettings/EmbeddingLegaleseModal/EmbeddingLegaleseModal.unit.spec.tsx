@@ -37,8 +37,7 @@ describe("EmbeddingLegaleseModal", () => {
 
     expect(body).toEqual({
       "enable-embedding-modular": true,
-      "show-sdk-embed-terms": false,
-      "show-simple-embed-terms": false,
+      "show-modular-embed-terms": false,
     });
 
     await waitFor(() => {

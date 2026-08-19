@@ -510,6 +510,7 @@ interface AdminSettings {
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "show-simple-embed-terms": boolean | null;
+  "show-modular-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;

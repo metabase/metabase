@@ -48,7 +48,9 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbeddingEnabled = isModularEmbeddingEnabled;
   const isGuestEmbedsEnabled = isModularEmbeddingEnabled;
 
-  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+  const isSimpleEmbeddingTermsAccepted = !useSetting(
+    "show-modular-embed-terms",
+  );
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();

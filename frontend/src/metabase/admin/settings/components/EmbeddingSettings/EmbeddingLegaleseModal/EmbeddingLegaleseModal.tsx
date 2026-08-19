@@ -13,11 +13,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
 
     await updateSettings({
       "enable-embedding-modular": true,
-
-      // Both terms settings back the one toggle now, so neither may be left on
-      // to re-open this modal.
-      "show-sdk-embed-terms": false,
-      "show-simple-embed-terms": false,
+      "show-modular-embed-terms": false,
     });
 
     setLoading(false);

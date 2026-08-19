@@ -29,7 +29,7 @@ describe("Embed flow > setup guide step completion tracking", () => {
       setup({
         jwtReady: !useExistingUserSession,
         simpleEmbeddingEnabled: true,
-        showSimpleEmbedTerms: false,
+        showModularEmbedTerms: false,
         initialState: {
           useExistingUserSession,
         },

@@ -22,7 +22,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-modular", true);
-    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("show-modular-embed-terms", false);
     H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");

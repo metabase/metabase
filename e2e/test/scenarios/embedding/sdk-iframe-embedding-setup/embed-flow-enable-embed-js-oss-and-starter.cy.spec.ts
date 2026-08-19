@@ -161,7 +161,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
     describe("Metabase account (sso)", () => {
       it("does not show the Enable to Continue button and disables item", () => {
         H.updateSetting("enable-embedding-modular", false);
-        H.updateSetting("show-simple-embed-terms", true);
+        H.updateSetting("show-modular-embed-terms", true);
 
         cy.visit("/admin/embedding");
 

@@ -60,7 +60,7 @@ describe(suiteTitle, () => {
   it("lets Guest embedding proceed after accepting only the Guest terms, without requiring the SSO terms (EMB-1884)", () => {
     // Reproduce a fresh Pro instance where neither auth type's terms have
     // been accepted yet, so the option cards start dimmed.
-    H.updateSetting("show-simple-embed-terms", true);
+    H.updateSetting("show-modular-embed-terms", true);
     H.updateSetting("show-static-embed-terms", true);
     H.updateSetting("enable-embedding-modular", false);
 

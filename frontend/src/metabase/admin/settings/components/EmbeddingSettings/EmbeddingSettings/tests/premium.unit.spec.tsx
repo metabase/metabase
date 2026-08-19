@@ -16,7 +16,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     await setup({
       isEmbeddingSdkEnabled: true,
       isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
       enterprisePlugins: [
         "embedding-sdk",
         "embedding_iframe_sdk",
@@ -47,7 +47,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
       await setup({
         isEmbeddingSdkEnabled: true,
         isEmbeddingSimpleEnabled: true,
-        showSdkEmbedTerms: false,
+        showModularEmbedTerms: false,
         isHosted: true,
         enterprisePlugins: [
           "embedding-sdk",
@@ -81,7 +81,7 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     await setup({
       isEmbeddingSdkEnabled: true,
       isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
     });
 
     expect(screen.getByText("Security")).toBeInTheDocument();

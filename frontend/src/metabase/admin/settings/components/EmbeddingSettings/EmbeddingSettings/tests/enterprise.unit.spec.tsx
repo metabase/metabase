@@ -16,7 +16,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
       isHosted: true,
       enterprisePlugins: [
         "embedding-sdk",
@@ -58,7 +58,7 @@ describe("EmbeddingSdkSettings (EE)", () => {
     await setup({
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
-      showSdkEmbedTerms: false,
+      showModularEmbedTerms: false,
     });
 
     expect(screen.queryByText("Security")).not.toBeInTheDocument();

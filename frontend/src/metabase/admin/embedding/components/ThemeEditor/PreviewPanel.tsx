@@ -13,7 +13,7 @@ import { useDefaultPreviewResource } from "./use-default-preview-resource";
 
 export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-modular");
-  const isTermsAccepted = !useSetting("show-simple-embed-terms");
+  const isTermsAccepted = !useSetting("show-modular-embed-terms");
 
   const isEmbeddingReady = isSimpleEmbeddingEnabled && isTermsAccepted;
 
