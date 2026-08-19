@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
@@ -111,6 +112,8 @@
                     public-before  (tables-in-schema app-db "public")]
                 (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
                                                              (semantic.env/get-configured-embedding-model))
+                (testing "activation records the schema, so a probe that later finds it gone knows it was lost"
+                  (is (true? (semantic.settings/pgvector-app-db-store-provisioned))))
                 (semantic.pgvector-api/index-documents! pgvector index-metadata (semantic.tu/mock-documents))
                 (testing "every module table lives inside the semantic_search schema"
                   (let [tables (tables-in-schema app-db "semantic_search")]
@@ -132,4 +135,7 @@
                 (testing "the application schema is untouched"
                   (is (= public-before (tables-in-schema app-db "public")))))
               (finally
-                (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])))))))))
+                (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"])
+                ;; The marker records that this app db has a store schema, and the drop above is what makes
+                ;; that false again.
+                (semantic.settings/pgvector-app-db-store-provisioned! false)))))))))

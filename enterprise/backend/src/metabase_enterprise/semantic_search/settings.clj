@@ -287,3 +287,18 @@
   :export? false
   :visibility :internal
   :doc false)
+
+(defsetting pgvector-app-db-store-provisioned
+  (deferred-tru
+   (str "Has the pgvector store schema ever been seen on this application database? Bookkeeping for the "
+        "readiness probe, which has nothing else to tell a store that lost its schema from one nobody has "
+        "created yet."))
+  :type       :boolean
+  :default    false
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false
+  ;; Bookkeeping about one app db, so an env var has nothing true to say about it: false there would keep a
+  ;; sighting from ever taking effect, and true would make a fresh database look like it had lost its schema.
+  :can-read-from-env? false)
