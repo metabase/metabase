@@ -16,6 +16,7 @@ databaseChangeLog:
               - column:
                   name: is_superuser_sig
                   type: ${text.type}
+                  remarks: "Keyed signature over the is_superuser value; verified when resolving the current user."
                   constraints:
                     nullable: true
 
@@ -36,6 +37,7 @@ databaseChangeLog:
               - column:
                   name: credentials_sig
                   type: ${text.type}
+                  remarks: "Keyed signature over the credentials fields; verified before honoring stored credentials."
                   constraints:
                     nullable: true
 
