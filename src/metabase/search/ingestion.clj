@@ -29,7 +29,8 @@
 
 (def ^:private message-delay-ms
   "The time a message should wait before coming off the queue.
-  This delay exists to ensure the data is fully committed before indexing."
+  This coalesces bursts for efficient batch ingestion; transaction-sensitive publishers must defer their own
+  handoff until commit."
   100)
 
 (def ^:private listener-name
