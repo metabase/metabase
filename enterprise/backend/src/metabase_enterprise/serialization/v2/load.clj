@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [medley.core :as m]
+   [metabase-enterprise.serialization.settings :as serialization.settings]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
@@ -285,7 +286,8 @@
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
-  (binding [*warned-version-mismatch* (atom false)]
+  (binding [*warned-version-mismatch*        (atom false)
+            serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
     (u/prog1
       ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
       ;; failure on one entity doesn't abort the entire import. See #74412.
