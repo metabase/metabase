@@ -2,8 +2,9 @@ import type {
   ComboboxItem,
   ComboboxItemGroup,
   SelectProps as MantineSelectProps,
+  OptionsFilter,
 } from "@mantine/core";
-import { Select as MantineSelect } from "@mantine/core";
+import { Select as MantineSelect, defaultOptionsFilter } from "@mantine/core";
 import mergeRefs from "merge-refs";
 import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
@@ -35,13 +36,22 @@ export interface SelectProps<Value extends string | null = string> extends Omit<
   onChange?: (newValue: Value) => void;
 }
 
+function dropEmptyGroups(filter: OptionsFilter): OptionsFilter {
+  return (input) =>
+    filter(input).filter((item) => !("group" in item) || item.items.length > 0);
+}
+
 function SelectWrapper<Value extends string | null>(
   props: SelectProps<Value>,
   ref: Ref<HTMLElement>,
 ) {
-  const { onDropdownOpen, searchable } = props;
+  const { onDropdownOpen, searchable, filter } = props;
   const inputRef = useRef<HTMLInputElement>(null);
   const combinedRef = useMemo(() => mergeRefs(ref, inputRef), [ref]);
+  const filterWithoutEmptyGroups = useMemo(
+    () => dropEmptyGroups(filter ?? defaultOptionsFilter),
+    [filter],
+  );
   const handleDropdownOpen = useCallback(() => {
     if (searchable) {
       inputRef.current?.select();
@@ -54,6 +64,7 @@ function SelectWrapper<Value extends string | null>(
       {...props}
       // @ts-expect-error -- our tighter types are better
       ref={combinedRef}
+      filter={filterWithoutEmptyGroups}
       // A bit confusing prop name but it actually means "on change of search input", not Select's value
       selectFirstOptionOnChange={
         props.selectFirstOptionOnChange ?? props.searchable
