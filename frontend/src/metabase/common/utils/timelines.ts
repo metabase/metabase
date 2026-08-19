@@ -48,8 +48,8 @@ export const getDefaultTimeline = (
 };
 
 /**
- * Timelines are stored with the canonical collection id (see
- * `getDefaultTimeline`): root, "root" and "tenant" all mean `null`.
+ * null, "root" and "tenant" mean the root collection, whose timelines have a
+ * null collection_id, other ids are compared as is
  */
 export const isCollectionTimeline = (
   timeline: Timeline,
