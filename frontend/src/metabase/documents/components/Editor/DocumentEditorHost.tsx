@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
   type EditorHost,
   EditorHostProvider,
@@ -28,7 +29,7 @@ import {
   useNodeInViewport,
   useReportPrefetchLoading,
 } from "../../hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "../../hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "../../hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -66,7 +67,8 @@ export const documentEditorHost: EditorHost = {
   navigateToCard: navigateToCardFromDocument,
   useCardData,
   useExternalCardDataLoader,
-  useUnresolvedCommentsCount,
+  useCommentUrl,
+  useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
   useNodeInViewport,
   useReportPrefetchLoading,
   useDraftCardOperations,

@@ -6,7 +6,6 @@
   `enterprise/backend/README.md` for more details."
   (:require
    [metabase-enterprise.action-v2.api]
-   [metabase-enterprise.advanced-config.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.api.core :as ee.api]
@@ -17,6 +16,7 @@
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
+   [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
@@ -107,13 +107,19 @@
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
-   "/advanced-config"              (api.macros/ns-handler 'metabase-enterprise.advanced-config.api)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
+   ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
+   ;; its own namespace, tested before the rest of the session-authed custom-viz routes. Both stay behind
+   ;; the :custom-viz premium gate.
+   "/custom-viz-plugin"            (premium-handler
+                                    (handlers/routes
+                                     metabase-enterprise.custom-viz-plugin.api.sandbox-host/routes
+                                     metabase-enterprise.custom-viz-plugin.api/routes)
+                                    :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.

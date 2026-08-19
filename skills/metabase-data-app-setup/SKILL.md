@@ -222,15 +222,29 @@ curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"
     "eventId": 31, "kind": "blocked-network", "alert": true,
     "summary": "Blocked fetch to api.example.com (not in allowed_hosts)",
     "detail": null,   // stack frames, when any
-    "hint": "Add https://api.example.com to allowed_hosts in data_app.yaml …"
+    "hint": "Add https://api.example.com to allowed_hosts in data_app.yaml …",
+    "buildId": 7      // the bundle generation that reported it
   }],
   "clients": 1,       // connected preview tabs — 0 means nothing ran
+  "buildId": 7,       // the generation running now
+  "staleEntries": 164, // held back, reported by an older build — see below
   "nextEventId": 32   // pass back as ?startEventId=
 }
 ```
 
 **`clients: 0` does not mean healthy** — it means no preview tab is open, so an
 empty `entries` proves nothing. Open `http://localhost:5174` first.
+
+**The feed answers for the bundle that is running, not for everything that ever
+happened.** Every save rebuilds and remounts the app, so a multi-step edit runs
+through builds that don't compile or don't render — errors from those describe
+code the preview has already replaced. They're withheld and counted in
+`staleEntries`; read mid-edit and you see the current build's failures, not a
+pile of them. Nothing is lost: the rebuild re-runs the app from scratch, so
+anything still broken reports itself again under the new `buildId`, and
+`?includeStale=true` hands back the withheld entries when comparing builds is
+the point. A *failed* build doesn't advance `buildId` — the preview keeps
+running the last good bundle, so its entries stay current.
 
 Triage by `kind` (always read `hint` — it names the exact fix; never soften a
 `summary` when reporting it):
@@ -444,6 +458,12 @@ Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal ba
 
 For the hook contract itself — generics, table sources, segments, measures, breakouts, sorting, and debugging — use skill discovery before authoring schema-backed data-layer code.
 
+## App layout — fill the frame height
+
+Metabase and `npm run dev` both give the bundle a full-height frame, but nothing between it and your root element sets a height — so an app shorter than the frame ends where its content ends, leaving its background, sidebar and footer in a short strip over bare white.
+
+So the app's outermost element carries `minHeight: "100vh"` (plus `boxSizing: "border-box"` when it has padding) and paints the page background. `minHeight`, never `height` — taller content must still scroll. Regions that should reach the bottom (sidebar, sticky footer) go in a flex-column root with `flex: 1`. Check the emptiest screen — loading, empty state, a lone KPI — those are the ones that render short.
+
 ## SDK component sizing
 
 SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
@@ -483,6 +503,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 | "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] && [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ] && curl -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/user/current" || echo "set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
+| App background stops partway down, bare white below short content. | Give the root `minHeight: 100vh` (see *App layout*). |
 | "Invalid hook call" at runtime. | Two React copies. `dataAppConfig()` externalizes `react` — ensure `react`/`react-dom` are installed and you haven't added a second React or a mismatched version. |
 | Bundle is multi-MB. | React/the SDK should be externalized by the contract plugin — confirm `vite.config.ts` still uses `dataAppConfig()` and the pinned data-apps SDK tag is installed. (A large but not multi-MB bundle can also be inlined assets — see the single-file note above.) |
 | `dist/index.js` doesn't assign to `__dataAppFactory__`. | `src/index.tsx` must `export default` the `DataAppFactory` — the preset wires that into the IIFE global. |

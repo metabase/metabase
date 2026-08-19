@@ -1,5 +1,7 @@
+import type { PaginationResponse } from "metabase-types/api/pagination";
+
 import type { Collection, CollectionId } from "./collection";
-import type { DatasetColumn, RowValue } from "./dataset";
+import type { DatasetColumn, RowValue, TemporalUnit } from "./dataset";
 import type { FieldValue } from "./field";
 
 export type MetricId = number;
@@ -25,8 +27,12 @@ export type MetricDimension = {
   description?: string | null;
   effective_type: string;
   semantic_type: string | null;
+  has_field_values?: "list" | "search" | "none" | null;
   default?: boolean;
+  default_temporal_unit?: TemporalUnit;
   status?: MetricDimensionStatus;
+  status_message?: string | null;
+  dimension_interestingness?: number | null;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
 };
@@ -51,12 +57,17 @@ export type Metric = {
   id: MetricId;
   name: string;
   description: string | null;
-  dimensions: MetricDimension[];
-  dimension_mappings?: DimensionMapping[];
+  dimension_ids?: DimensionId[] | null;
+  dimensions?: MetricDimension[] | null;
+  dimension_mappings?: DimensionMapping[] | null;
   collection_id: CollectionId | null;
-  collection: Collection | null;
+  collection?: Collection | null;
   result_column_name?: string;
 };
+
+export type GetMetricListResponse = {
+  data: Metric[];
+} & PaginationResponse;
 
 export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
 export type MathOperator = (typeof MATH_OPERATORS)[number];
@@ -177,7 +188,7 @@ export type RemoveMetricDimensionsRequest = {
 
 export type SetDefaultMetricDimensionRequest = {
   metricId: MetricId;
-  dimension_id: DimensionId;
+  dimension_id: DimensionId | null;
 };
 
 export type ReorderMetricDimensionsRequest = {
@@ -190,5 +201,6 @@ export type UpdateMetricDimensionRequest = {
   dimensionId: DimensionId;
   display_name?: string;
   description?: string | null;
+  default_temporal_unit?: TemporalUnit;
   source?: MetricDimensionSource;
 };

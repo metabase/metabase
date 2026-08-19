@@ -207,6 +207,36 @@
                                     (lib.options/with-options {}))
                           "Doohickey"]]))))
 
+(deftest ^:parallel underlying-records-apply-test-count-where-79023
+  ;; Direct reproduction of #79023: a pivot table summarized with a
+  ;; `CountIf([Source] = "Invite")` aggregation and broken out by a dimension.
+  ;; Clicking a body cell and drilling to "See these X" must apply BOTH the
+  ;; breakout equality filter AND the count-where's inner filter, matching how
+  ;; the same aggregation drills from a line chart. `underlying-state` feeds a
+  ;; well-formed cell-click context (aggregation column + column-ref + value +
+  ;; breakout dimensions) — the shape the pivot layer produces post-fix.
+  (testing "count_where(products.category = \"Doohickey\") over time (#79023)"
+    (underlying-state (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/aggregate (lib/count-where
+                                          (lib/= (meta/field-metadata :products :category)
+                                                 "Doohickey")))
+                          (lib/breakout (lib/with-temporal-bucket
+                                          (meta/field-metadata :orders :created-at)
+                                          :month)))
+                      0 #_agg-index
+                      42
+                      [last-month]
+                      (fn [_agg-dim [breakout-dim]]
+                        [[:between {}
+                          (-> (:column-ref breakout-dim)
+                              (lib.options/with-options {:temporal-unit :month}))
+                          last-month-start
+                          last-month-end]
+                         [:= {} (-> (meta/field-metadata :products :category)
+                                    lib/ref
+                                    (lib.options/with-options {}))
+                          "Doohickey"]]))))
+
 (deftest ^:parallel underlying-records-apply-test-3
   (testing "metric over time"
     (let [metric-id 101

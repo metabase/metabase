@@ -99,7 +99,7 @@
                                                            hb-sec)
                                      (.. auth (verify default-ssh-timeout no-cancel-options)))
         tracker                    (.createLocalPortForwardingTracker session
-                                                                      (SshdSocketAddress. "" 0)
+                                                                      SshdSocketAddress/LOCALHOST_ADDRESS
                                                                       (SshdSocketAddress. host port))
         input-port                 (.. tracker getBoundAddress getPort)]
     (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s:%s -L %s:%s:%s"

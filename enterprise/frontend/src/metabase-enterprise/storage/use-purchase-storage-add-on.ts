@@ -7,11 +7,11 @@ import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   useAttachedDwh,
   useHasTokenFeature,
-  useSetting,
   useToast,
 } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";

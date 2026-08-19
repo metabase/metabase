@@ -1,4 +1,5 @@
 /* istanbul ignore file */
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -6,7 +7,7 @@ import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -141,7 +142,7 @@ export function setup({
       name: "Email",
       allows_recipients: true,
       recipients: ["user", "email"],
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
     };
   }
@@ -151,7 +152,7 @@ export function setup({
       type: "slack",
       name: "Slack",
       allows_recipients: false,
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
       fields: [
         {
@@ -241,6 +242,11 @@ export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
   ).not.toBeInTheDocument();
 
   return true;
+};
+
+export const selectScheduleTime = async (time = "8:00") => {
+  await userEvent.click(screen.getByTestId("select-time"));
+  await userEvent.click(screen.getByRole("option", { name: time }));
 };
 
 export const hasBasicFilterOptions = (screen: Screen) => {

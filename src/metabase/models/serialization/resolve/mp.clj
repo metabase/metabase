@@ -6,10 +6,10 @@
   `lib.metadata/MetadataProvider`, which may be the live application-DB-backed provider, a
   test-only mock provider, or any cached variant.
 
-  It does, however, touch the application DB for *Metabase-model* lookups (cards by
-  `entity_id`, etc.) because the lib metadata protocol doesn't support filtering by
-  `entity_id`, and cards in any case live in the application DB independently of whose
-  warehouse the metadata provider points at.
+  Its default [[ContentStore]] does touch the application DB for *Metabase-model* lookups
+  (cards by `entity_id`, etc.) because the lib metadata protocol doesn't support filtering
+  by `entity_id`, and cards in any case live in the application DB independently of whose
+  warehouse the metadata provider points at. Callers can supply a different store.
 
   Primary consumer: the agent-lib representations pipeline, which converts LLM-authored
   portable MBQL queries (with FK paths like `[DB, SCHEMA, TABLE, FIELD]`) into numeric-ID
@@ -19,9 +19,7 @@
     * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
       warehouse metadata.
     * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
-    * `export-fk` for `Card` / `:model/Card` by `entity_id` (exporting final pMBQL back to
-      portable representations YAML).
+    * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
 
@@ -29,14 +27,13 @@
     The resolver has two orthogonal lookup responsibilities:
       * **Warehouse metadata** (databases, tables, fields) is resolved through a
         `lib.metadata/MetadataProvider`.
-      * **Metabase content / assets** (cards, snippets, segments, …) is resolved through a
-        [[ContentStore]] on import, where callers may need permission-aware lookups. Exporting
-        card ids uses the same database-scoped metadata provider, which already contains card
-        metadata in app-backed and mock-provider contexts. The default app-DB-backed store goes
-        through `serdes/lookup-by-id`, but a different store (e.g. backed by the checker's YAML
-        index, an in-memory test fixture, or a snapshot) can be supplied to make import usable
-        without an application database."
+      * **Metabase content / assets** (cards, measures, segments, …) is resolved through a
+        [[ContentStore]] in both directions, where callers may need permission-aware lookups.
+        The default store is app-DB-backed; a different store (e.g. backed by the checker's YAML
+        index, an in-memory test fixture, or a snapshot) can be supplied for contexts without an
+        application database."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -278,11 +275,11 @@
     (into [(db-name metadata-provider) (:schema table) (:name table)] chain)))
 
 ;;; ============================================================
-;;; Content store - Metabase asset lookups (cards, etc.) by portable id
+;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
 (p.types/defprotocol+ ContentStore
-  "Lookup of Metabase content (\"assets\") by portable id.
+  "Lookup of Metabase content (\"assets\") by portable entity id or numeric id.
 
   Kept separate from the warehouse-metadata `MetadataProvider` so the resolver can be reused in
   contexts without an application database (e.g. the serdes checker, in-memory tests)."
@@ -296,6 +293,11 @@
   (segment-by-entity-id [this entity-id]
     "Return the segment row for the given portable `entity_id`, or nil. Same contract as
     `measure-by-entity-id`.")
+  (card-by-id [this card-id]
+    "Return the card row for the given numeric id, or nil. Used by the export direction
+    (a numeric `source-card` / metric ref → its portable `entity_id`). The returned map must
+    carry `:entity_id` (or `:entity-id`) and `:database_id` (or `:database-id`) for the
+    cross-database guard.")
   (measure-by-id [this measure-id]
     "Return the measure row for the given numeric id, or nil. Same contract as
     `measure-by-entity-id`; used by the export direction (`[:measure {} <id>]` →
@@ -311,13 +313,14 @@
   wrap this with `metabase.metabot.tools.shared.content-store/read-checked`** (or use
   `shared.content-store/default-store`, which is the wrapped form).
 
-  Default [[ContentStore]] backed by the Metabase application database via
-  `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
-  different store implementation when running without one (checker, isolated tests).
+  Default [[ContentStore]] backed by the Metabase application database. Portable entity-id
+  lookups use `serdes/lookup-by-id`; numeric export lookups use direct Toucan selects. Use this
+  in production code paths that already have an app DB; pass a different store implementation
+  when running without one (checker, isolated tests).
 
-  Gated on [[resolve/entity-id?]]: LLM-authored entity-id values are untrusted, so anything that
-  isn't a 21-char NanoID short-circuits to `nil` and the caller surfaces a clear `:unknown-…`
-  agent error."
+  Portable entity-id lookups are gated on [[resolve/entity-id?]]: LLM-authored values are
+  untrusted, so anything that isn't a 21-char NanoID short-circuits to `nil` and the caller
+  surfaces a clear `:unknown-…` agent error."
   (reify ContentStore
     (card-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)
@@ -328,6 +331,13 @@
     (segment-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)
         (serdes/lookup-by-id 'Segment entity-id)))
+    (card-by-id [_ card-id]
+      (when (int? card-id)
+        ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
+        ;; transforming the entire dataset_query just to export one stable identifier.
+        ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
+        ;; treat this as a full card row and demand it.
+        (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
         (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
@@ -394,18 +404,19 @@
 (defn- export-card-by-id
   "Resolve a saved question / model / metric by numeric id to its portable `entity_id`.
 
-  Uses the metadata provider rather than the generic app-DB serdes resolver so exporting a
-  final pMBQL query can stay paired with the same database-scoped provider used for table and
-  field FK export. Guards against accidental cross-database card refs."
-  [metadata-provider card-id]
+  The row comes from `content-store`, not the metadata provider: the provider is
+  permission-agnostic, so a read-checked store is what keeps an unreadable Card's stable id
+  out of the export. The stored `database_id` guards against cross-database card refs, like
+  `table-belongs-to-current-database?` does for measures and segments."
+  [metadata-provider content-store card-id]
   (when card-id
     (let [current-db-id (:id (lib.metadata/database metadata-provider))
-          card          (lib.metadata.protocols/card metadata-provider card-id)
-          card-db-id    (or (:database-id card) (:database_id card))
-          entity-id     (or (:entity-id card) (:entity_id card))]
+          card          (card-by-id content-store card-id)
+          card-db-id    (when card (or (:database-id card) (:database_id card)))
+          entity-id     (when card (or (:entity-id card) (:entity_id card)))]
       (cond
         (nil? card)
-        (throw (ex-info (tru "No saved question, model, or metric found with id {0} in metadata provider." card-id)
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." card-id)
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
@@ -419,7 +430,7 @@
                          :card-database-id card-db-id
                          :expected-database current-db-id}))
 
-        (not (and (string? entity-id) (seq entity-id)))
+        (or (not (string? entity-id)) (str/blank? entity-id))
         (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
                         {:status-code 400
                          :error       :missing-card-entity-id
@@ -609,10 +620,10 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-table-fk`, `import-field-fk` (Phase 1).
-    * `import-fk-keyed` for `:model/Database` by `:name` (Phase 1 - needed because
+    * `import-table-fk`, `import-field-fk`.
+    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
       `resolve/import-mbql` dispatches on `:database` keys).
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (Phase 2, step 11).
+    * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
@@ -643,7 +654,10 @@
          (:id (find-field metadata-provider path)))))))
 
 (defn export-resolver
-  "Build a `SerdesExportResolver` backed by `metadata-provider`.
+  "Build a `SerdesExportResolver` backed by `metadata-provider` and `content-store`.
+
+  The 1-arity form uses [[unchecked-app-db-content-store]]. Agent-facing callers must pass
+  an explicit permission-aware store so exported content entity IDs are read-checked.
 
   Implemented methods:
     * `export-table-fk`, `export-field-fk` for warehouse metadata.
@@ -659,7 +673,7 @@
      (export-fk       [_ id model]
        (cond
          (nil? id)              nil
-         (card-model? model)    (export-card-by-id metadata-provider id)
+         (card-model? model)    (export-card-by-id metadata-provider content-store id)
          (measure-model? model) (export-measure-by-id metadata-provider content-store id)
          (segment-model? model) (export-segment-by-id metadata-provider content-store id)
          :else                  (not-implemented! :export-fk)))

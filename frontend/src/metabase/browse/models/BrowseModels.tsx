@@ -8,15 +8,14 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -29,6 +28,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "../components/BrowseContainer.module.css";
 
@@ -59,7 +59,7 @@ export const BrowseModels = () => {
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const canCreateNewModel =
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;

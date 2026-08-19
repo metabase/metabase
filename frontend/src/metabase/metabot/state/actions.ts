@@ -13,17 +13,16 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
+import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
+import { navigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
@@ -37,6 +36,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
+import { metabotApi } from "../api";
 import {
   METABOT_ERR_MSG,
   type MetabotProfileId,
@@ -599,8 +599,7 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                // Unjustified type cast. FIXME
-                dispatchToConvo(push(path) as UnknownAction);
+                navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -779,7 +778,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const handled = handleResponseError(
         error,
-        getSetting(getState(), "metabot-name") || "Metabot",
+        getSetting(getState(), "metabot-name"),
       );
       return rejectWithValue({
         type: "error" as const,
@@ -842,12 +841,13 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    profile?: MetabotProfileId;
     isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId, isTransformsPage },
+    { messageId, context, metabot_id, agentId, profile, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -874,6 +874,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        profile,
         retryMessageId: prompt.externalId,
         isTransformsPage,
       }),
@@ -965,7 +966,7 @@ export const forkConversation = createAsyncThunk(
     );
 
     if (agentId === "ask") {
-      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
+      navigate(Urls.metabotConversation(conversation.conversation_id));
     }
 
     return conversation;

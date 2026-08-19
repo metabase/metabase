@@ -28,8 +28,12 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { refetchSiteSettings, sessionApi } from "metabase/api";
 import { PLUGIN_API } from "metabase/api/client";
+import {
+  currentUserApi,
+  loadCurrentUser,
+  refetchCurrentUser,
+} from "metabase/current-user";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
 import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
@@ -40,8 +44,8 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { refetchSiteSettings, settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
@@ -100,18 +104,24 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
           metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
         }),
       );
-      dispatch(refreshCurrentUser.fulfilled(authState.user, "", undefined));
       dispatch(
-        sessionApi.util.upsertQueryData(
+        currentUserApi.util.upsertQueryData(
+          "getCurrentUser",
+          undefined,
+          authState.user,
+        ),
+      );
+      dispatch(
+        settingsApi.util.upsertQueryData(
           "getSessionProperties",
           undefined,
           authState.siteSettings,
         ),
       );
-      // Add a subscription so that the entry doesn't get deleted from the cache.
-      // RTK will delete entries with no subscribers if they are invalidated,
-      // and the SDK host page has no bootstrap to fall back to.
-      dispatch(sessionApi.endpoints.getSessionProperties.initiate());
+      // Add subscriptions so that the user and settings entries don't get deleted from the cache.
+      // RTK will delete entries with no subscribers if they are invalidated.
+      dispatch(loadCurrentUser());
+      dispatch(settingsApi.endpoints.getSessionProperties.initiate());
       MetabaseSettings.setAll(authState.siteSettings);
 
       // The session handler emits the X-Metabase-Session header on every API
@@ -166,11 +176,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
   // Fetch user and site settings
   const [user, siteSettings] = await Promise.all([
-    dispatch(refreshCurrentUser()),
+    dispatch(refetchCurrentUser()),
     dispatch(refetchSiteSettings()),
   ]);
 
-  if (!user.payload) {
+  if (!user.data) {
     if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
       throw MetabaseError.EXISTING_USER_SESSION_FAILED();
     }

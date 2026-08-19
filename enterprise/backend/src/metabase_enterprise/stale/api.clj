@@ -20,9 +20,11 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection _permissions-set]
-  (let [visible-collection-ids (set (collection/visible-collection-ids {:permission-level :write}))
-        all-descendants (map :id (collection/descendants-flat collection))]
-    (filterv visible-collection-ids all-descendants)))
+  (into []
+        (comp (map :id)
+              (remove #(= % (collection/trash-collection-id)))
+              (filter #(collection/visible-collection-id? % :write)))
+        (collection/descendants-flat collection [:= :archived false])))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
@@ -70,7 +72,8 @@
                                :dataset_query
                                :card_schema
                                :last_used_at
-                               [{:select   [:status]
+                               [^:allow-subquery
+                                {:select   [:status]
                                  :from     [:moderation_review]
                                  :where    [:and
                                             [:= :moderated_item_type "card"]

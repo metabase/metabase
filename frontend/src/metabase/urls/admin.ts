@@ -171,3 +171,11 @@ export function adminHelp() {
 export function adminHelpGrantAccess() {
   return `${adminHelp()}/grant-access`;
 }
+
+export function adminAiSettings() {
+  return "/admin/metabot";
+}
+
+export function adminMcpSettings() {
+  return `${adminAiSettings()}/mcp`;
+}

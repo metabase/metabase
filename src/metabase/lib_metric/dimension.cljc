@@ -5,7 +5,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -55,7 +54,74 @@
   (cond-> dim
     (seq (:sources dim)) (update :sources #(perf/mapv normalize-dimension-source %))
     (string? (:status dim)) (update :status keyword)
-    (string? (:has-field-values dim)) (update :has-field-values keyword)))
+    (string? (:has-field-values dim)) (update :has-field-values keyword)
+    (string? (:default-temporal-unit dim)) (update :default-temporal-unit keyword)))
+
+(defn same-source?
+  "True when two dimensions share at least one common source. Returns false if either dimension has
+   no sources."
+  [dim-a dim-b]
+  (let [sources-a (:sources dim-a)
+        sources-b (:sources dim-b)]
+    (boolean
+     (when (and (seq sources-a) (seq sources-b))
+       (perf/some (set sources-a) sources-b)))))
+
+;;; ------------------------------------------------- Source-Based Grouping -------------------------------------------------
+
+(defn- uf-find [parent i]
+  (loop [i i]
+    (let [p (get parent i)]
+      (if (= p i) i (recur p)))))
+
+(defn- uf-union [parent a b]
+  (let [ra (uf-find parent a)
+        rb (uf-find parent b)]
+    (if (= ra rb) parent (assoc parent ra rb))))
+
+(defn group-by-source
+  "Groups dimensions that transitively share sources into equivalence classes via union-find.
+   Returns a vector of vectors, where each inner vector contains dimensions that share at least
+   one source (matching the semantics of [[same-source?]]). Dimensions with no sources are each
+   placed in their own singleton group. Within a group, dimensions with duplicate `:id` values are
+   deduplicated by dropping all but the first — no reconciliation of the dropped copies is
+   attempted, so callers that care about the difference must dedupe before calling."
+  [dimensions]
+  (let [dims (vec dimensions)
+        n    (count dims)]
+    (if (< n 2)
+      (if (= n 1) [dims] [])
+      (let [init         (vec (range n))
+            ;; For every distinct source entry, collect which dim indices mention it.
+            source->idxs (reduce (fn [acc i]
+                                   (reduce (fn [acc src]
+                                             (update acc src (fnil conj []) i))
+                                           acc
+                                           (:sources (dims i))))
+                                 {}
+                                 (range n))
+            ;; Union all indices that share any source entry.
+            parent       (reduce (fn [parent idxs]
+                                   (if (< (count idxs) 2)
+                                     parent
+                                     (let [a (first idxs)]
+                                       (reduce (fn [p b] (uf-union p a b))
+                                               parent (rest idxs)))))
+                                 init
+                                 (vals source->idxs))
+            ;; Bucket dimensions by resolved root, deduplicating by :id.
+            buckets      (reduce (fn [acc i]
+                                   (let [r    (uf-find parent i)
+                                         d    (dims i)
+                                         seen (perf/get-in acc [r :seen] #{})]
+                                     (if (contains? seen (:id d))
+                                       acc
+                                       (-> acc
+                                           (update-in [r :seen] (fnil conj #{}) (:id d))
+                                           (update-in [r :dims] (fnil conj []) d)))))
+                                 {}
+                                 (range n))]
+        (perf/mapv :dims (vals buckets))))))
 
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
@@ -77,7 +143,9 @@
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
-        (merge (into {} (remove (comp nil? val)) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
+        (merge (into {} (remove (comp nil? val))
+                     (perf/select-keys persisted-dim
+                                       [:display-name :semantic-type :effective-type :default-temporal-unit])))
         (dissoc :status-message))
     computed-dim))
 
@@ -181,17 +249,6 @@
   [pair]
   (= "main" (perf/get-in pair [:dimension :group :type])))
 
-(defn pick-default-dimension
-  "Pick the preferred default from an ordered collection of dimensions."
-  [dimensions]
-  (let [dimensions (vec dimensions)]
-    (or (u/seek types.isa/date-or-datetime? dimensions)
-        (u/seek #(or (types.isa/country? %) (types.isa/state? %)) dimensions)
-        (u/seek #(or (= :list (:has-field-values %))
-                     (types.isa/category? %))
-                dimensions)
-        (first dimensions))))
-
 (defn addable-pairs
   "Computed dimension pairs whose target is not already mapped by one of `persisted-mappings` — i.e. the columns
   available to add to the curated set."
@@ -229,6 +286,8 @@
   (cond-> dim
     (some? display-name)             (assoc :display-name display-name)
     (contains? updates :description) (assoc :description (:description updates))
+    (contains? updates :default-temporal-unit)
+    (assoc :default-temporal-unit (:default-temporal-unit updates))
     source-pair                      (merge (perf/select-keys (:dimension source-pair)
                                                               [:name :sources :effective-type
                                                                :semantic-type :has-field-values :group]))))
@@ -244,6 +303,7 @@
   "Update a single persisted dimension by `id`. `updates` may contain:
    - `:display-name` — set the display name
    - `:description`  — set the description (key present, even when nil, clears it)
+   - `:default-temporal-unit` — set the temporal bucket used when projecting this dimension
    - `:source-pair`  — a computed `{:dimension ... :mapping ...}` for a new source column; copies the
      column-derived fields onto the dimension and repoints its mapping target.
    Returns `{:dimensions ... :dimension-mappings ...}`."
@@ -259,10 +319,11 @@
 
 (defn set-default-dimension
   "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension.
-   Assumes `id` exists in `persisted-dims`. Returns the updated dimensions vector."
+   A nil `id` clears the default without setting a new one. Assumes a non-nil `id` exists in
+   `persisted-dims`. Returns the updated dimensions vector."
   [persisted-dims id]
   (perf/mapv (fn [dim]
-               (if (= id (:id dim))
+               (if (and id (= id (:id dim)))
                  (assoc dim :default true)
                  (dissoc dim :default)))
              persisted-dims))
@@ -277,7 +338,8 @@
     (vec (sort-by #(get position (:id %) missing) persisted-dims))))
 
 (def ^:private persisted-dimension-keys
-  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group :default])
+  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group
+   :default-temporal-unit :default])
 
 (defn- dimensions-set [dims]
   (into #{} (map #(perf/select-keys % persisted-dimension-keys)) dims))

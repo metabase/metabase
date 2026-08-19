@@ -2,10 +2,11 @@ import { skipToken } from "@reduxjs/toolkit/query/react";
 
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 
-import { navigateToArchive } from "../../actions";
+import { getArchiveUrl } from "../../actions";
 import { UnsubscribeModal } from "../../components/UnsubscribeModal";
 import { getPulseId } from "../../selectors";
 
@@ -18,7 +19,7 @@ export function UnsubscribePulseModal({
   params,
   onClose,
 }: UnsubscribePulseModalProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
 
@@ -39,7 +40,7 @@ export function UnsubscribePulseModal({
     _type: "alert" | "pulse",
     hasUnsubscribed: boolean,
   ): void => {
-    dispatch(navigateToArchive(item, "pulse", hasUnsubscribed));
+    navigate(getArchiveUrl(item, "pulse", hasUnsubscribed));
   };
 
   if (isLoading || error) {

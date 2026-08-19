@@ -99,7 +99,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- driver-api/schema.actions.row
+(mu/defn- cast-values :- [:map-of :string :any]
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
@@ -112,19 +112,18 @@
                         [::cast-values table-id]
                         (fn []
                           (into {}
-                                #_{:clj-kondo/ignore [:deprecated-var]}
-                                (map (juxt :name driver-api/->legacy-metadata))
+                                (map (juxt :name identity))
                                 (driver-api/with-metadata-provider database-id
                                   ;; TODO the fields method here only returns visible fields, it might not cast
                                   ;; everything
                                   (driver-api/fields (driver-api/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
-                     (let [col-name                         (u/qualified-name col-name)
-                           {base-type :base_type :as field} (get column->field col-name)]
+                     (let [col-name                        (u/qualified-name col-name)
+                           {base-type :base-type :as opts} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
                          (h2x/cast sql-type value)
                          (try
-                           (sql.qp/->honeysql driver (sql.qp/mbql-clause-with-opts driver :value field value))
+                           (sql.qp/->honeysql driver [:value opts value])
                            (catch Exception e
                              (throw (ex-info (str "column cast failed: " (pr-str col-name))
                                              {:column      col-name
@@ -477,15 +476,16 @@
          :before   nil
          :after    row}))))
 
+;; TODO (Cam 2026-07-23) Update this stuff to use MBQL 5 instead of legacy MBQL
 (mu/defn- model-create! :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
-  [action context inputs :- [:sequential driver-api/mbql.schema.Query]]
-  (let [database (inputs->db inputs)
+  [action context legacy-queries :- #_{:clj-kondo/ignore [:deprecated-var]} [:sequential driver-api/mbql.schema.Query]]
+  (let [database (inputs->db legacy-queries)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
         [errors diffs]    (run-bulk-transaction!
                            {:database database
                             :proc     (partial row-create!* action database)
-                            :coll     inputs})]
+                            :coll     legacy-queries})]
     (if (seq errors)
       ;; For backwards compatibility
       (throw (:error (first errors)))

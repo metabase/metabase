@@ -3,8 +3,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import type { QuestionResultLoaderChildrenProps } from "metabase/common/components/QuestionResultLoader";
-import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
@@ -16,6 +14,8 @@ import type { Dataset } from "metabase-types/api";
 import type { NotebookStep } from "../../../types";
 
 import S from "./NotebookStepPreview.module.css";
+import type { QuestionResultLoaderChildrenProps } from "./QuestionResultLoader";
+import { QuestionResultLoader } from "./QuestionResultLoader";
 
 const PREVIEW_ROWS_LIMIT = 10;
 

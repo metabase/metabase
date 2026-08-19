@@ -92,7 +92,7 @@ describe("metabot > fork", () => {
   });
 
   it("navigates to the forked conversation when forking on the ask page", async () => {
-    const { store, history } = setup({
+    const { store, router } = setup({
       withRouter: true,
       initialRoute: "/metabot",
     });
@@ -107,7 +107,7 @@ describe("metabot > fork", () => {
     );
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         Urls.metabotConversation("forked-convo-id"),
       ),
     );

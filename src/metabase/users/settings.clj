@@ -47,6 +47,15 @@
   :default    false
   :audit      :never)
 
+(defsetting dismissed-research-mode-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about Research Mode")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
 (defsetting notebook-native-preview-sidebar-width
   (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
   :user-local :only
@@ -136,7 +145,7 @@
   :default    [])
 
 (defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  (deferred-tru "Note: Users with row or column security restrictions will never see suggestions.")
   :visibility   :authenticated
   :feature      :email-restrict-recipients
   :type         :keyword

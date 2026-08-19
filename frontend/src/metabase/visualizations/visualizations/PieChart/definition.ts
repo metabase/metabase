@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { formatValue } from "metabase/value-formatting";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
@@ -47,7 +47,6 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
-  usesEChartsRenderer: true,
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
   supportsVisualizer: true,
@@ -94,6 +93,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).metric,
+      persistDefault: true,
     }),
     ...columnSettings({ getHidden: () => true }),
     ...dimensionSetting("pie.dimension", {
@@ -103,6 +103,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       showColumnSetting: true,
       getDefault: (rawSeries) => getDefaultPieColumns(rawSeries).dimension,
+      persistDefault: true,
     }),
     "pie.rows": {
       getHidden: () => true,

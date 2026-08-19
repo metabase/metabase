@@ -8,10 +8,10 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Card,
@@ -44,7 +44,7 @@ export const UpsellCardContent = ({
   upgradeUrl,
   variant = "image-card",
 }: UpsellCardContentProps) => {
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { data: trialData } = useCheckTrialAvailableQuery(undefined, {
     skip: !isHosted,
   });
@@ -141,7 +141,7 @@ const UpsellCardLeftColumnContent = ({
 }: UpsellCardLeftColumnContentProps & {
   isTrialAvailable: boolean;
 }) => {
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const isAdmin = useSelector(getUserIsAdmin);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 

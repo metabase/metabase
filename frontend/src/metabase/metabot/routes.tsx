@@ -1,18 +1,38 @@
-import { Route } from "metabase/router";
+import { Route, registerPagePrefetch } from "metabase/router";
+import * as Urls from "metabase/urls";
 
-import { MetabotConversationPage } from "./components/MetabotConversationPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { SlackConnectSuccess } from "./components/SlackConnectSuccess";
+
+/**
+ * The two pages keep separate chunk names. The Slack landing page has nothing to
+ * do with the conversation page, so one name would make either fetch both.
+ */
+const metabotConversationPage = () =>
+  import(
+    /* webpackChunkName: "metabot" */ "./components/MetabotConversationPage"
+  ).then(({ MetabotConversationPage }) => ({
+    Component: MetabotConversationPage,
+  }));
+
+const slackConnectSuccess = () =>
+  import(
+    /* webpackChunkName: "metabot-slack-connect" */ "./components/SlackConnectSuccess"
+  ).then(({ SlackConnectSuccess }) => ({ Component: SlackConnectSuccess }));
+
+registerPagePrefetch(
+  `/${Urls.CONVERSATION_BASE_PATH}/`,
+  metabotConversationPage,
+);
 
 export const getMetabotRoutes = () => {
   return (
     <>
       {getMetabotQuickLinks()}
       <Route
-        path="metabot/conversation/:convoId"
-        element={<MetabotConversationPage />}
+        path={`${Urls.CONVERSATION_BASE_PATH}/:convoId`}
+        lazy={metabotConversationPage}
       />
-      <Route path="slack-connect-success" element={<SlackConnectSuccess />} />
+      <Route path="slack-connect-success" lazy={slackConnectSuccess} />
     </>
   );
 };

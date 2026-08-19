@@ -1,7 +1,7 @@
 import Cookie from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
-import { replace } from "metabase/router";
+import { navigate } from "metabase/router";
 
 import {
   COOKIE_POOLING_TIMEOUT,
@@ -16,7 +16,7 @@ jest.mock("metabase/redux/auth", () => ({
 }));
 jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
-  replace: jest.fn(),
+  navigate: jest.fn(),
 }));
 
 const actionStub = { type: "ANY_ACTION" };
@@ -134,7 +134,7 @@ describe("createSessionMiddleware", () => {
       jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).not.toHaveBeenCalled();
-      expect(replace).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
     });
 
     it("should redirect to the redirectUrl", async () => {
@@ -147,13 +147,14 @@ describe("createSessionMiddleware", () => {
         .mockImplementationOnce(() => "alive")
         .mockImplementationOnce(() => "alive");
 
-      const { handleAction, dispatchMock } = setup();
+      const { handleAction } = setup();
 
       handleAction(actionStub);
       jest.advanceTimersByTime(COOKIE_POOLING_TIMEOUT);
 
-      expect(dispatchMock).toHaveBeenCalled();
-      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
+      expect(navigate).toHaveBeenCalledWith("/question/1?query=5#hash", {
+        replace: true,
+      });
     });
   });
 
@@ -182,7 +183,9 @@ describe("createSessionMiddleware", () => {
       // wait for the refreshSession to resolve
       await Promise.resolve();
 
-      expect(replace).toHaveBeenCalledWith("/question/1?query=5#hash");
+      expect(navigate).toHaveBeenCalledWith("/question/1?query=5#hash", {
+        replace: true,
+      });
     });
   });
 });

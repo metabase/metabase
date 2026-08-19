@@ -7,8 +7,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.interface :as sql-tools]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -20,6 +22,35 @@
   [driver {:keys [table schema]}]
   {:table (normalize-name driver table)
    :schema (some->> schema (normalize-name driver))})
+
+(mu/defn table-ids-by-name :- [:set pos-int?]
+  "Ids of the active, non-hidden Tables in `database-id` whose name case-insensitively matches one of `table-names`.
+
+  Resolving a name parsed out of native SQL is a lookup, so it goes straight to the appdb; the metadata for the ids is
+  then fetched through the `MetadataProvider` as usual. Case-insensitive because the spelling sync recorded need not
+  match the spelling in a query: `normalize-name` lower-cases while some warehouses (Snowflake) report upper-case.
+
+  This is a prefilter, not the decision — [[find-table-or-transform]] still matches precisely — so it must return a
+  superset of what that accepts. That holds while the appdb's `lower()` agrees with `u/lower-case-en` and a driver's
+  `normalize-unquoted-name` is a pure case fold; both have tests."
+  [database-id :- pos-int?
+   table-names :- [:sequential :string]]
+  (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
+    ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
+    ;; query naming a table that does not exist.
+    (set (t2/select-pks-set :model/Table
+                            {:where [:and
+                                     [:= :db_id database-id]
+                                     ;; `lower()` cannot use an index on the name column, but it still beats fetching every
+                                     ;; row for the Database.
+                                     [:in [:lower :name] names]
+                                     ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
+                                     ;; `:id` lookup does not apply it, so it has to happen here.
+                                     [:= :active true]
+                                     [:or
+                                      [:= :visibility_type nil]
+                                      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+    #{}))
 
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.

@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import { useSetting } from "metabase/common/hooks/use-setting";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { ExpandedCollection } from "metabase/redux/store";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import type { CollectionId } from "metabase-types/api";
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =

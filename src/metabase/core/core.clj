@@ -20,6 +20,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -157,6 +158,12 @@
         (catch Exception e
           (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
+(def embedder-plugin-name
+  "Manifest `info.name` of the in-process embedder. Pinned against the manifest by
+  `metabase.embeddings.embedder-plugin-name-test`; a rename here without one there silently disables
+  the plugin, since `plugins/registered?` looks it up by this exact string."
+  "Metabase In-Process Embedder")
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -177,6 +184,13 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
+  ;; The in-process embedder registers its provider during plugin initialization. Its model runtime remains
+  ;; lazy, so activating the lightweight registration namespace here does not load DJL or a model at startup.
+  (when (plugins/registered? embedder-plugin-name)
+    (try
+      (plugins/load-plugin! embedder-plugin-name)
+      (catch Exception e
+        (log/warnf "Unable to activate the in-process embedder plugin: %s" (ex-message e)))))
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
@@ -222,6 +236,13 @@
       ;; sample database must be cleaned up and replaced regardless of whether sample content is
       ;; currently enabled. Otherwise just refresh its connection details.
       (sample-data/update-sample-database-if-needed!))
+    ;; Sample-content metrics are inserted via raw SQL and so never trigger Card after-insert hooks.
+    ;; Not critical to startup: log and carry on if it fails rather than aborting initialization.
+    (when-let [sample-db-id (sample-data/sample-database-id)]
+      (try
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)
+        (catch Throwable e
+          (log/error e "Error syncing metric dimensions for the Sample Database"))))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)

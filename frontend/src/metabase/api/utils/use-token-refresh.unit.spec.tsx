@@ -6,13 +6,12 @@ import {
   setupTokenRefreshEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetSettingsQuery } from "metabase/settings";
 import type { TokenStatusFeature } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenStatus,
 } from "metabase-types/api/mocks";
-
-import { useGetSettingsQuery } from "../session";
 
 import { useTokenRefresh, useTokenRefreshUntil } from "./use-token-refresh";
 
@@ -28,8 +27,9 @@ const TestComponent = () => {
 };
 
 const waitForElevenSeconds = async () => {
-  act(() => {
-    jest.advanceTimersByTime(11 * 1000);
+  await act(async () => {
+    // Async advance so the fired timer's invalidate/refetch chain completes
+    await jest.advanceTimersByTimeAsync(11 * 1000);
   });
   await screen.findByText("Test");
 };
@@ -126,6 +126,14 @@ const UntilTestComponent = ({
     skip,
     onSatisfied,
   });
+  // The hook sets or clears its polling timer at the moment the settings
+  // payload lands in the cache. Render that moment (Loading... then Test)
+  // so tests can `findByText("Test")` to know it has happened
+  const { isFetching } = useGetSettingsQuery(undefined, { skip });
+
+  if (isFetching) {
+    return <div>Loading...</div>;
+  }
 
   return <div>Test</div>;
 };
@@ -138,7 +146,10 @@ const tokenRefreshPosts = () =>
 
 const advancePastInterval = async (intervals = 1) => {
   await act(async () => {
-    jest.advanceTimersByTime(intervals * UNTIL_INTERVAL_MS + 100);
+    // Async advance so promises run as the clock moves.
+    // In-flight responses set or clear the polling timer before it fires,
+    // and each fired poll can schedule the next one.
+    await jest.advanceTimersByTimeAsync(intervals * UNTIL_INTERVAL_MS + 100);
   });
 };
 
@@ -218,6 +229,13 @@ describe("useTokenRefreshUntil", () => {
       await advancePastInterval();
       expect(tokenRefreshPosts()).toBe(1);
 
+      // The refresh success invalidates session-properties, which triggers a refetch of settings.
+      // The refetched payload is what schedules the next polling timer,
+      // so wait for it before advancing again.
+      await waitFor(() => {
+        expect(settingsGets()).toBeGreaterThan(1);
+      });
+
       await advancePastInterval();
       expect(tokenRefreshPosts()).toBeGreaterThan(1);
     });
@@ -225,9 +243,9 @@ describe("useTokenRefreshUntil", () => {
     it("does not refresh at all once the token already has the feature", async () => {
       setupUntil({ hasFeature: true });
 
-      await waitFor(() => {
-        expect(settingsGets()).toBeGreaterThan(0);
-      });
+      // Wait for the settings payload (with the feature) to be applied.
+      // That is what clears the refresh timer set during the initial load.
+      await screen.findByText("Test");
       await advancePastInterval(3);
 
       expect(tokenRefreshPosts()).toBe(0);

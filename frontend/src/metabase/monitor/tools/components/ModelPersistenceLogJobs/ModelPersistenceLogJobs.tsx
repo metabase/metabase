@@ -1,5 +1,4 @@
 import type { Row } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,18 +12,19 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { useDispatch } from "metabase/redux";
-import { Outlet, push } from "metabase/router";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { Outlet, useNavigate } from "metabase/router";
 import {
   ActionIcon,
-  Card,
   Center,
   Ellipsified,
   Flex,
   Icon,
+  LoadingOverlay,
   Text,
   Tooltip,
   TreeTable,
@@ -42,7 +42,7 @@ const PAGE_SIZE = 20;
 const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
 
 export function ModelPersistenceLogJobs() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
@@ -70,9 +70,9 @@ export function ModelPersistenceLogJobs() {
   const handleRowActivate = useCallback(
     (row: Row<ModelCacheRefreshStatus>) => {
       const { card_id, card_name } = row.original;
-      dispatch(push(Urls.model({ id: card_id, name: card_name })));
+      navigate(Urls.model({ id: card_id, name: card_name }));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<ModelCacheRefreshStatus>({
@@ -92,28 +92,31 @@ export function ModelPersistenceLogJobs() {
 
   return (
     <>
-      <Card
-        flex="0 1 auto"
-        mih={0}
-        p={0}
-        withBorder
+      <MonitorTableCard
+        aria-busy={isFetching}
         data-testid="model-persistence-log-jobs"
       >
         {isLoading ? (
           <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
         ) : (
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Model persistence log`}
-            emptyState={<MonitorEmptyState label={t`No log entries`} />}
-            getRowProps={() => ({
-              "data-testid": "model-persistence-log-job-row",
-            })}
-            onRowClick={handleRowActivate}
-          />
+          <>
+            <LoadingOverlay
+              visible={isFetching}
+              data-testid="loading-overlay"
+            />
+            <TreeTable
+              instance={treeTableInstance}
+              hierarchical={false}
+              ariaLabel={t`Model persistence log`}
+              emptyState={<MonitorEmptyState label={t`No log entries`} />}
+              getRowProps={() => ({
+                "data-testid": "model-persistence-log-job-row",
+              })}
+              onRowClick={handleRowActivate}
+            />
+          </>
         )}
-      </Card>
+      </MonitorTableCard>
 
       {!isLoading && hasPagination && (
         <Flex justify="end">

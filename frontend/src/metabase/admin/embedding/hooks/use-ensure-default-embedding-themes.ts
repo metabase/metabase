@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { useSeedDefaultEmbeddingThemesMutation } from "metabase/api/embedding-theme";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 import { useDefaultEmbeddingThemes } from "./use-default-embedding-themes";
 

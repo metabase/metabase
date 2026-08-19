@@ -14,11 +14,11 @@ import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseIt
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
+  Database,
   ListCollectionItemsSortColumn,
   SortDirection,
   SortingOptions,
@@ -118,11 +118,7 @@ export type BaseItemsTableProps = {
   onMove?: OnMove;
   onDrop?: () => void;
   getIsSelected?: (item: any) => boolean;
-  /** Used for dragging */
-  headless?: boolean;
-  isInDragLayer?: boolean;
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
-  includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
@@ -146,10 +142,7 @@ export const BaseItemsTable = ({
   onSelectAll,
   onSelectNone,
   getIsSelected = () => false,
-  headless = false,
-  isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
-  includeColGroup = true,
   visibleColumnsMap,
   onClick,
   ...props
@@ -158,75 +151,67 @@ export const BaseItemsTable = ({
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
-    <Table isInDragLayer={isInDragLayer} {...props}>
-      {includeColGroup && (
-        <colgroup>
-          {canSelect && <Columns.Select.Col />}
-          {visibleColumnsMap["type"] && <Columns.Type.Col />}
-          {visibleColumnsMap["name"] && (
-            <Columns.Name.Col isInDragLayer={isInDragLayer} />
+    <Table {...props}>
+      <colgroup>
+        {canSelect && <Columns.Select.Col />}
+        {visibleColumnsMap["type"] && <Columns.Type.Col />}
+        {visibleColumnsMap["name"] && <Columns.Name.Col />}
+        {visibleColumnsMap["description"] && <Columns.Description.Col />}
+        {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
+        {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
+        {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
+        {visibleColumnsMap["archive"] && <Columns.Archive.Col />}
+        <Columns.RightEdge.Col />
+      </colgroup>
+      <thead
+        data-testid={isPinned ? "pinned-items-table-head" : "items-table-head"}
+      >
+        <tr>
+          {canSelect && (
+            <Columns.Select.Header
+              selectedItems={selectedItems}
+              hasUnselected={hasUnselected}
+              onSelectAll={onSelectAll}
+              onSelectNone={onSelectNone}
+            />
           )}
-          {visibleColumnsMap["description"] && <Columns.Description.Col />}
-          {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
-          {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
-          {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
-          {visibleColumnsMap["archive"] && <Columns.Archive.Col />}
-          <Columns.RightEdge.Col />
-        </colgroup>
-      )}
-      {!headless && (
-        <thead
-          data-testid={
-            isPinned ? "pinned-items-table-head" : "items-table-head"
-          }
-        >
-          <tr>
-            {canSelect && (
-              <Columns.Select.Header
-                selectedItems={selectedItems}
-                hasUnselected={hasUnselected}
-                onSelectAll={onSelectAll}
-                onSelectNone={onSelectNone}
-              />
-            )}
-            {visibleColumnsMap["type"] && (
-              <Columns.Type.Header
-                sortingOptions={sortingOptions}
-                onSortingOptionsChange={onSortingOptionsChange}
-              />
-            )}
-            {visibleColumnsMap["name"] && (
-              <Columns.Name.Header
-                sortingOptions={sortingOptions}
-                onSortingOptionsChange={onSortingOptionsChange}
-              />
-            )}
-            {visibleColumnsMap["description"] && (
-              <Columns.Description.Header
-                sortingOptions={sortingOptions}
-                onSortingOptionsChange={onSortingOptionsChange}
-              />
-            )}
-            {visibleColumnsMap["lastEditedBy"] && (
-              <Columns.LastEditedBy.Header
-                sortingOptions={sortingOptions}
-                onSortingOptionsChange={onSortingOptionsChange}
-                isTrashed={isTrashed}
-              />
-            )}
-            {visibleColumnsMap["lastEditedAt"] && (
-              <Columns.LastEditedAt.Header
-                sortingOptions={sortingOptions}
-                onSortingOptionsChange={onSortingOptionsChange}
-                isTrashed={isTrashed}
-              />
-            )}
-            {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Header />}
-            {visibleColumnsMap["archive"] && <Columns.Archive.Header />}
-            <Columns.RightEdge.Header />
-          </tr>
-        </thead>
-      )}
+          {visibleColumnsMap["type"] && (
+            <Columns.Type.Header
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            />
+          )}
+          {visibleColumnsMap["name"] && (
+            <Columns.Name.Header
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            />
+          )}
+          {visibleColumnsMap["description"] && (
+            <Columns.Description.Header
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            />
+          )}
+          {visibleColumnsMap["lastEditedBy"] && (
+            <Columns.LastEditedBy.Header
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
+            />
+          )}
+          {visibleColumnsMap["lastEditedAt"] && (
+            <Columns.LastEditedAt.Header
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
+            />
+          )}
+          {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Header />}
+          {visibleColumnsMap["archive"] && <Columns.Archive.Header />}
+          <Columns.RightEdge.Header />
+        </tr>
+      </thead>
       <BaseItemsTableBody
         items={items}
         getIsSelected={getIsSelected}

@@ -2,16 +2,15 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { seedApiQueryCache } from "__support__/rtk-query-cache";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
-import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import {
   type StoreSeedState,
   createMockState,
@@ -39,8 +38,10 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  // `settings` is served from the `getSessionProperties` RTK Query cache.
-  // Capture any seeded settings here and seed the cache through `preloadedState` below.
+  // `settings` and the current user are served from the `getSessionProperties`
+  // and `getCurrentUser` RTK Query caches rather than redux slices.
+  // Settings are captured here and seeded through `preloadedState` below.
+  // The user entry is seeded by `createMockState` itself.
   let { settings: seededSettings, ...initialState }: Partial<StoreSeedState> =
     createMockState(storeInitialState);
 
@@ -58,20 +59,15 @@ export function renderWithSDKProviders(
   }
 
   if (seededSettings?.values) {
-    // Unjustified type cast. FIXME
     initialState = {
       ...initialState,
-      [Api.reducerPath]: seedApiQueryCache(
-        // Unjustified type cast. FIXME
-        (initialState as Partial<State>)[Api.reducerPath],
-        [
-          {
-            endpointName: "getSessionProperties",
-            value: seededSettings.values,
-          },
-        ],
-      ),
-    } as SdkStoreState;
+      [Api.reducerPath]: seedApiQueryCache(initialState[Api.reducerPath], [
+        {
+          endpointName: "getSessionProperties",
+          value: seededSettings.values,
+        },
+      ]),
+    };
   }
 
   const storeMiddleware = _.compact([Api.middleware]);

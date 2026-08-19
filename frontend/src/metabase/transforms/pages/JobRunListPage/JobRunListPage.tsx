@@ -11,8 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/redux";
-import { replace, useParams, useRouter } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
@@ -41,7 +40,7 @@ import { getParsedParams, getSortOptions } from "./utils";
 const EMPTY_RUNS: TransformJobRun[] = [];
 
 export function JobRunListPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const params = useParams<{ jobId: string }>();
   usePageTitle(t`Run history`);
   const jobId = Urls.extractEntityId(params.jobId);
@@ -54,7 +53,7 @@ export function JobRunListPage() {
     TransformJobRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
   const { readOnly, onNameChange } = useJobHeaderState(jobId);
@@ -100,10 +99,10 @@ export function JobRunListPage() {
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformJobRunListParams) => {
       if (jobId != null) {
-        dispatch(replace(Urls.transformJobRuns(jobId, newParams)));
+        navigate(Urls.transformJobRuns(jobId, newParams), { replace: true });
       }
     },
-    [dispatch, jobId],
+    [jobId, navigate],
   );
 
   const handleStatusChange = useCallback(

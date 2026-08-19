@@ -13,10 +13,10 @@ import {
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import type { Group } from "metabase-types/api";
 
 import { GroupsListing } from "../components/GroupsListing";

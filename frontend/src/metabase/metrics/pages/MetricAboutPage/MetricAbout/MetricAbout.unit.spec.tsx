@@ -79,6 +79,7 @@ const TIME_SERIES = createMockDataset({
     cols: [
       createMockColumn({
         name: "created_at",
+        display_name: "Created At: Month",
         base_type: "type/DateTime",
         unit: "month",
       }),
@@ -301,7 +302,7 @@ describe("MetricAbout", () => {
       ).toHaveLength(0);
     });
 
-    it("changes the chart when a curated dimension is selected (UXW-4772)", async () => {
+    it("preserves a curated joined-field label when showing a time bucket (UXW-4945)", async () => {
       const defaultDimensionId = "created-at";
       const categoryDimensionId = "product-category";
       const metric = createMockMetric({
@@ -309,7 +310,7 @@ describe("MetricAbout", () => {
         dimensions: [
           createMockMetricDimension({
             id: defaultDimensionId,
-            display_name: "Created At",
+            display_name: "Product - Created At",
             effective_type: "type/DateTime",
             semantic_type: "type/CreationTimestamp",
             default: true,
@@ -326,8 +327,12 @@ describe("MetricAbout", () => {
         dimension_mappings: [
           {
             dimension_id: defaultDimensionId,
-            table_id: ORDERS_ID,
-            target: ["field", {}, ORDERS.CREATED_AT],
+            table_id: PRODUCTS_ID,
+            target: [
+              "field",
+              { "source-field": ORDERS.PRODUCT_ID },
+              PRODUCTS.CREATED_AT,
+            ],
           },
           {
             dimension_id: categoryDimensionId,
@@ -340,23 +345,40 @@ describe("MetricAbout", () => {
           },
         ],
       });
+      const metricDataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "created_at",
+              display_name: "Product → Created At: Day",
+              base_type: "type/DateTime",
+              unit: "day",
+            }),
+            createMockNumericColumn({ name: "count" }),
+          ],
+          rows: [
+            ["2024-01-01T00:00:00Z", 100],
+            ["2024-01-02T00:00:00Z", 150],
+          ],
+        }),
+      });
 
       setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
         metric,
-        metricDataset: TIME_SERIES,
+        metricDataset,
       });
 
       const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Created At",
+        name: "Select dimension: Product - Created At: Day",
       });
-      expect(dimensionSelect).toHaveTextContent("Created At");
+      expect(dimensionSelect).toHaveTextContent("Product - Created At: Day");
 
       await userEvent.click(dimensionSelect);
       const categoryOption = await screen.findByRole("option", {
         name: /Product Category/,
       });
       expect(categoryOption).toContainElement(
-        within(categoryOption).getByLabelText("string icon"),
+        within(categoryOption).getByLabelText("label icon"),
       );
       await userEvent.click(categoryOption);
 
@@ -384,15 +406,15 @@ describe("MetricAbout", () => {
       });
     });
 
-    it("shows the bin count for the selected numeric dimension", async () => {
-      const dimensionId = "quantity";
+    it("preserves a curated joined-field label when showing numeric bins (UXW-4945)", async () => {
+      const dimensionId = "product-rating";
       const metric = createMockMetric({
         id: 42,
         dimensions: [
           createMockMetricDimension({
             id: dimensionId,
-            display_name: "Quantity",
-            effective_type: "type/Integer",
+            display_name: "Product - Rating",
+            effective_type: "type/Float",
             semantic_type: "type/Quantity",
             default: true,
             status: "status/active",
@@ -401,28 +423,47 @@ describe("MetricAbout", () => {
         dimension_mappings: [
           {
             dimension_id: dimensionId,
-            table_id: ORDERS_ID,
-            target: ["field", {}, ORDERS.QUANTITY],
+            table_id: PRODUCTS_ID,
+            target: [
+              "field",
+              { "source-field": ORDERS.PRODUCT_ID },
+              PRODUCTS.RATING,
+            ],
           },
         ],
+      });
+      const metricDataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              ...BINNED_NUMERIC_DATASET.data.cols[0],
+              name: "rating",
+              display_name: "Product → Rating: 8 bins",
+              base_type: "type/Float",
+              effective_type: "type/Float",
+            }),
+            createMockNumericColumn({ name: "count" }),
+          ],
+          rows: BINNED_NUMERIC_DATASET.data.rows,
+        }),
       });
 
       setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
         metric,
-        metricDataset: BINNED_NUMERIC_DATASET,
+        metricDataset,
       });
 
       const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Quantity: 8 bins",
+        name: "Select dimension: Product - Rating: 8 bins",
       });
-      expect(dimensionSelect).toHaveTextContent("Quantity: 8 bins");
+      expect(dimensionSelect).toHaveTextContent("Product - Rating: 8 bins");
 
       await userEvent.click(dimensionSelect);
-      const quantityOption = await screen.findByRole("option", {
-        name: /Quantity/,
+      const ratingOption = await screen.findByRole("option", {
+        name: /Product - Rating/,
       });
-      expect(quantityOption).toHaveTextContent("Quantity");
-      expect(quantityOption).not.toHaveTextContent("8 bins");
+      expect(ratingOption).toHaveTextContent("Product - Rating");
+      expect(ratingOption).not.toHaveTextContent("8 bins");
     });
   });
 
@@ -464,6 +505,53 @@ describe("MetricAbout", () => {
       expect(
         fetchMock.callHistory.calls("path:/api/card/42/query"),
       ).toHaveLength(0);
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it("shows a scalar when curated dimensions exist but none is the default", async () => {
+      const dimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: dimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: false,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: dimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+
+      setup(
+        makeMetricCard([
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockField({ name: "count", base_type: "type/Integer" }),
+        ]),
+        TIME_SERIES,
+        { metric, metricDataset: SCALAR_DATASET },
+      );
+
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
+      expect(
+        screen.queryByRole("button", { name: /Select dimension:/ }),
+      ).not.toBeInTheDocument();
       expect(await getMetricDatasetRequest()).toEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({

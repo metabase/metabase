@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import type { GitSyncSetupMenuItemProps } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { FixedSizeIcon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 
 import S from "./GitSyncSetupMenuItem.module.css";
@@ -32,7 +32,7 @@ export const GitSyncSetupMenuItem = (props: GitSyncSetupMenuItemProps) => {
           onClick={onClick}
           p="0.5rem"
         >
-          <FixedSizeIcon name="gear" className={S.icon} />
+          <FixedSizeIcon name="git_branch" className={S.icon} />
           {isNavbarOpened && <Text lh="sm">{t`Set up remote sync`}</Text>}
         </UnstyledButton>
       </Tooltip>

@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { getUser } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -10,7 +11,7 @@ const TEST_EMAIL = "test_email@metabase.test";
 describe("useSelector", () => {
   it("should allow access to redux store", () => {
     const Component = () => {
-      const email = useSelector((state) => state.currentUser?.email);
+      const email = useSelector((state) => getUser(state)?.email);
       return <>{email || "No email found"}</>;
     };
 
@@ -53,7 +54,7 @@ describe("useDispatch", () => {
 
       setup({
         thunk: () => (_dispatch: any, getState: () => State) => {
-          const email = getState().currentUser?.email;
+          const email = getUser(getState())?.email;
           if (email) {
             foundEmailState();
           } else {

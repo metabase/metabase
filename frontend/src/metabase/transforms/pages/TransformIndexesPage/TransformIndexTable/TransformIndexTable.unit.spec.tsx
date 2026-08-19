@@ -4,7 +4,6 @@ import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
   getIcon,
   mockGetBoundingClientRect,
-  queryIcon,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -112,22 +111,42 @@ describe("TransformIndexTable", () => {
     expect(within(table).getAllByText("distkey")).toHaveLength(2);
   });
 
-  it("labels metabase-managed indexes as 'Managed'", async () => {
+  it("labels metabase-managed indexes as 'Managed' with an explanation tooltip", async () => {
     setup({
-      indexes: [createMockTableIndexEntry({ metabase_managed: true })],
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: true,
+          request: createMockTableIndexRequest({ status: "succeeded" }),
+        }),
+      ],
     });
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Managed")).toBeInTheDocument();
+    await userEvent.hover(getIcon("info_outline"));
+    expect(
+      await screen.findByText(
+        "This index was created by Metabase and is reapplied each time the transform runs",
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("labels non-managed indexes as 'Unmanaged'", async () => {
+  it("labels non-managed indexes as 'Unmanaged' with an explanation tooltip", async () => {
     setup({
-      indexes: [createMockTableIndexEntry({ metabase_managed: false })],
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: false,
+          request: undefined,
+        }),
+      ],
     });
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Unmanaged")).toBeInTheDocument();
+    await userEvent.hover(getIcon("info_outline"));
+    expect(
+      await screen.findByText("This index was created outside of Metabase"),
+    ).toBeInTheDocument();
   });
 
   it("formats the request status", async () => {
@@ -166,7 +185,8 @@ describe("TransformIndexTable", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Pending")).toBeInTheDocument();
-    await userEvent.hover(getIcon("info_outline"));
+    const [, statusIcon] = screen.getAllByLabelText("info_outline icon");
+    await userEvent.hover(statusIcon);
     expect(
       await screen.findByText(
         "Changes will be applied the next time the transform runs",
@@ -188,7 +208,7 @@ describe("TransformIndexTable", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Succeeded")).toBeInTheDocument();
-    expect(queryIcon("info_outline")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("info_outline icon")).toHaveLength(1);
   });
 
   it("resolves the last modified by user name", async () => {

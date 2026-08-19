@@ -71,7 +71,8 @@
   ([ids {:keys [include-sensitive-fields?]}]
    (when (seq ids)
      (let [tables (t2/select :model/Table :id [:in ids])
-           _      (perms/prime-db-perms-cache (into #{} (map :db_id) tables))
+           _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                                  :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
            tables (t2/hydrate tables
                               [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
@@ -241,13 +242,13 @@
                                         :c.source_card_id :c.created_at :c.entity_id :c.card_schema
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
-                                          :from     [:moderation_review]
-                                          :where    [:and
-                                                     [:= :moderated_item_type "card"]
-                                                     [:= :most_recent true]]
-                                          :order-by [[:id :desc]]
-                                          :limit    1} :r]
+                            :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
+                                                           :from     [:moderation_review]
+                                                           :where    [:and
+                                                                      [:= :moderated_item_type "card"]
+                                                                      [:= :most_recent true]]
+                                                           :order-by [[:id :desc]]
+                                                           :limit    1} :r]
                                         [:= :r.moderated_item_id :c.id]]
                             :where      [:in :c.id ids]})
           dbs (if (seq cards)

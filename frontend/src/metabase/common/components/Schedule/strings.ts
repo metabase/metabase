@@ -4,6 +4,9 @@ import _ from "underscore";
 import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 import type { ScheduleDayType, ScheduleFrameType } from "metabase-types/api";
 
+import { AM, PM } from "./constants";
+import type { AmPm } from "./types";
+
 function intToOption(n: number) {
   return {
     label: n.toString(),
@@ -124,12 +127,12 @@ export const getScheduleStrings = () => {
     | { label: string; value: "calendar-day" }
   )[] = [{ label: t`calendar day`, value: "calendar-day" }, ...weekdays];
 
-  const amAndPM = [
+  const amAndPM: { label: string; value: AmPm }[] = [
     // We use a fallback string in case the translator translated
     // 'AM' or 'PM' as an empty string, which might happen since
     // certain cultures do not use AM/PM.
-    { label: c("As in 9:00 AM").t`AM`.trim() || "AM", value: "0" },
-    { label: c("As in 9:00 PM").t`PM`.trim() || "PM", value: "1" },
+    { label: c("As in 9:00 AM").t`AM`.trim() || "AM", value: AM },
+    { label: c("As in 9:00 PM").t`PM`.trim() || "PM", value: PM },
   ];
 
   const frames: { label: string; value: ScheduleFrameType }[] = [

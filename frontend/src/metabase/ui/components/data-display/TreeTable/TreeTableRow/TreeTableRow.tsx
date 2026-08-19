@@ -47,6 +47,7 @@ interface TreeTableRowContentProps<
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   rowProps?: Record<string, unknown>;
   hierarchical?: boolean;
+  isClickable?: boolean;
 }
 
 // Memoized component that does not depend on virtualItem for performance reasons
@@ -75,6 +76,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   styles,
   rowProps,
   hierarchical = false,
+  isClickable,
 }: TreeTableRowContentProps<TData>) {
   const isKeyboardFocused = activeRowId === row.id;
   const isSelected = selectedRowId === row.id;
@@ -113,6 +115,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       data-keyboard-active={isKeyboardFocused ? true : undefined}
       data-disabled={isDisabled ? true : undefined}
       className={cx(S.content, classNames?.row, {
+        [S.clickable]: isClickable,
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
@@ -249,6 +252,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   renderRowLink,
   renderSubRow,
   hierarchical = true,
+  isClickable,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
 
@@ -276,6 +280,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       styles={styles}
       rowProps={rowProps}
       hierarchical={hierarchical}
+      isClickable={isClickable}
     />
   );
 

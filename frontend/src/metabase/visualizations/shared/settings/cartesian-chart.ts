@@ -3,10 +3,6 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-} from "metabase/visualizations";
-import {
   getCardsColumns,
   getCardsReferencedColumns,
 } from "metabase/visualizations/echarts/cartesian/model";
@@ -30,11 +26,15 @@ import {
 import type {
   Card,
   DatasetColumn,
-  DatasetData,
   RawSeries,
   SeriesOrderSetting,
   VisualizationDisplay,
 } from "metabase-types/api";
+
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "../../lib/registry";
 
 export function getDefaultDimensionFilter(display: string) {
   return display === "scatter" ? isAny : isDimension;
@@ -362,18 +362,22 @@ export const isXAxisScaleValid = (
 
 export const getDefaultGoalLabel = () => t`Goal`;
 
-/**
- * Returns the default column names to be used for scatter plot viz settings.
- *
- * @param data - property on the series object from the `rawSeries` array
- * @returns object containing column names
- */
-export function getDefaultScatterColumns(data: DatasetData): {
+export function getDefaultScatterColumns(series: RawSeries): {
   dimensions: string[] | [null];
   metrics: string[] | [null];
   bubble?: null;
 } {
-  const { cols, rows } = data;
+  if (!series[0]) {
+    return {
+      dimensions: [null],
+      metrics: [null],
+      bubble: null,
+    };
+  }
+  const {
+    data: { cols, rows },
+    json_query: jsonQuery,
+  } = series[0];
   const dimensions = cols.filter(isDimension);
   const metrics = cols.filter(isMetric);
 
@@ -381,14 +385,16 @@ export function getDefaultScatterColumns(data: DatasetData): {
   let xAxisDimension; // only used when there's only one metric
   if (dimensions.length === 2) {
     const cardinality0 = getColumnCardinality(
-      cols,
       rows,
       cols.indexOf(dimensions[0]),
+      dimensions[0].name,
+      jsonQuery,
     );
     const cardinality1 = getColumnCardinality(
-      cols,
       rows,
       cols.indexOf(dimensions[1]),
+      dimensions[1].name,
+      jsonQuery,
     );
     if (cardinality0 <= cardinality1 && cardinality0 <= MAX_SERIES) {
       colorDimension = dimensions[0].name;
@@ -437,7 +443,7 @@ export function getDefaultColumns(series: RawSeries): {
   bubble?: null;
 } {
   if (series[0].card.display === "scatter") {
-    return getDefaultScatterColumns(series[0].data);
+    return getDefaultScatterColumns(series);
   } else {
     return getDefaultLineAreaBarColumns(series);
   }
@@ -515,15 +521,24 @@ export function getDefaultBoxplotDimensions(
   if (dimensions.length <= 1) {
     return dimensions;
   }
-  const { cols, rows } = series[0].data;
+  if (!series[0]) {
+    return [];
+  }
+  const {
+    data: { cols, rows },
+    json_query: jsonQuery,
+  } = series[0];
   let lowestDimension: string | null = null;
   let lowestCardinality = Infinity;
   for (const dimension of dimensions) {
+    if (dimension == null) {
+      continue;
+    }
     const index = cols.findIndex((col) => col.name === dimension);
     if (index === -1) {
       continue;
     }
-    const cardinality = getColumnCardinality(cols, rows, index);
+    const cardinality = getColumnCardinality(rows, index, dimension, jsonQuery);
     if (cardinality < lowestCardinality) {
       lowestDimension = dimension;
       lowestCardinality = cardinality;

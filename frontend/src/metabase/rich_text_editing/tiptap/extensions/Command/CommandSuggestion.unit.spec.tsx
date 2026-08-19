@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
-import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -13,27 +11,22 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SettingsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockUser,
-  createMockUserMetabotPermissions,
-  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
 import {
   CommandSuggestion,
   type CommandSuggestionProps,
 } from "./CommandSuggestion";
-
-registerVisualizations();
+import type { NewQuestionOption } from "./types";
+import type { MetabotCommandConfig } from "./utils";
 
 const SEARCH_ITEMS = [
   createMockSearchResult({
@@ -111,12 +104,19 @@ const TestWrapper = (props: CommandSuggestionProps) => {
 
 type SetupProps = {
   query?: string;
-  settings?: SettingsState;
+  metabotCommand?: MetabotCommandConfig | null;
+  newQuestionOptions?: NewQuestionOption[];
+};
+
+const TEST_NEW_QUESTION_MODALS = {
+  notebook: () => null,
+  native: () => null,
 };
 
 const setup = ({
   query = "",
-  settings = mockSettings({}),
+  metabotCommand = null,
+  newQuestionOptions = [],
 }: SetupProps = {}) => {
   const command = jest.fn();
 
@@ -131,10 +131,6 @@ const setup = ({
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupDatabasesEndpoints([MOCK_DATABASE]);
-  fetchMock.get(
-    "path:/api/metabot/permissions/user-permissions",
-    createMockUserMetabotPermissions(),
-  );
 
   renderWithProviders(
     <TestWrapper
@@ -144,8 +140,11 @@ const setup = ({
       query={query}
       items={[]}
       range={{ from: 0, to: 0 }}
+      metabotCommand={metabotCommand}
+      newQuestionOptions={newQuestionOptions}
+      newQuestionModals={TEST_NEW_QUESTION_MODALS}
     />,
-    { storeInitialState: createMockState({ settings }) },
+    { storeInitialState: createMockState({ settings: mockSettings({}) }) },
   );
 
   return {
@@ -154,13 +153,6 @@ const setup = ({
 };
 
 describe("CommandSuggestion", () => {
-  beforeEach(() => {
-    fetchMock.get(
-      "path:/api/metabot/permissions/user-permissions",
-      createMockUserMetabotPermissions(),
-    );
-  });
-
   it("renders with default commands", async () => {
     setup();
 
@@ -170,17 +162,14 @@ describe("CommandSuggestion", () => {
   it("searches for possible card embeds by default", async () => {
     const { command } = setup({ query: "Ord" });
 
-    // Find cards that were searched for, with appropriate icons
+    // Find cards that were searched for. The per-display icon names come from
+    // the visualization registry, which isn't populated in this isolated spec.
     expect(
-      within(
-        await screen.findByRole("option", { name: /Orders by product/ }),
-      ).getByRole("img", { name: /bar/ }),
+      await screen.findByRole("option", { name: /Orders by product/ }),
     ).toBeInTheDocument();
 
     expect(
-      within(
-        await screen.findByRole("option", { name: /Orders by category/ }),
-      ).getByRole("img", { name: /pie/ }),
+      await screen.findByRole("option", { name: /Orders by category/ }),
     ).toBeInTheDocument();
 
     // Should not find things that cannot be embedded as a card
@@ -376,6 +365,8 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionOptions={[]}
+        newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
       { storeInitialState: createMockState({ settings: mockSettings({}) }) },
     );
@@ -418,17 +409,12 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionOptions={[
+          { value: "notebook", label: "New Question", icon: "insight" },
+        ]}
+        newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
-      {
-        storeInitialState: createMockState({
-          currentUser: createMockUser({
-            permissions: createMockUserPermissions({
-              can_create_queries: true,
-            }),
-          }),
-          settings: mockSettings({}),
-        }),
-      },
+      { storeInitialState: createMockState({ settings: mockSettings({}) }) },
     );
 
     await userEvent.click(await screen.findByRole("option", { name: "Chart" }));
@@ -448,35 +434,27 @@ describe("CommandSuggestion", () => {
       jest.clearAllMocks();
     });
 
-    describe("when metabot is disabled", () => {
+    describe("when no metabot command is provided", () => {
       it("should show all available commands except Metabot", async () => {
-        setup({
-          settings: mockSettings({
-            "metabot-enabled?": false,
-            "llm-metabot-configured?": false,
-          }),
-        });
+        setup({ metabotCommand: null });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });
 
-    describe("when metabot is enabled", () => {
-      beforeEach(() => {
-        mockSettings({});
-        setupEnterprisePlugins();
-      });
-
+    describe("when a metabot command is provided", () => {
       it("should show all available commands including Metabot", async () => {
-        setup({
-          settings: mockSettings({
-            "metabot-enabled?": true,
-            "llm-metabot-configured?": true,
-          }),
-        });
+        setup({ metabotCommand: { name: "Metabot" } });
 
         expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
+        await expectStandardCommandsToBePresent();
+      });
+
+      it("should use the provided metabot name", async () => {
+        setup({ metabotCommand: { name: "Ada" } });
+
+        expect(await screen.findByText("Ask Ada")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

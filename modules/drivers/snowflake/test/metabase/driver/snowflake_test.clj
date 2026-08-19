@@ -52,9 +52,26 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringWriter)
+   (java.security KeyFactory)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (org.bouncycastle.openssl PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :snowflake details))
+    {:account "xy12345.us-east-2.aws"}
+    ["xy12345.us-east-2.aws.snowflakecomputing.com"]
+
+    {:account "xy12345" :use-hostname true :host "snowflake.example.com"}
+    ["snowflake.example.com"]
+
+    {:account "xy12345" :use-hostname true :host "https://snowflake.example.com:443"}
+    ["snowflake.example.com"]))
 
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
@@ -187,6 +204,39 @@
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+
+(defn- pem->private-key
+  [pem]
+  (let [encoded (-> pem
+                    (str/replace #"-----(?:BEGIN|END) (?:\p{Alnum}+ )?PRIVATE KEY-----" "")
+                    (str/replace #"\s" "")
+                    u/decode-base64-to-bytes
+                    (PKCS8EncodedKeySpec.))]
+    (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
+
+(defn- encrypt-pkcs8-pem
+  [private-key ^String passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        sw (StringWriter.)]
+    (with-open [pw (JcaPEMWriter. sw)]
+      (.writeObject pw (JcaPKCS8Generator. private-key encryptor)))
+    (str sw)))
+
+(deftest ^:parallel private-key-passphrase-test
+  (mt/test-driver :snowflake
+    (let [raw-pem (tx/db-test-env-var-or-throw :snowflake :private-key)
+          private-key (pem->private-key raw-pem)]
+      (are [passphrase] (driver/can-connect? :snowflake (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)  ; make sure the stored secret doesn't shadow our new value
+                                                            (assoc :private-key-value      (mt/priv-key->base64-uri (encrypt-pkcs8-pem private-key passphrase))
+                                                                   :private-key-options    "uploaded"
+                                                                   :private-key-passphrase passphrase)))
+        "passphrase"
+        "space and numb3r5"
+        "special,./;'[]-=`~!@#$%^&*()_+|}{:?><}chars"
+        "üñïçodé"))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -392,6 +442,7 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
+      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
@@ -737,27 +788,28 @@
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
-    (let [details (:details (mt/db))
+    ;; the test DB authenticates with a private key, so give it a password to switch away from
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
           pk-key "testing"]
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            (sql-jdbc.conn/connection-details->spec :snowflake details)))
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            ;; Before `use-password` password took precedence over a key file
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
@@ -1186,7 +1238,7 @@
                                           :details {:use-password false
                                                     :password "abc"}}]
         (is (= {:password "abc" :use-password true} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
+        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present} (:details db2)))
         (is (= {:password "abc" :use-password false} (:details db3)))))))
 
 (deftest ^:parallel normalize-write-data-details-test

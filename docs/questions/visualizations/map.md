@@ -186,7 +186,7 @@ Drawing a box will add filters to your query.
 
 ## Customizing map tiles
 
-Admins can customize the background tiles that are used for pin and grid maps, see [Changing the Map tile server](../../configuring-metabase/custom-maps.md#map-tile-server).
+Admins can customize the background tiles used for pin and grid maps, see [Changing the map tile server](../../configuring-metabase/custom-maps.md#map-tile-server). The tile server URL is visible to anyone who views a map, so it shouldn't contain a private key.
 
 ![Default and satellite tiles](../images/map-tiles.png)
 

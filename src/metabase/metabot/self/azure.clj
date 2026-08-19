@@ -16,8 +16,7 @@
   deployment-scoped endpoints or Entra ID auth)."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -42,9 +41,11 @@
     (str/starts-with? (str model) "openai/")    :openai
     :else
     (throw (ex-info (tru "Unsupported Azure model {0}. Only anthropic/* and openai/* models are supported." (pr-str model))
-                    {:api-error  true
-                     :error-code :unsupported-model
-                     :model      model}))))
+                    {:api-error   true
+                     :error-code  :unsupported-model
+                     ;; a deployment the admin typed, so this is a bad request rather than an outage
+                     :status-code 400
+                     :model       model}))))
 
 (defn- model->deployment
   "The Azure deployment name carried by a `{family}/{deployment-name}` model string."
@@ -52,12 +53,6 @@
   (second (str/split (str model) #"/" 2)))
 
 ;;; ------------------------------------------------ HTTP plumbing ----------------------------------------------
-
-(defn- settings-credentials
-  "Azure credentials from the `llm-azure-*` settings."
-  []
-  {:api-key  (not-empty (llm/llm-azure-api-key))
-   :base-url (not-empty (llm/llm-azure-api-base-url))})
 
 (defn- missing-credentials-ex []
   (ex-info (tru "Azure credentials are not configured")
@@ -71,13 +66,12 @@
             :error-code :proxy-unsupported}))
 
 (defn- ensure-credentials
-  "Validate an Azure credentials map, falling back to [[settings-credentials]] when nil.
+  "Validate the credentials of the connection serving this request.
   Throws when the API key or base URL is missing."
   [credentials]
-  (let [creds (or credentials (settings-credentials))]
-    (when-not (metabot.settings/provider-credentials-complete? "azure" creds)
-      (throw (missing-credentials-ex)))
-    creds))
+  (when-not (llm.provider/credentials-complete? "azure" credentials)
+    (throw (missing-credentials-ex)))
+  credentials)
 
 (defn- azure-error-msg
   "Canonical, status-specific Azure error message."
@@ -93,8 +87,8 @@
 
 (defn- azure-request
   "Perform an HTTP request against the Azure resource's compatible surface.
-  `credentials` is an optional `{:api-key ... :base-url ...}` map; when nil, the
-  `llm-azure-*` settings are used. `headers` are extra headers (e.g. `anthropic-version`).
+  `credentials` is the `{:api-key ... :base-url ...}` map of the connection serving this request.
+  `headers` are extra headers (e.g. `anthropic-version`).
   `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
   throws when true. Auth is resolved through [[core/resolve-auth]]/[[core/request]] so proxy
   redirection is already wired up should Azure proxying ever be supported."
@@ -141,11 +135,11 @@
         (throw e)))))
 
 (defn- configured-azure-model
-  "The saved `{family}/{deployment}` model string when the configured Metabot provider is Azure."
+  "The saved `{family}/{deployment}` model string when the connection Metabot is pointed at is an Azure one."
   []
-  (let [value (metabot.settings/llm-metabot-provider)]
-    (when (= (provider-util/provider-and-model->provider value) "azure")
-      (provider-util/provider-and-model->model value))))
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
+    (when (= type "azure")
+      model)))
 
 (defn list-models
   "Validate Azure credentials with a model-free round trip and return an empty model list.
@@ -174,8 +168,9 @@
 
 (mu/defn azure-raw
   "Perform a streaming request to an Azure-hosted model deployment.
-  `:ai-proxy?` is not supported for Azure and throws when true."
-  [{:keys [model input tools ai-proxy?] :as opts} :- core/LLMRequestOpts]
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing. `:ai-proxy?` is not supported for Azure and throws when true."
+  [{:keys [model input tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
         opts   (assoc opts :model (model->deployment model) :reasoning? false)
         {:keys [path headers req]}
@@ -191,17 +186,22 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [response (azure-request {:method    :post
-                                       :path      path
-                                       :as        :stream
-                                       :headers   headers
-                                       :body      (json/encode req)
-                                       :ai-proxy? ai-proxy?})]
+        (let [response (azure-request {:method      :post
+                                       :path        path
+                                       :as          :stream
+                                       :headers     headers
+                                       :body        (json/encode req)
+                                       :credentials credentials
+                                       :ai-proxy?   ai-proxy?})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "azure"
                                      :model    model
                                      :url      path
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "azure" azure-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "azure" azure-error-msg e))))))
 

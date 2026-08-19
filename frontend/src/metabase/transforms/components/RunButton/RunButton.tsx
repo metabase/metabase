@@ -7,7 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   type ButtonProps,

@@ -1,7 +1,6 @@
 import type { FormikHelpers } from "formik";
-import { useCallback, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "metabase/actions/containers/ActionParametersInputForm";
@@ -9,6 +8,10 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import {
+  ActionCreator,
+  loadActionCreator,
+} from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
@@ -62,6 +65,13 @@ function ActionVizForm({
   const dispatch = useDispatch();
   const [showFormModal, setShowFormModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // The action editor is a separate chunk. Fetching it up front, and opening in
+  // a transition, keeps this card on screen until the editor is ready so the
+  // modal opens complete rather than empty.
+  useEffect(() => {
+    loadActionCreator();
+  }, []);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
@@ -81,7 +91,9 @@ function ActionVizForm({
   };
 
   const handleActionEdit = () => {
-    setShowEditModal(true);
+    startTransition(() => {
+      setShowEditModal(true);
+    });
   };
 
   const closeEditModal = () => {

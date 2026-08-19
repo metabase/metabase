@@ -1,103 +1,75 @@
 import cx from "classnames";
-import { Component } from "react";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
+import { fetchTableData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
-import {
-  type InjectedRouteProps,
-  type Location,
-  withRouteProps,
-} from "metabase/router";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
+import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  type ReferenceRouteProps,
-  type StateWithReference,
   getDatabase,
-  getDatabaseId,
   getIsEditing,
   getTable,
+  getTableId,
 } from "../selectors";
-import type { StubbedDatabase, StubbedTable } from "../types";
 
 import TableSidebar from "./TableSidebar";
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  database: getDatabase(state, props),
-  table: getTable(state, props),
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-});
-
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface FieldListContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
+type FieldListContainerProps = ClearStateProps;
 
-  // From route definition / parent
-  style: React.CSSProperties;
+function FieldListContainer(props: FieldListContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
+  const dispatch = useDispatch();
+  const params = useParams<ReferenceRouteParams>();
 
-  // From mapStateToProps
-  database: StubbedDatabase;
-  databaseId: number;
-  table: StubbedTable;
-  isEditing?: boolean;
+  const database = useSelector((state) => getDatabase(state, { params }));
+  const table = useSelector((state) => getTable(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
+  const isEditing = useSelector(getIsEditing);
 
-  // From mapDispatchToProps (metadataActions spread)
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-}
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchTableData(dispatch, tableId),
+  );
 
-class FieldListContainer extends Component<FieldListContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
-  }
-
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: FieldListContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { database, table, isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={<TableSidebar database={database} table={table} />}
-      >
-        <FieldList {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={<TableSidebar database={database} table={table} />}
+    >
+      <FieldList
+        params={params}
+        loading={loading}
+        loadingError={loadingError}
+      />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouteProps(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-    // Unjustified type cast. FIXME
-  )(FieldListContainer as unknown as React.ComponentType<InjectedRouteProps>),
-);
+export default connect(
+  null,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(FieldListContainer as unknown as React.ComponentType);

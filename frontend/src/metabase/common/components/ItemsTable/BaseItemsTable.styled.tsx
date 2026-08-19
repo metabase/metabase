@@ -9,7 +9,6 @@ import {
   forwardRef,
 } from "react";
 
-import { EntityItem } from "metabase/common/components/EntityItem";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
@@ -19,18 +18,9 @@ import { FixedSizeIcon, Text } from "metabase/ui";
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
-type TableProps = TableHTMLAttributes<HTMLTableElement> & {
-  isInDragLayer?: boolean;
-};
-
-export const Table = styled(
-  (props: TableProps) => (
-    <table {...props} className={cx(props.className, AdminS.ContentTable)} />
-  ),
-  {
-    shouldForwardProp: (prop) => prop !== "isInDragLayer",
-  },
-)`
+export const Table = styled((props: TableHTMLAttributes<HTMLTableElement>) => (
+  <table {...props} className={cx(props.className, AdminS.ContentTable)} />
+))`
   background-color: var(--mb-color-background_page-primary);
   table-layout: fixed;
   border-collapse: unset;
@@ -52,8 +42,6 @@ export const Table = styled(
       }
     }
   }
-
-  ${(props) => (props.isInDragLayer ? `width: 50vw;` : "")}
 `;
 
 export const hideResponsively = ({
@@ -88,11 +76,6 @@ export const ItemCell = styled.td<ResponsiveProps>`
 
 export const TableColumn = styled.col<ResponsiveProps>`
   ${hideResponsively}
-`;
-
-export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
-  width: 3em;
-  height: 3em;
 `;
 
 const itemLinkStyle = css`

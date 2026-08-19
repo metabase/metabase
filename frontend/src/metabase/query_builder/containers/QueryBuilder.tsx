@@ -15,9 +15,13 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
+import {
+  canManageSubscriptions,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import {
@@ -50,15 +54,17 @@ import {
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
-import { type Location, push, useRoute, useRouter } from "metabase/router";
+import {
+  type Location,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
+} from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import {
-  canManageSubscriptions,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
 
 import {
@@ -331,7 +337,6 @@ const mapDispatchToProps = {
 
   // other
   closeNavbar,
-  onChangeLocation: push,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -340,9 +345,11 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
-  const { location, params } = useRouter();
-  const route = useRoute();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
+  const navigationType = useNavigationType();
   const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
     useListTimelinesQuery({
       include: "events",
@@ -398,15 +405,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        if (card) {
-          setDidFirstNonTableChartRender(card);
+        if (card?.display) {
+          setDidFirstNonTableChartRender(card.display);
         }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
     [
       isAdmin,
-      card,
+      card?.display,
       didFirstNonTableChartGenerated,
       setDidFirstNonTableChartRender,
     ],
@@ -544,9 +551,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useEffect(() => {
     if (previousLocation && location !== previousLocation) {
-      locationChanged(previousLocation, location, params);
+      locationChanged(previousLocation, location, params, navigationType);
     }
-  }, [location, params, previousLocation, locationChanged]);
+  }, [location, params, previousLocation, navigationType, locationChanged]);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -614,6 +621,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     <>
       <View
         {...props}
+        onChangeLocation={navigate}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
@@ -632,7 +640,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route ?? undefined}
       />
     </>
   );

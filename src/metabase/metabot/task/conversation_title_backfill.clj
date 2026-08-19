@@ -198,7 +198,7 @@
       (do (log-pause current-readiness)
           (schedule-run! (task/scheduler) nil paused-retry-delay-seconds)))))
 
-(derive :event/setting-update ::setting-update)
+(events/derive! :event/setting-update ::setting-update)
 
 (defn- handle-setting-update!
   [event]

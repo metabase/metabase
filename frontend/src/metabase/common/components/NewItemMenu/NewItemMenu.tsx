@@ -1,11 +1,11 @@
 import { useListDatabasesQuery } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
-import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { getHasDatabaseWithJsonEngine } from "metabase/databases/utils/predicates";
+import { useDispatch, useSelector } from "metabase/redux";
+import { closeNavbar } from "metabase/redux/app";
 
 import { NewItemMenuView } from "./NewItemMenuView";
 
