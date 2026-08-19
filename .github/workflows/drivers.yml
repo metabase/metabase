@@ -1,6 +1,11 @@
 name: Driver Tests
 
 on:
+  # TEMPORARY probe -- revert before merge. `push` resolves the workflow file from the
+  # pushed branch, so it is the one trigger that does not require this file to be on master.
+  push:
+    branches:
+      - bgrabow/profile-tests-workflow
   workflow_call:
     inputs:
       skip:
@@ -66,8 +71,8 @@ env:
   #
   # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
   # the whole list -- BigQuery, for instance, has three legs.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
+  PROFILE_TESTS: 'true'  # TEMPORARY probe -- revert to ${{ inputs.profile }} before merge
+  ONLY_TESTS: 'metabase.util.malli-test/validate-throw-test, metabase.util.malli-test/with-api-error-message'  # TEMPORARY probe -- revert to ${{ inputs.tests }}
 
 jobs:
   # This job determines which driver tests should run based on PR context.
@@ -131,7 +136,7 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
-          ONLY_DRIVER: ${{ inputs.driver }}
+          ONLY_DRIVER: h2  # TEMPORARY probe -- revert to ${{ inputs.driver }} before merge
         shell: bash
 
   be-tests-athena-ee:
