@@ -43,6 +43,7 @@ describe("dashboard reducers", () => {
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
+      timelineEvents: { overrides: {}, selection: null },
       slowCards: {},
       loadingControls: {
         isLoading: false,
