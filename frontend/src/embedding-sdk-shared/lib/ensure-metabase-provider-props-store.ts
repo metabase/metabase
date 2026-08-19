@@ -1,24 +1,18 @@
-import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-
 import { type SdkLoadingError, SdkLoadingState } from "../types/sdk-loading";
 
 import { getWindow } from "./get-window";
 
-type MetabaseProviderPropsStoreState = {
-  props: MetabaseProviderPropsStoreExternalProps | null;
-  internalProps: MetabaseProviderPropsStoreInternalProps;
+type MetabaseProviderPropsStoreState<TProps, TStore> = {
+  props: TProps | null;
+  internalProps: MetabaseProviderPropsStoreInternalProps<TStore>;
 };
 
-export type MetabaseProviderPropsStoreExternalProps = Omit<
-  ComponentProviderProps,
-  "children" | keyof MetabaseProviderPropsStoreInternalProps
->;
-
-export type MetabaseProviderPropsStoreInternalProps = {
+export type MetabaseProviderPropsStoreInternalProps<TStore = unknown> = {
   loadingPromise?: Promise<void> | null;
   loadingState?: SdkLoadingState;
   loadingError?: SdkLoadingError | null;
-  reduxStore?: ComponentProviderProps["reduxStore"] | null;
+  /** The bundle's redux store. Opaque here; the bundle owns its type. */
+  reduxStore?: TStore | null;
   singleInstanceIdsMap?: Record<string, string[]>;
   dataApp?: { name: string; isDev?: boolean } | null;
 };
@@ -27,20 +21,27 @@ export type MetabaseProviderPropsStoreInternalProps = {
  * IMPORTANT!
  * Any rename/removal change for fields is a breaking change between the SDK Bundle and the SDK NPM package,
  * and should be done via the deprecation of the field first.
+ *
+ * The props payload is opaque here. The bundle and the npm package both
+ * instantiate `TProps` with the bundle's external provider props, so this
+ * module never imports the bundle's types.
  */
-export type MetabaseProviderPropsStore = {
-  getState(): MetabaseProviderPropsStoreState;
+export type MetabaseProviderPropsStore<TProps = unknown, TStore = unknown> = {
+  getState(): MetabaseProviderPropsStoreState<TProps, TStore>;
   subscribe(listener: () => void): () => void;
   updateInternalProps(
-    internalProps: Partial<MetabaseProviderPropsStoreInternalProps>,
+    internalProps: Partial<MetabaseProviderPropsStoreInternalProps<TStore>>,
   ): void;
-  setProps(props: Partial<MetabaseProviderPropsStoreExternalProps>): void;
+  setProps(props: Partial<TProps>): void;
   cleanup(): void;
 };
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
 
-const getInitialState = (): MetabaseProviderPropsStoreState => ({
+const getInitialState = <TProps, TStore>(): MetabaseProviderPropsStoreState<
+  TProps,
+  TStore
+> => ({
   internalProps: {
     loadingPromise: null,
     loadingState: SdkLoadingState.Initial,
@@ -51,12 +52,14 @@ const getInitialState = (): MetabaseProviderPropsStoreState => ({
   props: null,
 });
 
-const getDefaultProps =
-  (): Partial<MetabaseProviderPropsStoreExternalProps> => ({
-    allowConsoleLog: true,
-  });
+const getDefaultProps = () => ({
+  allowConsoleLog: true,
+});
 
-export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
+export function ensureMetabaseProviderPropsStore<
+  TProps = unknown,
+  TStore = unknown,
+>(): MetabaseProviderPropsStore<TProps, TStore> {
   const win = getWindow();
 
   if (!win) {
@@ -64,13 +67,15 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   }
 
   if (win[KEY]) {
-    return win[KEY];
+    // The window holds one untyped singleton; the caller picks the props type,
+    // and every caller compiles against the same bundle version.
+    return win[KEY] as MetabaseProviderPropsStore<TProps, TStore>;
   }
 
-  let state = getInitialState();
+  let state = getInitialState<TProps, TStore>();
   const listeners = new Set<() => void>();
 
-  const store: MetabaseProviderPropsStore = {
+  const store: MetabaseProviderPropsStore<TProps, TStore> = {
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
@@ -89,14 +94,15 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       listeners.forEach((callback) => callback());
     },
     setProps(props) {
-      // Unjustified type cast. FIXME
+      // The defaults and the partial update cannot be proven to add up to a
+      // complete TProps; the endpoints treat the accumulated props as complete.
       state = {
         ...state,
         props: {
           ...getDefaultProps(),
           ...props,
         },
-      } as MetabaseProviderPropsStoreState;
+      } as MetabaseProviderPropsStoreState<TProps, TStore>;
 
       listeners.forEach((callback) => callback());
     },
@@ -106,12 +112,13 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       // `<MetabaseProvider>`) keep their useSyncExternalStore subscriptions —
       // a deleted-singleton cleanup orphans them on the abandoned store and
       // they never see updates from the next mount cycle.
-      state = getInitialState();
+      state = getInitialState<TProps, TStore>();
       listeners.forEach((callback) => callback());
     },
   };
 
-  win[KEY] = store;
+  // The singleton is stored untyped; see the cast above.
+  win[KEY] = store as MetabaseProviderPropsStore;
 
   return store;
 }

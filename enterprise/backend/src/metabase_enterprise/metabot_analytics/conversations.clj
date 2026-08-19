@@ -49,17 +49,17 @@
                   user-id (conj [:= :c.user_id user-id])
                   (seq date) (conj (date-string->constraints :c.created_at date))
                   (and group-id (not= group-id (:id (perms/all-users-group))))
-                  (conj [:exists {:select [1]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :where  [:and
-                                           [:= :pgm.user_id :c.user_id]
-                                           [:= :pgm.group_id group-id]]}])
+                  (conj [:exists ^:allow-subquery {:select [1]
+                                                   :from   [[:permissions_group_membership :pgm]]
+                                                   :where  [:and
+                                                            [:= :pgm.user_id :c.user_id]
+                                                            [:= :pgm.group_id group-id]]}])
                   tenant-id
-                  (conj [:exists {:select [1]
-                                  :from   [[:core_user :u]]
-                                  :where  [:and
-                                           [:= :u.id :c.user_id]
-                                           [:= :u.tenant_id tenant-id]]}]))
+                  (conj [:exists ^:allow-subquery {:select [1]
+                                                   :from   [[:core_user :u]]
+                                                   :where  [:and
+                                                            [:= :u.id :c.user_id]
+                                                            [:= :u.tenant_id tenant-id]]}]))
         clauses (remove nil? clauses)]
     (when (seq clauses)
       (into [:and] clauses))))
@@ -95,13 +95,13 @@
                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                [[:max :m.created_at] :last_message_at]
-               [{:select   [:mm.profile_id]
-                 :from     [[:metabot_message :mm]]
-                 :where    [:and
-                            [:= :mm.conversation_id :c.id]
-                            [:= :mm.role "assistant"]]
-                 :order-by [[:mm.created_at :asc] [:mm.id :asc]]
-                 :limit    1}
+               [^:allow-subquery {:select   [:mm.profile_id]
+                                  :from     [[:metabot_message :mm]]
+                                  :where    [:and
+                                             [:= :mm.conversation_id :c.id]
+                                             [:= :mm.role "assistant"]]
+                                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
+                                  :limit    1}
                 :profile_id]
                ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
                ;; (`metabot_message` stores prompt+completion only), so this is a
@@ -109,9 +109,9 @@
                ;; would fan out against the `metabot_message` join and inflate
                ;; every aggregate above.
                [[:coalesce
-                 {:select [[[:sum :aul.cache_read_tokens]]]
-                  :from   [[:ai_usage_log :aul]]
-                  :where  [:= :aul.conversation_id :c.id]}
+                 ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
+                                   :from   [[:ai_usage_log :aul]]
+                                   :where  [:= :aul.conversation_id :c.id]}
                  0]
                 :cache_read_tokens]]
    :from      [[:metabot_conversation :c]]

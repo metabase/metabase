@@ -7,11 +7,11 @@ import {
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";

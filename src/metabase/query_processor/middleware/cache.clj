@@ -342,7 +342,6 @@
     (log/trace "Running query and saving cached results (if eligible)...")
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
-                                     {:post [(some? %)]}
                                      (impl/do-with-serialization
                                       (fn [in-fn result-fn]
                                         (binding [*in-fn*     in-fn
@@ -352,7 +351,7 @@
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
-(mu/defn- run-query-with-cache :- :some
+(mu/defn- run-query-with-cache :- :any
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated

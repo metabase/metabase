@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { updateTable } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
@@ -83,7 +83,7 @@ const mapStateToProps = (
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateTable,
   ...actions,
   onSubmit: actions.rUpdateTableDetail,
 };

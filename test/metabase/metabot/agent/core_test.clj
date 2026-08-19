@@ -8,6 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -106,7 +107,8 @@
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs agent loop with mocked LLM returning text"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -222,7 +224,8 @@
 
 (deftest integration-run-agent-loop-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs full agent loop without external calls"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -323,7 +326,8 @@
 
 (deftest integration-search-query-chart-flow-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
         ;; User asks: "Show me the first 10 orders"
         ;; - Iteration 1: LLM calls search tool to find orders table
@@ -434,7 +438,8 @@
     ;; real. `capture-reducible` binds the capture unconditionally (ignores MB_AI_EVAL_CAPTURE), and
     ;; we redef `emit!` to a no-op so the test never writes a per-session JSONL file.
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
         (let [llm-call-count (atom 0)
               llm-responses  [;; Iteration 1: call the search tool (produces a real tool span)
                               [{:type :start :id "msg-1"}
@@ -499,7 +504,8 @@
 
 (deftest cumulative-usage-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "usage parts are cumulative across agent loop iterations"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -573,7 +579,8 @@
 
 (deftest run-agent-loop-retries-on-rate-limit-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "agent loop retries when LLM returns 429 and then succeeds"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
@@ -599,7 +606,8 @@
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
       (testing "records agent-requests, agent-iterations, and llm-requests metrics"
         (let [call-count (atom 0)]
@@ -662,7 +670,8 @@
 ;;; ===================== Snowplow Analytics Tests =====================
 
 (deftest agent-used-tool-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/ai_service_event 'agent_used_tool' per tool call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
@@ -745,7 +754,8 @@
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/token_usage event per LLM call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]

@@ -239,15 +239,20 @@
         model-name (name entity)
         serialized-instance (t2/select-one-fn :object :model/Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
-      ;; Do the reversion of the object
-      (revert-to-revision! entity id user-id serialized-instance)
-      ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
-            new-revision  (first (t2/insert-returning-instances! :model/Revision
-                                                                 :model        model-name
-                                                                 :model_id     id
-                                                                 :user_id      user-id
-                                                                 :object       serialized-instance
-                                                                 :is_creation  false
-                                                                 :is_reversion true))]
-        (add-revision-details entity new-revision last-revision)))))
+      (let [already-in-target-state? (= serialized-instance
+                                        (t2/select-one-fn :object :model/Revision
+                                                          :model model-name :model_id id {:order-by [[:id :desc]]}))]
+        ;; Do the reversion of the object
+        (revert-to-revision! entity id user-id serialized-instance)
+        ;; Push a new revision to record this change
+        (let [last-revision (t2/select-one :model/Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})]
+          (if already-in-target-state?
+            last-revision
+            (let [new-revision (first (t2/insert-returning-instances! :model/Revision
+                                                                      :model        model-name
+                                                                      :model_id     id
+                                                                      :user_id      user-id
+                                                                      :object       serialized-instance
+                                                                      :is_creation  false
+                                                                      :is_reversion true))]
+              (add-revision-details entity new-revision last-revision))))))))

@@ -1,13 +1,14 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
+import { fetchSegmentDetailData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
 import SegmentDetail from "metabase/reference/segments/SegmentDetail";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -22,17 +23,15 @@ import {
 import SegmentSidebar from "./SegmentSidebar";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface SegmentDetailContainerProps extends FetchProps, ClearStateProps {
-  fetchSegmentTable: (id: number) => Promise<unknown>;
-}
+interface SegmentDetailContainerProps extends FetchProps, ClearStateProps {}
 
 function SegmentDetailContainer(props: SegmentDetailContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
+  const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
   const user = useSelector(getUser);
@@ -40,16 +39,7 @@ function SegmentDetailContainer(props: SegmentDetailContainerProps) {
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchSegmentDetail(props, segmentId);
-  }
+  useReferenceFetch(() => fetchSegmentDetailData(dispatch, segmentId));
 
   useEffect(() => {
     const pathnameChanged =

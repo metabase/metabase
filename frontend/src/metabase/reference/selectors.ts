@@ -47,7 +47,7 @@ export type StateWithReference = State & {
   revisions?: Record<string, Record<string | number, unknown>>;
 };
 
-export { getUser } from "metabase/selectors/user";
+export { getUser } from "metabase/current-user";
 
 export const getSegmentId = (_state: State, props: ReferenceRouteProps) =>
   Number.parseInt(props.params.segmentId ?? "");

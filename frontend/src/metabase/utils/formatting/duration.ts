@@ -1,5 +1,6 @@
-import dayjs from "dayjs";
 import { msgid, ngettext, t } from "ttag";
+
+import { dayjs } from "metabase/dayjs";
 
 export function duration(milliseconds: number) {
   const SECOND = 1000;
@@ -31,7 +32,7 @@ export function duration(milliseconds: number) {
  * Negative inputs (defensive — e.g. clock skew between FE and DB) clamp to 0ms.
  *
  * Uses dayjs.duration internally for component decomposition (the duration
- * plugin is already extended globally at frontend/src/metabase/utils/dayjs.ts),
+ * plugin is already extended globally in metabase/dayjs),
  * but NOT its .format("HH:mm:ss") because that produces clock-style output
  * rather than the readable ladder we want.
  */

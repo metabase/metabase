@@ -49,24 +49,6 @@ interface UpdateProps extends FetchProps {
   entity: Record<string, unknown>;
 }
 
-interface DatabaseFetchProps extends FetchProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-  fetchQuestions: () => Promise<unknown>;
-  fetchRealDatabases: (args: unknown) => Promise<unknown>;
-}
-
-interface TableFetchProps extends FetchProps {
-  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
-}
-
-interface SegmentFetchProps extends FetchProps {
-  fetchSegments: (id?: number) => Promise<unknown>;
-  fetchSegmentTable: (id: number) => Promise<unknown>;
-  fetchSegmentRevisions: (id: number) => Promise<unknown>;
-  fetchSegmentFields: (id: number) => Promise<unknown>;
-  fetchQuestions: () => Promise<unknown>;
-}
-
 export interface ClearStateProps {
   endEditing: () => void;
   endLoading: () => void;
@@ -80,121 +62,6 @@ interface UpdateEntityProps extends UpdateProps {
   updateDatabase: (entity: Record<string, unknown>) => Promise<unknown>;
   updateTable: (entity: Record<string, unknown>) => Promise<unknown>;
 }
-
-// Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
-
-const fetchDataWrapper = <T>(
-  props: FetchProps,
-  fn: (argument: T) => Promise<unknown>,
-) => {
-  return async (argument: T) => {
-    props.clearError();
-    props.startLoading();
-    try {
-      await fn(argument);
-    } catch (error) {
-      console.error(error);
-      props.setError(error);
-    }
-
-    props.endLoading();
-  };
-};
-
-export const wrappedFetchDatabaseMetadata = (
-  props: FetchProps & Pick<DatabaseFetchProps, "fetchDatabaseMetadata">,
-  databaseID: number,
-) => {
-  fetchDataWrapper(props, props.fetchDatabaseMetadata)(databaseID);
-};
-
-export const wrappedFetchTableMetadata = (
-  props: TableFetchProps,
-  tableID: number,
-) => {
-  fetchDataWrapper(
-    props,
-    props.fetchTableMetadataAndForeignKeys,
-  )({
-    id: tableID,
-  });
-};
-
-export const wrappedFetchDatabaseMetadataAndQuestion = async (
-  props: FetchProps &
-    Pick<DatabaseFetchProps, "fetchDatabaseMetadata" | "fetchQuestions">,
-  databaseID: number,
-) => {
-  fetchDataWrapper(props, async (dbID: number) => {
-    await Promise.all([
-      props.fetchDatabaseMetadata(dbID),
-      props.fetchQuestions(),
-    ]);
-  })(databaseID);
-};
-export const wrappedFetchDatabases = (
-  props: FetchProps & Pick<DatabaseFetchProps, "fetchRealDatabases">,
-) => {
-  fetchDataWrapper(props, props.fetchRealDatabases)({});
-};
-export const wrappedFetchSegments = (
-  props: FetchProps & Pick<SegmentFetchProps, "fetchSegments">,
-) => {
-  fetchDataWrapper(props, props.fetchSegments)(undefined);
-};
-
-export const wrappedFetchSegmentDetail = (
-  props: FetchProps & Pick<SegmentFetchProps, "fetchSegmentTable">,
-  segmentID: number,
-) => {
-  fetchDataWrapper(props, props.fetchSegmentTable)(segmentID);
-};
-
-export const wrappedFetchSegmentQuestions = async (
-  props: FetchProps &
-    Pick<
-      SegmentFetchProps,
-      "fetchSegments" | "fetchSegmentTable" | "fetchQuestions"
-    >,
-  segmentID: number,
-) => {
-  fetchDataWrapper(props, async (sID: number) => {
-    await props.fetchSegments(sID);
-    await Promise.all([props.fetchSegmentTable(sID), props.fetchQuestions()]);
-  })(segmentID);
-};
-export const wrappedFetchSegmentRevisions = async (
-  props: FetchProps &
-    Pick<
-      SegmentFetchProps,
-      "fetchSegments" | "fetchSegmentRevisions" | "fetchSegmentTable"
-    >,
-  segmentID: number,
-) => {
-  fetchDataWrapper(props, async (sID: number) => {
-    await props.fetchSegments(sID);
-    await Promise.all([
-      props.fetchSegmentRevisions(sID),
-      props.fetchSegmentTable(sID),
-    ]);
-  })(segmentID);
-};
-export const wrappedFetchSegmentFields = async (
-  props: FetchProps &
-    Pick<
-      SegmentFetchProps,
-      "fetchSegments" | "fetchSegmentFields" | "fetchSegmentTable"
-    >,
-  segmentID: number,
-) => {
-  fetchDataWrapper(props, async (sID: number) => {
-    await props.fetchSegments(sID);
-    await Promise.all([
-      props.fetchSegmentFields(sID),
-      props.fetchSegmentTable(sID),
-    ]);
-  })(segmentID);
-};
 
 // This is called when a component gets a new set of props.
 // I *think* this is un-necessary in all cases as we're using multiple
@@ -213,11 +80,8 @@ const resetForm = (props: UpdateProps) => {
   props.endEditing();
 };
 
-// Update actions
-// these use the "fetchDataWrapper" for now. It should probably be renamed.
-// Using props to fire off actions, which imo should be refactored to
-// dispatch directly, since there is no actual dependence with the props
-// of that component
+// Update actions. These drive the same loading state during a save, through
+// props rather than dispatch. Fetching goes through `useReferenceFetch`.
 
 const updateDataWrapper = (
   props: UpdateProps,

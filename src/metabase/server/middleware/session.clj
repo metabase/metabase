@@ -103,14 +103,13 @@
 (defn- oldest-allowed-expr
   "Build a database-specific expression for `NOW() - interval`."
   [db-type amount unit]
-  (case db-type
-    :postgres [:- [:raw "current_timestamp"]
-               [:raw (format "INTERVAL '%d %s'" amount (name unit))]]
-    :h2       [:dateadd (h2x/literal (name unit))
-               [:inline (- amount)]
-               :%now]
-    :mysql    [:date_add :%now
-               [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
+  (let [now (h2x/current-datetime-honeysql-form db-type)]
+    (case db-type
+      :postgres [:- now [::h2x/postgres-interval amount unit]]
+      :h2       [:dateadd (h2x/literal (name unit))
+                 [:inline (- amount)]
+                 now]
+      :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds])} session-with-id-query
   (memoize
@@ -131,11 +130,11 @@
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
                                   [:= :user.is_active true]
-                                  [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
+                                  [:or [:= :session.id ^:allow-raw-sql [:raw "?"]] [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
-                                                                 :full-app-embed [:raw "?"])]]
+                                                                 :full-app-embed ^:allow-raw-sql [:raw "?"])]]
                                  (when session-timeout-seconds
                                    [[:> [:coalesce :session.last_active_at :session.created_at]
                                      (oldest-allowed-expr db-type session-timeout-seconds :second)]]))
@@ -165,7 +164,7 @@
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :api_key.key_prefix [:raw "?"]]]
+                            [:= :api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -190,7 +189,7 @@
                 :from      [[:core_user :user]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :user.id [:raw "?"]]]
+                            [:= :user.id ^:allow-raw-sql [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->

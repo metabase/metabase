@@ -17,6 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -190,7 +191,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::queries.schema/query]]]
+                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
@@ -223,14 +224,14 @@
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                      :result_metadata :type :source_card_id :card_schema
-                                     [{:select   [:status]
-                                       :from     [:moderation_review]
-                                       :where    [:and
-                                                  [:= :moderated_item_type "card"]
-                                                  [:= :moderated_item_id :report_card.id]
-                                                  [:= :most_recent true]]
-                                       :order-by [[:id :desc]]
-                                       :limit    1}
+                                     [^:allow-subquery {:select   [:status]
+                                                        :from     [:moderation_review]
+                                                        :where    [:and
+                                                                   [:= :moderated_item_type "card"]
+                                                                   [:= :moderated_item_id :report_card.id]
+                                                                   [:= :most_recent true]]
+                                                        :order-by [[:id :desc]]
+                                                        :limit    1}
                                       :moderated_status]]
                           :from     [:report_card]
                           :where    (into [:and
@@ -556,11 +557,11 @@
 
 (defn- card-query
   [db-id model type-str]
-  {:select [[:%count.* model]]
-   :from   [:report_card]
-   :where  [:and
-            [:= :database_id db-id]
-            [:= :type type-str]]})
+  ^:allow-subquery {:select [[:%count.* model]]
+                    :from   [:report_card]
+                    :where  [:and
+                             [:= :database_id db-id]
+                             [:= :type type-str]]})
 
 (defmethod database-usage-query :question
   [_ db-id]
@@ -576,19 +577,19 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
-  {:select [[:%count.* :segment]]
-   :from   [:segment]
-   :where  [:in :table_id {:select [:id]
-                           :from   [:metabase_table]
-                           :where  [:= :db_id db-id]}]})
+  ^:allow-subquery {:select [[:%count.* :segment]]
+                    :from   [:segment]
+                    :where  [:in :table_id ^:allow-subquery {:select [:id]
+                                                             :from   [:metabase_table]
+                                                             :where  [:= :db_id db-id]}]})
 
 (defmethod database-usage-query :transform
   [_ db-id]
-  {:select [[:%count.* :transform]]
-   :from   [:transform]
-   :where  [:or
-            [:= :source_database_id db-id]
-            [:= :target_db_id db-id]]})
+  ^:allow-subquery {:select [[:%count.* :transform]]
+                    :from   [:transform]
+                    :where  [:or
+                             [:= :source_database_id db-id]
+                             [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -927,7 +928,8 @@
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
-       [:provider_name     {:optional true}  [:maybe :string]]]]
+       [:provider_name     {:optional true}  [:maybe :string]]
+       [:is_stub           {:optional true}  [:maybe :boolean]]]]
   (api/check-superuser)
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -1091,7 +1093,8 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/Map]]]]
+       [:settings           {:optional true} [:maybe ms/Map]]
+       [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
                     {:status-code 400})))
@@ -1328,10 +1331,10 @@
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {:delete-from :metabase_fieldvalues
                  :where      [:in :field_id
-                              {:select     [:f.id]
-                               :from       [[:metabase_field :f]]
-                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                               :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
+                              ^:allow-subquery {:select     [:f.id]
+                                                :from       [[:metabase_field :f]]
+                                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;
@@ -1621,7 +1624,8 @@
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
-  (let [{:as database :keys [engine]} (t2/select-one :model/Database :id id)
+  (api/check-superuser)
+  (let [{:as database :keys [engine]} (api/check-404 (t2/select-one :model/Database :id id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

@@ -9,7 +9,6 @@ import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/components/List/List.module.css";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
@@ -48,10 +47,6 @@ const mapStateToProps = (
     loading: getLoading(state),
     loadingError: getError(state),
   };
-};
-
-const mapDispatchToProps = {
-  ...metadataActions,
 };
 
 interface SegmentRevisionsProps {
@@ -143,6 +138,5 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
-  mapDispatchToProps,
   // Unjustified type cast. FIXME
 )(SegmentRevisions as unknown as React.ComponentType);

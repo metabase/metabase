@@ -52,7 +52,13 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringWriter)
+   (java.security KeyFactory)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (org.bouncycastle.openssl PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -198,6 +204,39 @@
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+
+(defn- pem->private-key
+  [pem]
+  (let [encoded (-> pem
+                    (str/replace #"-----(?:BEGIN|END) (?:\p{Alnum}+ )?PRIVATE KEY-----" "")
+                    (str/replace #"\s" "")
+                    u/decode-base64-to-bytes
+                    (PKCS8EncodedKeySpec.))]
+    (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
+
+(defn- encrypt-pkcs8-pem
+  [private-key ^String passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        sw (StringWriter.)]
+    (with-open [pw (JcaPEMWriter. sw)]
+      (.writeObject pw (JcaPKCS8Generator. private-key encryptor)))
+    (str sw)))
+
+(deftest ^:parallel private-key-passphrase-test
+  (mt/test-driver :snowflake
+    (let [raw-pem (tx/db-test-env-var-or-throw :snowflake :private-key)
+          private-key (pem->private-key raw-pem)]
+      (are [passphrase] (driver/can-connect? :snowflake (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)  ; make sure the stored secret doesn't shadow our new value
+                                                            (assoc :private-key-value      (mt/priv-key->base64-uri (encrypt-pkcs8-pem private-key passphrase))
+                                                                   :private-key-options    "uploaded"
+                                                                   :private-key-passphrase passphrase)))
+        "passphrase"
+        "space and numb3r5"
+        "special,./;'[]-=`~!@#$%^&*()_+|}{:?><}chars"
+        "üñïçodé"))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -403,6 +442,7 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
+      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"

@@ -69,15 +69,20 @@
   ^java.io.File []
   (io/file (str (.getAbsolutePath (project-root-directory)) "/enterprise/backend/src")))
 
-(mu/defn- drivers-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
+(mu/defn- plugin-source-roots :- [:sequential (ms/InstanceOfClass java.io.File)]
+  "Source roots of the separately built plugin modules under `modules/`: every driver, plus the siblings that
+  ship as their own jar. They are off the main classpath, so nothing else here would find them."
   []
-  (for [file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/drivers")))]
-    (io/file file "src")))
+  (let [modules (io/file (str (.getAbsolutePath (project-root-directory)) "/modules"))]
+    (concat
+     (for [driver (.listFiles (io/file modules "drivers"))]
+       (io/file driver "src"))
+     [(io/file modules "embedder" "src")])))
 
 (mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]
   []
   (mapcat ns.find/find-sources-in-dir
-          (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
+          (list* (source-root) (enterprise-source-root) (plugin-source-roots))))
 
 (mu/defn- module :- [:maybe symbol?]
   "E.g.

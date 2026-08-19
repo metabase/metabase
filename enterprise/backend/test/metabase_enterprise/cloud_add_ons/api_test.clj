@@ -40,6 +40,20 @@
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :post 500 "ee/cloud-add-ons/metabase-ai"
                                           {:terms_of_service true})))))
+        (testing "explains the limitation when the add-on is already on another subscription in the organization"
+          (let [store-error {:status         400
+                             :upsert-add-ons "This organization already has a product with the same metric-name."}]
+            (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" store-error)))]
+              (is (=? (str "This add-on is already active on another subscription in your Metabase Cloud account."
+                           " Usage-based add-ons can only be active on one subscription at a time.")
+                      (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
+                                            {:terms_of_service true}))))))
+        (testing "falls back to the generic message when a different upsert-add-ons error comes back"
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status         400
+                                                                                       :upsert-add-ons "Some other problem."})))]
+            (is (=? "Could not purchase this add-on."
+                    (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
+                                          {:terms_of_service true})))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
                 {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]

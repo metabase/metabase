@@ -1,13 +1,12 @@
 import cx from "classnames";
-import dayjs from "dayjs";
 import { Component } from "react";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
@@ -51,10 +50,6 @@ const mapStateToProps = (
   loadingError: getError(state),
   metadata: getMetadata(state),
 });
-
-const mapDispatchToProps = {
-  ...metadataActions,
-};
 
 interface TableQuestionsProps {
   table: StubbedTable;
@@ -116,6 +111,5 @@ class TableQuestions extends Component<TableQuestionsProps> {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
-  mapDispatchToProps,
   // Unjustified type cast. FIXME
 )(TableQuestions as unknown as React.ComponentType);

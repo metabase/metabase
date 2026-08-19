@@ -60,6 +60,23 @@ jobs:
               userName: '${{ github.actor }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
+      - name: Write job summary
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+            const commit = '${{ inputs.commit }}';
+            const version = '${{ inputs.version }}';
+
+            await core.summary
+              .addHeading(`🚀 ${version} Release Overview`)
+              .addList([
+                `Version: ${version}`,
+                `Release commit: <a href="https://github.com/${owner}/${repo}/commit/${commit}">${commit.slice(0, 7)}</a>`,
+                `Started by: @${{ github.actor }}`,
+              ])
+              .write();
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

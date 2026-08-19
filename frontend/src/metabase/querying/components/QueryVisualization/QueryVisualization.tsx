@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
@@ -9,6 +9,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { prefetchVisualizationComponent } from "metabase/visualizations";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -35,6 +36,14 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // The result is not rendered until the query returns, so the chart chunk
+  // would only start downloading then. Start it from the display alone, so it
+  // loads in parallel with the query.
+  const display = question.display();
+  useEffect(() => {
+    prefetchVisualizationComponent(display);
+  }, [display]);
   const isDirtyStateShown =
     canRun &&
     isResultDirty &&

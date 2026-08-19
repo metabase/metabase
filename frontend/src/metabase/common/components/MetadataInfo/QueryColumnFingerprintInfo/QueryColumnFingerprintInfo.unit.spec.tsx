@@ -1,4 +1,7 @@
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupFieldEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -56,26 +59,28 @@ const setup = ({ columnName, fingerprint, timezone }: SetupOpts) => {
   setupFieldsValuesEndpoints([]);
 
   const sampleDatabase = createSampleDatabase();
+  const database = {
+    ...sampleDatabase,
+    tables: sampleDatabase.tables?.map((table) =>
+      table.id === PRODUCTS_ID
+        ? {
+            ...table,
+            fields: table.fields?.map((field) =>
+              field.name === columnName && fingerprint !== undefined
+                ? { ...field, fingerprint }
+                : field,
+            ),
+          }
+        : table,
+    ),
+  };
+
+  database.tables?.forEach((table) =>
+    table.fields?.forEach((field) => setupFieldEndpoints(field)),
+  );
+
   const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [
-        {
-          ...sampleDatabase,
-          tables: sampleDatabase.tables?.map((table) =>
-            table.id === PRODUCTS_ID
-              ? {
-                  ...table,
-                  fields: table.fields?.map((field) =>
-                    field.name === columnName && fingerprint !== undefined
-                      ? { ...field, fingerprint }
-                      : field,
-                  ),
-                }
-              : table,
-          ),
-        },
-      ],
-    }),
+    entities: createMockEntitiesState({ databases: [database] }),
   });
 
   const provider = Lib.metadataProvider(SAMPLE_DB_ID, getMetadata(state));
@@ -195,7 +200,7 @@ describe("QueryColumnFingerprintInfo", () => {
   });
 
   describe("ID column", () => {
-    it("should render the distinct count instead of the number fingerprint", () => {
+    it("should render the distinct count instead of the number fingerprint", async () => {
       setup({
         columnName: "ID",
         fingerprint: createMockFingerprint({
@@ -204,7 +209,9 @@ describe("QueryColumnFingerprintInfo", () => {
         }),
       });
 
-      expect(screen.getByText("123 distinct values")).toBeInTheDocument();
+      expect(
+        await screen.findByText("123 distinct values"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("Average")).not.toBeInTheDocument();
     });
 

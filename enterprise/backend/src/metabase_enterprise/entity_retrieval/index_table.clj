@@ -23,6 +23,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -36,7 +37,9 @@
 (def index-schema
   "Schema holding the library entity index, in a dedicated store and on the app db alike.
   Its own, not semantic search's: [[metabase-enterprise.semantic-search.db.migration.impl]] wipes the
-  schema it is given, and in a dedicated store that is the default schema these tables used to sit in."
+  schema it is given, and a dedicated store's reset sweeps the default schema these tables used to sit in.
+  It spares the names it recognizes, and ours were never among them -- but an index should not depend on
+  another module's list of what it may destroy."
   "library_retrieval")
 
 ;; TODO (Chris 2026-07-14) -- these names carry no version, so an on-disk upgrade has nothing to key off.
@@ -192,12 +195,18 @@
                         {:type ::schema-creation-failed, :schema schema}
                         e))))))
 
+;; TODO (Chris 2026-08-17) -- delete this once no supported upgrade can start from the bare names.
 (defn- adopt-legacy-tables!
   "Move an index built before [[index-schema]] existed into it, preserving its rows.
   Without this, the qualified tables would be created empty beside the old ones and the whole library
-  would be re-embedded. A no-op once moved: the unqualified name no longer resolves."
+  would be re-embedded. A no-op once moved: the unqualified name no longer resolves.
+
+  A dedicated store only. The bare names date from when this index was dedicated-only, so nothing in an
+  app db can be an old index of ours -- but [[table-exists?]] resolves an unqualified name on the search
+  path, where an application table that happens to share the name would answer, and get moved."
   [tx]
-  (when (= default-tables (tables))
+  (when (and (= default-tables (tables))
+             (semantic.db.datasource/dedicated-url-configured?))
     (doseq [k [:vectors :meta]]
       (let [legacy (k legacy-tables)]
         (when (and (table-exists? tx legacy)

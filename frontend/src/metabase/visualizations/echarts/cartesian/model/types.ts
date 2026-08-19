@@ -1,6 +1,6 @@
-import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
+import type { Dayjs } from "metabase/dayjs";
 import type {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,

@@ -7,7 +7,6 @@ import { useQuestionListQuery } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
@@ -48,10 +47,6 @@ const mapStateToProps = (
   table: getTableBySegment(state, props),
   metadata: getMetadata(state),
 });
-
-const mapDispatchToProps = {
-  ...metadataActions,
-};
 
 interface SegmentQuestionsInnerProps {
   style: React.CSSProperties;
@@ -119,6 +114,5 @@ const SegmentQuestionsInner = ({
 
 export const SegmentQuestions = connect(
   mapStateToProps,
-  mapDispatchToProps,
   // Unjustified type cast. FIXME
 )(SegmentQuestionsInner as unknown as React.ComponentType);

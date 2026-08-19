@@ -882,6 +882,25 @@ describe("scenarios > collection defaults", () => {
             .should("be.visible");
         });
 
+        it("should clear the selection with Escape and trash it with Delete", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
+
+          cy.realPress("Escape");
+          H.getUnpinnedSection().findByText("Orders").should("be.visible");
+          cy.findByTestId("toast-card").should("not.exist");
+
+          selectItemUsingCheckbox("Orders");
+          cy.realPress("Delete");
+          H.modal().button("Move to trash").click();
+
+          H.getUnpinnedSection().findByText("Orders").should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
+        });
+
         it("should clean up selection when opening another collection (metabase#16491)", () => {
           cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
             collection_id: ADMIN_PERSONAL_COLLECTION_ID,
@@ -905,10 +924,9 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          cy.findByTestId("toast-card")
-            .parent()
-            .button("Move to trash")
-            .click();
+          cy.findByTestId("toast-card").findByLabelText("More actions").click();
+          H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
 
           H.getUnpinnedSection().findByText("Orders").should("not.exist");
           cy.findByTestId("toast-card").should("not.exist");

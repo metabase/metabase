@@ -7,9 +7,9 @@ import {
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
 import { getPlan } from "metabase/common/utils/plan";
+import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 
