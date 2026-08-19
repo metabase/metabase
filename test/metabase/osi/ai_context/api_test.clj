@@ -114,6 +114,23 @@
   (testing "non-superuser gets 403"
     (mt/user-http-request :rasta :put 403 "osi/ai-context/table/1" {:ai_context {:instructions "x"}})))
 
+(deftest upsert-keeps-forward-compat-keys-test
+  (testing "keys the OSI spec may add later are stored, not dropped -- serdes import keeps them, so a write must too"
+    (try
+      (is (=? {:entity_type     "card"
+               :entity_local_id 55
+               :ai_context      {:instructions "Known key."
+                                 :dimensions   ["a future OSI field"]
+                                 :verified_by  "someone@example.com"}}
+              (mt/user-http-request :crowberto :put 200 "osi/ai-context/metric/55"
+                                    {:ai_context {:instructions "Known key."
+                                                  :dimensions   ["a future OSI field"]
+                                                  :verified_by  "someone@example.com"}})))
+      (is (=? {:ai_context {:dimensions ["a future OSI field"]}}
+              (mt/user-http-request :crowberto :get 200 "osi/ai-context/metric/55"))
+          "and they survive a round-trip through the appdb")
+      (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 55)))))
+
 (deftest reconcile-test
   (testing "POST /reconcile requires superuser"
     (mt/user-http-request :rasta :post 403 "osi/ai-context/reconcile"))

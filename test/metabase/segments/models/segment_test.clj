@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.models.segment-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -266,3 +268,53 @@
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
                                                   :table_id (mt/id :venues)
                                                   :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))
+
+(deftest definition-value-payload-stays-inert-test
+  (testing "a non-scalar `:value` clause payload cannot survive read normalization as a live clause"
+    ;; Keywordizing a stored `[{"raw": "..."}]` on the way out of the app DB would turn it into the live Honey SQL
+    ;; form `[{:raw "..."}]`, which `expand-macros` would then splice verbatim into any query referencing the Segment.
+    ;; The `:value` clause holds its payload to a scalar, so a crafted non-scalar payload fails normalization and the
+    ;; definition reads back as `{}` rather than as a live clause.
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition {:filter [:= [:field-id (mt/id :venues :price)] 4]}}]
+      ;; write the crafted definition straight to the column, bypassing the model's insert hooks
+      (t2/query-one {:update :segment
+                     :set    {:definition (json/encode
+                                           {:lib/type :mbql/query
+                                            :database (mt/id)
+                                            :stages   [{:lib/type     :mbql.stage/mbql
+                                                        :source-table (mt/id :venues)
+                                                        :filters      [[:= {:lib/uuid (str (random-uuid))}
+                                                                        [:field {:lib/uuid   (str (random-uuid))
+                                                                                 :base-type  :type/Text}
+                                                                         (mt/id :venues :name)]
+                                                                        [:value {:lib/uuid       (str (random-uuid))
+                                                                                 :effective-type :type/Text}
+                                                                         [{:raw "1) UNION SELECT 1 -- "}]]]]}]})}
+                     :where  [:= :id segment-id]})
+      (is (= {} (:definition (t2/select-one :model/Segment :id segment-id)))))))
+
+(deftest definition-must-have-source-table-test
+  (testing "a segment cannot select from a card -- its definition must have a source table"
+    (let [mp         (mt/metadata-provider)
+          card-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query card-query}]
+        (let [definition (-> (lib/query mp (lib.metadata/card mp card-id))
+                             (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Value does not match schema"
+               (mt/with-temp [:model/Segment _ {:table_id   (mt/id :orders)
+                                                :definition definition}]
+                 nil))))))))
+
+(deftest definition-must-have-filters-test
+  (testing "a segment definition without filters is rejected"
+    (let [mp         (mt/metadata-provider)
+          definition (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Value does not match schema"
+           (mt/with-temp [:model/Segment _ {:table_id   (mt/id :orders)
+                                            :definition definition}]
+             nil))))))

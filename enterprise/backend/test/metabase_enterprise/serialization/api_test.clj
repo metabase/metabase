@@ -103,10 +103,13 @@
        (mt/with-premium-features #{:serialization}
          (mt/with-temp [:model/Collection ~coll  {}
                         :model/Dashboard  ~dash  {:collection_id (:id ~coll), :name "thraddash"}
+                        ;; target the test-data database explicitly: `with-temp` defaults `:database_id` to
+                        ;; `(mt/id)`, and an unordered `select-one-pk` can hand back the audit database, which
+                        ;; native queries are (correctly) forbidden from targeting
                         :model/Card       ~card  {:collection_id (:id ~coll), :name "frobinate", :type :model
                                                   :query_type    :native
                                                   :dataset_query {:type     :native
-                                                                  :database (t2/select-one-pk :model/Database)
+                                                                  :database (mt/id)
                                                                   :native   {:query "SELECT 1"}}}]
            ~@body)))))
 

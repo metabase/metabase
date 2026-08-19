@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution]
@@ -336,7 +337,7 @@
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
-   Reads `:impersonation/allow-write?` on the query to decide what to require: when truthy (set by
+   Reads [[metabase.driver.settings/*impersonation-allow-write?*]] to decide what to require: when truthy (bound by
    [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions) require a single
    write statement (insert, update, delete); otherwise require a single select statement.
 
@@ -348,7 +349,7 @@
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
+                      (let [[stmt-type allowed-stmts] (if driver.settings/*impersonation-allow-write?*
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
                             {:keys [is-single-stmt? allowed-stmt-type? sql error]}

@@ -307,7 +307,15 @@
    (mtx/json-transformer)
    (mtx/default-value-transformer)
    {:name :api}
-   {:name :normalize}))
+   {:name :normalize}
+   ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
+   ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
+   ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
+   ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
+   ;;
+   ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
+   ;; them before they are recognized.
+   (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer
   (mtx/transformer
@@ -349,6 +357,10 @@
 
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
+      ;; `:in` and `:path` come back lazy for some schemas (`:multi`, for one) and spell checking `peek`s them
+      (update :errors (partial mapv #(-> %
+                                         (m/update-existing :in vec)
+                                         (m/update-existing :path vec))))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
@@ -369,7 +381,12 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
+           ;; A key the schema does not declare has no schema to describe — `:malli.core/extra-key`
+           ;; against a closed map is the case. Describing nil throws, which would turn a 400 into a
+           ;; 500, so name the problem instead.
+           (assoc-in m error-path (if nested-schema
+                                    (umd/describe nested-schema)
+                                    "unexpected key"))))))
    {}
    (:errors explanation)))
 
@@ -382,9 +399,10 @@
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route "route parameters"
-                                             :query "query parameters"
-                                             :body  "body"))
+                                             :route   "route parameters"
+                                             :query   "query parameters"
+                                             :body    "body"
+                                             :request "request"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
                             errors          (invalid-params-errors explanation)]

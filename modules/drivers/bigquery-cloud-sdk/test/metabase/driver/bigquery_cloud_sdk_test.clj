@@ -14,6 +14,7 @@
    [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1649,3 +1650,8 @@
                                          :value "Gadget"}]))]
       (is (= ["Aerodynamic Leather Computer" "Gadget"]
              (mt/first-row (qp/process-query query)))))))
+
+(deftest ^:parallel create-schema-quotes-schema-name-test
+  (testing "create-schema-if-needed! quotes the target :schema"
+    (is (= "`zinj\\`; DROP SCHEMA victim; CREATE SCHEMA \\`zz`"
+           (sql.u/quote-name :bigquery-cloud-sdk :table "zinj`; DROP SCHEMA victim; CREATE SCHEMA `zz")))))

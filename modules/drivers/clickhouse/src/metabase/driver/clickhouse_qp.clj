@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
@@ -30,7 +31,18 @@
    [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
-(defmethod sql.qp/quote-style :clickhouse [_] :mysql)
+;; ClickHouse applies string-literal escape rules to quoted identifiers, so a backslash escapes the next character --
+;; including the backtick HoneySQL closes an identifier with. The stock `:mysql` dialect doubles backticks but passes
+;; backslashes through, which leaves the closing backtick escapable and the identifier able to break out into raw SQL.
+;; Register a ClickHouse dialect that doubles backslashes first, so each is a literal by the time the backtick lands.
+(sql/register-dialect!
+ ::clickhouse
+ (update (sql/get-dialect :mysql) :quote
+         (fn [mysql-quote]
+           (fn [s]
+             (mysql-quote (str/replace s "\\" "\\\\"))))))
+
+(defmethod sql.qp/quote-style :clickhouse [_] ::clickhouse)
 
 ;; without try, there might be test failures when QP is not yet initialized
 ;; e.g., when a test is preparing the dataset
@@ -212,9 +224,9 @@
        expr
        [:'toIntervalSecond
         [:'minus
-         [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
-         [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
-      [:'toTimeZone expr target-timezone])))
+         [:'timeZoneOffset [:'toTimeZone expr (sql.qp/->honeysql driver target-timezone)]]
+         [:'timeZoneOffset [:'toTimeZone expr (sql.qp/->honeysql driver source-timezone)]]]]]
+      [:'toTimeZone expr (sql.qp/->honeysql driver target-timezone)])))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]
@@ -289,13 +301,28 @@
   [driver [_ field]]
   [:'log10 (sql.qp/->honeysql driver field)])
 
+(defn- format-quantile
+  "Emit ClickHouse's parametric aggregate `quantile(<p>)(<field>)`. Both arguments are formatted through
+  `sql/format-expr`, so a value spliced into either slot from a source card is quoted or parameterized instead of
+  being written verbatim as SQL."
+  [_fn [p field]]
+  (let [[p-sql & p-args]         (sql/format-expr p {:nested true})
+        [field-sql & field-args] (sql/format-expr field {:nested true})]
+    (into [(format "quantile(%s)(%s)" p-sql field-sql)]
+          cat
+          [p-args field-args])))
+
+(sql/register-fn! ::quantile #'format-quantile)
+
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
   [driver [_ field p]]
-  [:raw "quantile(" (sql.qp/->honeysql driver p) ")(" (sql.qp/->honeysql driver field) ")"])
+  [::quantile (sql.qp/->honeysql driver p) (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ arg pattern]]
-  [:'extract (sql.qp/->honeysql driver arg) pattern])
+  ;; compile the pattern through ->honeysql so a non-string pattern (e.g. a stored [:raw ...] form spliced in from a
+  ;; source card) is rejected at multimethod dispatch instead of being emitted verbatim as SQL.
+  [:'extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :split-part]
   [driver [_ text divider position]]
@@ -356,6 +383,7 @@
   [driver value]
   (let [[_ value {base-type :base_type}] value]
     (when (some? value)
+      (sql.qp/check-value-literal driver value)
       (condp #(isa? %2 %1) base-type
         :type/IPAddress [:'toIPv4 value]
         (sql.qp/->honeysql driver value)))))
@@ -430,8 +458,15 @@
   [:sum [:case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
          :else 0]])
 
+(def ^:private clickhouse-interval-units
+  "Allow-list of the temporal-interval units ClickHouse's `INTERVAL` accepts. The unit is interpolated into `[:raw …]`,
+  which does no escaping, so it must be checked against this closed set before `(name unit)` is emitted."
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
+  (when-not (contains? clickhouse-interval-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
   (let [type-info (h2x/type-info dt)]
     (cond-> (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))])
       type-info (h2x/with-type-info type-info))))

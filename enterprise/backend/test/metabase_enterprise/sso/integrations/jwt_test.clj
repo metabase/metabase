@@ -142,6 +142,41 @@
               redirect-url (get-in result [:headers "Location"])]
           (is (str/includes? redirect-url "&return_to=")))))))
 
+(deftest login!-ignores-caller-supplied-user-id-real-jwt-provider-test
+  (testing (str "A caller-supplied :user-id must not name the account, even on a successful JWT login. "
+                "JWT's authenticate resolves identity from :user-data and returns no :user-id of its own, "
+                "so an injected one survives the merge and wins resolution, which reads it before the email "
+                "branch. Drives login! directly rather than /auth/sso because the exposure is a key at the "
+                "request root: the integrations forward the whole Ring request, while Ring namespaces params "
+                "under :params, so an HTTP-level injection never reaches the root and would assert nothing.")
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/User {admin-id :id} {:is_active true, :is_superuser true}]
+        (mt/with-model-cleanup [:model/User]
+          (let [victim-email "jwt-victim@metabase.com"
+                token        (jwt/sign {:email      victim-email
+                                        :first_name "Jay"
+                                        :last_name  "Doubleyou"}
+                                       default-jwt-secret)
+                result       (auth-identity.provider/login!
+                              :provider/jwt
+                              {:token       token
+                               ;; the injection: names an admin the JWT says nothing about
+                               :user-id     admin-id
+                               :device-info {:device_id          "test-device"
+                                             :device_description "Test Browser"
+                                             :ip_address         "127.0.0.1"
+                                             :embedded           false
+                                             :token_exchange     false}})
+                resolved-id  (get-in result [:user :id])]
+            (is (true? (:success? result))
+                "the JWT is valid, so authentication genuinely succeeds")
+            (is (= victim-email (t2/select-one-fn :email :model/User :id resolved-id))
+                "the account logged into is the one the JWT asserted")
+            (is (not= admin-id resolved-id)
+                "the caller-supplied :user-id must not name the account")
+            (is (zero? (t2/count :model/Session :user_id admin-id))
+                "and no session may be minted for the injected admin")))))))
+
 (deftest jwt-saml-both-enabled-test
   (with-jwt-default-setup!
     (sso.test-setup/with-saml-default-setup!
@@ -537,6 +572,32 @@
             (testing "login attributes remain unchanged from initial login"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
+
+(deftest reactivating-login-does-not-restore-superuser-test
+  (testing "SSO reactivating a deactivated admin must not hand back their admin rights"
+    (with-jwt-default-setup!
+      (mt/with-model-cleanup [:model/User]
+        (let [email "offboarded@metabase.com"
+              sign  #(jwt/sign {:email email :first_name "Off" :last_name "Boarded"} default-jwt-secret)
+              login #(client/client-real-response :get 302 "/auth/sso"
+                                                  {:request-options {:redirect-strategy :none}}
+                                                  :return_to default-redirect-uri
+                                                  :jwt (sign))]
+          (is (sso.test-setup/successful-login? (login)))
+          (t2/update! :model/User :email email {:is_superuser true})
+          (t2/update! :model/User :email email {:is_active false})
+          (is (=? {:is_active false, :is_superuser true}
+                  (t2/select-one [:model/User :is_active :is_superuser] :email email))
+              "deactivation leaves the admin flag alone, which is what makes this reachable")
+          (testing "a valid assertion still reopens the account, but not as an admin"
+            (is (sso.test-setup/successful-login? (login)))
+            (is (=? {:is_active true, :is_superuser false}
+                    (t2/select-one [:model/User :is_active :is_superuser] :email email))))
+          (testing "an admin who was never deactivated keeps their rights when they log in"
+            (t2/update! :model/User :email email {:is_superuser true})
+            (is (sso.test-setup/successful-login? (login)))
+            (is (=? {:is_active true, :is_superuser true}
+                    (t2/select-one [:model/User :is_active :is_superuser] :email email)))))))))
 
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
@@ -1148,7 +1209,7 @@
                                       methodical/add-primary-method dispatch-val method))))))))))))
 
 (deftest jwt-without-tenant-claim-mapped-to-tenant-group-fails-loudly-test
-  (testing (str "EMB-2118/#78009: a JWT with no @tenant claim whose groups map to a tenant group must not succeed "
+  (testing (str "a JWT with no @tenant claim whose groups map to a tenant group must not succeed "
                 "and silently create an internal user with a swallowed group-sync failure. The tenant-group "
                 "mismatch must fail the login and roll back user creation.")
     (with-jwt-default-setup!

@@ -63,8 +63,11 @@
   (str "(?:Z|(?:[+-]" time-part "))"))
 
 (def zone-offset-part-regex
-  "Regex for a zone-offset string."
-  (re-pattern offset-part))
+  "Regex for a zone-offset string. Anchored: this is consumed by a Malli `:re` schema, which matches
+  via `re-find` (substring match) rather than `re-matches` -- an unanchored pattern here would accept
+  any string that merely CONTAINS a zone-offset-shaped substring anywhere in it, not just a string
+  that IS one."
+  (re-pattern (str \^ offset-part \$)))
 
 (def ^:const local-date-regex
   "Regex for a local-date string."

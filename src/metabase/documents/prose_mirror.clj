@@ -2,7 +2,18 @@
   "Manipulate the prose mirror ast for documents"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.walk :as walk]
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::ast
+  "A prose-mirror document AST as it arrives at the API. Normalized to keyword keys, the same form the app-DB
+  `:document` column transform yields."
+  [:map
+   {:decode/normalize (fn [ast]
+                        (cond-> ast
+                          (map? ast) walk/keywordize-keys))
+    :closed           false}
+   [:type :string]])
 
 (def card-embed-type
   "Type of a card-embed node"

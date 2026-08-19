@@ -18,7 +18,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`: `:app-user` hides it from sandboxed or impersonated users, `:superuser` restricts it to superusers."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -50,7 +53,7 @@
   ;; :curated? is a precomputed flag every index row carries, so it isn't a per-spec attr; handle it
   ;; explicitly below rather than through the spec-attr gate (which would drop every model). It restricts
   ;; to the curatable models — which include `table`, so curated content stays visible where the
-  ;; verified-only filter dropped it (BOT-1536) — and matches the in-place engine for consistency.
+  ;; verified-only filter dropped it — and matches the in-place engine for consistency.
   (let [required (->> (remove-if-falsey search-ctx :archived?)
                       (#(dissoc % :curated?))
                       keys
@@ -117,7 +120,7 @@
     (if (premium-features/has-feature? :library)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
@@ -145,13 +148,13 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists {:select [[[:inline 1]]]
-                    :from   [[:collection :pc]]
-                    :where  [:and
-                             [:not= :pc.personal_owner_id nil]
-                             [:= :pc.location "/"]
-                             [:like :collection.location
-                              [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [[:collection :pc]]
+                                     :where  [:and
+                                              [:not= :pc.personal_owner_id nil]
+                                              [:= :pc.location "/"]
+                                              [:like :collection.location
+                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
         [:or
@@ -180,7 +183,7 @@
        [:= [:inline 0] [:inline 1]])))
   ([search-context model-col source-type-col]
    [:or
-    [:!= model-col [:inline "transform"]]
+    [:!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn filter-clauses

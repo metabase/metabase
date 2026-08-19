@@ -184,12 +184,12 @@
   [:and
    [:= :core_user.is_active true]
    [:= :core_user.type "personal"]
-   [:not [:exists {:select [1]
-                   :from   [:auth_identity]
-                   :where  [:and
-                            [:= :auth_identity.user_id :core_user.id]
-                            [:= :auth_identity.provider "totp"]
-                            [:not= :auth_identity.confirmed_at nil]]}]]])
+   [:not [:exists ^:allow-subquery {:select [1]
+                                    :from   [:auth_identity]
+                                    :where  [:and
+                                             [:= :auth_identity.user_id :core_user.id]
+                                             [:= :auth_identity.provider "totp"]
+                                             [:not= :auth_identity.confirmed_at nil]]}]]])
 
 (api.macros/defendpoint :get "/admin/overview" :- [:map
                                                    [:encryption_key_set :boolean]

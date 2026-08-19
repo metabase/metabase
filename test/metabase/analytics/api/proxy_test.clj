@@ -75,6 +75,19 @@
                            (throw (java.net.ConnectException. "connection refused")))}
         (client/client :post 502 "analytics-proxy" sample-payload)))))
 
+(deftest event-count-is-bounded-test
+  (testing "the anonymous relay caps the event count so it can't be abused as an amplification vector"
+    ;; the request schema rejects too many events before any outbound forward, so no collector is needed
+    (testing "too many events are rejected with a 400 before forwarding"
+      ;; `client/client` asserts the 400 status itself; too many events fail the request schema, so the handler
+      ;; never runs and no collector is contacted
+      (is (some? (client/client :post 400 "analytics-proxy"
+                                (assoc sample-payload :data (vec (repeat 101 {:e "ue"})))))))
+    (testing "a payload at the event-count limit is still accepted"
+      (with-collector {:status 200 :headers {} :body "{}"}
+        (is (= {} (client/client :post 200 "analytics-proxy"
+                                 (assoc sample-payload :data (vec (repeat 100 {:e "ue"}))))))))))
+
 (deftest no-client-ip-forwarded-test
   (testing "the proxy does not add X-Forwarded-For (preserves the tracker's server-anonymisation intent)"
     (let [captured (atom nil)]

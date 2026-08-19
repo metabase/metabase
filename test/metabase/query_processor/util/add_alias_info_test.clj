@@ -1076,9 +1076,10 @@
                                    "Total_number_of_people_from_each_state_separated_by_00028d48"]]}]}
               (add-alias-info query))))))
 
-;;; in the future when we remove all the roundtripping that happens inside of the QP then we can remove this test
-;;; entirely.
-(deftest ^:parallel additional-keys-should-survive-preprocessing-test
+;;; [[add-alias-info]] runs during compilation, after preprocessing. A query that carries its keys back into
+;;; preprocessing has them dropped there along with every other foreign clause option, since options are how a caller
+;;; would otherwise hand the drivers keys they read.
+(deftest ^:parallel additional-keys-do-not-survive-preprocessing-test
   (driver/with-driver :h2
     (let [query (lib/query
                  meta/metadata-provider
@@ -1096,12 +1097,12 @@
                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :fk-field-id  %product-id
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
-      (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
-               [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
-              (match/match-many (-> query
-                                    add/add-alias-info
-                                    qp.preprocess/preprocess)
-                [:expression & _] &match))))))
+      (is (= [nil nil]
+             (map (fn [[_tag opts]] (not-empty (select-keys opts [::add/source-table ::add/desired-alias])))
+                  (match/match-many (-> query
+                                        add/add-alias-info
+                                        qp.preprocess/preprocess)
+                    [:expression & _] &match)))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Make sure remapped columns are given correct aliases and escaped correctly for drivers like Oracle"

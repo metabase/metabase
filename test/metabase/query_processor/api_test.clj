@@ -27,6 +27,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.settings :as qp.settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -77,10 +78,6 @@
             (Thread/sleep 100)
             (recur (dec retries)))))))
 
-(def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true
-                :js-int-to-string? true}})
-
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
@@ -97,11 +94,13 @@
                   :row_count              1
                   :status                 "completed"
                   :context                "ad-hoc"
-                  :json_query             (-> (mt/mbql-query checkins
-                                                {:aggregation [[:count]]})
-                                              (assoc-in [:query :aggregation] [["count"]])
-                                              (assoc :type "query")
-                                              (merge query-defaults))
+                  :json_query             {:lib/type   "mbql/query"
+                                           :database   (mt/id)
+                                           :stages     [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table (mt/id :checkins)
+                                                         :aggregation  [["count" {:lib/uuid string?}]]}]
+                                           :middleware {:add-default-userland-constraints? true
+                                                        :js-int-to-string?                 true}}
                   :started_at             true
                   :running_time           true
                   :average_execution_time nil
@@ -170,9 +169,10 @@
                          [:error       #"Syntax error in SQL statement"]
                          [:json_query  [:map
                                         [:database   [:= (mt/id)]]
-                                        [:type       [:= "native"]]
-                                        [:native     [:map
-                                                      [:query [:= "foobar"]]]]
+                                        [:lib/type   [:= "mbql/query"]]
+                                        [:stages     [:sequential [:map
+                                                                   [:lib/type [:= "mbql.stage/native"]]
+                                                                   [:native   [:= "foobar"]]]]]
                                         [:middleware [:map
                                                       [:add-default-userland-constraints? [:= true]]
                                                       [:js-int-to-string?                 [:= true]]]]]]
@@ -313,7 +313,12 @@
                     :row_count   5
                     :status      "completed"
                     :context     "ad-hoc"
-                    :json_query  (merge query-defaults card-query)
+                    :json_query  {:lib/type   "mbql/query"
+                                  :database   (mt/id)
+                                  :stages     [{:lib/type    "mbql.stage/mbql"
+                                                :source-card (u/the-id card)}]
+                                  :middleware {:add-default-userland-constraints? true
+                                               :js-int-to-string?                 true}}
                     :database_id (mt/id)}
                    (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
                        (update-in [:data :native_form :query]
@@ -581,22 +586,22 @@
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-                           "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048575")
+                           "FROM \"PUBLIC\".\"VENUES\"")
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
-(deftest ^:parallel compile-disable-max-results-test
+(deftest ^:parallel compile-ignores-caller-supplied-limit-options-test
   (testing "POST /api/dataset/native"
-    (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
-      (let [query (-> (mt/mbql-query venues {:fields [$id $name]})
-                      (assoc-in [:middleware :disable-max-results?] true)
-                      (assoc :pretty false))
-            result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
-        (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
-            (str "Expected no LIMIT in SQL, got: " (:query result)))))))
+    (testing "\nthe request cannot steer the limit the endpoint compiles with"
+      (doseq [[k v] [[:middleware {:disable-max-results? false}]
+                     [:constraints {:max-results 7, :max-results-bare-rows 7}]]]
+        (let [query  (-> (mt/mbql-query venues {:fields [$id $name]})
+                         (assoc :pretty false, k v))
+              result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+          (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+              (str "Expected " k " to be ignored, got: " (:query result))))))))
 
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
@@ -607,9 +612,7 @@
                          "FROM"
                          "  \"PUBLIC\".\"CHECKINS\""
                          "WHERE"
-                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"
-                         "LIMIT"
-                         "  1048575"]
+                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"]
                 :params nil}
                (-> (mt/user-http-request :crowberto :post 200 "dataset/native"
                                          (assoc (mt/mbql-query checkins
@@ -643,9 +646,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (assoc
@@ -660,9 +661,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
@@ -1027,13 +1026,12 @@
 
 (deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
+    (testing "MBQL 5 query should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
-            query             (-> (lib/query metadata-provider venues)
-                                  lib/disable-default-limit)]
+            query             (lib/query metadata-provider venues)]
         (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
-            "Expected no LIMIT in SQL for query with disable-default-limit")))))
+            "Expected no LIMIT in SQL")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
@@ -1069,6 +1067,19 @@
                                            {:query query})]
           ;; The venues table has 100+ rows, so we should get more than default constraints (10)
           (is (> (count (csv/read-csv result)) 10)))))))
+
+(deftest ^:parallel adhoc-pivot-download-json-encoded-query-test
+  (testing "POST /api/dataset/csv accepts the JSON-encoded MBQL 5 :json_query from a pivot response (metabase#70757)"
+    (let [{:keys [json_query]} (mt/user-http-request :crowberto :post 202 "dataset/pivot"
+                                                     (qp.pivot.test-util/pivot-query))
+          {:keys [visualization_settings]} (qp.pivot.test-util/pivot-card)
+          result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                       {:query                  (json/encode json_query)
+                                        :pivot_results          true
+                                        :format_rows            true
+                                        :visualization_settings (json/encode visualization_settings)})
+          rows   (csv/read-csv result)]
+      (is (> (count rows) 1)))))
 
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"
@@ -1173,3 +1184,36 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest ^:synchronized row-limit-ignores-request-options-test
+  (testing "POST /api/dataset"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))
+            base      (mt/mbql-query venues)]
+        (testing "the row limit applies to an ordinary query"
+          (is (= 5 (row-count base))))
+        (testing ":middleware options in the request body do not change it"
+          (is (= 5 (row-count (assoc-in base [:middleware :disable-max-results?] true)))))
+        (testing ":constraints in the request body do not change it either"
+          (is (= 5 (row-count (assoc base :constraints {:max-results           10000
+                                                        :max-results-bare-rows 10000})))))))))
+
+(deftest ^:synchronized pivot-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/pivot"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (let [query (-> (mt/mbql-query venues)
+                      (assoc :pivot_rows [] :pivot_cols [])
+                      (assoc-in [:middleware :disable-max-results?] true))]
+        (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset/pivot" query)))))))))
+
+(deftest ^:synchronized export-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/csv"
+    (binding [qp.settings/*minimum-download-row-limit* 5]
+      (mt/with-temporary-setting-values [download-row-limit 5]
+        (let [query (-> (mt/mbql-query venues)
+                        (assoc-in [:middleware :disable-max-results?] true))
+              rows  (csv/read-csv (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                                        {:query (json/encode query)}))]
+          (testing "the download limit applies, not counting the header row"
+            (is (= 5 (dec (count rows))))))))))

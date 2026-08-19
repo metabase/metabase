@@ -1438,6 +1438,49 @@
         (sync/sync-database! db {:scan :schema})
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
+(deftest get-fks-only-returns-readable-origin-fields-test
+  (testing "GET /api/table/:id/fks does not leak Fields belonging to Tables the caller cannot read"
+    (mt/with-no-data-perms-for-all-users!
+      ;; readable: the Table in the URL, which the FKs point at. unreadable: checkins, where they come from.
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :query-builder)
+      (testing "sanity: the caller can read the destination Table but not the origin one"
+        (is (=? {:id (mt/id :users)}
+                (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :users)))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "table/%d" (mt/id :checkins))))))
+      (testing "an admin still sees the checkins.user_id -> users.id relationship"
+        (is (contains? (set (map :origin_id (mt/user-http-request :crowberto :get 200 (format "table/%d/fks" (mt/id :users)))))
+                       (mt/id :checkins :user_id))))
+      (testing "the caller gets nothing for it"
+        (is (= [] (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))))
+
+(deftest update-table-collection-id-is-held-to-the-publish-bar-test
+  (testing "PUT /api/table/:id publishes a Table into a collection, so it takes more than metadata write permission"
+    (mt/with-temp [:model/Collection {plain-collection-id :id} {}
+                   :model/Table      {table-id :id}            {:db_id (mt/id) :schema "PUBLIC"}]
+      (testing "the destination has to be a Library/Data collection"
+        (is (= "Tables can only be published to Library/Data collections."
+               (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id)
+                                     {:collection_id plain-collection-id})))
+        (is (nil? (t2/select-one-fn :collection_id :model/Table :id table-id))))
+      (testing "a destination that does not exist is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (format "table/%d" table-id)
+                                     {:collection_id Integer/MAX_VALUE}))))
+      (testing "the rest of the body still applies on its own"
+        (is (=? {:display_name "Renamed"}
+                (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id)
+                                      {:display_name "Renamed"}))))))
+  (testing "publishing into a Library/Data collection still works -- the Data Studio Library 'Move' action uses it"
+    (mt/with-temp [:model/Collection {data-collection-id :id} {:type "library-data"}
+                   :model/Table      {table-id :id}           {:db_id (mt/id) :schema "PUBLIC"}]
+      (is (=? {:collection_id data-collection-id}
+              (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id)
+                                    {:collection_id data-collection-id})))
+      (is (= data-collection-id
+             (t2/select-one-fn :collection_id :model/Table :id table-id))))))
+
 ;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test

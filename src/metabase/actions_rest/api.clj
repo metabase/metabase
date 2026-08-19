@@ -14,7 +14,6 @@
    [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -131,6 +130,9 @@
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
+    (when-let [model-id (:model_id action)]
+      (when (not= model-id (:model_id existing-action))
+        (api/write-check :model/Card model-id)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
@@ -192,11 +194,11 @@
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters ms/JSONString]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
-      (actions/fetch-values (json/decode parameters))))
+      (actions/fetch-values parameters)))
 
 (defn- remap-parameter-keys
   "Translate incoming `parameters` keys to the destination parameter `:id` the
@@ -234,7 +236,7 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
-                                               [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (when (= type :http)
