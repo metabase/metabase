@@ -215,7 +215,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
   type: "combo";
   seriesDataKeysWithLabels: DataKey[];
   stackedDisplayWithLabels: StackDisplay[];
-  totalNumberOfDots: number;
+  numberOfDotsBySeriesKey: Record<DataKey, number>;
 };
 
 export type BaseCartesianChartModel = {
