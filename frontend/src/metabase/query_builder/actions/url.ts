@@ -3,7 +3,7 @@ import { parse as parseUrl } from "url";
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import type { Path } from "metabase/router";
-import { getIsNavigationPending, navigate } from "metabase/router";
+import { getPendingNavigationPath, navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -134,8 +134,14 @@ export const updateUrl = createThunkAction(
       // question was just saved into. A `route.lazy` destination keeps the query
       // builder mounted until its chunk resolves, and this navigation would
       // replace that pending one. The URL only mirrors the card, so there is
-      // nothing to write if we are leaving.
-      if (getIsNavigationPending()) {
+      // nothing to write if we are leaving to a different destination.
+      //
+      // Only a pending navigation to a *different* path is someone else's, so
+      // sit out for that one alone. Under React 19 the lazy destination keeps
+      // the navigation pending a render longer, so a blanket check here dropped
+      // the post-save URL sync to the card's own page (metabase#51020).
+      const pendingPath = getPendingNavigationPath();
+      if (pendingPath != null && pendingPath !== to.pathname) {
         return;
       }
 
