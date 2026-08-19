@@ -3,7 +3,7 @@ import { collectTableIds } from "../table-ids";
 describe("table ID collection", () => {
   it("collects unique table sources from nested query payloads", () => {
     expect(
-      collectTableIds(
+      collectTableIds([
         {
           stages: [
             {
@@ -14,7 +14,7 @@ describe("table ID collection", () => {
         },
         { query: { "source-table": 1 } },
         { "source-table": "card__4" },
-      ),
+      ]),
     ).toEqual([1, 2, 3]);
   });
 });

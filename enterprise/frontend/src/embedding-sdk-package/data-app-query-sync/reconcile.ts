@@ -469,7 +469,6 @@ export async function reconcileQueries({
   }
 
   return collectTableIds(
-    ...queries.map((query) => ({ "source-table": query.tableId })),
-    ...resolvedQueries.map(({ resolved }) => resolved.dataset_query),
+    resolvedQueries.map(({ resolved }) => resolved.dataset_query),
   );
 }

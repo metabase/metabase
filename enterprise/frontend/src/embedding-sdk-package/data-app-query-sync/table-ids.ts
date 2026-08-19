@@ -1,7 +1,9 @@
 import { isPositiveInteger } from "./guards";
 
-/** Collect table sources from serialized query payloads. */
-export function collectTableIds(...values: unknown[]): number[] {
+/** Collect table ids from MBQL. */
+export function collectTableIds(
+  values: ReadonlyArray<Record<string, unknown>>,
+): number[] {
   const tableIds = new Set<number>();
 
   const collect = (value: unknown) => {

@@ -430,10 +430,13 @@ export async function reconcileModels({
 
   await removeUnusedModels(context, previousModels, new Set(desired.keys()));
 
-  return collectTableIds(
-    ...[...sourceModels.values()].map((model) => model.dataset_query),
-    ...resolved.flatMap(({ source }) =>
-      source.dataset_query ? [source.dataset_query] : [],
-    ),
+  const modelQueries = [...sourceModels.values()].map(
+    (model) => model.dataset_query,
   );
+
+  const actionQueries = resolved.flatMap(({ source }) =>
+    source.dataset_query ? [source.dataset_query] : [],
+  );
+
+  return collectTableIds([...modelQueries, ...actionQueries]);
 }
