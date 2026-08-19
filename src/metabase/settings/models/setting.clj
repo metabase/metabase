@@ -788,7 +788,10 @@
                     (ex-message e))
          (update-setting! setting-name new-value))))
 
-(defn- obfuscated-value? [v]
+(defn obfuscated-value?
+  "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
+  value rather than entering a new one."
+  [v]
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
 
