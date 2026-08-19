@@ -1,0 +1,150 @@
+## Generation metadata for osi_ai_context (BOT-1747).
+##
+## data_source describes the content currently stored in the row, not an intent. The column defaults to
+## "human" so existing rows remain protected and writers that omit it fail safely. The transition contract
+## lives in metabase.osi.models.osi-ai-context/data-sources.
+##
+## rewrite_requested_at explicitly forces regeneration when it is later than generated_at, even for
+## human-approved content or an unchanged basis. Regenerate updates only this timestamp; basis remains
+## the record of the inputs used for the previous generation.
+##
+## generator_version identifies the prompt-and-model configuration used to generate the row. Nothing
+## reads it in v1, but recording it now allows a later generator upgrade to invalidate converged rows
+## without overloading rewrite_requested_at, which represents an administrator's request.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-21T12:00:00
+      author: christruter
+      comment: Add osi_ai_context.data_source
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: data_source
+                  type: varchar(32)
+                  defaultValue: human
+                  remarks: >-
+                    Source of the content currently in this row - human means a person approved it;
+                    metabot means the generation job wrote it
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: data_source
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:01
+      author: christruter
+      comment: Add osi_ai_context.generated_at
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: generated_at
+                  type: ${timestamp_type}
+                  remarks: When the generation job last wrote this ai_context, or null if never generated
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: generated_at
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:02
+      author: christruter
+      comment: Add osi_ai_context.invalidated_at
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: invalidated_at
+                  type: ${timestamp_type}
+                  remarks: When the described entity last changed in a way that may stale this ai_context
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: invalidated_at
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:03
+      author: christruter
+      comment: Add osi_ai_context.basis_invalidated_at
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: basis_invalidated_at
+                  type: ${timestamp_type}
+                  remarks: The invalidated_at that was current when basis was last stamped
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: basis_invalidated_at
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:04
+      author: christruter
+      comment: Add osi_ai_context.basis
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: basis
+                  type: ${text.type}
+                  remarks: JSON blob of the entity fields this ai_context was generated from
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: basis
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:05
+      author: christruter
+      comment: Add osi_ai_context.rewrite_requested_at
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: rewrite_requested_at
+                  type: ${timestamp_type}
+                  remarks: When a rewrite was last requested; forces regeneration when later than generated_at
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: rewrite_requested_at
+
+  - changeSet:
+      id: v64.2026-07-21T12:00:06
+      author: christruter
+      comment: Add osi_ai_context.generator_version
+      changes:
+        - addColumn:
+            tableName: osi_ai_context
+            columns:
+              - column:
+                  name: generator_version
+                  type: varchar(64)
+                  remarks: Enrichment identity (prompt + model) this row was generated under; a change is what lets a prompt upgrade re-enter converged rows
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: osi_ai_context
+            columnName: generator_version
