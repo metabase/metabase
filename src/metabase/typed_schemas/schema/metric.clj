@@ -275,6 +275,7 @@
   "Returns metric schemas, with optional database and collection scopes."
   [database-ids collection-ids]
   (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
+        :when (nil? (source-card-id card))
         :let [details (metric-details card)]
         :when details]
     (metric-schema details card)))

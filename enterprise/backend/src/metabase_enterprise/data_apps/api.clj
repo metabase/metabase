@@ -223,21 +223,13 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(defn- table-sourced-metric?
-  [card]
-  (some? (:table_id card)))
-
 (defn- metric-cards
-  "Return direct metric references. Data apps only support table-sourced metrics."
+  "Return direct metric references."
   [query]
   (let [card-ids (lib/all-source-card-ids query)
         cards    (if (seq card-ids)
                    (t2/select :model/Card :id [:in card-ids])
                    [])]
-    (api/check-400 (every? #(and (= :metric (:type %))
-                                 (table-sourced-metric? %))
-                           cards)
-                   "Data app queries can only use metrics based on a table.")
     (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
                                    :database_id :display :visualization_settings :description])
                    :dataset_query
