@@ -37,6 +37,8 @@
   - chart-id: ID of the chart to edit
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
+  - query: (optional) fallback query to use when the chart's own :queries is
+    empty, e.g. a chart whose query only lives in the caller's queries-state
 
   Returns a map with result and new-chart-data.
 
@@ -47,7 +49,7 @@
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created"
-  [{:keys [chart-id new-chart-type charts-state]}]
+  [{:keys [chart-id new-chart-type charts-state query]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
 
   ;; Validate chart type
@@ -62,7 +64,13 @@
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
-    (let [new-chart-data (-> chart-data
+    (let [;; The caller may have resolved the query from somewhere other than
+          ;; charts-state (e.g. queries-state, when the chart carries a
+          ;; :query_id but no :queries). Fall back to that so :query on the
+          ;; result below doesn't end up nil while :query-id is set.
+          chart-data     (cond-> chart-data
+                           (not (first (:queries chart-data))) (assoc :queries [query]))
+          new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
       {:new-chart-data new-chart-data
