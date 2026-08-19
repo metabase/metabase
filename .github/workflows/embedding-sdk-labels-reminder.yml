@@ -9,7 +9,7 @@ on:
 
 jobs:
   should-run:
-    uses: ./.github/workflows/should-run.yml
+    uses: ./.github/workflows/util.should-run.yml
     with:
       any-of: frontend_embedding_sdk_package_sources
 

@@ -1,11 +1,15 @@
 name: Files changed
 description: >
   Answer questions about a commit — did it touch these parts of the repo? —
-  using dorny/paths-filter against .github/file-paths.yaml.
+  using dorny/paths-filter against .github/file-paths.yaml. Runs the diff once
+  and turns it into plain booleans, so a caller states which filters it cares
+  about instead of spelling the same OR out across a job's `if:` conditions.
 
-  Checks the repository out when it needs to, runs the diff once, and turns it
-  into plain booleans, so a caller states which filters it cares about instead
-  of spelling the same OR out across a job's `if:` conditions.
+  Requires the repository to be checked out already, as every local action does:
+  the runner loads this action out of the workspace, so a caller cannot reach it
+  without a checkout that has also brought along the filter config. Jobs that
+  exist only to ask this question should call .github/workflows/util.should-run.yml
+  instead, which owns the checkout for you.
 
 inputs:
   any-of:
@@ -58,18 +62,6 @@ inputs:
     description: "Token used to read the changed file list from the API. Defaults to github.token."
     required: false
     default: ""
-  checkout:
-    description: >
-      `auto` (the default) checks the repository out only when the filter file
-      isn't already in the workspace, so a job that has already checked out — or
-      that sparse-checked-out `.github` just to reach this action — doesn't pay
-      for a second clone. `true` always checks out, `false` never does.
-    required: false
-    default: auto
-  fetch-depth:
-    description: "fetch-depth for the checkout this action performs, when it performs one."
-    required: false
-    default: "1"
 
 outputs:
   changed:
@@ -101,30 +93,6 @@ outputs:
 runs:
   using: composite
   steps:
-    # `auto` means: only clone if the filter config isn't already here. A job that
-    # checked the repo out to reach this action in the first place — which a local
-    # action always requires — has nothing to gain from doing it twice.
-    - name: Decide whether to check out
-      id: plan
-      shell: bash
-      env:
-        FILTERS: ${{ inputs.filters }}
-        CHECKOUT: ${{ inputs.checkout }}
-      run: |
-        set -euo pipefail
-        case "$CHECKOUT" in
-          true|false) needed="$CHECKOUT" ;;
-          auto) if [ -f "$FILTERS" ]; then needed=false; else needed=true; fi ;;
-          *) echo "::error::checkout must be one of auto, true, false (got '$CHECKOUT')" >&2; exit 1 ;;
-        esac
-        echo "checkout=$needed" >> "$GITHUB_OUTPUT"
-
-    - name: Checkout repository
-      if: steps.plan.outputs.checkout == 'true'
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
-
     - name: Test which files changed
       id: filter
       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1

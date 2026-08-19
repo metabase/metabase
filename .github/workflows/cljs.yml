@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   should-run:
-    uses: ./.github/workflows/should-run.yml
+    uses: ./.github/workflows/util.should-run.yml
     with:
       any-of: cljs
 
