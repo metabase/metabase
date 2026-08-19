@@ -240,6 +240,9 @@
   [spec]
   (let [schema (redshift.tx/unique-session-schema)]
     {:current-user  (:usr (first (jdbc/query spec ["SELECT current_user AS usr"])))
+     ;; `SET SESSION AUTHORIZATION` (used by the impersonation tests) sticks to a physical connection, and
+     ;; `has_schema_privilege` below is evaluated for whoever the connection currently is.
+     :session-user  (:suser (first (jdbc/query spec ["SELECT session_user AS suser"])))
      :current-db    (:db (first (jdbc/query spec ["SELECT current_database() AS db"])))
      :schema-exists (boolean (seq (jdbc/query spec ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema])))
      :has-usage     (:has_usage (first (jdbc/query spec [(str "SELECT has_schema_privilege(oid, 'USAGE') AS has_usage "
@@ -251,7 +254,20 @@
                                                             "WHERE n.nspname = ? ORDER BY c.relname")
                                                        schema]))]
                       ;; A schema holding all of test-data would otherwise print an unreadable line.
-                      {:count (count rows) :sample (vec (take 50 rows))})}))
+                      {:count (count rows) :sample (vec (take 50 rows))})
+     ;; Mirrors the gating in `redshift/get-tables-sql`, one predicate at a time, so a zero result says which
+     ;; predicate dropped the rows rather than just that they are gone.
+     :syncable      (let [cnt (fn [where params]
+                                (:c (first (jdbc/query spec (into [(str "SELECT count(*) AS c FROM pg_catalog.pg_class c "
+                                                                        "JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid "
+                                                                        "WHERE n.nspname = ? " where)]
+                                                                  params)))))]
+                      {:relkind-only (cnt "AND c.relkind IN ('r','p','v','f','m')" [schema])
+                       :with-usage   (cnt (str "AND c.relkind IN ('r','p','v','f','m') "
+                                               "AND has_schema_privilege(n.oid, 'USAGE')") [schema])
+                       :with-select  (cnt (str "AND c.relkind IN ('r','p','v','f','m') "
+                                               "AND has_schema_privilege(n.oid, 'USAGE') "
+                                               "AND has_table_privilege(c.oid, 'SELECT')") [schema])})}))
 
 (defn- print-session-schema-diagnostic!
   "`log/info` is suppressed in the driver CI jobs, so this prints. Never throws: a failed probe must not mask the
@@ -420,7 +436,12 @@
                 (print-session-schema-diagnostic!
                  "admin"
                  (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift)))
-                (print-session-schema-diagnostic! "db-pool" (sql-jdbc.conn/db->pooled-connection-spec database))
+                ;; Through `do-with-connection-with-options`, not the raw pooled spec: that is the path
+                ;; `describe-database` takes, so the probe sees the same role and connection options it did.
+                (sql-jdbc.execute/do-with-connection-with-options
+                 :redshift database nil
+                 (fn [conn]
+                   (print-session-schema-diagnostic! "db-pool" {:connection conn})))
                 #_{:clj-kondo/ignore [:discouraged-var]}
                 (println (format "[mv-diagnostic describe-database] expected=%s returned=%s"
                                  (pr-str mview-nm) (pr-str table-names)))
