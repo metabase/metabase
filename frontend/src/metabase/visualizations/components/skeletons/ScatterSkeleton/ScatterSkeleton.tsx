@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./ScatterSkeleton.styled";
 
 const ScatterSkeleton = (): JSX.Element => {

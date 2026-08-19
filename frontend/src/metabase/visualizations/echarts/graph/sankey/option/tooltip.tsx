@@ -98,7 +98,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 };
 
 export const getTooltipOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: SankeyChartModel,
 ): TooltipOption => {
   return {

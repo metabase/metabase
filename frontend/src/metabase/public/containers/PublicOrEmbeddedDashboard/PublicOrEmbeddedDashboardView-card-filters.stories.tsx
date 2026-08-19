@@ -1,6 +1,7 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
@@ -54,7 +55,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+function ReduxDecorator(Story: ComponentType, context: StoryContext) {
   // Unjustified type cast. FIXME
   const dashboard = context.args.dashboard as Dashboard;
   const initialState = createMockState({

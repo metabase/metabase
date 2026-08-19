@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Icon } from "metabase/ui";

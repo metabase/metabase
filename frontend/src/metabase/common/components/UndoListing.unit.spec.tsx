@@ -1,3 +1,5 @@
+import { createRef } from "react";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Undo } from "metabase/redux/store/undo";
 
@@ -13,6 +15,9 @@ const AUTO_CONNECT_UNDO: Undo = {
   id: 0,
   _domId: 1,
   canDismiss: true,
+  // Matches the ref the addUndo reducer assigns. react-transition-group needs a
+  // nodeRef under React 19, which removed the findDOMNode fallback.
+  ref: createRef(),
 };
 
 describe("UndoListing", () => {

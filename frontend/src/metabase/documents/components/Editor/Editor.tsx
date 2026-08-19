@@ -94,7 +94,7 @@ export interface EditorProps {
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
-  editorContainerRef?: React.RefObject<HTMLDivElement>;
+  editorContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(

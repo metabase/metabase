@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, JSX, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";

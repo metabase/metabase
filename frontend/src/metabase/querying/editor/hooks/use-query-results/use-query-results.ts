@@ -18,7 +18,7 @@ export function useQueryResults(
   const { lastRunResult, lastRunQuery } = uiState;
   const [runAdhocQuery, { isFetching: isRunning = false }] =
     useLazyGetAdhocQueryQuery();
-  const abortRef = useRef<() => void>();
+  const abortRef = useRef<() => void>(undefined);
 
   const { rawSeries, isRunnable, isResultDirty } = useMemo(() => {
     const lastRunQuestion = lastRunQuery

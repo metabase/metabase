@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { HomeCard } from "../HomeCard";
 
 import {

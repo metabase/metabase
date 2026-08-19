@@ -162,7 +162,7 @@ export interface TreeTableInstance<TData extends TreeNodeData> {
   bottomPinnedRows: Row<TData>[];
 
   virtualizer: Virtualizer<HTMLDivElement, Element>;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   virtualRows: VirtualItem[];
   totalSize: number;
 

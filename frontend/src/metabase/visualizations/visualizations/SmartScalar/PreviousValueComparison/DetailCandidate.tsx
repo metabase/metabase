@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { jt } from "ttag";
 
 import { Text } from "metabase/ui";

@@ -30,7 +30,7 @@ import type { MetricNameMap } from "../utils";
 export interface MetricSearchDropdownRef {
   onArrowDown: () => boolean;
   onArrowUp: () => boolean;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 type MetricSearchDropdownProps = {

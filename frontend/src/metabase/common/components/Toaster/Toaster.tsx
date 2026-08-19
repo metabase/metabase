@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 

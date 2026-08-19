@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { Text } from "metabase/ui";
 

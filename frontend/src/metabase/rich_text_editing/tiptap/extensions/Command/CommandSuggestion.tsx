@@ -457,7 +457,9 @@ export const CommandSuggestion = forwardRef<
                     return (
                       <CommandMenuItem
                         key={`cmd-${cmdIndex}`}
-                        ref={(el) => (itemRefs.current[index] = el)}
+                        ref={(el) => {
+                          itemRefs.current[index] = el;
+                        }}
                         option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
@@ -497,7 +499,9 @@ export const CommandSuggestion = forwardRef<
                         return (
                           <CommandMenuItem
                             key={index}
-                            ref={(el) => (itemRefs.current[index] = el)}
+                            ref={(el) => {
+                              itemRefs.current[index] = el;
+                            }}
                             option={option}
                             isSelected={selectedIndex === index}
                             onClick={() => selectItem(index)}

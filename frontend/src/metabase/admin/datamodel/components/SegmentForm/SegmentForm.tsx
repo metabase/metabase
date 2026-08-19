@@ -1,6 +1,6 @@
 import type { FieldInputProps } from "formik";
 import { useFormik } from "formik";
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";

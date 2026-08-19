@@ -22,7 +22,7 @@ export const TOOLTIP_POINTER_MARGIN = 10;
 export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
 
 export const getTooltipPositionFn =
-  (containerRef: React.RefObject<HTMLDivElement>) =>
+  (containerRef: React.RefObject<HTMLDivElement | null>) =>
   (
     relativePoint: [number, number],
     _params: unknown,
@@ -67,7 +67,7 @@ export const getTooltipPositionFn =
   };
 
 export const getTooltipBaseOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ) => {
   return {
     enterable: true,

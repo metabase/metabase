@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./GaugeSkeleton.styled";
 
 const GaugeSkeleton = (): JSX.Element => {

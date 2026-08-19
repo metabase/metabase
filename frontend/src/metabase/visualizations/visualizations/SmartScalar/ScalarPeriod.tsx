@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Ellipsified, Text } from "metabase/ui";
 

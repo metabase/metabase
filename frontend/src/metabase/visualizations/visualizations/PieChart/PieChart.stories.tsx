@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
+  createWaitForChartsDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import {
@@ -21,6 +22,7 @@ import { data } from "./stories-data";
 export default {
   title: "viz/PieChart",
   component: PieChart,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };
 
 registerVisualization(PieChart);

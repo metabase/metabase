@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { ModerationReview } from "metabase-types/api";
 
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";

@@ -58,7 +58,7 @@ function BoxPlotInner({
   titleMenuItems,
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 

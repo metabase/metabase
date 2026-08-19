@@ -26,7 +26,7 @@ type CollapseSectionProps = {
   iconSize?: number;
   onToggle?: (nextState: boolean) => void;
   rightAction?: React.ReactNode;
-} & HTMLAttributes<HTMLDivElement>;
+} & Omit<HTMLAttributes<HTMLDivElement>, "onToggle">;
 
 export const CollapseSection = ({
   initialState = "collapsed",

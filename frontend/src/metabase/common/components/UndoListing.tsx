@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type ComponentProps,
   Fragment,
   type ReactNode,
   useEffect,
@@ -205,7 +206,7 @@ document.body.appendChild(target);
 // so disable them for altogether.
 const Group = "Cypress" in window ? MockGroup : TransitionGroup;
 
-function MockGroup({ children }: { children: ReactNode }) {
+function MockGroup({ children }: ComponentProps<typeof TransitionGroup>) {
   return <Fragment>{children}</Fragment>;
 }
 

@@ -149,6 +149,24 @@ defineGlobal("clearInterval", () => {});
 defineGlobal("requestAnimationFrame", () => {});
 defineGlobal("cancelAnimationFrame", () => {});
 
+// React 19's scheduler references MessageChannel to post async work. This
+// environment renders synchronously (setTimeout above is a no-op), so the
+// ports are no-ops too. Without this global the bundle throws
+// "ReferenceError: MessageChannel is not defined" while rendering.
+class MockMessagePort {
+  onmessage: unknown = null;
+  postMessage(): void {}
+  start(): void {}
+  close(): void {}
+  addEventListener(): void {}
+  removeEventListener(): void {}
+}
+class MockMessageChannel {
+  port1 = new MockMessagePort();
+  port2 = new MockMessagePort();
+}
+defineGlobal("MessageChannel", MockMessageChannel);
+
 const createMockEvent = (type: string) => ({
   type,
   bubbles: false,
