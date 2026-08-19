@@ -388,7 +388,7 @@
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
         (is (false? @persisted?))))))
 
-(deftest ^:sequential run-cli-appdb-mode-registers-in-process-provider-test
+(deftest ^:synchronized run-cli-appdb-mode-registers-in-process-provider-test
   (testing "appdb mode registers the in-process embedding provider before it scores"
     ;; The standalone CLI skips `metabase.core.core/init!`, where the server registers the provider. Without
     ;; this a synonym axis configured for `in-process` fails with `:provider-not-registered`.
