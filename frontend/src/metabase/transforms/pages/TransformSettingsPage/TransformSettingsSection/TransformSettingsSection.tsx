@@ -9,9 +9,9 @@ import {
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
+import { useMetadataToasts } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { UserInput } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
 import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";

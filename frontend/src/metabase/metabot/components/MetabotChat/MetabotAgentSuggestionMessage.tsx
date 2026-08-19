@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -16,7 +17,6 @@ import {
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";

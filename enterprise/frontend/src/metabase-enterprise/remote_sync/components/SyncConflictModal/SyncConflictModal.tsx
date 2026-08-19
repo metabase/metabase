@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";

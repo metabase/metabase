@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks";
+import { useToast } from "./use-toast";
 
 export const useMetadataToasts = () => {
   const [sendToast] = useToast();

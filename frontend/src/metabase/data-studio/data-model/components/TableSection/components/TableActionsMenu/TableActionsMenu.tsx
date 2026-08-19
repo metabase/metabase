@@ -12,7 +12,7 @@ import {
   trackDataStudioTableFieldsRescanStarted,
   trackDataStudioTableSchemaSyncStarted,
 } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Menu } from "metabase/ui";

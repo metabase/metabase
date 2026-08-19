@@ -6,8 +6,8 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
-import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";

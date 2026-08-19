@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { isDefaultGroup } from "metabase/common/utils/groups";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Group, NumberInput, Stack, Text } from "metabase/ui";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
