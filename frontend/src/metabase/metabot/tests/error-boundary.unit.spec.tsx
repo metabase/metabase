@@ -12,6 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
+import "../components/MetabotChat/MetabotChat";
 import { FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import { getMetabotInitialState } from "../state/reducer-utils";
