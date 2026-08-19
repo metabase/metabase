@@ -13,16 +13,6 @@ import {
  * The plugin registry assigns these routes on every page load, so whatever they
  * name is in the initial bundle. The pages carry the charting and data grid
  * stack, which no other page needs on first paint.
- *
- * They sit under `components/` rather than a `pages/` directory, which is why
- * the route-file lint rule reaches them by name instead.
- *
- * The route shape stays eager, so matching is unchanged. The availability gates
- * above them still decide what renders, but they now decide a tick later: the
- * router resolves a matched route's `lazy` before it commits, which means a page
- * a gate is about to block is fetched anyway. That is a few tens of kilobytes on
- * an admin page whose feature is switched off, in exchange for one splitting
- * mechanism across the app.
  */
 const conversationStatsPage = () =>
   import(
@@ -92,10 +82,6 @@ const cliCallsPage = () =>
  * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
  * hand by the time the click lands. These pages share a chunk, so the first
  * hover covers the whole section.
- *
- * `/usage` renders the stats page or the upsell page depending on the license,
- * so hovering it asks for both. The conversation detail page takes the trailing
- * slash, which keeps the link to the list from dragging it in as well.
  */
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);

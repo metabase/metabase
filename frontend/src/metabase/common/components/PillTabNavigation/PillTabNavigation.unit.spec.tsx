@@ -1,9 +1,9 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 
-import { type MonitorHeaderTab, MonitorHeaderTabs } from "./MonitorHeaderTabs";
+import { type PillTab, PillTabNavigation } from "./PillTabNavigation";
 
-const TABS: MonitorHeaderTab[] = [
+const TABS: PillTab[] = [
   { label: "Usage", to: "/monitor/example/usage", icon: "lineandbar" },
   { label: "Events", to: "/monitor/example/events" },
 ];
@@ -11,14 +11,14 @@ const TABS: MonitorHeaderTab[] = [
 function setup({
   tabs = TABS,
   initialRoute = "/monitor/example/usage",
-}: { tabs?: MonitorHeaderTab[]; initialRoute?: string } = {}) {
+}: { tabs?: PillTab[]; initialRoute?: string } = {}) {
   renderWithProviders(
-    <Route path="*" element={<MonitorHeaderTabs tabs={tabs} />} />,
+    <Route path="*" element={<PillTabNavigation tabs={tabs} />} />,
     { withRouter: true, initialRoute },
   );
 }
 
-describe("MonitorHeaderTabs", () => {
+describe("PillTabNavigation", () => {
   it("renders each tab as a real link to its route", () => {
     setup();
 

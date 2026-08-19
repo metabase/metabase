@@ -2,11 +2,11 @@ import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUrlState } from "metabase/common/hooks/use-url-state";
 import {
-  type MonitorHeaderTab,
-  MonitorHeaderTabs,
-} from "metabase/monitor/components/MonitorHeaderTabs";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
+import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Outlet, useLocation } from "metabase/router";
@@ -122,7 +122,7 @@ export function McpAnalyticsSectionLayout(): ReactNode {
 
   const usagePath = Urls.monitorAiAuditingMcpUsage();
   const eventsPath = Urls.monitorAiAuditingMcpEvents();
-  const tabs: MonitorHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: t`Usage`,
       to: `${usagePath}${location.search}`,
@@ -184,7 +184,7 @@ export function McpAnalyticsSectionLayout(): ReactNode {
               }
             : {})}
         >
-          <MonitorHeaderTabs tabs={tabs} />
+          <PillTabNavigation tabs={tabs} />
 
           <McpToolCallsFilter
             date={date}
