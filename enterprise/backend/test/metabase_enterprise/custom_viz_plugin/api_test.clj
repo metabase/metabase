@@ -789,8 +789,9 @@
         (testing "GET /:id/dev-sse forwards Server-Sent Events from the dev server"
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
                                       http/get (fn [_url _opts]
-                                                 {:body (java.io.ByteArrayInputStream.
-                                                         (.getBytes "data: hello\n\n" "UTF-8"))})]
+                                                 {:headers {:content-type "text/event-stream"}
+                                                  :body    (java.io.ByteArrayInputStream.
+                                                            (.getBytes "data: hello\n\n" "UTF-8"))})]
             (let [resp (mt/user-http-request-full-response
                         :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
               (testing "response is served as an event stream"

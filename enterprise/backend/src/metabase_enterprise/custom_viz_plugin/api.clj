@@ -365,10 +365,14 @@
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
         (try
-          (let [resp (http/get sse-url {:as               :stream
-                                        :socket-timeout   0
-                                        :connection-timeout 5000
-                                        :headers          {"Accept" "text/event-stream"}})]
+          (let [resp (http/get sse-url (merge cache/dev-http-opts
+                                              {:as             :stream
+                                               :socket-timeout 0
+                                               :headers        {"Accept" "text/event-stream"}}))]
+            ;; nothing but an event stream may be forwarded to the browser -- an internal service the dev URL
+            ;; was pointed at answers with something else, and this is the sink that would relay it verbatim
+            (when-not (= "text/event-stream" (cache/response-content-type resp))
+              (throw (ex-info "Dev server did not return an event stream" {:status-code 400})))
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
               (loop []

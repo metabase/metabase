@@ -86,14 +86,15 @@
 (defn address-allowed-for-network-policy?
   "Whether `addr` is allowed by `policy`.
 
-  `:external-only` allows only globally routable public addresses. `:allow-private` additionally allows private,
-  unique-local, and carrier-grade NAT addresses, but still rejects loopback, link-local, any-local, multicast, and
-  reserved addresses. `:allow-all` imposes no address restriction."
+  `:external-only` allows only globally routable public addresses. `:allow-private` adds private, unique-local,
+  and carrier-grade NAT addresses. `:allow-loopback` adds loopback, for the caller whose legitimate target
+  is a server on the same host."
   [policy ^InetAddress addr]
   (case policy
-    :external-only (public-address? addr)
-    :allow-private (or (public-address? addr) (private-address? addr))
-    :allow-all     true
+    :external-only  (public-address? addr)
+    :allow-private  (or (public-address? addr) (private-address? addr))
+    :allow-loopback (or (public-address? addr) (private-address? addr) (.isLoopbackAddress addr))
+    :allow-all      true
     (throw (ex-info (str "Unknown network policy: " (pr-str policy)) {:policy policy}))))
 
 ;; one or more scheme segments, so nested schemes (`jdbc:postgresql://...`) are stripped too

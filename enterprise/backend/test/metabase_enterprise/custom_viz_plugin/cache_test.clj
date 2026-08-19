@@ -140,16 +140,36 @@
 
 (deftest fetch-dev-manifest-test
   (testing "returns a well-formed manifest"
-    (with-redefs [http/get (constantly {:body (json/encode {:name "dev-viz"})})]
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name "dev-viz"})})]
       (is (= {:name "dev-viz"}
              (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "returns nil when the manifest cannot be fetched"
     (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
       (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
   (testing "rejects a structurally invalid manifest, same as the upload path"
-    (with-redefs [http/get (constantly {:body (json/encode {:name 123})})]
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
                             (cache/fetch-dev-manifest "http://localhost:5174"))))))
+
+(deftest dev-fetch-requires-the-dev-servers-content-type-test
+  (testing "a response that isn't what the dev server would have served is refused, not parsed --
+            a dev URL may still be pointed at an internal service, and this bounds what it can hand back"
+    (doseq [[what ctype body] [["an internal admin page" "text/html" "<html>secrets</html>"]
+                               ["a response with no content type" nil "{\"name\":\"x\"}"]]]
+      (testing what
+        (with-redefs [http/get (constantly {:headers (when ctype {:content-type ctype})
+                                            :body    body})]
+          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
+                                (cache/fetch-dev-manifest "http://localhost:5174")))
+          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
+                                (cache/fetch-dev-bundle "http://localhost:5174")))))))
+  (testing "the content types the CLI's own dev server serves are accepted"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
+                                        :body    "export default {}"})]
+      (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
+          "a charset parameter on the header is stripped before comparison"))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}

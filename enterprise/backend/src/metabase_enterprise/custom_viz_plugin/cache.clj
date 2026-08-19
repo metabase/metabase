@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.files :as u.files]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -294,13 +295,31 @@
   []
   #{"http" "https"})
 
+(def ^:private dev-network-policy
+  :allow-loopback)
+
+(defn- internal-address-ex
+  [^String label ^String url]
+  (ex-info (str label " resolves to an internal network address.")
+           {:status-code 400 :url url}))
+
 (defn- validate-url!
-  "Validate that a URL uses an allowed scheme. Throws on invalid input."
+  "Validate that a URL uses an allowed scheme and does not name an address the dev fetches would refuse to
+   connect to. Throws on invalid input."
   [^String url ^String label]
   (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
     (when-not (contains? (allowed-schemes) scheme)
       (throw (ex-info (str label " must use http or https, got: " scheme)
-                      {:status-code 400 :url url})))))
+                      {:status-code 400 :url url})))
+    (when-not (u.http/host-allowed-for-network-policy? dev-network-policy url)
+      (throw (internal-address-ex label url)))))
+
+(defn- rethrow-if-refused!
+  "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
+   the surrounding catch would report a refused address as a dev server that happens to be down."
+  [^Exception e ^String url]
+  (when (:ssrf (ex-data e))
+    (throw (internal-address-ex "Dev bundle URL" url))))
 
 (defn dev-base-url
   "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
@@ -313,35 +332,75 @@
   ^String [^String base-url ^String relative-path]
   (str (dev-base-url base-url) relative-path))
 
-(def ^:private http-opts
-  {:socket-timeout 5000 :connection-timeout 5000})
+(def dev-http-opts
+  "clj-http options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
+  {:socket-timeout     5000
+   :connection-timeout 5000
+   :redirect-strategy  :none
+   :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
+
+;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
+;; at an internal service. Requiring the content-type the dev server would have answered with narrows what
+;; such a service can hand back: an admin console answers text/html, not application/javascript.
+
+(def ^:private bundle-content-types
+  "What a dev server serves `index.js` as. The CLI's own server says `application/javascript`
+   (`custom-viz/src/templates/vite.config.ts`); `text/javascript` is the equally standard spelling that
+   another dev server may use."
+  #{"application/javascript" "text/javascript"})
+
+(def ^:private manifest-content-types
+  #{"application/json" "text/json"})
+
+(defn response-content-type
+  "The response's content-type, lower-cased and stripped of any `; charset=...`. Nil when the header is absent."
+  [resp]
+  (some-> (get-in resp [:headers :content-type])
+          (str/split #";") first str/trim u/lower-case-en))
+
+(defn- check-content-type!
+  "Throw a 400 unless the response's content-type is one of `allowed`. A missing header is refused too -- every
+   path the dev server serves sets one, so its absence means whatever answered is not a dev server."
+  [resp allowed ^String url]
+  (let [ctype (response-content-type resp)]
+    (when-not (contains? allowed ctype)
+      (throw (ex-info (str "Dev bundle URL returned " (or ctype "no content type")
+                           ", expected " (str/join " or " (sort allowed)))
+                      {:status-code 400 :url url})))))
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL.
    Returns {:content str :hash str}, or nil when the dev server is transiently
    unavailable (e.g. mid-rebuild)."
   [^String base-url]
-  (try
-    (let [content (:body (http/get (dev-url base-url bundle-rel-path)
-                                   (assoc http-opts :as :string)))]
+  ;; the try covers only the request: a refusal from the checks below is a 400 for the caller, not a dev
+  ;; server that happens to be down, and must not be swallowed into nil here.
+  (when-let [resp (try
+                    (http/get (dev-url base-url bundle-rel-path)
+                              (assoc dev-http-opts :as :string))
+                    (catch Exception e
+                      (rethrow-if-refused! e base-url)
+                      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
+                      nil))]
+    (check-content-type! resp bundle-content-types base-url)
+    (let [content (:body resp)]
       {:content content
-       :hash    (string-hash content)})
-    (catch Exception e
-      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
-      nil)))
+       :hash    (string-hash content)})))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
    Returns the parsed manifest map or nil on failure. Throws ex-info with
    `:status-code 400` when the manifest is structurally invalid."
   [^String base-url]
-  (when-let [parsed (try
-                      (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
-                                                     (assoc http-opts :as :string)))]
-                        (manifest/parse-manifest content))
-                      (catch Exception e
-                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-                        nil))]
+  (when-let [parsed (when-let [resp (try
+                                      (http/get (dev-url base-url (manifest/manifest-path))
+                                                (assoc dev-http-opts :as :string))
+                                      (catch Exception e
+                                        (rethrow-if-refused! e base-url)
+                                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+                                        nil))]
+                      (check-content-type! resp manifest-content-types base-url)
+                      (manifest/parse-manifest (:body resp)))]
     (when-let [error (manifest/validation-error parsed)]
       (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
                       {:status-code 400})))
@@ -351,8 +410,11 @@
   "Fetch a static asset from a dev base URL.
    Returns the bytes or nil on failure."
   ^bytes [^String base-url ^String asset-name]
-  (:body (http/get (dev-url base-url (asset-rel-path asset-name))
-                   (assoc http-opts :as :byte-array))))
+  (let [resp (http/get (dev-url base-url (asset-rel-path asset-name))
+                       (assoc dev-http-opts :as :byte-array))]
+    ;; the manifest already fixes the image type this asset must be, so there is no separate allowlist
+    (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
+    (:body resp)))
 
 (defn set-or-clear-dev-bundle!
   "Set or clear the dev base URL for a plugin. Persists to the database."
