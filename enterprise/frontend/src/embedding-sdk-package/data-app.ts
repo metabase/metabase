@@ -33,7 +33,6 @@ export type {
   MetabaseQueryOptions,
   MetabaseQueryObject,
   OrderByDirection,
-  QuestionColumnReference,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
