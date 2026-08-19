@@ -23,7 +23,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container (look for `is_container="true"` — collections and dashboards), `read_resource` on its URI to enumerate members instead of re-searching.
+2. If a top hit is a container — its element name is `<collection>` or `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching.
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -70,7 +70,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
 
 **Best Practices:**
-- When a `search` returns a collection result with `is_container="true"`, prefer `read_resource` on its URI over re-searching the same concept.
+- When a `search` returns a `<collection>` result, prefer `read_resource` on its URI over re-searching the same concept.
 
 ## Table resources
 
@@ -146,7 +146,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - User asks "what's on this dashboard?" → `metabase://dashboard/158/items`
 
 **Best Practices:**
-- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
+- Treat dashboards as containers — when search returns a `<dashboard>` hit, use `/items` to list its cards instead of re-searching for the same concept.
 - Every dashcard entry carries a `dashcard_id`. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — and dashcard entries carry their tab's `tab_id`, grouped in tab order.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
