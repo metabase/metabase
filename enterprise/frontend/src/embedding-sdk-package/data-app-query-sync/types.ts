@@ -36,7 +36,7 @@ export interface ResourceLockfile {
   metrics: MetricLockEntry[];
 }
 
-export interface DataAppMetricCard extends MetabaseCard {
+export interface DataAppMetric extends MetabaseCard {
   type: "metric";
 }
 

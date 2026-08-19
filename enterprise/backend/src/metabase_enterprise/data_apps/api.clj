@@ -100,7 +100,7 @@
              [:map {:closed false}
               [:source QuerySource]]]]])
 
-(def ^:private MetricCardResponse
+(def ^:private MetricResponse
   [:map {:closed true}
    [:id                     ms/PositiveInt]
    [:name                   ms/NonBlankString]
@@ -117,7 +117,7 @@
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]
    [:table_ids [:sequential {:distinct true} ms/PositiveInt]]
-   [:metrics [:sequential MetricCardResponse]]])
+   [:metrics [:sequential MetricResponse]]])
 
 (def ^:private ResourcePermissionsRequest
   [:map
@@ -223,18 +223,18 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(defn- metric-cards
+(defn- referenced-metrics
   "Return direct metric references."
   [query]
-  (let [card-ids (lib/all-source-card-ids query)
-        cards    (if (seq card-ids)
-                   (t2/select :model/Card :id [:in card-ids])
-                   [])]
+  (let [metric-ids (lib/all-source-card-ids query)
+        metrics    (if (seq metric-ids)
+                     (t2/select :model/Card :id [:in metric-ids])
+                     [])]
     (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
                                    :database_id :display :visualization_settings :description])
                    :dataset_query
                    lib/prepare-for-serialization)
-          (sort-by :id cards))))
+          (sort-by :id metrics))))
 
 (api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
   "Resolve an authored data-app query definition into a serializable Metabase query."
@@ -255,7 +255,7 @@
                          set
                          sort
                          vec)
-     :metrics       (metric-cards query)}))
+     :metrics       (referenced-metrics query)}))
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
   "Create or reuse a data app draft before its first repository import."

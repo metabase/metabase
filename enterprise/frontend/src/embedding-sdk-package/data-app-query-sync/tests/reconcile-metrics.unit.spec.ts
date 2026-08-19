@@ -2,7 +2,7 @@ import {
   reconcileMetrics,
   reconcileRemovedMetrics,
 } from "../reconcile-metrics";
-import type { DataAppMetricCard, ResourceLockfile } from "../types";
+import type { DataAppMetric, ResourceLockfile } from "../types";
 
 import { makeApp, setupResourceSyncTests } from "./setup";
 
@@ -66,7 +66,7 @@ describe("metric reconciliation", () => {
     });
 
     expect(client.updateMetric).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith("unchanged metric: card 251 -> card 404");
+    expect(log).toHaveBeenCalledWith("unchanged metric: 251 -> 404");
   });
 
   it("copies a missing metric and rewrites metric references", async () => {
@@ -83,7 +83,7 @@ describe("metric reconciliation", () => {
       metrics: [],
     };
 
-    const metric: DataAppMetricCard = {
+    const metric: DataAppMetric = {
       id: 251,
       name: "Lifetime value",
       type: "metric",
@@ -126,6 +126,38 @@ describe("metric reconciliation", () => {
     expect(resolvedQuery.dataset_query).toEqual({
       stages: [{ aggregation: [["metric", {}, 404]] }],
     });
+  });
+
+  it("fails before copying metrics when a resolved query omits a metric", async () => {
+    const client = {
+      getCard: jest.fn(),
+      updateMetric: jest.fn(),
+      createMetric: jest.fn(),
+      deleteCard: jest.fn(),
+    };
+
+    await expect(
+      reconcileMetrics({
+        appRoot: makeApp(),
+        collectionId: 35,
+        resolvedQueries: [
+          {
+            dataset_query: {
+              stages: [{ aggregation: [["metric", {}, 251]] }],
+            },
+            metrics: [],
+          },
+        ],
+        lockfile: { queries: [], models: [], metrics: [] },
+        client,
+        log: jest.fn(),
+      }),
+    ).rejects.toThrow(
+      "These metrics are missing and cannot be reconciled: 251.",
+    );
+
+    expect(client.createMetric).not.toHaveBeenCalled();
+    expect(client.updateMetric).not.toHaveBeenCalled();
   });
 
   it("deletes a copied metric when no query references it", async () => {
@@ -174,6 +206,6 @@ describe("metric reconciliation", () => {
 
     expect(client.deleteCard).toHaveBeenCalledWith(404);
     expect(lockfile.metrics).toEqual([]);
-    expect(log).toHaveBeenCalledWith("deleted metric: card 404");
+    expect(log).toHaveBeenCalledWith("deleted metric: 404");
   });
 });
