@@ -1472,6 +1472,14 @@ Maximum tokens for LLM responses.
 
 The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.
 
+### `MB_LLM_MINI_MODEL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-mini-model`
+
+The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.
+
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
 - Type: string
@@ -2903,7 +2911,7 @@ When enabled, run pivot queries as a single native GROUPING SETS query on driver
 - Default: `all`
 - [Configuration file name](./config-file.md): `user-visibility`
 
-Note: Sandboxed users will never see suggestions.
+Note: Users with row or column security restrictions will never see suggestions.
 
 ### `MB_WAREHOUSE_ALLOWED_NETWORKS`
 
