@@ -2,7 +2,8 @@
   "facades": [
     "frontend/src/metabase/router/",
     "frontend/src/metabase/ui/",
-    "frontend/src/metabase/redux/"
+    "frontend/src/metabase/redux/",
+    "frontend/src/metabase/dayjs/"
   ],
   "packages": {
     "@mantine/core/styles.css": "global",
@@ -130,6 +131,7 @@
     "frontend/src/metabase/dashboard/visualizations/Heading/index.ts": "self",
     "frontend/src/metabase/dashboard/visualizations/Text/index.ts": "self",
     "frontend/src/metabase/databases/utils/schema.ts": "self",
+    "frontend/src/metabase/dayjs/index.ts": "self",
     "frontend/src/metabase/dev.ts": "entry",
     "frontend/src/metabase/documents/components/editor-extensions/CardEmbed/CardEmbedNode.tsx": "self",
     "frontend/src/metabase/embedding-sdk/theme/default-component-theme.ts": "self",
@@ -179,6 +181,7 @@
     "frontend/src/metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode.tsx": "self",
     "frontend/src/metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode.tsx": "self",
     "frontend/src/metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText.tsx": "self",
+    "frontend/src/metabase/routes-public.tsx": "self",
     "frontend/src/metabase/routes.tsx": "entry",
     "frontend/src/metabase/schema.ts": "self",
     "frontend/src/metabase/setup/components/InviteUserForm/InviteUserForm.tsx": "self",
@@ -197,13 +200,11 @@
     "frontend/src/metabase/ui/components/overlays/Popover/index.tsx": "global",
     "frontend/src/metabase/utils/csp-setup.ts": "global",
     "frontend/src/metabase/utils/date-time.ts": "self",
-    "frontend/src/metabase/utils/dayjs.ts": "global",
     "frontend/src/metabase/utils/i18n.ts": "global",
     "frontend/src/metabase/utils/react-compat.unit.ts": "self",
     "frontend/src/metabase/utils/scripts-sandbox/distortions-blocked-apis.ts": "self",
     "frontend/src/metabase/utils/scripts-sandbox/distortions-dom-mutate.ts": "self",
     "frontend/src/metabase/utils/settings.ts": "self",
-    "frontend/src/metabase/value-formatting/date.tsx": "self",
     "frontend/src/metabase/value-formatting/geography.ts": "self",
     "frontend/src/metabase/visualizations/components/ClickActions/utils.ts": "self",
     "frontend/src/metabase/visualizations/components/EChartsRenderer/EChartsRenderer.tsx": "global",
@@ -216,11 +217,5 @@
     "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.tsx": "self",
     "frontend/src/metabase/visualizer/visualizer.slice.ts": "self"
   },
-  "unclassified": [
-    "enterprise/frontend/src/metabase-enterprise/upload_management/utils.ts",
-    "frontend/src/metabase/common/components/AppBanner/LicenseTokenMissingBanner/useLicenseTokenMissingBanner.ts",
-    "frontend/src/metabase/common/components/AppBanner/utils.ts",
-    "frontend/src/metabase/data-studio/components/RevisionHistory/RevisionItem.tsx",
-    "frontend/src/metabase/query_builder/components/view/QuestionLastUpdated/utils.tsx"
-  ]
+  "unclassified": []
 }
