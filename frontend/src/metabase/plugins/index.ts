@@ -104,6 +104,7 @@ export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MULTI_FACTOR_AUTH,
   type AuthChallengeFormProps,
+  type AuthEnrollmentFormProps,
 } from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,

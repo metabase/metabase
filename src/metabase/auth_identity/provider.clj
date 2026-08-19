@@ -247,6 +247,20 @@
   (fn [provider _request]
     provider))
 
+(mu/defn- apply-inactive-check
+  "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
+
+  If the user does not have `:is_active true`, the response is not successful and an error message is returned."
+  [request :- [:map
+               [:user [:maybe [:map
+                               [:id ms/PositiveInt]
+                               [:is_active :boolean]]]]]]
+  (cond-> request
+    (and (nil? (:error request))
+         (not (get-in request [:user :is_active]))) (assoc :success? false
+                                                           :error disabled-account-snippet
+                                                           :message disabled-account-message)))
+
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
@@ -320,11 +334,14 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
+    (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
-      (and (true? (:success? $)) (:user $) (not (:mfa/pending? $))) (create-session! provider))
-    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
-                    :mfa/pending? :mfa/methods :mfa/first-factor])))
+      (and (true? (:success? $))
+           (:user $)
+           (not (:mfa/pending? $))) (create-session! provider))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
+                    :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.

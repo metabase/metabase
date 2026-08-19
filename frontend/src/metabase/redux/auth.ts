@@ -8,7 +8,9 @@ import { Api } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import {
   type MfaChallengeResponse,
+  type MfaEnrollmentResponse,
   isMfaChallenge,
+  isMfaEnrollment,
   sessionApi,
 } from "metabase/api/session";
 import { getUser, refetchCurrentUser } from "metabase/current-user";
@@ -75,6 +77,7 @@ interface LoginPayload {
 
 export interface LoginResult {
   mfaChallenge?: MfaChallengeResponse;
+  mfaEnrollment?: MfaEnrollmentResponse;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -89,6 +92,13 @@ export const login = createAsyncThunk(
       if (isMfaChallenge(result)) {
         const challenge: LoginResult = { mfaChallenge: result };
         return challenge;
+      }
+
+      // No session cookie is set on this branch either — the user completes enrollment at
+      // `POST /api/session/mfa/enroll`, and that request is what logs them in.
+      if (isMfaEnrollment(result)) {
+        const enrollment: LoginResult = { mfaEnrollment: result };
+        return enrollment;
       }
 
       await dispatch(completeLogin()).unwrap();

@@ -1,5 +1,9 @@
 import type { LoginData } from "metabase/redux/auth";
-import type { MfaMethod, PasswordResetTokenStatus } from "metabase-types/api";
+import type {
+  MfaEnrollResponse,
+  MfaMethod,
+  PasswordResetTokenStatus,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 
@@ -13,12 +17,32 @@ export interface MfaChallengeResponse {
   challenge_token: string;
 }
 
-export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+/**
+ * Returned when MFA is required instance-wide but this user has no second factor yet, so they must
+ * enroll before a session is issued. `secret`/`otpauth_uri` are the same payload the authenticated
+ * `POST /api/ee/mfa/enroll` returns; `methods` is always `["totp"]` here — the gate deliberately
+ * offers no email fallback during enrollment.
+ */
+export interface MfaEnrollmentResponse extends MfaEnrollResponse {
+  mfa_enrollment: true;
+  methods: MfaMethod[];
+  enrollment_token: string;
+}
+
+export type CreateSessionResponse =
+  | SessionResponse
+  | MfaChallengeResponse
+  | MfaEnrollmentResponse;
 
 export const isMfaChallenge = (
   response: CreateSessionResponse,
 ): response is MfaChallengeResponse =>
   "mfa_required" in response && response.mfa_required === true;
+
+export const isMfaEnrollment = (
+  response: CreateSessionResponse,
+): response is MfaEnrollmentResponse =>
+  "mfa_enrollment" in response && response.mfa_enrollment === true;
 
 export interface GoogleAuthData {
   token: string;
