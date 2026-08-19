@@ -5,7 +5,7 @@ on:
   # pushed branch, so it is the one trigger that does not require this file to be on master.
   push:
     branches:
-      - bgrabow/profile-tests-workflow
+      - bgrabow/profile-tests-workflow-premerge-test
   workflow_call:
     inputs:
       skip:
