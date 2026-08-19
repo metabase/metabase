@@ -45,9 +45,12 @@
 
   Normalizing against `::lib.schema/query` re-stamps `:lib/type`/`:lib/uuid` and
   restores canonical enum values, so the subsequent `->legacy-MBQL` conversion
-  succeeds regardless of whether the query arrived fresh from a tool (keyword
-  `:lib/type`), rehydrated from JSON state (string enum values), or serialized by
-  the frontend (no `:lib/*` keys at all)."
+  succeeds whether the query arrived fresh from a tool (keyword `:lib/type`),
+  rehydrated from JSON state (string enum values), or serialized by the frontend
+  (no `:lib/*` keys at all) — with one exception: a `:lib/*`-stripped query whose
+  positional refs (e.g. an order-by on the query's own aggregation) no longer
+  resolve after normalize still fails conversion. In that case the raw,
+  unconverted MBQL 5 is returned rather than raising."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query) (or (:lib/type query) (:stages query)))
