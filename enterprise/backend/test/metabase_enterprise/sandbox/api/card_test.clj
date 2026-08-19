@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.card-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -9,6 +10,9 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+;;; required for the `::sandboxing/sandbox?` keyword below
+(comment sandboxing/keep-me)
 
 (deftest sandboxed-users-can-save-cards-test
   (testing "Users with sandboxed permissions should be able to save cards"
@@ -216,3 +220,16 @@
                                        :dataset_query (mt/mbql-query categories)}]
         (is (=? {:data {:is_sandboxed true}}
                 (qp/process-query (qp/userland-query (:dataset_query card)))))))))
+
+(deftest ^:synchronized source-card-persisted-sandbox-marker-is-ignored-test
+  (testing "a ::sandbox? marker persisted inside a source Card's query does not bypass sandboxing when the Card is used as a source card"
+    (met/with-gtaps! {:gtaps {:venues {:query      (mt/mbql-query venues)
+                                       :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (letfn [(count-rows [query] (ffirst (get-in (qp/process-query query) [:data :rows])))]
+        (testing "sanity: the sandbox limits venues to 10 rows"
+          (is (= 10 (count-rows (mt/mbql-query venues {:aggregation [[:count]]})))))
+        (let [marked-query (assoc-in (mt/mbql-query venues {}) [:query ::sandboxing/sandbox?] true)]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query marked-query}]
+            (testing "running that Card as a source card is still sandboxed (10 rows, not the full 100)"
+              (is (= 10 (count-rows (mt/mbql-query nil {:source-table (str "card__" card-id), :aggregation [[:count]]})))))))))))

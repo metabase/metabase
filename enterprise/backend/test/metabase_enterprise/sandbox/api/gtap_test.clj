@@ -305,11 +305,63 @@
                                            :table_id table-id-2
                                            :group_id group-id))))))))))
 
+(deftest bulk-upsert-sandboxes-undeclared-keys-test
+  (testing "PUT /api/permissions/graph"
+    (testing "a key the sandbox schema doesn't declare is dropped rather than written to the sandbox"
+      (mt/with-temp [:model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (mt/with-premium-features #{:sandboxes}
+          (with-gtap-cleanup!
+            (let [graph  (-> (data-perms.graph/api-graph)
+                             (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id :sandboxed}})
+                             (assoc :sandboxes [{:table_id table-id
+                                                 :group_id group-id
+                                                 :is_admin true}]))
+                  result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (=? [{:table_id table-id, :group_id group-id}]
+                      (:sandboxes result)))
+              (is (nil? (:is_admin (first (:sandboxes result))))))))))))
+
 (deftest bulk-upsert-sandboxes-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in the request, but the :sandboxes feature
              is not enabled"
-      (with-redefs [premium-features/enable-sandboxes? (constantly false)]
-        (mt/with-temporary-setting-values [premium-embedding-token nil]
-          (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                                                                 (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}]))))))))
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (with-redefs [premium-features/enable-sandboxes? (constantly false)]
+          (mt/with-temporary-setting-values [premium-embedding-token nil]
+            (mt/assert-has-premium-feature-error
+             "Sandboxes"
+             (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                   (assoc (data-perms.graph/api-graph)
+                                          :sandboxes [{:group_id group-id, :table_id table-id, :card_id 1}])))))))))
+
+(deftest bulk-upsert-sandboxes-keeps-remappings-test
+  (testing "PUT /api/permissions/graph"
+    (testing "a remapping the schema can't make sense of is refused, rather than being dropped and leaving the
+             sandbox it was meant to restrict filtering on nothing"
+      (mt/with-temp [:model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (mt/with-premium-features #{:sandboxes}
+          (with-gtap-cleanup!
+            (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                  (-> (data-perms.graph/api-graph)
+                                      (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id :sandboxed}})
+                                      (assoc :sandboxes [{:table_id table-id
+                                                          :group_id group-id
+                                                          :attribute_remappings {"State" 1}}])))
+            (let [sandbox-id (t2/select-one-fn :id :model/Sandbox :table_id table-id :group_id group-id)
+                  stored     #(t2/select-one-fn :attribute_remappings :model/Sandbox :id sandbox-id)]
+              (is (= {"State" 1} (stored)))
+              (doseq [[label remappings] [["a remapping onto an object"        {"State" {:raw "DELETE FROM core_user"}}]
+                                          ["a remapping onto nothing"         {"State" nil}]
+                                          ["a remapping onto a HoneySQL form" {"State" [:raw "DELETE FROM core_user"]}]
+                                          ["a remapping onto a number zero"   {"State" 0}]
+                                          ["an unnamed attribute"             {"" 1}]]]
+                (testing label
+                  (mt/user-http-request :crowberto :put 400 "permissions/graph"
+                                        (assoc (data-perms.graph/api-graph)
+                                               :sandboxes [{:id sandbox-id
+                                                            :attribute_remappings remappings}]))
+                  (is (= {"State" 1} (stored))
+                      "the sandbox kept the remapping it had"))))))))))

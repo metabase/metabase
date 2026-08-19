@@ -74,9 +74,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   # Postgres driver tests
   postgres-driver-test:
@@ -124,9 +121,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   # Frontend unit tests
   frontend-unit-tests:
@@ -179,9 +173,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-tests.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   # Summary job
   minimal-tests-result:

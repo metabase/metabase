@@ -158,9 +158,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-java-tests.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@v1
@@ -197,7 +194,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
-        run: clojure -M:ee:drivers:check
+        run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
     if: ${{ !inputs.skip }}

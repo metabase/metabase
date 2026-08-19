@@ -196,7 +196,10 @@
                              :model/Card       card  {:collection_id (:id coll), :name "frobinate", :type :model
                                                       :query_type    :native
                                                       :dataset_query {:type     :native
-                                                                      :database (t2/select-one-pk :model/Database)
+                                                                      ;; must be the test DB explicitly: `select-one-pk` is
+                                                                      ;; unordered and can return the audit DB, which
+                                                                      ;; correctly refuses to host native queries
+                                                                      :database (mt/id)
                                                                       :native   {:query "SELECT 1"}}}]
 
                 (testing "We clear the card from the search index"

@@ -60,6 +60,21 @@
                     [:like [:lower :db.name] "%birds%"]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
+(deftest ^:parallel add-sort-clause-test
+  (testing "the two directions we accept, in any case, and as a keyword"
+    (doseq [direction ["asc" "ASC" :asc]]
+      (is (= {:order-by [[:t.name :asc]]}
+             (#'common/add-sort-clause {} "t.name" direction))))
+    (is (= {:order-by [[:t.name :desc]]}
+           (#'common/add-sort-clause {} "t.name" "desc"))))
+  (testing "anything else is refused rather than emitted"
+    (doseq [direction ["test" "ascending" "" nil]]
+      (testing (pr-str direction)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid sort direction"
+             (#'common/add-sort-clause {} "t.name" direction)))))))
+
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
     (mt/with-premium-features #{:audit-app}
@@ -74,6 +89,50 @@
           (testing :offset
             (is (= [(second expected-rows)]
                    (mt/rows (run-query query-type :args [100], :offset 1))))))))))
+
+(deftest resolve-internal-query-does-not-load-arbitrary-namespaces-test
+  (testing "`:fn` names a namespace to require, so it must not be able to name just any namespace"
+    (testing "a namespace that does not exist is a 400, not a load failure"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"cannot resolve"
+           (audit.i/resolve-internal-query "not.a.real.namespace/whatever"))))
+    (testing "and so is a real namespace that is not an audit page"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"cannot resolve"
+           (audit.i/resolve-internal-query "metabase.util/whatever"))))
+    (testing "including one that merely starts like an audit page"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"cannot resolve"
+           (audit.i/resolve-internal-query "metabase-enterprise.audit-app.pages.queries.evil/whatever")))))
+  (testing "the audit page itself still resolves"
+    (is (=? {:metadata sequential?}
+            (audit.i/resolve-internal-query "metabase-enterprise.audit-app.pages.queries/bad-table")))))
+
+(deftest internal-query-args-are-typed-test
+  (testing "`:fn` dispatches the schema, so the one internal query there is types its own args"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:audit-app}
+        (doseq [args [["" "" "" "card.name" "test"]      ; sort-direction is an enum
+                      ["" "" "" "nonsense.col" "asc"]    ; and so is sort-column
+                      ["" "" "" "card.name"]             ; too few
+                      [{} "" "" "card.name" "asc"]]]     ; a filter is a string
+          (testing (pr-str args)
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (qp/process-query {:type :internal
+                                            :fn   "metabase-enterprise.audit-app.pages.queries/bad-table"
+                                            :args args})))))))))
+
+(deftest query-limit-and-offset-must-be-integers-test
+  (testing "paging params are spliced into the SQL by `add-default-params`, so they have to be integers"
+    (mt/with-premium-features #{:audit-app}
+      (doseq [[k v] [[:limit "1"] [:limit "test"] [:limit -1] [:limit {}] [:limit [1]]
+                     [:offset "1"] [:offset "test"] [:offset -1]]]
+        (testing (pr-str k v)
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (run-query ::legacy-format-query-fn :args [100] k v))))))))
 
 (deftest ^:parallel CTES->subselects-test
   (testing "FROM substitution"

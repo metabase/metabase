@@ -315,7 +315,7 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 
-  it("should be able to view a model-based metric without collection access to the source model", () => {
+  it("should not be able to view a model-based metric without collection access to the source model", () => {
     cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
@@ -335,9 +335,11 @@ describe("scenarios > metrics > dashboard", () => {
       cy.signIn("nocollection");
       H.visitDashboard(dashboard.id);
     });
+    // Running the metric requires read access to the source model it is built on;
+    // without it the dashcard query is refused, so the value never renders.
     H.getDashboardCard()
-      .findByTestId("scalar-container")
-      .findByText("18,760")
+      .findByText(/don.t have permission to see this card/i)
       .should("be.visible");
+    H.getDashboardCard().findByText("18,760").should("not.exist");
   });
 });

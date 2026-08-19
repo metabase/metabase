@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections-rest.api :as api.collection]
-   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-helpers :refer [without-library]]
@@ -1135,103 +1134,6 @@
                    {:name "subcollection" :authority_level "official"}}
                  (into #{} (map #(select-keys % [:name :authority_level]))
                        items))))))))
-
-(deftest collection-items-include-can-run-adhoc-query-test
-  (testing "GET /api/collection/:id/items and GET /api/collection/root/items"
-    (testing "include_can_run_adhoc_query parameter controls hydration of can_run_adhoc_query flag"
-      (mt/with-temp [:model/Collection {collection-id :id} {}
-                     :model/Card {card-id :id} {:collection_id collection-id}
-                     :model/Card {root-card-id :id} {:collection_id nil}]
-        (testing "When include_can_run_adhoc_query=false (default), can_run_adhoc_query is not included"
-          (let [collection-items (:data (mt/user-http-request :rasta :get 200
-                                                              (str "collection/" collection-id "/items")))
-                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))]
-            (is (not (contains? (first collection-items) :can_run_adhoc_query)))
-            (is (not (some #(contains? % :can_run_adhoc_query) root-items)))))
-
-        (testing "When include_can_run_adhoc_query=true, can_run_adhoc_query is included for cards"
-          (let [collection-items (:data (mt/user-http-request :rasta :get 200
-                                                              (str "collection/" collection-id "/items")
-                                                              :include_can_run_adhoc_query true))
-                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
-                                                        :include_can_run_adhoc_query true))
-                card-item (first (filter #(= (:id %) card-id) collection-items))
-                root-card-item (first (filter #(= (:id %) root-card-id) root-items))]
-            (is (contains? card-item :can_run_adhoc_query))
-            (is (boolean? (:can_run_adhoc_query card-item)))
-            (is (contains? root-card-item :can_run_adhoc_query))
-            (is (boolean? (:can_run_adhoc_query root-card-item)))))
-
-        (testing "can_run_adhoc_query is only added to card-like models (card, dataset, metric)"
-          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:collection_id collection-id}
-                         :model/Collection {subcoll-id :id} {:location (collection/children-location
-                                                                        (t2/select-one :model/Collection :id collection-id))}]
-            (let [items (:data (mt/user-http-request :rasta :get 200
-                                                     (str "collection/" collection-id "/items")
-                                                     :include_can_run_adhoc_query true))
-                  dashboard-item (first (filter #(= (:id %) dashboard-id) items))
-                  collection-item (first (filter #(= (:id %) subcoll-id) items))]
-              (is (not (contains? dashboard-item :can_run_adhoc_query)))
-              (is (not (contains? collection-item :can_run_adhoc_query))))))))))
-
-(deftest can-run-adhoc-query-threshold-exceeded-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When card count exceeds threshold, can_run_adhoc_query returns true (skips permission check)"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 2]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With 3 cards and threshold of 2, all cards should have can_run_adhoc_query=true
-                ;; even though user doesn't have data permissions (computation was skipped)
-                (is (= 3 (count items)))
-                (is (every? #(true? (:can_run_adhoc_query %)) items))))))))))
-
-(deftest can-run-adhoc-query-threshold-not-exceeded-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When card count is at or below threshold, normal hydration occurs (returns false without perms)"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 5]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With 2 cards and threshold of 5, actual permission check occurs
-                ;; User doesn't have data permissions, so all should be false
-                (is (= 2 (count items)))
-                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
-
-(deftest can-run-adhoc-query-threshold-disabled-test
-  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
-    (testing "When threshold is 0, always compute permissions regardless of card count"
-      (let [card-query {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :venues)}}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
-                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 0]
-              (let [items (:data (mt/user-http-request :rasta :get 200
-                                                       (str "collection/" collection-id "/items")
-                                                       :include_can_run_adhoc_query true))]
-                ;; With threshold of 0, hydration should always occur
-                ;; User doesn't have data permissions, so all should be false
-                (is (= 3 (count items)))
-                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
 
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -3465,3 +3367,19 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+(deftest update-collection-cannot-set-type-test
+  (testing "PUT /api/collection/:id"
+    (testing "cannot change a Collection's :type -- enrolling it in remote sync hands it to the auto-import job"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta :put 200 (str "collection/" coll-id)
+                                {:type "remote-synced", :name "renamed"})
+          (is (nil? (t2/select-one-fn :type :model/Collection :id coll-id)))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id)))
+          (testing "the rest of the update still applies"
+            (is (= "renamed" (t2/select-one-fn :name :model/Collection :id coll-id))))
+          (testing "and an admin cannot either"
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:type "remote-synced"})
+            (is (nil? (t2/select-one-fn :type :model/Collection :id coll-id)))))))))

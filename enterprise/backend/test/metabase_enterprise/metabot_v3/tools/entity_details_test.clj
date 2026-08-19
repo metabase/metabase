@@ -1,10 +1,13 @@
 (ns metabase-enterprise.metabot-v3.tools.entity-details-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -217,3 +220,81 @@
             (is (= ["African" "American"] (:field_values name-field)))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+
+(deftest get-dashboard-details-rejects-non-integer-id-test
+  (testing (str "a non-integer dashboard-id reaches t2/select-one's queryable position and would run as "
+                "raw SQL on the app DB. get-dashboard-details must reject it before any query, the same way "
+                "get-report-details/get-metric-details do.")
+    (doseq [[label bad-id] {"a raw SQL string"      "SELECT 1 AS id; DROP TABLE t; --"
+                            "a {:raw ...} map"       {:raw "1); DROP TABLE t; --"}
+                            "a honeysql-ish vector"  [:raw "1=1"]
+                            "nil"                    nil}]
+      (testing label
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid dashboard_id format"
+             (entity-details/get-dashboard-details {:dashboard-id bad-id}))
+            "the guard throws before the value can reach the app DB")
+        (try
+          (entity-details/get-dashboard-details {:dashboard-id bad-id})
+          (catch clojure.lang.ExceptionInfo e
+            (is (= 400 (:status-code (ex-data e))))
+            (is (:agent-error? (ex-data e))))))))
+  (testing "an integer id still passes the guard and resolves normally"
+    (is (= {:output "dashboard not found"}
+           (entity-details/get-dashboard-details {:dashboard-id Integer/MAX_VALUE})))))
+
+;;; permission gates on FK-related table expansion
+
+(deftest related-tables-omit-blocked-fk-targets-test
+  (testing "a table the user is Blocked from is neither surfaced as a related table nor mentioned anywhere
+            in the payload, even when the user manages that table's metadata"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/view-data :blocked)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :people) :perms/manage-table-metadata :yes)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [output  (:structured-output
+                       (entity-details/get-table-details {:table-id           (mt/id :orders)
+                                                          :with-field-values? false}))
+              related (:related_tables output)
+              user-id (some #(when (= "USER_ID" (:name %)) %) (:fields output))]
+          (testing "the readable FK neighbour is still expanded"
+            (is (some #(= (mt/id :products) (:id %)) related)))
+          (testing "the blocked FK neighbour is absent"
+            (is (not-any? #(= (mt/id :people) (:id %)) related)))
+          (testing "the FK column itself is retained"
+            (is (some? user-id)))
+          (testing "no People column or table name appears anywhere in the payload"
+            (is (not (str/includes? (pr-str output) "PEOPLE")))))))))
+
+(deftest related-tables-include-readable-fk-targets-test
+  (testing "control: with view-data on every table, both FK neighbours are expanded"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [output  (:structured-output
+                       (entity-details/get-table-details {:table-id           (mt/id :orders)
+                                                          :with-field-values? false}))
+              related (:related_tables output)]
+          (is (some #(= (mt/id :products) (:id %)) related))
+          (is (some #(= (mt/id :people) (:id %)) related)))))))
+
+(deftest sandboxed-table-details-omit-restricted-columns-test
+  (testing "a column the sandbox's source card omits does not appear in the sandboxed table's own details"
+    (met/with-gtaps! {:gtaps {:venues {:query {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (mt/id :venues)
+                                                          :fields       [[:field (mt/id :venues :id) nil]
+                                                                         [:field (mt/id :venues :name) nil]
+                                                                         [:field (mt/id :venues :category_id) nil]]}}}}}
+      (let [output (:structured-output
+                    (entity-details/get-table-details {:table-id           (mt/id :venues)
+                                                       :with-field-values? false}))
+            names  (into #{} (map :name) (:fields output))]
+        (testing "the sandboxed-in columns are present"
+          (is (contains? names "NAME")))
+        (testing "the column outside the sandbox's column set is absent"
+          (is (not (contains? names "PRICE"))))))))

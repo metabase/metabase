@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -196,6 +197,28 @@
                  (or (when (instance? java.net.ConnectException e)
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
+
+(deftest ^:parallel convert-timezone-escapes-hostile-zone-string-test
+  (testing "Oracle splices :convert-timezone's zone string into SQL as an inline literal --
+            it must escape every zone string correctly, regardless of whether it's attacker-shaped"
+    (doseq [zone ["Z\\' AT TIME ZONE 'UTC"    ; the PoC
+                  "'  AT TIME ZONE 'UTC"
+                  "''  AT TIME ZONE 'UTC"
+                  "'''  AT TIME ZONE 'UTC"
+                  "\\'  AT TIME ZONE 'UTC"
+                  "UTC'  AT TIME ZONE 'UTC"
+                  "O'Brien's Zone"]]         ; non-malicious: just a string with apostrophes in it
+      (testing (str "zone = " (pr-str zone))
+        (let [[sql-str] (sql/format-expr
+                         (h2x/unwrap-typed-honeysql-form
+                          (sql.qp/->honeysql :oracle [:convert-timezone :mock_expr zone "UTC"])))
+              ;; every ' in a correctly-escaped SQL literal is doubled -- search for the zone string
+              ;; escaped this way, as a literal (not regex) substring, via Pattern/quote.
+              correctly-escaped (str/replace zone "'" "''")
+              pattern           (re-pattern (str "'" (java.util.regex.Pattern/quote correctly-escaped) "'"))]
+          (is (re-find pattern sql-str)
+              (str "the correctly-escaped zone literal ('" correctly-escaped "') does not appear in the "
+                   "compiled SQL -- the zone string was not escaped correctly. Compiled: " (pr-str sql-str))))))))
 
 (deftest timezone-id-test
   (mt/test-driver :oracle

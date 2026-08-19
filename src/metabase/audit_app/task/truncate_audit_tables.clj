@@ -24,6 +24,7 @@
      {:delete-from (keyword table-name)
       :where [:in
               :id
+              ^:allow-subquery
               {:select [:id]
                :from (keyword table-name)
                :where [:<=

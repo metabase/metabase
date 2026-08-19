@@ -178,7 +178,7 @@ describe("scenarios > metrics > question", () => {
     });
   });
 
-  it("should be able to view a model-based metric without collection access to the source model", () => {
+  it("should not be able to view a model-based metric without collection access to the source model", () => {
     cy.signInAsAdmin();
     cy.updateCollectionGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
@@ -193,13 +193,14 @@ describe("scenarios > metrics > question", () => {
       cy.signIn("nocollection");
       H.visitMetric(card.id, { hasDataAccess: false });
     });
-    cy.findByTestId("scalar-container")
-      .findByText("18,760")
+    // Running the metric requires read access to the source model it is built on;
+    // without it the query is refused, so the value never renders. The exact copy of the
+    // permission error differs between the error page and the query-builder error view
+    // ("…to run this query"), so match the common prefix.
+    cy.get("main")
+      .findByText(/don.t have permission to/i)
       .should("be.visible");
-    cy.findByTestId("qb-header-action-panel").within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
+    cy.get("main").findByText("18,760").should("not.exist");
   });
 
   it("should not show 'Replace existing question' option when saving an edited ad-hoc question from a metric (metabase#48555)", () => {

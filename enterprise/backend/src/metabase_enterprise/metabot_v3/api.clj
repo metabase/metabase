@@ -86,7 +86,8 @@
             [:context ::metabot-v3.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot-v3.client.schema/messages]]
-            [:state :map]]]
+            ;; opaque LLM conversation state, round-tripped to the AI service -- a bare `:map` would strip it to `{}`
+            [:state ms/Map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
@@ -98,7 +99,8 @@
   "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
   [_route-params
    _query-params
-   feedback :- :map]
+   ;; free-form JSON proxied straight to Harbormaster -- a bare `:map` would strip it to `{}`
+   feedback :- ms/Map]
   (let [token (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]
     (api/check-400 (not (or (str/blank? token) (str/blank? base-url)))
