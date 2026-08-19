@@ -11,6 +11,7 @@ export function snapshot(name) {
  * "setup" |
  * "without-models" |
  * "default" |
+ * "large-collection-tree" |
  * "mongo-5" |
  * "postgres-12" |
  * "postgres-writable" |

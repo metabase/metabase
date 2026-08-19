@@ -30,26 +30,14 @@ const createMockCollectionTreeItem = (
   }),
 });
 
-const setupEndpoints = ({
-  collections = [createMockCollectionTreeItem()],
-}: {
-  collections?: Collection[];
-} = {}) => {
-  fetchMock.get("path:/api/collection", collections);
-};
-
 const setup = ({
   collections = [createMockCollectionTreeItem()],
-  collectionsList = [createMockCollectionTreeItem()],
   // Unjustified type cast. FIXME
   dirtyCollectionIds = [] as number[],
 }: {
   collections?: Collection[];
-  collectionsList?: Collection[];
   dirtyCollectionIds?: number[];
 } = {}) => {
-  setupEndpoints({ collections: collectionsList });
-
   // Configure mock to return true for dirty collection IDs
   mockIsCollectionDirty.mockImplementation(
     (id: number | string | undefined) =>
@@ -123,17 +111,18 @@ describe("CollectionsNavTree", () => {
         name: "Regular Collection",
         is_remote_synced: false,
       });
+      // Nothing synced means the changes endpoint reports nothing dirty, which is what the badge reads. The tree
+      // does not check `is_remote_synced` itself: doing so cost a read of every collection to answer a question the
+      // dirty state had already answered.
       setup({
         collections: [collection],
-        collectionsList: [collection],
-        dirtyCollectionIds: [1],
+        dirtyCollectionIds: [],
       });
 
       await waitFor(() => {
         expect(screen.getByText("Regular Collection")).toBeInTheDocument();
       });
 
-      // Badge should not be present since collection is not remote-synced
       expect(
         screen.queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
@@ -147,7 +136,6 @@ describe("CollectionsNavTree", () => {
       });
       setup({
         collections: [collection],
-        collectionsList: [collection],
         dirtyCollectionIds: [1],
       });
 
@@ -168,7 +156,6 @@ describe("CollectionsNavTree", () => {
       });
       setup({
         collections: [syncedCollection],
-        collectionsList: [syncedCollection],
         dirtyCollectionIds: [],
       });
 
@@ -195,7 +182,6 @@ describe("CollectionsNavTree", () => {
       });
       setup({
         collections: [dirtyCollection, cleanCollection],
-        collectionsList: [dirtyCollection, cleanCollection],
         dirtyCollectionIds: [1],
       });
 

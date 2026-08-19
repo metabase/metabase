@@ -628,6 +628,7 @@
    :uses #{api
            app-db
            collections
+           config
            eid-translation
            events
            lib-be

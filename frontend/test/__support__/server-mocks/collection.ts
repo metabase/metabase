@@ -28,13 +28,64 @@ export interface CollectionEndpoints {
   rootCollection?: Collection;
   trashCollection?: Collection;
   currentUserId?: number;
+  /**
+   * Makes `GET /api/collection/tree?lazy=true` behave the way it does on an instance too large to return in one
+   * response: a level at a time, with `has_children` in place of `children`. Off by default, because a small
+   * fixture models a small instance, where the real endpoint returns the whole tree.
+   */
+  simulateLargeInstance?: boolean;
+  /** Page size the lazy tree mock applies to each level. Small by default so tests can reach a second page. */
+  lazyPageSize?: number;
+  /**
+   * Holds back lazy responses that carry `expand-to`, so a test can look at the sidebar while a navigation's request
+   * is still in flight.
+   */
+  delayExpandTo?: boolean;
+  /**
+   * Ids whose children the root response carries, cut off at the page size, the way the endpoint delivers every
+   * level between the root and `expand-to`. Their nodes come back with `children` *and* `children_has_more`, which
+   * is a different starting point from a node whose children were never read.
+   */
+  deliverTruncatedChildrenFor?: number[];
 }
+
+/** Mirrors what the tree endpoint does to a node whose children it has not read. */
+const withoutChildren = (collection: Collection): Collection => {
+  const { children, ...rest } = collection;
+  return { ...rest, has_children: (children?.length ?? 0) > 0 };
+};
+
+/** Mirrors what the tree endpoint does when the whole tree fits in one response. */
+const withChildFlags = (collection: Collection): Collection => ({
+  ...collection,
+  has_children: (collection.children?.length ?? 0) > 0,
+  children: collection.children?.map(withChildFlags),
+});
+
+const findCollection = (
+  collections: Collection[],
+  id: string,
+): Collection | undefined => {
+  for (const collection of collections) {
+    if (String(collection.id) === id) {
+      return collection;
+    }
+    const match = findCollection(collection.children ?? [], id);
+    if (match) {
+      return match;
+    }
+  }
+};
 
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
   currentUserId,
+  simulateLargeInstance = false,
+  lazyPageSize = 50,
+  delayExpandTo = false,
+  deliverTruncatedChildrenFor = [],
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -76,6 +127,38 @@ export function setupCollectionsEndpoints({
     const url = new URL(call.url);
     const excludeArchived = url.searchParams.get("exclude-archived") === "true";
 
+    const isLazy = url.searchParams.get("lazy") === "true";
+
+    const levelOffset = Number(url.searchParams.get("level-offset") ?? 0);
+    const withDeliveredChildren = (collection: Collection): Collection => {
+      const children = collection.children ?? [];
+      return {
+        ...withoutChildren(collection),
+        children: children.slice(0, lazyPageSize).map(withoutChildren),
+        children_has_more: children.length > lazyPageSize,
+      };
+    };
+
+    const asLevel = (collection: Collection) =>
+      deliverTruncatedChildrenFor.includes(Number(collection.id))
+        ? withDeliveredChildren(collection)
+        : simulateLargeInstance
+          ? withoutChildren(collection)
+          : withChildFlags(collection);
+
+    /** Mirrors the endpoint: a page of the level, plus where the next page starts. */
+    const asPage = (level: Collection[]) => ({
+      data: level.slice(levelOffset, levelOffset + lazyPageSize).map(asLevel),
+      has_more: level.length > levelOffset + lazyPageSize,
+      next_offset: levelOffset + lazyPageSize,
+    });
+
+    // A lazy request for one node's children returns just that node's direct children.
+    const parentId = url.searchParams.get("collection-id");
+    if (parentId != null) {
+      return asPage(findCollection(collections, parentId)?.children ?? []);
+    }
+
     const excludeOtherUserCollections =
       url.searchParams.get("exclude-other-user-collections") === "true";
 
@@ -85,7 +168,7 @@ export function setupCollectionsEndpoints({
     const requestedNamespaces =
       namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
 
-    return collections.filter((collection) => {
+    const visible = collections.filter((collection) => {
       // Filter out other users' personal collections if requested
       // But keep the current user's personal collection
       if (
@@ -118,6 +201,15 @@ export function setupCollectionsEndpoints({
 
       return true;
     });
+
+    if (!isLazy) {
+      return visible;
+    }
+    const page = asPage(visible);
+    if (delayExpandTo && url.searchParams.get("expand-to") != null) {
+      return new Promise((resolve) => setTimeout(() => resolve(page), 5000));
+    }
+    return page;
   });
 }
 

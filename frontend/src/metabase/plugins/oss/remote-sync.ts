@@ -9,6 +9,7 @@ import type { TagType } from "metabase/api/tags";
 import type { UseQuery } from "metabase/api/types/rtk";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import type { TreeController } from "metabase/common/components/tree/useTree";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
@@ -24,6 +25,11 @@ export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
   onSelect?: (item: ITreeNodeItem) => void;
+  tree?: TreeController;
+  onNodeHover?: (id: number | string) => void;
+  hasMore?: boolean;
+  onLoadMore?: (parentId: number | string | null) => void;
+  loadingMoreIds?: Set<number | string | null>;
 };
 
 export interface GitSettingsModalProps {

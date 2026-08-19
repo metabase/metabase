@@ -64,7 +64,20 @@ export interface Collection {
   can_restore: boolean;
   can_delete: boolean;
   archived?: boolean;
+  /**
+   * Absent together with `has_children: true` means the children exist but have not been fetched yet. Only the lazy
+   * collection tree leaves it out.
+   */
   children?: Collection[];
+  /**
+   * Only set by the lazy collection tree. Lets a node show an expand toggle before its children are fetched.
+   */
+  has_children?: boolean;
+  /**
+   * Only set by the lazy collection tree. True when this node's own level of children was cut short by the page
+   * size, so more of them can be loaded.
+   */
+  children_has_more?: boolean;
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
@@ -221,9 +234,21 @@ export type ListCollectionsTreeRequest = {
   namespace?: CollectionNamespace;
   namespaces?: string[];
   shallow?: boolean;
+  lazy?: boolean;
+  "expand-to"?: RegularCollectionId | null;
   "collection-id"?: RegularCollectionId | null;
+  /** Where to resume within a single level. Named to avoid the framework-wide `offset` paging param. */
+  "level-offset"?: number;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
+};
+
+/** Lazy tree responses are paged, so they arrive wrapped. */
+export type ListCollectionsTreeLazyResponse = {
+  data: Collection[];
+  has_more: boolean;
+  /** Where the next page of the requested level starts. Not derivable from `data.length`. */
+  next_offset: number;
 };
 
 export interface DeleteCollectionRequest {
