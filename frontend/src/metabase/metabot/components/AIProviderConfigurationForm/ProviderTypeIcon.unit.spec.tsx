@@ -29,6 +29,7 @@ describe("ProviderTypeIcon", () => {
     "mistral",
     "zai",
     "moonshot",
+    "deepseek",
     "google",
     "azure",
     "bedrock",

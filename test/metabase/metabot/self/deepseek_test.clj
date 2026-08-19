@@ -18,6 +18,10 @@
 
 (def ^:private user-message {:role :user :content "hi"})
 
+(def ^:private byok-credentials
+  "What a resolved DeepSeek connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-deepseek-byok" :base-url "https://api.deepseek.com"})
+
 (defn- signed-reasoning
   [signature]
   {:type              :reasoning
@@ -167,10 +171,10 @@
 
 (defn- aisdk-parts!
   [events]
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-test"]
-    (with-redefs [debug/capture-stream (fn [r _] r)
-                  http/request         (fn [_] (sse-response events))]
-      (into [] (self.core/aisdk-xf) (deepseek/deepseek {:input [user-message]})))))
+  (with-redefs [debug/capture-stream (fn [r _] r)
+                http/request         (fn [_] (sse-response events))]
+    (into [] (self.core/aisdk-xf) (deepseek/deepseek {:input       [user-message]
+                                                      :credentials byok-credentials}))))
 
 (deftest deepseek-uses-claude-stream-translation-test
   (let [parts (aisdk-parts! stream-events)]
@@ -221,23 +225,39 @@
 (deftest deepseek-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-byok"
-                                         llm.settings/llm-proxy-base-url   "https://proxy.example"]
-        (testing "prefers BYOK over the ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "uses the connection's own credentials rather than the ai proxy"
           (is (=? {:method  :post
                    :url     "https://api.deepseek.com/anthropic/v1/messages"
-                   :headers {"Authorization"     "Bearer sk-byok"
+                   :headers {"Authorization"     "Bearer sk-deepseek-byok"
                              "anthropic-version" "2023-06-01"}}
-                  (captured-request! #(deepseek/deepseek-raw {:input [user-message]})))))
-        (testing "does not fall back to the ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key nil]
+                  (captured-request! #(deepseek/deepseek-raw {:input       [user-message]
+                                                              :credentials byok-credentials})))))
+        (testing "does not fall back to the ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No DeepSeek API key is set"
+               (deepseek/deepseek-raw {:input [user-message]}))))
+        (testing "does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-deepseek-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No DeepSeek API key is set"
-                 (deepseek/deepseek-raw {:input [user-message]})))))))))
+                 (deepseek/deepseek-raw {:input       [user-message]
+                                         :credentials {:api-key ""}})))))))))
+
+(deftest deepseek-raw-explicit-credentials-test
+  (testing "the connection's base URL is used over the configured one"
+    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-base-url "https://configured.example"]
+      (is (=? {:url     "https://explicit.example/anthropic/v1/messages"
+               :headers {"Authorization" "Bearer sk-deepseek-explicit"}}
+              (captured-request! #(deepseek/deepseek-raw
+                                   {:input       [user-message]
+                                    :credentials {:api-key  "sk-deepseek-explicit"
+                                                  :base-url "https://explicit.example"}})))))))
 
 (deftest deepseek-raw-ai-proxy-unsupported-test
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key nil]
+  (testing "ai-proxy? throws before credentials are even consulted"
     (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -245,7 +265,7 @@
            (deepseek/deepseek-raw {:input [user-message] :ai-proxy? true}))))))
 
 (deftest list-models-ai-proxy-unsupported-test
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key nil]
+  (testing "ai-proxy? throws before credentials are even consulted"
     (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -254,13 +274,13 @@
 
 (deftest chat-and-catalog-share-one-base-url-test
   (testing "the base URL carries neither /anthropic nor /v1 — both paths hang off the same root"
-    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-test"]
-      (is (= "https://api.deepseek.com/anthropic/v1/messages"
-             (:url (captured-request! #(deepseek/deepseek-raw {:input [user-message]})))))
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (= "https://api.deepseek.com/models" (:url req)))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []} (deepseek/list-models)))))))
+    (is (= "https://api.deepseek.com/anthropic/v1/messages"
+           (:url (captured-request! #(deepseek/deepseek-raw {:input       [user-message]
+                                                             :credentials byok-credentials})))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (= "https://api.deepseek.com/models" (:url req)))
+                                               {:status 200 :body {:data []}})]
+      (is (= {:models []} (deepseek/list-models {:credentials byok-credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models
@@ -268,48 +288,50 @@
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "display names come from the whitelist — DeepSeek catalog entries carry none"
-    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :headers {"Authorization" "Bearer sk-test"}}
-                                                         req))
-                                                 {:status 200
-                                                  :body   {:data [{:id "deepseek-v4-flash"}
-                                                                  {:id "deepseek-v4-pro"}
-                                                                  {:id "deepseek-chat"}]}})]
-        (is (= {:models [{:id "deepseek-v4-flash" :display_name "DeepSeek V4 Flash"}
-                         {:id "deepseek-v4-pro" :display_name "DeepSeek V4 Pro"}]}
-               (deepseek/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :headers {"Authorization" "Bearer sk-deepseek-byok"}}
+                                                       req))
+                                               {:status 200
+                                                :body   {:data [{:id "deepseek-v4-flash"}
+                                                                {:id "deepseek-v4-pro"}
+                                                                {:id "deepseek-chat"}]}})]
+      (is (= {:models [{:id "deepseek-v4-flash" :display_name "DeepSeek V4 Flash"}
+                       {:id "deepseek-v4-pro" :display_name "DeepSeek V4 Pro"}]}
+             (deepseek/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-explicit-credentials-test
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-setting"]
-    (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                               (is (=? {:headers {"Authorization" "Bearer sk-explicit"}} req))
-                                               {:status 200 :body {:data []}})]
-      (is (= {:models []} (deepseek/list-models {:credentials {:api-key "sk-explicit"}}))))))
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-deepseek-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-deepseek-explicit"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []} (deepseek/list-models {:credentials {:api-key "sk-deepseek-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-setting"]
-    (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                               (is (=? {:headers {"Authorization" "Bearer sk-setting"}} req))
-                                               {:status 200 :body {:data []}})]
-      (is (= {:models []} (deepseek/list-models {:credentials {:api-key ""}}))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-deepseek-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No DeepSeek API key is set"
+           (deepseek/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key nil]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"No DeepSeek API key is set"
-         (deepseek/list-models {:credentials {:api-key ""}})))))
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No DeepSeek API key is set"
+           (deepseek/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-malformed-catalog-throws-test
   (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
-    (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "<html>Not Found</html>"})]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"DeepSeek returned an unexpected model list response"
-             (deepseek/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "<html>Not Found</html>"})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"DeepSeek returned an unexpected model list response"
+           (deepseek/list-models {:credentials byok-credentials}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error translation
@@ -317,15 +339,14 @@
 
 (defn- list-models-error-message!
   [status]
-  (mt/with-temporary-setting-values [llm.settings/llm-deepseek-api-key "sk-test"]
-    (with-redefs [http/request (fn [_] (throw (ex-info "HTTP error"
-                                                       {:status  status
-                                                        :headers {"content-type" "application/json"}
-                                                        :body    "{\"error\":{\"message\":\"nope\"}}"})))]
-      (try
-        (deepseek/list-models)
-        (catch Exception e
-          (ex-message e))))))
+  (with-redefs [http/request (fn [_] (throw (ex-info "HTTP error"
+                                                     {:status  status
+                                                      :headers {"content-type" "application/json"}
+                                                      :body    "{\"error\":{\"message\":\"nope\"}}"})))]
+    (try
+      (deepseek/list-models {:credentials byok-credentials})
+      (catch Exception e
+        (ex-message e)))))
 
 (deftest error-status-messages-test
   (testing "4xx statuses that mean a rejected request say so — the admin UI renders any 4xx under the API-key field"
