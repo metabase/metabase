@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import { createMockChartLayout } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getXAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { isTimeSeriesAxis } from "metabase/visualizations/echarts/cartesian/model/guards";
