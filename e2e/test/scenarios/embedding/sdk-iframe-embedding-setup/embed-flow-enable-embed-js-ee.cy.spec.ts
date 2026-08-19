@@ -29,7 +29,7 @@ const DATA_BY_EMBEDDING_TYPE = {
     cardText:
       "To continue, enable modular embedding and agree to the usage conditions.",
     embeddingSettingName: "enable-embedding-modular",
-    showTermsSettingName: "show-simple-embed-terms",
+    showTermsSettingName: "show-modular-embed-terms",
     tooltipText: /Sharing Metabase accounts is a security risk/,
   },
 } as const;

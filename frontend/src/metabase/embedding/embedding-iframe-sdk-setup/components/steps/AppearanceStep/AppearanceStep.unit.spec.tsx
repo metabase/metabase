@@ -25,11 +25,11 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
     });
 
     it("does not dim the option cards", async () => {
-      // showSimpleEmbedTerms is true in real OSS — the terms popup is
+      // showModularEmbedTerms is true in real OSS — the terms popup is
       // never shown to OSS users, so the setting never flips to false.
       landOnAppearanceStep({
         simpleEmbeddingEnabled: false,
-        showSimpleEmbedTerms: true,
+        showModularEmbedTerms: true,
       });
 
       await waitFor(() => {
@@ -52,7 +52,7 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
     it("dims the option cards when the user has not accepted the simple-embedding terms", async () => {
       landOnAppearanceStep({
         simpleEmbeddingEnabled: true,
-        showSimpleEmbedTerms: true,
+        showModularEmbedTerms: true,
       });
 
       await waitFor(() => {
@@ -65,7 +65,7 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
     it("does not dim the option cards once the user has accepted the simple-embedding terms", async () => {
       landOnAppearanceStep({
         simpleEmbeddingEnabled: true,
-        showSimpleEmbedTerms: false,
+        showModularEmbedTerms: false,
       });
 
       await waitFor(() => {
@@ -83,7 +83,7 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
           isGuest: true,
         },
         simpleEmbeddingEnabled: true,
-        showSimpleEmbedTerms: true,
+        showModularEmbedTerms: true,
         guestEmbeddingEnabled: false,
         showStaticEmbedTerms: true,
       });
@@ -103,7 +103,7 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
           isGuest: true,
         },
         simpleEmbeddingEnabled: true,
-        showSimpleEmbedTerms: true,
+        showModularEmbedTerms: true,
         guestEmbeddingEnabled: true,
         showStaticEmbedTerms: false,
       });

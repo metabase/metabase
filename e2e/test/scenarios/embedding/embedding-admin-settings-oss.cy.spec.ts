@@ -8,7 +8,7 @@ describe(
       H.restore();
       cy.signInAsAdmin();
 
-      H.updateSetting("show-sdk-embed-terms", false);
+      H.updateSetting("show-modular-embed-terms", false);
     });
 
     it("shows all embedding types without the setup guide", () => {

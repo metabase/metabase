@@ -23,8 +23,7 @@ import { SharedCombinedEmbeddingSettings } from "./SharedCombinedEmbeddingSettin
 const setup = async ({ enabled }: { enabled: boolean }) => {
   const settings = createMockSettings({
     "enable-embedding-modular": enabled,
-    "show-sdk-embed-terms": false,
-    "show-simple-embed-terms": false,
+    "show-modular-embed-terms": false,
   });
 
   setupPropertiesEndpoints(settings);
