@@ -384,6 +384,7 @@
                                          [:alert_first_only    {:optional true} [:maybe :boolean]]
                                          [:alert_above_goal    {:optional true} [:maybe :boolean]]]
    request]
+  (perms/check-has-application-permission :subscription false)
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
