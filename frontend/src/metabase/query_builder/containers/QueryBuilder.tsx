@@ -28,7 +28,7 @@ import {
   getDatabasesList,
   getSampleDatabaseId,
 } from "metabase/querying/selectors";
-import { connect, useSelector } from "metabase/redux";
+import { connect, useSelector, useStore } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   closeQB,
@@ -361,7 +361,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const {
     question,
-    originalQuestion,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -598,15 +597,31 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setIsShowingToaster(false);
   }, []);
 
-  const isNewQuestion = !originalQuestion;
-  const isLocationAllowed = useCallback(
-    (location?: Location) =>
-      isNavigationAllowed({
+  const store = useStore();
+  const isCallbackScheduledRef = useRef(isCallbackScheduled);
+  isCallbackScheduledRef.current = isCallbackScheduled;
+
+  // Decide blocking from the store at call time, not from values captured in
+  // render. React 19 can run a Back navigation against a render that has not
+  // committed the freshly-dirtied question yet, so a render-captured decision
+  // reads the question as clean and lets the navigation through without the
+  // discard prompt (metabase#76382).
+  const isBlocking = useCallback(
+    (location?: Location) => {
+      const state = store.getState();
+      if (
+        !getShouldShowUnsavedChangesWarning(state) ||
+        isCallbackScheduledRef.current
+      ) {
+        return false;
+      }
+      return !isNavigationAllowed({
         destination: location,
-        question,
-        isNewQuestion,
-      }),
-    [question, isNewQuestion],
+        question: getQuestion(state),
+        isNewQuestion: !getOriginalQuestion(state),
+      });
+    },
+    [store],
   );
 
   const handleCmdEnter = () => {
@@ -639,7 +654,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
-        isLocationAllowed={isLocationAllowed}
+        isBlocking={isBlocking}
       />
     </>
   );
