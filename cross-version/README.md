@@ -72,7 +72,6 @@ Both `test.sh` and `dev.sh` resolve which spec folder to use for a given version
 |----------|---------|-------------|
 | `METABASE_PORT` | `3000` (`3077` in dev) | Port to expose Metabase |
 | `HEALTH_TIMEOUT` | `120` | Seconds to wait for health check |
-| `CROSS_VERSION_DEV_MODE` | — | Set automatically by `dev.sh`; enables snapshot/restore helpers in specs |
 
 ## Requirements
 

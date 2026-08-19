@@ -160,7 +160,6 @@ save_logs() {
   local service="$1"
   local label="$2"
 
-  mkdir -p "$LOG_DIR"
   {
     echo "===== ${service} — ${label} ====="
     docker compose logs --no-color "$service" 2>&1 || true
@@ -343,11 +342,21 @@ check_downgrade_refused() {
   done
 }
 
+teardown() {
+  docker compose down -v --remove-orphans 2>/dev/null || true
+}
+
+# Ensure each run starts w/ empty log directory
+init_logs() {
+  mkdir -p "$LOG_DIR"
+  rm -f "$LOG_DIR"/docker-*.log
+}
+
 cleanup() {
   log "Cleaning up..."
   save_logs metabase "teardown"
   save_logs postgres "teardown"
-  docker compose down -v --remove-orphans 2>/dev/null || true
+  teardown
 }
 
 check_image_exists() {
@@ -383,12 +392,8 @@ main() {
   log "============================================"
 
   # Ensure clean state
-  cleanup
-
-  # Discard the logs the pre-run cleanup just wrote - they belong to whatever
-  # ran before us, not to this run.
-  rm -rf "$LOG_DIR"
-  mkdir -p "$LOG_DIR"
+  teardown
+  init_logs
 
   trap cleanup EXIT
 

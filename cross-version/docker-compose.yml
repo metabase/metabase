@@ -9,10 +9,14 @@ services:
       # the test data lands in its own database instead of the app db.
       POSTGRES_DB: sample
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U metabase"]
+      # Only succeeds once the real server starts which means that 00-create-app-db.sql 
+      # and sample_data.sql.gz have finished (a temp server exists during initialization).
+      test: ["CMD-SHELL", "pg_isready -U metabase -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
       retries: 5
+      # Grace period where retries aren't counted while everything initializes
+      start_period: 60s
     volumes:
       # QA image sets PGDATA=/data
       - postgres_data:/data

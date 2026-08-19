@@ -153,7 +153,6 @@ log ""
 log "Opening Cypress..."
 cd "$REPO_ROOT"
 
-CROSS_VERSION_DEV_MODE=true \
 CYPRESS_BASE_URL="http://localhost:${PORT}" \
   bunx cypress open \
     --e2e \
