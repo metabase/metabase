@@ -5,7 +5,6 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
-   [clojure.string :as str]
    [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -27,10 +26,7 @@
 
 ;; validated eagerly at load so a misconfigured secret fails at startup instead of 500ing the first auth request
 (defonce ^:private ^{:tag 'bytes} default-session-hash-secret
-  (let [secret (env/env :mb-session-secret-key)]
-    (when-not (str/blank? secret)
-      (assert (>= (count secret) 16) "MB_SESSION_SECRET_KEY must be at least 16 characters.")
-      (encryption/secret-key->hash secret))))
+  (encryption/validate-and-hash-secret-key (env/env :mb-session-secret-key) "MB_SESSION_SECRET_KEY"))
 
 (when-not *compile-files*
   (when-not default-session-hash-secret
