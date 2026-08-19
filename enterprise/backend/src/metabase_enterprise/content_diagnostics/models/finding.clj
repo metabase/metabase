@@ -17,6 +17,7 @@
    :finding_type mi/transform-keyword
    ;; nullable - card findings only
    :card_type    mi/transform-keyword
+   :entity_kind  mi/transform-keyword
    :details      mi/transform-json})
 
 (defn invalidate-superseded!

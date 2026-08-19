@@ -242,4 +242,19 @@
       (is (nil? (:entity-name out)))
       (is (nil? (:entity-created-at out)))
       (is (nil? (:entity-creator-id out)))
-      (is (nil? (:entity-creator-name out))))))
+      (is (nil? (:entity-creator-name out)))
+      (testing "a missing card gets :entity-kind :card (the fallback)"
+        (is (= :card (:entity-kind out)))))))
+
+(deftest attach-entity-attrs-stamps-entity-kind-test
+  (testing "entity-kind = card_type for cards, entity-type otherwise"
+    (mt/with-temp [:model/Card      {model-id :id} {:type :model}
+                   :model/Card      {q-id :id}     {:type :question}
+                   :model/Dashboard {dash-id :id}  {}]
+      (is (=? [{:entity-kind :model}
+               {:entity-kind :question}
+               {:entity-kind :dashboard}]
+              (common/attach-entity-attrs
+               [{:entity-type :card      :entity-id model-id}
+                {:entity-type :card      :entity-id q-id}
+                {:entity-type :dashboard :entity-id dash-id}]))))))

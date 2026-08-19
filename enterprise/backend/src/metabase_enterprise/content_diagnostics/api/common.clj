@@ -4,11 +4,10 @@
   display hydration, and the schema/sort fragments every per-finding-type endpoint composes.
 
   All per-caller concerns resolve **live at read time** against each finding's *current* collection (never
-  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator/card_type) are denormalized
-  at scan time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits
-  hydrate live."
+  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator/card_type/entity_kind/
+  collection_name) are denormalized at scan time; description, the collection breadcrumb, the transform
+  owner, and slow roll-up culprits hydrate live."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
@@ -92,22 +91,14 @@
 
 (defn entity-types-clause
   "WHERE fragment for the flat `entity-types` vocabulary (see [[filter-types]]); nil when nothing was
-  requested. `card` means any card type, so it subsumes the sub-kinds. The arms are kept positive `=`/`IN`
-  so `idx_cd_finding_ftype_etype_card_type` can serve them - a negated `entity_type` arm would force a
-  scan."
+  requested. `card` means any card type, so it expands to itself (the deleted-entity fallback) plus
+  the card sub-kinds. Kept a positive IN so `idx_cd_finding_ftype_entity_kind` can serve it."
   [entity-types]
   (when-let [types (not-empty (set (u/one-or-many entity-types)))]
-    (let [sub-kinds (set/intersection types queries.schema/card-types)
-          non-card  (set/difference types (conj queries.schema/card-types :card))
-          card-arm  (cond
-                      (contains? types :card) [:= :entity_type "card"]
-                      (seq sub-kinds)         [:and
-                                               [:= :entity_type "card"]
-                                               [:in :card_type (mapv name sub-kinds)]])
-          other-arm (when (seq non-card) [:in :entity_type (mapv name non-card)])]
-      (if (and card-arm other-arm)
-        [:or card-arm other-arm]
-        (or card-arm other-arm)))))
+    (let [kinds (into #{}
+                      (mapcat #(if (= % :card) (cons :card queries.schema/card-types) [%]))
+                      types)]
+      [:in :entity_kind (mapv name kinds)])))
 
 (defn excluded-personal-collection-ids
   "The live personal-collection id set (roots + descendants) to exclude for this request - nil when
@@ -261,12 +252,7 @@
   (when entity
     (if-let [parent-id (:collection_id entity)]
       (get breadcrumbs parent-id)
-      (root-breadcrumb (case entity-type
-                         ;; a collection subject's own namespace names the root it sits under
-                         :collection (:namespace entity)
-                         ;; transforms live only in transforms-namespace collections
-                         :transform  collection/transforms-ns
-                         nil)))))
+      (root-breadcrumb (common/entity-root-namespace entity-type (:namespace entity))))))
 
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
@@ -431,7 +417,9 @@
         coll-ids    (into #{} (keep (fn [{:keys [entity_type entity_id]}]
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
-        breadcrumbs (collection-breadcrumbs coll-ids)
+        ;; scan-time parents ride along so the collection_name gate below can check their readability -
+        ;; an entity may have moved since the scan, so they can differ from the live coll-ids
+        breadcrumbs (collection-breadcrumbs (into coll-ids (keep :scope_collection_id) findings))
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
@@ -439,29 +427,41 @@
         entities    (hydrate-duplicate-entities findings excluded-personal-ids)
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
-                       entity_name entity_creator_id entity_creator_name card_type details] :as row}]
-            (let [entity    (get-in ctx-by-type [entity_type entity_id])
-                  details*  (merge details
-                                   {:collection  (entity-breadcrumb entity_type entity breadcrumbs)
-                                    :description (:description entity)
-                                    ;; only transforms have owner columns; null for the rest.
-                                    :owner       (normalized-owner entity)
-                                    ;; creator denormalized (id + common_name) - no live :creator hydrate.
-                                    :creator     (when entity_creator_id
-                                                   {:id entity_creator_id :name entity_creator_name :type :user})}
-                                   (when-some [view-count (:view_count entity)]
-                                     {:view_count view-count}))
-                  base      (cond-> {:id                  id
-                                     :finding_type        finding_type
-                                     :entity_type         entity_type
-                                     :entity_id           entity_id
-                                     :detected_at         detected_at
-                                     :entity_display_name entity_name
-                                     :created_at          entity_created_at
-                                     :details             details*}
-                              ;; keyed on entity type so a card row with NULL card_type still serves
-                              ;; the key, as null
-                              (= entity_type :card) (assoc :card_type card_type))]
+                       entity_name entity_creator_id entity_creator_name card_type entity_kind
+                       entity_collection_name scope_collection_id details] :as row}]
+            (let [entity     (get-in ctx-by-type [entity_type entity_id])
+                  breadcrumb (entity-breadcrumb entity_type entity breadcrumbs)
+                  details*   (merge details
+                                    {:collection  breadcrumb
+                                     :description (:description entity)
+                                     ;; only transforms have owner columns; null for the rest.
+                                     :owner       (normalized-owner entity)
+                                     ;; creator denormalized (id + common_name) - no live :creator hydrate.
+                                     :creator     (when entity_creator_id
+                                                    {:id entity_creator_id :name entity_creator_name :type :user})}
+                                    (when-some [view-count (:view_count entity)]
+                                      {:view_count view-count}))
+                  base       (cond-> {:id                  id
+                                      :finding_type        finding_type
+                                      :entity_type         entity_type
+                                      :entity_id           entity_id
+                                      :detected_at         detected_at
+                                      :entity_display_name entity_name
+                                      :created_at          entity_created_at
+                                      :details             details*
+                                      ;; additive flat kind; coalesce pre-migration rows
+                                      :entity_kind         (or entity_kind card_type entity_type)
+                                      ;; scan-time display name for the collection sort column (root rows
+                                      ;; carry the stored root label), gated on the scan-time parent's
+                                      ;; readability - the live gates only cover the entity's current
+                                      ;; parent. Rows with no scan-time parent fall back to the breadcrumb.
+                                      :collection_name     (when (if scope_collection_id
+                                                                   (get breadcrumbs scope_collection_id)
+                                                                   breadcrumb)
+                                                             entity_collection_name)}
+                               ;; keyed on entity type so a card row with NULL card_type still serves
+                               ;; the key, as null
+                               (= entity_type :card) (assoc :card_type card_type))]
               (finalize-finding finding_type base row ctx)))
           findings)))
 
@@ -479,9 +479,14 @@
 (def base-sort-column->field
   "Sortable params common to every finding list → their native `content_diagnostics_finding` column.
   Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
-  endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`)."
-  {:detected-at :detected_at
-   :entity-type :entity_type
-   :name        :entity_name
-   :created-at  :entity_created_at
-   :created-by  :entity_creator_name})
+  endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`).
+  `entity-type` sorts by the flat `entity_kind` (card sub-kinds order as peers, not clustered under
+  `card`); name-ish sorts are case-insensitive (and collation-stable) via lower().
+  collection-name orders by the scan-time stored parent name even when the caller cannot read it - the
+  name itself is gated at serve time, and the ordering position is the accepted, marginal exposure."
+  {:detected-at      :detected_at
+   :entity-type      :entity_kind
+   :name             [:lower :entity_name]
+   :created-at       :entity_created_at
+   :created-by       :entity_creator_name
+   :collection-name  [:lower :entity_collection_name]})

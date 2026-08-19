@@ -358,6 +358,7 @@
                                                              :entity_type     etype
                                                              :entity_id       eid
                                                              :entity_name     (str prefix " " nm)
+                                                             :entity_kind     etype
                                                              :finding_type    :duplicated
                                                              :duplicate_count dup-count
                                                              :details         {:normalized_name      nm
