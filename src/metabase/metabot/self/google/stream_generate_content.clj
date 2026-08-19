@@ -184,6 +184,13 @@
          (when-let [detail (finish-reason-details reason)]
            (str ": " detail)))))
 
+(defn reasoning-model?
+  "Whether `model-id` streams its reasoning back to us.
+  No Gemini model does today: thinking arrives as parts marked `:thought`, which [[->aisdk-chunks-xf]] drops. Should
+  the adapter start forwarding them, this is where the models that send them get named."
+  [_model-id]
+  false)
+
 (defn ->aisdk-chunks-xf
   "Translates `streamGenerateContent` SSE events into AI SDK v5 protocol chunks.
 
