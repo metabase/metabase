@@ -144,7 +144,7 @@ describe("StaleContentPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("only lets findings the user can trash be selected", async () => {
+  it("allows to select only findings the user can trash", async () => {
     setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({

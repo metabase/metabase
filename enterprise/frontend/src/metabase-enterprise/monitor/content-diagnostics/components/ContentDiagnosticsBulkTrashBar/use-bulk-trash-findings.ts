@@ -25,7 +25,7 @@ function getArchivableModel(
 
 /**
  * Trash a set of findings' entities: archive the archivable ones and hard-delete
- * transforms, each through its existing endpoint.
+ * transforms, each via separate API call.
  */
 export function useBulkTrashFindings() {
   const archive = useSetArchive();

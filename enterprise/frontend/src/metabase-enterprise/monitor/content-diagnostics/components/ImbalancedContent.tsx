@@ -96,8 +96,6 @@ export function ImbalancedContent({
 
   const clearRowSelection = () => setRowSelection({});
 
-  // Crowded content is over-full, not a cleanup target, so that tab has no
-  // bulk-trash action (per GDGT-3084).
   const enableBulkTrash = mode !== "crowded";
 
   const handleQueryChange = (query: string | undefined) => {
