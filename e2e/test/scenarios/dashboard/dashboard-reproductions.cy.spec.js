@@ -388,8 +388,12 @@ describe("issue 16559", () => {
     H.openQuestionsSidebar();
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
-    cy.button("Save").click();
-    cy.wait("@saveDashboard");
+    // Use the canonical save helper so we deterministically wait for the whole
+    // save-and-settle sequence (PUT + query_metadata reload, edit-bar gone, all
+    // dashcards loaded). The previous ad-hoc `Save` click only awaited the PUT,
+    // so the "More info" click below raced the trailing re-render and was
+    // dropped, leaving the sidesheet closed.
+    H.saveDashboard();
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
