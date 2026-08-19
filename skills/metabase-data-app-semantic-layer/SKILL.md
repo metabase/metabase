@@ -279,7 +279,7 @@ Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the
 
 `useMetabaseQueryObject` supports generated table queries, including metric aggregations, and generated saved question queries. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
-The examples below use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
+The examples under *Rendering With SDK Components* use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
 
 When wrapping `useMetabaseQueryObject` in a reusable chart/card component, destructure and render `error`; do not read only `{ query }`, because query-construction failures otherwise look like endless loading. Calling the hook inside that child component is valid React. Do not call hooks directly inside loops, conditions, or callbacks in the parent component.
 
@@ -325,15 +325,7 @@ const chartRows = (data?.rows ?? []).map((row) => ({
 }));
 ```
 
-### SDK Chart Heights
-
-When an SDK-rendered chart lives in a card, panel, dashboard cell, or any other area that needs a specific height, pass that height to the SDK component that owns the visualization. Setting only the outer container or card height is not enough — the chart can render taller than the card and get cut off.
-
-- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
-- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
-- Static question: pass `height` to `StaticQuestion`.
-
-Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"` to the SDK component.
+### SDK Components Or Custom Charts
 
 Prefer `InteractiveQuestion` for:
 
@@ -347,6 +339,10 @@ Default to the SDK components. If the requested chart can be produced by a Metab
 
 Build a custom React visualization when the presentation genuinely does not fit any display type or visualization setting, or when the user asks for a custom visualization rather than a Metabase chart. Their asking is the decision — do not infer it from a design reference, brand colours, or a screenshot of something bespoke.
 
+Decide per element, never per row or per section. One tile that needs custom code makes a row with one custom tile in it, not a row of them; the rest still render as SDK components and keep their formatting, theming and drill-through. Consistent heights and card chrome come from the container each tile sits in, so "the others should match it" is not a reason to hand-build the others.
+
+A single-value KPI is a scalar — or smartscalar, gauge, progress. If the tile wants a number plus something Metabase does not draw, such as a star row, a caption, or a total from a second query, render the scalar for the number and put the extra beside it. Hand-build the tile only when the number itself cannot come from one.
+
 Good custom visualization reasons:
 
 - the user asked for a custom visualization, or for something Metabase demonstrably has no display for
@@ -355,9 +351,11 @@ Good custom visualization reasons:
 - custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
 - unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
 
-For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep single-value KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data, but first consider whether an SDK scalar/smartscalar/gauge/progress view would be good enough.
+For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. A bespoke summary that needs direct row data belongs on `useMetabaseQuery`; a single-value KPI does not, per the scalar rule above.
 
 If you build a custom chart, map typed SDK rows into an explicit local view model before rendering. Read typed row values with known result keys, such as `schema.tables.orders.fields.orderedAt.name` (`ordered_at`) or aggregation names like `count`/`sum`; do not read generated schema object property names such as `row.orderedAt` unless the returned column name is actually `orderedAt`. If the key only comes from `data.columns` at runtime, use `rawRows` with the matching column position or narrow the key to a literal before indexing `data.rows`. Do not write generic chart components that assume positional rows.
+
+### Rendering With SDK Components
 
 Chart only, without the toolbar:
 
@@ -469,6 +467,16 @@ if (isLoading || !query) {
 
 return <StaticQuestion card={{ query }} height="500px" />;
 ```
+
+### SDK Chart Heights
+
+When an SDK-rendered chart lives in a card, panel, dashboard cell, or any other area that needs a specific height, pass that height to the SDK component that owns the visualization. Setting only the outer container or card height is not enough — the chart can render taller than the card and get cut off.
+
+- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
+- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
+- Static question: pass `height` to `StaticQuestion`.
+
+Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"` to the SDK component.
 
 Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow. If a parent card has a fixed height, also pass the matching available height to `InteractiveQuestion`, `StaticQuestion`, or `InteractiveQuestion.QuestionVisualization`; never rely on the parent height alone.
 

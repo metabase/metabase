@@ -445,7 +445,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 
 ### Rendering a chart: Metabase first
 
-A built-in visualization carries the instance's theming, accessibility, tooltips, formatting and drill-through. A chart built in React carries none of that, and drifts from every other chart in the app as soon as either changes. So the question is never "which looks closer to my design" — it is **can Metabase display this at all?**
+This is a per-element decision, not one taken once for a row, a section, or the app. A built-in visualization carries the instance's theming, accessibility, tooltips, formatting and drill-through. A chart built in React carries none of that, and drifts from every other chart in the app as soon as either changes. So the question is never "which looks closer to my design" — it is **can Metabase display this at all?**
 
 - **Yes → `useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`.** Bar, line, area, combo, row, **pie/donut**, scalar/smartscalar, gauge, progress, funnel, pivot, map, sortable table, and anything else in the chart-type list. Build the semantic query from generated schema objects, destructure the returned `query`, and pass only that value in a card object — `<StaticQuestion card={{ query }} visualization="pie" ... />`. Never pass the whole `{ query, error, isLoading }` hook result as `card.query`.
 - **No → `useMetabaseQuery` and your own component.** Only for renderings Metabase has no display for, or where React genuinely needs the row values: KPI numbers, custom controls, bespoke summary cards, or combining several queries into one element. Keep the row handling typed.
