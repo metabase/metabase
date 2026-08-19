@@ -276,11 +276,13 @@
               :when                                  (and new-parent-id
                                                           (not= new-parent-id old-parent-id))]
         (t2/update! :model/Field new-id {:parent_id new-parent-id})))
-    ;; now copy the FieldValues as well.
+    ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
+    ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
+    ;; up in whatever a test counts.
     (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
           new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
           old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
-                               (t2/select :model/FieldValues :field_id [:in (set field-ids)]))]
+                               (t2/select :model/FieldValues :field_id [:in (set field-ids)] :type :full))]
       (t2/insert! :model/FieldValues
                   (for [{old-field-id :field_id, :as field-values} old-field-values
                         :let                                       [field-name (get old-field-id->name old-field-id)]]
