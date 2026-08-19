@@ -32,7 +32,7 @@ import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
-  showSimpleEmbedTerms?: boolean;
+  showModularEmbedTerms?: boolean;
   guestEmbeddingEnabled?: boolean;
   showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
@@ -62,7 +62,7 @@ export const setup = (options?: {
   });
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
+    "show-modular-embed-terms": options?.showModularEmbedTerms ?? false,
     "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
     "enable-embedding-modular":
       (options?.simpleEmbeddingEnabled ?? false) ||

@@ -23,7 +23,7 @@ import {
 
 export interface SetupOpts {
   renderCallback: (data: { state: Partial<State> }) => void;
-  showSdkEmbedTerms?: Settings["show-sdk-embed-terms"];
+  showModularEmbedTerms?: Settings["show-modular-embed-terms"];
   isEmbeddingSdkEnabled?: Settings["enable-embedding-modular"];
   isEmbeddingSimpleEnabled?: Settings["enable-embedding-modular"];
   isHosted?: Settings["is-hosted?"];
@@ -33,7 +33,7 @@ export interface SetupOpts {
 
 export async function setup({
   renderCallback,
-  showSdkEmbedTerms = true,
+  showModularEmbedTerms = true,
   isEmbeddingSdkEnabled = false,
   isEmbeddingSimpleEnabled = false,
   isHosted = false,
@@ -41,7 +41,7 @@ export async function setup({
   enterprisePlugins,
 }: SetupOpts) {
   const settings = createMockSettings({
-    "show-sdk-embed-terms": showSdkEmbedTerms,
+    "show-modular-embed-terms": showModularEmbedTerms,
     "enable-embedding-modular":
       isEmbeddingSdkEnabled || isEmbeddingSimpleEnabled,
     "is-hosted?": isHosted,

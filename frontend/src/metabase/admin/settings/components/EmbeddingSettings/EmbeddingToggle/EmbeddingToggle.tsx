@@ -31,8 +31,7 @@ export function EmbeddingToggle({
   const { values: dependentSettingsValues, updateSettings } =
     useAdminSettings(dependentSettingKeys);
 
-  const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
-  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
+  const showModularEmbedTerms = useSetting("show-modular-embed-terms");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   const [
@@ -55,9 +54,7 @@ export function EmbeddingToggle({
     settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
 
   const handleChange = (checked: boolean) => {
-    const shouldShowEmbedTerms = showSdkEmbedTerms || showSimpleEmbedTerms;
-
-    if (shouldShowEmbedTerms && isEmbeddingToggle && checked) {
+    if (showModularEmbedTerms && isEmbeddingToggle && checked) {
       openLegaleseModal();
       return;
     }

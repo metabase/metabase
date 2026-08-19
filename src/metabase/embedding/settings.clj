@@ -34,21 +34,52 @@
                false
                (setting/get-value-of-type :boolean :show-static-embed-terms))))
 
-(defsetting show-sdk-embed-terms
+(defsetting ^:deprecated show-sdk-embed-terms
   (deferred-tru "Check if admin should see the SDK licensing terms popup")
   :type    :boolean
   :default true
   :can-read-from-env? false
   :doc false
-  :export? true)
+  :export? true
+  :deprecated "0.65.0")
 
-(defsetting show-simple-embed-terms
+(defsetting ^:deprecated show-simple-embed-terms
   (deferred-tru "Check if admin should see the simple embedding terms popup")
   :type    :boolean
   :default true
   :can-read-from-env? false
   :doc false
-  :export? true)
+  :export? true
+  :deprecated "0.65.0")
+
+(defn- any-legacy-embedding-terms-unaccepted?
+  "Whether either of the terms settings [[show-modular-embed-terms]] replaces is still unaccepted. `true` on these
+  settings means the popup is still owed, so an admin who accepted only one of the two has not seen everything the
+  merged terms cover."
+  []
+  (boolean
+   (some #(setting/get-value-of-type :boolean %)
+         [:show-simple-embed-terms :show-sdk-embed-terms])))
+
+(defn- show-modular-embed-terms?
+  "The effective value of [[show-modular-embed-terms]].
+
+  Until an admin accepts it, it stands for the two settings it replaces: either one still unaccepted means the popup
+  is still owed. Reading the *source* rather than the value is what separates \"nobody answered this\" from \"an admin
+  accepted it\" -- without that, accepting would bounce back from a legacy value."
+  []
+  (if (= :default (setting/get-raw-value-source :show-modular-embed-terms))
+    (any-legacy-embedding-terms-unaccepted?)
+    (setting/get-value-of-type :boolean :show-modular-embed-terms)))
+
+(defsetting show-modular-embed-terms
+  (deferred-tru "Check if admin should see the modular embedding and SDK licensing terms popup")
+  :type    :boolean
+  :default true
+  :can-read-from-env? false
+  :doc false
+  :export? true
+  :getter  show-modular-embed-terms?)
 
 (defn- embedding-app-origin-set?
   "Whether any authorized-origin setting names a real origin."
