@@ -36,7 +36,6 @@ const setup = async ({
   ];
   const settingValues = createMockSettings({
     [settingKey]: value,
-    "show-modular-embed-terms": false,
   });
 
   setupSettingsEndpoints(settings);
