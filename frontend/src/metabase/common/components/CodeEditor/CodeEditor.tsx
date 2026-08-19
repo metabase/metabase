@@ -1,23 +1,19 @@
 import type { Extension } from "@uiw/react-codemirror";
 import { useMemo } from "react";
 
-import { CodeMirror } from "metabase/common/components/CodeMirror";
+import {
+  CodeMirror,
+  type CodeMirrorProps,
+} from "metabase/common/components/CodeMirror";
 
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
-type Props = {
-  className?: string;
-  highlightRanges?: { start: number; end: number }[];
-  id?: string;
+type Props = Omit<CodeMirrorProps, "onChange"> & {
   language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
-  readOnly?: boolean;
-  value: string;
   proposedValue?: string;
   onChange?: (value: string) => void;
-  extensions?: Extension[];
-  "data-testid"?: string;
 };
 
 export function CodeEditor({
