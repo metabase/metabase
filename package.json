@@ -181,6 +181,7 @@
     "@babel/cli": "^7.23.0",
     "@babel/core": "7.29.7",
     "@babel/eslint-parser": "^7.25.1",
+    "@babel/node": "^7.22.19",
     "@babel/preset-env": "^7.24.8",
     "@babel/preset-react": "^7.23.3",
     "@babel/preset-typescript": "^7.24.7",
