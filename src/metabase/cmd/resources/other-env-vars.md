@@ -493,6 +493,13 @@ Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
 
+### `MB_SESSION_SECRET_KEY`
+
+Type: string<br>
+Default: `null`
+
+When set, session keys are stored in the application database signed with this secret, so a valid session cannot be created or used with database access alone. Requirement: minimum 16 characters. Setting or changing this value logs out all active sessions.
+
 ### `MB_SETUP_TOKEN`
 
 Type: string<br>
