@@ -326,7 +326,7 @@ For what each key does, see [`dashboardCardMenu` plugin](./dashboard-reference.m
 
 ### Turn off the default actions
 
-To remove the download button from the menu, set `withDownloads` to `false`. To remove the edit link, set `withEditLink` to `false`.
+To remove the download button from the card's menu, set `withDownloads` to `false`. To remove the edit link, set `withEditLink` to `false`.
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-default-actions" %}
