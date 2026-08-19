@@ -116,7 +116,8 @@
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       ;; Stubs are placeholders with no usable details, so we skip the connection test.
       (when-not (:is_stub database)
-        (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions))
+        (driver.u/with-database-network-policy database
+          (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)))
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
         (if (:is_stub database)
           ;; A stub entry is just a placeholder to satisfy serdes references. If a real database
