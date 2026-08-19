@@ -5,11 +5,13 @@
    [clojure.test :refer :all]
    [diehard.core :as dh]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -205,6 +207,76 @@
                         e)))))
   (log/info (u/format-color 'blue "[ok]")))
 
+;;; TEMPORARY diagnostic for the v58 `sync-materialized-views-test` failures. Pure observability - it runs after each
+;;; `describe-database` attempt and changes nothing the assertion depends on. Remove once the cause is known.
+
+(defn- mv-diagnostic-snapshot
+  "Everything `describe-database` depends on, read through `spec`."
+  [spec schema mview-nm]
+  (let [q (fn [sql & params] (jdbc/query spec (into [sql] params)))]
+    {:current-user  (:usr (first (q "SELECT current_user AS usr")))
+     ;; `SET SESSION AUTHORIZATION` sticks to a physical connection, and `has_schema_privilege` is evaluated for
+     ;; whoever the connection currently is.
+     :session-user  (:suser (first (q "SELECT session_user AS suser")))
+     :current-db    (:db (first (q "SELECT current_database() AS db")))
+     :schema-exists (boolean (seq (q "SELECT 1 FROM pg_namespace WHERE nspname = ?" schema)))
+     :has-usage     (:u (first (q (str "SELECT has_schema_privilege(oid, 'USAGE') AS u "
+                                       "FROM pg_namespace WHERE nspname = ?")
+                                  schema)))
+     ;; Every concurrent CI job leaves a `..._schema` namespace here. If ours is absent while siblings are present,
+     ;; the name we derive is wrong rather than the schema being gone.
+     :sibling-schemas (mapv :nspname (q (str "SELECT nspname FROM pg_namespace WHERE nspname LIKE '%_schema' "
+                                             "ORDER BY nspname DESC LIMIT 30")))
+     :mv-in-catalog (mapv (juxt :relname :relkind)
+                          (q (str "SELECT c.relname, c.relkind FROM pg_class c "
+                                  "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                                  "WHERE n.nspname = ? AND c.relname LIKE ?")
+                             schema (str "%" mview-nm "%")))
+     ;; The exact query `describe-database*` runs, before its schema-filter step. Separates "the query did not return
+     ;; the row" from "the filter dropped it", which the returned table set alone cannot distinguish.
+     :get-tables    (let [rows (q (first @#'redshift/get-tables-sql))
+                          ours (filter #(= (:schema %) schema) rows)]
+                      {:total         (count rows)
+                       :in-session    (count ours)
+                       :in-spectrum   (count (filter #(= (:schema %) "spectrum") rows))
+                       :matching      (mapv (juxt :schema :name :type) (filter #(= (:name %) mview-nm) rows))
+                       :session-names (vec (take 60 (sort (map :name ours))))})}))
+
+(defn- print-mv-diagnostic!
+  "`log/info` is suppressed in the driver CI jobs, so this prints. Never throws: a failed probe must not mask the
+  failure being diagnosed."
+  [label database mview-nm table-names]
+  (let [schema (redshift.tx/unique-session-schema)
+        probe  (fn [spec]
+                 (try
+                   (mv-diagnostic-snapshot spec schema mview-nm)
+                   (catch Throwable e
+                     {:probe-failed (ex-message e)})))
+        result {:schema          schema
+                :expected        mview-nm
+                :returned        (vec (sort table-names))
+                :db-name         (:name database)
+                :details-filters (select-keys (:details database)
+                                              [:db :schema-filters-type :schema-filters-patterns])
+                :filter-patterns (driver.s/db-details->schema-filter-patterns database)
+                :override?       redshift.tx/*override-describe-database-to-filter-by-db-name?*
+                ;; Off on master/release, on for PR builds - the one documented behavior difference between the
+                ;; branches where this fails and the branches where it does not.
+                :fake-sync?      (driver/database-supports? :redshift :test/use-fake-sync nil)
+                :ref-name        (System/getenv "GITHUB_REF_NAME")
+                :admin           (probe (sql-jdbc.conn/connection-details->spec
+                                         :redshift (tx/dbdef->connection-details :redshift)))
+                ;; Through `do-with-connection-with-options`, not the raw pooled spec: that is the path
+                ;; `describe-database` takes, so the probe sees the same role and connection options it did.
+                :db-pool         (try
+                                   (sql-jdbc.execute/do-with-connection-with-options
+                                    :redshift database nil
+                                    (fn [conn] (probe {:connection conn})))
+                                   (catch Throwable e
+                                     {:probe-failed (ex-message e)}))}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println (format "[mv-diagnostic %s] %s" label (pr-str result)))))
+
 (deftest redshift-types-test
   (mt/test-driver
     :redshift
@@ -343,7 +415,8 @@
           (let [table-name    (tx/db-qualified-table-name (:name database) "sync_t")
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
-                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)]
+                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)
+                attempt       (atom 0)]
             (execute!
              (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
@@ -352,7 +425,12 @@
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (dh/with-retry {:delay-ms    1000
                               :max-retries 3}
+                (swap! attempt inc)
                 (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                  (print-mv-diagnostic! (format "attempt-%d-%s"
+                                                @attempt
+                                                (if (contains? table-names mview-nm) "ok" "missing"))
+                                        database mview-nm table-names)
                   (when-not (contains? table-names mview-nm)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
                                     {:expected mview-nm :actual table-names})))
