@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
+import { useListEnginesQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
   const { url: fullDocsUrl, showMetabaseLinks } = useDocsUrl(
     `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
   );
