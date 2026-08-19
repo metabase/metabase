@@ -44,7 +44,7 @@
    Returns the parsed JSON document or nil on error."
   [issuer]
   (let [url (discovery-url issuer)]
-    (when-not (u.http/valid-host? :external-only url)
+    (when-not (u.http/host-allowed-for-network-policy? :external-only url)
       (throw (ex-info "Invalid issuer URL: internal addresses not allowed"
                       {:url url})))
     (try
