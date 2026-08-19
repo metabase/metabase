@@ -5,7 +5,7 @@
    [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :as i18n :refer [tru]]))
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -73,12 +73,20 @@
       (is (= nil
              (system.settings/site-url))))))
 
+(setting/defsetting test-nested-i18n-setting
+  "Public setting whose value nests a deferred-tru, the way driver connection properties do."
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:display-name (deferred-tru "Host")})
+  :doc        false)
+
 (deftest translate-public-setting
-  (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
-    (mt/with-user-locale "zz"
-      (is (= "HOST"
-             (str (get-in (setting/user-readable-values-map #{:public})
-                          [:engines :postgres :details-fields 0 :fields 0 :display-name])))))))
+  (testing "a deferred-tru nested inside a public setting's value is realized in the user's locale"
+    (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
+      (mt/with-user-locale "zz"
+        (is (= "HOST"
+               (str (get-in (setting/user-readable-values-map #{:public})
+                            [:test-nested-i18n-setting :display-name]))))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
