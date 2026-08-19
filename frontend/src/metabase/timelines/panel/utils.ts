@@ -110,6 +110,19 @@ export const getEventsXDomain = (
   return [min, max];
 };
 
+export const getTimelineSidebarTitle = ({
+  focusedTimelines,
+  isFocused,
+  xAxis,
+}: {
+  focusedTimelines: Timeline[];
+  isFocused: boolean;
+  xAxis: TimeseriesXAxis | null | undefined;
+}) =>
+  isFocused
+    ? formatTitle(getEventsXDomain(focusedTimelines), xAxis?.interval?.unit)
+    : formatTitle(xAxis?.domain ?? undefined);
+
 const isPeriodUnit = (unit: DateTimeAbsoluteUnit) =>
   unit === "week" || unit === "month" || unit === "quarter" || unit === "year";
 

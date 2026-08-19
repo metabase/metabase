@@ -4,7 +4,6 @@ import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
-import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getMetadata } from "metabase/metadata-store";
@@ -13,10 +12,10 @@ import {
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
 import { getSetting } from "metabase/settings";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   filterTimelinesByXAxis,
   filterVisibleTimelineEvents,
-  transformTimelines,
 } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -46,7 +45,6 @@ import type {
   DatasetQuery,
   Field,
   Series,
-  Timeline,
 } from "metabase-types/api";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
@@ -816,20 +814,6 @@ export const getTimeseriesDataInterval = createSelector(
 export const getTimeseriesXDomain = createSelector(
   [getTimeseriesXAxisInfo],
   (xAxis) => xAxis?.domain ?? null,
-);
-
-const selectListTimelines = timelineApi.endpoints.listTimelines.select({
-  include: "events",
-});
-
-export const getFetchedTimelines = createSelector(
-  [selectListTimelines],
-  (result): Timeline[] => result.data ?? [],
-);
-
-export const getTransformedTimelines = createSelector(
-  [getFetchedTimelines],
-  transformTimelines,
 );
 
 export const getFilteredTimelines = createSelector(

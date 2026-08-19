@@ -260,6 +260,7 @@ export { computeMinimalBoundsCoordinates } from "./lib/mapping";
 export { computeChange, computeNumericDataInterval } from "./lib/numeric";
 export { getCanonicalRowKey } from "./lib/region-codes";
 export {
+  canDisplayTimelineEvents,
   canSavePng,
   getIconForVisualizationType,
   getMaxDimensionsSupported,

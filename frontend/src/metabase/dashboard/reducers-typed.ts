@@ -1,7 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
-import { omit } from "underscore";
+import _ from "underscore";
 
 import {
   createDashboardPublicLink,
@@ -62,6 +62,11 @@ import {
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
 } from "./actions";
+import {
+  deselectTimelineEvents,
+  selectTimelineEvents,
+  setDashCardTimelineEventsVisibility,
+} from "./actions/timeline-events";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
 
@@ -220,6 +225,30 @@ export const sidebar = createReducer(
   },
 );
 
+export const timelineEvents = createReducer(
+  INITIAL_DASHBOARD_STATE.timelineEvents,
+  (builder) => {
+    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    builder.addCase(
+      SET_EDITING_DASHBOARD,
+      () => INITIAL_DASHBOARD_STATE.timelineEvents,
+    );
+    builder.addCase(CLOSE_SIDEBAR, (state) => {
+      state.selection = null;
+    });
+    builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
+      state.overrides = { ...state.overrides, ...action.payload };
+    });
+    builder.addCase(selectTimelineEvents, (state, action) => {
+      state.selection = action.payload;
+    });
+    builder.addCase(deselectTimelineEvents, (state) => {
+      state.selection = null;
+    });
+  },
+);
+
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
   (builder) => {
@@ -291,7 +320,7 @@ function newDashboard(
     ...before,
     // mimic the StoreDashboard type - this function is only made to update attributes
     // rather than deep values like dashcards or tabs
-    ...omit(after, "dashcards", "tabs"),
+    ..._.omit(after, "dashcards", "tabs"),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
   };

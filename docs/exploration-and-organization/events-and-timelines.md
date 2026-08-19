@@ -16,7 +16,7 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
-Metabase will only display events on time series charts when viewing an individual question. Metabase won't display events on charts in dashboard cards.
+Metabase displays events on time series charts, both when viewing an individual question and on dashboard cards. Events aren't shown on public or embedded dashboards, or in dashboard subscriptions.
 
 ## Timelines
 
@@ -56,6 +56,19 @@ If your question is a time series, you can click on the **Calendar** in the bott
 - Toggle timeline visibility (including timelines from other collections)
 - Add a new event (even if you haven't saved the question yet).
 - Edit, move, or archive an event.
+
+## Events on dashboards
+
+Time series charts on a dashboard show the events of the timelines in the dashboard's collection, just like questions do. Very small cards don't have room for events, so they won't show them.
+
+To choose which events a chart shows, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing the timelines and events that fall in the range of that chart. You can:
+
+- Toggle a timeline or an event on or off for that card (including timelines from other collections).
+- Add a new event, or edit, move, and archive events (if you have curate access to the collection).
+
+To toggle events for every time series chart on the dashboard at once, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**. If some cards show an event and others don't, its checkbox shows a dash. Clicking it applies your choice to every card.
+
+These selections are temporary; if you reload the dashboard, Metabase will show the collection's events again.
 
 ## Viewing events and timelines on a chart from a different collection
 

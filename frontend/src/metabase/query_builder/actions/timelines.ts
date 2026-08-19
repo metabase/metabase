@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 
 import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -10,7 +11,6 @@ import {
   SELECT_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
 } from "../store/actions";
-import { getFetchedTimelines } from "../store/selectors";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
