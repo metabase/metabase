@@ -401,9 +401,9 @@
       (mt/with-temp [:model/User {creator-id :id} {:is_superuser true}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (let [grant           (grants/create-grant! creator-id 60 "SEC-730" "Time-boxed access")
+            (let [grant           (grants/create-grant! creator-id 60 "SUPPORT-NATURAL-EXPIRY" "Time-boxed access")
                   support-user-id (t2/select-one-pk :model/User :email support-email)]
-              (t2/insert! :model/Session {:id      "sec730natur"
+              (t2/insert! :model/Session {:id      "expiregrant1"
                                           :user_id support-user-id
                                           :session_key (str (random-uuid))})
               (testing "while the grant is still running the sweep leaves everything alone"
@@ -433,8 +433,8 @@
                      :model/User {other-user-id :id} {:is_superuser true}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (let [grant (grants/create-grant! creator-id 60 "SEC-730" "Time-boxed access")]
-              (t2/insert! :model/Session {:id          "sec730other"
+            (let [grant (grants/create-grant! creator-id 60 "SUPPORT-EXPIRY-SCOPE" "Time-boxed access")]
+              (t2/insert! :model/Session {:id          "otheruser001"
                                           :user_id     other-user-id
                                           :session_key (str (random-uuid))})
               (t2/update! :model/SupportAccessGrantLog (:id grant)
@@ -450,7 +450,7 @@
       (mt/with-temp [:model/User {creator-id :id} {:is_superuser true}]
         (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
           (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
-            (let [ended-grant                  (grants/create-grant! creator-id 60 "SEC-730-ENDED" nil)
+            (let [ended-grant                  (grants/create-grant! creator-id 60 "SUPPORT-EXPIRED" nil)
                   support-user-id              (t2/select-one-pk :model/User :email support-email)
                   teardown-started             (promise)
                   allow-teardown               (promise)
@@ -471,7 +471,7 @@
                       "Expiry should reach credential teardown")
                   (let [create-result (future
                                         (deliver create-started true)
-                                        (grants/create-grant! creator-id 60 "SEC-730-NEW" nil))]
+                                        (grants/create-grant! creator-id 60 "SUPPORT-CURRENT" nil))]
                     (try
                       (is (true? (deref create-started 5000 ::timeout)))
                       (is (= ::timeout (deref create-result 250 ::timeout))
@@ -484,7 +484,7 @@
                                                          :user_id support-user-id
                                                          :provider "support-access-grant")]
                         (is (map? new-grant) "Concurrent grant creation should complete")
-                        (is (= "SEC-730-NEW" (:ticket_number new-grant)))
+                        (is (= "SUPPORT-CURRENT" (:ticket_number new-grant)))
                         (is (:is_superuser support-user)
                             "The new grant should restore support admin access")
                         (is (= (:grant_end_timestamp new-grant) (:expires_at auth-identity))
@@ -496,7 +496,7 @@
 
 (deftest expire-ended-grants-no-support-user-test
   (testing "the natural-expiry sweep is a no-op when no support user exists"
-    (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "nobody-sec730@example.com")]
+    (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "nobody-expiry@example.com")]
       (is (nil? (grants/expire-ended-grants!)))
-      (is (not (t2/exists? :model/User :email "nobody-sec730@example.com"))
+      (is (not (t2/exists? :model/User :email "nobody-expiry@example.com"))
           "the sweep must not conjure a support user into existence"))))

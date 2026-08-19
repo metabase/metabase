@@ -437,10 +437,10 @@
   (testing "a session minted from a support access grant stops authenticating once the grant window has passed"
     (mt/with-temp [:model/User {creator-id :id} {}]
       (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
-        (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-sec730@example.com")
+        (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "support-session-expiry@example.com")
                                     sag.settings/support-access-grant-first-name (constantly "Support")
                                     sag.settings/support-access-grant-last-name (constantly "User")]
-          (let [grant       (grants/create-grant! creator-id 60 "SEC-730" "Time-boxed access")
+          (let [grant       (grants/create-grant! creator-id 60 "SUPPORT-SESSION-EXPIRY" "Time-boxed access")
                 session-key (:session_id (mt/client :post 200 "session/reset_password"
                                                     {:token (:token grant) :password "SupportPass!2468"}))
                 session     (t2/select-one :model/Session :key_hashed (session/hash-session-key session-key))]

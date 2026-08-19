@@ -40,34 +40,32 @@
     (when (active-grant-exists?)
       (throw (ex-info (tru "Cannot create grant: an active grant already exists")
                       {:status-code 409})))
-    ;; The cluster lock supplies a transaction on server app DBs, but not on H2.
-    (t2/with-transaction [_]
-      (let [now (t/instant)
-            grant-end (t/plus now (t/minutes grant-duration-minutes))
-            grant-record {:user_id user-id
-                          :ticket_number ticket-number
-                          :notes notes
-                          :grant_start_timestamp now
-                          :grant_end_timestamp grant-end}
-            grant (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
-                      (t2/hydrate :user_info))
-            support-email (sag.settings/support-access-grant-email)
-            support-user (sag.model/fetch-or-create-support-user!)
-            token (sag.provider/create-support-access-reset! (:id support-user) grant)
-            password-reset-url (when token
-                                 (str (system/site-url) "/auth/reset_password/" token))]
-        ;; Publish event - the notification system handles email sending automatically
-        (when (and token password-reset-url)
-          (events/publish-event! :event/support-access-grant-created
-                                 {:support_email support-email
-                                  :ticket_number ticket-number
-                                  :duration_minutes grant-duration-minutes
-                                  :grant_end_time grant-end
-                                  :password_reset_url password-reset-url
-                                  :notes notes}))
-        ;; Return grant with token
-        (cond-> grant
-          token (assoc :token token))))))
+    (let [now                (t/instant)
+          grant-end          (t/plus now (t/minutes grant-duration-minutes))
+          grant-record       {:user_id               user-id
+                              :ticket_number         ticket-number
+                              :notes                 notes
+                              :grant_start_timestamp now
+                              :grant_end_timestamp   grant-end}
+          grant              (-> (t2/insert-returning-instance! :model/SupportAccessGrantLog grant-record)
+                                 (t2/hydrate :user_info))
+          support-email      (sag.settings/support-access-grant-email)
+          support-user       (sag.model/fetch-or-create-support-user!)
+          token              (sag.provider/create-support-access-reset! (:id support-user) grant)
+          password-reset-url (when token
+                               (str (system/site-url) "/auth/reset_password/" token))]
+      ;; Publish event - the notification system handles email sending automatically
+      (when (and token password-reset-url)
+        (events/publish-event! :event/support-access-grant-created
+                               {:support_email      support-email
+                                :ticket_number      ticket-number
+                                :duration_minutes   grant-duration-minutes
+                                :grant_end_time     grant-end
+                                :password_reset_url password-reset-url
+                                :notes              notes}))
+      ;; Return grant with token
+      (cond-> grant
+        token (assoc :token token)))))
 
 (defn revoke-grant!
   "Revoke an existing support access grant.
@@ -108,10 +106,8 @@
         ;; Re-check after acquiring the same lock used by grant creation. This makes credential teardown and grant
         ;; creation mutually exclusive across the cluster, so teardown cannot invalidate a newly created grant.
         (when-not (active-grant-exists?)
-          ;; The cluster lock supplies a transaction on server app DBs, but not on H2.
-          (t2/with-transaction [_]
-            (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
-            (sag.model/revoke-support-user-access! support-user-id (t/instant))))))))
+          (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
+          (sag.model/revoke-support-user-access! support-user-id (t/instant)))))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.
