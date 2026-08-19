@@ -87,6 +87,11 @@ export async function buildDataApp({
   return fs.readFileSync(bundlePath, "utf8");
 }
 
+/** Cypress resolves a relative path against the project root; match that. */
+function inRepo(target: string) {
+  return path.isAbsolute(target) ? target : path.join(REPO_ROOT, target);
+}
+
 /**
  * The fixture filesystem lives behind tasks rather than `cy.exec`/`cy.writeFile`
  * so a spec changes an app in one round trip, and so nothing is composed into a
@@ -101,21 +106,23 @@ export async function scaffoldDataApp({
   slug: string;
   sdkFrom: string;
 }): Promise<string> {
-  fs.rmSync(appRoot, { recursive: true, force: true });
-  fs.mkdirSync(appRoot, { recursive: true });
+  const root = inRepo(appRoot);
+
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
   // The SDK the app synchronizes against, without a second npm install.
   fs.symlinkSync(
-    path.join(sdkFrom, "node_modules"),
-    path.join(appRoot, "node_modules"),
+    path.join(inRepo(sdkFrom), "node_modules"),
+    path.join(root, "node_modules"),
   );
   // Synchronization writes the app's resource entity IDs back into its manifest,
   // so an app without one is refused before it reaches the reconcilers.
   fs.writeFileSync(
-    path.join(appRoot, "data_app.yaml"),
+    path.join(root, "data_app.yaml"),
     `name: ${slug}\npath: ./dist/index.js\n`,
   );
 
-  return appRoot;
+  return root;
 }
 
 export async function writeDataAppFiles({
@@ -124,8 +131,10 @@ export async function writeDataAppFiles({
   files: Record<string, string>;
 }): Promise<null> {
   for (const [filePath, contents] of Object.entries(files)) {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, contents);
+    const target = inRepo(filePath);
+
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, contents);
   }
 
   return null;
@@ -138,12 +147,13 @@ export async function removeDataAppDeclaration({
   filePath: string;
   exportName: string;
 }): Promise<null> {
+  const target = inRepo(filePath);
   const [imports, ...declarations] = fs
-    .readFileSync(filePath, "utf8")
+    .readFileSync(target, "utf8")
     .split("export const ");
 
   fs.writeFileSync(
-    filePath,
+    target,
     imports +
       declarations
         .filter((declaration) => !declaration.startsWith(`${exportName} `))
@@ -160,7 +170,7 @@ export async function removeDataAppPaths({
   paths: string[];
 }): Promise<null> {
   for (const target of paths) {
-    fs.rmSync(target, { recursive: true, force: true });
+    fs.rmSync(inRepo(target), { recursive: true, force: true });
   }
 
   return null;
