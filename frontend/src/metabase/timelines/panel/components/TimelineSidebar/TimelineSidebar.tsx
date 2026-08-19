@@ -115,6 +115,16 @@ export const TimelineSidebar = ({
     setInternalModal(null);
   }, []);
 
+  const handleShowTimeline = useCallback(
+    (timeline: Timeline) => onShowTimelineEvents(timeline.events ?? []),
+    [onShowTimelineEvents],
+  );
+
+  const handleHideTimeline = useCallback(
+    (timeline: Timeline) => onHideTimelineEvents(timeline.events ?? []),
+    [onHideTimelineEvents],
+  );
+
   const handleToggleEventSelected = useCallback(
     (event: TimelineEvent, isSelected: boolean) => {
       if (isSelected) {
@@ -152,6 +162,8 @@ export const TimelineSidebar = ({
         onToggleEventSelected={handleToggleEventSelected}
         onShowTimelineEvents={onShowTimelineEvents}
         onHideTimelineEvents={onHideTimelineEvents}
+        onShowTimeline={handleShowTimeline}
+        onHideTimeline={handleHideTimeline}
       />
       {manageModalsInternally && internalModal?.type === "new-event" && (
         <Modal

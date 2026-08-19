@@ -33,7 +33,7 @@ import {
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
-  const { timelineEvents } = useTimelineEvents(props);
+  const { timelineEvents: allTimelineEvents } = useTimelineEvents(props);
 
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
@@ -83,6 +83,11 @@ function CartesianChartInner(props: VisualizationProps) {
         : originalSettings,
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
+
+  const timelineEvents =
+    settings["timeline_events.enabled"] === false
+      ? undefined
+      : allTimelineEvents;
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
