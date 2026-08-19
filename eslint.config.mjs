@@ -270,7 +270,7 @@ const configs = [
       "react/no-is-mounted": "error",
       "react/prefer-es6-class": "error",
       "react/display-name": "warn",
-      "react/prop-types": "error",
+      "react/prop-types": "off",
       "react/no-did-mount-set-state": "off",
       "react/no-did-update-set-state": "off",
       "react/no-find-dom-node": "off",
@@ -440,7 +440,6 @@ const configs = [
     rules: {
       "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
-      "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-inferrable-types": "off",
       "@typescript-eslint/no-explicit-any": "off",
@@ -689,7 +688,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"],
+    files: ["frontend/src/metabase/ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -1052,8 +1051,8 @@ const configs = [
       "**/.storybook/**",
       "**/jest/**",
       "**/test/**",
-      "**/*.spec.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx}",
+      "**/*.spec.{ts,tsx}",
+      "**/*.stories.{ts,tsx}",
     ],
     rules: {
       "metabase/no-external-references-for-sdk-package-code": [
@@ -1132,7 +1131,7 @@ const configs = [
     },
   },
   {
-    files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+    files: ["docs/**/snippets/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-var-requires": "off",

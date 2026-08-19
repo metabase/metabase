@@ -123,7 +123,7 @@ module.exports = (env) => {
       ],
     },
     resolve: {
-      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      extensions: [".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,
