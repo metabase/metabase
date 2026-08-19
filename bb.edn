@@ -95,11 +95,12 @@
                                       :description "Files or directories to fix unused requires in"}]]
    :task (task! (fix/fix-files parsed))}
 
-  check
-  {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
-   :examples [["./bin/mage check"]]
-   :requires [[mage.check]]
-   :task (task! (mage.check/check (:arguments parsed)))}
+  load-namespaces
+  {:doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
+   :examples [["./bin/mage load-namespaces"]]
+   :requires [[mage.load-namespaces]]
+   :arg-schema [:tuple]
+   :task (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
   {:doc "Check for misspellings in the source code."

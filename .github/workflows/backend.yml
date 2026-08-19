@@ -265,7 +265,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
-        run: clojure -M:ee:drivers:check
+        run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
     if: ${{ !inputs.skip }}
