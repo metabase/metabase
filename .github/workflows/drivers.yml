@@ -39,6 +39,11 @@ on:
           - sqlite
           - sqlserver
           - vertica
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.driver.bigquery-cloud-sdk-test/sync-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
       profile:
         description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
         type: boolean
@@ -55,10 +60,14 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Read by the test-driver action, which is what actually runs the profiler. Set here rather than
-  # passed as an input to each job so that turning profiling on is one line, not one line per driver.
-  # Empty (and so off) on workflow_call, where there is no `profile` input.
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per driver.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
+  # the whole list -- BigQuery, for instance, has three legs.
   PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   # This job determines which driver tests should run based on PR context.
