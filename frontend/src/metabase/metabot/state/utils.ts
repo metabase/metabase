@@ -49,6 +49,7 @@ const SERVER_MESSAGE_ERROR_CODES = [
   "ai_provider_rate_limit",
   "ai_provider_auth",
   "ai_provider_unavailable",
+  "provider_error",
   CONTEXT_FULL_ERROR_CODE,
 ] as const;
 
