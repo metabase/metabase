@@ -1,7 +1,16 @@
-const { buildStatsRows } = require("./bundle-size-stats-prepare");
+import {
+  buildStatsRows,
+  type CacheRow,
+  type Measurement,
+} from "./bundle-size-stats-prepare";
 
-const meta = { date: "2026-06-30", commit: "abc123", commitMessage: "Fix the thing (#123)", version: "" };
-const measurement = (over = {}) => ({
+const meta = {
+  date: "2026-06-30",
+  commit: "abc123",
+  commitMessage: "Fix the thing (#123)",
+  version: "",
+};
+const measurement = (over: Partial<Measurement> = {}): Measurement => ({
   bundle: "embedding-sdk-chunked",
   kind: "total",
   rawBytes: 1000,
@@ -23,8 +32,8 @@ describe("buildStatsRows", () => {
     expect(result.firstPoint).toBe(true);
     expect(result.significant).toBe(true);
     expect(result.reason).toBe("first point");
-    expect(result.rows[0]["Gzip bytes delta"]).toBe("");
-    expect(result.rows[0]["Brotli delta %"]).toBe("");
+    expect(result.rows[0]["Gzip bytes delta"]).toBeNull();
+    expect(result.rows[0]["Brotli delta %"]).toBeNull();
     expect(result.rows[0]["Description"]).toBe("Fix the thing (#123)");
     expect(result.cacheRows[0]).toEqual({
       bundle: "embedding-sdk-chunked",
@@ -49,7 +58,15 @@ describe("buildStatsRows", () => {
   });
 
   it("gates significance on the brotli (as-served) delta when both sides have it", () => {
-    const previous = [{ bundle: "embedding-sdk-chunked", kind: "total", rawBytes: 1000, gzipBytes: 400, brotliBytes: 300 }];
+    const previous: CacheRow[] = [
+      {
+        bundle: "embedding-sdk-chunked",
+        kind: "total",
+        rawBytes: 1000,
+        gzipBytes: 400,
+        brotliBytes: 300,
+      },
+    ];
 
     const big = buildStatsRows({
       ...meta,
@@ -75,13 +92,14 @@ describe("buildStatsRows", () => {
     const result = buildStatsRows({
       ...meta,
       measurements: [measurement({ gzipBytes: 440, brotliBytes: 300 })], // gzip +10%
+      // No brotliBytes: this point was cached before brotli logging landed.
       previous: [{ bundle: "embedding-sdk-chunked", kind: "total", rawBytes: 1000, gzipBytes: 400 }],
       threshold: 1,
     });
 
     expect(result.maxServedDeltaPercent).toBeCloseTo(10);
     expect(result.significant).toBe(true);
-    expect(result.rows[0]["Brotli bytes delta"]).toBe(""); // no base brotli to diff against
+    expect(result.rows[0]["Brotli bytes delta"]).toBeNull(); // no base brotli to diff against
     expect(result.rows[0]["Gzip delta %"]).toBeCloseTo(10);
   });
 });

@@ -21,7 +21,7 @@ import {
   DataReferenceTriggerButton,
 } from "./InlineDataReference";
 
-interface ActionCreatorProps {
+export interface ActionCreatorProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;

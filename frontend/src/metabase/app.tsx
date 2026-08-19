@@ -7,8 +7,6 @@ import "@xyflow/react/dist/style.css";
 // Should be imported before any other metabase import
 import "ee-overrides";
 
-import "metabase/utils/dayjs";
-
 // set the locale before loading anything else
 import "metabase/utils/i18n";
 

@@ -1,5 +1,4 @@
 import type { Row } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,6 +12,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
