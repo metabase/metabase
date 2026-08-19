@@ -24,7 +24,7 @@ const setup = () => {
 };
 
 describe("EmbeddingLegaleseModal", () => {
-  it("should enable modular embedding, dismiss both terms and close the modal when the user clicks Accept", async () => {
+  it("should enable modular embedding, dismiss the terms and close the modal when the user clicks Accept", async () => {
     const { onClose } = setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Agree" }), {
