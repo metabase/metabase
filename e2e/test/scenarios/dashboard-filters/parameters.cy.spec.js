@@ -24,7 +24,9 @@ const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
 // retries until the URL settles.
 const expectSearchParams = (expected) =>
   cy.location("search").should((search) => {
-    expect(Object.fromEntries(new URLSearchParams(search))).to.deep.eq(expected);
+    expect(Object.fromEntries(new URLSearchParams(search))).to.deep.eq(
+      expected,
+    );
   });
 
 describe("scenarios > dashboard > parameters", () => {
