@@ -6,7 +6,6 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,
-  CollectionItem,
   CollectionItemModel,
   CollectionNamespace,
   ListCollectionItemsRequest,
@@ -233,14 +232,4 @@ export const getDisabledReasonForSavingModel = (
   }
 
   return t`Items cannot be saved to this collection.`;
-};
-
-export const canCollectionCardBeUsed = (
-  item: CollectionItem | CollectionPickerItem,
-): boolean => {
-  if (item.model === "card") {
-    return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
-  }
-
-  return true;
 };

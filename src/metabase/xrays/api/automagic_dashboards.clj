@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
@@ -245,14 +246,22 @@
   (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
-  "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
+  "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target.
+
+  Only the ones the current user can read. An FK pointing at the model's primary key can come from any Table in any
+  Database on the instance, and each one this returns is x-rayed into the response -- its name, its columns and the
+  queries generated against it. Being able to read the model says nothing about those, which is why
+  [[metabase.xrays.automagic-dashboards.core/linked-tables]] filters the same way."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
   (when-let [field-id (:id (some #(when ((comp #{field-ref} :field_ref) %) %) rsmd))]
-    (map
-     (fn [{:keys [table_id id]}]
-       {:linked-table-id table_id
-        :linked-field-id id})
-     (t2/select :model/Field :fk_target_field_id field-id))))
+    (let [fields (t2/hydrate (t2/select :model/Field :fk_target_field_id field-id) :table)]
+      ;; 58 has database-granular perms caching only (see query-permissions.impl); prime the databases these Fields'
+      ;; Tables belong to. Upstream 63 primes a table-granular cache via prime-table-perms-cache, absent on this branch.
+      (perms/prime-db-cache (into #{} (keep (comp :db_id :table)) fields))
+      (for [{:keys [table_id id] :as field} fields
+            :when (mi/can-read? field)]
+        {:linked-table-id table_id
+         :linked-field-id id}))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."

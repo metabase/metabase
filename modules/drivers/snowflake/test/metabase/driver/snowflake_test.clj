@@ -1491,3 +1491,25 @@
           (mt/with-native-query-testing-context query
             (is (some? (mt/rows (qp/process-query query)))
                 "Hour bucketing on a time field from a source query should not error")))))))
+
+(deftest ^:parallel add-interval-honeysql-form-rejects-hostile-unit-test
+  (testing "the Snowflake DATEADD sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/add-interval-honeysql-form :snowflake :some_col 1 hostile))))
+    (testing "and still compiles a legitimate unit to the expected DATEADD token"
+      (is (re-find #":raw \"day\""
+                   (pr-str (sql.qp/add-interval-honeysql-form :snowflake :some_col 1 :day)))))))
+
+(deftest ^:sequential relative-datetime-cast-test
+  (mt/test-driver :snowflake
+    (testing "the server-side relative-datetime CAST target must be a bare type name -- Snowflake rejects a quoted one
+             with `Unsupported data type`"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :created_at))
+                                         (lib/relative-datetime -30 :day))))]
+        (mt/with-native-query-testing-context query
+          (is (some? (mt/rows (qp/process-query query)))))))))

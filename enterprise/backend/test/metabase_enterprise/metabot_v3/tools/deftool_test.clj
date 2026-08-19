@@ -42,7 +42,7 @@
     (mr/def ::test-args
       [:and
        [:map [:user_id :int]]
-       [:map {:encode/tool-api-request #(set/rename-keys % {:user_id :user-id})}]])
+       [:map {:closed false, :encode/tool-api-request #(set/rename-keys % {:user_id :user-id})}]])
     (let [received-args (atom nil)
           handler       (fn [args]
                           (reset! received-args args)

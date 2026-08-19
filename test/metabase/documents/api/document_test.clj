@@ -75,6 +75,34 @@
     (mt/user-http-request :crowberto
                           :put 404 "document/99999" {:name "Non-existent Document" :document (documents.test-util/text->prose-mirror-ast "Doc")})))
 
+(deftest put-document-ignores-undeclared-columns-test
+  (testing "PUT /api/document/:document-id ignores public_uuid/made_public_by_id/creator_id and raw timestamp
+           values not declared on DocumentUpdateOptions: a document editor can't self-publish by
+           smuggling public_uuid, and can't inject SQL via a {:raw ...} value on created_at/updated_at"
+    (mt/with-temp [:model/Document {document-id :id creator-id :creator_id} {:name "test doc"
+                                                                             :document (documents.test-util/text->prose-mirror-ast "Initial")}]
+      (let [result (mt/user-http-request :crowberto :put 200 (format "document/%s" document-id)
+                                         {:name              "updated doc"
+                                          :public_uuid       "11111111-1111-1111-1111-111111111111"
+                                          :made_public_by_id (mt/user->id :rasta)
+                                          :creator_id        (mt/user->id :rasta)
+                                          :updated_at        {:raw "(SELECT current_database())"}
+                                          :created_at        {:raw "(SELECT current_database())"}})
+            row    (t2/select-one [:model/Document :public_uuid :made_public_by_id :creator_id] :id document-id)]
+        (testing "public_uuid/made_public_by_id are never set -- no self-publish"
+          (is (nil? (:public_uuid result)))
+          (is (nil? (:made_public_by_id result)))
+          (is (nil? (:public_uuid row)))
+          (is (nil? (:made_public_by_id row))))
+        (testing "creator_id can't be overwritten"
+          (is (= creator-id (:creator_id result)))
+          (is (= creator-id (:creator_id row))))
+        (testing "created_at/updated_at stay real timestamps, not the injected raw value"
+          (is (instance? java.time.temporal.Temporal (:updated_at result)))
+          (is (instance? java.time.temporal.Temporal (:created_at result))))
+        (testing "the attacker-chosen public_uuid was never minted -- the public read endpoint 404s"
+          (mt/user-http-request :crowberto :get 404 "public/document/11111111-1111-1111-1111-111111111111"))))))
+
 (deftest put-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Document {document-id :id} {:collection_id coll-id
@@ -434,7 +462,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :post 403 "document/"
+                              :post 400 "document/"
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -454,7 +482,7 @@
                                :visualization_settings {}}}]
 
         (mt/user-http-request :crowberto
-                              :put 403 (format "document/%s" document-id)
+                              :put 400 (format "document/%s" document-id)
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -2230,6 +2258,26 @@
                                   {:parameters []
                                    :format_rows false
                                    :pivot_results false})))))))
+
+(deftest download-document-card-orphaned-fk-returns-404-test
+  (testing "POST /api/document/:id/card/:card-id/query/:export-format rejects a card that owns document_id but is not in the AST"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name "Removed Card"
+                                                :dataset_query (mt/mbql-query venues {:limit 10})
+                                                :display :table
+                                                :collection_id coll-id}
+                     :model/Document {doc-id :id} {:name "Doc without the card in its body"
+                                                   :collection_id coll-id
+                                                   :document (documents.test-util/text->prose-mirror-ast "no cards here")}]
+        ;; Force a pre-fix orphan: the FK points at the document, but the card is absent from the document's content.
+        (t2/update! :model/Card card-id {:document_id doc-id})
+        (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
+          (perms/grant-collection-read-permissions! group coll-id)
+          (testing "a user who can read the document still cannot pull the orphaned card"
+            (mt/user-http-request :rasta :post 404
+                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
+                                  {:parameters [] :format_rows false :pivot_results false})))))))
 
 (deftest download-document-card-respects-download-permissions-test
   (testing "POST /api/document/:document-id/card/:card-id/query/:export-format respects database download permissions"

@@ -399,7 +399,8 @@
             (t2/reducible-select :model/Table
                                  {:select    [:t.*]
                                   :from      [[(t2/table-name :model/Table) :t]]
-                                  :left-join [[{:select   [:table_id
+                                  :left-join [[^:allow-subquery
+                                               {:select   [:table_id
                                                            [[:min :last_analyzed] :earliest_last_analyzed]]
                                                 :from     [(t2/table-name :model/Field)]
                                                 :group-by [:table_id]} :sub]

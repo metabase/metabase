@@ -238,7 +238,7 @@
                      (when api/*is-superuser?*
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]])
+                        [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
 
                      ;; Collection-based entities with archived field
                      (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
@@ -249,20 +249,20 @@
                                                 api/*current-user-id* :perms/create-queries))))
                          [:and
                           [:= entity-type-field (name entity-type)]
-                          [:in entity-id-field {:select [:id]
-                                                :from [table-name]
-                                                :where [:and
+                          [:in entity-id-field ^:allow-subquery {:select [:id]
+                                                                 :from [table-name]
+                                                                 :where [:and
                                                         ;; Filter by collection visibility
-                                                        (collection/visible-collection-filter-clause
-                                                         (keyword (name table-name) "collection_id")
-                                                         {:include-archived-items include-archived-items}
-                                                         {:current-user-id api/*current-user-id*
-                                                          :is-superuser?   api/*is-superuser?*})
+                                                                         (collection/visible-collection-filter-clause
+                                                                          (keyword (name table-name) "collection_id")
+                                                                          {:include-archived-items include-archived-items}
+                                                                          {:current-user-id api/*current-user-id*
+                                                                           :is-superuser?   api/*is-superuser?*})
                                                         ;; Filter by entity archived status
-                                                        (case include-archived-items
-                                                          :exclude [:= archived-column false]
-                                                          :only    [:= archived-column true]
-                                                          :all     nil)]}]]))
+                                                                         (case include-archived-items
+                                                                           :exclude [:= archived-column false]
+                                                                           :only    [:= archived-column true]
+                                                                           :all     nil)]}]]))
 
                      ;; Table with visible-filter-clause and active/visibility_type filtering
                      :model/Table
@@ -270,21 +270,21 @@
                            visibility-type-column (keyword (name table-name) "visibility_type")]
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from [table-name]
-                                              :where [:and
-                                                      [:in id-column
-                                                       (perms/visible-table-filter-select
-                                                        :id
-                                                        {:user-id api/*current-user-id*
-                                                         :is-superuser? api/*is-superuser?*}
-                                                        {:perms/view-data :unrestricted
-                                                         :perms/create-queries :query-builder})]
-                                                      (case include-archived-items
-                                                        :exclude     [:and
-                                                                      [:= active-column true]
-                                                                      [:= visibility-type-column nil]]
-                                                        (:only :all) nil)]}]])
+                        [:in entity-id-field ^:allow-subquery {:select [:id]
+                                                               :from [table-name]
+                                                               :where [:and
+                                                                       [:in id-column
+                                                                        (perms/visible-table-filter-select
+                                                                         :id
+                                                                         {:user-id api/*current-user-id*
+                                                                          :is-superuser? api/*is-superuser?*}
+                                                                         {:perms/view-data :unrestricted
+                                                                          :perms/create-queries :query-builder})]
+                                                                       (case include-archived-items
+                                                                         :exclude     [:and
+                                                                                       [:= active-column true]
+                                                                                       [:= visibility-type-column nil]]
+                                                                         (:only :all) nil)]}]])
 
                      ;; Segment with table permissions and archived filtering
                      :model/Segment
@@ -292,28 +292,29 @@
                            table-id-column (keyword (name table-name) "table_id")]
                        [:and
                         [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from [table-name]
-                                              :where [:and
+                        [:in entity-id-field ^:allow-subquery {:select [:id]
+                                                               :from [table-name]
+                                                               :where [:and
                                                       ;; Check that user can see the table this segment belongs to
-                                                      [:in table-id-column
-                                                       {:select [:metabase_table.id]
-                                                        :from [:metabase_table]
+                                                                       [:in table-id-column
+                                                                        ^:allow-subquery
+                                                                        {:select [:metabase_table.id]
+                                                                         :from [:metabase_table]
                                                         ;; using this clause because we had to change the mi/visible-filter-clause
                                                         ;; to allow returning CTE based filters
                                                         ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                                        :where [:in :metabase_table.id
-                                                                (perms/visible-table-filter-select
-                                                                 :id
-                                                                 {:user-id api/*current-user-id*
-                                                                  :is-superuser? api/*is-superuser?*}
-                                                                 {:perms/view-data :unrestricted
-                                                                  :perms/create-queries :query-builder})]}]
+                                                                         :where [:in :metabase_table.id
+                                                                                 (perms/visible-table-filter-select
+                                                                                  :id
+                                                                                  {:user-id api/*current-user-id*
+                                                                                   :is-superuser? api/*is-superuser?*}
+                                                                                  {:perms/view-data :unrestricted
+                                                                                   :perms/create-queries :query-builder})]}]
                                                       ;; Filter by archived status
-                                                      (case include-archived-items
-                                                        :exclude [:= archived-column false]
-                                                        :only [:= archived-column true]
-                                                        :all nil)]}]])))))
+                                                                       (case include-archived-items
+                                                                         :exclude [:= archived-column false]
+                                                                         :only [:= archived-column true]
+                                                                         :all nil)]}]])))))
          entity-model)))
 
 (defn- readable-graph-dependencies

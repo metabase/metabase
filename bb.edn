@@ -83,11 +83,12 @@
    :requires [[mage.kondo :as kondo]]
    :task     (task! (kondo/kondo-updated (:arguments parsed)))}
 
-  check
-  {:doc      "Checks whether we can compile all source files (and finds circular dependencies)"
-   :examples [["./bin/mage check"]]
-   :requires [[mage.check]]
-   :task     (task! (mage.check/check (:arguments parsed)))}
+  load-namespaces
+  {:doc        "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
+   :examples   [["./bin/mage load-namespaces"]]
+   :requires   [[mage.load-namespaces]]
+   :arg-schema [:tuple]
+   :task       (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
   {:doc      "Check for misspellings in the source code."
@@ -342,7 +343,7 @@
    :requires [[mage.util :as u]
               [clojure.string :as str]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"
@@ -357,7 +358,7 @@
    :requires [[clojure.string :as str]
               [mage.util :as u]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"
