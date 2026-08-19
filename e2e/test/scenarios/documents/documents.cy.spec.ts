@@ -779,7 +779,7 @@ describe("documents", () => {
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
         H.activateToken("pro-self-hosted");
-        H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+        H.setupAnthropicLlmProvider();
         H.visitDocument("@documentId");
 
         H.documentContent().click();

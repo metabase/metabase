@@ -7,8 +7,8 @@ import { useQuestionAlertModalContext } from "embedding-sdk-bundle/components/pr
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useHasEmailSetup } from "metabase/common/hooks";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import type { QuestionAlertsButtonProps } from "metabase/plugins";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 
 /**

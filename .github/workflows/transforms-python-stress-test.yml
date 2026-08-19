@@ -387,7 +387,7 @@ jobs:
       - be-tests-redshift-transforms
       - be-tests-snowflake-transforms
       - be-tests-sqlserver-transforms
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: transforms-stress-test-result
     if: always() && !cancelled()

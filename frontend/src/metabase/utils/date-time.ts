@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { dayjs } from "metabase/dayjs";
 import type { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6

@@ -1,7 +1,6 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
@@ -9,6 +8,7 @@ import _ from "underscore";
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
   isQuestionDirty,

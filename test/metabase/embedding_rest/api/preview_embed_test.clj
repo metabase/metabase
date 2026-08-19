@@ -524,7 +524,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
      (with-new-secret-key!
        ~@body)))
 
@@ -569,7 +569,7 @@
             (testing "\nGET /api/preview_embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
-                     (mt/user-http-request :rasta :get 200 url))))))))))
+                     (mt/user-http-request :crowberto :get 200 url))))))))))
 
 (deftest preview-locked-linked-chain-filter-values-test
   (testing "GET /api/preview_embed/dashboard/:token/params/:key/values constrains a linked enabled param by a locked param (#41635)"
