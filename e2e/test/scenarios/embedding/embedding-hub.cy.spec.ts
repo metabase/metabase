@@ -226,8 +226,8 @@ describe("scenarios > embedding > embedding hub > security", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      // The snapshot turns embedding on, and the switch reads the merged
-      // setting, so start from off.
+      // The snapshot turns embedding on, but this test is about turning it on
+      // from the hub, so start from off the way a fresh instance would be.
       H.updateSetting("enable-embedding-modular", false);
     });
 
