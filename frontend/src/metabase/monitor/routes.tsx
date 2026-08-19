@@ -1,9 +1,12 @@
 import { createElement } from "react";
 
+import { loadCodeEditor } from "metabase/common/components/CodeEditor/lazy";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  lazyModalRouteElement,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
-import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
 // From the file rather than the barrel beside it: the barrel also re-exports
 // the page this file loads lazily, so importing the modal through it would hold
 // the page in the initial bundle.
@@ -38,9 +41,9 @@ function MonitorIndexRedirect() {
 }
 
 /**
- * The monitor pages, in their own chunk. The access guards and the modal routes
- * stay eager: a guard has to decide before there is anything to show, and a
- * modal route is small.
+ * The monitor pages, in their own chunk. The access guards stay eager: a guard
+ * has to decide before there is anything to show. So does the job modal, which
+ * is small. The log levels modal is not, so it has a loader of its own below.
  */
 const monitorLayout = () =>
   import("./components/MonitorLayout").then(({ MonitorLayout }) => ({
@@ -78,6 +81,17 @@ const modelPersistenceLogPage = () =>
     }),
   );
 
+// The log levels modal renders a code editor, which nothing else on the logs
+// page needs. Its parent route is already lazy, but a modal declared with
+// `modalRoute` holds its component eagerly.
+const logLevelsModal = () =>
+  Promise.all([
+    import("metabase/monitor/tools/components/LogLevelsModal"),
+    // Awaited here so the modal appears with its editor already in place,
+    // rather than opening around an empty area that fills in a moment later.
+    loadCodeEditor(),
+  ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
+
 export function getMonitorRoutes() {
   return (
     <Route element={<CanAccessMonitor />}>
@@ -105,7 +119,7 @@ export function getMonitorRoutes() {
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" lazy={logs}>
-            {modalRoute("levels", LogLevelsModal)}
+            {lazyModalRouteElement("levels", logLevelsModal)}
           </Route>
           <Route
             path="errors"
