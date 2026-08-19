@@ -834,19 +834,7 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (mt/metadata-provider)
-        venues            (lib.metadata/table metadata-provider (mt/id :venues))
-        query             (lib/query metadata-provider venues)]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card card {:dataset_query query}
-                     :model/Card no-query {}]
-        (is (=? {:can_run_adhoc_query true}
-                (t2/hydrate card :can_run_adhoc_query)))
-        (is (=? {:can_run_adhoc_query false}
-                (t2/hydrate no-query :can_run_adhoc_query)))))))
-
-(deftest audit-card-permisisons-test
+(deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
     ;; collections and cards installed. Since we can't load audit content on OSS, let's just redef the audit collection

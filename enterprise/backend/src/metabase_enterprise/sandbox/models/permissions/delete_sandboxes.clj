@@ -48,7 +48,12 @@
     (do
       (log/debugf "Group %d changes has %s perms for Database %d schema %s, deleting all sandboxes for this schema"
                   group-id changes database-id (pr-str schema-name))
-      (delete-gtaps-with-condition! group-id [:and [:= :table.db_id database-id] [:= :table.schema schema-name]]))
+      ;; the API graph keys tables that have no schema under "", but `metabase_table.schema` is nil for them, so
+      ;; match nil the way the graph spells it (#583)
+      (delete-gtaps-with-condition! group-id [:and [:= :table.db_id database-id]
+                                              (if (= schema-name "")
+                                                [:= :table.schema nil]
+                                                [:= :table.schema schema-name])]))
     (doseq [table-id (set (keys changes))]
       (delete-gtaps-for-group-table! (assoc context :table-id table-id) (get changes table-id)))))
 

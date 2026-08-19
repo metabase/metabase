@@ -272,6 +272,7 @@
       (testing "native query"
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted
+                :card-ids             #{card-1-id card-2-id}
                 :paths                #{(format "/collection/%d/read/" collection-1-id)
                                         (format "/collection/%d/read/" collection-2-id)}}
                (query-perms/required-perms-for-query
@@ -290,12 +291,14 @@
                                                        :condition    [:= true false]}]}}]
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
+                  :card-ids             #{card-1-id card-2-id}
                   :paths                #{(format "/collection/%d/read/" collection-1-id)
                                           (format "/collection/%d/read/" collection-2-id)}}
                  (query-perms/required-perms-for-query native-query)))
           (testing "pMBQL query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
+                    :card-ids             #{card-1-id card-2-id}
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query

@@ -1090,7 +1090,9 @@
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+  ;; quote the schema name rather than splicing it raw into `%s`, so a backtick in a transform target's
+  ;; schema can't break out and run arbitrary DDL/DML on the warehouse.
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.u/quote-name :bigquery-cloud-sdk :table schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk

@@ -377,7 +377,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
+  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

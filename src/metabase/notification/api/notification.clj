@@ -21,20 +21,32 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- handler-api-input
+  "The handler shape API input accepts: like the model's, but restricted to user-provided templates (no
+  handlebars-resource)."
+  [handler-schema recipient-schema]
+  [:merge
+   handler-schema
+   [:map
+    [:template   {:optional true} [:multi {:dispatch map?}
+                                   [true ::models.channel/ChannelTemplateUserProvided]
+                                   [false :nil]]]
+    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+    [:recipients {:optional true} [:sequential recipient-schema]]]])
+
 (mr/def ::NotificationApiInput
   "Notification schema for API input. Like FullyHydratedNotification but restricts templates
   to user-provided types only (no handlebars-resource)."
-  [:merge
-   ::models.notification/FullyHydratedNotification
-   [:map
-    [:handlers {:optional true}
-     [:sequential
-      [:merge
-       ::models.notification/NotificationHandler
-       [:map
-        [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
-        [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-        [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]]]]])
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/NotificationHandler
+                      ::models.notification/NotificationRecipient)))
+
+(mr/def ::CreateNotificationParams
+  "[[::NotificationApiInput]] for a create request: no `:id` at any level, so a caller cannot pick a primary key."
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/CreateNotificationHandlerParams
+                      ::models.notification/CreateNotificationRecipientParams)
+   {:with-id? false}))
 
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
@@ -178,7 +190,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new notification, return the created notification."
-  [_route _query body :- ::NotificationApiInput]
+  [_route _query body :- ::CreateNotificationParams]
   (check-no-resource-templates! (:handlers body))
   (api/create-check :model/Notification body)
   (let [notification (models.notification/hydrate-notification
@@ -193,7 +205,6 @@
       (send-you-were-added-card-notification-email! notification))
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
-
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
   [updated-notification existing-notification]

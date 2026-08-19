@@ -17,9 +17,9 @@
                                          {:select [[:tablename :xi]]
                                           :from [:pg_tables]
                                           :where [:and
-                                                  [:<> :schemaname [:inline "information_schema"]]
-                                                  [:<> :schemaname [:inline "pg_catalog"]]
-                                                  [:<> :tablename  [:inline "migration"]]]})))]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "information_schema"]]
+                                                  [:<> :schemaname ^:allow-raw-sql [:inline "pg_catalog"]]
+                                                  [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]]})))]
     (doseq [table table-names]
       (jdbc/execute! tx
                      (sql/format

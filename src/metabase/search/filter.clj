@@ -16,7 +16,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`: `:app-user` hides it from sandboxed or impersonated users, `:superuser` restricts it to superusers."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -110,7 +113,7 @@
     (if (premium-features/has-feature? :data-studio)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause

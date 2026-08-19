@@ -55,9 +55,15 @@
                               (:id comment)))))
 
 (defn mentions
-  "Find mentioned users inside of a comment content"
+  "Find the IDs of the users mentioned inside a comment content.
+
+  Comment content is free-form TipTap JSON, so it is stored exactly as the client sent it and every `:entityId` in it
+  is untrusted input."
   [content]
-  (->> (tree-seq :content :content content)
-       (filter #(and (= "smartLink" (-> % :type))
-                     (= "user" (-> % :attrs :model))))
-       (mapv #(-> % :attrs :entityId))))
+  (into []
+        (comp (filter #(and (= "smartLink" (:type %))
+                            (= "user" (-> % :attrs :model))))
+              (keep #(let [entity-id (-> % :attrs :entityId)]
+                       (when (pos-int? entity-id)
+                         entity-id))))
+        (tree-seq :content :content content)))

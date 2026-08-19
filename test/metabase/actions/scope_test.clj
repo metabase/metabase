@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.scope :as actions.scope]
+   [metabase.api.macros :as api.macros]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -13,6 +14,12 @@
       {:dashboard-id 1, :collection-id 2}                                                          :dashboard
       {:model-id 1, :table-id 2, :database-id 3}                                                   :model
       {:table-id 1, :database-id 4}                                                                :table)))
+
+(deftest scope-raw-keeps-type-test
+  (testing ":type survives request-body decoding on raw scopes (hydrate-scope reads it when the FE sends it)"
+    (is (= {:type :dashboard, :dashboard-id 5}
+           (api.macros/decode-and-validate-params :body :metabase.actions.types/scope.raw
+                                                  {:type "dashboard", :dashboard-id 5})))))
 
 (deftest hydrate-test
   (let [db-id      (mt/id)

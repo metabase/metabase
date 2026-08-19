@@ -73,7 +73,7 @@
   (jdbc/execute-one! tx
                      (sql/format {:select [[[:raw 1] :exists]]
                                   :from [:information_schema.tables]
-                                  :where [[:= :information_schema.tables.table_name [:inline "index_metadata"]]]
+                                  :where [[:= :information_schema.tables.table_name ^:allow-raw-sql [:inline "index_metadata"]]]
                                   :limit 1})))
 
 (defn- lowest-dynamic-db-version

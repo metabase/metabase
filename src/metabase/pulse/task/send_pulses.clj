@@ -107,10 +107,11 @@
   (when-let [ids-to-delete (seq
                             (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
                                                      :pulse_id pulse-id
-                                                     :id [:not-in {:select   [[:pulse_channel_id :id]]
-                                                                   :from     :pulse_channel_recipient
-                                                                   :group-by [:pulse_channel_id]
-                                                                   :having   [:>= :%count.* [:raw 1]]}])
+                                                     :id [:not-in ^:allow-subquery
+                                                          {:select   [[:pulse_channel_id :id]]
+                                                           :from     :pulse_channel_recipient
+                                                           :group-by [:pulse_channel_id]
+                                                           :having   [:>= :%count.* [:inline 1]]}])
                                   :when  (case (:channel_type channel)
                                            :email
                                            (empty? (get-in channel [:details :emails]))
