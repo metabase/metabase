@@ -266,10 +266,12 @@
                                                                 :archived   false
                                                                 :created_at :%now
                                                                 :updated_at :%now})]
+        ;; delete via the table name: the FK cascade under test lives in the database schema, and the model's delete
+        ;; hooks query tables (e.g. search_index_metadata) that don't exist at this schema version
         (is (thrown? clojure.lang.ExceptionInfo
-                     (t2/delete! :model/Database :id db-id)))
+                     (t2/delete! (t2/table-name :model/Database) :id db-id)))
         (migrate!)
-        (is (t2/delete! :model/Database :id db-id))))))
+        (is (t2/delete! (t2/table-name :model/Database) :id db-id))))))
 
 (deftest ^:mb/old-migrations-test backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
