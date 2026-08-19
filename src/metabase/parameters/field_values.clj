@@ -109,6 +109,12 @@
              (:id field) constraints {}))
           ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
           ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
+          ;; A nil back from it means either the warehouse query failed or the field genuinely has no
+          ;; values, and sandboxing depends on the second reading: see
+          ;; `metabase-enterprise.sandbox.api.field-test/field-values-test`, which expects a 200 and no
+          ;; values when a sandbox matches no rows. Telling the two apart would need a change in
+          ;; `distinct-values` itself; until then a failed fetch is stored as empty and reused until the
+          ;; advanced FieldValues expire.
           (let [rows (-> (field-values/distinct-values field) :values)]
             {:values          rows
              :has_more_values (= (count rows) field-values/*distinct-limit*)}))

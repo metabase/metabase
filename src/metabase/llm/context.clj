@@ -3,11 +3,14 @@
    and fetches table metadata formatted as DDL for SQL generation."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
@@ -151,25 +154,71 @@
                 :fk_target_field_id  (:fk-target-field-id col)})
              columns)))))
 
+(def ^:private max-value-fetches
+  "How many restricted fields one request will look up values for.
+
+   A restricted field with nothing cached for this user and role costs a synchronous `distinct-values`
+   query against the warehouse, so an uncapped wide table could spend the whole HTTP timeout here.
+   Columns past the cap simply go without sample values. Unrestricted fields read the shared cache and
+   are not counted, so this leaves the ordinary case exactly as it was."
+  20)
+
+(defn- field-values-for
+  "The values `field` should contribute to the DDL, or nil.
+
+   `restricted?` says the field's table is row-restricted for this user. Only then are the shared values
+   unsafe to show, and only then is it worth resolving values per user."
+  [field restricted?]
+  (if-not restricted?
+    ;; The user sees every row of this table, so the values sync cached are the values they would get.
+    ;; Resolving them per user instead would re-derive the impersonation role and routing destination
+    ;; once per field, and those are properties of the database, not of the field.
+    (not-empty (:values (field-values/get-or-create-full-field-values! field)))
+    (when-let [fv (try
+                    (params.field-values/get-or-create-field-values! field)
+                    (catch Exception e
+                      ;; Resolving the user's role throws when the impersonation attribute is missing. One
+                      ;; column's samples are not worth failing the request over.
+                      (log/warnf "Could not fetch field values for field %s: %s" (:id field) (ex-message e))
+                      nil))]
+      ;; `hash-input-for-sandbox` is gated on `:feature :sandboxes` while the restriction check is not, so
+      ;; a token-check blip can hand back the shared cache. Trust the row, not the feature.
+      (when (= :advanced (:type fv))
+        (not-empty (:values fv))))))
+
 (defn- fetch-field-values
-  "Fetch or create FieldValues for columns that should have them.
-   Uses get-or-create-full-field-values! which will:
-   - Create field values if missing and field should have them
-   - Update field values if inactive (not used recently)
-   - Query source database if necessary to populate values
-   Returns map of field-id -> values vector."
-  [columns]
+  "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
+   Values are the ones the current user is allowed to see, and are fetched from the source database when
+   nothing suitable is cached, for at most [[max-value-fetches]] fields.
+
+   `restricted-ids` are the tables whose rows are restricted for this user."
+  [columns restricted-ids]
   (let [field-ids (->> columns
                        (keep :id)
                        (filter pos-int?)
-                       set)]
+                       distinct)]
     (when (seq field-ids)
-      (let [fields (t2/select :model/Field :id [:in field-ids])]
+      ;; Hydrating `:table` matters for the restricted path: `field-is-sandboxed?` falls back to fetching
+      ;; the Table per field without it, which is a query per column. Nothing on the unrestricted path
+      ;; reads it, so don't pay for it there.
+      ;; Ordering by `columns` keeps the cap predictable within a table, so a column that loses its sample
+      ;; values is one further down. Across tables the order follows the caller's map and isn't sorted.
+      (let [by-id  (m/index-by :id (cond-> (t2/select :model/Field :id [:in field-ids])
+                                     (seq restricted-ids) (t2/hydrate :table)))
+            fields (keep by-id field-ids)
+            budget (volatile! max-value-fetches)]
         (into {}
-              (keep (fn [field]
-                      (when-let [fv (field-values/get-or-create-full-field-values! field)]
-                        (when-let [values (not-empty (:values fv))]
-                          [(:id field) values]))))
+              (comp
+               ;; The per-user path skips this check. Without it, every column of the table would cost a
+               ;; distinct-values query against the warehouse.
+               (filter field-values/field-should-have-field-values?)
+               (keep (fn [field]
+                       (let [restricted? (contains? restricted-ids (:table_id field))]
+                         (when (or (not restricted?) (pos? @budget))
+                           (when restricted?
+                             (vswap! budget dec))
+                           (when-let [values (field-values-for field restricted?)]
+                             [(:id field) values]))))))
               fields)))))
 
 (defn- fetch-fk-targets
@@ -193,10 +242,40 @@
 
 ;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
 
+(defn- row-restricted-table-ids
+  "The ids among `table-ids` whose rows are restricted for the current user.
+
+   Impersonation applies a connection role to the whole database, so it restricts every table in it.
+
+   Sandboxing isn't checked. Saving a sandbox strips that group's native access, and a sandbox stops being
+   enforced once another group grants unrestricted access to the table, so a sandboxed user normally can't
+   get past the `:query-builder-and-native` check in `fetch-accessible-tables`. Granting native back to a
+   sandboxed group afterwards is the gap. Master closes it with the per-table `sandbox-token-for-table`,
+   which does not exist on this branch.
+
+   Fails closed: if the user's restrictions can't be determined, every table is treated as restricted."
+  [database-id table-ids]
+  (try
+    (if (perms/impersonation-enforced-for-db? database-id)
+      (set table-ids)
+      #{})
+    (catch Exception e
+      ;; A misconfiguration throws here — conflicting sandbox and impersonation policies, or a missing
+      ;; user attribute. Withhold statistics rather than 500 the whole request or guess.
+      (log/warnf "Could not determine row restrictions for database %s: %s" database-id (ex-message e))
+      (set table-ids))))
+
+(defn- drop-fingerprints
+  "Removes `:fingerprint` from every column of `table`."
+  [table]
+  (update table :columns #(mapv (fn [col] (dissoc col :fingerprint)) %)))
+
 (defn- enrich-fingerprints-on-demand!
   "For columns missing fingerprints, trigger re-fingerprinting.
    Returns a map of field-id -> fingerprint for columns that were missing them.
-   This queries the source database to compute fingerprints if they don't exist."
+   This queries the source database to compute fingerprints if they don't exist.
+   Only call this for a user who can see every row: the computed fingerprint is stored on the Field and
+   served to every user."
   [columns]
   (let [missing-fp-ids (->> columns
                             (filter #(and (:id %) (nil? (:fingerprint %))))
@@ -424,6 +503,10 @@
    For fields missing fingerprints or field values, this function will
    trigger on-demand creation by querying the source database.
 
+   A table whose rows are restricted for this user by connection impersonation gets no fingerprint
+   statistics, and its sample values are fetched under that user's own role rather than read from the cache
+   everyone shares. Sandboxing is not detected here; see [[row-restricted-table-ids]] for why.
+
    Parameters:
    - database-id: Database containing the tables
    - table-ids: Set of table IDs to include
@@ -451,23 +534,28 @@
                            :columns      columns}))
                       accessible-tables)
 
-                ;; Gather all columns for batch operations
-                all-columns (mapcat :columns tables-with-columns)
+                restricted-ids (row-restricted-table-ids database-id (keys accessible-tables))
+                restricted?    #(contains? restricted-ids (:id %))
 
                 ;; On-demand enrichment: trigger fingerprinting for columns missing fingerprints
-                enriched-fp-map (enrich-fingerprints-on-demand! all-columns)
+                enriched-fp-map (enrich-fingerprints-on-demand!
+                                 (mapcat :columns (remove restricted? tables-with-columns)))
 
-                ;; Update tables with enriched fingerprints
+                ;; A fingerprint covers every row of the field and is computed under the database's default
+                ;; role, and there is no per-user variant to fall back on. For a restricted table the only
+                ;; honest answer is to say nothing about ranges or distinct counts.
                 tables-with-enriched-fps
                 (mapv (fn [table]
-                        (update table :columns merge-enriched-fingerprints enriched-fp-map))
+                        (if (restricted? table)
+                          (drop-fingerprints table)
+                          (update table :columns merge-enriched-fingerprints enriched-fp-map)))
                       tables-with-columns)
 
                 ;; Re-gather columns after fingerprint enrichment
                 all-enriched-columns (mapcat :columns tables-with-enriched-fps)
 
                 ;; Batch fetch FieldValues (on-demand) and FK targets
-                field-values-map (fetch-field-values all-enriched-columns)
+                field-values-map (fetch-field-values all-enriched-columns restricted-ids)
                 fk-targets-map   (fetch-fk-targets all-enriched-columns)
 
                 ;; Enrich columns with comments for DDL

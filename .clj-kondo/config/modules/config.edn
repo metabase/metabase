@@ -1184,6 +1184,8 @@
            lib-be
            metabot
            models
+           parameters
+           permissions
            premium-features
            request
            settings
