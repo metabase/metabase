@@ -64,7 +64,7 @@ module.exports = (env) => {
           use: "null-loader",
         },
         {
-          test: /\.tsx?$/,
+          test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
           use: [
             {

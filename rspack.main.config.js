@@ -174,7 +174,7 @@ const config = {
         type: "asset/source",
       },
       {
-        test: /\.tsx?$/,
+        test: /\.(tsx?|jsx?)$/,
         exclude: [
           /node_modules/,
           /cljs/,
