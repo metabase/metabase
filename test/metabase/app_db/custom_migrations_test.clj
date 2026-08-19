@@ -1647,8 +1647,11 @@
                     (table-and-column-of-type datetime-type)))))
       (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
         (migrate!)
-        (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
-               (set (table-and-column-of-type datetime-type)))))
+        ;; ignore databasechangeloglock.lockgranted: its type is Liquibase's business and varies by Liquibase
+        ;; version/db (newer Liquibase creates it as timestamptz on postgres)
+        (is (= #{[:databasechangelog :dateexecuted false]}
+               (disj (set (table-and-column-of-type datetime-type))
+                     [:databasechangeloglock :lockgranted true]))))
       (testing "downgrade should revert all converted columns to its original type"
         (migrate! :down 48)
         (is (true? (set/subset?
