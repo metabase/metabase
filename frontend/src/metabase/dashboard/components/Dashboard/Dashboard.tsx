@@ -6,6 +6,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import { useDashboardTimelines } from "metabase/dashboard/timeline-events";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
@@ -36,6 +37,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     useDashboardContext();
 
   useDashboardChartPaste();
+  useDashboardTimelines();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
 

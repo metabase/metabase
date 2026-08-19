@@ -10,6 +10,7 @@ export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
   visibleEventIds: number[];
+  partiallyVisibleEventIds?: number[];
   selectedEventIds?: number[];
   onNewEvent?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
@@ -18,12 +19,15 @@ export interface TimelinePanelProps {
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
   onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onShowTimeline: (timeline: Timeline) => void;
+  onHideTimeline: (timeline: Timeline) => void;
 }
 
 const TimelinePanel = ({
   timelines,
   collection,
   visibleEventIds,
+  partiallyVisibleEventIds,
   selectedEventIds,
   onNewEvent,
   onEditEvent,
@@ -32,6 +36,8 @@ const TimelinePanel = ({
   onToggleEventSelected,
   onShowTimelineEvents,
   onHideTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
   const canWrite = collection.can_write;
@@ -48,6 +54,7 @@ const TimelinePanel = ({
         <TimelineList
           timelines={timelines}
           visibleEventIds={visibleEventIds}
+          partiallyVisibleEventIds={partiallyVisibleEventIds}
           selectedEventIds={selectedEventIds}
           onEditEvent={onEditEvent}
           onMoveEvent={onMoveEvent}
@@ -55,6 +62,8 @@ const TimelinePanel = ({
           onArchiveEvent={onArchiveEvent}
           onShowTimelineEvents={onShowTimelineEvents}
           onHideTimelineEvents={onHideTimelineEvents}
+          onShowTimeline={onShowTimeline}
+          onHideTimeline={onHideTimeline}
         />
       ) : (
         <TimelineEmptyState
