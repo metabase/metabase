@@ -1,9 +1,11 @@
 (ns metabase.users.models.user-parameter-value-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.users.models.user-parameter-value :as upv]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -142,3 +144,21 @@
                  (binding [api/*current-user-id*  rasta-id]
                    (map #(select-keys % [:id :last_used_param_values])
                         (t2/hydrate [dash-1 dash-2] :last_used_param_values))))))))))
+
+(deftest value-is-encrypted-at-rest-test
+  (testing "a stored parameter value is a warehouse value the user picked out of a filter dropdown, so it must not
+            sit in the clear"
+    (encryption-test/with-secret-key "user-parameter-value-encryption-test-key"
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [upv-id (t2/insert-returning-pk! :model/UserParameterValue
+                                              {:user_id      (mt/user->id :rasta)
+                                               :dashboard_id dashboard-id
+                                               :parameter_id "abc123"
+                                               :value        ["Great Horned Owl"]})
+              raw    (:value (t2/query-one {:select [:value]
+                                            :from   [:user_parameter_value]
+                                            :where  [:= :id upv-id]}))]
+          (is (not (str/includes? raw "Great Horned Owl"))
+              "parameter value was stored in plaintext")
+          (is (= ["Great Horned Owl"]
+                 (t2/select-one-fn :value :model/UserParameterValue :id upv-id))))))))

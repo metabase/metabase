@@ -30,8 +30,8 @@
     s))
 
 (t2/deftransforms :model/UserParameterValue
-  {:value {:in  mi/json-in
-           :out json-out}})
+  {:value (mi/transform-encrypted {:in  mi/json-in
+                                   :out json-out})})
 
 (defn batched-upsert!
   "Delete param with nil value and upsert the rest."

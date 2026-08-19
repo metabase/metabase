@@ -24,7 +24,9 @@
    [:report_card :result_metadata]
    [:metabase_field :fingerprint]
    [:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]])
+   [:metabase_fieldvalues :human_readable_values]
+   [:revision :object]
+   [:user_parameter_value :value]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
