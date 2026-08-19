@@ -168,6 +168,30 @@
           (is (= :blocked (view-data-permission group-id database-id first-table-id)))
           (is (= :unrestricted (view-data-permission group-id database-id second-table-id))))))))
 
+(deftest query-table-permission-reconciliation-skips-unchanged-databases-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [table-id (mt/id :venues)]
+        (create-app!)
+        (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
+                              {:table_ids [table-id]})
+        (let [original-set-database-permission! perms/set-database-permission!
+              original-set-table-permissions!    perms/set-table-permissions!
+              writes                             (atom 0)]
+          (with-redefs [perms/set-database-permission!
+                        (fn [& args]
+                          (when (= :perms/view-data (nth args 3))
+                            (swap! writes inc))
+                          (apply original-set-database-permission! args))
+                        perms/set-table-permissions!
+                        (fn [& args]
+                          (when (= :perms/view-data (nth args 1))
+                            (swap! writes inc))
+                          (apply original-set-table-permissions! args))]
+            (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
+                                  {:table_ids [table-id]}))
+          (is (zero? @writes)))))))
+
 (deftest query-table-permission-reconciliation-rolls-back-on-error-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
