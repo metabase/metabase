@@ -274,7 +274,8 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent :defn}
   [dataset & body]
-  `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
+  `(t/testing (colorize/magenta ~(str \newline
+                                      (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
                                         "using inline dataset")
                                       \newline))

@@ -549,6 +549,18 @@
     [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
     [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
     [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
+    [:was-pivot
+     {:optional true
+      :description
+      "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by
+  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query
+  results."}
+     [:maybe :boolean]]
+    [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:show-row-totals    {:optional true} [:maybe :boolean]]
+    [:show-column-totals {:optional true} [:maybe :boolean]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; INFO

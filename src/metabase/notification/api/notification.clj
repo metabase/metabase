@@ -23,16 +23,30 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- handler-api-input
+  [handler-schema recipient-schema]
+  [:merge
+   handler-schema
+   [:map
+    [:template   {:optional true} [:multi {:dispatch map?}
+                                   [true ::models.channel/ChannelTemplateUserProvided]
+                                   [false :nil]]]
+    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+    [:recipients {:optional true} [:sequential recipient-schema]]]])
+
 (mr/def ::NotificationApiInput
   "Notification schema for API input. Like FullyHydratedNotification but restricts templates
   to user-provided types only (no handlebars-resource)."
   (models.notification/hydrated-notification-schema
-   [:merge
-    ::models.notification/NotificationHandler
-    [:map
-     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
-     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-     [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]))
+   (handler-api-input ::models.notification/NotificationHandler
+                      ::models.notification/NotificationRecipient)))
+
+(mr/def ::CreateNotificationParams
+  "Notification schema for a create request."
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/CreateNotificationHandlerParams
+                      ::models.notification/CreateNotificationRecipientParams)
+   {:with-id? false}))
 
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
@@ -185,7 +199,7 @@
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
-  [_route _query body :- ::NotificationApiInput request]
+  [_route _query body :- ::CreateNotificationParams request]
   (check-no-resource-templates! (:handlers body))
   (create-notification!
    (-> body

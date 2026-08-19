@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_TRUNCATION_UNITS,

@@ -7,11 +7,15 @@ import {
 } from "./components/AvailabilityLayouts";
 
 /**
- * The AI auditing pages, each in its own chunk.
+ * The AI auditing pages, in one chunk. Every loader names it, so moving between
+ * usage, conversations, MCP and CLI does not cost a fetch each time.
  *
  * The plugin registry assigns these routes on every page load, so whatever they
  * name is in the initial bundle. The pages carry the charting and data grid
  * stack, which no other page needs on first paint.
+ *
+ * They sit under `components/` rather than a `pages/` directory, which is why
+ * the route-file lint rule reaches them by name instead.
  *
  * The route shape stays eager, so matching is unchanged. The availability gates
  * above them still decide what renders, but they now decide a tick later: the
@@ -21,40 +25,43 @@ import {
  * mechanism across the app.
  */
 const conversationStatsPage = () =>
-  import("./metabot-analytics/components/ConversationStatsPage").then(
-    ({ ConversationStatsPage }) => ({ Component: ConversationStatsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationStatsPage"
+  ).then(({ ConversationStatsPage }) => ({ Component: ConversationStatsPage }));
 
 const conversationsPage = () =>
-  import("./metabot-analytics/components/ConversationsPage").then(
-    ({ ConversationsPage }) => ({ Component: ConversationsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationsPage"
+  ).then(({ ConversationsPage }) => ({ Component: ConversationsPage }));
 
 const conversationDetailPage = () =>
-  import("./metabot-analytics/components/ConversationDetailPage").then(
-    ({ ConversationDetailPage }) => ({ Component: ConversationDetailPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationDetailPage"
+  ).then(({ ConversationDetailPage }) => ({
+    Component: ConversationDetailPage,
+  }));
 
 const metabotAnalyticsUpsellPage = () =>
-  import("./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage").then(
-    ({ MetabotAnalyticsUpsellPage }) => ({
-      Component: MetabotAnalyticsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage"
+  ).then(({ MetabotAnalyticsUpsellPage }) => ({
+    Component: MetabotAnalyticsUpsellPage,
+  }));
 
 const mcpAnalyticsPage = () =>
-  import("./mcp-analytics/components/McpAnalyticsPage").then(
-    ({ McpAnalyticsPage }) => ({ Component: McpAnalyticsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./mcp-analytics/components/McpAnalyticsPage"
+  ).then(({ McpAnalyticsPage }) => ({ Component: McpAnalyticsPage }));
 
 const cliAnalyticsPage = () =>
-  import("./cli-analytics/components/CliAnalyticsPage").then(
-    ({ CliAnalyticsPage }) => ({ Component: CliAnalyticsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./cli-analytics/components/CliAnalyticsPage"
+  ).then(({ CliAnalyticsPage }) => ({ Component: CliAnalyticsPage }));
 
 /**
  * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
- * hand by the time the click lands.
+ * hand by the time the click lands. These pages share a chunk, so the first
+ * hover covers the whole section.
  *
  * `/usage` renders the stats page or the upsell page depending on the license,
  * so hovering it asks for both. The conversation detail page takes the trailing

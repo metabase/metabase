@@ -8,6 +8,12 @@ import type { UseInitialCollectionIdProps } from "metabase/common/collections/ho
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserIsAdmin,
+  getUserPersonalCollectionId,
+} from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
@@ -18,12 +24,6 @@ import {
   setOpenModalWithProps,
 } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-  getUserIsAdmin,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
 import { useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

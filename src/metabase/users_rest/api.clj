@@ -242,6 +242,7 @@
                   :from [:permissions_group_membership]
                   :where [:in :permissions_group_membership.group_id
                           ;; get all the groups ids that the current user is in
+                          ^:allow-subquery
                           {:select-distinct [:permissions_group_membership.group_id]
                            :from  [:permissions_group_membership]
                            :where [:and [:= :permissions_group_membership.user_id user-id]

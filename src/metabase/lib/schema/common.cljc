@@ -187,6 +187,19 @@
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
 
+(defn- coercion-strategy? [x]
+  (isa? x :Coercion/*))
+
+(mr/def ::coercion-strategy
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-keyword}]
+   [:fn
+    {:error/message "valid coercion strategy"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid coercion strategy: " (pr-str value)))}
+    coercion-strategy?]])
+
 (defn normalize-options-map
   "Basic normalization behavior for an MBQL clause options map."
   [m]

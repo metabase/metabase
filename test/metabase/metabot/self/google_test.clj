@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google :as google]
@@ -40,6 +41,30 @@
                 :client_id      "123456789012345678901"
                 :token_uri      "https://oauth2.googleapis.com/token"}))
 
+;;; The adapter serves a request from the credentials of the connection behind it. These tests bind the
+;;; `llm-google-*` settings, which are the environment-configured form of that connection, so the calls below
+;;; resolve them into credentials the way `metabase.llm.provider` does before handing them over.
+
+(defn- settings-credentials []
+  {:service-account-key (not-empty (llm.settings/llm-google-service-account-key))
+   :oauth-access-token  (not-empty (llm.settings/llm-google-oauth-access-token))
+   :project-id          (not-empty (llm.settings/llm-google-project-id))
+   :location            (not-empty (llm.settings/llm-google-location))
+   :base-url            (not-empty (llm.settings/llm-google-api-base-url))})
+
+(defn- with-settings-credentials [opts]
+  (update opts :credentials #(or % (settings-credentials))))
+
+(defn- google-raw [opts]
+  (google/google-raw (with-settings-credentials opts)))
+
+(defn- list-models
+  ([] (list-models {}))
+  ([opts] (google/list-models (with-settings-credentials opts))))
+
+(defn- google [opts]
+  (google/google (with-settings-credentials opts)))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth / HTTP tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -58,7 +83,7 @@
                                "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
                  :headers {"Authorization" "Bearer ya29.pasted-access-token"}
                  :body    string?}
-                (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+                (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-default-model-test
   (testing "a request that does not name a model uses google/gemini-3.5-flash"
@@ -71,7 +96,7 @@
                                   http/request            (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                            "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                (google/google-raw {:input [{:role :user :content "hi"}]})))))))
+                (google-raw {:input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-request-body-test
   (testing "the request streams its response and carries the streamGenerateContent body as JSON"
@@ -82,8 +107,8 @@
       (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
                                   debug/capture-stream    (fn [r _] r)
                                   http/request            (fn [req] {:body req})]
-        (let [req (google/google-raw {:model "google/gemini-3.5-flash"
-                                      :input [{:role :user :content "hi"}]})]
+        (let [req (google-raw {:model "google/gemini-3.5-flash"
+                               :input [{:role :user :content "hi"}]})]
           (is (=? {:as      :stream
                    :headers {"Content-Type" "application/json"}}
                   req))
@@ -102,7 +127,7 @@
         (is (=? {:url (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project"
                            "/locations/us-central1/publishers/google/models"
                            "/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+                (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-multi-region-host-test
   (testing "the us/eu multi-region locations are served by their `rep` host, not the regional spelling"
@@ -118,7 +143,7 @@
                                      "/v1/projects/my-project/locations/%s"
                                      "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
                                 location location)}
-                  (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
+                  (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
 
 (deftest google-raw-invalid-location-rejected-test
   (testing "a location that cannot be a host is rejected with its own message"
@@ -129,7 +154,7 @@
                                            llm.settings/llm-google-service-account-key nil
                                            llm.settings/llm-google-project-id          "my-project"]
           (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-            (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+            (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                          nil
                          (catch Exception e e))]
               (is (= (str "\"" location "\" is not a valid Google Cloud location. Use a location ID like"
@@ -158,7 +183,7 @@
         (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                            llm.settings/llm-google-service-account-key nil]
           (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-            (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+            (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                          nil
                          (catch Exception e e))]
               (is (= (str "\"" project-id "\"" invalid-project-id-message)
@@ -171,9 +196,9 @@
 (deftest list-models-invalid-credentials-project-id-rejected-test
   (testing "a connect-time project ID override is validated too"
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-      (let [e (try (google/list-models {:model       "google/gemini-3.5-flash"
-                                        :credentials {:oauth-access-token "ya29.token"
-                                                      :project-id         "my-project/../../evil"}})
+      (let [e (try (list-models {:model       "google/gemini-3.5-flash"
+                                 :credentials {:oauth-access-token "ya29.token"
+                                               :project-id         "my-project/../../evil"}})
                    nil
                    (catch Exception e e))]
         (is (= (str "\"my-project/../../evil\"" invalid-project-id-message)
@@ -191,7 +216,7 @@
                                          llm.settings/llm-google-project-id          nil]
         (mt/with-dynamic-fn-redefs [http/request                (fn [_] (throw (ex-info "should never be called" {})))
                                     google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
-          (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+          (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                        nil
                        (catch Exception e e))]
             (is (= (str "\"Not-A-Project\"" invalid-project-id-message)
@@ -213,7 +238,7 @@
                                   http/request            (fn [req] {:body req})]
         (is (=? {:url (str "https://gemini.proxy.example.com/v1/projects/my-project/locations/us-central1"
                            "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+                (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-non-google-publisher-model-test
   (testing "the publisher comes from the model ID's {publisher}/{model} qualifier"
@@ -226,7 +251,7 @@
                                   http/request            (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                            "/publishers/anthropic/models/claude-sonnet-4-6:streamGenerateContent?alt=sse")}
-                (google/google-raw {:model "anthropic/claude-sonnet-4-6" :input [{:role :user :content "hi"}]})))))))
+                (google-raw {:model "anthropic/claude-sonnet-4-6" :input [{:role :user :content "hi"}]})))))))
 
 (def ^:private bare-model-id-message-re
   "The message [[metabase.metabot.self.google/model-resource-path]] throws for an unqualified model ID."
@@ -242,7 +267,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              bare-model-id-message-re
-             (google/google-raw {:model "gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+             (google-raw {:model "gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-blank-model-id-throws-test
   (testing "a model ID with a publisher qualifier but no model segment throws before any HTTP call"
@@ -254,7 +279,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Google model \"google/\""
-             (google/google-raw {:model "google/" :input [{:role :user :content "hi"}]})))))))
+             (google-raw {:model "google/" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-invalid-model-characters-rejected-test
   (testing "a model whose segments cannot be path segments is rejected before any HTTP call"
@@ -270,7 +295,7 @@
                        "google/gemini-3.5-flash#"
                        "google/gemini 3.5 flash"
                        "Google/gemini-3.5-flash"]]
-          (let [e (try (google/google-raw {:model model :input [{:role :user :content "hi"}]})
+          (let [e (try (google-raw {:model model :input [{:role :user :content "hi"}]})
                        nil
                        (catch Exception e e))]
             (is (= (str "Invalid Google model " (pr-str model) " — a publisher and model ID can hold only letters,"
@@ -292,8 +317,8 @@
                                   http/request            (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                            "/publishers/anthropic/models/claude-sonnet-4-5@20250929:streamGenerateContent?alt=sse")}
-                (google/google-raw {:model "anthropic/claude-sonnet-4-5@20250929"
-                                    :input [{:role :user :content "hi"}]})))))))
+                (google-raw {:model "anthropic/claude-sonnet-4-5@20250929"
+                             :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-token-without-project-throws-test
   (testing "an OAuth access token without a project ID throws before any HTTP call"
@@ -304,7 +329,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Google Cloud project ID is required for the Google provider"
-             (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+             (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-missing-credentials-test
   (testing "with no credential configured requests throw before any HTTP call"
@@ -314,7 +339,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"No Google API key is set"
-             (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+             (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-service-account-bearer-auth-test
   (testing "a service account key authenticates with a Bearer token and with the project ID read from the key JSON"
@@ -330,7 +355,7 @@
           (is (=? {:url     (str "https://aiplatform.googleapis.com/v1/projects/json-project/locations/global"
                                  "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
                    :headers {"Authorization" "Bearer test-sa-token"}}
-                  (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
+                  (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
 
 (deftest google-raw-service-account-explicit-project-wins-test
   (testing "an explicit project ID setting overrides the one embedded in the service account key"
@@ -345,7 +370,7 @@
                                     google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
           (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/explicit-project/locations/global"
                              "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                  (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
+                  (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
 
 (deftest google-raw-service-account-precedence-over-oauth-token-test
   (testing "a service account key takes precedence over a configured OAuth access token"
@@ -359,7 +384,7 @@
                                     http/request                (fn [req] {:body req})
                                     google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
           (is (=? {:headers {"Authorization" "Bearer test-sa-token"}}
-                  (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
+                  (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
 
 (deftest parse-service-account-credentials-scope-test
   (testing "service account tokens carry the correct scope"
@@ -377,7 +402,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Google service account key"
-             (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
+             (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
 (deftest google-raw-invalid-service-account-key-status-test
   (testing "a rejected service account key is tagged as a 400 so the connect form shows the message"
@@ -385,7 +410,7 @@
                                        llm.settings/llm-google-service-account-key "{\"type\": \"service_account\"}"
                                        llm.settings/llm-google-project-id          "my-project"]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+        (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                      nil
                      (catch Exception e e))]
           (is (=? {:api-error   true
@@ -403,7 +428,7 @@
                                          llm.settings/llm-google-service-account-key user-credential-json
                                          llm.settings/llm-google-project-id          "my-project"]
         (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-          (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+          (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                        nil
                        (catch Exception e e))]
             (is (= "This Google credential JSON is not a service account key."
@@ -419,7 +444,7 @@
                                        llm.settings/llm-google-service-account-key "[]"
                                        llm.settings/llm-google-project-id          "my-project"]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+        (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                      nil
                      (catch Exception e e))]
           (is (= "Invalid Google service account key" (ex-message e)))
@@ -448,7 +473,7 @@
                                                       (swap! parses inc)
                                                       (orig json))]
           (dotimes [_ 2]
-            (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))
+            (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))
           (is (= 1 @parses)))))))
 
 (deftest fresh-bearer-headers-refresh-failure-test
@@ -473,9 +498,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"AI proxy is not supported for the Google provider"
-           (google/google-raw {:model     "google/gemini-3.5-flash"
-                               :input     [{:role :user :content "hi"}]
-                               :ai-proxy? true}))))))
+           (google-raw {:model     "google/gemini-3.5-flash"
+                        :input     [{:role :user :content "hi"}]
+                        :ai-proxy? true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; End-to-end stream translation.
@@ -499,8 +524,8 @@
                                 http/request         (fn [_] (sse-response-for events))]
       (into []
             (self.core/aisdk-xf)
-            (google/google {:model "google/gemini-3.5-flash"
-                            :input [{:role :user :content "hi"}]})))))
+            (google {:model "google/gemini-3.5-flash"
+                     :input [{:role :user :content "hi"}]})))))
 
 (deftest google-text-stream-test
   (testing "streamed text off the wire arrives as one coalesced text part with usage"
@@ -552,7 +577,7 @@
       (let [calls (atom [])]
         (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
           (is (= {:models []}
-                 (google/list-models {:model "google/gemini-3.5-flash"})))
+                 (list-models {:model "google/gemini-3.5-flash"})))
           (is (=? [{:method  :post
                     :url     (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                                   "/publishers/google/models/gemini-3.5-flash:countTokens")
@@ -570,21 +595,22 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              bare-model-id-message-re
-             (google/list-models {:model "gemini-3.5-flash"})))))))
+             (list-models {:model "gemini-3.5-flash"})))))))
 
 (deftest list-models-defaults-to-saved-model-test
-  (testing "without a model in opts the probe runs against the saved Google model"
-    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
-                                       llm.settings/llm-google-service-account-key nil
-                                       llm.settings/llm-google-project-id          "my-project"
-                                       llm.settings/llm-google-location            nil
-                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.6-flash"]
-      (let [calls (atom [])]
-        (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
-          (is (= {:models []} (google/list-models)))
-          (is (=? [{:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                              "/publishers/google/models/gemini-3.6-flash:countTokens")}]
-                  @calls)))))))
+  (testing "without a model in opts the probe runs against the model the saved reference names"
+    (llm.tu/with-connections [(llm.tu/connection "google")]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          "my-project"
+                                         llm.settings/llm-google-location            nil
+                                         metabot.settings/llm-metabot-provider       "google/google/gemini-3.6-flash"]
+        (let [calls (atom [])]
+          (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
+            (is (= {:models []} (list-models)))
+            (is (=? [{:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
+                                "/publishers/google/models/gemini-3.6-flash:countTokens")}]
+                    @calls))))))))
 
 (deftest list-models-no-model-skips-probe-test
   (testing "with no candidate model and a non-Google provider configured no call is made"
@@ -593,7 +619,7 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-        (is (= {:models []} (google/list-models)))))))
+        (is (= {:models []} (list-models)))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "credentials in opts override the configured settings"
@@ -603,10 +629,10 @@
       (let [calls (atom [])]
         (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
           (is (= {:models []}
-                 (google/list-models {:model       "google/gemini-3.5-flash"
-                                      :credentials {:oauth-access-token "ya29.override-token"
-                                                    :project-id         "other-project"
-                                                    :location           "europe-west1"}})))
+                 (list-models {:model       "google/gemini-3.5-flash"
+                               :credentials {:oauth-access-token "ya29.override-token"
+                                             :project-id         "other-project"
+                                             :location           "europe-west1"}})))
           (is (=? [{:url     (str "https://europe-west1-aiplatform.googleapis.com/v1/projects/other-project"
                                   "/locations/europe-west1/publishers/google/models/gemini-3.5-flash:countTokens")
                     :headers {"Authorization" "Bearer ya29.override-token"}}]
@@ -620,7 +646,7 @@
                                        llm.settings/llm-google-location            "eu"]
       (let [calls (atom [])]
         (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
-          (is (= {:models []} (google/list-models {:model "google/gemini-3.5-flash"})))
+          (is (= {:models []} (list-models {:model "google/gemini-3.5-flash"})))
           (is (=? [{:url (str "https://aiplatform.eu.rep.googleapis.com/v1/projects/my-project/locations/eu"
                               "/publishers/google/models/gemini-3.5-flash:countTokens")}]
                   @calls)))))))
@@ -635,8 +661,8 @@
         (mt/with-dynamic-fn-redefs [google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})
                                     http/request                (stub-count-tokens calls)]
           (is (= {:models []}
-                 (google/list-models {:model       "google/gemini-3.6-flash"
-                                      :credentials {:service-account-key sa-key}})))
+                 (list-models {:model       "google/gemini-3.6-flash"
+                               :credentials {:service-account-key sa-key}})))
           (is (=? [{:method  :post
                     :url     (str "https://aiplatform.googleapis.com/v1/projects/sa-project/locations/global"
                                   "/publishers/google/models/gemini-3.6-flash:countTokens")
@@ -646,8 +672,8 @@
 (deftest list-models-missing-project-id-status-test
   (testing "the missing project ID message is tagged as a 400"
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
-      (let [e (try (google/list-models {:model       "google/gemini-3.5-flash"
-                                        :credentials {:oauth-access-token "ya29.token"}})
+      (let [e (try (list-models {:model       "google/gemini-3.5-flash"
+                                 :credentials {:oauth-access-token "ya29.token"}})
                    nil
                    (catch Exception e e))]
         (is (=? {:api-error   true
@@ -661,7 +687,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"AI proxy is not supported for the Google provider"
-           (google/list-models {:model "google/gemini-3.5-flash" :ai-proxy? true}))))))
+           (list-models {:model "google/gemini-3.5-flash" :ai-proxy? true}))))))
 
 (def ^:private ^String html-404-body
   "The HTML body the Google front end serves for a 404 from a host that does not exist."
@@ -678,7 +704,7 @@
                                                                  {:status  404
                                                                   :headers {"content-type" "text/html; charset=UTF-8"}
                                                                   :body    html-404-body})))]
-        (let [e (try (google/list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
+        (let [e (try (list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
           (is (= (str "Google API endpoint is unavailable or the model was not found "
                       "(endpoint: https://nowhere1-aiplatform.googleapis.com) — "
                       "check that \"nowhere1\" is a valid location")
@@ -702,7 +728,7 @@
                                                      {:error {:code    404
                                                               :message upstream-message
                                                               :status  "NOT_FOUND"}})})))]
-          (let [e (try (google/list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
+          (let [e (try (list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
             (is (= (str "Google API endpoint is unavailable or the model was not found "
                         "(endpoint: https://us-central1-aiplatform.googleapis.com) — "
                         upstream-message)
@@ -724,7 +750,7 @@
                                                      {:error {:code    501
                                                               :message upstream-message
                                                               :status  "UNIMPLEMENTED"}})})))]
-          (let [e (try (google/list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
+          (let [e (try (list-models {:model "google/gemini-3.5-flash"}) nil (catch Exception e e))]
             (is (= (str "Google API is not available in this location "
                         "(endpoint: https://us-west8-aiplatform.googleapis.com) — "
                         upstream-message)
@@ -743,7 +769,7 @@
                                          :headers {"content-type" "text/html; charset=UTF-8"}
                                          :body    (java.io.ByteArrayInputStream.
                                                    (.getBytes html-404-body))})))]
-        (let [e (try (google/google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
+        (let [e (try (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})
                      nil
                      (catch Exception e e))]
           (is (= (str "Google API endpoint is unavailable or the model was not found "
@@ -769,7 +795,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Google API rejected the request as invalid — Request contains an invalid argument\."
-               (google/list-models {:model "google/gemini-3.5-flash"}))))))))
+               (list-models {:model "google/gemini-3.5-flash"}))))))))
 
 (deftest list-models-error-status-messages-test
   (testing "credential and quota statuses map to their canonical messages"
@@ -790,4 +816,4 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  pattern
-                 (google/list-models {:model "google/gemini-3.5-flash"})))))))))
+                 (list-models {:model "google/gemini-3.5-flash"})))))))))

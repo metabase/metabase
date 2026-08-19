@@ -118,6 +118,55 @@ class OnScriptError {
   }
 }
 
+const PRELOAD_MARKER = "<!-- asset-preloads -->";
+
+/**
+ * The bundle tags are injected at the end of <head>, after ~124 kB of inline JSON,
+ * so the browser only discovers them once nearly the whole document has arrived.
+ * This emits `rel=preload` copies near the top of <head> instead, where they land in
+ * the first flight of response bytes. Templates without the marker are left alone.
+ */
+class PreloadAssetTags {
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "PreloadAssetTags",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).afterTemplateExecution.tapAsync(
+          "PreloadAssetTags",
+          (data, cb) => {
+            if (!data.html.includes(PRELOAD_MARKER)) {
+              cb(null, data);
+              return;
+            }
+
+            const hints = data.headTags
+              .flatMap((tag) => {
+                if (tag.tagName === "script" && tag.attributes.src) {
+                  return [{ url: tag.attributes.src, as: "script" }];
+                }
+                if (
+                  tag.attributes.rel === "stylesheet" &&
+                  tag.attributes.href
+                ) {
+                  return [{ url: tag.attributes.href, as: "style" }];
+                }
+                return [];
+              })
+              .map(
+                (hint) =>
+                  `<link rel="preload" href="${hint.url}" as="${hint.as}">`,
+              )
+              .join("");
+
+            data.html = data.html.replace(PRELOAD_MARKER, hints);
+            cb(null, data);
+          },
+        );
+      },
+    );
+  }
+}
+
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
   mode: isDevMode ? "development" : "production",
@@ -233,16 +282,7 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [
-      ".webpack.js",
-      ".web.js",
-      ".js",
-      ".jsx",
-      ".ts",
-      ".tsx",
-      ".css",
-      ".svg",
-    ],
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
     alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),
@@ -266,6 +306,15 @@ const config = {
             chunk.name !== "app-data-app",
           name: "vendor",
           priority: -10,
+        },
+        // Modules shared by two or more async chunks (e.g. CodeMirror, pulled
+        // in by every lazily loaded editor) move into a shared async chunk
+        // instead of being copied into each one. `vendors` above only claims
+        // initial chunks, so this never grows the initial payload.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          reuseExistingChunk: true,
         },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
@@ -303,6 +352,7 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",

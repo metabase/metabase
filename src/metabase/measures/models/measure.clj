@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.metrics.core :as metrics]
@@ -40,7 +41,7 @@
   "Transform for measure definitions. Handles JSON serialization/deserialization.
   Validation happens in before-insert and before-update hooks."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Measure
   {:definition         transform-measure-definition
@@ -159,7 +160,8 @@
   [{:keys [definition] :as measure}]
   (if (seq definition)
     (try
-      (assoc measure :definition (lib-be/normalize-query definition))
+      (assoc measure :definition (-> (lib/normalize ::lib.schema/query definition)
+                                     lib-be/normalize-query))
       (catch Throwable e
         (log/errorf "Error normalizing measure definition: %s" (ex-message e))
         measure))

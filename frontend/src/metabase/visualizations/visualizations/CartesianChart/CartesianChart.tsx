@@ -118,9 +118,10 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const chartRef = useRef<EChartsType>();
   // Mirror the ECharts instance into state so that effects depending on it
-  // (e.g. brush setup) re-run once it becomes available. With the lazily loaded
-  // EChartsRenderer, `onInit` fires after the surrounding effects have already
-  // run, and a ref assignment alone would not re-trigger them.
+  // (e.g. brush setup) re-run once it becomes available. The renderer renders
+  // nothing until ExplicitSize has measured it, which it does a tick after
+  // mount, so `onInit` fires after the surrounding effects have already run and
+  // a ref assignment alone would not re-trigger them.
   const [chartInstance, setChartInstance] = useState<EChartsType>();
 
   const description = settings["card.description"];
@@ -282,7 +283,6 @@ function CartesianChartInner(props: VisualizationProps) {
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
-          display={card.display}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}

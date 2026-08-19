@@ -22,6 +22,7 @@
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.events.core :as events]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -401,18 +402,21 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
         card (api/check-404 (t2/select-one :model/Card card-id))
-        parameters (when parameters (json/decode+kw parameters))
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card)
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-card
+       card
+       (api.embed.common/tile-parameters-for-card
+        card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+       zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -430,7 +434,7 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (let [unsigned (unsign-and-translate-ids token)
@@ -438,9 +442,12 @@
         dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
         dashcard (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card (api/check-404 (t2/select-one :model/Card card-id))
-        parameters (when parameters (json/decode+kw parameters))
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard
+       dashboard dashcard card
+       (api.embed.common/tile-parameters-for-dashboard
+        dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+       zoom x y lat-field lon-field))))

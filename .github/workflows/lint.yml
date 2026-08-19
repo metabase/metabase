@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   files-changed:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       actionlint: ${{ steps.changes.outputs.actionlint }}

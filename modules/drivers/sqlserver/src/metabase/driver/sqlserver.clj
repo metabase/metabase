@@ -254,18 +254,27 @@
     [:inline x]
     x))
 
+(def ^:private allowed-dateparts
+  #{:year :quarter :month :dayofyear :day :week :iso_week :weekday
+    :hour :minute :second :millisecond :microsecond :nanosecond})
+
+(defn- datepart-token [unit]
+  (when-not (contains? allowed-dateparts unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
-  (-> [:datepart [:raw (name unit)] expr]
+  (-> [:datepart [:raw (datepart-token unit)] expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]]
+  (into [:dateadd [:raw (datepart-token unit)]]
         (map maybe-inline-number)
         exprs))
 
 (defn- date-diff [unit x y]
-  [:datediff_big [:raw (name unit)] x y])
+  [:datediff_big [:raw (datepart-token unit)] x y])
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -751,6 +760,7 @@
 (defmethod sql.qp/escape-like-pattern :sqlserver
   [_driver like-pattern]
   (-> like-pattern
+      (str/replace "["  "[[]")
       (str/replace "\\" "[\\]")
       (str/replace "%"  "[%]")
       (str/replace "_"  "[_]")))
@@ -1196,7 +1206,7 @@
   [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = %s) EXEC('CREATE SCHEMA %s;');"
                       (sql.u/quote-literal schema :ansi)
-                      (quote-schema schema))]]]
+                      (sql.u/escape-sql (quote-schema schema) :ansi))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
 (defmethod driver/rename-table! :sqlserver
