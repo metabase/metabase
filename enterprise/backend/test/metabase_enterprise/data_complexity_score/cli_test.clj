@@ -11,6 +11,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -386,6 +387,22 @@
                                   data-complexity-score/record-score!             (fn [& _] (reset! persisted? true))]
         (#'cli/run-cli {:source "appdb" :write-to-appdb false})
         (is (false? @persisted?))))))
+
+(deftest ^:sequential run-cli-appdb-mode-registers-in-process-provider-test
+  (testing "appdb mode registers the in-process embedding provider before it scores"
+    ;; The standalone CLI skips `metabase.core.core/init!`, where the server registers the provider. Without
+    ;; this a synonym axis configured for `in-process` fails with `:provider-not-registered`.
+    (let [order (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!               (fn [])
+                                  embeddings.startup/ensure-in-process-provider! (fn [] (swap! order conj :register))
+                                  complexity/complexity-scores                   (fn [& _]
+                                                                                   (swap! order conj :score)
+                                                                                   {:meta {}})
+                                  synonym-source/complexity-scores-opts          (constantly {})
+                                  metabot-scope/internal-metabot-scope           (constantly {})
+                                  data-complexity-score/record-score!            (fn [& _])]
+        (#'cli/run-cli {:source "appdb" :write-to-appdb false})
+        (is (= [:register :score] @order))))))
 
 (deftest ^:parallel dir-digest-is-stable-and-content-sensitive-test
   (testing "dir-digest produces the same value for the same content"
