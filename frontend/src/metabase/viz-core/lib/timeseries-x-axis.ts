@@ -2,22 +2,17 @@ import * as d3 from "d3";
 import dayjs from "dayjs";
 
 import { isNotNull } from "metabase/utils/types";
-import {
-  type ComputedVisualizationSettings,
-  type DateRange,
-  type TimeSeriesInterval,
-  computeTimeseriesDataInterval,
-  getXValues,
-  isTimeseries,
-  minTimeseriesUnit,
-} from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
-export interface TimeseriesXAxis {
-  domain: DateRange | null;
-  interval: TimeSeriesInterval | null;
-}
+import {
+  computeTimeseriesDataInterval,
+  minTimeseriesUnit,
+} from "../echarts/cartesian/utils/timeseries";
+import type { ComputedVisualizationSettings } from "../types/computed-settings";
+import type { TimeseriesXAxis } from "../types/timeseries";
+
+import { getXValues, isTimeseries } from "./renderer_utils";
 
 export const getTimeseriesXAxis = (
   series: Series,

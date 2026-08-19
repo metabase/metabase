@@ -20,11 +20,11 @@ import {
 } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import { getTimeseriesXAxis } from "metabase/visualizations/lib/timeseries-x-axis";
 import {
   createRawSeries,
   extractRemappings,
   getComputedSettingsForSeries,
+  getTimeseriesXAxis,
   getVisualizationTransformed,
   isTimeseries,
 } from "metabase/viz-core";

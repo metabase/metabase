@@ -6,7 +6,6 @@ import {
 
 import {
   aggregateVisibleEventIds,
-  getCollectionTimelines,
   hideTimelineEvents,
   hideTimelines,
   isDefaultVisibility,
@@ -90,24 +89,6 @@ const visibleNames = (
   resolveVisibleTimelineEvents({ ...context, visibility, enabled }).map(
     (event) => event.name,
   );
-
-describe("getCollectionTimelines", () => {
-  it("returns the timelines of the given collection", () => {
-    expect(getCollectionTimelines(timelines, COLLECTION_ID)).toEqual([
-      releases,
-      marketing,
-    ]);
-  });
-
-  it.each([null, undefined, "root"] as const)(
-    "returns root timelines for collection %s",
-    (collectionId) => {
-      expect(getCollectionTimelines(timelines, collectionId)).toEqual([
-        rootTimeline,
-      ]);
-    },
-  );
-});
 
 describe("resolveVisibleTimelineEvents", () => {
   it("shows every non-archived event of the collection's timelines by default, sorted by date", () => {

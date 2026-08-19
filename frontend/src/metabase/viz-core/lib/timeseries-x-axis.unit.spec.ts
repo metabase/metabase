@@ -1,10 +1,11 @@
-import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatetimeUnit, Series } from "metabase-types/api";
 import {
   createMockDatetimeColumn,
   createMockNumericColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import type { ComputedVisualizationSettings } from "../types/computed-settings";
 
 import { getTimeseriesXAxis } from "./timeseries-x-axis";
 
