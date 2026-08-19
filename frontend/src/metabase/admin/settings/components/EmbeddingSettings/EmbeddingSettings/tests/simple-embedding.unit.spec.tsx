@@ -18,8 +18,7 @@ const setup = (opts: SetupOpts = {}) =>
 describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
   it("should show both SDK and Simple Embedding toggles", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
+      isEmbeddingEnabled: false,
       showModularEmbedTerms: false,
     });
 
@@ -41,8 +40,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
+      isEmbeddingEnabled: false,
       showModularEmbedTerms: true,
     });
 
@@ -66,8 +64,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
   it("should update simple embedding settings when user accepts terms", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
+      isEmbeddingEnabled: false,
       showModularEmbedTerms: true,
     });
 
@@ -91,8 +88,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
   it("should show embed button and docs when simple embedding is available", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: true,
+      isEmbeddingEnabled: true,
       showModularEmbedTerms: false,
     });
 
