@@ -88,6 +88,29 @@
       (is (= "query-xyz" (:query-id result)))
       (is (= query (:query result))))))
 
+(deftest ^:parallel edit-chart-falls-back-to-caller-resolved-query-test
+  (testing "uses the :query param when the chart's own :queries is empty"
+    ;; Regression: edit-chart-tool resolves the query from either the chart or
+    ;; queries-state (`(or (first (:queries chart)) (get queries-state
+    ;; (:query_id chart)))`), but edit-chart itself only looked at charts-state.
+    ;; A chart with a :query_id but no :queries (the query lives in
+    ;; current-queries-state) produced :query-id set and :query nil on the
+    ;; result — the same [nil]-in-memory bug the tests above cover, just via a
+    ;; different path. The caller now passes its resolved query through.
+    (let [mp           (mt/metadata-provider)
+          query        (lib/native-query mp "SELECT * FROM orders")
+          charts-state {"chart-abc" {:chart_id "chart-abc"
+                                     :query_id "query-xyz"
+                                     :queries  []
+                                     :visualization_settings {:chart_type :bar}}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id       "chart-abc"
+                             :new-chart-type :line
+                             :charts-state   charts-state
+                             :query          query})]
+      (is (= {:query-id "query-xyz" :query query}
+             (select-keys result [:query-id :query]))))))
+
 (deftest ^:parallel edit-chart-result-survives-update-memory-test
   (testing "update-memory stores the edited chart's real query, not [nil]"
     (let [mp           (mt/metadata-provider)
