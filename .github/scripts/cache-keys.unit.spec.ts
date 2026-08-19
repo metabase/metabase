@@ -3,58 +3,74 @@ import { join } from "path";
 
 const SCRIPT = join(__dirname, "cache-keys.sh");
 
+const CACHES = ["m2", "bun-store", "cypress", "eslint"];
+
 const run = (args: string[] = [], env: NodeJS.ProcessEnv = {}) =>
   execFileSync(SCRIPT, args, {
     encoding: "utf8",
     env: { ...process.env, RUNNER_OS: "Linux", GITHUB_SHA: "abc123", ...env },
   });
 
-const spec = (env: NodeJS.ProcessEnv = {}) =>
-  Object.fromEntries(
-    run([], env)
-      .split("\n")
-      .filter((l) => l.includes("=") && !l.startsWith("~") && !l.includes("<<"))
-      .map((l) => {
-        const i = l.indexOf("=");
-        return [l.slice(0, i), l.slice(i + 1)];
-      }),
-  );
+const get = (name: string, env: NodeJS.ProcessEnv = {}) =>
+  run([name], env).trimEnd();
 
 describe("cache-keys.sh", () => {
   it("is deterministic for a given tree", () => {
     expect(run()).toEqual(run());
   });
 
-  it("prints a single value when given a name", () => {
-    expect(run(["m2-key"]).trim()).toEqual(spec()["m2-key"]);
+  it("emits every cache's path, key and restore key", () => {
+    for (const cache of CACHES) {
+      expect(get(`${cache}-path`)).not.toEqual("");
+      expect(get(`${cache}-key`)).not.toEqual("");
+      expect(get(`${cache}-restore-key`)).not.toEqual("");
+    }
   });
 
-  // The failure this guards is silent: a key that collapses onto its own restore prefix points every
-  // dependency set at one entry instead of missing.
+  // Silently returning "" for a name that does not exist is how a caller ends up building a key with a
+  // hole in it.
+  it("fails on an unknown output name", () => {
+    expect(() => run(["no-such-output"])).toThrow();
+  });
+
+  // A key equal to its own restore prefix points every dependency set at one entry, and nothing reports
+  // it. This is the failure the script exists to prevent.
   it("never emits a key equal to its own restore prefix", () => {
-    const s = spec();
-    for (const name of ["m2", "bun-store", "cypress", "eslint"]) {
-      expect(s[`${name}-key`]).not.toEqual(s[`${name}-restore-key`]);
-      expect(s[`${name}-key`].startsWith(s[`${name}-restore-key`])).toBe(true);
-      expect(s[`${name}-key`].length).toBeGreaterThan(s[`${name}-restore-key`].length);
+    for (const cache of CACHES) {
+      const key = get(`${cache}-key`);
+      const prefix = get(`${cache}-restore-key`);
+      expect(key.startsWith(prefix)).toBe(true);
+      expect(key.length).toBeGreaterThan(prefix.length);
     }
   });
 
   it("scopes every key to the runner OS", () => {
-    const linux = spec({ RUNNER_OS: "Linux" });
-    const mac = spec({ RUNNER_OS: "macOS" });
-    for (const key of Object.keys(linux).filter((k) => k.endsWith("-key"))) {
-      expect(linux[key]).not.toEqual(mac[key]);
+    for (const cache of CACHES) {
+      expect(get(`${cache}-key`, { RUNNER_OS: "Linux" })).not.toEqual(
+        get(`${cache}-key`, { RUNNER_OS: "macOS" }),
+      );
+    }
+  });
+
+  // Home paths must be absolute: actions/cache expands a tilde but a shell assigning one to a variable
+  // does not, and would create a directory literally named `~`.
+  it("emits absolute paths for home directory locations", () => {
+    expect(get("bun-store-path").startsWith("/")).toBe(true);
+    expect(get("cypress-path").startsWith("/")).toBe(true);
+    for (const line of get("m2-path").split("\n")) {
+      expect(line.startsWith("~")).toBe(false);
     }
   });
 
   // The Cypress binary depends on the Cypress version alone, so an unrelated dependency bump must not
   // invalidate a 200MB download.
   it("keys the Cypress binary on the resolved version, not the lockfile", () => {
-    expect(spec()["cypress-key"]).toMatch(/^cypress-Linux-\d+\.\d+\.\d+/);
+    expect(get("cypress-key")).toMatch(/^cypress-Linux-\d+\.\d+\.\d+/);
   });
 
   it("keys the ESLint cache on the commit", () => {
-    expect(spec({ GITHUB_SHA: "deadbeef" })["eslint-key"]).toEqual("eslint-Linux-deadbeef");
+    expect(get("eslint-key", { GITHUB_SHA: "deadbeef" })).toEqual(
+      "eslint-Linux-deadbeef",
+    );
   });
 });

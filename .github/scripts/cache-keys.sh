@@ -99,8 +99,41 @@ spec() {
   echo "eslint-restore-key=eslint-$OS-"
 }
 
+# Print one output's value, including the multiline form, and fail on a name that does not exist. A
+# caller that silently received "" would go on to build a key with a hole in it.
+query() {
+  local want="$1" line delim found=0 in_block=0
+  while IFS= read -r line; do
+    if [ "$in_block" = 1 ]; then
+      if [ "$line" = "$delim" ]; then
+        in_block=0
+      else
+        printf '%s\n' "$line"
+      fi
+      continue
+    fi
+    case "$line" in
+      "$want="*)
+        printf '%s\n' "${line#*=}"
+        found=1
+        ;;
+      "$want<<"*)
+        delim="${line#*<<}"
+        in_block=1
+        found=1
+        ;;
+    esac
+  done <<EOF
+$(spec)
+EOF
+  if [ "$found" = 0 ]; then
+    echo "::error::cache-keys.sh: no output named '$want'" >&2
+    exit 1
+  fi
+}
+
 if [ "$#" -eq 0 ]; then
   spec
 else
-  spec | sed -n "s/^$1=//p"
+  query "$1"
 fi
