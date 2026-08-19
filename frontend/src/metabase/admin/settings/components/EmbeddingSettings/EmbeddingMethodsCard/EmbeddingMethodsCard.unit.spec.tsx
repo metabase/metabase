@@ -24,7 +24,7 @@ const OSS_LABEL = "Enable embedding";
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
   hasFullAppEmbedding?: boolean;
-  isPinnedToEnv?: boolean;
+  envSettingKeys?: (keyof Settings)[];
   showEmbedTerms?: boolean;
 } & Partial<
   Pick<Settings, "enable-embedding-modular" | "enable-embedding-interactive">
@@ -33,7 +33,7 @@ type SetupOpts = {
 async function setup({
   hasSimpleEmbedding = true,
   hasFullAppEmbedding = hasSimpleEmbedding,
-  isPinnedToEnv = false,
+  envSettingKeys = [],
   showEmbedTerms = false,
   ...values
 }: SetupOpts = {}) {
@@ -54,7 +54,7 @@ async function setup({
     createMockSettingDefinition({
       key,
       value: settingValues[key],
-      is_env_setting: isPinnedToEnv && key === "enable-embedding-modular",
+      is_env_setting: envSettingKeys.includes(key),
     }),
   );
 
@@ -101,7 +101,7 @@ describe("EmbeddingMethodsCard", () => {
   });
 
   describe("the merged switch", () => {
-    it("reads on when the setting is on", async () => {
+    it("reads on when enable-embedding-modular is on", async () => {
       await setup({ "enable-embedding-modular": true });
 
       // The merged row comes first, full-app second.
@@ -109,7 +109,7 @@ describe("EmbeddingMethodsCard", () => {
       expect(mergedSwitch).toBeChecked();
     });
 
-    it("reads off when the setting is off", async () => {
+    it("reads off when enable-embedding-modular is off", async () => {
       await setup();
 
       const [mergedSwitch] = await screen.findAllByRole("switch");
@@ -164,7 +164,7 @@ describe("EmbeddingMethodsCard", () => {
     });
 
     it("locks the row when the setting is pinned to an env var", async () => {
-      await setup({ isPinnedToEnv: true });
+      await setup({ envSettingKeys: ["enable-embedding-modular"] });
 
       expect(
         await screen.findByText("Set via environment variable"),

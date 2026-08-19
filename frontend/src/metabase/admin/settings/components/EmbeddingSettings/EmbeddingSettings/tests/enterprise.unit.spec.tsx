@@ -2,20 +2,13 @@ import { screen, within } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
-const setup = (opts: SetupOpts = {}) =>
-  baseSetup({
-    tokenFeatures: {
-      embedding_sdk: opts.isEmbeddingSdkEnabled,
-      embedding_simple: opts.isEmbeddingSimpleEnabled,
-    },
-    ...opts,
-  });
+const setup = (opts: SetupOpts = {}) => baseSetup(opts);
 
 describe("EmbeddingSdkSettings (EE)", () => {
   it("should not tell users to switch binaries when they have a EE build", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: true,
+      tokenFeatures: { embedding_sdk: false, embedding_simple: true },
+      isEmbeddingEnabled: true,
       showModularEmbedTerms: false,
       isHosted: true,
       enterprisePlugins: [
@@ -56,8 +49,8 @@ describe("EmbeddingSdkSettings (EE)", () => {
 
   it("should not show Security and Appearance in related settings without token", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: false,
+      tokenFeatures: { embedding_sdk: false, embedding_simple: false },
+      isEmbeddingEnabled: false,
       showModularEmbedTerms: false,
     });
 

@@ -6,7 +6,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
   describe("SDK card", () => {
     it("should not show SDK card in OSS", async () => {
       await setup({
-        isEmbeddingSdkEnabled: false,
+        isEmbeddingEnabled: false,
         showModularEmbedTerms: false,
       });
       expect(
@@ -17,7 +17,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
   it("should not show version pinning section", async () => {
     await setup({
-      isEmbeddingSdkEnabled: true,
+      isEmbeddingEnabled: true,
       showModularEmbedTerms: false,
     });
     expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
   it("should show cards with related settings", async () => {
     await setup({
-      isEmbeddingSdkEnabled: false,
+      isEmbeddingEnabled: false,
       showModularEmbedTerms: false,
     });
 
