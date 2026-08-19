@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   getIsDashCardsRunning,
   getSelectedTabId,
@@ -20,7 +21,6 @@ import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { Box, Flex } from "metabase/ui";
 import {

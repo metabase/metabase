@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
-import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
@@ -96,7 +95,6 @@ export const AppBarLarge = ({
         >
           {detailView ? (
             <DetailViewNav
-              ml={DETAIL_VIEW_PADDING_LEFT - 125}
               rowName={detailView.rowName}
               table={detailView.table}
             />

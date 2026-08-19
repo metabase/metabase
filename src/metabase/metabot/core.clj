@@ -1,7 +1,6 @@
 (ns metabase.metabot.core
   "API namespace for the `metabase.metabot` module."
   (:require
-   [metabase.metabot.provider-util]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
    [metabase.metabot.self]
@@ -11,9 +10,6 @@
    [potemkin :as p]))
 
 (p/import-vars
- [metabase.metabot.provider-util
-  metabase-provider?
-  provider-and-model->provider]
  [metabase.metabot.scope
   agent-collection-create
   agent-dashboard-create

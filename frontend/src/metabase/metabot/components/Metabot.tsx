@@ -5,6 +5,7 @@ import { t } from "ttag";
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { idTag } from "metabase/api/tags";
+import { getUser } from "metabase/current-user";
 import {
   useIsFullPageMetabot,
   useMetabotAgent,
@@ -13,7 +14,6 @@ import {
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { getUser } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,

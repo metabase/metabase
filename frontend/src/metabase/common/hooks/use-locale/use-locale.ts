@@ -1,9 +1,9 @@
 import { useContext } from "react";
 
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { getUser } from "metabase/current-user";
 import { FrontendLocaleContext } from "metabase/embedding/LocaleProvider";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 
 /** Get the user's locale or, if that has not been set, the instance locale
  *

@@ -1,6 +1,8 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -48,6 +50,8 @@ export const setup = ({
   setupBugReportingDetailsEndpoint();
   // The AI item's "Connect to an AI provider" modal reads admin settings.
   setupSettingsEndpoints([]);
+  setupLlmProvidersEndpoint();
+  setupLlmProviderTypesEndpoint();
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {

@@ -13,10 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved OpenRouter connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-or-v1-byok" :base-url "https://openrouter.ai/api"})
+
 (defn- fixture
   "Load cached OpenRouter raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(openrouter/openrouter-raw (merge {:model "anthropic/claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(openrouter/openrouter-raw (merge {:model       "anthropic/claude-haiku-4-5"
+                                       :credentials byok-credentials}
+                                      opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; openrouter-request-body prompt-caching tests
@@ -209,9 +217,8 @@
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
@@ -220,16 +227,22 @@
                      :url     "https://openrouter.ai/api/v1/chat/completions"
                      :headers {"Authorization" "Bearer sk-or-v1-byok"}
                      :body    string?}
-                    (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+                    (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                                :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenRouter API key is set"
+               (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
-                 (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
+                 (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                             :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
-                                             llm.settings/llm-proxy-base-url    nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
@@ -282,7 +295,32 @@
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
                 {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}]
-               (:models (openrouter/list-models))))))))
+               (:models (openrouter/list-models {:credentials byok-credentials}))))))))
+
+(deftest openrouter-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key      "sk-or-v1-setting"
+                                       llm.settings/llm-openrouter-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/chat/completions"
+                                                          :headers {"Authorization" "Bearer sk-or-v1-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key  "sk-or-v1-explicit"
+                                                       :base-url "https://explicit.example"}})))))))
+
+(deftest openrouter-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenRouter API key is set"
+           (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                       :credentials {:api-key ""}}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -294,15 +332,13 @@
         (is (= {:models []}
                (openrouter/list-models {:credentials {:api-key "sk-or-v1-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-or-v1-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (openrouter/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenRouter API key is set"
+           (openrouter/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"

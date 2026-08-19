@@ -71,7 +71,7 @@
           (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
                                      (request/paged?) (assoc :limit (request/limit) :offset (request/offset))
                                      true (assoc :where (case status
-                                                          "all" [:inline [:= 1 1]]
+                                                          "all" [:= [:inline 1] [:inline 1]]
                                                           "active" [:= :is_active true]
                                                           "deactivated" [:= :is_active false])))))})
 

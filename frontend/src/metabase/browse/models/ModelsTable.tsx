@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ItemNameCell,
@@ -208,7 +208,7 @@ function NameCell({ model }: { model?: ModelResult }) {
   const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
-  const name = <EntityItem.Name name={model?.name || ""} variant="list" />;
+  const name = <EntityItemName name={model?.name || ""} />;
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <Flex id={headingId} align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">

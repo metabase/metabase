@@ -416,6 +416,19 @@
         (mt/user-http-request :rasta :post 204 "activity/recents"
                               {:model "dashboard" :model_id (:id d) :context "selection"})))))
 
+(deftest post-recents-metric-selection-test
+  (testing "POST /api/activity/recents accepts model=metric without HTTP 500 (#79571)"
+    (mt/with-model-cleanup [:model/RecentViews]
+      (mt/with-temp [:model/Card metric-card {:type "metric"
+                                              :creator_id (mt/user->id :crowberto)}]
+        (mt/user-http-request :crowberto :post 204 "activity/recents"
+                              {:model "metric" :model_id (:id metric-card) :context "selection"})
+        (testing "and the selection round-trips through GET /api/activity/recents"
+          (is (=? [{:model "metric" :id (:id metric-card)}]
+                  (->> (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections")
+                       :recents
+                       (filter #(= (:id %) (:id metric-card)))))))))))
+
 (deftest card-query-collection-context-excluded-from-recents-test
   (testing "A card-query event with a non-question context is not recorded as a recent view (#45003)"
     (mt/with-test-user :crowberto

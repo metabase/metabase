@@ -3,6 +3,7 @@
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -49,7 +50,8 @@
 (mr/def ::common
   [:map [:database ::lib.schema.id/database]])
 
-(mr/def ::row [:map-of :string :any])
+(mr/def ::row
+  [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])
 
 ;;; Common base schema for all CRUD model row Actions. All CRUD model row Actions at least require
 ;;;
