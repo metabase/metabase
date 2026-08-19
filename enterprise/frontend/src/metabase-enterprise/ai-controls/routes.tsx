@@ -76,65 +76,77 @@ const metabotSystemPromptsUpsellPage = () =>
   }));
 
 /**
+ * One spelling of each path, used by the routes below and by the prefetch
+ * registrations. The registry matches a hovered link against a literal prefix,
+ * so a segment renamed in only one of the two places would stop prefetching
+ * without failing anything.
+ */
+const PATHS = {
+  featureAccess: "usage-controls/ai-feature-access",
+  usageLimits: "usage-controls/ai-usage-limits",
+  customization: "customization",
+  systemPrompts: "system-prompts",
+  chatPrompt: "system-prompts/metabot-chat",
+  naturalLanguagePrompt: "system-prompts/natural-language-queries",
+  sqlGenerationPrompt: "system-prompts/sql-generation",
+} as const;
+
+const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
+
+/**
  * Hovering any AI settings tab starts the fetch, and since they share a chunk,
  * the first hover covers the whole section.
  */
 registerPagePrefetch(
-  `${Urls.adminAiSettings()}/usage-controls/ai-feature-access`,
+  adminAiPath(PATHS.featureAccess),
   metabotFeatureAccessPage,
 );
 registerPagePrefetch(
-  `${Urls.adminAiSettings()}/usage-controls/ai-feature-access`,
+  adminAiPath(PATHS.featureAccess),
   metabotFeatureAccessUpsellPage,
 );
+registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
 registerPagePrefetch(
-  `${Urls.adminAiSettings()}/usage-controls/ai-usage-limits`,
-  metabotUsageLimitsPage,
-);
-registerPagePrefetch(
-  `${Urls.adminAiSettings()}/customization`,
+  adminAiPath(PATHS.customization),
   metabotCustomizationPage,
 );
 registerPagePrefetch(
-  `${Urls.adminAiSettings()}/customization`,
+  adminAiPath(PATHS.customization),
   metabotCustomizationUpsellPage,
 );
-registerPagePrefetch(
-  `${Urls.adminAiSettings()}/system-prompts`,
-  metabotChatPromptPage,
-);
+registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
 
 export function getAiControlsRoutes() {
   return (
     <Route element={<RequireMetabotConfigured />}>
       <Route
         key="ai-feature-access"
-        path="usage-controls/ai-feature-access"
+        path={PATHS.featureAccess}
         lazy={metabotFeatureAccessPage}
       />
       <Route
         key="ai-usage-limits"
-        path="usage-controls/ai-usage-limits"
+        path={PATHS.usageLimits}
         lazy={metabotUsageLimitsPage}
       />
       <Route
         key="customization"
-        path="customization"
+        path={PATHS.customization}
         lazy={metabotCustomizationPage}
       />
       <Route
         key="system-prompts-metabot-chat"
-        path="system-prompts/metabot-chat"
+        path={PATHS.chatPrompt}
         lazy={metabotChatPromptPage}
       />
       <Route
         key="system-prompts-natural-language-queries"
-        path="system-prompts/natural-language-queries"
+        path={PATHS.naturalLanguagePrompt}
         lazy={naturalLanguagePromptPage}
       />
       <Route
         key="system-prompts-sql-generation"
-        path="system-prompts/sql-generation"
+        path={PATHS.sqlGenerationPrompt}
         lazy={sqlGenerationPromptPage}
       />
     </Route>
@@ -146,17 +158,17 @@ export function getAiControlsUpsellRoutes() {
     <>
       <Route
         key="ai-feature-access"
-        path="usage-controls/ai-feature-access"
+        path={PATHS.featureAccess}
         lazy={metabotFeatureAccessUpsellPage}
       />
       <Route
         key="customization"
-        path="customization"
+        path={PATHS.customization}
         lazy={metabotCustomizationUpsellPage}
       />
       <Route
         key="system-prompts"
-        path="system-prompts/metabot-chat"
+        path={PATHS.chatPrompt}
         lazy={metabotSystemPromptsUpsellPage}
       />
     </>
