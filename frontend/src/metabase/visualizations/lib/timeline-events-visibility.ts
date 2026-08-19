@@ -1,6 +1,11 @@
 import dayjs from "dayjs";
+import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/common/collections/utils";
+import { isCollectionTimeline } from "metabase/common/utils/timelines";
+import type {
+  AggregatedEventsVisibility,
+  TimelineEventsVisibilityContext,
+} from "metabase/visualizations/types";
 import type {
   CollectionId,
   Timeline,
@@ -9,22 +14,6 @@ import type {
   TimelineEventsVisibility,
   TimelineId,
 } from "metabase-types/api";
-
-const isCollectionTimeline = (
-  timeline: Timeline,
-  collectionId: CollectionId | null | undefined,
-) => timeline.collection_id === canonicalCollectionId(collectionId);
-
-export const getCollectionTimelines = (
-  timelines: Timeline[],
-  collectionId: CollectionId | null | undefined,
-): Timeline[] =>
-  timelines.filter((timeline) => isCollectionTimeline(timeline, collectionId));
-
-export interface TimelineEventsVisibilityContext {
-  timelines: Timeline[];
-  collectionId: CollectionId | null | undefined;
-}
 
 interface ResolveOptions extends TimelineEventsVisibilityContext {
   visibility?: TimelineEventsVisibility;
@@ -45,7 +34,8 @@ const toSets = (
   hiddenEventIds: new Set(visibility?.hidden_event_ids),
 });
 
-const sortedIds = (ids: Iterable<number>) => [...ids].sort((a, b) => a - b);
+const sortedIds = <T extends number>(ids: Iterable<T>): T[] =>
+  [...ids].sort((a, b) => a - b);
 
 const fromSets = ({
   hiddenTimelineIds,
@@ -77,8 +67,8 @@ const isTimelineVisible = (
 const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
 
-const compareByTimestamp = (a: TimelineEvent, b: TimelineEvent) =>
-  dayjs(a.timestamp).valueOf() - dayjs(b.timestamp).valueOf();
+const sortByTimestamp = (events: TimelineEvent[]) =>
+  _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
 
 export const resolveVisibleTimelineEvents = ({
   timelines,
@@ -90,11 +80,12 @@ export const resolveVisibleTimelineEvents = ({
     return [];
   }
   const sets = toSets(visibility);
-  return timelines
-    .filter((timeline) => isTimelineVisible(timeline, sets, collectionId))
-    .flatMap(getActiveEvents)
-    .filter((event) => !sets.hiddenEventIds.has(event.id))
-    .sort(compareByTimestamp);
+  return sortByTimestamp(
+    timelines
+      .filter((timeline) => isTimelineVisible(timeline, sets, collectionId))
+      .flatMap(getActiveEvents)
+      .filter((event) => !sets.hiddenEventIds.has(event.id)),
+  );
 };
 
 export const isDefaultVisibility = (
@@ -213,11 +204,6 @@ export const hideTimelineEvents = (
   );
   return fromSets(sets);
 };
-
-export interface AggregatedEventsVisibility {
-  visibleEventIds: TimelineEventId[];
-  partiallyVisibleEventIds: TimelineEventId[];
-}
 
 export const aggregateVisibleEventIds = (
   visibleEventIdsPerChart: TimelineEventId[][],
