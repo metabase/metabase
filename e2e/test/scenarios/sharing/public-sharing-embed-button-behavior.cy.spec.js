@@ -187,8 +187,9 @@ describe("Embed JS modal display", () => {
     it("should open Embed JS modal with the `enable modular embedding` card", () => {
       H.activateToken("pro-self-hosted");
 
-      // The snapshot leaves embedding on, and the card only shows while it is
-      // off, so the merged setting has to start from off.
+      // Once embedding is on, the embed flow asks only for the usage conditions
+      // and drops the "enable modular embedding" wording this asserts on. The
+      // snapshot leaves it on, so turn the merged setting off first.
       H.updateSetting("enable-embedding-modular", false);
       H.visitDashboard("@dashboardId");
 

@@ -7,8 +7,9 @@
   "Boolean values that report on the state of different embedding configurations."
   :feature :none
   [embedded-dashboard-count embedded-question-count]
-  ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0, read through `setting/get` so its
-  ;; fallback to the settings it replaces applies. The field names are kept so existing reports keep resolving.
+  ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. `setting/get`, not
+  ;; `get-value-of-type`: only the former runs the `:getter`, which is where the fallback to the settings it
+  ;; replaces lives. The field names are kept so existing reports keep resolving.
   {:enabled-embedding-static      (boolean (and (setting/get :enable-embedding-modular)
                                                 (or (> embedded-question-count 0)
                                                     (> embedded-dashboard-count 0))))
