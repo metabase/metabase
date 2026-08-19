@@ -185,7 +185,7 @@
     "frontend/src/metabase/transforms/pages/TransformSettingsPage/TransformSettingsSection/UpdateTargetModal/UpdateTargetModal.tsx": "self",
     "frontend/src/metabase/ui/components/overlays/HoverCard/index.tsx": "global",
     "frontend/src/metabase/ui/components/overlays/Popover/index.tsx": "global",
-    "frontend/src/metabase/utils/csp.ts": "global",
+    "frontend/src/metabase/utils/csp-setup.ts": "global",
     "frontend/src/metabase/utils/date-time.ts": "self",
     "frontend/src/metabase/utils/dayjs.ts": "global",
     "frontend/src/metabase/utils/i18n.ts": "global",
