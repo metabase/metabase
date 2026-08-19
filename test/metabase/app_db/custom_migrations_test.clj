@@ -374,69 +374,63 @@
                                                                                        :email       "howard@aircraft.com"
                                                                                        :password    "superstrong"
                                                                                        :date_joined :%now}))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                            :creator_id user-id}))
-            tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
-                                                                               :position     0
-                                                                               :dashboard_id dashboard-id}))
-            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
-                                                                               :position     1
-                                                                               :dashboard_id dashboard-id}))
+            dashboard-id (first (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                          {:name       "A dashboard"
+                                                           :creator_id user-id
+                                                           :parameters "[]"
+                                                           :created_at :%now
+                                                           :updated_at :%now}))
+            insert-tab!  (fn [name position]
+                           (first (t2/insert-returning-pks! (t2/table-name :model/DashboardTab)
+                                                            {:name         name
+                                                             :position     position
+                                                             :dashboard_id dashboard-id
+                                                             :created_at   :%now
+                                                             :updated_at   :%now})))
+            tab1-id      (insert-tab! "Tab 1" 0)
+            tab2-id      (insert-tab! "Tab 2" 1)
             ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
-            _            (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
-                                                                               :position     2
-                                                                               :dashboard_id dashboard-id}))
-            tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
-                                                                               :position     3
-                                                                               :dashboard_id dashboard-id}))
-            default-card {:dashboard_id           dashboard-id
-                          :visualization_settings {:virtual_card {:display "text"}
-                                                   :text         "A text card"}}
-            tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-
-            tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              2
-                                                                                  :col              0
-                                                                                  :size_x           2
-                                                                                  :size_y           6})))
-
-            tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-
-            tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))
-            tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-            tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))]
+            _            (insert-tab! "Tab 3" 2)
+            tab4-id      (insert-tab! "Tab 4" 3)
+            insert-card! (fn [props]
+                           (first (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                            (merge {:dashboard_id           dashboard-id
+                                                                    :visualization_settings (json/encode
+                                                                                             {:virtual_card {:display "text"}
+                                                                                              :text         "A text card"})
+                                                                    :created_at             :%now
+                                                                    :updated_at             :%now}
+                                                                   props))))
+            tab1-card1-id (insert-card! {:dashboard_tab_id tab1-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab1-card2-id (insert-card! {:dashboard_tab_id tab1-id
+                                         :row              2
+                                         :col              0
+                                         :size_x           2
+                                         :size_y           6})
+            tab2-card1-id (insert-card! {:dashboard_tab_id tab2-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab2-card2-id (insert-card! {:dashboard_tab_id tab2-id
+                                         :row              4
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           2})
+            tab4-card1-id (insert-card! {:dashboard_tab_id tab4-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4})
+            tab4-card2-id (insert-card! {:dashboard_tab_id tab4-id
+                                         :row              4
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           2})]
         (migrate! :down 46)
         (is (= [;; tab 1
                 {:id  tab1-card1-id
@@ -789,16 +783,22 @@
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/encode visualization-settings)
-                                                                         :card_id      card-id
-                                                                         :size_x       4
-                                                                         :size_y       4
-                                                                         :col          1
-                                                                         :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                   {:dashboard_id           dashboard-id
+                                                    :visualization_settings (json/encode visualization-settings)
+                                                    :card_id                card-id
+                                                    :size_x                 4
+                                                    :size_y                 4
+                                                    :col                    1
+                                                    :row                    1
+                                                    :created_at             :%now
+                                                    :updated_at             :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -881,16 +881,22 @@
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/encode visualization-settings)
-                                                                         :card_id      card-id
-                                                                         :size_x       4
-                                                                         :size_y       4
-                                                                         :col          1
-                                                                         :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                   {:dashboard_id           dashboard-id
+                                                    :visualization_settings (json/encode visualization-settings)
+                                                    :card_id                card-id
+                                                    :size_x                 4
+                                                    :size_y                 4
+                                                    :col                    1
+                                                    :row                    1
+                                                    :created_at             :%now
+                                                    :updated_at             :%now})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
@@ -1462,16 +1468,22 @@
                                  :name                   "My Card"
                                  :created_at             :%now
                                  :updated_at             :%now})
-                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
-                                                                           :creator_id user-id
-                                                                           :parameters []})
-                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
-                                                                               :visualization_settings dashcard-vis
-                                                                               :card_id                card-id
-                                                                               :size_x                 4
-                                                                               :size_y                 4
-                                                                               :col                    1
-                                                                               :row                    1})
+                [dashboard-id] (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                         {:name       "My Dashboard"
+                                                          :creator_id user-id
+                                                          :parameters "[]"
+                                                          :created_at :%now
+                                                          :updated_at :%now})
+                [dashcard-id]  (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                         {:dashboard_id           dashboard-id
+                                                          :visualization_settings dashcard-vis
+                                                          :card_id                card-id
+                                                          :size_x                 4
+                                                          :size_y                 4
+                                                          :col                    1
+                                                          :row                    1
+                                                          :created_at             :%now
+                                                          :updated_at             :%now})
                 expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
                                    :graph.metrics    ["count"],
                                    :click            "link",
@@ -2148,16 +2160,22 @@
                                                :visualization_settings "{}"
                                                :database_id            database-id
                                                :collection_id          nil})
-            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                     :creator_id          user-id
-                                                                     :parameters          []})
-            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                        :visualization_settings (json/encode viz-settings-with-field-ref-keys)
-                                                                        :card_id      card-id
-                                                                        :size_x       4
-                                                                        :size_y       4
-                                                                        :col          1
-                                                                        :row          1})]
+            dashboard-id (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                   {:name       "My Dashboard"
+                                                    :creator_id user-id
+                                                    :parameters "[]"
+                                                    :created_at :%now
+                                                    :updated_at :%now})
+            dashcard-id (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                  {:dashboard_id           dashboard-id
+                                                   :visualization_settings (json/encode viz-settings-with-field-ref-keys)
+                                                   :card_id                card-id
+                                                   :size_x                 4
+                                                   :size_y                 4
+                                                   :col                    1
+                                                   :row                    1
+                                                   :created_at             :%now
+                                                   :updated_at             :%now})]
         (migrate!)
         (testing "After the migration, column_settings are migrated to name-based keys"
           (is (= viz-settings-with-name-keys
