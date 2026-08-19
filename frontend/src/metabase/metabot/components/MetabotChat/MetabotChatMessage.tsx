@@ -282,6 +282,7 @@ export const AgentMessage = ({
           <AgentErroredTurnAlert
             message={m}
             debug={debug}
+            onRetry={onRetry}
             onRefreshConversation={onRefreshConversation}
           />
         ))
@@ -364,16 +365,32 @@ export const AgentMessage = ({
   );
 };
 
+// Errors where re-sending the same turn cannot end differently: the conversation needs a refresh, the
+// subscription an upgrade, the quota a reset, the user a permission. Everything else gets a Retry —
+// most usefully a provider failure, whose retry resolves to the fallback provider because the failure
+// was recorded when the turn died.
+const UNRETRIABLE_ERROR_TYPES = [
+  "conversation_out_of_sync",
+  "metabase_ai_managed_locked",
+  "ai_usage_limit_reached",
+  "permission_denied",
+];
+
 const AgentErroredTurnAlert = ({
   message,
   debug,
+  onRetry,
   onRefreshConversation,
 }: {
   message: MetabotAgentTurnErroredMessage;
   debug: boolean;
+  onRetry?: (messageId: string) => void;
   onRefreshConversation?: () => void;
 }) => {
   const isOutOfSync = message.error.type === "conversation_out_of_sync";
+  const canRetry =
+    onRetry != null &&
+    !UNRETRIABLE_ERROR_TYPES.includes(message.error.type ?? "");
 
   return (
     <AgentTurnAlert
@@ -389,6 +406,16 @@ const AgentErroredTurnAlert = ({
             data-testid="metabot-chat-message-refresh"
           >
             {t`Refresh`}
+          </Button>
+        ) : canRetry ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={() => onRetry(message.id)}
+            data-testid="metabot-chat-message-retry"
+          >
+            {t`Retry`}
           </Button>
         ) : undefined
       }

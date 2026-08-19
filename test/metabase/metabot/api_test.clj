@@ -1371,3 +1371,23 @@
                              :context         {}
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
+
+(deftest agent-streaming-provider-error-carries-its-code-test
+  (testing "a provider that turned the request down reaches the client with its own message and an error code, so
+            the alert can show the reason and offer the retry that lands on the fallback"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (throw (ex-info "OpenRouter API error (HTTP 400) — credit balance too low"
+                                                      {:api-error true :status 400})))
+                                    conversation-title/submit! (constantly nil)]
+          (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                 (agent-request (str (random-uuid)) "hello"))]
+              (is (str/includes? response "credit balance too low")
+                  "the provider's message reaches the client verbatim")
+              (is (str/includes? response "\"errorCode\":\"provider_error\"")
+                  "the finish metadata names the error class")
+              (is (str/includes? response "\"finishReason\":\"error\"")))))))))

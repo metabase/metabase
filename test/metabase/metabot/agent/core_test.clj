@@ -1131,3 +1131,15 @@
                     (filter #(= "model_fallback" (:data-type %)) parts)))
             (testing "and the request itself goes to the connection it named"
               (is (= ["anthropic/claude-sonnet-4-6"] @models-called)))))))))
+
+(deftest error-part-tags-provider-errors-test
+  (testing "an exception the adapters tagged :api-error carries a code, so the client can show its message and
+            offer a retry — which resolves to the fallback provider, the failure having just been recorded"
+    (is (= "provider_error"
+           (get-in (#'agent/error-part (ex-info "Anthropic API error (HTTP 400) — credit balance too low"
+                                                {:api-error true :status 400}))
+                   [:error :error-code]))))
+  (testing "an internal failure gets no code: its message is not written for a person and stays behind the
+            client's generic alert"
+    (is (nil? (get-in (#'agent/error-part (ex-info "boom" {:some :data})) [:error :error-code])))
+    (is (nil? (get-in (#'agent/error-part (RuntimeException. "npe-ish")) [:error :error-code])))))

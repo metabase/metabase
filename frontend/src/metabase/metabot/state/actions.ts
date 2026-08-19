@@ -739,10 +739,15 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           error: streamedError,
           display: isMatching(
-            { type: "ai_usage_limit_reached", message: P.string },
+            {
+              type: P.union("ai_usage_limit_reached", "provider_error"),
+              message: P.string,
+            },
             streamedError,
           )
-            ? // special case where we want to show the returned error from the backend
+            ? // cases where we want to show the returned error from the backend: usage limits, and a
+              // provider turning us down — whose message the adapters write for a person, and whose
+              // retry lands on the fallback provider now that the failure is recorded
               { type: "message" as const, message: streamedError.message }
             : undefined,
         });

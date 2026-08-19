@@ -310,6 +310,58 @@ describe("AgentMessage", () => {
       ).toBeInTheDocument();
     });
 
+    it("shows the provider's own message with a Retry for provider_error turns", async () => {
+      const onRetry = jest.fn();
+      setup(
+        {
+          id: "msg",
+          role: "agent",
+          type: "turn_errored",
+          error: {
+            type: "provider_error",
+            message:
+              "Anthropic API error (HTTP 400) — Your credit balance is too low",
+          },
+          display: {
+            type: "message",
+            message:
+              "Anthropic API error (HTTP 400) — Your credit balance is too low",
+          },
+        },
+        { onRetry },
+      );
+
+      expect(
+        screen.getByText(/Your credit balance is too low/),
+      ).toBeInTheDocument();
+
+      const alert = screen.getByTestId("metabot-chat-message-turn-alert");
+      await userEvent.click(
+        within(alert).getByTestId("metabot-chat-message-retry"),
+      );
+      expect(onRetry).toHaveBeenCalledWith("msg");
+    });
+
+    it.each(["metabase_ai_managed_locked", "ai_usage_limit_reached"])(
+      "offers no Retry for %s, which re-sending cannot fix",
+      (type) => {
+        setup(
+          {
+            id: "msg",
+            role: "agent",
+            type: "turn_errored",
+            error: { type },
+          },
+          { onRetry: jest.fn() },
+        );
+
+        const alert = screen.getByTestId("metabot-chat-message-turn-alert");
+        expect(
+          within(alert).queryByTestId("metabot-chat-message-retry"),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("shows generic alert message when display message is missing", () => {
       setup({
         id: "msg",
