@@ -118,6 +118,55 @@ class OnScriptError {
   }
 }
 
+const PRELOAD_MARKER = "<!-- asset-preloads -->";
+
+/**
+ * The bundle tags are injected at the end of <head>, after ~124 kB of inline JSON,
+ * so the browser only discovers them once nearly the whole document has arrived.
+ * This emits `rel=preload` copies near the top of <head> instead, where they land in
+ * the first flight of response bytes. Templates without the marker are left alone.
+ */
+class PreloadAssetTags {
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "PreloadAssetTags",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).afterTemplateExecution.tapAsync(
+          "PreloadAssetTags",
+          (data, cb) => {
+            if (!data.html.includes(PRELOAD_MARKER)) {
+              cb(null, data);
+              return;
+            }
+
+            const hints = data.headTags
+              .flatMap((tag) => {
+                if (tag.tagName === "script" && tag.attributes.src) {
+                  return [{ url: tag.attributes.src, as: "script" }];
+                }
+                if (
+                  tag.attributes.rel === "stylesheet" &&
+                  tag.attributes.href
+                ) {
+                  return [{ url: tag.attributes.href, as: "style" }];
+                }
+                return [];
+              })
+              .map(
+                (hint) =>
+                  `<link rel="preload" href="${hint.url}" as="${hint.as}">`,
+              )
+              .join("");
+
+            data.html = data.html.replace(PRELOAD_MARKER, hints);
+            cb(null, data);
+          },
+        );
+      },
+    );
+  }
+}
+
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
   mode: isDevMode ? "development" : "production",
@@ -312,6 +361,7 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
