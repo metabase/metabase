@@ -16,6 +16,7 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
@@ -158,12 +159,6 @@
         (catch Exception e
           (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
-(def embedder-plugin-name
-  "Manifest `info.name` of the in-process embedder. Pinned against the manifest by
-  `metabase.embeddings.embedder-plugin-name-test`; a rename here without one there silently disables
-  the plugin, since `plugins/registered?` looks it up by this exact string."
-  "Metabase In-Process Embedder")
-
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -184,13 +179,7 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
-  ;; The in-process embedder registers its provider during plugin initialization. Its model runtime remains
-  ;; lazy, so activating the lightweight registration namespace here does not load DJL or a model at startup.
-  (when (plugins/registered? embedder-plugin-name)
-    (try
-      (plugins/load-plugin! embedder-plugin-name)
-      (catch Exception e
-        (log/warnf "Unable to activate the in-process embedder plugin: %s" (ex-message e)))))
+  (embeddings.startup/ensure-in-process-provider!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations

@@ -1,5 +1,5 @@
 (ns build.embedder-model
-  "Fetch, verify, and package the pinned Arctic model bundles used by the embedder plugin."
+  "Fetch, verify, and package the pinned model bundles used by the embedder plugin."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]

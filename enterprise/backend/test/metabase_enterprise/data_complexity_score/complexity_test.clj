@@ -23,6 +23,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -31,9 +32,18 @@
 
 (def ^:private test-entity-ids (atom 0))
 
-(defmethod semantic-search/get-embeddings-batch ::dimension-translation-test
-  [embedding-model _texts & _opts]
-  [embedding-model])
+(def ^:private captured-translation-model
+  "Descriptor the provider layer receives, captured by the dimension-translation test." (atom nil))
+
+;; A capturing provider so the dimension-translation test can inspect the descriptor the client hands down.
+(embeddings.provider/register-provider!
+ "dimension-translation-test"
+ {:embedding-spi-version embeddings.provider/embedding-spi-version
+  :readiness             (constantly {:ready? true})
+  :resolve-model         embeddings.provider/legacy-resolved-model
+  :embed-texts           (fn [model texts _opts]
+                           (reset! captured-translation-model model)
+                           (mapv (fn [_] (vec (repeat (:vector-dimensions model) 0.0))) texts))})
 
 (defn- entity
   "Build a fake entity map for scoring tests. Uses a monotonically-increasing counter for `:id`
@@ -734,6 +744,24 @@
         (is (fn? embedder)
             "synonym-source returns a fresh provider-embedder for the descriptor")))))
 
+(deftest ^:sequential synonym-source-in-process-opts-pin-bundled-minilm-test
+  (testing "the in-process synonym provider selects the bundled MiniLM model, not Library retrieval's Arctic model"
+    (test-util/with-synonym-source [:provider "in-process"]
+      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)
+            bundled-minilm {:provider         "in-process"
+                            :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+                            :model-dimensions 384}
+            captured       (atom nil)]
+        (is (= bundled-minilm embedding-model-meta))
+        (is (= :names-split text-variant))
+        (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                    (fn [model texts & _opts]
+                                      (reset! captured model)
+                                      (repeat (count texts) [1.0]))]
+          (embedder [{:id 1 :name "orders" :kind :table}]))
+        (is (= bundled-minilm @captured)
+            "the embedder asks the provider SPI for the bundled MiniLM model")))))
+
 (deftest ^:sequential provider-embedder-suppresses-token-tracking-test
   (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
     ;; Complexity scoring isn't user-driven search traffic; the score itself is the analytics
@@ -749,11 +777,10 @@
         (is (false? (:record-tokens? @captured)))))))
 
 (deftest ^:parallel embeddings-client-translates-neutral-dimension-key-test
-  (let [[translated]
-        (embeddings/get-embeddings-batch
-         {:provider ::dimension-translation-test, :model-name "fake", :model-dimensions 384}
-         ["orders"])]
-    (is (= 384 (:vector-dimensions translated)))))
+  (embeddings/get-embeddings-batch
+   {:provider "dimension-translation-test", :model-name "fake", :model-dimensions 384}
+   ["orders"])
+  (is (= 384 (:vector-dimensions @captured-translation-model))))
 
 (deftest ^:sequential provider-embedder-splits-names-before-calling-provider-test
   (testing "provider-embedder splits names on _, -, ., and camelCase before sending to get-embeddings-batch"

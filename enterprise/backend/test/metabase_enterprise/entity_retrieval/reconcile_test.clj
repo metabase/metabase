@@ -13,7 +13,9 @@
    [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -92,6 +94,30 @@
              (jdbc/execute! ~ds-sym [(str "DROP TABLE IF EXISTS "
                                           (index-table/vectors-table) ", "
                                           (index-table/meta-table))])))))))
+
+(deftest ^:sequential with-index-read-lock-contention-integration-test
+  (when semantic.db.datasource/db-url
+    (let [ds       (semantic.db.datasource/ensure-initialized-data-source!)
+          lock-id  (var-get #'reconcile/reconcile-lock-id)
+          calls    (atom 0)
+          callback (fn [_]
+                     (swap! calls inc)
+                     ::called)]
+      (with-open [^Connection writer (jdbc/get-connection ds)]
+        (let [acquired? (:acquired
+                         (jdbc/execute-one!
+                          writer
+                          [(format "SELECT pg_try_advisory_lock(%d) AS acquired" lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+          (is acquired? "the exclusive test lock was acquired without blocking")
+          (when acquired?
+            (try
+              (is (nil? (reconcile/with-index-read-lock ds callback)))
+              (is (zero? @calls) "the read callback is skipped while reconcile owns the lock")
+              (finally
+                (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))
+            (is (= ::called (reconcile/with-index-read-lock ds callback)))
+            (is (= 1 @calls) "the callback runs after the exclusive lock is released")))))))
 
 (defn- index-rows [ds]
   (jdbc/execute! ds
@@ -201,7 +227,7 @@
             (is (seq (docs-for ds "table" table-id)))
             (is (some? (reconciled-at! ds)) "a converged reconcile stamps reconciled_at"))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
-            (let [new-model (assoc model :model-name "model-v2")]
+            (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
               (is (nil? (reconciled-at! ds))
@@ -215,6 +241,72 @@
                 (is (= [] (index-rows ds))))
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
                 (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))
+
+(deftest ^:sequential embedding-space-change-rebuilds-test
+  (with-isolated-index [ds]
+    (let [model         semantic.tu/mock-embedding-model
+          changed-space (update model :embedding-space-id str "-changed")]
+      (is (= :created (index-table/ensure-tables! ds model)))
+      (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
+                                      "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                      "VALUES ('sentinel', 'table', 1, 'name', 'sentinel', '[0,0,0,0]')")
+                                 (index-table/vectors-table))])
+      (testing "the same provider/name/dimensions with a different immutable space is incompatible"
+        (is (= :incompatible (index-table/index-status ds changed-space)))
+        (is (= :rebuilt (index-table/ensure-tables! ds changed-space)))
+        (is (empty? (index-rows ds))))
+      (testing "the rebuilt identity is stable"
+        (is (= :compatible (index-table/index-status ds changed-space)))
+        (is (= :ok (index-table/ensure-tables! ds changed-space)))))))
+
+(deftest ^:sequential version-1-meta-upgrade-rebuilds-test
+  (with-isolated-index [ds]
+    (let [model semantic.tu/mock-embedding-model]
+      (jdbc/execute! ds [(format (str "CREATE TABLE \"%s\" ("
+                                      "id smallint PRIMARY KEY, provider text NOT NULL, model_name text NOT NULL, "
+                                      "vector_dimensions int NOT NULL, schema_version int NOT NULL, "
+                                      "updated_at timestamptz NOT NULL)")
+                                 (index-table/meta-table))])
+      (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
+                                      "(id, provider, model_name, vector_dimensions, schema_version, updated_at) "
+                                      "VALUES (1, 'mock', 'model', 4, 1, NOW())")
+                                 (index-table/meta-table))])
+      (jdbc/execute! ds [(format "CREATE TABLE \"%s\" (sentinel int)" (index-table/vectors-table))])
+      (jdbc/execute! ds [(format "INSERT INTO \"%s\" VALUES (1)" (index-table/vectors-table))])
+      (testing "a legacy table is rebuilt once rather than relabeled as the resolved space"
+        (is (= :rebuilt (index-table/ensure-tables! ds model)))
+        (is (empty? (index-rows ds))))
+      (let [meta-row   (jdbc/execute-one! ds
+                                          [(format (str "SELECT embedding_space_id, schema_version "
+                                                        "FROM \"%s\" WHERE id = 1")
+                                                   (index-table/meta-table))]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+            column-row (jdbc/execute-one! ds
+                                          ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
+                                           (index-table/meta-table)]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+        (is (= {:embedding_space_id (:embedding-space-id model)
+                :schema_version     index-table/schema-version}
+               meta-row))
+        (is (= "NO" (:is_nullable column-row))))
+      (let [execute!    jdbc/execute!
+            statements (atom [])]
+        (with-redefs [jdbc/execute! (fn [connectable sql-params & opts]
+                                      (swap! statements conj (first sql-params))
+                                      (apply execute! connectable sql-params opts))]
+          (is (= :ok (index-table/ensure-tables! ds model))))
+        (is (not-any? #(re-find #"ALTER COLUMN embedding_space_id SET NOT NULL" (str %)) @statements)
+            "steady-state reconcile does not reacquire an ACCESS EXCLUSIVE lock"))
+      (testing "a manually nullable metadata column is healed once"
+        (jdbc/execute! ds [(format "ALTER TABLE \"%s\" ALTER COLUMN embedding_space_id DROP NOT NULL"
+                                   (index-table/meta-table))])
+        (is (= :ok (index-table/ensure-tables! ds model)))
+        (is (= "NO" (:is_nullable
+                     (jdbc/execute-one!
+                      ds
+                      ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
+                       (index-table/meta-table)]
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))))))
 
 (deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
   (testing "measures/segments on a published library table are indexed and hydrate with parent-table context"
@@ -427,7 +519,7 @@
               (is (seq (docs-for ds "table" b-id)))
               ;; a targeted reconcile of A under a new model identity forces ensure-tables! to rebuild (empty);
               ;; it must repopulate B too, not leave it missing until the periodic backstop.
-              (let [new-model (assoc model :model-name "model-v2")]
+              (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
                 (is (:rebuilt? (reconcile/reconcile-entity! ds (constantly new-model) "table" a-id)))
                 (is (seq (docs-for ds "table" a-id)) "A repopulated after the rebuild")
                 (is (seq (docs-for ds "table" b-id)) "B repopulated too (not dropped by the rebuild)")))))))))
