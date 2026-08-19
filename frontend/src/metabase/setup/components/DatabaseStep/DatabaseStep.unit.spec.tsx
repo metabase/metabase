@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { SetupStep } from "metabase/redux/store";
 import {
@@ -9,7 +10,10 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import type { DatabaseData } from "metabase-types/api";
-import { createMockDatabaseData } from "metabase-types/api/mocks";
+import {
+  createMockDatabaseData,
+  createMockEngines,
+} from "metabase-types/api/mocks";
 
 import { DatabaseStep } from "./DatabaseStep";
 
@@ -33,6 +37,8 @@ const setup = ({
       "email-configured?": isEmailConfigured,
     }),
   });
+
+  setupEnginesEndpoint(createMockEngines());
 
   renderWithProviders(<DatabaseStep stepLabel={0} />, {
     storeInitialState: state,
