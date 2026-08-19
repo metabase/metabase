@@ -34,3 +34,17 @@
               (is (= (users.settings/last-used-native-database-id) id2))
               (mt/with-test-user :rasta
                 (is (= (users.settings/last-used-native-database-id) id1))))))))))
+
+;; Regression test for https://github.com/metabase/metabase/issues/69264
+;; When a user's `settings` column contains a non-decodable string (e.g., an encrypted value whose encryption key
+;; is no longer set), `encrypted-json-out` returns the raw string instead of a map. Setting a user-local setting
+;; then tried to `assoc` onto that string and threw
+;; `java.lang.ClassCastException: class java.lang.String cannot be cast to class clojure.lang.Associative`.
+(deftest set-user-local-setting-with-corrupted-settings-column-test
+  (testing "Setting a user-local setting should succeed even when *user-local-values* holds a non-map string (#69264)"
+    (mt/with-test-user :rasta
+      (setting/with-user-local-values (delay (atom "not-valid-json-this-is-broken"))
+        (is (= "light" (users.settings/color-scheme! "light"))
+            "setting a user-local-only setting should succeed even when the existing settings value was undecodable")
+        (is (= "light" (users.settings/color-scheme))
+            "the new value should be readable after the corrupted value was replaced")))))
