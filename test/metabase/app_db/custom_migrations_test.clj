@@ -147,7 +147,10 @@
             (is (some? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))
           ;; stop the scheduler because the scheduler won't be started when migrations start
           (task/stop-scheduler!)
-          (migrate!)
+          ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is specifically
+          ;; testing one, so re-enable them
+          (binding [custom-migrations.util/*allow-temp-scheduling* true]
+            (migrate!))
           ;; check the job and trigger are deleted
           (task/start-scheduler!)
           (testing "after the migration, the job and trigger are deleted"
@@ -277,21 +280,20 @@
           (testing "legacy result_metadata field refs are updated"
             (is (= expected
                    (json/decode migrated-result-metadata))))
-          (testing "legacy result_metadata are updated to the current format"
-            (is (= (->> result_metadata
-                        json/encode
-                        ((:out mi/transform-result-metadata))
-                        json/encode)
-                   migrated-result-metadata)))
+          ;; note: we don't assert that the migrated value matches today's normalized format byte-for-byte -- the
+          ;; transform has since evolved (e.g. it now adds a default :base_type) and this v47 migration will never
+          ;; track it. What matters is that the migrated value normalizes to the same thing the original does.
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
                         json/encode
                         ((:out mi/transform-result-metadata))
-                        json/encode)
+                        json/encode
+                        json/decode)
                    (-> migrated-result-metadata
                        json/decode
                        ((:out mi/transform-result-metadata))
-                       json/encode)))))))))
+                       json/encode
+                       json/decode)))))))))
 
 (deftest ^:mb/old-migrations-test add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
@@ -1764,7 +1766,11 @@
                       (testing "sanity check that the schedule exists"
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-                    (migrate!)
+                    ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is
+                    ;; specifically testing one, so re-enable them. `with-db-scheduler-setup!` redefines
+                    ;; `qs/initialize` so the migration operates on the test's in-memory scheduler.
+                    (binding [custom-migrations.util/*allow-temp-scheduling* true]
+                      (migrate!))
                     (testing "default options and scan with manual schedules should have scan field values"
                       (doseq [db db-with-scan-fv]
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
@@ -1819,9 +1825,12 @@
       ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
       ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
       (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
-        (let [user-id  (:id (new-instance-with-default :core_user))
-              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
-              pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+        ;; these inserts run at the fully-migrated schema, where entity_id is NOT NULL and no model hook fills it in
+        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id
+                                                               :entity_id  (u/generate-nano-id)}))
+              pc       (new-instance-with-default :pulse_channel {:pulse_id  pulse-id
+                                                                  :entity_id (u/generate-nano-id)})]
           ;; trigger this so we schedule a trigger for send-pulse
           (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
@@ -1830,10 +1839,15 @@
                      "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                    (scheduler-job-keys))))
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
-            (migrate! :down 49)
+            ;; test-migrations turns scheduler-dependent migrations into no-ops by default; this test is specifically
+            ;; testing one, so re-enable them. `with-send-pulse-setup!` redefines `qs/initialize` so the migration
+            ;; operates on the test's in-memory scheduler.
+            (binding [custom-migrations.util/*allow-temp-scheduling* true]
+              (migrate! :down 49))
             (is (= #{} (scheduler-job-keys))))
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
-            (migrate!)
+            (binding [custom-migrations.util/*allow-temp-scheduling* true]
+              (migrate!))
             ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
             (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
               ;; simulate starting MB after migrate up, which will trigger this function

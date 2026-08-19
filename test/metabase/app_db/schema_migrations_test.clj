@@ -34,7 +34,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -420,8 +419,12 @@
 (deftest ^:mb/old-migrations-test migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
     (let [user         (create-raw-user! (mt/random-email))
-          dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                          :creator_id (:id user)}))
+          dashboard-id (first (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                        {:name       "A dashboard"
+                                                         :creator_id (:id user)
+                                                         :parameters "[]"
+                                                         :created_at :%now
+                                                         :updated_at :%now}))
           ;; this layout is from magic dashboard for order table
           cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -438,10 +441,12 @@
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove these cards
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
-          dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
-                                                 (map #(merge % {:dashboard_id dashboard-id
-                                                                 :visualization_settings {}
-                                                                 :parameter_mappings     {}}) cases))]
+          dashcard-ids (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                 (map #(merge % {:dashboard_id           dashboard-id
+                                                                 :visualization_settings "{}"
+                                                                 :parameter_mappings     "[]"
+                                                                 :created_at             :%now
+                                                                 :updated_at             :%now}) cases))]
       (testing "forward migration migrate correctly"
         (migrate!)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
@@ -1154,17 +1159,21 @@
             nonexistent-read-path "/collection/99123456/read/"
 
             both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
-                                                                      {:slug "foo"}))]
+                                                                      {:slug "foo"}))
+
+            ;; look the group up by name rather than via [[perms-group/all-users]]: the model fn selects
+            ;; `magic_group_type`, which doesn't exist at this schema version
+            all-users-group-id (t2/select-one-pk :permissions_group :name "All Users")]
         (t2/insert! :permissions {:object nonexistent-path
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (t2/insert! :permissions {:object nonexistent-read-path
-                                  :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
+        (t2/insert! :permissions {:object read-coll-path :group_id all-users-group-id})
+        (t2/insert! :permissions {:object write-coll-path :group_id all-users-group-id})
         (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (migrate!)
         (testing "the valid permissions objects got updated correctly"
           (is (= [{:collection_id read-coll-id
@@ -2326,7 +2335,9 @@
                                                    :created_at #t "2020"
                                                    :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
-      (perms/add-user-to-group! user-id group-id)
+      ;; insert the membership row directly: [[perms/add-user-to-group!]] goes through the model layer, which
+      ;; selects columns that don't exist at this schema version
+      (t2/insert! :permissions_group_membership {:user_id user-id :group_id group-id})
       (migrate!)
       (clear-permissions!)
       ;; set one table to be unrestricted
