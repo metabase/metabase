@@ -1,13 +1,11 @@
 name: Files changed
 description: >
-  Answer one question about a commit — did it touch any of these parts of the
-  repo? — using dorny/paths-filter against .github/file-paths.yaml.
+  Answer questions about a commit — did it touch these parts of the repo? —
+  using dorny/paths-filter against .github/file-paths.yaml.
 
-  Checks the repository out when it needs to, then memoises paths-filter's whole
-  answer in the Actions cache under a key derived from the commit under test and
-  the filter configuration. A commit that has already been filtered, by an
-  earlier workflow in the same push or by a re-run, short-circuits to the cached
-  answer and skips both the checkout and the diff.
+  Checks the repository out when it needs to, runs the diff once, and turns it
+  into plain booleans, so a caller states which filters it cares about instead
+  of spelling the same OR out across a job's `if:` conditions.
 
 inputs:
   any-of:
@@ -23,6 +21,21 @@ inputs:
       Filter names, in the same forms `any-of` accepts, that must *all* have
       matched. Give both and the commit has to satisfy the `any-of` OR and the
       `all-of` AND together.
+    required: false
+    default: ""
+  questions:
+    description: >
+      Several named questions of one diff, answered into the `answers` JSON:
+
+        frontend:
+          all-of: frontend_sources
+        backend:
+          any-of: backend_all, drivers
+        docs: documentation
+
+      Each name takes `any-of` and/or `all-of` with the same meaning they have
+      above; the last line is shorthand for a question that is only an `any-of`.
+      Mutually exclusive with the top-level `any-of`/`all-of`.
     required: false
     default: ""
   filters:
@@ -57,17 +70,21 @@ inputs:
     description: "fetch-depth for the checkout this action performs, when it performs one."
     required: false
     default: "1"
-  cache:
-    description: "Set to false to always recompute, reading from and writing to no cache."
-    required: false
-    default: "true"
 
 outputs:
   changed:
     description: >
       'true' when the commit satisfied `any-of` (at least one matched) and
-      `all-of` (every one matched). 'false' when neither input is given.
+      `all-of` (every one matched). Under `questions`, 'true' when any question
+      answered yes — a cheap gate for "is there anything to do at all?".
+      'false' when no question was asked.
     value: ${{ steps.evaluate.outputs.changed }}
+  answers:
+    description: >
+      One JSON boolean per named question, for use as
+      fromJSON(steps.<id>.outputs.answers).frontend. `{}` unless `questions`
+      was given.
+    value: ${{ steps.evaluate.outputs.answers }}
   files:
     description: >
       Files matched by the named filters, in the `list-files` format. Empty
@@ -80,99 +97,36 @@ outputs:
       one answer out of a single diff:
       fromJSON(steps.<id>.outputs.results).frontend_all.
     value: ${{ steps.evaluate.outputs.results }}
-  cache-hit:
-    description: "'true' when the answer was reused from an earlier run on this commit."
-    value: ${{ steps.check.outputs.cached || 'false' }}
 
 runs:
   using: composite
   steps:
-    # The key has to pin everything the answer depends on: which commit we are
-    # filtering, what we are filtering it against, and the filter config itself.
-    # The config is covered by the commit — on a pull_request GITHUB_SHA is the
-    # merge commit, so it moves whenever either the head or the base does.
-    #
-    # `any-of` deliberately stays out of the key: we cache paths-filter's whole
-    # answer, so every job asking a different question of the same commit shares
-    # one entry.
-    - name: Work out the cache key
+    # `auto` means: only clone if the filter config isn't already here. A job that
+    # checked the repo out to reach this action in the first place — which a local
+    # action always requires — has nothing to gain from doing it twice.
+    - name: Decide whether to check out
       id: plan
       shell: bash
       env:
         FILTERS: ${{ inputs.filters }}
-        LIST_FILES: ${{ inputs.list-files }}
-        BASE: ${{ inputs.base }}
         CHECKOUT: ${{ inputs.checkout }}
-        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
-        PUSH_BEFORE_SHA: ${{ github.event.before }}
-        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       run: |
         set -euo pipefail
-
-        # Cache keys may not contain commas, and we want them readable, so fold
-        # anything that isn't key-safe into a dash.
-        slug() { printf '%s' "$1" | tr -c '[:alnum:]._-' '-'; }
-
-        base_sha="${PR_BASE_SHA:-}"
-        [ -n "$base_sha" ] || base_sha="${MERGE_GROUP_BASE_SHA:-}"
-        [ -n "$base_sha" ] || base_sha="${PUSH_BEFORE_SHA:-}"
-        [ -n "$base_sha" ] || base_sha="none"
-
-        key="files-changed-v1"
-        key="$key-$(slug "$GITHUB_EVENT_NAME")"
-        key="$key-$(slug "$FILTERS")"
-        key="$key-$(slug "$LIST_FILES")"
-        key="$key-$(slug "${BASE:-auto}")"
-        key="$key-$base_sha-${HEAD_SHA}-${GITHUB_SHA}"
-
-        echo "key=$key" >> "$GITHUB_OUTPUT"
-        echo "file=$RUNNER_TEMP/files-changed/$key.json" >> "$GITHUB_OUTPUT"
-
-        # `auto` means: only clone if the filter config isn't already here. A job
-        # that checked the repo out to reach this action in the first place has
-        # nothing to gain from doing it twice.
         case "$CHECKOUT" in
           true|false) needed="$CHECKOUT" ;;
           auto) if [ -f "$FILTERS" ]; then needed=false; else needed=true; fi ;;
-          *) echo "::error::checkout must be one of auto, true, false (got '$CHECKOUT')"; exit 1 ;;
+          *) echo "::error::checkout must be one of auto, true, false (got '$CHECKOUT')" >&2; exit 1 ;;
         esac
         echo "checkout=$needed" >> "$GITHUB_OUTPUT"
 
-    - name: Look for an answer from an earlier run on this commit
-      id: restore
-      if: inputs.cache == 'true'
-      uses: actions/cache/restore@v5
-      with:
-        path: ${{ steps.plan.outputs.file }}
-        key: ${{ steps.plan.outputs.key }}
-
-    # A half-written entry has to read as a miss rather than as an empty answer,
-    # which would silently turn every filter false.
-    - name: Check the cached answer is intact
-      id: check
-      if: steps.restore.outputs.cache-hit == 'true'
-      shell: bash
-      env:
-        FILE: ${{ steps.plan.outputs.file }}
-      run: |
-        set -euo pipefail
-        if jq -e 'type == "object" and length > 0' "$FILE" >/dev/null 2>&1; then
-          echo "cached=true" >> "$GITHUB_OUTPUT"
-          echo "Reusing the paths-filter answer cached for this commit."
-        else
-          echo "Cached answer is missing or malformed; filtering from scratch."
-        fi
-
     - name: Checkout repository
-      if: steps.check.outputs.cached != 'true' && steps.plan.outputs.checkout == 'true'
+      if: steps.plan.outputs.checkout == 'true'
       uses: actions/checkout@v6
       with:
         fetch-depth: ${{ inputs.fetch-depth }}
 
     - name: Test which files changed
       id: filter
-      if: steps.check.outputs.cached != 'true'
       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
       with:
         token: ${{ inputs.token || github.token }}
@@ -180,37 +134,15 @@ runs:
         list-files: ${{ inputs.list-files }}
         base: ${{ inputs.base }}
 
-    # Written even when caching is off: `evaluate` reads its answer from here, so
-    # there is only ever one place to read it from.
-    - name: Record the answer
-      if: steps.check.outputs.cached != 'true'
-      shell: bash
-      env:
-        FILE: ${{ steps.plan.outputs.file }}
-        OUTPUTS: ${{ toJSON(steps.filter.outputs) }}
-      run: |
-        set -euo pipefail
-        mkdir -p "$(dirname "$FILE")"
-        printf '%s' "$OUTPUTS" | jq -c . > "$FILE"
-
-    # Losing this race against a sibling workflow on the same commit is fine:
-    # whoever got there first cached the same answer.
-    - name: Cache the answer for the rest of this commit's workflows
-      if: steps.check.outputs.cached != 'true' && inputs.cache == 'true'
-      continue-on-error: true
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ steps.plan.outputs.file }}
-        key: ${{ steps.plan.outputs.key }}
-
-    - name: Answer the question
+    - name: Answer the questions
       id: evaluate
       shell: bash
       env:
-        FILE: ${{ steps.plan.outputs.file }}
+        RESULTS: ${{ toJSON(steps.filter.outputs) }}
         FILTERS: ${{ inputs.filters }}
         ANY_OF: ${{ inputs.any-of }}
         ALL_OF: ${{ inputs.all-of }}
+        QUESTIONS: ${{ inputs.questions }}
         LIST_FILES: ${{ inputs.list-files }}
       run: |
         set -euo pipefail
@@ -218,12 +150,21 @@ runs:
         # A delimiter no file list can accidentally terminate.
         delim="ghadelim-$RANDOM$RANDOM-$$"
         emit() { printf '%s<<%s\n%s\n%s\n' "$1" "$delim" "$2" "$delim" >> "$GITHUB_OUTPUT"; }
+        blank() { [ -z "${1//[[:space:]]/}" ]; }
 
+        # Parked on disk so the jq lookups below can all read the same file.
+        FILE="$RUNNER_TEMP/files-changed-results.json"
+        printf '%s' "$RESULTS" | jq -c . > "$FILE"
         emit results "$(cat "$FILE")"
 
-        # Accept `a, b`, one name per line, and the `a: true` map form — anything
+        if ! blank "$QUESTIONS" && { ! blank "$ANY_OF" || ! blank "$ALL_OF"; }; then
+          echo "::error::Ask with questions or with any-of/all-of, not both." >&2
+          exit 1
+        fi
+
+        # Filter names: `a, b`, one per line, or the `a: true` map form. Anything
         # other than `true` on the right is a typo we would rather not guess at.
-        # Errors go to stderr so the command substitution below can't swallow them.
+        # Errors go to stderr so command substitution can't swallow them.
         parse() {
           local entry name value
           while IFS= read -r entry; do
@@ -240,71 +181,121 @@ runs:
           done < <(printf '%s\n' "$1" | tr ',' '\n')
         }
 
-        # Fills the `names` global; a parse failure takes the whole step down.
-        read_names() {
-          local raw line
-          names=()
-          raw="$(parse "$1" "$2")" || exit 1
-          while IFS= read -r line; do
-            if [ -n "$line" ]; then
-              names+=("$line")
+        # `questions` is a deliberately small YAML subset — a name, then any-of
+        # and/or all-of under it, or a name with the any-of inline. Anything else
+        # is rejected rather than guessed at.
+        q_names=(); q_any=(); q_all=(); current=-1
+        while IFS= read -r line; do
+          trimmed="${line#"${line%%[![:space:]]*}"}"
+          if [ -z "$trimmed" ] || [ "${trimmed:0:1}" = "#" ]; then
+            continue
+          fi
+          if [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]*$ ]]; then
+            q_names+=("${BASH_REMATCH[1]}"); q_any+=(""); q_all+=("")
+            current=$(( ${#q_names[@]} - 1 ))
+          elif [[ "$line" =~ ^([A-Za-z0-9_-]+):[[:space:]]+(.+)$ ]]; then
+            q_names+=("${BASH_REMATCH[1]}"); q_any+=("${BASH_REMATCH[2]}"); q_all+=("")
+            current=$(( ${#q_names[@]} - 1 ))
+          elif [[ "$line" =~ ^[[:space:]]+(any-of|all-of):[[:space:]]*(.*)$ ]]; then
+            if [ "$current" -lt 0 ]; then
+              echo "::error::questions: '$trimmed' is not under a question name." >&2
+              exit 1
             fi
-          done <<< "$raw"
-        }
+            if [ "${BASH_REMATCH[1]}" = "any-of" ]; then
+              q_any[$current]="${BASH_REMATCH[2]}"
+            else
+              q_all[$current]="${BASH_REMATCH[2]}"
+            fi
+          else
+            echo "::error::questions: don't know what to do with '$trimmed'." >&2
+            exit 1
+          fi
+        done <<< "$QUESTIONS"
 
-        read_names "$ANY_OF" any-of
-        any_names=("${names[@]+"${names[@]}"}")
-        read_names "$ALL_OF" all-of
-        all_names=("${names[@]+"${names[@]}"}")
-
-        if [ ${#any_names[@]} -eq 0 ] && [ ${#all_names[@]} -eq 0 ]; then
-          emit changed false
-          emit files ""
-          echo "Neither any-of nor all-of given; read the answer from the results output."
-          exit 0
+        # The shorthand inputs are just a single question with no name.
+        if [ ${#q_names[@]} -eq 0 ]; then
+          q_names=(""); q_any=("$ANY_OF"); q_all=("$ALL_OF")
         fi
 
-        # Every name either side asked about, in order, without repeats.
+        # Every filter any question mentions, in order, without repeats. Parsed in
+        # one pass so a syntax error stops us before we start answering.
+        combined=""
+        for i in "${!q_names[@]}"; do
+          combined="$combined${q_any[$i]}"$'\n'"${q_all[$i]}"$'\n'
+        done
+        parsed="$(parse "$combined" question)" || exit 1
         referenced=()
         while IFS= read -r name; do
           if [ -n "$name" ]; then
             referenced+=("$name")
           fi
-        done < <(printf '%s\n' "${any_names[@]+"${any_names[@]}"}" \
-                                "${all_names[@]+"${all_names[@]}"}" | awk 'NF && !seen[$0]++')
+        done < <(printf '%s\n' "$parsed" | awk 'NF && !seen[$0]++')
 
-        # A name with no filter behind it would otherwise report 'false' forever,
+        if [ ${#referenced[@]} -eq 0 ]; then
+          emit changed false
+          emit answers "{}"
+          emit files ""
+          echo "Nothing asked; read the answer from the results output."
+          exit 0
+        fi
+
+        # A name with no filter behind it would otherwise report false forever,
         # quietly switching off whatever job depends on it.
         missing=()
         for name in "${referenced[@]}"; do
           jq -e --arg k "$name" 'has($k)' "$FILE" >/dev/null || missing+=("$name")
         done
         if [ ${#missing[@]} -gt 0 ]; then
-          echo "::error::$FILTERS defines no filter named: ${missing[*]}"
+          echo "::error::$FILTERS defines no filter named: ${missing[*]}" >&2
           exit 1
         fi
 
         matched() { [ "$(jq -r --arg k "$1" '.[$k]' "$FILE")" = "true" ]; }
 
-        # any-of is an OR, all-of an AND, and asking for both means both must hold.
-        changed=true
-        if [ ${#any_names[@]} -gt 0 ]; then
-          changed=false
-          for name in "${any_names[@]}"; do
-            if matched "$name"; then
-              changed=true
-              break
-            fi
-          done
-        fi
-        if [ "$changed" = true ] && [ ${#all_names[@]} -gt 0 ]; then
-          for name in "${all_names[@]}"; do
-            if ! matched "$name"; then
-              changed=false
-              break
-            fi
-          done
-        fi
+        # any-of is an OR, all-of an AND, and asking both means both must hold.
+        answer() {
+          local -a any=() all=()
+          local name raw line ok=true
+          raw="$(parse "$1" any-of)" || return 1
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then any+=("$line"); fi
+          done <<< "$raw"
+          raw="$(parse "$2" all-of)" || return 1
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then all+=("$line"); fi
+          done <<< "$raw"
+
+          if [ ${#any[@]} -eq 0 ] && [ ${#all[@]} -eq 0 ]; then
+            printf 'false'
+            return 0
+          fi
+          if [ ${#any[@]} -gt 0 ]; then
+            ok=false
+            for name in "${any[@]}"; do
+              if matched "$name"; then ok=true; break; fi
+            done
+          fi
+          if [ "$ok" = true ] && [ ${#all[@]} -gt 0 ]; then
+            for name in "${all[@]}"; do
+              if ! matched "$name"; then ok=false; break; fi
+            done
+          fi
+          printf '%s' "$ok"
+        }
+
+        answers="{}"
+        changed=false
+        for i in "${!q_names[@]}"; do
+          verdict="$(answer "${q_any[$i]}" "${q_all[$i]}")" || exit 1
+          if [ "$verdict" = true ]; then
+            changed=true
+          fi
+          if [ -n "${q_names[$i]}" ]; then
+            answers="$(printf '%s' "$answers" |
+              jq -c --arg k "${q_names[$i]}" --argjson v "$verdict" '.[$k] = $v')"
+            echo "${q_names[$i]}=$verdict"
+          fi
+        done
 
         parts=()
         for name in "${referenced[@]}"; do
@@ -327,5 +318,6 @@ runs:
         fi
 
         emit changed "$changed"
+        emit answers "$answers"
         emit files "$files"
         echo "changed=$changed for: ${referenced[*]}"
