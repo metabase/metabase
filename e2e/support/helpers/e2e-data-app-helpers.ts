@@ -176,25 +176,31 @@ const actionsFileIn = (appRoot: string) =>
  */
 export function resetDataAppHostAppSources() {
   const appRoot = dataAppHostAppRoot();
-  return cy.exec(
-    `rm -rf "${appRoot}/queries" "${appRoot}/actions" "${appRoot}/resources_metadata.json"`,
-  );
+
+  return cy.task("removeDataAppPaths", {
+    paths: [
+      `${appRoot}/queries`,
+      `${appRoot}/actions`,
+      `${appRoot}/resources_metadata.json`,
+    ],
+  });
 }
 
 export function declareDataAppActions(
   appRoot: string,
   sourceActionIds: number[],
 ) {
-  return cy.writeFile(
-    actionsFileIn(appRoot),
-    [
-      'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
-      ...sourceActionIds.map(
-        (id) =>
-          `export const Action${id} = defineAction({ action: { id: ${id}, parameters: [] } });`,
-      ),
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [actionsFileIn(appRoot)]: [
+        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+        ...sourceActionIds.map(
+          (id) =>
+            `export const Action${id} = defineAction({ action: { id: ${id}, parameters: [] } });`,
+        ),
+      ].join("\n"),
+    },
+  });
 }
 
 const queriesFileIn = (appRoot: string) => `${appRoot}/queries/orders.query.ts`;
@@ -204,16 +210,17 @@ export function declareDataAppQueries(
   appRoot: string,
   declarations: Array<{ name: string; tableId: number; limit?: number }>,
 ) {
-  return cy.writeFile(
-    queriesFileIn(appRoot),
-    [
-      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-      ...declarations.map(({ name, tableId, limit }) => {
-        const clauses = limit === undefined ? "" : `, limit: ${limit}`;
-        return `export const ${name} = defineQuery({ source: { type: "table", id: ${tableId} }${clauses} });`;
-      }),
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [queriesFileIn(appRoot)]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        ...declarations.map(({ name, tableId, limit }) => {
+          const clauses = limit === undefined ? "" : `, limit: ${limit}`;
+          return `export const ${name} = defineQuery({ source: { type: "table", id: ${tableId} }${clauses} });`;
+        }),
+      ].join("\n"),
+    },
+  });
 }
 
 /**
@@ -223,18 +230,7 @@ export function declareDataAppQueries(
  * ID lands on its own line and makes a declaration span several.
  */
 function removeDeclaration(filePath: string, exportName: string) {
-  return cy.readFile(filePath).then((contents: string) => {
-    const [imports, ...declarations] = contents.split("export const ");
-
-    cy.writeFile(
-      filePath,
-      imports +
-        declarations
-          .filter((declaration) => !declaration.startsWith(`${exportName} `))
-          .map((declaration) => `export const ${declaration}`)
-          .join(""),
-    );
-  });
+  return cy.task("removeDataAppDeclaration", { filePath, exportName });
 }
 
 export function removeDataAppQueryDeclaration(appRoot: string, name: string) {
@@ -270,23 +266,20 @@ export function declareSyncedDataAppQuery(slug: string, tableId: number) {
   const appRoot = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
   const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
 
-  cy.writeFile(
-    `${packageRoot}/package.json`,
-    JSON.stringify({
-      name: "@metabase/embedding-sdk-react",
-      exports: { "./data-app": "./data-app.js" },
-    }),
-  );
-  cy.writeFile(`${packageRoot}/data-app.js`, "exports.defineQuery = (q) => q;");
-
-  return cy.writeFile(
-    `${appRoot}/queries/orders.query.ts`,
-    [
-      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-      `export const Orders = defineQuery({ source: { type: "table", id: ${tableId} } });`,
-      "",
-    ].join("\n"),
-  );
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${packageRoot}/package.json`]: JSON.stringify({
+        name: "@metabase/embedding-sdk-react",
+        exports: { "./data-app": "./data-app.js" },
+      }),
+      [`${packageRoot}/data-app.js`]: "exports.defineQuery = (q) => q;",
+      [`${appRoot}/queries/orders.query.ts`]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        `export const Orders = defineQuery({ source: { type: "table", id: ${tableId} } });`,
+        "",
+      ].join("\n"),
+    },
+  });
 }
 
 /** Provisions each fixture app the way an author does, so its manifest carries the entity IDs the repo sync resolves. */
@@ -319,17 +312,11 @@ export function createDataAppApiKey() {
 export function createSecondDataApp(slug: string) {
   const appRoot = `${Cypress.config("projectRoot")}/e2e/tmp/${slug}`;
 
-  cy.exec(`rm -rf "${appRoot}"`);
-  cy.exec(`mkdir -p "${appRoot}"`);
-  cy.exec(
-    `ln -s "${dataAppHostAppRoot()}/node_modules" "${appRoot}/node_modules"`,
-  );
-  // Synchronization writes the app's resource entity IDs back into its manifest,
-  // so an app without one is refused before it reaches the reconcilers.
-  cy.writeFile(
-    `${appRoot}/data_app.yaml`,
-    `name: ${slug}\npath: ./dist/index.js\n`,
-  );
+  cy.task("scaffoldDataApp", {
+    appRoot,
+    slug,
+    sdkFrom: dataAppHostAppRoot(),
+  });
 
   return appRoot;
 }
@@ -421,24 +408,25 @@ export function setUpDataAppDevServer(clientHost: string) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
 
   cy.request("POST", "/api/api-key", {
     name: `data-app-dev-e2e-${Date.now()}`,
     group_id: USER_GROUPS.ADMIN_GROUP,
   }).then(({ body }) => {
-    cy.writeFile(
-      DATA_APP_DEV_ENV_PATH,
-      `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
-    );
+    cy.task("writeDataAppFiles", {
+      files: {
+        [DATA_APP_DEV_ENV_PATH]: `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
+      },
+    });
   });
 
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
 
 export function tearDownDataAppDevServer() {
-  cy.exec(`rm -f ${DATA_APP_DEV_ENV_PATH}`);
+  return cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
 }
 
 // `DATA_APP_MB_URL` shows up in (or drops out of) the served CSP once Vite has

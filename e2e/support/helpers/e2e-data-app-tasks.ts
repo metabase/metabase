@@ -86,3 +86,82 @@ export async function buildDataApp({
 
   return fs.readFileSync(bundlePath, "utf8");
 }
+
+/**
+ * The fixture filesystem lives behind tasks rather than `cy.exec`/`cy.writeFile`
+ * so a spec changes an app in one round trip, and so nothing is composed into a
+ * shell string.
+ */
+export async function scaffoldDataApp({
+  appRoot,
+  slug,
+  sdkFrom,
+}: {
+  appRoot: string;
+  slug: string;
+  sdkFrom: string;
+}): Promise<string> {
+  fs.rmSync(appRoot, { recursive: true, force: true });
+  fs.mkdirSync(appRoot, { recursive: true });
+  // The SDK the app synchronizes against, without a second npm install.
+  fs.symlinkSync(
+    path.join(sdkFrom, "node_modules"),
+    path.join(appRoot, "node_modules"),
+  );
+  // Synchronization writes the app's resource entity IDs back into its manifest,
+  // so an app without one is refused before it reaches the reconcilers.
+  fs.writeFileSync(
+    path.join(appRoot, "data_app.yaml"),
+    `name: ${slug}\npath: ./dist/index.js\n`,
+  );
+
+  return appRoot;
+}
+
+export async function writeDataAppFiles({
+  files,
+}: {
+  files: Record<string, string>;
+}): Promise<null> {
+  for (const [filePath, contents] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, contents);
+  }
+
+  return null;
+}
+
+export async function removeDataAppDeclaration({
+  filePath,
+  exportName,
+}: {
+  filePath: string;
+  exportName: string;
+}): Promise<null> {
+  const [imports, ...declarations] = fs
+    .readFileSync(filePath, "utf8")
+    .split("export const ");
+
+  fs.writeFileSync(
+    filePath,
+    imports +
+      declarations
+        .filter((declaration) => !declaration.startsWith(`${exportName} `))
+        .map((declaration) => `export const ${declaration}`)
+        .join(""),
+  );
+
+  return null;
+}
+
+export async function removeDataAppPaths({
+  paths,
+}: {
+  paths: string[];
+}): Promise<null> {
+  for (const target of paths) {
+    fs.rmSync(target, { recursive: true, force: true });
+  }
+
+  return null;
+}
