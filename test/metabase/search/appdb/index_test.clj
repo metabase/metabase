@@ -12,6 +12,7 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.lease :as search.lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
@@ -718,7 +719,7 @@
       (let [active-tbl    (search.index/active-table)
             pending-tbl   (search.index/gen-table-name)
             pending-lost? (atom false)
-            real-upsert   specialization/batch-upsert!
+            real-upsert   specialization/batch-upsert-on-connection!
             docs          (mapv (fn [i] {:model "card" :id (str i) :name (str "Reindex doc " i)
                                          :display_data {} :legacy_input {} :archived false})
                                 (range 1 6))]
@@ -729,12 +730,13 @@
                         ;; Real pending table until the first batch is written, then the tracking atom
                         ;; "loses" it -- exactly what a background resync did mid-reindex in the incident.
                         search.index/pending-table      (fn [] (when-not @pending-lost? pending-tbl))
-                        specialization/batch-upsert!     (fn [t entries]
-                                                           (reset! pending-lost? true)
-                                                           (real-upsert t entries))]
+                        specialization/batch-upsert-on-connection! (fn [conn t entries]
+                                                                     (reset! pending-lost? true)
+                                                                     (real-upsert conn t entries))]
             ;; *force-sync* false so we exercise the real reindex write path (not the dual-write path)
             (binding [search.ingestion/*force-sync* false]
               (#'search.index/index-docs! :search/reindexing docs)))
+          (is @pending-lost? "the test simulated losing pending-table tracking after the first write")
           (testing "no batch is written to the live active table"
             (is (zero? (t2/count active-tbl))))
           (testing "every document lands in the pending table captured at the start of the reindex"
@@ -750,7 +752,7 @@
     (search.tu/with-temp-index-table
       (let [active-tbl  (search.index/active-table)
             atom-blank? (atom false)
-            real-upsert specialization/batch-upsert!
+            real-upsert specialization/batch-upsert-on-connection!
             docs        (mapv (fn [i] {:model "card" :id (str i) :name (str "Init doc " i)
                                        :display_data {} :legacy_input {} :archived false})
                               (range 1 4))]
@@ -760,13 +762,43 @@
                       ;; prove the destination captured at the start is used for the whole build.
                       search.index/pending-table    (constantly nil)
                       search.index/active-table     (fn [] (when-not @atom-blank? active-tbl))
-                      specialization/batch-upsert!  (fn [t entries]
-                                                      (reset! atom-blank? true)
-                                                      (real-upsert t entries))]
+                      specialization/batch-upsert-on-connection! (fn [conn t entries]
+                                                                   (reset! atom-blank? true)
+                                                                   (real-upsert conn t entries))]
           (binding [search.ingestion/*force-sync* false]
             (#'search.index/index-docs! :search/reindexing docs)))
+        (is @atom-blank? "the test simulated losing active-table tracking after the first write")
         (testing "every document lands in the active table that was captured at the start of the build"
           (is (= (count docs) (t2/count active-tbl))))))))
+
+(deftest failed-pending-upsert-does-not-roll-back-active-upsert-test
+  (when (= :postgres (mdb/db-type))
+    (search.tu/with-temp-index-table
+      (let [active-tbl  (search.index/active-table)
+            pending-tbl (search.index/gen-table-name)
+            real-upsert specialization/batch-upsert-on-connection!
+            document    {:model "card" :id "savepoint-regression" :name "Savepoint regression"
+                         :display_data {} :legacy_input {} :archived false}]
+        (try
+          (search.index/create-table! pending-tbl)
+          (swap! @#'search.index/*indexes* assoc :pending pending-tbl)
+          (with-redefs [specialization/batch-upsert-on-connection!
+                        (fn [conn table entries]
+                          (if (= table pending-tbl)
+                            ;; Cause a real PostgreSQL statement error, which leaves the transaction aborted unless
+                            ;; safe-batch-upsert! rolls this attempt back to a savepoint.
+                            (t2/query conn ["SELECT * FROM search_index_intentionally_missing"])
+                            (real-upsert conn table entries)))]
+            (let [result (search.lease/do-with-lease
+                          (search.lease/coordinates :search.engine/appdb)
+                          #(search.engine/update! :search.engine/appdb [document])
+                          {:wait? false})]
+              (is (:acquired? result) "the test acquired the reindex lease")))
+          (is (= 1 (t2/count active-tbl :model "card" :model_id "savepoint-regression"))
+              "the successful active write commits despite the skipped pending write")
+          (finally
+            (swap! @#'search.index/*indexes* dissoc :pending)
+            (#'search.index/drop-table! pending-tbl)))))))
 
 (deftest when-index-created
   (when (search/supports-index?)

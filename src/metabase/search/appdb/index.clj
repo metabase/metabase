@@ -21,6 +21,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
    (org.postgresql.util PSQLException)))
@@ -50,17 +51,24 @@
 
 (defn- sync-tracking-atoms!
   "Sync the *indexes* atom with the current database metadata state."
-  []
-  ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
-  (locking *indexes*
-    (let [indexes (into {}
-                        (for [[status table-name] (search-index-metadata/indexes :appdb (search.spec/index-version-hash))]
-                          (if (exists? table-name)
-                            [status (keyword table-name)]
-                            ;; For debugging, make it clear why we are not tracking the given metadata.
-                            [(keyword (name status) "not-found") (keyword table-name)])))]
-      (log/debugf "Sync tracking atoms: %s" indexes)
-      (reset! *indexes* indexes))))
+  ([]
+   (sync-tracking-atoms! nil))
+  ([conn]
+   ;; Locks the indexes so the reset! doesn't lose data written to the db by a different thread between the read and write
+   (locking *indexes*
+     (let [tracked (if conn
+                     (search-index-metadata/indexes-on-current-connection
+                      conn :appdb (search.spec/index-version-hash))
+                     (search-index-metadata/indexes :appdb (search.spec/index-version-hash)))
+           table-exists? (if conn (partial exists? conn) exists?)
+           indexes (into {}
+                         (for [[status table-name] tracked]
+                           (if (table-exists? table-name)
+                             [status (keyword table-name)]
+                             ;; For debugging, make it clear why we are not tracking the given metadata.
+                             [(keyword (name status) "not-found") (keyword table-name)])))]
+       (log/debugf "Sync tracking atoms: %s" indexes)
+       (reset! *indexes* indexes)))))
 
 (defn sync-from-restored-db!
   "Re-sync tracking atoms with the current database state.
@@ -107,9 +115,12 @@
 (defn exists?
   "Whether the given index `table` actually exists in the appdb (the tracked active/pending table can be
   briefly stale relative to what has been dropped)."
-  [table]
-  (when table
-    (t2/exists? :information_schema.tables :table_name (table-name table))))
+  ([table]
+   (when table
+     (t2/exists? :information_schema.tables :table_name (table-name table))))
+  ([conn table]
+   (when table
+     (t2/exists? :conn conn :information_schema.tables :table_name (table-name table)))))
 
 (defn- drop-table! [table]
   (boolean
@@ -352,7 +363,16 @@
   [conn table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when-let [table-name (table-name-fn)]
-    (let [upsert! (fn [t] (specialization/batch-upsert-on-connection! conn t entries) t)]
+    (let [upsert! (fn [t]
+                    ;; A failed statement aborts the surrounding transaction on PostgreSQL. Isolate every attempt in
+                    ;; a savepoint so catching a skippable failure here does not roll back a successful write to the
+                    ;; other index table, and so a stale-table retry can still issue SQL on the same connection.
+                    (t2.conn/do-with-transaction
+                     conn
+                     {}
+                     (fn [_]
+                       (specialization/batch-upsert-on-connection! conn t entries)))
+                    t)]
       (try
         (upsert! table-name)
         (catch InterruptedException ie
@@ -360,8 +380,8 @@
           (throw ie))
         (catch Exception e
           ;; If the failure is a legitimately non-existent table, refresh tracking and retry once.
-          (if (and (table-not-found-exception? e) (not (exists? table-name)))
-            (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
+          (if (and (table-not-found-exception? e) (not (exists? conn table-name)))
+            (when-let [refreshed-table-name (do (sync-tracking-atoms! conn) (table-name-fn))]
               (if (= table-name refreshed-table-name)
                 (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
                 (try

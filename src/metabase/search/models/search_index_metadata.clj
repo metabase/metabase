@@ -22,19 +22,33 @@
   "Period after which a pending table will be discarded, as it is probably corrupted."
   (t/days 1))
 
-(defn indexes
-  "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
-  [engine version]
+(defn- indexes* [conn engine version]
   (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
-    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-                    :engine engine
-                    :version version
-                    :lang_code (i18n/site-locale-string)
-                    :status [:in [:active :pending]])
+    (->> (if conn
+           (t2/select :conn conn [:model/SearchIndexMetadata :index_name :status :created_at]
+                      :engine engine
+                      :version version
+                      :lang_code (i18n/site-locale-string)
+                      :status [:in [:active :pending]])
+           (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
+                      :engine engine
+                      :version version
+                      :lang_code (i18n/site-locale-string)
+                      :status [:in [:active :pending]]))
          (filter (fn [{:keys [status created_at]}]
                    (or (not= status :pending)
                        (t/before? pending-cut-off created_at))))
          (u/index-by :status :index_name))))
+
+(defn indexes
+  "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
+  [engine version]
+  (indexes* nil engine version))
+
+(defn indexes-on-current-connection
+  "Like [[indexes]], using the caller's explicit transaction connection."
+  [conn engine version]
+  (indexes* conn engine version))
 
 (defn create-pending!
   "Create a 'pending' entry, unless one already exists. Return whether it was created."
