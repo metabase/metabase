@@ -376,6 +376,7 @@ export {
 } from "./lib/table_format";
 export { truncateText } from "./lib/text";
 export { dimensionIsTimeseries } from "./lib/timeseries";
+export { getTimeseriesXAxis } from "./lib/timeseries-x-axis";
 export { formatValueForTooltipWithoutScaling } from "./lib/tooltip";
 export {
   computePreviousPeriodChange,
@@ -485,6 +486,7 @@ export type {
   RenderingContext,
   StaticVisualizationProps,
 } from "./types/rendering";
+export type { TimeseriesXAxis } from "./types/timeseries";
 export type {
   AggregationFunction,
   ChartSettingColorRangeProps,
