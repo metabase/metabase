@@ -1,7 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
-import { SidebarContent } from "metabase/common/components/SidebarContent";
 import {
   getTimeseriesDataInterval,
   getUiControls,
@@ -9,13 +7,11 @@ import {
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenTimelines } from "metabase/redux/query-builder";
-import TimelinePanel from "metabase/timelines/panel/containers/TimelinePanel";
+import { TimelineSidebarContent } from "metabase/timelines/panel/components/TimelineSidebarContent";
 import {
-  formatTitle,
-  getEventsXDomain,
   getFocusedTimelines,
+  getTimelineSidebarTitle,
 } from "metabase/timelines/panel/utils";
-import { Box, Button, Icon } from "metabase/ui";
 import type { DateRange } from "metabase/visualizations/echarts/cartesian/model/types";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -50,23 +46,18 @@ export const TimelineSidebar = ({
   const dispatch = useDispatch();
   const { focusedTimelineEventIds } = useSelector(getUiControls);
   const dataInterval = useSelector(getTimeseriesDataInterval);
+  const isFocused = focusedTimelineEventIds != null;
 
   const displayedTimelines = useMemo(
     () => getFocusedTimelines(timelines, focusedTimelineEventIds),
     [timelines, focusedTimelineEventIds],
   );
 
-  const focusedXDomain = useMemo(
-    () =>
-      focusedTimelineEventIds != null
-        ? getEventsXDomain(displayedTimelines)
-        : undefined,
-    [focusedTimelineEventIds, displayedTimelines],
-  );
-
-  const title = focusedXDomain
-    ? formatTitle(focusedXDomain, dataInterval?.unit)
-    : formatTitle(xDomain);
+  const title = getTimelineSidebarTitle({
+    focusedTimelines: displayedTimelines,
+    isFocused,
+    xAxis: { domain: xDomain ?? null, interval: dataInterval },
+  });
 
   const handleShowAllEvents = useCallback(() => {
     dispatch(onOpenTimelines());
@@ -90,44 +81,33 @@ export const TimelineSidebar = ({
     [onOpenModal],
   );
 
-  const handleToggleEventSelected = useCallback(
-    (event: TimelineEvent, isSelected: boolean) => {
-      if (isSelected) {
-        onSelectTimelineEvents?.([event]);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [onSelectTimelineEvents, onDeselectTimelineEvents],
+  const handleShowTimeline = useCallback(
+    (timeline: Timeline) => onShowTimelineEvents(timeline.events ?? []),
+    [onShowTimelineEvents],
+  );
+  const handleHideTimeline = useCallback(
+    (timeline: Timeline) => onHideTimelineEvents(timeline.events ?? []),
+    [onHideTimelineEvents],
   );
 
   return (
-    <SidebarContent title={title} onClose={onClose}>
-      {focusedTimelineEventIds != null && (
-        <Box mx="lg" mb="sm">
-          <Button
-            p={0}
-            variant="subtle"
-            leftSection={<Icon name="chevronleft" />}
-            onClick={handleShowAllEvents}
-            data-testid="timeline-sidebar-show-all"
-          >
-            {t`All events`}
-          </Button>
-        </Box>
-      )}
-      <TimelinePanel
-        timelines={displayedTimelines}
-        collectionId={question.collectionId()}
-        visibleEventIds={visibleTimelineEventIds}
-        selectedEventIds={selectedTimelineEventIds}
-        onNewEvent={handleNewEvent}
-        onEditEvent={handleEditEvent}
-        onMoveEvent={handleMoveEvent}
-        onToggleEventSelected={handleToggleEventSelected}
-        onShowTimelineEvents={onShowTimelineEvents}
-        onHideTimelineEvents={onHideTimelineEvents}
-      />
-    </SidebarContent>
+    <TimelineSidebarContent
+      title={title}
+      onShowAllEvents={isFocused ? handleShowAllEvents : undefined}
+      onClose={onClose}
+      timelines={displayedTimelines}
+      collectionId={question.collectionId()}
+      visibleEventIds={visibleTimelineEventIds}
+      selectedEventIds={selectedTimelineEventIds}
+      onNewEvent={handleNewEvent}
+      onEditEvent={handleEditEvent}
+      onMoveEvent={handleMoveEvent}
+      onSelectEvents={onSelectTimelineEvents}
+      onDeselectEvents={onDeselectTimelineEvents}
+      onShowTimelineEvents={onShowTimelineEvents}
+      onHideTimelineEvents={onHideTimelineEvents}
+      onShowTimeline={handleShowTimeline}
+      onHideTimeline={handleHideTimeline}
+    />
   );
 };

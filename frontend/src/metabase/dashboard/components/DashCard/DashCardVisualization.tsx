@@ -14,6 +14,7 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
+import { useDashCardTimelineEvents } from "metabase/dashboard/timeline-events";
 import {
   getVirtualCardType,
   isDashcardAccessRestricted,
@@ -196,6 +197,9 @@ export function DashCardVisualization({
   );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
+
+  const { isEnabled: isTimelineEventsEnabled, props: timelineEventsProps } =
+    useDashCardTimelineEvents(dashcard);
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
@@ -472,6 +476,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents: isTimelineEventsEnabled,
       });
 
     const errorStatus =
@@ -505,6 +510,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={isTimelineEventsEnabled}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -520,6 +526,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    isTimelineEventsEnabled,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -599,6 +606,7 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          {...timelineEventsProps}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings

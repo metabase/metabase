@@ -19,6 +19,7 @@ export interface EventCardProps {
   timeline: Timeline;
   isSelected?: boolean;
   isVisible: boolean;
+  isPartiallyVisible?: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
@@ -32,6 +33,7 @@ const EventCard = ({
   timeline,
   isSelected,
   isVisible,
+  isPartiallyVisible = false,
   onEdit,
   onMove,
   onArchive,
@@ -72,7 +74,8 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
-          checked={isVisible}
+          checked={isVisible || isPartiallyVisible}
+          indeterminate={isPartiallyVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}
         />

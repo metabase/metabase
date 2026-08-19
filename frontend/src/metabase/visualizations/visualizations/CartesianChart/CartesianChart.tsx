@@ -89,6 +89,11 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
+  const timelineEvents =
+    settings["timeline_events.enabled"] === false
+      ? undefined
+      : props.timelineEvents;
+
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
 
@@ -110,6 +115,7 @@ function CartesianChartInner(props: VisualizationProps) {
       height: chartSize.height,
       hiddenSeries,
       settings,
+      timelineEvents,
     },
     containerRef,
     hoveredTimelineEventIds,

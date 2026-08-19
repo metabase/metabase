@@ -8,9 +8,8 @@ import {
   SHOW_TIMELINE_EVENTS,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import type { CollectionId } from "metabase-types/api";
-
-import { getFetchedTimelines } from "../selectors";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);

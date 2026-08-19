@@ -10,6 +10,7 @@ export {
   getVisualization,
   getVisualizationRaw,
   getVisualizationTransformed,
+  canDisplayTimelineEvents,
   isCartesianChart,
   loadVisualizationComponents,
   prefetchVisualizationComponent,
