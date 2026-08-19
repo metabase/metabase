@@ -5,6 +5,7 @@ import _ from "underscore";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import {
   ActionIcon,
+  Box,
   Button,
   Group,
   Icon,
@@ -85,7 +86,7 @@ export const ChartSettingSegmentsEditor = ({
                 onChange={(label) => updateSegment(index, { label })}
               />
 
-              <Group align="center" gap="sm" wrap="nowrap">
+              <Group align="flex-start" gap="sm" wrap="nowrap">
                 <SegmentBoundInput
                   aria-label={t`Range ${index + 1} minimum`}
                   data={data}
@@ -95,7 +96,9 @@ export const ChartSettingSegmentsEditor = ({
                   onChange={(min) => updateSegment(index, { min })}
                 />
 
-                <Icon name="arrow_right" size={12} c="text-secondary" />
+                <Box pt={12}>
+                  <Icon name="arrow_right" size={12} c="text-secondary" />
+                </Box>
 
                 <SegmentBoundInput
                   aria-label={t`Range ${index + 1} maximum`}
