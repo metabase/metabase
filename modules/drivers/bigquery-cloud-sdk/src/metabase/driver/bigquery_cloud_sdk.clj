@@ -131,7 +131,6 @@
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     
-    ;;
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (not-empty (:host details))]
