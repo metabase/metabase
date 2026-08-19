@@ -353,10 +353,23 @@
   [_]
   :sunday)
 
+(defn- quote-table-name
+  "Quote a `:schema/table` (or bare `:table`) keyword for use in raw SQL."
+  [driver table]
+  (let [table (keyword table)]
+    (apply sql.u/quote-name driver :table
+           (if-let [schema (namespace table)]
+             [schema (name table)]
+             [(name table)]))))
+
 (defmethod driver/rename-tables!* :mysql
-  [_driver db-id sorted-rename-map]
+  [driver db-id sorted-rename-map]
+  ;; not `sql/format-entity`: called outside `sql/format` its dialect is unbound, so it emits
+  ;; identifiers unquoted, munging dashes and breaking on backticks
   (let [rename-clauses (map (fn [[from-table to-table]]
-                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
+                              (str (quote-table-name driver from-table)
+                                   " TO "
+                                   (quote-table-name driver to-table)))
                             sorted-rename-map)
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
     (sql-jdbc.execute/do-with-connection-with-options
