@@ -6,10 +6,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.permissions :as perms]
@@ -317,6 +320,46 @@
                  (parse-xlsx-response
                   (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
 
+(deftest execute-public-card-rejects-object-valued-parameter-sql-injection-test
+  (testing "GET /api/public/card/:uuid/query"
+    (testing "Invalid values for parameters should get normalized to `nil`"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid}
+                                {:dataset_query (let [mp (mt/metadata-provider)]
+                                                  (-> (lib/native-query mp "SELECT count(*) FROM venues WHERE {{price}}")
+                                                      (lib/with-template-tags {"price" {:id           "_PRICE_"
+                                                                                        :name         "price"
+                                                                                        :display-name "Price"
+                                                                                        :type         :dimension
+                                                                                        :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                                                                        :widget-type  :category
+                                                                                        :required     true}})))
+
+                                 :parameters [{:id     "_PRICE_"
+                                               :type   :category
+                                               :target [:dimension [:template-tag "price"]]}]}]
+          (letfn [(query [expected-status-code param-value]
+                    (client/client :get expected-status-code (str "public/card/" uuid "/query")
+                                   :parameters (json/encode [{:id     "_PRICE_"
+                                                              :name   "price"
+                                                              :type   "category"
+                                                              :target ["dimension" ["template-tag" "price"]]
+                                                              :value  param-value}])))]
+            (testing "Sanity check: should work with valid value"
+              (is (=? {:data {:rows [[22]]}}
+                      (query 202 1))))
+            (doseq [[label evil-value] [["raw map"        {:raw "1) UNION SELECT 1 -- "}]
+                                        ["map inside vec" [{:raw "1) UNION SELECT 1 -- "}]]
+                                        ["honeysql vec"   [["raw" "1) UNION SELECT 1 -- "]]]]]
+              (testing label
+                ;; 202, not the 400 later branches return: on x.58 a failed public-card query is reported in the
+                ;; body, not the HTTP status -- an unparameterized failing query answers 202 here too. The body is
+                ;; what pins the fix.
+                (is (= {:status     "failed"
+                        :error      "You'll need to pick a value for 'Price' before this query can run."
+                        :error_type "missing-required-parameter"}
+                       (query 202 evil-value)))))))))))
+
 (deftest download-public-card-filename-test
   (testing "GET /api/public/card/:uuid/query - filename generation"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -421,7 +464,7 @@
                                  :parameters (json/encode [{:type   "category"
                                                             :value  "456"
                                                             :target ["variable" ["template-tag" "foo"]]
-                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+                                                            :id     "abc123"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -1481,7 +1524,7 @@
                (let [result (results)]
                  (is (=? {:status "completed"}
                          result))
-                      ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
+                 ;; [[metabase.public-sharing-rest.api/transform-results]] should remove `row_count`
                  (testing "row_count isn't included in public endpoints"
                    (is (nil? (:row_count result))))
                  (is (= 6 (count (get-in result [:data :cols]))))
@@ -1537,6 +1580,27 @@
                  (is (= "Not found."
                         (client/client :get 404 (dashcard-url dash card dashcard)))))))))))))
 
+(deftest public-execute-parameter-validation-test
+  (testing "the public action endpoints reject a non-scalar parameter value rather than dropping it"
+    ;; these need no auth, so the schema is the only thing standing between a request and the action
+    ;; the values reach. Decoding rejects before the handler runs, so no Action or Dashboard is needed.
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [uuid (str (random-uuid))]
+        ;; public routes mask the body, so the 400 asserted by `mt/client` is the whole assertion:
+        ;; without the schema these requests reached the handler and the value was accepted
+        (testing "POST /api/public/action/:uuid/execute"
+          (is (= "An error occurred."
+                 (mt/client :post 400 (format "public/action/%s/execute" uuid)
+                            {:parameters {:id {:data "string"}}}))))
+        (testing "POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute"
+          (is (= "An error occurred."
+                 (mt/client :post 400 (format "public/dashboard/%s/dashcard/%d/execute" uuid Integer/MAX_VALUE)
+                            {:parameters {:id {:data "string"}}}))))
+        (testing "GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute"
+          (is (= "An error occurred."
+                 (mt/client :get 400 (format "public/dashboard/%s/dashcard/%d/execute" uuid Integer/MAX_VALUE)
+                            :parameters (json/encode {:id {:data "string"}})))))))))
+
 ;;; ------------------------- POST /api/public/dashboard/:dashboard-uuid/dashcard/:uuid/execute ------------------------------
 
 (deftest execute-public-dashcard-action-test
@@ -1581,6 +1645,29 @@
                                        (:public_uuid dash)
                                        dashcard-id)
                                {:parameters {:id 1 :name "European"}})))))))))))
+
+(deftest execute-public-dashcard-refuses-http-action-test
+  (testing "POST /api/public/dashboard/:uuid/dashcard/:id/execute refuses :http actions without issuing the outbound request"
+    ;; The refusal 403 is masked to a generic 400 by `public-exceptions`, and a *thrown* tripwire would ALSO mask to
+    ;; the same 400 -- so asserting the status can't tell "refused" from "ran and blew up". Count outbound calls
+    ;; instead: the fix keeps this at zero; without it the count is 1 (the SSRF fired).
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash {:parameters []}]
+          (mt/with-actions [{:keys [action-id model-id]} {:type :http}]
+            (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id (:id dash)
+                                                                   :action_id action-id
+                                                                   :card_id model-id}]
+              (let [outbound-calls (atom 0)]
+                (with-redefs [http-action/execute-http-action! (fn [& _] (swap! outbound-calls inc) {:status 200 :body nil})]
+                  (client/client
+                   :post 400
+                   (format "public/dashboard/%s/dashcard/%s/execute"
+                           (:public_uuid dash)
+                           dashcard-id)
+                   {:parameters {:id 1}}))
+                (is (zero? @outbound-calls)
+                    "the outbound HTTP request must never be issued for a refused :http action")))))))))
 
 (deftest fetch-public-dashcard-action-test
   (mt/with-actions-test-data-and-actions-enabled
@@ -1663,6 +1750,24 @@
                                      "type"      "query"}
                             :user-id nil}
                            (last (snowplow-test/pop-event-data-and-user-id!))))))))))))))
+
+(deftest execute-public-action-refuses-http-action-test
+  (testing "POST /api/public/action/:uuid/execute refuses :http actions without issuing the outbound request"
+    ;; The refusal 403 is masked to a generic 400 by `public-exceptions`, and a *thrown* tripwire would ALSO mask to
+    ;; the same 400 -- so asserting the status can't tell "refused" from "ran and blew up". Count outbound calls
+    ;; instead: the fix keeps this at zero; without it the count is 1 (the SSRF fired).
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-actions [{:keys [action-id]} (merge (shared-obj) {:type :http})]
+          (let [public-uuid   (t2/select-one-fn :public_uuid :model/Action :id action-id)
+                outbound-calls (atom 0)]
+            (with-redefs [http-action/execute-http-action! (fn [& _] (swap! outbound-calls inc) {:status 200 :body nil})]
+              (client/client
+               :post 400
+               (format "public/action/%s/execute" public-uuid)
+               {:parameters {:id 1}}))
+            (is (zero? @outbound-calls)
+                "the outbound HTTP request must never be issued for a refused :http action")))))))
 
 (deftest format-export-middleware-test
   (mt/with-temporary-setting-values [enable-public-sharing true]

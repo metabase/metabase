@@ -1385,3 +1385,34 @@
         (sync/sync-database! db {:scan :schema})
 
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
+
+(deftest get-fks-only-returns-readable-origin-fields-test
+  (testing "GET /api/table/:id/fks does not leak Fields belonging to Tables the caller cannot read"
+    (mt/with-no-data-perms-for-all-users!
+      ;; readable: the Table in the URL, which the FKs point at. unreadable: checkins, where they come from.
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :query-builder)
+      (testing "sanity: the caller can read the destination Table but not the origin one"
+        (is (=? {:id (mt/id :users)}
+                (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :users)))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "table/%d" (mt/id :checkins))))))
+      (testing "an admin still sees the checkins.user_id -> users.id relationship"
+        (is (contains? (set (map :origin_id (mt/user-http-request :crowberto :get 200 (format "table/%d/fks" (mt/id :users)))))
+                       (mt/id :checkins :user_id))))
+      (testing "the caller gets nothing for it"
+        (is (= [] (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))))
+
+(deftest update-table-cannot-move-it-into-a-collection-test
+  (testing "PUT /api/table/:id does not accept collection_id"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Table      {table-id :id}      {:db_id (mt/id) :schema "PUBLIC"}]
+      (testing "the rest of the body still applies"
+        (is (=? {:display_name "Renamed"}
+                (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id)
+                                      {:display_name  "Renamed"
+                                       :collection_id collection-id}))))
+      (testing "but the Table has not been published into the collection"
+        (is (nil? (t2/select-one-fn :collection_id :model/Table :id table-id)))))))
+
+;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------

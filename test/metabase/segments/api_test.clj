@@ -133,8 +133,7 @@
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                    :revision_message ""})))
-
-    (is (=? {:errors {:definition "nullable map"}}
+    (is (=? {:errors {:definition "nullable Value must be a map."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))

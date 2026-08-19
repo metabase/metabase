@@ -181,7 +181,13 @@
     (testing "Check non-superuser can't set a Setting that is not user-local"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"}))))
-
+    (testing "non-admin setting managers cannot update :internal settings"
+      (models.setting-test/test-setting-3! "internal-value")
+      (with-mocked-settings-manager-access!
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting/test-setting-3" {:value "SM_SET"})))
+        (is (= "internal-value" (models.setting-test/test-setting-3))))
+      (models.setting-test/test-setting-3! nil))
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
@@ -252,7 +258,13 @@
                (test-settings-manager-visibility)))
         (is (= "ABC"
                (models.setting-test/test-setting-1)))))
-
+    (testing "non-admin setting managers cannot update :internal settings in bulk"
+      (models.setting-test/test-setting-3! "internal-value")
+      (with-mocked-settings-manager-access!
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting" {:test-setting-3 "SM_SET"})))
+        (is (= "internal-value" (models.setting-test/test-setting-3))))
+      (models.setting-test/test-setting-3! nil))
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "GHI", :test-setting-2 "JKL"})))

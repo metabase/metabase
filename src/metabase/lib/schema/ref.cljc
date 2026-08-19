@@ -81,6 +81,9 @@
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
      [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
      [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
+     ;; marks a `:base-type` that lib added itself, so converting this ref back to legacy knows to drop it again --
+     ;; see `metabase.lib.field/field-ref-propagated-keys-for-non-inherited-columns`
+     [:metabase.lib.query/transformation-added-base-type {:optional true} [:maybe :boolean]]
      ;;
      ;; for implicitly joinable columns, this is the ID of the FK in `:source-table` (or the previous stage) used to
      ;; perform the implicit join. E.g. if the query is against `ORDERS` and the field ref is for `CATEGORIES.NAME`

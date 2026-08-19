@@ -77,6 +77,36 @@
     (is (= "Not found."
            (mt/user-http-request :crowberto :get (format "notification/%d" Integer/MAX_VALUE))))))
 
+(deftest create-does-not-let-the-caller-pick-ids-test
+  (testing "POST /api/notification"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [chosen       8675309
+              notification {:payload_type  "notification/card"
+                            :id            chosen
+                            :payload       {:id chosen :card_id card-id :send_condition "has_result"}
+                            :subscriptions [{:id              chosen
+                                             :type            "notification-subscription/cron"
+                                             :cron_schedule   "0 0 0 * * ?"
+                                             :ui_display_type "cron/raw"}]
+                            :handlers      [{:id           chosen
+                                             :channel_type "channel/email"
+                                             :recipients   [{:id      chosen
+                                                             :type    "notification-recipient/user"
+                                                             :user_id (mt/user->id :crowberto)}]}]}
+              created      (mt/user-http-request :crowberto :post 200 "notification" notification)]
+          (testing "the ids the caller sent are ignored at every level, rather than becoming primary keys"
+            (is (not= chosen (:id created)))
+            (is (not= chosen (-> created :payload :id)))
+            (is (not= chosen (-> created :subscriptions first :id)))
+            (is (not= chosen (-> created :handlers first :id)))
+            (is (not= chosen (-> created :handlers first :recipients first :id))))
+          (testing "and nothing was inserted at the requested id"
+            (is (nil? (t2/select-one :model/Notification :id chosen))))
+          (testing "the response still carries the real ids"
+            (is (pos-int? (:id created)))
+            (is (pos-int? (-> created :handlers first :id)))))))))
+
 (deftest create-simple-card-notification-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp [:model/Card {card-id :id} {}]
@@ -257,7 +287,10 @@
             (is (=? template recreated-template))))))))
 
 (deftest api-rejects-handlebars-resource-templates-test
-  (let [resource-template {:name         "test"
+  (let [;; the request schema only admits the handlebars-text template type, so the API rejects a
+        ;; handlebars-resource one before the endpoint gets a chance to look at it
+        rejected          {:errors {:handlers {:template {:details {:type "enum of :email/handlebars-text, email/handlebars-text"}}}}}
+        resource-template {:name         "test"
                            :channel_type "channel/email"
                            :details      {:type    "email/handlebars-resource"
                                           :subject "test"
@@ -265,7 +298,7 @@
     (testing "POST /api/notification rejects handlebars-resource templates"
       (mt/with-model-cleanup [:model/Notification]
         (mt/with-temp [:model/Card {card-id :id} {}]
-          (is (=? "invalid template"
+          (is (=? rejected
                   (mt/user-http-request :crowberto :post 400 "notification"
                                         {:payload_type "notification/card"
                                          :payload      {:card_id card-id}
@@ -276,7 +309,7 @@
 
     (testing "POST /api/notification/send rejects handlebars-resource templates"
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :post 400 "notification/send"
                                       {:payload_type "notification/card"
                                        :payload      {:card_id        card-id
@@ -291,7 +324,7 @@
         [notification {:handlers [{:channel_type "channel/email"
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}]}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
                                       (update notification :handlers
                                               (fn [[handler]]
@@ -599,8 +632,14 @@
         [notification {:card         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}
                        :notification {:creator_id (mt/user->id :rasta)}}]
         (let [update!                     (fn [user-or-id expected-status]
+                                            ;; This test exercises card-view + subscription permissions, not owner
+                                            ;; reassignment. Drop creator_id from the body — otherwise the stale value
+                                            ;; left over after change-notification-creator would read as a (forbidden,
+                                            ;; non-superuser) reassignment and 400 before the permission checks run.
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
-                                                                  (assoc notification :updated_at (t/offset-date-time))))
+                                                                  (-> notification
+                                                                      (dissoc :creator_id)
+                                                                      (assoc :updated_at (t/offset-date-time)))))
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
@@ -652,6 +691,39 @@
                  (finally
                    (change-notification-creator (mt/user->id :rasta))
                    (move-card-collection (mt/user->id :rasta))))))))))))
+
+(deftest update-card-notification-payload-swap-permissions-test
+  (testing "PUT /api/notification/:id cannot repoint a notification at a Card the user cannot read"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {secret-coll :id} {}
+                       :model/Card       {secret-card :id} {:collection_id secret-coll
+                                                            :name          "SECRET"}]
+          (perms/revoke-collection-permissions! (perms/all-users-group) secret-coll)
+          (notification.tu/with-card-notification
+            [notification {:card         {:collection_id (t2/select-one-pk :model/Collection
+                                                                           :personal_owner_id (mt/user->id :rasta))}
+                           :notification {:creator_id (mt/user->id :rasta)}}]
+            (let [original-card-id (-> notification :payload :card_id)
+                  update!          (fn [card-id expected-status]
+                                     (mt/user-http-request :rasta :put expected-status
+                                                           (format "notification/%d" (:id notification))
+                                                           (-> notification
+                                                               (dissoc :creator_id)
+                                                               (assoc-in [:payload :card_id] card-id)
+                                                               (assoc-in [:payload :send_once] true))))]
+              (mt/with-premium-features #{}
+                (testing "swapping in an unreadable Card is rejected"
+                  (is (= "You don't have permissions to do that."
+                         (update! secret-card 403)))
+                  (is (= original-card-id
+                         (t2/select-one-fn :card_id :model/NotificationCard :id (:payload_id notification))))
+                  (testing "so the Card's definition does not leak through GET"
+                    (is (not= "SECRET"
+                              (-> (mt/user-http-request :rasta :get 200 (format "notification/%d" (:id notification)))
+                                  :payload :card :name)))))
+                (testing "an update that keeps a readable Card still works"
+                  (is (some? (update! original-card-id 200))))))))))))
 
 (deftest send-saved-notification-permissions-test
   (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]

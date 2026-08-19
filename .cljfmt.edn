@@ -14,6 +14,7 @@
   "enterprise/backend"
   "bin/build"
   "bin/lint-migrations-file"
+  "bin/load-namespaces"
   "bin/release-list"
   "modules/drivers"
   ".clj-kondo/src"

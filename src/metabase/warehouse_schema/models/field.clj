@@ -141,8 +141,9 @@
            :from [:metabase_field]
            :where [:and
                    [:= :fk_target_field_id (:id field)]
-                   [:not [:in :id {:select [:field_id]
-                                   :from [:metabase_field_user_settings]}]]]}
+                   [:not [:in :id ^:allow-subquery
+                          {:select [:field_id]
+                           :from [:metabase_field_user_settings]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})

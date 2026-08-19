@@ -19,7 +19,18 @@
 (def ^:private ApplicationPermissionsGraph
   [:map {:closed true}
    [:revision :int]
+   ;; not part of the graph itself; body-level revision-check bypass read by `perms/check-revision-numbers`
+   [:force {:optional true} [:maybe :boolean]]
    [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
+
+(def ^:private ApplicationPermissionsGraphUpdate
+  "An incoming graph. Unlike the one [[graph]] returns, `:revision` is optional: a forced update never reads it, and
+  on the non-forced path a missing revision is a 409 from `perms/check-revision-numbers` rather than a schema error."
+  [:map {:closed true}
+   [:revision {:optional true} [:maybe :int]]
+   ;; not part of the graph itself; body-level revision-check bypass read by `perms/check-revision-numbers`
+   [:force    {:optional true} [:maybe :boolean]]
+   [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
@@ -73,10 +84,10 @@
   "Update the application Permissions graph.
   This works just like [[metabase.permissions-rest.data-permissions.graph/update-data-perms-graph!]], but for
   Application permissions; refer to that function's extensive documentation to get a sense for how this works."
-  ([new-graph :- ApplicationPermissionsGraph]
+  ([new-graph :- ApplicationPermissionsGraphUpdate]
    (update-graph! new-graph false))
 
-  ([new-graph :- ApplicationPermissionsGraph
+  ([new-graph :- ApplicationPermissionsGraphUpdate
     force?     :- :boolean]
    (let [old-graph          (graph)
          old-perms          (:groups old-graph)

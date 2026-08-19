@@ -36,9 +36,10 @@
   ([] (latest-run-cte nil))
   ([where]
    [[:latest_runs
-     (-> {:select [:*
-                   [[:over [[:row_number] {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
-          :from   [:transform_run]}
+     (-> ^:allow-subquery
+      {:select [:*
+                [[:over [[:row_number] ^:allow-subquery {:partition-by :transform_id, :order-by [[:start_time :desc]]}]] :rn]]
+       :from   [:transform_run]}
          (m/assoc-some :where where))]]))
 
 (defn- latest-runs-query [transform-ids]
@@ -139,11 +140,12 @@
   [age unit]
   (u/prog1 (t2/update! :model/TransformRun
                        :is_active true
-                       :id [:in {:select :run_id
-                                 :from   :transform_run_cancelation
-                                 :where  [:<
-                                          :transform_run_cancelation.time
-                                          (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
+                       :id [:in ^:allow-subquery
+                            {:select :run_id
+                             :from   :transform_run_cancelation
+                             :where  [:<
+                                      :transform_run_cancelation.time
+                                      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
                        {:status    :canceled
                         :end_time  :%now
                         :is_active nil
@@ -214,9 +216,10 @@
                            (conj [:in :transform_id transform_ids])
 
                            (seq transform_tag_ids)
-                           (conj [:in :transform_id {:select [:transform_id]
-                                                     :from   [:transform_transform_tag]
-                                                     :where  [:in :tag_id transform_tag_ids]}])
+                           (conj [:in :transform_id ^:allow-subquery
+                                  {:select [:transform_id]
+                                   :from   [:transform_transform_tag]
+                                   :where  [:in :tag_id transform_tag_ids]}])
 
                            (seq statuses)
                            (conj [:in :status (set statuses)])

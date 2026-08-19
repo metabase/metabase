@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.metadata-perms :as metabot-v3.perms]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
@@ -66,6 +67,12 @@
 (defn get-dashboard-details
   "Get information about the dashboard with ID `dashboard-id`."
   [{:keys [dashboard-id]}]
+  ;; `dashboard-id` is caller-supplied via the Metabot viewing context and reaches `t2/select-one`'s queryable
+  ;; position, where a non-integer is executed as a raw query against the app DB. Require an integer PK,
+  ;; the same guard `get-report-details`/`get-metric-details` already apply.
+  (when-not (int? dashboard-id)
+    (throw (ex-info "Invalid dashboard_id format"
+                    {:agent-error? true :status-code 400})))
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
@@ -89,6 +96,54 @@
     (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
+
+(defn- permission-filter-columns
+  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns.
+
+  Two bars, matching [[metabase-enterprise.metabot-v3.tools.field-stats]]: a table the entity itself selects
+  from takes data access, so a card published as a permissions boundary keeps its columns; a table reached
+  only by an FK hop takes query permission, since joining to it is something the caller would have to do
+  themselves."
+  [columns]
+  (let [columns                (vec columns)
+        referenced-field-ids   (into #{}
+                                     (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
+                                           (filter some?))
+                                     columns)
+        referenced-field-table (when (seq referenced-field-ids)
+                                 (metabot-v3.perms/field-id->table-id referenced-field-ids))
+        table-ids              (into #{}
+                                     (filter pos-int?)
+                                     (concat (keep :table-id columns)
+                                             (vals referenced-field-table)))
+        queryable-table-ids    (metabot-v3.perms/queryable-table-ids table-ids)
+        accessible-table-ids   (metabot-v3.perms/data-accessible-table-ids table-ids)
+        sandbox-restricted-ids (metabot-v3.perms/sandbox-restricted-fields table-ids)
+        field-visible?         (fn [visible-table-ids table-id field-id]
+                                 (and (contains? visible-table-ids table-id)
+                                      (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
+                                        (contains? allowed-field-ids field-id)
+                                        true)))
+        referenced-field-visible?
+        (fn [visible-table-ids field-id]
+          (when-let [table-id (get referenced-field-table field-id)]
+            (field-visible? visible-table-ids table-id field-id)))
+        column-visible?        (fn [{:keys [fk-field-id table-id] :as column}]
+                                 (and (or (not (pos-int? table-id))
+                                          (field-visible? (if (= :source/implicitly-joinable (:lib/source column))
+                                                            queryable-table-ids
+                                                            accessible-table-ids)
+                                                          table-id
+                                                          (u/id column)))
+                                      (or (nil? fk-field-id)
+                                          (referenced-field-visible? accessible-table-ids fk-field-id))))]
+    (->> columns
+         (filter column-visible?)
+         (mapv (fn [{:keys [fk-target-field-id] :as column}]
+                 (cond-> column
+                   (and fk-target-field-id
+                        (not (referenced-field-visible? queryable-table-ids fk-target-field-id)))
+                   (dissoc :fk-target-field-id)))))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -178,6 +233,7 @@
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
+                       permission-filter-columns
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
            field-id-prefix (when (or with-fields? with-related-tables?)
@@ -212,7 +268,10 @@
                                   (when fk-field-id
                                     {[table-id fk-field-id name] idx})))
                                all-main-cols)
-        fk-cols          (filter :fk-field-id all-main-cols)
+        ;; The FK columns are permission-filtered because their targets get named and expanded.
+        ;; `contextual-index` is not, because it is only used to map fields of retained related
+        ;; tables back to their positions in the main query.
+        fk-cols          (filter :fk-field-id (permission-filter-columns all-main-cols))
         ;; { [table-id fk-field-id] [fk-col ...] }
         grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
     (when (seq grouped-fks)
@@ -303,15 +362,16 @@
   Accepts a map with `:metabot-id` and optional options for field values."
   [{:keys [metabot-id] :as options}]
   (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
-    (lib-be/with-metadata-provider-cache
-      (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models normalized-metabot-id)
-            {metrics :metric, models :model}
-            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
-                       detail (cards-details card-type database-id cards options)]
-                   detail)
-                 (group-by :type))]
-        {:structured-output {:metrics (vec metrics)
-                             :models  (vec models)}}))
+    (metabot-v3.perms/with-cache
+      (lib-be/with-metadata-provider-cache
+        (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models normalized-metabot-id)
+              {metrics :metric, models :model}
+              (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
+                         detail (cards-details card-type database-id cards options)]
+                     detail)
+                   (group-by :type))]
+          {:structured-output {:metrics (vec metrics)
+                               :models  (vec models)}})))
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
@@ -339,24 +399,27 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
-                    (int? table-id)    (table-details table-id options)
-                    (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                         (card-details (parse-long card-id) options)
-                                         (if (re-matches #"\d+" table-id)
-                                           (table-details (parse-long table-id) options)
-                                           "invalid table_id"))
-                    :else "invalid arguments")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "table not found")}))))
+  ;; Every FK neighbour asks the same tables the same permission questions; memoize them for the
+  ;; duration of this tool call.
+  (metabot-v3.perms/with-cache
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (cond
+                      (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
+                                           (if (= :model (:type card))
+                                             card
+                                             (format "ID %s is not a valid model id, it's a question" model-id)))
+                      (int? table-id)    (table-details table-id options)
+                      (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                                           (card-details (parse-long card-id) options)
+                                           (if (re-matches #"\d+" table-id)
+                                             (table-details (parse-long table-id) options)
+                                             "invalid table_id"))
+                      :else "invalid arguments")]
+        (if (map? details)
+          {:structured-output details}
+          {:output (or details "table not found")})))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})

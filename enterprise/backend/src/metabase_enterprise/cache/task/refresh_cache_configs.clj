@@ -89,7 +89,9 @@
   (let [queries
         (for [{:keys [model model_id config]} cache-configs]
           (let [rerun-cutoff (duration-ago config)]
+            ^:allow-subquery
             {:nest
+             ^:allow-subquery
              {:select   [[:q.query :query]
                          [:qc.query_hash :cache-hash]
                          [:qe.card_id :card-id]
@@ -119,7 +121,7 @@
                            [:= :qe.parameterized false])]
               :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}}))]
     {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
-     :from   [[{:union queries} :u]]}))
+     :from   [[^:allow-subquery {:union queries} :u]]}))
 
 (defn- select-parameterized-queries
   "Given a list of parameterized query definitions from the Query table with additional :count and :card-id keys,

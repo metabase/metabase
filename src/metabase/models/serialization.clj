@@ -1056,10 +1056,13 @@
 (defn- field-hierarchy [id]
   (reverse
    (t2/select :model/Field
-              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                 {:union-all [{:from   [[:metabase_field :mf]]
+              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
+                                 ^:allow-subquery
+                                 {:union-all [^:allow-subquery
+                                              {:from   [[:metabase_field :mf]]
                                                :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
                                                :where  [:= :id id]}
+                                              ^:allow-subquery
                                               {:from   [[:metabase_field :pf]]
                                                :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
                                                :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
@@ -1072,6 +1075,7 @@
   `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
   [table-id [field & rest]]
   (when field
+    ^:allow-subquery
     {:from   [:metabase_field]
      :select [:id]
      :where  [:and

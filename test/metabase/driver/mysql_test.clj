@@ -1009,3 +1009,35 @@
           " "
           "tinyInt1isBit=1")
         (is (true? (driver/can-connect? :mysql details)))))))
+
+(deftest ^:parallel add-interval-honeysql-form-rejects-hostile-unit-test
+  (testing "the MySQL interval sink refuses a unit outside its closed allow-list"
+    (let [hostile (keyword "day) FROM t2 UNION SELECT pw FROM secrets --")]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid temporal unit"
+           (sql.qp/add-interval-honeysql-form :mysql :some_col 1 hostile))))
+    (testing "and refuses a non-numeric amount, which would otherwise be spliced into raw SQL"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid interval amount"
+           (sql.qp/add-interval-honeysql-form :mysql :some_col "1 DAY) UNION SELECT pw FROM secrets --" :day))))
+    (testing "and still compiles a legitimate (possibly fractional) amount to the expected INTERVAL token"
+      (is (= ["INTERVAL 1 day"]
+             (sql/format-expr (last (sql.qp/add-interval-honeysql-form :mysql :some_col 1 :day)))))
+      (is (= ["INTERVAL 0.5 second"]
+             (sql/format-expr (last (sql.qp/add-interval-honeysql-form :mysql :some_col 0.5 :second))))))))
+
+(deftest ^:parallel date-bucketing-never-splices-database-type-test
+  (testing "MySQL date bucketing never splices a client-supplied database_type into the CAST target"
+    (let [hostile "datetime) UNION SELECT pw FROM secrets --"
+          sql     (first (sql/format {:select [[(sql.qp/date :mysql :day (h2x/with-database-type-info :some_col hostile))]]}
+                                     {:dialect :mysql :quoted true}))]
+      (is (not (str/includes? (u/lower-case-en sql) "union"))
+          "the hostile database_type does not reach the emitted SQL at all")
+      (is (= "SELECT CAST(DATE(`some_col`) AS datetime)" sql)
+          "the client type only selects a safe temporal target; it is never emitted"))
+    (testing "a legitimate temporal type still compiles to the expected CAST keyword"
+      (is (= ["SELECT CAST(DATE(`some_col`) AS datetime)"]
+             (sql/format {:select [[(sql.qp/date :mysql :day (h2x/with-database-type-info :some_col "datetime"))]]}
+                         {:dialect :mysql :quoted true}))))))

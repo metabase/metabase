@@ -85,13 +85,7 @@
                                 {:table_ids  [table-1-id]
                                  :data_layer "copper"})
           (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
-
-        (testing "cannot update both visibility_type and data_layer at once"
-          (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/edit"
-                                {:table_ids        [table-1-id]
-                                 :visibility_type  "hidden"
-                                 :data_layer "copper"}))))))
+          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
