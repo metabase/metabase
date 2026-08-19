@@ -360,6 +360,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByRole("radio", { name: "Dashboard" }).click();
       });
       cy.wait("@putSettings");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting")
         .findByRole("button")
@@ -369,6 +370,7 @@ describe("scenarios > home > custom homepage", () => {
       H.entityPickerModal().findByText("Orders in a dashboard").click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");
+      H.undoToast().icon("close").click();
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -658,6 +660,7 @@ describe("scenarios > setup", () => {
       .findByRole("radio", { name: "Dashboard" })
       .click();
     cy.wait("@putSettings");
+    H.undoToast().icon("close").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")
