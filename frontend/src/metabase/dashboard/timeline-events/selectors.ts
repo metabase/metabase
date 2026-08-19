@@ -38,7 +38,6 @@ export const getTimelineEventsVisibilityContext = createSelector(
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
-/** the visibility in effect for a dashcard; undefined = the collection's events */
 export const getDashCardTimelineEventsVisibility = (
   state: State,
   dashcardId: DashCardId,
@@ -65,7 +64,7 @@ export const getDashCardSelectedTimelineEventIds = (
 };
 
 export const getTimelineEventsDashCardIds = createSelector(
-  [getCurrentDashcards],
+  [(state: State) => getCurrentDashcards(state)],
   (dashcards) =>
     dashcards.filter(isTimelineEventsDashCard).map((dashcard) => dashcard.id),
 );
