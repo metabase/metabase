@@ -34,6 +34,7 @@ import {
   provideParameterValuesTags,
 } from "./tags";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+import { pick } from "./utils/pick";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -169,7 +170,24 @@ export const cardApi = Api.injectEndpoints({
         query: (body) => ({
           method: "POST",
           url: "/api/card",
-          body,
+          body: pick(body, [
+            "name",
+            "dataset_query",
+            "display",
+            "visualization_settings",
+            "type",
+            "parameters",
+            "parameter_mappings",
+            "description",
+            "collection_id",
+            "dashboard_id",
+            "document_id",
+            "dashboard_tab_id",
+            "collection_position",
+            "result_metadata",
+            "cache_ttl",
+            "size",
+          ]),
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
         onQueryStarted: hydrateMetadataStore(QuestionSchema),
@@ -202,7 +220,26 @@ export const cardApi = Api.injectEndpoints({
             (delete_old_dashcards !== undefined
               ? `?delete_old_dashcards=${delete_old_dashcards}`
               : ""),
-          body,
+          body: pick(body, [
+            "name",
+            "parameters",
+            "dataset_query",
+            "type",
+            "display",
+            "description",
+            "visualization_settings",
+            "archived",
+            "enable_embedding",
+            "embedding_type",
+            "embedding_params",
+            "collection_id",
+            "dashboard_id",
+            "document_id",
+            "collection_position",
+            "result_metadata",
+            "cache_ttl",
+            "collection_preview",
+          ]),
         }),
         invalidatesTags: (_, error, payload) => {
           const tags = [

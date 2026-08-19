@@ -1851,7 +1851,8 @@ describe("issue 26230, issue 27356", () => {
   }
 
   function createDashCard(dashboardId, mappedFilter) {
-    cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+    H.updateDashboard({
+      id: dashboardId,
       dashcards: [
         createMockDashboardCard({
           id: -dashboardId,

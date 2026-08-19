@@ -1,5 +1,6 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
+import { pick } from "metabase/api/utils/pick";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
@@ -71,7 +72,7 @@ export const documentApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/document/${id}/copy`,
-        body,
+        body: pick(body, ["name", "collection_id", "collection_position"]),
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {

@@ -17,6 +17,7 @@ import {
   provideTimelineTags,
   tag,
 } from "./tags";
+import { pick } from "./utils/pick";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -61,7 +62,14 @@ export const timelineApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/timeline/${id}`,
-        body,
+        body: pick(body, [
+          "name",
+          "default",
+          "description",
+          "icon",
+          "collection_id",
+          "archived",
+        ]),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [

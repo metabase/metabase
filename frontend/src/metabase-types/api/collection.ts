@@ -194,8 +194,6 @@ export interface UpdateCollectionRequest {
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
-  type?: CollectionType;
-  is_remote_synced?: boolean;
 }
 
 export interface CreateCollectionRequest {
@@ -204,7 +202,6 @@ export interface CreateCollectionRequest {
   parent_id?: CollectionId | null;
   namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
-  is_shared_tenant_collection?: boolean;
 }
 
 export type ListCollectionsRequest = {

@@ -1,5 +1,6 @@
 import { Api } from "metabase/api";
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import { pick } from "metabase/api/utils/pick";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -139,10 +140,22 @@ export const metabotApi = Api.injectEndpoints({
       }),
     }),
     saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
-      query: ({ conversation_id, ...body }) => ({
+      query: ({ conversation_id, chart_id, card }) => ({
         method: "POST",
         url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
-        body,
+        body: {
+          chart_id,
+          card: pick(card, [
+            "name",
+            "dataset_query",
+            "display",
+            "description",
+            "visualization_settings",
+            "collection_id",
+            "dashboard_id",
+            "dashboard_tab_id",
+          ]),
+        },
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),

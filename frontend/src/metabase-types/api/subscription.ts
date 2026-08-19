@@ -1,4 +1,3 @@
-import type { Card } from "./card";
 import type { RegularCollectionId } from "./collection";
 import type { DashCardId, DashboardCard, DashboardId } from "./dashboard";
 import type { BaseEntityId } from "./entity-id";
@@ -34,7 +33,7 @@ export interface DashboardSubscription {
 
 export interface CreateSubscriptionRequest {
   name: string;
-  cards: Card[];
+  cards: SubscriptionSupportingCard[];
   channels: Channel[];
   skip_if_empty?: boolean;
   collection_id?: RegularCollectionId | null;
@@ -46,20 +45,31 @@ export interface CreateSubscriptionRequest {
 export interface UpdateSubscriptionRequest {
   id: number;
   name?: string;
-  cards?: Card[];
+  cards?: SubscriptionSupportingCard[];
   channels?: Channel[];
+  skip_if_empty?: boolean;
+  collection_id?: RegularCollectionId | null;
+  collection_position?: number | null;
+  parameters?: Parameter[];
+  archived?: boolean;
+}
+
+export interface TestSubscriptionRequest {
+  /** Set when test-sending a subscription that has already been saved. */
+  id?: number;
+  name: string;
+  cards: SubscriptionSupportingCard[];
+  channels: Channel[];
   skip_if_empty?: boolean;
   collection_id?: RegularCollectionId | null;
   collection_position?: number | null;
   dashboard_id?: DashboardId;
   parameters?: Parameter[];
-  archived?: boolean;
-  can_write?: boolean;
 }
 
 export type SubscriptionSupportingCard = Pick<
   DashboardCard["card"],
-  "id" | "collection_id" | "description" | "display" | "name" | "download_perms"
+  "id" | "collection_id" | "description" | "display" | "name"
 > & {
   include_csv: boolean;
   include_xls: boolean;

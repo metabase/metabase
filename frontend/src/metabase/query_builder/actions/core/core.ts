@@ -406,7 +406,12 @@ async function reduxUpdateQuestion(
 
   // Unjustified type cast. FIXME
   const updatedCard = (await dispatch(
-    updateQuestionCard({ id: question.id(), ...card }),
+    updateQuestionCard({
+      id: question.id(),
+      ...card,
+      embedding_params: card.embedding_params ?? undefined,
+      cache_ttl: card.cache_ttl ?? undefined,
+    }),
   )) as Card;
   return question.setCard(updatedCard);
 }

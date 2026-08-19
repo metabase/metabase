@@ -1,7 +1,11 @@
-import type { GroupTableAccessPolicy } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  ValidateGroupTableAccessPolicyRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { listTag } from "./tags";
+import { pick } from "./utils/pick";
 
 export const groupTableAccessPolicyApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -33,12 +37,12 @@ export const groupTableAccessPolicyApi = Api.injectEndpoints({
     }),
     validateGroupTableAccessPolicy: builder.mutation<
       void,
-      GroupTableAccessPolicy
+      ValidateGroupTableAccessPolicyRequest
     >({
       query: (body) => ({
         method: "POST",
         url: "/api/mt/gtap/validate",
-        body,
+        body: pick(body, ["table_id", "card_id"]),
       }),
     }),
   }),
