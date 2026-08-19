@@ -319,6 +319,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 export type JoinStrategy =
   | "left-join"
   | "right-join"
@@ -549,8 +551,6 @@ export type TestJoinSpec = {
   // If not set we will use the suggested join conditions
   conditions?: TestJoinConditionSpec[];
 };
-
-export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 type TestJoinConditionSpec = {
   operator: JoinConditionOperator;

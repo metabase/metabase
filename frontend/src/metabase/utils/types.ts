@@ -1,12 +1,5 @@
 import _ from "underscore";
 
-/**
- * Makes every property in the object optional, recursively.
- *
- * @inline
- */
-export type { DeepPartial } from "metabase-types/utils/types";
-
 export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
 };

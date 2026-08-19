@@ -1,7 +1,5 @@
 import type { MetabaseFontFamily } from "metabase-types/api/fonts";
 
-export type { MetabaseFontFamily } from "metabase-types/api/fonts";
-
 type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 
 // NOTE: This map is NOT the source of truth for the fonts Metabase ships.

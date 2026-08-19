@@ -26,13 +26,3 @@ export const createMockDocumentContent = (
   content: [],
   ...opts,
 });
-
-export const createMockDocumentContentParagraph = (
-  text: string,
-): DocumentContent => ({
-  type: "paragraph",
-  attrs: {
-    _id: crypto.randomUUID(),
-  },
-  content: [{ type: "text", text }],
-});
