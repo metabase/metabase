@@ -390,6 +390,7 @@
                                                             {:name         name
                                                              :position     position
                                                              :dashboard_id dashboard-id
+                                                             :entity_id    (u/generate-nano-id)
                                                              :created_at   :%now
                                                              :updated_at   :%now})))
             tab1-id      (insert-tab! "Tab 1" 0)
