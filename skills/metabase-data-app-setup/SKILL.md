@@ -419,7 +419,7 @@ The bundle imports React hooks/JSX, SDK components from `@metabase/embedding-sdk
 |---|---|
 | `React` (from `"react"`) | Hooks (`useState`, `useEffect`, etc.), JSX runtime. Externalized to the host's React via `react: "React"`. |
 | `StaticQuestion` | Non-drillable question. Props include `questionId`, `card`, `withChartTypeSelector`, `height`, `width`. |
-| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. Add `visualization` when the request calls for a specific chart type, and add `visualizationSettings` only for explicit setting-level presentation changes; use skill discovery for schema-backed query and card type guardrails. |
+| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. See *Rendering a chart: Metabase first* for choosing between the two and for `visualization` / `visualizationSettings`. |
 | `MetabaseCard` | Type-only import from `@metabase/embedding-sdk-react` for ad hoc SDK-rendered cards with `visualization` or `visualizationSettings`; use skill discovery for the full generated-query card contract before authoring data-layer code. |
 | `CreateQuestion`, `MetabotQuestion` | More question variants. |
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
@@ -453,6 +453,8 @@ A built-in visualization carries the instance's theming, accessibility, tooltips
 - **No → `useMetabaseQuery` and your own component.** Only when the user asked for a custom visualization, or nothing Metabase renders can express the request: bespoke scorecards, alert panels, narrative layouts or mixed-content cards, custom interactions its chart/table chrome cannot express, unusual forms such as calendar grids, timelines, heat strips, radial views, custom maps or domain-specific diagrams, and elements combining several queries into one visual unit. Keep the row handling typed. Use a charting dependency the app already has; otherwise SVG is fine.
 
 **`StaticQuestion` is the default of the two.** It renders the visualization and nothing else — no query bar, no editor, no save — and takes `withChartTypeSelector`, `withDownloads`, `title` and the sizing props. Use `InteractiveQuestion` when the element is meant to be explored: drill-through, filtering, switching the chart type, or the notebook editor. It shows a Save button unless you turn it off — `isSaveEnabled` defaults to `true` — which offers viewers a save-to-collection flow that belongs in Metabase, not in an app, so pass `isSaveEnabled={false}` unless the app is deliberately an editing surface. That applies to the default layout; giving `InteractiveQuestion` its own children replaces the layout, so a composed `<InteractiveQuestion.QuestionVisualization />` renders no toolbar and no Save button.
+
+**Pass `title={false}` when the question sits in a card or section that already carries a heading.** `InteractiveQuestion`'s default layout shows the question's own title, so you get two; `StaticQuestion` hides it already.
 
 "It has to match our styling" is not a reason to hand-build one: pass `visualization` for the chart type, `visualizationSettings` for setting-level changes, and theme the SDK for the rest. A pie chart in a data app is a Metabase pie chart — unless the user asked for a custom one, which is their call to make, not one to infer from a design reference, brand colours, or a screenshot of something bespoke.
 
@@ -512,7 +514,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 |---|---|
 | "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] && [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ] && curl -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/user/current" || echo "set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
-| A chart looks unlike the rest of the instance, ignores the theme, or has no tooltips, formatting or drill-through. | It was built in React. Render it with `StaticQuestion`/`InteractiveQuestion` and a `visualization` instead (see *Rendering a chart*). |
+| A chart looks unlike the rest of the instance, ignores the theme, or has no tooltips, formatting or drill-through. | It was built in React. Render it with `StaticQuestion`/`InteractiveQuestion` and a `visualization` instead (see *Rendering a chart: Metabase first*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
 | App background stops partway down, bare white below short content. | Give the root `minHeight: 100vh` (see *App layout*). |
 | "Invalid hook call" at runtime. | Two React copies. `dataAppConfig()` externalizes `react` — ensure `react`/`react-dom` are installed and you haven't added a second React or a mismatched version. |
