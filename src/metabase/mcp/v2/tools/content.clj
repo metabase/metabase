@@ -205,8 +205,8 @@
               (catch Exception e
                 (log/warn e "Falling back to flattened text for document" (:id doc))
                 nil))]
-    (-> (select-keys doc [:id :name :collection_id :archived :entity_id :creator_id
-                          :created_at :updated_at])
+    (-> doc
+        (select-keys document-detailed-keys)
         (assoc :content_markdown (if ser
                                    (:markdown ser)
                                    (prose-mirror/ast->text (:document doc)))
