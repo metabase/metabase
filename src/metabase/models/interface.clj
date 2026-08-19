@@ -328,9 +328,8 @@
    :out cached-encrypted-json-out})
 
 (defn transform-encrypted
-  "Wrap `transform` so the value it serializes is encrypted at rest when `MB_ENCRYPTION_SECRET_KEY` is set.
-  `maybe-decrypt` passes plaintext through untouched, so rows written before a column was encrypted keep reading
-  with no migration."
+  "Wrap `transform` so its serialized value is encrypted at rest. Reading is unchanged for rows written before the
+  column was encrypted: [[encryption/maybe-decrypt]] passes plaintext through."
   [transform]
   {:in  (comp encryption/maybe-encrypt (:in transform))
    :out (comp (:out transform) encryption/maybe-decrypt)})

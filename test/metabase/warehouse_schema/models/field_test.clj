@@ -314,8 +314,6 @@
             (assert-coercion-effective-type-invariant! field-id label)))))))
 
 (def ^:private warehouse-fingerprint
-  "A fingerprint carries real warehouse values: the min/max of a numeric column, the earliest and latest
-  timestamps, and so on."
   {:global {:distinct-count 42 :nil% 0.0}
    :type   {:type/Number {:min 3.5 :max 987654.25 :avg 120.0 :q1 10.0 :q3 300.0 :sd 5.5}}})
 

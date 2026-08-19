@@ -55,6 +55,5 @@
                        {:where [:and
                                 [:= :type "full"]
                                 [:= :field_id field-id]
-                                [:not= :human_readable_values nil]
-                                [:not= :human_readable_values "{}"]]})]
+                                [:not= :human_readable_values nil]]})]
     (some->> (seq remapped) (zipmap orig))))

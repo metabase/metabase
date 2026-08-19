@@ -251,20 +251,20 @@
         (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
         (let [db-id    (t2/insert-returning-pk! :model/Database {:name "db" :engine :h2 :details {}})
               table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :name "t" :active true})
-              field-id (fn [nm] (t2/insert-returning-pk! :model/Field
-                                                         {:table_id      table-id
-                                                          :name          nm
-                                                          :base_type     :type/Text
-                                                          :database_type "TEXT"
-                                                          :fingerprint   {:global {:distinct-count 3}}}))
-              plain    (field-id "plain")
-              remapped (field-id "remapped")
+              insert-field! (fn [nm] (t2/insert-returning-pk! :model/Field
+                                                              {:table_id      table-id
+                                                               :name          nm
+                                                               :base_type     :type/Text
+                                                               :database_type "TEXT"
+                                                               :fingerprint   {:global {:distinct-count 3}}}))
+              plain    (insert-field! "plain")
+              remapped (insert-field! "remapped")
               plain-fv (t2/insert-returning-pk! :model/FieldValues
-                                                {:field_id plain :values ["ACME Corp" "Initech"]})
+                                                {:field_id plain :values ["Great Horned Owl" "Snowy Plover"]})
               remap-fv (t2/insert-returning-pk! :model/FieldValues
                                                 {:field_id              remapped
-                                                 :values                ["ACME Corp" "Initech"]
-                                                 :human_readable_values ["Acme" "Init"]})]
+                                                 :values                ["Great Horned Owl" "Snowy Plover"]
+                                                 :human_readable_values ["Owl" "Plover"]})]
           (mdb/decrypt-db :h2 (mdb/data-source))
           (testing "fingerprints are cleared so the next analyze rebuilds them"
             (is (nil? (t2/select-one-fn :fingerprint :model/Field :id plain)))
@@ -272,12 +272,32 @@
           (testing "FieldValues with no admin remapping are dropped for the next sync to rebuild"
             (is (nil? (t2/select-one :model/FieldValues :id plain-fv))))
           (testing "FieldValues carrying an admin remapping are kept, and both columns are decrypted"
-            (is (= ["ACME Corp" "Initech"]
+            (is (= ["Great Horned Owl" "Snowy Plover"]
                    (t2/select-one-fn :values :model/FieldValues :id remap-fv)))
-            (is (= ["Acme" "Init"]
+            (is (= ["Owl" "Plover"]
                    (t2/select-one-fn :human_readable_values :model/FieldValues :id remap-fv)))
-            (is (= "[\"ACME Corp\",\"Initech\"]"
+            (is (= "[\"Great Horned Owl\",\"Snowy Plover\"]"
                    (:values (t2/query-one {:select [:values]
                                            :from   [:metabase_fieldvalues]
                                            :where  [:= :id remap-fv]})))
                 "the kept row should be plaintext after decrypt-db")))))))
+
+(deftest first-time-encryption-keeps-derived-warehouse-data-test
+  (testing "setting MB_ENCRYPTION_SECRET_KEY on a plaintext db encrypts in place; those rows read fine either way,
+            so nothing is thrown away"
+    (mt/with-empty-h2-app-db!
+      (let [db-id    (t2/insert-returning-pk! :model/Database {:name "db" :engine :h2 :details {}})
+            table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :name "t" :active true})
+            field    (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                            :name          "plain"
+                                                            :base_type     :type/Text
+                                                            :database_type "TEXT"
+                                                            :fingerprint   {:global {:distinct-count 3}}})
+            fv       (t2/insert-returning-pk! :model/FieldValues
+                                              {:field_id field :values ["Great Horned Owl" "Snowy Plover"]})]
+        (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+          (mdb/encrypt-db :h2 (mdb/data-source) nil)
+          (is (= {:global {:distinct-count 3}}
+                 (t2/select-one-fn :fingerprint :model/Field :id field)))
+          (is (= ["Great Horned Owl" "Snowy Plover"]
+                 (t2/select-one-fn :values :model/FieldValues :id fv))))))))

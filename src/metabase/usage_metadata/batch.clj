@@ -199,10 +199,6 @@
       (conj {:observation_type :low-cardinality
              :observation_value (str distinct-count)}))))
 
-(defn- field-fingerprint
-  [field-id]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id))
-
 (defn- profile-rows-for-dimensions
   [bucket-date dimension-rows]
   (into []
@@ -210,7 +206,7 @@
                   (when (and (= source_type :table)
                              (= ownership_mode :direct)
                              (pos-int? field_id))
-                    (when-let [fingerprint (field-fingerprint field_id)]
+                    (when-let [fingerprint (t2/select-one-fn :fingerprint :model/Field :id field_id)]
                       (for [{:keys [observation_type observation_value]} (fingerprint-observations fingerprint)]
                         {:source_type       source_type
                          :source_id         source_id

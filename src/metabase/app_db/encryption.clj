@@ -23,16 +23,6 @@
    [:auth_identity :credentials]
    [:report_card :result_metadata]])
 
-;; Warehouse-derived columns are handled differently. `metabase_field` and `metabase_fieldvalues` are the largest
-;; tables in a big app db, so rewriting them a row at a time is not viable; the values are dropped and the next sync
-;; repopulates them, the same trade the query cache already makes.
-;;
-;; FieldValues rows carrying `human_readable_values` are the exception. An admin types those remappings in
-;; (`POST /api/field/:id/values`) and sync cannot recreate them, so both columns are re-encrypted for those rows.
-(def ^:private remapped-field-values-columns
-  [[:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]])
-
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
 ;; columns encrypted with the source instance's key, so on databases that have been through one they can hold values
@@ -64,7 +54,7 @@
   this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
-  [conn table column encrypt-str-fn clear-undecryptable? kv-args]
+  [conn table column encrypt-str-fn clear-undecryptable? & kv-args]
   (doseq [{:keys [id value]} (apply t2/select [table :id [column :value]] kv-args)]
     (when (some? value)
       (let [decrypted (encryption/maybe-decrypt value)]
@@ -78,14 +68,17 @@
                             {:table table, :id id, :column column})))
           (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))))
 
-(defn- discard-derived-warehouse-data!
-  "Drop the fingerprints and FieldValues that the next sync will rebuild. See `remapped-field-values-columns` for why
-  rows with admin-authored remappings are kept."
-  [conn]
+(defn- rotate-derived-warehouse-data!
+  "Drop fingerprints and FieldValues for sync to rebuild, rather than rewrite the two biggest tables a row at a time.
+  Admin-entered remappings can't be rebuilt, so those rows are re-encrypted instead."
+  [conn encrypt-str-fn]
   (t2/update! :conn conn :metabase_field
               {:fingerprint [:not= nil]}
               {:fingerprint nil, :fingerprint_version 0})
-  (t2/delete! :conn conn :metabase_fieldvalues :human_readable_values nil))
+  (t2/delete! :conn conn :metabase_fieldvalues :human_readable_values nil)
+  (doseq [column [:values :human_readable_values]]
+    (reencrypt-encrypted-json-column! conn :metabase_fieldvalues column encrypt-str-fn false
+                                      :human_readable_values [:not= nil])))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -102,12 +95,10 @@
         (doseq [[table column] encrypted-json-columns]
           (reencrypt-encrypted-json-column! conn table column encrypt-str-fn
                                             (and (= check-status :valid)
-                                                 (contains? clearable-when-undecryptable [table column]))
-                                            nil))
-        (discard-derived-warehouse-data! conn)
-        (doseq [[table column] remapped-field-values-columns]
-          (reencrypt-encrypted-json-column! conn table column encrypt-str-fn false
-                                            [:human_readable_values [:not= nil]])))
+                                                 (contains? clearable-when-undecryptable [table column]))))
+        ;; skipped when first encrypting a plaintext db: those rows read fine either way
+        (when (= check-status :valid)
+          (rotate-derived-warehouse-data! conn encrypt-str-fn)))
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)

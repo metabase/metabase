@@ -1749,7 +1749,6 @@
                             :id card-id))))))
 
 (def ^:private warehouse-result-metadata
-  "Result metadata carries warehouse values: each column's fingerprint travels along with its name and type."
   [{:name         "NAME"
     :display_name "Name"
     :base_type    :type/Text
