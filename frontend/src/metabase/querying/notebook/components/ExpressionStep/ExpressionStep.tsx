@@ -4,7 +4,10 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import { ExpressionWidget } from "../../../components/expressions/ExpressionWidget";
+import {
+  ExpressionWidget,
+  useExpressionWidgetChunk,
+} from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -18,6 +21,12 @@ export const ExpressionStep = ({
 }: NotebookStepProps): JSX.Element => {
   const { query, stageIndex } = step;
   const tc = useTranslateContent();
+
+  // A new custom column opens its popover as soon as the step appears. The
+  // widget is a separate chunk, so hold the popover shut until it arrives:
+  // `renderPopover` returning null disables it.
+  const isWidgetLoaded = useExpressionWidgetChunk();
+
   const expressions = useMemo(
     () => Lib.expressions(query, stageIndex),
     [query, stageIndex],
@@ -51,18 +60,20 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item, index: expressionIndex, onClose }) => (
-        <ExpressionPopover
-          query={query}
-          stageIndex={stageIndex}
-          expression={item}
-          expressionIndex={expressionIndex}
-          reportTimezone={reportTimezone}
-          updateQuery={updateQuery}
-          onClose={onClose}
-          readOnly={readOnly}
-        />
-      )}
+      renderPopover={({ item, index: expressionIndex, onClose }) =>
+        !isWidgetLoaded ? null : (
+          <ExpressionPopover
+            query={query}
+            stageIndex={stageIndex}
+            expression={item}
+            expressionIndex={expressionIndex}
+            reportTimezone={reportTimezone}
+            updateQuery={updateQuery}
+            onClose={onClose}
+            readOnly={readOnly}
+          />
+        )
+      }
       isLastOpened={isLastOpened}
       onReorder={handleReorderExpression}
       onRemove={handleRemoveExpression}

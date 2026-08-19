@@ -16,7 +16,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import {
+  getInitialUiState,
+  loadQueryEditor,
+} from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -70,7 +73,8 @@ export function TransformQueryPage() {
     isLoadingDatabases,
     databasesError,
   } = useTransformPermissions({ transform });
-  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const isEditorLoaded = useQueryEditorChunk();
+  const isLoading = isLoadingTransform || isLoadingDatabases || !isEditorLoaded;
   const error = transformError || databasesError;
 
   if (isLoading || error != null) {
@@ -384,3 +388,21 @@ export function TransformQueryPageEditor({
     />
   );
 }
+
+// The editor is a separate chunk. Folding it into the wait this page already
+// does for its own data means one wait rather than two in a row.
+const useQueryEditorChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadQueryEditor().then(() => {
+      if (!cancelled) {
+        setIsLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isLoaded;
+};

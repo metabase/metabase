@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { idTag } from "metabase/api/tags";
+import { getUser } from "metabase/current-user";
 import {
   useIsFullPageMetabot,
   useMetabotAgent,
@@ -13,7 +14,6 @@ import {
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { getUser } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -29,8 +29,8 @@ import { metabotApi } from "../api";
 import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
-import { MetabotChat } from "./MetabotChat";
 import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
+import { createLazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
 
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
@@ -124,9 +124,15 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const agentId = config?.agentId ?? "omnibot";
   const { visible, setVisible } = useMetabotAgent(agentId);
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
+  const [MetabotChat, setMetabotChat] = useState(createLazyMetabotChat);
   const isFullPageMetabot = useIsFullPageMetabot();
 
-  const handleRetry = () => setErrorBoundaryKey((prev) => prev + 1);
+  const handleRetry = () => {
+    // A failed fetch is one of the errors the boundary catches, and the panel
+    // that failed can never load, so retry with a fresh one.
+    setMetabotChat(createLazyMetabotChat());
+    setErrorBoundaryKey((prev) => prev + 1);
+  };
 
   useEffect(() => {
     return tinykeys(window, {
@@ -142,6 +148,15 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
       },
     });
   }, [visible, setVisible, isFullPageMetabot]);
+
+  useEffect(function prefetchChatPanelWhenIdle() {
+    if (typeof requestIdleCallback !== "function") {
+      prefetchMetabotChat();
+      return;
+    }
+    const handle = requestIdleCallback(prefetchMetabotChat);
+    return () => cancelIdleCallback(handle);
+  }, []);
 
   useEffect(
     function closeViaPropChange() {
@@ -160,17 +175,20 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   return (
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
-      <Sidebar
-        isOpen={visible}
-        side="right"
-        width="30rem"
-        aria-hidden={!visible}
-      >
-        <MetabotChat
-          config={config}
-          headerActions={<MetabotSidebarActions agentId={agentId} />}
-        />
-      </Sidebar>
+      {/* The fallback covers the sidebar too, so an empty panel never opens */}
+      <Suspense fallback={null}>
+        <Sidebar
+          isOpen={visible}
+          side="right"
+          width="30rem"
+          aria-hidden={!visible}
+        >
+          <MetabotChat
+            config={config}
+            headerActions={<MetabotSidebarActions agentId={agentId} />}
+          />
+        </Sidebar>
+      </Suspense>
     </ErrorBoundary>
   );
 };

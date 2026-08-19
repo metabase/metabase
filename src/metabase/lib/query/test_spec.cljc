@@ -350,6 +350,7 @@
               (mtx/transformer
                mtx/json-transformer
                (mtx/key-transformer {:decode #(-> % u/->kebab-case-en keyword)})
+               {:name :normalize}
                mtx/strip-extra-keys-transformer
                mtx/default-value-transformer)))
 

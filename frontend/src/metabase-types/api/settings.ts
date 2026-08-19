@@ -164,22 +164,14 @@ export interface EngineSourceContact {
 }
 
 export interface ScheduleSettings {
-  schedule_type?: ScheduleType | null;
+  schedule_type: ScheduleType;
   schedule_day?: ScheduleDayType | null;
   schedule_frame?: ScheduleFrameType | null;
   schedule_hour?: number | null;
   schedule_minute?: number | null;
 }
 
-export type ScheduleType =
-  | "every_n_minutes"
-  | "hourly"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  // 'cron' type implies usage of more complex expressions represented
-  // by raw cron string.
-  | "cron";
+export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
 
 export type ScheduleDayType =
   | "sun"
@@ -542,6 +534,10 @@ interface SettingsManagerSettings {
   "llm-moonshot-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
+  "llm-google-service-account-key"?: string | null;
+  "llm-google-oauth-access-token"?: string | null;
+  "llm-google-project-id"?: string | null;
+  "llm-google-location"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;
@@ -836,6 +832,7 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
+  "llm-mini-model"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;

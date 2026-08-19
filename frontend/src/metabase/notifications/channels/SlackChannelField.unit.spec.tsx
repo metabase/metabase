@@ -71,7 +71,11 @@ function setup({ channel }: { channel: Channel }) {
 describe("SlackChannelField channel_id storage", () => {
   it("stores channel_id when user selects a known channel", async () => {
     const { spy } = setup({
-      channel: { channel_type: "slack", details: { channel: "" } },
+      channel: {
+        channel_type: "slack",
+        schedule_type: "hourly",
+        details: { channel: "" },
+      },
     });
 
     const input = screen.getByPlaceholderText("Pick a user or channel...");
@@ -88,6 +92,7 @@ describe("SlackChannelField channel_id storage", () => {
     const { spy } = setup({
       channel: {
         channel_type: "slack",
+        schedule_type: "hourly",
         details: { channel: "#general", channel_id: "C001" },
       },
     });
@@ -107,6 +112,7 @@ describe("SlackChannelField channel_id storage", () => {
     const { spy } = setup({
       channel: {
         channel_type: "slack",
+        schedule_type: "hourly",
         details: { channel: "#general", channel_id: "C001" },
       },
     });

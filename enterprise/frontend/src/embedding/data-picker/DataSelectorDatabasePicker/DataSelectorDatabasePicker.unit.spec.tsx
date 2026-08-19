@@ -5,7 +5,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import DataSelectorDatabasePicker from "./DataSelectorDatabasePicker";
+import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
 
 const TEST_DATABASE = createMockDatabase();
 

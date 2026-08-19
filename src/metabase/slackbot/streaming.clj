@@ -6,11 +6,11 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
-   [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
@@ -178,7 +178,7 @@
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
   (let [message         (metabot.envelope/user-message prompt)
-        ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based

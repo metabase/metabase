@@ -1,8 +1,8 @@
-import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type {
   DatePickerOperator,

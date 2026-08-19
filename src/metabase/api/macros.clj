@@ -393,7 +393,9 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
+           (assoc-in m error-path (if nested-schema
+                                    (umd/describe nested-schema)
+                                    "unexpected key"))))))
    {}
    (:errors explanation)))
 

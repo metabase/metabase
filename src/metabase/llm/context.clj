@@ -8,6 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
@@ -152,12 +154,9 @@
              columns)))))
 
 (defn- fetch-field-values
-  "Fetch or create FieldValues for columns that should have them.
-   Uses get-or-create-full-field-values! which will:
-   - Create field values if missing and field should have them
-   - Update field values if inactive (not used recently)
-   - Query source database if necessary to populate values
-   Returns map of field-id -> values vector."
+  "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
+   Values are the ones the current user is allowed to see, and are fetched from the source database when
+   nothing suitable is cached."
   [columns]
   (let [field-ids (->> columns
                        (keep :id)
@@ -167,9 +166,12 @@
       (let [fields (t2/select :model/Field :id [:in field-ids])]
         (into {}
               (keep (fn [field]
-                      (when-let [fv (field-values/get-or-create-full-field-values! field)]
-                        (when-let [values (not-empty (:values fv))]
-                          [(:id field) values]))))
+                      ;; The per-user path skips this check. Without it, every column of the table would
+                      ;; cost a distinct-values query against the warehouse.
+                      (when (field-values/field-should-have-field-values? field)
+                        (when-let [fv (params.field-values/get-or-create-field-values! field)]
+                          (when-let [values (not-empty (:values fv))]
+                            [(:id field) values])))))
               fields)))))
 
 (defn- fetch-fk-targets
@@ -193,10 +195,29 @@
 
 ;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
 
+(defn- row-restricted-user?
+  "Whether impersonation limits the current user to a subset of the rows in `database-id`."
+  [database-id]
+  ;; Sandboxing isn't checked here. Saving a sandbox strips that group's native access, and a sandbox stops
+  ;; being enforced once another group grants unrestricted access to the table, so a sandboxed user normally
+  ;; can't get past the `:query-builder-and-native` check in `fetch-accessible-tables`. Granting native back
+  ;; to a sandboxed group afterwards is the gap; `perms/sandboxed-user-for-db?` closes it on master, but it
+  ;; isn't reachable from OSS code on this branch.
+  (perms/impersonation-enforced-for-db? database-id))
+
+(defn- drop-fingerprints
+  "Removes `:fingerprint` from every column of `tables`."
+  [tables]
+  (mapv (fn [table]
+          (update table :columns #(mapv (fn [col] (dissoc col :fingerprint)) %)))
+        tables))
+
 (defn- enrich-fingerprints-on-demand!
   "For columns missing fingerprints, trigger re-fingerprinting.
    Returns a map of field-id -> fingerprint for columns that were missing them.
-   This queries the source database to compute fingerprints if they don't exist."
+   This queries the source database to compute fingerprints if they don't exist.
+   Only call this for a user who can see every row: the computed fingerprint is stored on the Field and
+   served to every user."
   [columns]
   (let [missing-fp-ids (->> columns
                             (filter #(and (:id %) (nil? (:fingerprint %))))
@@ -424,6 +445,9 @@
    For fields missing fingerprints or field values, this function will
    trigger on-demand creation by querying the source database.
 
+   For a user restricted to a subset of rows by impersonation or sandboxing, sample values are fetched under
+   their own role and fingerprint statistics are omitted.
+
    Parameters:
    - database-id: Database containing the tables
    - table-ids: Set of table IDs to include
@@ -451,17 +475,24 @@
                            :columns      columns}))
                       accessible-tables)
 
+                restricted? (row-restricted-user? database-id)
+
                 ;; Gather all columns for batch operations
                 all-columns (mapcat :columns tables-with-columns)
 
                 ;; On-demand enrichment: trigger fingerprinting for columns missing fingerprints
-                enriched-fp-map (enrich-fingerprints-on-demand! all-columns)
+                enriched-fp-map (when-not restricted?
+                                  (enrich-fingerprints-on-demand! all-columns))
 
-                ;; Update tables with enriched fingerprints
+                ;; A fingerprint covers every row of the field and is computed under the database's default
+                ;; role, and there is no per-user variant to fall back on. For a restricted user the only
+                ;; honest answer is to say nothing about ranges or distinct counts.
                 tables-with-enriched-fps
-                (mapv (fn [table]
-                        (update table :columns merge-enriched-fingerprints enriched-fp-map))
-                      tables-with-columns)
+                (if restricted?
+                  (drop-fingerprints tables-with-columns)
+                  (mapv (fn [table]
+                          (update table :columns merge-enriched-fingerprints enriched-fp-map))
+                        tables-with-columns))
 
                 ;; Re-gather columns after fingerprint enrichment
                 all-enriched-columns (mapcat :columns tables-with-enriched-fps)

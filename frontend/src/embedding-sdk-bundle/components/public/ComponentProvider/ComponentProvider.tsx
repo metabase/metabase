@@ -20,6 +20,7 @@ import {
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import type { MetabaseProviderPropsStoreInternalProps } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
@@ -189,6 +190,11 @@ export type ComponentProviderProps = MetabaseProviderProps & {
   reduxStore?: SdkStore;
   isLocalHost?: boolean;
 };
+
+export type MetabaseProviderPropsStoreExternalProps = Omit<
+  ComponentProviderProps,
+  "children" | keyof MetabaseProviderPropsStoreInternalProps
+>;
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,
