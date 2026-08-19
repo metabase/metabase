@@ -72,7 +72,7 @@ describe("scenarios > data apps > viewing & routing", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
-        bundleDelay: 2000,
+        bundleDelayMs: 2000,
       });
 
       H.openDataApp(APP_NAME);

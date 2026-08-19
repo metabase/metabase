@@ -86,3 +86,95 @@ export async function buildDataApp({
 
   return fs.readFileSync(bundlePath, "utf8");
 }
+
+/** Cypress resolves a relative path against the project root; match that. */
+function inRepo(target: string) {
+  return path.isAbsolute(target) ? target : path.join(REPO_ROOT, target);
+}
+
+/**
+ * The fixture filesystem lives behind tasks rather than `cy.exec`/`cy.writeFile`
+ * so a spec changes an app in one round trip, and so nothing is composed into a
+ * shell string.
+ */
+export async function scaffoldDataApp({
+  appName,
+  sdkFrom,
+}: {
+  appName: string;
+  sdkFrom: string;
+}): Promise<string> {
+  // The task owns the location so a caller cannot aim the `rmSync` below elsewhere.
+  if (path.basename(appName) !== appName) {
+    throw new Error(`A scaffolded app is named, not located: ${appName}`);
+  }
+
+  const root = path.join(REPO_ROOT, "e2e", "tmp", appName);
+
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  // The SDK the app synchronizes against, without a second npm install.
+  fs.symlinkSync(
+    path.join(inRepo(sdkFrom), "node_modules"),
+    path.join(root, "node_modules"),
+  );
+  // Synchronization writes the app's resource entity IDs back into its manifest,
+  // so an app without one is refused before it reaches the reconcilers.
+  fs.writeFileSync(
+    path.join(root, "data_app.yaml"),
+    `name: ${appName}\npath: ./dist/index.js\n`,
+  );
+
+  return root;
+}
+
+export async function writeDataAppFiles({
+  files,
+}: {
+  files: Record<string, string>;
+}): Promise<null> {
+  for (const [filePath, contents] of Object.entries(files)) {
+    const target = inRepo(filePath);
+
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, contents);
+  }
+
+  return null;
+}
+
+export async function removeDataAppDeclaration({
+  filePath,
+  exportName,
+}: {
+  filePath: string;
+  exportName: string;
+}): Promise<null> {
+  const target = inRepo(filePath);
+  const [imports, ...declarations] = fs
+    .readFileSync(target, "utf8")
+    .split("export const ");
+
+  fs.writeFileSync(
+    target,
+    imports +
+      declarations
+        .filter((declaration) => !declaration.startsWith(`${exportName} `))
+        .map((declaration) => `export const ${declaration}`)
+        .join(""),
+  );
+
+  return null;
+}
+
+export async function removeDataAppPaths({
+  paths,
+}: {
+  paths: string[];
+}): Promise<null> {
+  for (const target of paths) {
+    fs.rmSync(inRepo(target), { recursive: true, force: true });
+  }
+
+  return null;
+}

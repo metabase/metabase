@@ -194,6 +194,18 @@
              (mt/user-http-request :rasta :post 403 "apps/demo/query"
                                    {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
 
+(deftest non-superuser-cannot-reconcile-query-database-permissions-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Database {database-id :id} {}]
+        (create-app!)
+        (let [group-id (t2/select-one-fn :permission_group_id :model/DataApp :name "demo")]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
+                                       {:database_ids [database-id]})))
+          (is (not= :unrestricted (view-data-permission group-id database-id))
+              "the refused call granted nothing"))))))
+
 (deftest superuser-can-create-or-reuse-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

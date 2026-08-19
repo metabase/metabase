@@ -333,6 +333,8 @@ async function reconcileLiveQuery(
   const needsUpdate =
     card.name !== query.exportName ||
     card.collection_id !== collectionId ||
+    // A copy trashed on its own keeps its collection, so only `archived` says so.
+    card.archived === true ||
     !queriesMatch(card, resolved);
 
   if (needsUpdate) {
@@ -389,6 +391,17 @@ async function reconcileRemovedQueries(
 
     if (!card) {
       removeLockEntry(appRoot, lockfile, entry.savedQuestionSourceId);
+
+      continue;
+    }
+
+    // The trash masks a card's collection, so a copy trashed from the app
+    // collection reads the same as one moved out and trashed afterwards. Stop
+    // tracking it either way: deleting is permanent, and the card is already
+    // where someone put it to be deleted.
+    if (card.archived === true) {
+      removeLockEntry(appRoot, lockfile, card.id);
+      log(`left in the trash: card ${card.id}`);
 
       continue;
     }

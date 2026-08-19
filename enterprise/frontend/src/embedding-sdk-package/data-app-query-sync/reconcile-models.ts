@@ -137,6 +137,15 @@ async function fetchSourceModels(
         );
       }
 
+      // A trashed action reads as a 404 and stops the run; a trashed model is
+      // still readable, so refuse it here rather than copying from something
+      // its author deleted.
+      if (card.archived === true) {
+        throw new Error(
+          `${location} references an action on model ${id}, which is in the trash. Restore the model or remove the declaration, then run sync-resources again.`,
+        );
+      }
+
       return [id, card] as const;
     }),
   );
@@ -163,7 +172,10 @@ function assertOwnedModelCopy(card: MetabaseCard, collectionId: number) {
     );
   }
 
-  if (card.collection_id !== collectionId) {
+  // A trashed copy reports the Trash as its collection, so its real one says
+  // nothing here. Only the restore path reaches this with one, and it puts both
+  // the card and its collection back.
+  if (card.archived !== true && card.collection_id !== collectionId) {
     throw new Error(
       `Card ${card.id} belongs to a synchronized model but is no longer in the data app collection, so it was left untouched. Move card ${card.id} back to data app collection ${collectionId} or delete it manually, then run sync-resources again.`,
     );
@@ -282,7 +294,13 @@ async function reconcileModel(
   if (previous && copy) {
     assertOwnedModelCopy(copy, collectionId);
 
-    if (getPayloadFingerprint(modelCopyInput(copy)) !== hash) {
+    // `archived` is deliberately not part of the fingerprint: it describes the
+    // copy's state, not the payload, and folding it in would invalidate every
+    // lockfile written before this.
+    if (
+      copy.archived === true ||
+      getPayloadFingerprint(modelCopyInput(copy)) !== hash
+    ) {
       await client.updateModel(previous.copiedModelId, {
         ...modelCopyInput(sourceModel),
         collectionId,
@@ -350,7 +368,12 @@ async function removeUnusedModels(
 
     const copy = await orNullOn404(client.getCard(entry.copiedModelId));
 
-    if (copy) {
+    if (copy?.archived === true) {
+      // The trash masks a card's collection, so this reads the same as a copy
+      // moved out and trashed afterwards. Deleting is permanent, and the card is
+      // already where someone put it to be deleted.
+      log(`left in the trash: card ${copy.id}`);
+    } else if (copy) {
       assertOwnedModelCopy(copy, collectionId);
       // Deleting the copy cascades to the actions copied onto it.
       await client.deleteCard(copy.id);
