@@ -351,11 +351,14 @@ export function addUserToDataAppGroup(groupId: number, email: string) {
     .request<{ data: Array<{ id: number; email: string }> }>("/api/user")
     .then(({ body }) => {
       const user = body.data.find((candidate) => candidate.email === email);
-      expect(user, `user ${email}`).to.exist;
+
+      if (!user) {
+        throw new Error(`No user with the email ${email}`);
+      }
 
       return cy.request("POST", "/api/permissions/membership", {
         group_id: groupId,
-        user_id: user?.id,
+        user_id: user.id,
       });
     });
 }
