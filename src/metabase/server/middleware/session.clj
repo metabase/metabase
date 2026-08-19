@@ -112,7 +112,8 @@
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 (def ^:private mfa-supported-methods
-  (descendants :metabase.auth-identity.provider/supports-mfa))
+  #_(descendants :metabase.auth-identity.provider/supports-mfa)
+  #{:provider/password :provider/ldap})
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (memoize
@@ -145,6 +146,7 @@
                                       (into [:and]
                                             (map (fn [mfa-supporting-provider]
                                                    [:not= :auth_identity.provider
+                                                    ^:allow-raw-sql
                                                     [:raw (str "'" (name mfa-supporting-provider) "'")]])
                                                  mfa-supported-methods))]])
                                   (when session-timeout-seconds
