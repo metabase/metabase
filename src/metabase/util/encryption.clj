@@ -41,13 +41,16 @@
                  64))
 
 (defn validate-and-hash-secret-key
-  "Check the minimum length of the key and hash it for internal usage."
-  [^String secret-key]
-  (when-let [secret-key secret-key]
-    (when (seq secret-key)
-      (assert (>= (count secret-key) 16)
-              (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
-      (secret-key->hash secret-key))))
+  "Check the minimum length of the key and hash it for internal usage. Returns nil for a blank key. `env-var-name` names
+  the source in the length-assertion message."
+  ([^String secret-key]
+   (validate-and-hash-secret-key secret-key "MB_ENCRYPTION_SECRET_KEY"))
+  ([^String secret-key env-var-name]
+   (when-let [secret-key secret-key]
+     (when (seq secret-key)
+       (assert (>= (count secret-key) 16)
+               (str (trs "{0} must be at least 16 characters." env-var-name)))
+       (secret-key->hash secret-key)))))
 
 ;; apparently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
