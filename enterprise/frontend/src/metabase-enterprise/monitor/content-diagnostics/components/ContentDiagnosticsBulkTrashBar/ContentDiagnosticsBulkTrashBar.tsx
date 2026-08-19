@@ -19,33 +19,68 @@ type ContentDiagnosticsBulkTrashBarProps = {
   onTrashed: () => void;
 };
 
-function getConfirmMessage(
+type TrashCopy = {
+  actionLabel: string;
+  title: string;
+  message: ReactNode;
+  confirmLabel: string;
+};
+
+// Transforms are permanently deleted (no restore), so any selection that includes
+// one drops the "trash" language for "delete". A pure-archivable selection keeps
+// the recoverable "move to trash" wording (matching the collections screen).
+function getTrashCopy(
   archivableCount: number,
   transformCount: number,
-): ReactNode {
-  const trashPart = ngettext(
-    msgid`${archivableCount} item will be moved to the trash and can be restored later.`,
-    `${archivableCount} items will be moved to the trash and can be restored later.`,
-    archivableCount,
-  );
+): TrashCopy {
+  if (transformCount === 0) {
+    return {
+      actionLabel: t`Move to trash`,
+      title: ngettext(
+        msgid`Move ${archivableCount} item to trash?`,
+        `Move ${archivableCount} items to trash?`,
+        archivableCount,
+      ),
+      message: t`You can restore items from the trash.`,
+      confirmLabel: t`Move to trash`,
+    };
+  }
+
   const deletePart = ngettext(
     msgid`${transformCount} transform will be permanently deleted and cannot be restored.`,
     `${transformCount} transforms will be permanently deleted and cannot be restored.`,
     transformCount,
   );
 
-  if (transformCount === 0) {
-    return trashPart;
-  }
   if (archivableCount === 0) {
-    return deletePart;
+    return {
+      actionLabel: t`Delete`,
+      title: ngettext(
+        msgid`Delete ${transformCount} transform?`,
+        `Delete ${transformCount} transforms?`,
+        transformCount,
+      ),
+      message: deletePart,
+      confirmLabel: t`Delete`,
+    };
   }
-  return (
-    <List>
-      <List.Item>{trashPart}</List.Item>
-      <List.Item>{deletePart}</List.Item>
-    </List>
+
+  const trashPart = ngettext(
+    msgid`${archivableCount} item will be moved to the trash and can be restored later.`,
+    `${archivableCount} items will be moved to the trash and can be restored later.`,
+    archivableCount,
   );
+  return {
+    actionLabel: t`Delete`,
+    title: t`Delete selected items?`,
+    message: (
+      <List>
+        <List.Item>{trashPart}</List.Item>
+        <List.Item>{deletePart}</List.Item>
+      </List>
+    ),
+    confirmLabel: t`Delete`,
+  };
 }
 
 export function ContentDiagnosticsBulkTrashBar({
@@ -62,6 +97,7 @@ export function ContentDiagnosticsBulkTrashBar({
     (finding) => finding.entity_type === "transform",
   ).length;
   const archivableCount = count - transformCount;
+  const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
     const { failed } = await trashFindings(selectedFindings);
@@ -70,8 +106,8 @@ export function ContentDiagnosticsBulkTrashBar({
         addUndo({
           icon: "warning",
           message: ngettext(
-            msgid`Couldn't move ${failed} item to the trash`,
-            `Couldn't move ${failed} items to the trash`,
+            msgid`Couldn't remove ${failed} item`,
+            `Couldn't remove ${failed} items`,
             failed,
           ),
         }),
@@ -93,14 +129,14 @@ export function ContentDiagnosticsBulkTrashBar({
         )}
       >
         <BulkActionDangerButton onClick={() => setIsConfirmOpen(true)}>
-          {t`Move to trash`}
+          {trashCopy.actionLabel}
         </BulkActionDangerButton>
       </BulkActionBar>
       <ConfirmModal
         opened={isConfirmOpen}
-        title={t`Move to trash?`}
-        message={getConfirmMessage(archivableCount, transformCount)}
-        confirmButtonText={t`Move to trash`}
+        title={trashCopy.title}
+        message={trashCopy.message}
+        confirmButtonText={trashCopy.confirmLabel}
         onConfirm={handleConfirm}
         onClose={() => setIsConfirmOpen(false)}
       />

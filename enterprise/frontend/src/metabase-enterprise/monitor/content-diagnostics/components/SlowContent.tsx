@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import type { RowSelectionState } from "@tanstack/react-table";
 import { useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -14,6 +15,7 @@ import type {
   ContentDiagnosticsSlowSortColumn,
 } from "metabase-types/api";
 
+import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
@@ -49,6 +51,7 @@ export function SlowContent({
 }: SlowContentProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const { page = 0, query } = params;
   const filterOptions = useMemo(() => getSlowFilterOptions(params), [params]);
@@ -59,6 +62,7 @@ export function SlowContent({
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
+    refetch,
   } = useListSlowFindingsQuery(
     {
       query,
@@ -83,14 +87,21 @@ export function SlowContent({
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
   );
+  const selectedFindings = findings.filter(
+    (finding) => rowSelection[String(finding.id)],
+  );
+
+  const clearRowSelection = () => setRowSelection({});
 
   const handleQueryChange = (query: string | undefined) => {
+    clearRowSelection();
     onParamsChange({ ...params, query, page: undefined });
   };
 
   const handleFilterOptionsChange = (
     newFilterOptions: SlowContentFilterOptions,
   ) => {
+    clearRowSelection();
     onParamsChange(
       {
         ...params,
@@ -102,12 +113,14 @@ export function SlowContent({
   };
 
   const handlePageChange = (page: number) => {
+    clearRowSelection();
     onParamsChange({ ...params, page });
   };
 
   const handleSortOptionsChange = (
     sortOptions: Sorting<ContentDiagnosticsSlowSortColumn> | undefined,
   ) => {
+    clearRowSelection();
     onParamsChange(
       {
         ...params,
@@ -126,49 +139,61 @@ export function SlowContent({
   }, [selectedFindingId, selectedFinding]);
 
   return (
-    <Flex ref={containerRef} h="100%" wrap="nowrap">
-      <MonitorMain>
-        <DiagnosticsHeader />
-        <SlowContentFilterBar
-          query={query}
-          filterOptions={filterOptions}
-          isLoading={isLoading}
-          onQueryChange={handleQueryChange}
-          onFilterOptionsChange={handleFilterOptionsChange}
-          actions={<DiagnosticsScanButton />}
-        />
-        {error != null ? (
-          <Center flex={1}>
-            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-          </Center>
-        ) : (
-          <SlowContentTable
-            findings={findings}
-            params={params}
-            sortOptions={sortOptions}
-            isFetching={isFetching}
+    <>
+      <Flex ref={containerRef} h="100%" wrap="nowrap">
+        <MonitorMain>
+          <DiagnosticsHeader />
+          <SlowContentFilterBar
+            query={query}
+            filterOptions={filterOptions}
             isLoading={isLoading}
-            onSelect={(finding) => setSelectedFindingId(finding.id)}
-            onSortOptionsChange={handleSortOptionsChange}
+            onQueryChange={handleQueryChange}
+            onFilterOptionsChange={handleFilterOptionsChange}
+            actions={<DiagnosticsScanButton />}
           />
+          {error != null ? (
+            <Center flex={1}>
+              <DelayedLoadingAndErrorWrapper
+                loading={isLoading}
+                error={error}
+              />
+            </Center>
+          ) : (
+            <SlowContentTable
+              findings={findings}
+              params={params}
+              sortOptions={sortOptions}
+              isFetching={isFetching}
+              isLoading={isLoading}
+              rowSelection={rowSelection}
+              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSortOptionsChange={handleSortOptionsChange}
+              onRowSelectionChange={setRowSelection}
+            />
+          )}
+          {!isLoading && error == null && (
+            <DiagnosticsPagination
+              page={page}
+              pageItemCount={findings.length}
+              totalCount={totalCount}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </MonitorMain>
+        {selectedFinding != null && (
+          <Sidebar containerWidth={containerWidth}>
+            <SlowContentSidebar
+              finding={selectedFinding}
+              onClose={() => setSelectedFindingId(undefined)}
+            />
+          </Sidebar>
         )}
-        {!isLoading && error == null && (
-          <DiagnosticsPagination
-            page={page}
-            pageItemCount={findings.length}
-            totalCount={totalCount}
-            onPageChange={handlePageChange}
-          />
-        )}
-      </MonitorMain>
-      {selectedFinding != null && (
-        <Sidebar containerWidth={containerWidth}>
-          <SlowContentSidebar
-            finding={selectedFinding}
-            onClose={() => setSelectedFindingId(undefined)}
-          />
-        </Sidebar>
-      )}
-    </Flex>
+      </Flex>
+      <ContentDiagnosticsBulkTrashBar
+        selectedFindings={selectedFindings}
+        onClear={clearRowSelection}
+        onTrashed={refetch}
+      />
+    </>
   );
 }
