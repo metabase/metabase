@@ -138,7 +138,7 @@
                                      (catch clojure.lang.ExceptionInfo e e)))))
            "a catalog entry missing this architecture's export fails instead of hashing nil"))))
 
-(deftest ^:sequential plugin-artifact-smoke-test
+(deftest ^:synchronized plugin-artifact-smoke-test
   (if-not (= "true" (System/getenv "MB_EMBEDDER_ARTIFACT_TEST"))
     (testing "artifact smoke is enabled only in its dedicated CI process"
       (is true))

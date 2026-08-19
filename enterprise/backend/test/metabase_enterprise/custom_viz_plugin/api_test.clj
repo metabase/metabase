@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.custom-viz-plugin.api-test
+(ns ^:synchronized metabase-enterprise.custom-viz-plugin.api-test
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
