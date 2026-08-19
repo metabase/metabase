@@ -223,6 +223,10 @@ registerPagePrefetch("/document/", commentsSidesheet);
 registerPagePrefetch("/dashboard/", dashboardApp);
 registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
 registerPagePrefetch("/explore", metricsViewerPage);
+// The login page asks for this one by hand, so a user who signs in has the home
+// page in hand by the time they land on it. Exact, because every path starts
+// with "/".
+registerPagePrefetch("/", landingPage, { exact: true });
 registerPagePrefetch("/collection/", collectionLanding);
 registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
