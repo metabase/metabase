@@ -10,12 +10,12 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -333,16 +333,13 @@
     format-rows?   :format_rows
     :as            _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ms/Map]
-                                                 ms/JSONString]]]
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format
-   :parameters  (cond-> parameters
-                  (string? parameters) json/decode+kw)
+   :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true

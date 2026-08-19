@@ -3,7 +3,6 @@ import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-import "metabase/utils/dayjs";
 
 import {
   StaticChoropleth,

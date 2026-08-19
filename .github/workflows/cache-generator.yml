@@ -40,7 +40,8 @@ concurrency:
 jobs:
   get-cache-keys:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Get cache keys
@@ -102,7 +103,7 @@ jobs:
             ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
             ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml
             ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
-            ":ee:drivers:check"                                 # backend.yml (check; git dep athos/clj-check)
+            ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
             ":ee:doc"                                           # docs-generate-base.yml
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test

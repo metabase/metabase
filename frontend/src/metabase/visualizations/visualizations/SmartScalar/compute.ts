@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";

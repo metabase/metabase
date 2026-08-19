@@ -1,19 +1,16 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { cardApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useGetDatabaseMetadataQuery, useListCardsQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import type { Dispatch } from "metabase/redux/store";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -25,16 +22,10 @@ import {
 import TableSidebar from "./TableSidebar";
 
 const mapDispatchToProps = {
-  fetchQuestions: () => (dispatch: Dispatch) =>
-    runRtkEndpoint({}, dispatch, cardApi.endpoints.listCards),
-  fetchDatabaseMetadata,
   ...actions,
 };
 
-interface TableQuestionsContainerProps extends FetchProps, ClearStateProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-  fetchQuestions: () => Promise<unknown>;
-}
+type TableQuestionsContainerProps = ClearStateProps;
 
 function TableQuestionsContainer(props: TableQuestionsContainerProps) {
   const { pathname } = useLocation();
@@ -46,16 +37,11 @@ function TableQuestionsContainer(props: TableQuestionsContainerProps) {
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchDatabaseMetadataAndQuestion(props, databaseId);
-  }
+  const { isFetching: isFetchingMetadata, error: metadataError } =
+    useGetDatabaseMetadataQuery({ id: databaseId, skip_fields: true });
+  const { isFetching: isFetchingCards, error: cardsError } = useListCardsQuery(
+    {},
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -71,7 +57,11 @@ function TableQuestionsContainer(props: TableQuestionsContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<TableSidebar database={database} table={table} />}
     >
-      <TableQuestions params={params} />
+      <TableQuestions
+        params={params}
+        loading={isFetchingMetadata || isFetchingCards}
+        loadingError={metadataError ?? cardsError}
+      />
     </SidebarLayout>
   );
 }

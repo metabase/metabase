@@ -25,9 +25,9 @@ import {
 } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Avatar, Box, Group, Stack, Text, Title, Tooltip } from "metabase/ui";
 import type {
   Comment,

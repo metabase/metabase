@@ -419,17 +419,24 @@
   [_email-addresses]
   nil)
 
+(defn- validate-raw-value-email-domain!
+  "Enforce the `subscription-allowed-domains` allow-list on any write of a raw-value email recipient. Must run on both
+  insert and update so no write path (e.g. the unauthenticated unsubscribe-undo endpoint) can skip it."
+  [instance]
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])])))
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (validate-raw-value-email-domain! instance)
   instance)
 
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
-  (when (and (= :notification-recipient/raw-value (:type instance))
-             (u/email? (get-in instance [:details :value])))
-    (validate-email-domains! [(get-in instance [:details :value])]))
+  (validate-raw-value-email-domain! instance)
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;

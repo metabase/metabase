@@ -212,6 +212,8 @@ config:
     llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
+    llm-azure-deployment-name: null
+    llm-azure-model-family: null
     llm-bedrock-access-key-id: null
     llm-bedrock-region: us-east-1
     llm-bedrock-secret-access-key: null
@@ -233,6 +235,7 @@ config:
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
+    llm-providers: []
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000

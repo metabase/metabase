@@ -26,6 +26,10 @@ const SIDE_EFFECT_FREE_PATHS = [
   // Trailing separator: rspack prefix-matches `include`, so a bare directory path
   // would also claim a sibling like `router-utils.ts` or a future `router-v8/`.
   path.join(REPO_ROOT, "frontend/src/metabase/router") + path.sep,
+  // The expression language: its barrel re-exports the autocomplete sources and
+  // the lezer tokenizer, so a picker importing only `getClauseDefinition` from it
+  // would otherwise pull CodeMirror into the initial bundle.
+  path.join(REPO_ROOT, "frontend/src/metabase/querying/expressions") + path.sep,
 ];
 
 const SIDE_EFFECT_FREE_RULE = {
