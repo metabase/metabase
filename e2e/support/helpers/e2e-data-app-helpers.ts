@@ -43,19 +43,11 @@ type MockDataAppOptions<TestEnv> = {
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
   /**
-   * Config a fixture reads at runtime, so it doesn't hard-code values that track
-   * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
-   * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
-   * bundle is evaluated as one script in the sandbox realm, the app reads it as a
-   * plain global. Typed by `DataAppTestEnv` by default; pass another fixture's
-   * type as `TestEnv` if it differs.
+   * Config a fixture reads at runtime, rather than hard-coding ids that track the
+   * Cypress snapshot.
    */
   testEnv?: TestEnv;
-  /**
-   * Hold the bundle response for this many ms, so the app's loading window is
-   * long enough to assert on. Without it a small mocked bundle can render before
-   * the test ever queries, making any "still loading" assertion racy.
-   */
+  /** Delays the bundle response, so a loading assertion has a window to catch. */
   bundleDelay?: number;
 };
 
