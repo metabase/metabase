@@ -53,6 +53,7 @@ export const checkboxOverrides = {
     defaultProps: {
       icon: CheckboxIcon,
       radius: "xs",
+      size: SIZES.sm,
     },
     classNames: {
       indicator: CheckboxStyles.cardIndicator,
