@@ -8,6 +8,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -30,17 +31,35 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
-  URLs require legacy MBQL format; non-pMBQL values pass through unchanged.
+  "Normalize a pMBQL query to legacy MBQL. Frontend /question# URLs require legacy
+  MBQL format; non-pMBQL values pass through unchanged.
 
-  Agent state is JSON-persisted between turns, which preserves namespaced keys but
-  turns enum values such as `:mbql/query`, `:field`, and `:day` into strings.
-  Normalize before converting so rehydrated queries have their canonical enum
-  values restored."
+  Normalizing against `::lib.schema/query` re-stamps `:lib/type`/`:lib/uuid` and
+  restores canonical enum values, so the subsequent `->legacy-MBQL` conversion
+  succeeds whether the query arrived fresh from a tool (keyword `:lib/type`),
+  rehydrated from JSON state (string enum values), or serialized by the frontend
+  (no `:lib/*` keys at all) — with one exception: a `:lib/*`-stripped query whose
+  positional refs (e.g. an order-by on the query's own aggregation) no longer
+  resolve after normalize still fails conversion. In that case the raw,
+  unconverted pMBQL is returned rather than raising."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (if (and (map? query) (:lib/type query))
-    (lib/->legacy-MBQL (lib/normalize query))
+  (if (and (map? query)
+           ;; A query is treated as pMBQL when it carries `:lib/type` or the structural
+           ;; `:stages` marker: a query round-tripped through the frontend's viewing
+           ;; context (`user_is_viewing` / `chart_configs`) comes back as pMBQL stripped
+           ;; of its internal `:lib/*` keys, so `:lib/type` alone under-detects it
+           ;; (BOT-1604 follow-up).
+           (or (:lib/type query) (:stages query)))
+    (try
+      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (catch Exception e
+        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
+        ;; match positional aggregation/expression refs embedded elsewhere in the query
+        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
+        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        (log/warn e "Failed to convert pMBQL query to legacy MBQL for link resolution")
+        query))
     query))
 
 (defn- query->url-hash
