@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { canUserCreateNativeQueries } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { canUserCreateNativeQueries } from "metabase/selectors/user";
 
 export const NativeQueryLabel = () => {
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);

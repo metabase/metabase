@@ -69,6 +69,7 @@ export const ConfirmModal = ({
             <Button
               color="feedback-negative"
               variant="filled"
+              data-autofocus
               {...confirmButtonProps}
               disabled={confirmButtonProps.disabled || confirming}
               onClick={handleConfirm}

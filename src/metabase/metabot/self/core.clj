@@ -37,10 +37,8 @@
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
-  Required:
-    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
-
   Optional:
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
@@ -49,6 +47,9 @@
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
                         tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :credentials      - Credentials of the provider connection serving this request, in that provider
+                        type's `:config` shape (e.g. `{:api-key ...}`), with the type's field defaults
+                        filled in. An adapter serves a request from these alone and throws without them.
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
@@ -63,6 +64,7 @@
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} :any]
+   [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
@@ -177,10 +179,12 @@
                                       :text (->> (map :delta chunks)
                                                  (str/join ""))}
                                pm (assoc :provider-metadata pm)))
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    :tool-input-start      (let [pm (:providerMetadata chunk)]
+                             (cond-> {:type      :tool-input
+                                      :id        (:toolCallId chunk)
+                                      :function  (:toolName chunk)
+                                      :arguments (parse-tool-arguments chunks)}
+                               pm (assoc :provider-metadata pm)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)

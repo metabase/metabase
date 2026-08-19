@@ -7,81 +7,95 @@ import {
 } from "./components/AvailabilityLayouts";
 
 /**
- * The AI auditing pages, each in its own chunk.
+ * The AI auditing pages, in one chunk. Every loader names it, so moving between
+ * usage, conversations, MCP and CLI does not cost a fetch each time.
  *
  * The plugin registry assigns these routes on every page load, so whatever they
  * name is in the initial bundle. The pages carry the charting and data grid
  * stack, which no other page needs on first paint.
+ *
+ * They sit under `components/` rather than a `pages/` directory, which is why
+ * the route-file lint rule reaches them by name instead.
+ *
+ * The route shape stays eager, so matching is unchanged. The availability gates
+ * above them still decide what renders, but they now decide a tick later: the
+ * router resolves a matched route's `lazy` before it commits, which means a page
+ * a gate is about to block is fetched anyway. That is a few tens of kilobytes on
+ * an admin page whose feature is switched off, in exchange for one splitting
+ * mechanism across the app.
  */
 const conversationStatsPage = () =>
-  import("./metabot-analytics/components/ConversationStatsPage").then(
-    ({ ConversationStatsPage }) => ({ Component: ConversationStatsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationStatsPage"
+  ).then(({ ConversationStatsPage }) => ({ Component: ConversationStatsPage }));
 
 const conversationsPage = () =>
-  import("./metabot-analytics/components/ConversationsPage").then(
-    ({ ConversationsPage }) => ({ Component: ConversationsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationsPage"
+  ).then(({ ConversationsPage }) => ({ Component: ConversationsPage }));
 
 const conversationDetailPage = () =>
-  import("./metabot-analytics/components/ConversationDetailPage").then(
-    ({ ConversationDetailPage }) => ({ Component: ConversationDetailPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/ConversationDetailPage"
+  ).then(({ ConversationDetailPage }) => ({
+    Component: ConversationDetailPage,
+  }));
 
 const metabotAnalyticsUpsellPage = () =>
-  import("./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage").then(
-    ({ MetabotAnalyticsUpsellPage }) => ({
-      Component: MetabotAnalyticsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage"
+  ).then(({ MetabotAnalyticsUpsellPage }) => ({
+    Component: MetabotAnalyticsUpsellPage,
+  }));
 
 const mcpAnalyticsSectionLayout = () =>
-  import("./mcp-analytics/components/McpAnalyticsSectionLayout").then(
-    ({ McpAnalyticsSectionLayout }) => ({
-      Component: McpAnalyticsSectionLayout,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./mcp-analytics/components/McpAnalyticsSectionLayout"
+  ).then(({ McpAnalyticsSectionLayout }) => ({
+    Component: McpAnalyticsSectionLayout,
+  }));
 
 const mcpUsagePage = () =>
-  import("./mcp-analytics/components/McpUsagePage").then(
-    ({ McpUsagePage }) => ({
-      Component: McpUsagePage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./mcp-analytics/components/McpUsagePage"
+  ).then(({ McpUsagePage }) => ({
+    Component: McpUsagePage,
+  }));
 
 const mcpEventsPage = () =>
-  import("./mcp-analytics/components/McpEventsPage").then(
-    ({ McpEventsPage }) => ({ Component: McpEventsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./mcp-analytics/components/McpEventsPage"
+  ).then(({ McpEventsPage }) => ({ Component: McpEventsPage }));
 
 const cliAnalyticsSectionLayout = () =>
-  import("./cli-analytics/components/CliAnalyticsSectionLayout").then(
-    ({ CliAnalyticsSectionLayout }) => ({
-      Component: CliAnalyticsSectionLayout,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./cli-analytics/components/CliAnalyticsSectionLayout"
+  ).then(({ CliAnalyticsSectionLayout }) => ({
+    Component: CliAnalyticsSectionLayout,
+  }));
 
 const cliUsagePage = () =>
-  import("./cli-analytics/components/CliUsagePage").then(
-    ({ CliUsagePage }) => ({
-      Component: CliUsagePage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./cli-analytics/components/CliUsagePage"
+  ).then(({ CliUsagePage }) => ({
+    Component: CliUsagePage,
+  }));
 
 const cliCallsPage = () =>
-  import("./cli-analytics/components/CliCallsPage").then(
-    ({ CliCallsPage }) => ({
-      Component: CliCallsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-auditing" */ "./cli-analytics/components/CliCallsPage"
+  ).then(({ CliCallsPage }) => ({
+    Component: CliCallsPage,
+  }));
 
 /**
  * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
- * hand by the time the click lands.
+ * hand by the time the click lands. These pages share a chunk, so the first
+ * hover covers the whole section.
  *
  * `/usage` renders the stats page or the upsell page depending on the license,
- * so hovering it asks for both. Section registrations match nested paths by
- * prefix; leaf registrations only add the chunk unique to that route.
+ * so hovering it asks for both. The conversation detail page takes the trailing
+ * slash, which keeps the link to the list from dragging it in as well.
  */
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
 registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);
@@ -91,11 +105,7 @@ registerPagePrefetch(
   conversationDetailPage,
 );
 registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
-registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpUsagePage);
-registerPagePrefetch(Urls.monitorAiAuditingMcpEvents(), mcpEventsPage);
 registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
-registerPagePrefetch(Urls.monitorAiAuditingCli(), cliUsagePage);
-registerPagePrefetch(Urls.monitorAiAuditingCliCalls(), cliCallsPage);
 
 function getMcpAnalyticsRoutes() {
   return (

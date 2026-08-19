@@ -523,6 +523,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.split_panels"?: SeriesSettingDefinition<Value, Props>;
+  "graph.stack_value_format"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
@@ -652,11 +656,12 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-// TODO: add component property for the react component instead of the intersection
-export type Visualization = ComponentType<
+export type VisualizationComponent = ComponentType<
   VisualizationProps & VisualizationPassThroughProps
-> &
-  VisualizationDefinition;
+>;
+
+// TODO: add component property for the react component instead of the intersection
+export type Visualization = VisualizationComponent & VisualizationDefinition;
 
 export type VisualizationDefinition = {
   name?: string;
@@ -675,10 +680,6 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
-  // True for visualizations that render through the (lazily loaded)
-  // EChartsRenderer. Used to prefetch the echarts chunk while the chart's data
-  // is still loading. See prefetchEChartsRenderer.
-  usesEChartsRenderer?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

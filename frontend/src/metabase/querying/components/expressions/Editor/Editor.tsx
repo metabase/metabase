@@ -39,7 +39,7 @@ import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
-type EditorProps = {
+export type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
   initialClause?: Lib.Expressionable | null;

@@ -1,8 +1,10 @@
-import type { ComponentType } from "react";
+import { type ComponentType, lazy } from "react";
+import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
+import { retry } from "metabase/utils/retry";
 import type {
   IconName,
   RawSeries,
@@ -12,6 +14,7 @@ import type {
 
 import type {
   Visualization,
+  VisualizationComponent,
   VisualizationDefinition,
 } from "../types/visualization";
 
@@ -19,12 +22,22 @@ import type {
 // bundles register full components carrying their definition statics.
 export type RegisteredVisualization = Visualization | VisualizationDefinition;
 
+// A definition can be registered together with a loader for its component, so
+// the chart itself stays out of the initial bundle. The loaded module carries
+// its definition statics, the same as an eagerly registered visualization.
+export type VisualizationComponentLoader = () => Promise<Visualization>;
+
 export const visualizations = new Map<
   VisualizationDisplay,
   RegisteredVisualization
 >();
 const aliases = new Map<string, RegisteredVisualization>();
 const settingWidgets = new Map<string, ComponentType<any>>();
+const componentLoaders = new Map<
+  VisualizationDisplay,
+  VisualizationComponentLoader
+>();
+const lazyComponents = new Map<VisualizationDisplay, VisualizationComponent>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -40,13 +53,18 @@ export function setDefaultVisualization(
   defaultVisualization = visualization;
 }
 
+// A component is a function, a class, or one of the exotic objects that memo,
+// forwardRef and lazy return. A bare definition is a plain object.
 function isVisualizationComponent(
   visualization: RegisteredVisualization | undefined,
-) {
-  return typeof visualization === "function";
+): visualization is Visualization {
+  return isValidElementType(visualization);
 }
 
-export function registerVisualization(visualization: RegisteredVisualization) {
+export function registerVisualization(
+  visualization: RegisteredVisualization,
+  loadComponent?: VisualizationComponentLoader,
+) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -56,6 +74,12 @@ export function registerVisualization(visualization: RegisteredVisualization) {
       t`Visualization must define an 'identifier' static variable: ` +
         visualization.name,
     );
+  }
+  // Record the loader before the checks below, which return early when this
+  // identifier is already registered. Both registries are one module in
+  // Storybook, where static-viz registers the bare definitions first.
+  if (loadComponent) {
+    componentLoaders.set(identifier, loadComponent);
   }
   if (visualizations.has(identifier)) {
     const registeredVisualization = visualizations.get(identifier);
@@ -91,6 +115,111 @@ export function registerVisualization(visualization: RegisteredVisualization) {
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
+}
+
+/**
+ * The component that renders a display type, wrapped in `lazy` when the
+ * definition was registered with a loader. Callers must render it inside a
+ * Suspense boundary.
+ */
+export function getVisualizationComponent(
+  display: VisualizationDisplay | null,
+): VisualizationComponent | undefined {
+  const visualization = getVisualization(display);
+
+  if (visualization == null) {
+    return undefined;
+  }
+
+  if (isVisualizationComponent(visualization)) {
+    return visualization;
+  }
+
+  const { identifier } = visualization;
+  const cachedComponent = lazyComponents.get(identifier);
+  if (cachedComponent) {
+    return cachedComponent;
+  }
+
+  const loadComponent = componentLoaders.get(identifier);
+  if (!loadComponent) {
+    return undefined;
+  }
+
+  const component = lazy(() =>
+    retry(loadComponent, {
+      maxRetries: 2,
+      shouldRetry: () => true,
+      delayMs: (attempt) => 300 * 2 ** attempt,
+    })
+      .then((Chart) => ({ default: Chart }))
+      .catch((error) => {
+        // React keeps a rejected lazy rejected for the life of the object, so
+        // reusing this one would fail every later render until a reload. Drop
+        // it and the next render builds one that downloads again.
+        lazyComponents.delete(identifier);
+        throw error;
+      }),
+  );
+  lazyComponents.set(identifier, component);
+  return component;
+}
+
+/**
+ * Start downloading a chart's chunk before it is rendered, typically while its
+ * data query is still in flight, so the chunk loads in parallel with the data.
+ * The bundler de-duplicates the request with the one `lazy` makes.
+ */
+export function prefetchVisualizationComponent(
+  display: VisualizationDisplay | null,
+) {
+  const visualization = getVisualization(display);
+
+  if (visualization != null && !isVisualizationComponent(visualization)) {
+    // A prefetch failure is not worth surfacing: the render path downloads the
+    // chunk again and reports the error there if it still fails.
+    componentLoaders
+      .get(visualization.identifier)?.()
+      .catch(() => undefined);
+  }
+}
+
+/**
+ * Load chart components and register them in place of their definitions, so
+ * charts render in one pass. Awaiting the loaders is not enough on its own:
+ * `lazy` suspends on its first render even when the module is already in
+ * memory, which a visual regression test captures as the fallback.
+ *
+ * Defaults to every registered chart. Tests should name the displays they
+ * render, so a spec does not pay to load the other twenty.
+ */
+export async function loadVisualizationComponents(
+  displays?: VisualizationDisplay[],
+): Promise<void> {
+  const wanted = displays
+    ? displays.map((display) => getVisualization(display)?.identifier)
+    : Array.from(componentLoaders.keys());
+
+  await Promise.all(
+    wanted.map(async (identifier) => {
+      if (
+        identifier == null ||
+        isVisualizationComponent(visualizations.get(identifier))
+      ) {
+        return;
+      }
+      const loadComponent = componentLoaders.get(identifier);
+      if (!loadComponent) {
+        return;
+      }
+      try {
+        registerVisualization(await loadComponent());
+      } catch {
+        // One chart that fails to load should not stop the rest. It stays
+        // lazy, and the render path reports the failure.
+      }
+    }),
+  );
 }
 
 export function registerSettingWidgets(

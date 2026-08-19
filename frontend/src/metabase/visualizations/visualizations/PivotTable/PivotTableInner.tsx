@@ -372,12 +372,12 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       }
 
       if (updatedClicked.dimensions) {
-        updatedClicked.dimensions = updatedClicked.dimensions.map(
-          ({ colIdx, ...item }) => ({
-            ...item,
-            column:
-              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
-          }),
+        updatedClicked.dimensions = updatedClicked.dimensions.flatMap(
+          ({ colIdx, ...item }) => {
+            const column =
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null;
+            return column ? [{ ...item, column }] : [];
+          },
         );
       }
 

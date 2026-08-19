@@ -476,7 +476,7 @@
                                  :parameters (json/encode [{:type   "category"
                                                             :value  "456"
                                                             :target ["variable" ["template-tag" "foo"]]
-                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+                                                            :id     "abc123"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -526,6 +526,21 @@
                                                                     :target ["dimension" ["template-tag" "venue_id"]],
                                                                     :type "id",
                                                                     :value nil}]))))))))))
+
+(deftest execute-public-card-with-invalid-parameters-test
+  (testing "GET /api/public/card/:uuid/query -- malformed `parameters` is rejected with a 400"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {}]
+        (let [url (str "public/card/" uuid "/query")]
+          (testing "valid JSON that is not a sequence of parameter maps"
+            (client/client :get 400 url
+                           :parameters (json/encode {:_PRICE_ 3})))
+          (testing "a sequence of maps missing the required :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:value 3}])))
+          (testing "a parameter with a non-scalar garbage :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:id {:not "a string"} :value 3}]))))))))
 
 ;; Cards with required params
 (defn- do-with-required-param-card! [f]

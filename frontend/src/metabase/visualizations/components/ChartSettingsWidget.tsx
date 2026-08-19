@@ -44,11 +44,10 @@ const ChartSettingsWidget = ({
   return (
     <Box
       hidden={hidden}
-      className={cx({
+      className={cx(S.root, {
         [FormS.FormField]: isFormField,
         [S.inline]: inline && !hidden,
       })}
-      mx="lg"
       mb="lg"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}

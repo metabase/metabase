@@ -1,4 +1,4 @@
-import dayjs from "dayjs";
+import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 
 import {
   DATE_RANGE_FORMAT_SPECS,
@@ -8,8 +8,8 @@ import {
   formatDateTimeWithUnit,
 } from "./date";
 
-import "dayjs/locale/es";
-import "dayjs/locale/fr";
+loadDayjsLocale("es");
+loadDayjsLocale("fr");
 
 describe("formatDateTimeRangeWithUnit", () => {
   afterEach(() => {

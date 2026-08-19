@@ -1,8 +1,6 @@
 (ns metabase.metabot.self.claude
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
@@ -279,16 +277,11 @@
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:name         (or tool-name "unknown")
-     :description  doc
-     :input_schema (mjs/transform params {:additionalProperties false})}))
+  [tool]
+  (let [{:keys [name description parameters]} (schema/tool-function tool)]
+    {:name         (or name "unknown")
+     :description  description
+     :input_schema parameters}))
 
 (defn- add-tools-cache-breakpoint
   "Attach an ephemeral cache_control marker to the last tool in `tools`.
@@ -369,13 +362,13 @@
 
 (defn- list-all-models
   "Fetch the full Anthropic model catalog (`GET /v1/models`).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   [{:keys [credentials ai-proxy?]}]
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-anthropic-api-key)))]
-                                    {:url     (llm/llm-anthropic-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"x-api-key" k}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -387,7 +380,8 @@
 
 (defn list-models
   "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -483,8 +477,10 @@
       (assoc :temperature temperature))))
 
 (mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model input tools ai-proxy?] :as opts
+  "Perform a streaming request to Claude API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing."
+  [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
@@ -492,10 +488,10 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [api-key  (not-empty (llm/llm-anthropic-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "anthropic" "Anthropic"
                                           (when api-key
-                                            {:url     (llm/llm-anthropic-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"x-api-key" api-key}})
                                           ai-proxy?)
               response (core/request auth

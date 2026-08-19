@@ -9,6 +9,7 @@
 (p/import-vars
  [metabase.query-permissions.impl
   can-query-table?
+  check-parameter-field-permissions
   can-run-query?
   check-card-read-perms
   check-card-result-metadata-data-perms

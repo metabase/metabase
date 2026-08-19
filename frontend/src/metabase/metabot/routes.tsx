@@ -3,15 +3,21 @@ import * as Urls from "metabase/urls";
 
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 
+/**
+ * The two pages keep separate chunk names. The Slack landing page has nothing to
+ * do with the conversation page, so one name would make either fetch both.
+ */
 const metabotConversationPage = () =>
-  import("./components/MetabotConversationPage").then(
-    ({ MetabotConversationPage }) => ({ Component: MetabotConversationPage }),
-  );
+  import(
+    /* webpackChunkName: "metabot" */ "./components/MetabotConversationPage"
+  ).then(({ MetabotConversationPage }) => ({
+    Component: MetabotConversationPage,
+  }));
 
 const slackConnectSuccess = () =>
-  import("./components/SlackConnectSuccess").then(
-    ({ SlackConnectSuccess }) => ({ Component: SlackConnectSuccess }),
-  );
+  import(
+    /* webpackChunkName: "metabot-slack-connect" */ "./components/SlackConnectSuccess"
+  ).then(({ SlackConnectSuccess }) => ({ Component: SlackConnectSuccess }));
 
 registerPagePrefetch(
   `/${Urls.CONVERSATION_BASE_PATH}/`,
