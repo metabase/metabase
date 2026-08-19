@@ -282,6 +282,31 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
+    // Everything the CLI drives is superuser-gated, starting with the draft it
+    // asks for first, so a key that is not an admin's gets nowhere.
+    it("refuses to synchronize at all for a key that is not an admin's", () => {
+      declareDataAppQueries(APP_ROOT(), [
+        { name: "Orders", tableId: ORDERS_ID },
+      ]);
+
+      cy.request("POST", "/api/api-key", {
+        name: `data-app-sync-e2e-non-admin-${Date.now()}`,
+        group_id: USER_GROUPS.COLLECTION_GROUP,
+      }).then(({ body: key }) => {
+        syncDataAppResources(key.unmasked_key, APP_ROOT()).should(
+          ({ ok, error }) => {
+            expect(ok, "sync-resources should have refused").to.eq(false);
+            expect(error).to.contain("403");
+            expect(error, "refused at the first call it makes").to.contain(
+              `/api/apps/${APP_SLUG}/draft`,
+            );
+          },
+        );
+
+        savedQuestions().should("have.length", 0);
+      });
+    });
+
     it("refuses to reconcile permissions for a key that is not an admin's", () => {
       syncOneQuery().then(() => {
         cy.request({
