@@ -156,6 +156,14 @@
                             :display_name "Num Toucans"
                             :base_type    :type/Integer}]))
 
+(deftest ^:parallel engines-test
+  (testing "GET /api/database/engines"
+    (let [engines (mt/user-http-request :rasta :get 200 "database/engines")]
+      (testing "returns connection properties per engine"
+        (is (=? {:driver-name "H2"} (:h2 engines))))
+      (testing "H2 is superseded so it stays out of the UI DB edit forms"
+        (is (= "deprecated" (get-in engines [:h2 :superseded-by])))))))
+
 (deftest ^:parallel get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"

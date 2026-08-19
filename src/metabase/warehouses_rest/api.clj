@@ -505,6 +505,13 @@
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? db)           (assoc :can-manage true)))
 
+(api.macros/defendpoint :get "/engines" :- [:map-of :keyword :map]
+  "Return connection properties and supported features for every available database engine.
+
+  Declared before `/:id` so the literal path matches before the numeric-id route."
+  []
+  (driver.u/available-drivers-info))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
