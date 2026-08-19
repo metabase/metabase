@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase.mcp.callback-api-test
+(ns ^:synchronized metabase.mcp.callback-api-test
   (:require
    [clojure.test :refer :all]
    [metabase.mcp.session :as mcp.session]
