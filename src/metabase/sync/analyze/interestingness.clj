@@ -85,9 +85,9 @@
                                            [:= :active true]
                                            [:= :dimension_interestingness nil]
                                            [:not-in :visibility_type ["sensitive" "retired"]]
-                                           [:in :table_id {:select [:id]
-                                                           :from   [(t2/table-name :model/Table)]
-                                                           :where  [:= :db_id (u/the-id database)]}]]})))
+                                           [:in :table_id ^:allow-subquery {:select [:id]
+                                                                            :from   [(t2/table-name :model/Table)]
+                                                                            :where  [:= :db_id (u/the-id database)]}]]})))
 
 (mu/defn score-fields-for-db!
   "Score interestingness for all qualifying Fields in `database`."

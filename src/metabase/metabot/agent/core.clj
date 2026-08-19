@@ -8,12 +8,13 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -194,17 +195,27 @@
                     (contains? success-ids (:id p))))
              parts)))))
 
+(defn- truncated?
+  "Whether the provider cut this iteration off at its output-token limit. A truncated
+  turn may contain a half-streamed tool call, so it must not continue the loop."
+  [parts]
+  (some #(and (= (:type %) :usage)
+              (= (:finish-reason %) "length"))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
-       (not (terminal-tool-call? terminal-tools parts))))
+       (not (terminal-tool-call? terminal-tools parts))
+       (not (truncated? parts))))
 
 (defn- finish-reason
   "Determine why the agent loop stopped."
   [iteration max-iterations terminal-tools parts]
   (cond
+    (truncated? parts)                         :length
     (>= iteration max-iterations)              :max-iterations
     (terminal-tool-call? terminal-tools parts) :terminal-tool
     :else                                      :stop))
@@ -494,7 +505,7 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model provider-util/strip-metabase-prefix)
+  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
                   "unknown")]
     (map (fn [part]
            (if (= (:type part) :usage)
@@ -565,7 +576,9 @@
 
             :else
             (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-              (log/info "Agent loop complete" {:iterations iteration :reason reason})
+              (if (= reason :length)
+                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
               (assoc loop-state
                      :status :done
                      ;; surfaced so run-agent-loop can record it on the turn span
@@ -660,7 +673,8 @@
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
-                      scope/*current-loadable-skill-ids*       (atom #{})]
+                      scope/*current-loadable-skill-ids*       (atom #{})
+                      metabot.perms/*cache*                    (atom {})]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream

@@ -6,12 +6,18 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
+   [metabase.channel.impl.email :as channel.email]
+   [metabase.channel.impl.http :as channel.http]
+   [metabase.channel.impl.slack :as channel.slack]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -44,6 +50,48 @@
     #(= "channel" (namespace (keyword %)))]
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
+(def ^:private TestChannelDetails
+  [:map
+   [:return-type  [:enum "return-value" "throw"]]
+   [:return-value {:optional true} :any]])
+
+(defn- channel-body-schema
+  [common-entries & {:keys [details-optional?]}]
+  (let [details-entry (fn [schema]
+                        (if details-optional?
+                          [:details {:optional true} [:maybe schema]]
+                          [:details schema]))]
+    [:merge
+     (into [:map] common-entries)
+     (into [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+                    :dispatch         (fn [m]
+                                        (let [channel-type (some-> (:type m) keyword)]
+                                          (when (and channel-type (= "channel" (namespace channel-type)))
+                                            channel-type)))}]
+           (concat
+            [[:channel/http  [:map (details-entry channel.http/HTTPDetails)]]
+             [:channel/email [:map [:details {:optional true} [:maybe channel.email/EmailDetails]]]]
+             [:channel/slack [:map (details-entry channel.slack/SlackDetails)]]]
+            (when config/is-test?
+              [[:channel/metabase-test [:map (details-entry TestChannelDetails)]]])
+            [[nil [:map [:details {:optional true}
+                         [:maybe (into [:or]
+                                       (concat
+                                        (when config/is-test?
+                                          [TestChannelDetails])
+                                        [channel.slack/SlackDetails
+                                         channel.http/HTTPDetails
+                                         channel.email/EmailDetails]))]]]]]))]))
+
+(defn- details-schema-for-type
+  [channel-type]
+  (condp = channel-type
+    :channel/http          channel.http/HTTPDetails
+    :channel/email         channel.email/EmailDetails
+    :channel/slack         channel.slack/SlackDetails
+    :channel/metabase-test (when config/is-test? TestChannelDetails)
+    nil))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -52,12 +100,11 @@
   "Create a channel"
   [_route-params
    _query-params
-   {channel-name :name, :as body} :- [:map
-                                      [:name        ms/NonBlankString]
-                                      [:description {:optional true} [:maybe ms/NonBlankString]]
-                                      [:type        ChannelType]
-                                      [:details     ms/Map]
-                                      [:active      {:optional true} [:maybe {:default true} :boolean]]]]
+   {channel-name :name, :as body} :- (channel-body-schema
+                                      [[:name        ms/NonBlankString]
+                                       [:description {:optional true} [:maybe ms/NonBlankString]]
+                                       [:type        ChannelType]
+                                       [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (perms/check-has-application-permission :setting)
   (when (t2/exists? :model/Channel :name channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
@@ -84,13 +131,17 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
-            [:name        {:optional true} [:maybe ms/NonBlankString]]
-            [:description {:optional true} [:maybe ms/NonBlankString]]
-            [:type        {:optional true} [:maybe ChannelType]]
-            [:details     {:optional true} [:maybe ms/Map]]
-            [:active      {:optional true} [:maybe :boolean]]]]
+   body :- (channel-body-schema
+            [[:name        {:optional true} [:maybe ms/NonBlankString]]
+             [:description {:optional true} [:maybe ms/NonBlankString]]
+             [:type        {:optional true} [:maybe ChannelType]]
+             [:active      {:optional true} [:maybe :boolean]]]
+            :details-optional? true)]
   (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
+    (when (and (:details body) (nil? (:type body)))
+      (when-let [schema (details-schema-for-type (:type channel-before-update))]
+        (when-not (mr/validate schema (:details body))
+          (throw (ex-info (tru "Invalid channel details") {:status-code 400})))))
     (t2/update! :model/Channel id body)
     (u/prog1 (t2/select-one :model/Channel id)
       (events/publish-event! :event/channel-update {:object          <>
@@ -120,8 +171,7 @@
   "Test a channel connection"
   [_route-params
    _query-params
-   {:keys [type details]} :- [:map
-                              [:type    ChannelType]
-                              [:details ms/Map]]]
+   {:keys [type details]} :- (channel-body-schema
+                              [[:type ChannelType]])]
   (perms/check-has-application-permission :setting)
   (test-channel-connection! type details))

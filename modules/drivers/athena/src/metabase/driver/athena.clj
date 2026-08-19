@@ -371,7 +371,7 @@
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.

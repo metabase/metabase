@@ -30,19 +30,12 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
-import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
-import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
-import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
-import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
@@ -73,7 +66,7 @@ import {
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { getCollectionTimelineRoutes } from "metabase/timelines/collections/routes";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
@@ -110,28 +103,56 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  import("metabase/query_builder/containers/QueryBuilder").then(
-    ({ QueryBuilder }) => ({ Component: QueryBuilder }),
-  );
+  import(
+    /* webpackChunkName: "query-builder" */ "metabase/query_builder/containers/QueryBuilder"
+  ).then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
 const metabotQueryBuilder = () =>
-  import("metabase/query_builder/components/MetabotQueryBuilder").then(
-    ({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }),
-  );
+  import(
+    /* webpackChunkName: "metabot-query-builder" */ "metabase/query_builder/components/MetabotQueryBuilder"
+  ).then(({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
  * nothing outside the document page needs on first paint.
  */
-const documentPage = () =>
-  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
-    Component: DocumentPageOuter,
+/**
+ * The dashboard, in its own chunk. Its three modal children defer separately, so
+ * opening one does not depend on the page chunk having arrived.
+ */
+const dashboardApp = () =>
+  import(
+    /* webpackChunkName: "dashboard" */ "metabase/dashboard/containers/DashboardApp/DashboardApp"
+  ).then(({ DashboardApp }) => ({ Component: DashboardApp }));
+
+const automaticDashboardApp = () =>
+  import(
+    /* webpackChunkName: "automatic-dashboard" */ "metabase/dashboard/containers/AutomaticDashboardApp"
+  ).then(({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }));
+
+const metricsViewerPage = () =>
+  import(
+    /* webpackChunkName: "metrics-viewer" */ "metabase/metrics-viewer"
+  ).then(({ MetricsViewerPage }) => ({
+    Component: MetricsViewerPage,
   }));
 
-const commentsSidesheet = () =>
-  import("metabase/documents/components/CommentsSidesheet").then(
-    ({ CommentsSidesheet }) => CommentsSidesheet,
+const tableDetailPage = () =>
+  import(
+    /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
+  ).then(({ TableDetailPage }) => ({ Component: TableDetailPage }));
+
+const documentPage = () =>
+  import(/* webpackChunkName: "documents" */ "metabase/documents/routes").then(
+    ({ DocumentPageOuter }) => ({
+      Component: DocumentPageOuter,
+    }),
   );
+
+const commentsSidesheet = () =>
+  import(
+    /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
+  ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
@@ -153,6 +174,9 @@ registerPagePrefetch("/document/", documentPage);
 // against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
 // in exchange for the sidesheet already being there when it is opened.
 registerPagePrefetch("/document/", commentsSidesheet);
+registerPagePrefetch("/dashboard/", dashboardApp);
+registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
+registerPagePrefetch("/explore", metricsViewerPage);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -274,21 +298,25 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               {
                 path: "collection/:slug",
                 element: <CollectionLanding />,
-                children: toRouteObjects(
-                  <>
-                    {modalRoute("move", MoveCollectionModal, { noWrap: true })}
-                    {modalRoute("archive", ArchiveCollectionModal, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("permissions", CollectionPermissionsModal)}
-                    {modalRoute(
-                      "move-questions-dashboard",
-                      MoveQuestionsIntoDashboardsModal,
-                    )}
-                    {PLUGIN_COLLECTIONS.cleanUpRoute}
-                    {getCollectionTimelineRoutes()}
-                  </>,
-                ),
+                children: [
+                  ...toRouteObjects(
+                    <>
+                      {modalRoute("move", MoveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("archive", ArchiveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute(
+                        "move-questions-dashboard",
+                        MoveQuestionsIntoDashboardsModal,
+                      )}
+                      {PLUGIN_COLLECTIONS.cleanUpRoute}
+                    </>,
+                  ),
+                  ...getCollectionTimelineRoutes(),
+                ],
               },
 
               {
@@ -311,20 +339,42 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "dashboard/:slug",
-                element: <DashboardApp />,
-                children: toRouteObjects(
-                  <>
-                    {modalRoute("move", DashboardMoveModalConnected, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("copy", DashboardCopyModalConnected, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("archive", ArchiveDashboardModalConnected, {
-                      noWrap: true,
-                    })}
-                  </>,
-                ),
+                lazy: dashboardApp,
+                children: [
+                  lazyModalRoute(
+                    "move",
+                    () =>
+                      import(
+                        /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+                      ).then(
+                        ({ DashboardMoveModalConnected }) =>
+                          DashboardMoveModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                  lazyModalRoute(
+                    "copy",
+                    () =>
+                      import(
+                        /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+                      ).then(
+                        ({ DashboardCopyModalConnected }) =>
+                          DashboardCopyModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                  lazyModalRoute(
+                    "archive",
+                    () =>
+                      import(
+                        /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+                      ).then(
+                        ({ ArchiveDashboardModalConnected }) =>
+                          ArchiveDashboardModalConnected,
+                      ),
+                    { noWrap: true },
+                  ),
+                ],
               },
 
               {
@@ -407,21 +457,18 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 ],
               },
 
-              { path: "explore", element: <MetricsViewerPage /> },
+              { path: "explore", lazy: metricsViewerPage },
 
               {
                 path: "table",
                 children: [
                   { path: ":slug", lazy: queryBuilder },
-                  {
-                    path: ":tableId/detail/:rowId",
-                    element: <TableDetailPage />,
-                  },
+                  { path: ":tableId/detail/:rowId", lazy: tableDetailPage },
                 ],
               },
 
               // INDIVIDUAL DASHBOARDS
-              { path: "/auto/dashboard/*", element: <AutomaticDashboardApp /> },
+              { path: "/auto/dashboard/*", lazy: automaticDashboardApp },
 
               // REFERENCE
               ...getReferenceRoutes(),

@@ -1,6 +1,7 @@
 import type { ConnectedProps } from "react-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   addCardToDashboard,
   addHeadingDashCardToDashboard,
@@ -44,11 +45,11 @@ import {
 import {
   createNewTab,
   deleteTab,
-  duplicateTab,
   moveTab,
   renameTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import { duplicateTab } from "metabase/dashboard/actions/tabs-thunks";
 import { connect } from "metabase/redux";
 import {
   initialize,
@@ -57,10 +58,6 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
-import {
-  canManageSubscriptions,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import {

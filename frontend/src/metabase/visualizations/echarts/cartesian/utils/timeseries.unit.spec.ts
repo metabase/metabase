@@ -1,12 +1,4 @@
-import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
-
-// Enable timezone and UTC plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-import { getVisualizationTransformed } from "metabase/visualizations";
+import { dayjs } from "metabase/dayjs";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
@@ -31,6 +23,8 @@ import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import { getVisualizationTransformed } from "../../../lib/registry";
 
 function createMockChartMeasurements(
   outerWidth: number,

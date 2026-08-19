@@ -1,12 +1,11 @@
 import { parseParameterValue } from "metabase/parameters/utils/parameter-parsing";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNotNull } from "metabase/utils/types";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
-} from "metabase/visualizations/lib/formatting/date";
-import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
+} from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -34,6 +33,7 @@ import type {
   Parameter,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 interface Target {
   id: Parameter["id"];
@@ -48,7 +48,7 @@ interface SourceFilters {
   userAttribute: (userAttribute: string) => boolean;
 }
 
-interface ExtraData {
+export interface ClickBehaviorExtraData {
   dashboard?: Dashboard;
   parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
@@ -273,7 +273,7 @@ export function formatSourceForTarget(
     clickBehavior,
   }: {
     data: ValueAndColumnForColumnNameDate;
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -364,7 +364,7 @@ export function getTargetForQueryParams(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ) {
@@ -381,7 +381,7 @@ function getParameter(
     extraData,
     clickBehavior,
   }: {
-    extraData: ExtraData;
+    extraData: ClickBehaviorExtraData;
     clickBehavior: ClickBehavior;
   },
 ): Parameter | undefined {

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/utils/formatting/nullable";
+import { formatNullable } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
   MinRowsError,

@@ -1,10 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import {
   getDashboard,
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
-} from "metabase/dashboard/selectors";
+} from "metabase/dashboard/shell-selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
@@ -14,7 +15,6 @@ import {
 } from "metabase/query_builder/selectors/question";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
-import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 

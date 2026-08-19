@@ -85,6 +85,9 @@ import {
 } from "../utils";
 
 import {
+  REMOVE_PARAMETER,
+  RESET_PARAMETERS,
+  SET_PARAMETER_VALUE,
   type SetDashCardAttributesOpts,
   setDashCardAttributes,
   setDashboardAttributes,
@@ -381,7 +384,6 @@ export function removeParameterAndReferences(
   });
 }
 
-export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
@@ -824,7 +826,6 @@ export const setParameterFilteringParameters = createThunkAction(
     },
 );
 
-export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
@@ -879,7 +880,6 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
 export const resetParameters = createThunkAction(
   RESET_PARAMETERS,
   () => (_dispatch, getState) => {
@@ -1141,3 +1141,5 @@ export const closeAutoApplyFiltersToast = createThunkAction(
     }
   },
 );
+
+export { REMOVE_PARAMETER, RESET_PARAMETERS, SET_PARAMETER_VALUE };

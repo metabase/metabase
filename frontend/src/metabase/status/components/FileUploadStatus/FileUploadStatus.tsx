@@ -2,12 +2,11 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useTableQuery } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
 import { isEmpty } from "metabase/utils/validate";
-import type { CollectionId, TableId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import { isUploadAborted, isUploadInProgress } from "../../utils";
@@ -29,19 +28,16 @@ export const FileUploadStatus = () => {
   );
 
   // Unjustified type cast. FIXME
-  const tables = Object.keys(groupedTables) as TableId[];
-  // Unjustified type cast. FIXME
   const collections = Object.keys(groupedCollections) as CollectionId[];
 
   return (
     <>
-      {tables.map((tableId) => {
+      {Object.entries(groupedTables).map(([tableId, tableUploads]) => {
         return (
           <FileUploadStatusContent
             key={`uploads-table-${tableId}`}
-            uploads={groupedTables[tableId]}
+            uploads={tableUploads}
             resetUploads={resetUploads}
-            tableId={tableId}
           />
         );
       })}
@@ -61,12 +57,10 @@ export const FileUploadStatus = () => {
 
 const FileUploadStatusContent = ({
   collectionId,
-  tableId,
   uploads,
   resetUploads,
 }: {
   collectionId?: CollectionId;
-  tableId?: TableId;
   uploads: FileUpload[];
   resetUploads: () => void;
 }) => {
@@ -75,25 +69,21 @@ const FileUploadStatusContent = ({
   );
   const isVisible = useStatusVisibility(isActive);
 
-  const { isLoading: tableLoading, data: table } = useTableQuery({
-    id: tableId,
-    enabled: !isEmpty(tableId),
-  });
+  // Table uploads carry their destination name in the upload itself, resolved
+  // before the upload started. Collection uploads read it from the cache the
+  // collection page already populated.
   const { isLoading: collectionLoading, data: collection } =
     useGetCollectionQuery(
       isEmpty(collectionId) ? skipToken : { id: collectionId },
     );
 
-  const isLoading = !!(tableLoading || collectionLoading);
-  const hasData = !!(table || collection);
+  const uploadDestinationName = uploads[0]?.tableName ?? collection?.name;
 
-  if (!isVisible || (isLoading && !hasData)) {
+  if (!isVisible || (collectionLoading && !collection)) {
     return null;
   }
 
-  const uploadDestination = table ?? collection;
-
-  if (!uploadDestination) {
+  if (!uploadDestinationName) {
     return null;
   }
 
@@ -102,7 +92,7 @@ const FileUploadStatusContent = ({
       <FileUploadStatusLarge
         uploads={uploads}
         resetUploads={resetUploads}
-        uploadDestination={uploadDestination}
+        uploadDestinationName={uploadDestinationName}
       />
     </ErrorBoundary>
   );

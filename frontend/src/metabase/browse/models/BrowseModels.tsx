@@ -8,14 +8,14 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,

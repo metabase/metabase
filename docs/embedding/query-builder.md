@@ -12,7 +12,7 @@ You can embed one of Metabase's query editors so people can build questions from
 - [Visual query builder](#embed-the-visual-query-builder)
 - [SQL editor](#embed-the-sql-editor)
 
-Both query editors need a logged-in Metabase account: to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see. In an embed, [SSO](./introduction.md#sso-embeds) is how you provide that account, so neither editor works in a [guest embed](./introduction.md#guest-embedding). Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
+Both query editors need a logged-in Metabase account: to run a new query, Metabase has to know who's asking, so it can work out which data they're allowed to see. In an embed, [SSO](./introduction.md#components-with-sso-authentication) is how you provide that account, so neither editor works in a [guest embed](./introduction.md#components-with-guest-authentication). Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-authentication).
 
 And because everyone queries through their own Metabase account, people can only build questions on databases their groups have permission to query. See [data permissions](../permissions/data.md).
 

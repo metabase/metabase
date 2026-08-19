@@ -3,23 +3,21 @@ import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
-  type TimeEnabled,
   currency,
-  displayNameForColumn,
   getCurrency,
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+  hasHour,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
-import { hasHour } from "metabase/utils/formatting/datetime-utils";
 import MetabaseSettings from "metabase/utils/settings";
-import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import {
+  displayNameForColumn,
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/formatting";
+} from "metabase/value-formatting";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -53,8 +51,11 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Series,
+  TimeEnabled,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
 

@@ -281,11 +281,11 @@
                   :where  [:and
                            [:= :id thread-id]
                            [:not= :completed_at nil]
-                           [:not-exists {:select [1]
-                                         :from   [:exploration_query]
-                                         :where  [:and
-                                                  [:= :exploration_thread_id thread-id]
-                                                  [:= :status "running"]]}]]}))
+                           [:not-exists ^:allow-subquery {:select [1]
+                                                          :from   [:exploration_query]
+                                                          :where  [:and
+                                                                   [:= :exploration_thread_id thread-id]
+                                                                   [:= :status "running"]]}]]}))
       (t2/delete! :model/ExplorationQuery :exploration_thread_id thread-id)
       ;; Enqueue planning inside the reset transaction so the plan message publishes iff the reset
       ;; commits (:queue/exploration-plan is :transactional :require).
@@ -332,6 +332,9 @@
 
 ;;; ----------------------------------------- schemas -----------------------------------------
 
+(def ^:private ExploreFilterScalar
+  [:maybe [:or :string number? :boolean]])
+
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector.
   `:display_value` is required — the FE formats it at click time and both the thread name
@@ -341,14 +344,14 @@
     [:map
      [:operator       [:= "="]]
      [:field_ref      [:sequential :any]]
-     [:value          :any]
+     [:value          ExploreFilterScalar]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]
    ["between"
     [:map
      [:operator       [:= "between"]]
      [:field_ref      [:sequential :any]]
-     [:values         [:tuple :any :any]]
+     [:values         [:tuple ExploreFilterScalar ExploreFilterScalar]]
      [:display_value  ms/NonBlankString]
      [:dimension_name {:optional true} [:maybe :string]]]]])
 
@@ -776,22 +779,26 @@
   `current_user_last_touched_at` is non-null on every row. `limit`/`offset` are appended only when
   paged."
   [user-id limit offset]
-  (let [my-touches {:union-all
-                    [{:select [[:model_id :eid] [:timestamp :ts]]
-                      :from   [:revision]
-                      :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
-                     {:select [[:id :eid] [:created_at :ts]]
-                      :from   [:exploration]
-                      :where  [:= :creator_id user-id]}]}
+  (let [my-touches ^:allow-subquery
+        {:union-all
+         [^:allow-subquery
+          {:select [[:model_id :eid] [:timestamp :ts]]
+           :from   [:revision]
+           :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
+          ^:allow-subquery
+          {:select [[:id :eid] [:created_at :ts]]
+           :from   [:exploration]
+           :where  [:= :creator_id user-id]}]}
         ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
         ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
         ;; that selects from the first silently returns no rows under our HoneySQL/H2 stack.
-        agg        {:select   [:eid [[:max :ts] :max_ts]]
-                    :from     [[my-touches :my_touches]]
-                    :group-by [:eid]}]
+        agg        ^:allow-subquery
+        {:select   [:eid [[:max :ts] :max_ts]]
+         :from     [[my-touches :my_touches]]
+         :group-by [:eid]}]
     (cond-> {:select   [:exploration.*
                         [:agg.max_ts :current_user_last_touched_at]
-                        [[:over [[:count :*] {} :total_count]]]]
+                        [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
              :from     [:exploration]
              :join     [[agg :agg] [:= :agg.eid :exploration.id]]
              :where    [:and
