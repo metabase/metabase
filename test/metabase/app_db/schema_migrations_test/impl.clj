@@ -23,6 +23,7 @@
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -80,12 +81,12 @@
      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
      ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false
-                 ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
-                 ;; prewarming the test-data Database within it.
+       (binding [custom-migrations.util/*allow-temp-scheduling* false
                  data.impl/*skip-dataset-prewarm?* true]
-         (f conn))))))
+         (mc/binding (mdb.connection/application-db-handle)
+           (mdb.connection/application-db driver data-source)
+           (fn []
+             (f conn))))))))
 
 (defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a

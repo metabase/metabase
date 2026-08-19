@@ -387,6 +387,7 @@
    :uses #{auth-provider
            connection-pool
            funnysql
+           global-system
            task.secure-delegate
            util
            util.classloader
@@ -752,6 +753,7 @@
    :uses #{api
            api-routes
            app-db
+           global-system
            mcp
            metabot
            metabot.llm
@@ -1182,6 +1184,12 @@
            geojson
            permissions
            util}}
+
+  global-system
+  {:team "Graphy"
+   :api #{metabase.global-system.mutable-component
+          metabase.global-system.system}
+   :uses #{}}
 
   glossary
   {:team "Gadget"
