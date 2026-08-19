@@ -77,9 +77,14 @@ function createLinter() {
   ];
   return (file) => {
     const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+    // The registry records what a file does at import, so its imports of other effect files do not count.
     return linter
       .verify(source, config, { filename: path.join(REPO_ROOT, file) })
-      .filter((message) => message.ruleId === RULE_NAME);
+      .filter(
+        (message) =>
+          message.ruleId === RULE_NAME &&
+          message.messageId !== "importsGlobalEffect",
+      );
   };
 }
 
