@@ -841,7 +841,7 @@ export function getShowSymbol(
     return true;
   }
 
-  return _.max(Object.values(numberOfDotsBySeriesKey)) <= maxNumberOfDots;
+  return Math.max(...Object.values(numberOfDotsBySeriesKey)) <= maxNumberOfDots;
 }
 
 function getStackedDataLabelFormatter(
