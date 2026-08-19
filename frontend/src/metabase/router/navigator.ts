@@ -80,6 +80,21 @@ export function getIsNavigationPending(): boolean {
   );
 }
 
+/**
+ * The pathname of the navigation the router has accepted but not committed, or
+ * null when none is pending.
+ *
+ * Callers that only want to avoid clobbering a navigation to a *different*
+ * destination need the target, not just whether one is pending: a pending
+ * navigation to the same path they are about to write is theirs to keep, not a
+ * redirect to sit out. Under React 19 the pending window stays open across the
+ * lazy chunk load a render longer, so a blanket "is anything pending" check
+ * drops legitimate same-destination URL syncs.
+ */
+export function getPendingNavigationPath(): string | null {
+  return currentRouter?.state.navigation.location?.pathname ?? null;
+}
+
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {
