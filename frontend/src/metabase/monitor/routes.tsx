@@ -4,7 +4,10 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
 import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
-import { ModelPersistenceLogJobModal } from "metabase/monitor/tools/components/ModelPersistenceLogJobs";
+// From the file rather than the barrel beside it: the barrel also re-exports
+// the page this file loads lazily, so importing the modal through it would hold
+// the page in the initial bundle.
+import { ModelPersistenceLogJobModal } from "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobModal";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
@@ -69,8 +72,10 @@ const logs = () =>
   }));
 
 const modelPersistenceLogPage = () =>
-  import("metabase/monitor/tools/components/ModelPersistenceLogJobs").then(
-    ({ ModelPersistenceLogPage }) => ({ Component: ModelPersistenceLogPage }),
+  import("metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs").then(
+    ({ ModelPersistenceLogPage }) => ({
+      Component: ModelPersistenceLogPage,
+    }),
   );
 
 export function getMonitorRoutes() {
