@@ -21,7 +21,10 @@
    [:core_user :settings]
    [:channel :details]
    [:auth_identity :credentials]
-   [:report_card :result_metadata]])
+   [:report_card :result_metadata]
+   [:metabase_field :fingerprint]
+   [:metabase_fieldvalues :values]
+   [:metabase_fieldvalues :human_readable_values]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
@@ -54,8 +57,10 @@
   this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
-  [conn table column encrypt-str-fn clear-undecryptable? & kv-args]
-  (doseq [{:keys [id value]} (apply t2/select [table :id [column :value]] kv-args)]
+  [conn table column encrypt-str-fn clear-undecryptable?]
+  ;; paged: metabase_field and metabase_fieldvalues are far too big to hold a whole column in memory
+  (doseq [ids (partition-all 1000 (t2/select-pks-vec table))
+          {:keys [id value]} (t2/select [table :id [column :value]] :id [:in ids])]
     (when (some? value)
       (let [decrypted (encryption/maybe-decrypt value)]
         (if (encryption/possibly-encrypted-string? decrypted)
@@ -67,18 +72,6 @@
             (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
                             {:table table, :id id, :column column})))
           (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))))
-
-(defn- rotate-derived-warehouse-data!
-  "Drop fingerprints and FieldValues for sync to rebuild, rather than rewrite the two biggest tables a row at a time.
-  Admin-entered remappings can't be rebuilt, so those rows are re-encrypted instead."
-  [conn encrypt-str-fn]
-  (t2/update! :conn conn :metabase_field
-              {:fingerprint [:not= nil]}
-              {:fingerprint nil, :fingerprint_version 0})
-  (t2/delete! :conn conn :metabase_fieldvalues :human_readable_values nil)
-  (doseq [column [:values :human_readable_values]]
-    (reencrypt-encrypted-json-column! conn :metabase_fieldvalues column encrypt-str-fn false
-                                      :human_readable_values [:not= nil])))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -95,10 +88,7 @@
         (doseq [[table column] encrypted-json-columns]
           (reencrypt-encrypted-json-column! conn table column encrypt-str-fn
                                             (and (= check-status :valid)
-                                                 (contains? clearable-when-undecryptable [table column]))))
-        ;; skipped when first encrypting a plaintext db: those rows read fine either way
-        (when (= check-status :valid)
-          (rotate-derived-warehouse-data! conn encrypt-str-fn)))
+                                                 (contains? clearable-when-undecryptable [table column])))))
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
