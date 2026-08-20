@@ -67,7 +67,7 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-data-analyst-role! (mt/user->id :rasta)
           (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Card       {card-id :id, entity-id :entity_id}
+                         :model/Card       {card-id :id}
                          {:collection_id collection-id
                           :database_id   (mt/id)
                           :dataset_query (lib/query (mt/metadata-provider)
@@ -78,10 +78,9 @@
                                    :query (lib/query (mt/metadata-provider)
                                                      (lib.metadata/card (mt/metadata-provider) card-id))}}]
             (mt/with-current-user (mt/user->id :rasta)
-              (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-                (is (str/includes? output "name=\"Private source Card\""))
-                (is (not (str/includes? output entity-id)))
-                (is (not (str/includes? output "<query>")))))))))))
+              (let [{:keys [output status-code]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+                (is (= 403 status-code))
+                (is (= "You don't have permissions to do that." output))))))))))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 
