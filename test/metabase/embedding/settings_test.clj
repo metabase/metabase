@@ -334,18 +334,18 @@
 (deftest show-modular-embed-terms-falls-back-to-the-settings-it-replaces-test
   (testing "With nothing set, the merged setting stands for the two it replaces"
     (doseq [legacy-setting [:show-simple-embed-terms :show-sdk-embed-terms]]
-      (testing (str "still owed when only " legacy-setting " is unaccepted")
+      (testing (str "shows the legalese when only " legacy-setting " is unaccepted (true)")
         (mt/with-temporary-setting-values [show-simple-embed-terms false
                                            show-sdk-embed-terms false
                                            show-modular-embed-terms nil]
           (setting/set-value-of-type! :boolean legacy-setting true)
           (is (true? (embed.settings/show-modular-embed-terms)))))))
-  (testing "accepted when both have been accepted"
+  (testing "does not show the legalese when both have been accepted (false)"
     (mt/with-temporary-setting-values [show-simple-embed-terms false
                                        show-sdk-embed-terms false
                                        show-modular-embed-terms nil]
       (is (false? (embed.settings/show-modular-embed-terms)))))
-  (testing "an explicit value wins over the legacy fallback, so accepting stays accepted"
+  (testing "an explicit value wins over the legacy fallback, so accepting (false) keeps the legalese hidden"
     (mt/with-temporary-setting-values [show-simple-embed-terms true
                                        show-sdk-embed-terms true
                                        show-modular-embed-terms false]
