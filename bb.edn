@@ -385,13 +385,10 @@
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
-                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
-                        ["7"
-                         "Cloud driver + its files changed"
-                         "RUN"
-                         (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
+                        ["4"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed (skip list ignored)"]
+                        ["5"    "Configured status = skip (PR branches)" "SKIP" "driver is skipped by CI config"]
+                        ["6"    "On master or release branch"             "RUN"  "master/release branch (skip list ignored)"]
+                        ["7"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
                         ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
                         ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
                         ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
@@ -402,16 +399,18 @@
                         ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
         "\nThis table decides only WHETHER a driver runs. Whether its failures GATE is a separate\n"
         "question, answered at the end of the job by ci-conductor's quarantine rules.\n"
-        "\nNote: the remote quarantine list (status = skip) is ignored entirely on master and\n"
-        "release-* branches -- every driver runs and gates there (Priority 4 is bypassed).\n"
+        "\nNote: the remote skip list (status = skip) is ignored entirely on master and\n"
+        "release-* branches -- every driver runs and gates there (Priority 5 is bypassed). It is\n"
+        "also ignored for any driver whose own modules/drivers/* files the run changes.\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
-        "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
-        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
+        "  ci:run-all-drivers        Force-run ALL drivers (overrides the skip list)\n"
+        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides the skip list)\n"
         "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
         "\n## Driver Status (from the CI driver config)\n\n"
-        "  skip   Listed with status \"skip\" in ci-test-config.json: not run at all (quarantined;\n"
-        "         ci:run-DRIVER overrides). Every other driver runs and gates as usual.\n"
+        "  skip   Listed with status \"skip\" in ci-test-config.json: not run at all (changing the\n"
+        "         driver's own files or ci:run-DRIVER overrides). Every other driver runs and\n"
+        "         gates as usual.\n"
         "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
