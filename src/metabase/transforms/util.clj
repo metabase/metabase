@@ -19,7 +19,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
@@ -59,9 +59,8 @@
   (if-not api/*current-user-id*
     true
     (try
-      (let [preprocessed (qp.preprocess/preprocess query)]
-        (qp.store/with-metadata-provider (:database preprocessed)
-          (qp.perms/check-query-permissions* preprocessed))
+      (qp.setup/with-qp-setup [query query]
+        (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
         true)
       (catch clojure.lang.ExceptionInfo _ false))))
 
