@@ -3,7 +3,9 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.bug-reporting.settings :as bug-reporting.settings]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
@@ -241,6 +243,12 @@
   (perms/check-has-application-permission :setting)
   (app-info))
 
+(defn- current-user-reporter
+  "Name and email of the user making the request, for attributing a bug report."
+  []
+  (let [{:keys [common_name email]} @api/*current-user*]
+    {:name common_name, :email email}))
+
 ;; Handle bug report submissions to Slack
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -248,14 +256,20 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/bug-report"
-  "Send diagnostic information to the configured Slack channels."
+  "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The reporter is
+  the current user; a report sent without one stays anonymous."
   [_route-params
    _query-params
    {diagnostic-info :diagnosticInfo} :- [:map
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]
+  (api/check (bug-reporting.settings/bug-reporting-enabled)
+             400
+             (tru "Bug reporting is not enabled."))
   (try
-    (let [bug-report-channel (slack/bug-report-channel)
+    (let [diagnostic-info (cond-> diagnostic-info
+                            (:reporter diagnostic-info) (assoc :reporter (current-user-reporter)))
+          bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content "diagnostic-info.json")
           blocks (create-slack-message-blocks diagnostic-info file-info)]
