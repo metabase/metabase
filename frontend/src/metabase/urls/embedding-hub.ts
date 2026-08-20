@@ -18,6 +18,10 @@ export function embeddingHubAuthentication() {
   return `${ROOT_URL}/authentication`;
 }
 
+export function embeddingHubAuthenticationSsoSetup() {
+  return `${ROOT_URL}/authentication/sso-setup`;
+}
+
 export function embeddingHubAppearance() {
   return `${ROOT_URL}/appearance`;
 }
