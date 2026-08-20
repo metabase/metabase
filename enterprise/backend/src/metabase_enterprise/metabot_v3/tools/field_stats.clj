@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.field-stats
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.metabot-v3.metadata-perms :as metabot-v3.perms]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
@@ -33,6 +34,37 @@
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
+(defn- check-column-table-perms!
+  "Re-check permissions on the table a drilled-into column actually belongs to.
+
+  `visible-columns`/`filterable-columns` resolve through the permission-blind metadata provider and
+  surface columns from tables the caller never named: reached by an FK, brought in by an explicit join,
+  carried up from a previous stage, or inherited through a source card. Keying this gate on
+  `:lib/source` misses shapes — a join in a nested stage arrives as `:source/previous-stage`, a model's
+  join as `:source/card` — so it keys on the column's own `:table-id` instead.
+
+  Three bars, each matching what the query processor would demand to produce the same value:
+
+  - An implicit FK join is an ad-hoc join the caller would have to build themselves, so it takes query
+    permission on the joined table.
+  - Every other table takes data access — including the one the caller named. The entry check that
+    reached this tool is `api/read-check`, and `mi/can-read? :model/Table` passes on a bare
+    `manage-table-metadata` grant with `view-data` still `:blocked`, so exempting the named table would
+    hand that user the fingerprint statistics and cached values of a table they cannot query.
+  - Every table takes the column-level sandbox check. Reading a table says nothing about which of its
+    columns a sandbox exposes, so the read check the entity already passed does not cover this."
+  [col]
+  (let [table-id (:table-id col)
+        field-id (:id col)]
+    (when (int? table-id)
+      (api/check-403
+       (contains? (if (= :source/implicitly-joinable (:lib/source col))
+                    (metabot-v3.perms/queryable-table-ids #{table-id})
+                    (metabot-v3.perms/data-accessible-table-ids #{table-id}))
+                  table-id))
+      (when-let [allowed (get (metabot-v3.perms/sandbox-restricted-fields #{table-id}) table-id)]
+        (api/check-403 (contains? allowed field-id))))))
+
 (defn- table-field-stats
   [table-id agent-field-id limit]
   (try
@@ -41,6 +73,7 @@
         (let [field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
               visible-cols (lib/visible-columns query)
               col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+          (check-column-table-perms! col)
           {:structured-output (field-statistics col limit)})
         {:output (str "No table found with ID " table-id)}))
     (catch Exception ex
@@ -54,6 +87,7 @@
         (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix card-id)
               visible-cols (lib/visible-columns query)
               col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix visible-cols))]
+          (check-column-table-perms! col)
           {:structured-output (field-statistics col limit)})
         {:output (str "No " card-type " found with ID " card-id)}))
     (catch Exception ex
@@ -67,6 +101,7 @@
         (let [field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
               filterable-cols (lib/filterable-columns query)
               col (:column (metabot-v3.tools.u/resolve-column {:field-id agent-field-id} field-id-prefix filterable-cols))]
+          (check-column-table-perms! col)
           {:structured-output (field-statistics col limit)})
         {:output (str "No metric found with ID " metric-id)}))
     (catch Exception ex

@@ -16,6 +16,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -126,7 +127,7 @@
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::queries.schema/query]]]
+                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
   (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
@@ -158,7 +159,8 @@
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                      :result_metadata :type :source_card_id :card_schema
-                                     [{:select   [:status]
+                                     [^:allow-subquery
+                                      {:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
                                                   [:= :moderated_item_type "card"]
@@ -470,6 +472,7 @@
 
 (defn- card-query
   [db-id model type-str]
+  ^:allow-subquery
   {:select [[:%count.* model]]
    :from   [:report_card]
    :where  [:and
@@ -490,11 +493,13 @@
 
 (defmethod database-usage-query :segment
   [_ db-id]
+  ^:allow-subquery
   {:select [[:%count.* :segment]]
    :from   [:segment]
-   :where  [:in :table_id {:select [:id]
-                           :from   [:metabase_table]
-                           :where  [:= :db_id db-id]}]})
+   :where  [:in :table_id ^:allow-subquery
+            {:select [:id]
+             :from   [:metabase_table]
+             :where  [:= :db_id db-id]}]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -948,7 +953,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details :map]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1001,6 +1006,8 @@
                                                                                  [:refingerprint      {:optional true} [:maybe :boolean]]
                                                                                  [:details            {:optional true} [:maybe ms/Map]]
                                                                                  [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                                 [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+                                                                                 [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
                                                                                  [:description        {:optional true} [:maybe :string]]
                                                                                  [:caveats            {:optional true} [:maybe :string]]
                                                                                  [:points_of_interest {:optional true} [:maybe :string]]
@@ -1198,6 +1205,7 @@
 (defn- delete-all-field-values-for-database! [database-or-id]
   (t2/query-one {:delete-from :metabase_fieldvalues
                  :where      [:in :field_id
+                              ^:allow-subquery
                               {:select     [:f.id]
                                :from       [[:metabase_field :f]]
                                :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
@@ -1442,7 +1450,10 @@
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+  ;; whether a database exists and whether it is reachable are both things only an admin gets to find out, and this
+  ;; is only ever reached from the admin screens
+  (api/check-superuser)
+  (let [{:keys [engine details]} (api/check-404 (t2/select-one :model/Database :id id))]
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
     (binding [driver.settings/*allow-testing-h2-connections* true]
       (if-let [err-map (test-database-connection engine details)]

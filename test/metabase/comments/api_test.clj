@@ -286,6 +286,25 @@
                    (mt/user-http-request :lucky :post 403 (str "comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
 
+(deftest mention-wrong-entity-id-test
+  (testing "an entityId that isn't a user ID never reaches the query that resolves the recipients"
+    (mt/with-temp [:model/Document {doc-id :id} {:name       "Mentions Doc"
+                                                 :creator_id (mt/user->id :lucky)}]
+      (mt/with-model-cleanup [:model/Comment :model/Notification]
+        (mt/with-fake-inbox
+          (notification.seed/seed-notification!)
+          (let [content (tiptap [:smartLink {:model "user" :entityId {:data "string"}}])]
+            (testing "the comment is still created, and the notification path does not blow up"
+              (is (=? {:content content}
+                      (mt/user-http-request :rasta :post 200 "comment/"
+                                            {:target_type "document"
+                                             :target_id   doc-id
+                                             :content     content
+                                             :html        "<p>@someone</p>"}))))
+            (testing "only the document creator is notified"
+              (is (= #{(:email (mt/fetch-user :lucky))}
+                     (set (keys (first (swap-vals! mt/inbox empty)))))))))))))
+
 (deftest mention-entities-test
   (testing "We can get users to mention"
     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}

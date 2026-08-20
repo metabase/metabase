@@ -25,6 +25,7 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -1181,6 +1182,28 @@
           (is (= "You can't specify a value for :price if it's already set in the JWT."
                  (client/client :get 400 url))))))))
 
+(deftest chain-filter-parameters-blob-test
+  (testing "the `?parameters=` JSON blob is held to the parameter value schema"
+    (with-chain-filter-fixtures! [{:keys [dashboard values-url]}]
+      (t2/update! :model/Dashboard (:id dashboard)
+                  {:embedding_params {"category_id" "enabled", "price" "enabled"}})
+      (letfn [(values [status parameters]
+                (client/client :get status (values-url) :parameters (json/encode parameters)))]
+        (testing "a scalar value constrains the returned values"
+          (is (= {:values [[40 "Japanese"] [67 "Steakhouse"]] :has_more_values false}
+                 (values 200 {:_PRICE_ 4}))))
+        (testing "a list of scalars is accepted"
+          (is (= {:values [[40 "Japanese"] [67 "Steakhouse"]] :has_more_values false}
+                 (values 200 {:_PRICE_ [4]}))))
+        (testing "values that are not scalars or lists of scalars are rejected"
+          (doseq [value [{:a 1}
+                         [["field" 1 nil]]
+                         [{:a 1}]
+                         [[["concat" "a" "b"]]]]]
+            (testing (pr-str value)
+              (is (= "Invalid parameter values"
+                     (values 400 {:_PRICE_ value}))))))))))
+
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
@@ -1851,6 +1874,26 @@
         (let [token (card-token card-id)]
           (is (png? (mt/user-http-request
                      :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1" token)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest tile-embedding-params-test
+  (testing "the map tile endpoints run their parameters through the embedding_params rules, like the query endpoints"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true
+                                                              :embedding_params {:venue_name "locked"}
+                                                              :parameters       [{:id   "_VENUE_NAME_"
+                                                                                  :name "Venue name"
+                                                                                  :slug "venue_name"
+                                                                                  :type "string/="}]}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (testing "a tile still renders when the JWT supplies the locked parameter"
+          (is (png? (mt/user-http-request
+                     :crowberto :get 200
+                     (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                             (dash-token dashboard-id {:params {:venue_name "Tempest"}}) dashcard-id card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 

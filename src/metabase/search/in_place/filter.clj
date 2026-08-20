@@ -26,8 +26,8 @@
   (:import
    (java.time LocalDate)))
 
-(def ^:private true-clause [:inline [:= 1 1]])
-(def ^:private false-clause [:inline [:= 0 1]])
+(def ^:private true-clause [:= [:inline 1] [:inline 1]])
+(def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -351,6 +351,10 @@
                 is-superuser?]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
+      ;; `indexed-entity` is the only x58 legacy-search model with :app-user visibility. Do this before
+      ;; optional filters: without a search string the older per-model predicate is never generated.
+      (search.permissions/sandboxed-or-impersonated-user? search-context)
+      (disj "indexed-entity")
       (not   is-superuser?)        (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))
       (some? created-at)           (set/intersection (:created-at feature->supported-models))

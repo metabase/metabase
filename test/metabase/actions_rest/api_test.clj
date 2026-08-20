@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -318,6 +319,34 @@
                              (mt/user-http-request :rasta :delete 403 action-path))))
                     (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
                     (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path)))))))))))))
+
+(deftest create-and-update-ignore-public-uuid-and-creator-id-test
+  (testing "POST /api/action and PUT /api/action/:id ignore public_uuid/made_public_by_id/creator_id:
+           only POST /api/action/:id/public_link, which requires superuser, may set these"
+    (mt/with-actions-enabled
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query users)}]
+          (let [malicious {:name       "malicious test"
+                           :type       "query"
+                           :model_id   card-id
+                           :database_id (t2/select-one-fn :database_id :model/Card :id card-id)
+                           :dataset_query (lib/native-query (mt/metadata-provider) "select 1")
+                           :public_uuid       (str (random-uuid))
+                           :made_public_by_id (mt/user->id :crowberto)
+                           :creator_id        (mt/user->id :crowberto)}
+                created   (mt/user-http-request :rasta :post 200 "action" malicious)]
+            (testing "Create ignores the smuggled fields"
+              (is (nil? (:public_uuid created)))
+              (is (nil? (:made_public_by_id created)))
+              (is (= (mt/user->id :rasta) (:creator_id created))))
+            (testing "Update ignores the smuggled fields, and can't overwrite an existing creator_id"
+              (let [updated (mt/user-http-request :rasta :put 200 (str "action/" (:id created))
+                                                  {:public_uuid       (str (random-uuid))
+                                                   :made_public_by_id (mt/user->id :crowberto)
+                                                   :creator_id        (mt/user->id :crowberto)})]
+                (is (nil? (:public_uuid updated)))
+                (is (nil? (:made_public_by_id updated)))
+                (is (= (mt/user->id :rasta) (:creator_id updated)))))))))))
 
 (deftest implicit-actions-on-non-raw-model-test
   (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
@@ -661,6 +690,52 @@
             (is (= "Actions are not enabled."
                    (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
 
+(deftest fetch-values-parameter-validation-test
+  (testing "GET /api/action/:action-id/execute"
+    ;; the request is rejected while decoding `:parameters`, before the handler runs, so no Action is needed
+    (let [url  (format "action/%d/execute" Integer/MAX_VALUE)
+          get! (fn [status & [parameters]]
+                 (apply mt/user-http-request :crowberto :get status url
+                        (when parameters [:parameters parameters])))]
+      (testing "a value that is not a scalar is rejected rather than dropped"
+        (doseq [[label value] {"a map"      {:data "string"}
+                               "a sequence" [1 2]}]
+          (testing label
+            (is (=? {:errors {:parameters "value must be a JSON object mapping parameter ids to scalar values."}}
+                    (get! 400 (json/encode {:id value})))))))
+      (testing "a blank parameter id is rejected"
+        (is (=? {:errors {:parameters "value must be a JSON object mapping parameter ids to scalar values."}}
+                (get! 400 (json/encode {"" 1})))))
+      (testing "anything that is not a JSON object is rejected, rather than blowing up while being decoded"
+        (doseq [value ["definitely-not-json" "[1,2]" "42" "null"]]
+          (testing (pr-str value)
+            (is (= "value must be a JSON object mapping parameter ids to scalar values."
+                   (get! 400 value))))))
+      (testing "`:parameters` is required"
+        (is (=? {:errors {:parameters some?}}
+                (get! 400))))
+      (testing "scalar values pass validation and reach the handler"
+        (doseq [value [1 "1" nil true]]
+          (testing (pr-str value)
+            (is (= "Not found."
+                   (get! 404 (json/encode {:id value}))))))))))
+
+(deftest execute-parameter-validation-test
+  (testing "POST /api/action/:id/execute"
+    ;; the request is rejected while decoding `:parameters`, before the handler runs, so no Action is needed
+    (let [url   (format "action/%d/execute" Integer/MAX_VALUE)
+          post! (fn [status parameters]
+                  (mt/user-http-request :crowberto :post status url {:parameters parameters}))]
+      (testing "a map value is rejected rather than dropped or normalized to nil -- it would otherwise reach the
+               write as query structure"
+        (is (=? {:errors {:parameters "nullable value must map parameter ids to scalar values."}}
+                (post! 400 {:id {:data "string"}}))))
+      (testing "scalars and sequences of them pass validation and reach the handler"
+        (doseq [value [1 "1" nil true [1 2] ["a" "b"]]]
+          (testing (pr-str value)
+            (is (= "Not found."
+                   (post! 404 {:id value})))))))))
+
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
@@ -676,3 +751,28 @@
                     :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
+
+(deftest update-model-id-permissions-test
+  (testing "PUT /api/action/:id may only repoint an Action at a model the user could have created it against"
+    (mt/with-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id}     {}
+                       :model/Collection {secret-coll :id} {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) secret-coll)
+          (mt/with-actions [{my-model :id}     {:type          :model
+                                                :collection_id coll-id
+                                                :dataset_query (mt/mbql-query users)}
+                            {action-id :action-id} {:type :query
+                                                    :dataset_query (mt/mbql-query users)}]
+            (mt/with-temp [:model/Card {secret-model :id} {:type          :model
+                                                           :collection_id secret-coll
+                                                           :dataset_query (mt/mbql-query users)}]
+              (testing "repointing at a model the user cannot write is rejected"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 (str "action/" action-id)
+                                             {:model_id secret-model, :type "query"})))
+                (is (= my-model (t2/select-one-fn :model_id :model/Action :id action-id))))
+              (testing "leaving the model alone is still allowed"
+                (is (some? (mt/user-http-request :rasta :put 200 (str "action/" action-id)
+                                                 {:model_id my-model, :type "query"})))))))))))

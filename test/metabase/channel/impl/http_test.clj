@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [compojure.core :as compojure]
    [compojure.route :as compojure.route]
    [metabase.channel.core :as channel]
@@ -49,7 +50,13 @@
    handler
    middlewares))
 
-(def middlewares [mw.json/wrap-json-body
+(defn- wrap-keywordize-json-body
+  [handler]
+  (fn [req]
+    (handler (update req :body #(cond-> % (map? %) walk/keywordize-keys)))))
+
+(def middlewares [wrap-keywordize-json-body
+                  mw.json/wrap-json-body
                   mw.json/wrap-streamed-json-response
                   wrap-params])
 

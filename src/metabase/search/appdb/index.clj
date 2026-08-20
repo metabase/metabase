@@ -118,14 +118,15 @@
                   :where  [:and
                            [:= :table_schema :%current_schema]
                            [:or
-                            [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
+                            [:like [:lower :table_name] "search\\_index\\_\\_%"]
                             ;; legacy table names
                             [:in [:lower :table_name]
-                             (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
+                             ["search_index" "search_index_next" "search_index_retired"]]]
                            [:not-in [:lower :table_name]
+                            ^:allow-subquery
                             {:select [:%lower.index_name]
                              :from   [(t2/table-name :model/SearchIndexMetadata)]
-                             :where  [:= :engine [:inline "appdb"]]}]]})))
+                             :where  [:= :engine "appdb"]}]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
@@ -166,7 +167,7 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
+          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]
