@@ -1,6 +1,6 @@
 import * as d3 from "d3";
-import dayjs from "dayjs";
 
+import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {
   computeTimeseriesDataInterval,
