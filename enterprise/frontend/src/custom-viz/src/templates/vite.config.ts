@@ -49,9 +49,14 @@ function metabaseDevServer() {
       const distDir = resolve(__dirname, "dist");
 
       server = createServer((req, res) => {
-        // Strip the query and fragment before anything treats this as a path: a request for
-        // `index.js?t=1` must serve `index.js`, not look for a file with the query in its name.
-        const url = (req.url ?? "/").split("?")[0].split("#")[0];
+        let url: string;
+        try {
+          url = new URL(req.url ?? "/", "http://localhost").pathname;
+        } catch {
+          res.writeHead(400);
+          res.end("Bad request");
+          return;
+        }
 
         // SSE endpoint for hot-reload
         if (url === "/__sse") {
