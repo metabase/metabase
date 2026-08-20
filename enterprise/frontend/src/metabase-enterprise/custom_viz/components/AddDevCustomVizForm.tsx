@@ -26,13 +26,7 @@ export function AddDevCustomVizForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
 
   const handleSubmit = useCallback(
-    async (values: FormState) => {
-      const devBundleUrl = values.devBundleUrl;
-
-      // The browser reads the manifest, because Metabase never requests the dev URL itself. Best-effort:
-      // a URL the CSP won't let us reach, or a dev server that isn't running, both land here. Submit
-      // anyway and let the backend explain — it validates the URL before it looks for a manifest, so it
-      // answers "must point at localhost" or "check that it is running" as appropriate.
+    async ({ values: { devBundleUrl } }: { values: FormState }) => {
       const manifest = await fetchDevServerManifest(devBundleUrl).catch(
         () => undefined,
       );
