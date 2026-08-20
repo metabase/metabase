@@ -410,8 +410,12 @@
   "Fetch a static asset from a dev base URL.
    Returns the bytes or nil on failure."
   ^bytes [^String base-url ^String asset-name]
-  (let [resp (http/get (dev-url base-url (asset-rel-path asset-name))
-                       (assoc dev-http-opts :as :byte-array))]
+  (let [resp (try
+               (http/get (dev-url base-url (asset-rel-path asset-name))
+                         (assoc dev-http-opts :as :byte-array))
+               (catch Exception e
+                 (rethrow-if-refused! e base-url)
+                 (throw e)))]
     ;; the manifest already fixes the image type this asset must be, so there is no separate allowlist
     (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
     (:body resp)))
