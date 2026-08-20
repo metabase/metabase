@@ -115,34 +115,40 @@
       (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
                             (cache/validate-bundle! bytes))))))
 
+(deftest loopback-host?-test
+  (testing "the name localhost, and any loopback IP literal in either family"
+    (doseq [host ["localhost" "127.0.0.1" "127.0.0.2" "127.1.2.3"
+                  "::1" "0:0:0:0:0:0:0:1" "[::1]"]]
+      (is (true? (cache/loopback-host? host)) host)))
+  (testing "anything that is not loopback"
+    (doseq [host ["10.0.0.5" "169.254.169.254" "0.0.0.0" "8.8.8.8" "" nil]]
+      (is (false? (cache/loopback-host? host)) (pr-str host))))
+  (testing "a name is never resolved, only parsed."
+    (doseq [host ["evil.com" "host.docker.internal" "localhost.evil.com" "127.0.0.1.evil.com"]]
+      (is (false? (cache/loopback-host? host)) host))))
+
 (deftest validate-dev-url-test
   (testing "normalizes an acceptable URL to a bare origin"
     (are [in out] (= out (cache/validate-dev-url! in "Dev server URL"))
-      "http://localhost:5174"  "http://localhost:5174"
-      "http://localhost:5174/" "http://localhost:5174"
-      "http://LOCALHOST:5174"  "http://localhost:5174"
-      "https://127.0.0.1:5174" "https://127.0.0.1:5174"
-      "http://[::1]:5174"      "http://[::1]:5174"
-      "http://localhost"       "http://localhost"))
-  (testing "SECURITY: rejects every scheme but http/https"
+      "http://LOCALHOST:5174/"  "http://localhost:5174"
+      "http://localhost"       "http://localhost"
+      "http://[::1]:5174"      "http://[::1]:5174"))
+  (testing "rejects every scheme but http/https"
     (doseq [url ["ftp://localhost:5174" "file:///etc/passwd" "jar:file:///app.jar!/secret"
                  "javascript:alert(1)" "localhost:5174"]]
       (is (thrown-with-msg? Exception #"http or https|not a valid URL"
                             (cache/validate-dev-url! url "Dev server URL"))
           url)))
-  (testing "SECURITY: rejects non-loopback hosts. The value widens the app document's CSP connect-src, and
-            the browser that does the fetching always runs on the developer's own machine, so nothing but a
-            local origin is ever legitimate."
-    (doseq [url ["http://host.docker.internal:5174" "http://10.0.0.5:5174" "http://169.254.169.254"
-                 "https://evil.com" "http://evil.com#@localhost" "http://localhost.evil.com"]]
-      (is (thrown-with-msg? Exception #"must point at localhost"
-                            (cache/validate-dev-url! url "Dev server URL"))
-          url)))
-  (testing "the refusal names the offending host, the same way for every host"
-    (is (thrown-with-msg? Exception #"must point at localhost, got: evil\.com$"
-                          (cache/validate-dev-url! "https://evil.com" "Dev server URL"))))
-  (testing "SECURITY: rejects anything richer than an origin, so only scheme://host[:port] reaches the header"
-    (doseq [url ["http://localhost:5174/evil" "http://localhost:5174?a=1" "http://localhost:5174#f"]]
+  (testing "a non-loopback host is refused, and named in the message"
+    (is (thrown-with-msg? Exception #"must point at localhost, got: example\.com$"
+                          (cache/validate-dev-url! "https://example.com" "Dev server URL")))
+    (testing "a URL that merely reads like localhost is judged on its actual authority"
+      (doseq [url ["http://localhost@example.com:5174" "http://example.com#@localhost"]]
+        (is (thrown-with-msg? Exception #"must point at localhost, got: example\.com$"
+                              (cache/validate-dev-url! url "Dev server URL"))
+            url))))
+  (testing "rejects anything richer than an origin, so only scheme://host[:port] reaches the header"
+    (doseq [url ["http://localhost:5174/example" "http://localhost:5174?a=1" "http://localhost:5174#f"]]
       (is (thrown-with-msg? Exception #"bare origin"
                             (cache/validate-dev-url! url "Dev server URL"))
           url))))

@@ -13,10 +13,10 @@
   `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
      ~@body))
 
-(defn- directive-for!
-  "The CSP `directive` the security middleware emits for a request made by `request-extras`
+(defn- csp-for!
+  "The whole `Content-Security-Policy` the security middleware emits for a request made by `request-extras`
    (e.g. `{:is-superuser? true}`)."
-  [directive request-extras]
+  [request-extras]
   (with-redefs [config/is-dev? false]
     (let [handler  (mw.security/add-security-headers
                     (fn [_req respond _raise] (respond {:status 200 :headers {} :body "ok"})))
@@ -45,15 +45,15 @@
                   (connect-src) and the icon (img-src) -- never as a script source, since the bundle is
                   evaluated from fetched text inside the near-membrane realm"
           (with-dev-mode-enabled
-            (let [su (directive-for! nil {:is-superuser? true})]
+            (let [su (csp-for! {:is-superuser? true})]
               (doseq [directive ["connect-src" "img-src"]]
                 (is (re-find (re-pattern (str directive " [^;]*http://localhost:5174")) su) directive))
               (is (not (re-find #"script-src [^;]*http://localhost:5174" su))))
             (doseq [request [{:is-superuser? false} {}]]
-              (is (not (str/includes? (directive-for! nil request) "http://localhost:5174"))
+              (is (not (str/includes? (csp-for! request) "http://localhost:5174"))
                   (pr-str request))))
           (testing "and nobody's does with dev mode off"
-            (is (not (str/includes? (directive-for! nil {:is-superuser? true}) "http://localhost:5174")))))
+            (is (not (str/includes? (csp-for! {:is-superuser? true}) "http://localhost:5174")))))
         (testing "SECURITY: a non-loopback row cannot reach the header. `validate-dev-url!` refuses these on
                   write, but rows stored before that check are still in the DB."
           (with-dev-mode-enabled

@@ -24,6 +24,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.net InetAddress)
    (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
 
@@ -290,9 +291,15 @@
 ;; the URL itself. So what is validated below is not an outbound request but a string that ends up in the app
 ;; document's CSP `connect-src`, see [[metabase-enterprise.custom-viz-plugin.csp]].
 
-(def loopback-hosts
-  "Hosts naming the machine the browser runs on. `URI.getHost` brackets IPv6 literals, e.g. `[::1]`."
-  #{"localhost" "127.0.0.1" "[::1]"})
+(defn loopback-host?
+  "Whether `host` names the machine the browser runs on: the name `localhost`"
+  [^String host]
+  (boolean
+   (when-not (str/blank? host)
+     (or (= "localhost" host)
+         (try
+           (.isLoopbackAddress (InetAddress/ofLiteral host))
+           (catch Exception _ false))))))
 
 (defn- parse-uri
   ^java.net.URI [^String url ^String label]
@@ -317,7 +324,7 @@
     (when-not (contains? #{"http" "https"} scheme)
       (throw (ex-info (str label " must use http or https, got: " (or scheme url))
                       {:status-code 400 :url url})))
-    (when-not (contains? loopback-hosts host)
+    (when-not (loopback-host? host)
       (throw (ex-info (str label " must point at localhost, got: " (or host url))
                       {:status-code 400 :url url})))
     (when-not (and (contains? #{nil "" "/"} (.getPath uri))

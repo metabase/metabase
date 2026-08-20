@@ -23,7 +23,7 @@
           scheme (some-> (.getScheme uri) u/lower-case-en)
           host   (some-> (.getHost uri) u/lower-case-en)
           port   (.getPort uri)]
-      (when (and scheme (contains? cache/loopback-hosts host))
+      (when (and scheme (cache/loopback-host? host))
         (str scheme "://" host (when (pos? port) (str ":" port)))))
     (catch Exception _ nil)))
 
