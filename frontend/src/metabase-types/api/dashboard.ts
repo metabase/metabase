@@ -37,6 +37,7 @@ import type {
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
+import type { TimelineEventsVisibility } from "./timeline";
 
 // x-ray dashboard have string ids
 export type DashboardId = number | string;
@@ -151,6 +152,7 @@ export type DashCardVisualizationSettings = {
   virtual_card?: VirtualCard;
   iframe?: string;
   column_settings?: Record<string, ColumnSettings>;
+  "timeline_events.visibility"?: TimelineEventsVisibility;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

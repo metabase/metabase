@@ -9,6 +9,7 @@ export * from "./DashboardActionMenu";
 export * from "./DashboardInfoButton";
 export * from "./DashboardSubscriptionsButton";
 export * from "./EditDashboardButton";
+export * from "./EventsButton";
 export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";
 export * from "./FullscreenToggle";
