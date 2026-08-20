@@ -70,7 +70,11 @@ export const createSankeyClickData = (
     clickData.column = event.data.hasInputs ? target.column : source.column;
     clickData.value = event.data.rawName;
 
-    clickData.data = getSankeyClickData(rawSeries, columnValues);
+    clickData.data = getSankeyClickData(rawSeries, {
+      ...columnValues,
+      [getColumnKey(source.column)]: event.data.rawName,
+      [getColumnKey(target.column)]: event.data.rawName,
+    });
   } else if (isSankeyEdgeEvent(event)) {
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
     if (!isNativeQuery(rawSeries[0].card)) {

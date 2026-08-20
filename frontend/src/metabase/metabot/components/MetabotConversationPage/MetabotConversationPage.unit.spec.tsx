@@ -193,7 +193,7 @@ describe("MetabotConversationPage", () => {
   it("shows an error when the conversation cannot be loaded", async () => {
     mockConversationDetail(404);
 
-    const { history } = setup({
+    const { router } = setup({
       metabotInitialState: createAskState(),
     });
 
@@ -202,7 +202,7 @@ describe("MetabotConversationPage", () => {
         timeout: ASYNC_TIMEOUT,
       }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.metabotConversation(CONVERSATION_ID),
     );
   });

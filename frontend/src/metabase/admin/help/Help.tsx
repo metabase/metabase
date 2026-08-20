@@ -12,12 +12,12 @@ import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 import { Box, Code, Group } from "metabase/ui";
 import { getBasename } from "metabase/utils/basename";
 

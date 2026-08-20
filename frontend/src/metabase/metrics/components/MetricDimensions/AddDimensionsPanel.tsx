@@ -8,7 +8,7 @@ import {
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { trackMetricDimensionAdded } from "metabase/metrics/analytics";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -116,7 +116,9 @@ export function AddDimensionsPanel({
             }
           />
         ) : (
-          <ScrollArea className={S.scrollArea} offsetScrollbars="present">
+          <ScrollArea
+            classNames={{ viewport: S.scrollAreaViewport, root: S.scrollArea }}
+          >
             <Accordion
               key={groupIds.join(",")}
               className={S.accordion}

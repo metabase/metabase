@@ -17,12 +17,12 @@
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -100,14 +100,6 @@
     (throw (invalid-region-ex region)))
   region)
 
-(defn- settings-credentials
-  "AWS credentials and region from the `llm-bedrock-*` settings."
-  []
-  {:access-key-id     (not-empty (llm/llm-bedrock-access-key-id))
-   :secret-access-key (not-empty (llm/llm-bedrock-secret-access-key))
-   :session-token     (not-empty (llm/llm-bedrock-session-token))
-   :region            (not-empty (llm/llm-bedrock-region))})
-
 (defn- missing-credentials-ex []
   (ex-info (tru "AWS Bedrock credentials are not configured")
            {:api-error   true
@@ -120,13 +112,12 @@
             :error-code :proxy-unsupported}))
 
 (defn- ensure-credentials
-  "Validate a Bedrock credentials map, falling back to [[settings-credentials]] when nil.
+  "Validate the credentials of the connection serving this request.
   Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
   [credentials]
-  (let [creds (or credentials (settings-credentials))]
-    (when-not (metabot.settings/provider-credentials-complete? "bedrock" creds)
-      (throw (missing-credentials-ex)))
-    (update creds :region #(validate-region (or (not-empty %) "us-east-1")))))
+  (when-not (llm.provider/config-complete? "bedrock" credentials)
+    (throw (missing-credentials-ex)))
+  (update credentials :region #(validate-region (or (not-empty %) "us-east-1"))))
 
 (defn- bedrock-error-msg
   "Canonical, status-specific Bedrock error message."
@@ -142,9 +133,9 @@
 
 (defn- bedrock-request
   "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
-  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is an optional
-  AWS credentials map; when nil, the `llm-bedrock-*` settings are used. `ai-proxy?` is accepted
-  for parity with the other provider adapters but is not supported: throws when true."
+  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is the AWS credentials map of
+  the connection serving this request. `ai-proxy?` is accepted for parity with the other provider adapters but is
+  not supported: throws when true."
   [{:keys [method path body as headers credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -248,8 +239,10 @@
 
 (mu/defn bedrock-raw
   "Perform a streaming request to the Bedrock mantle endpoint.
+  Opts map takes `:credentials` from the connection serving this request — `:access-key-id`, `:secret-access-key`,
+  `:region`, and (for temporary credentials) `:session-token` — and throws when they are missing.
   `:ai-proxy?` is not supported for Bedrock and throws when true."
-  [{:keys [model input tools ai-proxy?] :as opts
+  [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model :reasoning? false)
         family (model->family model)
@@ -266,17 +259,22 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [response (bedrock-request {:method    :post
-                                         :path      path
-                                         :as        :stream
-                                         :headers   headers
-                                         :body      (json/encode req)
-                                         :ai-proxy? ai-proxy?})]
+        (let [response (bedrock-request {:method      :post
+                                         :path        path
+                                         :as          :stream
+                                         :headers     headers
+                                         :body        (json/encode req)
+                                         :credentials credentials
+                                         :ai-proxy?   ai-proxy?})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "bedrock"
                                      :model    model
                                      :url      path
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "bedrock" bedrock-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
 

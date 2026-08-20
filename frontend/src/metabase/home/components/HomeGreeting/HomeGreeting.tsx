@@ -5,17 +5,16 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import animationStyles from "metabase/css/core/animation.module.css";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Flex, Tooltip } from "metabase/ui";
-
-import { getShowMetabotLogoAndGreeting } from "../../selectors";
 
 import S from "./HomeGreeting.module.css";
 
 export const HomeGreeting = (): JSX.Element | null => {
   const user = useSelector(getUser);
-  const showGreeting = useSelector(getShowMetabotLogoAndGreeting);
+  const showGreeting = useSetting("show-metabot");
   const name = user?.first_name;
   const message = useMemo(() => getMessage(name), [name]);
 

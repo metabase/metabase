@@ -1,5 +1,3 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
-
 import { createMockEntitiesState } from "__support__/store";
 import {
   createMockAdminState,
@@ -7,6 +5,7 @@ import {
   createMockPermissionsState,
   createMockSettingsState,
   createMockState,
+  seedApiQueryCache,
 } from "metabase/redux/store/mocks";
 import type { GroupsPermissions } from "metabase-types/api";
 import {
@@ -156,21 +155,13 @@ describe("getDatabasesPermissionEditor", () => {
         ],
         schemas: [createMockSchema({ id: "3:public", name: "public" })],
       }),
-      "metabase-api": {
-        ...createMockApiState(),
-        queries: {
-          "listPermissionsGroups({})": {
-            status: QueryStatus.fulfilled,
-            data: [groupWithoutMemberCount],
-            error: undefined,
-            originalArgs: {},
-            requestId: "test-request-groups",
-            endpointName: "listPermissionsGroups",
-            startedTimeStamp: Date.now(),
-            fulfilledTimeStamp: Date.now(),
-          },
+      "metabase-api": seedApiQueryCache(createMockApiState(), [
+        {
+          endpointName: "listPermissionsGroups",
+          arg: {},
+          value: [groupWithoutMemberCount],
         },
-      },
+      ]),
     });
 
     const editor = getDatabasesPermissionEditor(state, {

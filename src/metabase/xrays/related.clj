@@ -53,7 +53,7 @@
       ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
 
 (mu/defmethod definition :model/Segment
-  [segment :- [:map [:definition ::segments.schema/segment]]]
+  [segment :- [:map [:definition ::segments.schema/definition]]]
   (-> segment :definition :stages first :filters not-empty))
 
 (defmethod definition :model/Field

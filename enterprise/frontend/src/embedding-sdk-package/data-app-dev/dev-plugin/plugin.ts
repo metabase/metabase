@@ -47,6 +47,7 @@ export function dataAppSandboxDevPlugin(
           getManifest: () => validateDataAppManifest(root, allowedHosts),
           getClients: () => server.ws.clients.size,
           getLastRebuildAt: () => bundle.lastRebuildAt,
+          getBuildId: () => bundle.buildId,
           notifyChanged: () =>
             server.ws.send({
               type: "custom",

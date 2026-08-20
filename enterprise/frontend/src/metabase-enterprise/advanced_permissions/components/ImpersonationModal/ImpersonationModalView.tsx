@@ -17,8 +17,7 @@ import {
 import { Alert, Button, Icon, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { UserAttributeKey } from "metabase-types/api";
+import type { Database, UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
 

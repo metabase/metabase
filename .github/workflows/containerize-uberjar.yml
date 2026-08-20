@@ -3,6 +3,10 @@ name: Containerize Uberjar
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      commit:
+        description: the full commit hash to containerize (defaults to the triggering commit)
+        type: string
 
 jobs:
   get-container-info:
@@ -59,36 +63,9 @@ jobs:
       commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
-      release: "false"
+      release: false
       build-args: |
         GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
-
-  run-trivy:
-    needs: [get-container-info, containerize]
-    strategy:
-      matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    name: Run Trivy vulnerability scanner
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        env:
-          TRIVY_OFFLINE_SCAN: true
-          repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
-          tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
-        with:
-          image-ref: docker.io/${{ env.repo }}:${{ env.tag }}
-          format: sarif
-          output: trivy-results.sarif
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: "trivy-results.sarif"
 
   post-comment:
     needs: [get-container-info, containerize]

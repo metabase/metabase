@@ -1,4 +1,3 @@
-import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -59,12 +58,14 @@ import {
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
 import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
-  ADD_CARD_TO_DASH,
-  ADD_MANY_CARDS_TO_DASH,
+  MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
   TRASH_DASHBOARD_QUESTION_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
   setDashCardAttributes,
   setDashboardAttributes,
 } from "./core";
@@ -86,14 +87,6 @@ export type AddDashCardOpts = NewDashCardOpts & {
     series?: Card[];
   };
 };
-
-export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-export const markNewCardSeen = createAction<DashCardId>(MARK_NEW_CARD_SEEN);
-
-export const addCardToDash = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
-export const addManyCardsToDash = createAction<NewDashboardCard[]>(
-  ADD_MANY_CARDS_TO_DASH,
-);
 
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
@@ -604,3 +597,10 @@ const undoTrashDashboardQuestion = createThunkAction(
       dispatch(undoRemoveCardFromDashboard({ dashcardId }));
     },
 );
+
+export {
+  MARK_NEW_CARD_SEEN,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
+};

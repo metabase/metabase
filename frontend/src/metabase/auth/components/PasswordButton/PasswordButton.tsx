@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
-import { getIsLdapEnabled } from "../../selectors";
 import { AuthTextLink } from "../AuthButton";
 
 interface PasswordButtonProps {
@@ -11,7 +10,7 @@ interface PasswordButtonProps {
 }
 
 export const PasswordButton = ({ redirectUrl }: PasswordButtonProps) => {
-  const isLdapEnabled = useSelector(getIsLdapEnabled);
+  const isLdapEnabled = useSetting("ldap-enabled");
 
   return (
     <AuthTextLink to={Urls.password(redirectUrl)}>

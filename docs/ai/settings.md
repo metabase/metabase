@@ -59,8 +59,10 @@ You can specify your own API key and model for Metabot from one of the supported
 - **Amazon Bedrock**: Claude and GPT models.
 - **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
 - **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
+- **Mistral**
 - **OpenAI**: GPT models.
-- **OpenRouter**: Claude and GPT models.
+- **OpenRouter**: Claude, GPT, Mistral, DeepSeek, and GLM-5.2 models.
+- **Z.AI**: GLM-5.2 models.
 
 If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 

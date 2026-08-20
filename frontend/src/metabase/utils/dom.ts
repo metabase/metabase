@@ -3,8 +3,6 @@ import _ from "underscore";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 
-import { checkNotNull } from "./types";
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
@@ -59,8 +57,17 @@ export function isObscured(
 }
 
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 export function getWithSiteUrl(url: string): string {

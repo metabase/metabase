@@ -17,7 +17,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -28,6 +28,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Stack, Text } from "metabase/ui";
 import {
   type CustomOidcConfig,

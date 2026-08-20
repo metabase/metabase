@@ -1,2565 +1,713 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  findRequests,
-  setupBillingEndpoints,
-  setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Api } from "metabase/api";
 import {
-  AIProviderConfigurationForm,
-  type MetabotApiKeyProvider,
-} from "metabase/metabot";
+  setupCreateLlmProviderEndpoint,
+  setupDeleteLlmProviderEndpoint,
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
+  setupUpdateLlmProviderEndpoint,
+} from "__support__/server-mocks/metabot";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
-import { Route } from "metabase/router";
-import { defer } from "metabase/utils/promise";
 import type {
-  BedrockCredentials,
-  MetabotCredentials,
-  MetabotProvider,
-  MetabotSettingsResponse,
-  SettingDefinition,
-  TokenStatusFeature,
+  LlmConnectionModels,
+  LlmProviderConnection,
+  LlmProviderType,
 } from "metabase-types/api";
 import {
+  createMockLlmConnectionModels,
+  createMockLlmModel,
+  createMockLlmProviderConnection,
+  createMockLlmProviderField,
+  createMockLlmProviderType,
   createMockSettingDefinition,
   createMockSettings,
-  createMockTokenFeatures,
-  createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 
-const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
-  metabase: {
-    value: "metabase/anthropic/claude-sonnet-4-6",
+const ANTHROPIC_TYPE = createMockLlmProviderType({
+  type: "anthropic",
+  label: "Anthropic",
+  fields: [
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: true,
+      prefix: "sk-ant-",
+    }),
+    createMockLlmProviderField({
+      key: "base-url",
+      label: "API base URL",
+      type: "text",
+      required: false,
+      advanced: true,
+      default: "https://api.anthropic.com",
+    }),
+  ],
+});
+
+const AZURE_TYPE = createMockLlmProviderType({
+  type: "azure",
+  label: "Azure",
+  fields: [
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "api-base-url",
+      label: "Base URL",
+      type: "text",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "model-family",
+      label: "Model provider",
+      type: "select",
+      required: true,
+      default: "openai",
+      options: [
+        { value: "openai", label: "OpenAI" },
+        { value: "anthropic", label: "Anthropic" },
+      ],
+    }),
+    createMockLlmProviderField({
+      key: "deployment-name",
+      label: "Deployment name",
+      type: "text",
+      required: true,
+    }),
+  ],
+});
+
+const BEDROCK_TYPE = createMockLlmProviderType({
+  type: "bedrock",
+  label: "Amazon Bedrock",
+  fields: [
+    createMockLlmProviderField({
+      key: "access-key-id",
+      label: "Access key ID",
+      type: "password",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "secret-access-key",
+      label: "Secret access key",
+      type: "password",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "region",
+      label: "Region",
+      type: "select",
+      required: false,
+      advanced: false,
+      default: "us-east-1",
+      options: [
+        { value: "us-east-1", label: "us-east-1" },
+        { value: "eu-central-1", label: "eu-central-1" },
+      ],
+    }),
+    createMockLlmProviderField({
+      key: "session-token",
+      label: "Session token",
+      type: "password",
+      required: false,
+      advanced: true,
+    }),
+  ],
+});
+
+const ANTHROPIC_CONNECTION = createMockLlmProviderConnection({
+  key: "anthropic",
+  type: "anthropic",
+  name: "Anthropic",
+  config: { "api-key": "sk-ant-saved" },
+});
+
+const AZURE_CONNECTION = createMockLlmProviderConnection({
+  key: "azure-prod",
+  type: "azure",
+  name: "Azure prod",
+  config: { "api-key": "azure-saved", "api-base-url": "https://azure.test" },
+});
+
+const CONNECTION_MODELS = [
+  createMockLlmConnectionModels({
+    key: "anthropic",
+    name: "Anthropic",
+    type: "anthropic",
     models: [
-      {
-        id: "anthropic/claude-haiku-4-5",
-        display_name: "Claude Haiku 4.5",
-      },
-      {
-        id: "anthropic/claude-sonnet-4-6",
-        display_name: "Claude Sonnet 4.6",
-      },
-      {
-        id: "anthropic/claude-opus-4-1",
-        display_name: "Claude Opus 4.1",
-      },
-    ],
-  },
-  anthropic: {
-    value: "anthropic/claude-haiku-4-5",
-    models: [
-      {
-        id: "claude-haiku-4-5",
-        display_name: "Claude Haiku 4.5",
-        group: "Haiku",
-      },
-      {
+      createMockLlmModel({
         id: "claude-sonnet-4-5",
         display_name: "Claude Sonnet 4.5",
-        group: "Sonnet",
-      },
+      }),
+      createMockLlmModel({
+        id: "claude-haiku-4-5",
+        display_name: "Claude Haiku 4.5",
+      }),
     ],
-  },
-  azure: {
-    // Azure has no model dropdown — deployment names are free text.
-    value: "azure/anthropic/claude-sonnet-4-5",
-    models: [],
-  },
-  bedrock: {
-    value: "bedrock/anthropic.claude-haiku-4-5",
-    models: [
-      {
-        id: "anthropic.claude-haiku-4-5",
-        display_name: "anthropic.claude-haiku-4-5",
-        group: "Anthropic",
-      },
-      {
-        id: "openai.gpt-5.5",
-        display_name: "openai.gpt-5.5",
-        group: "OpenAI",
-      },
-    ],
-  },
-  mistral: {
-    value: "mistral/mistral-medium-3-5",
-    models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
-  },
-  openai: {
-    value: "openai/gpt-5.4",
-    models: [
-      { id: "gpt-5.4", display_name: "gpt-5.4" },
-      { id: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
-    ],
-  },
-  openrouter: {
-    value: "openrouter/openai/gpt-5.4-mini",
-    models: [
-      {
-        id: "openai/gpt-5.4-mini",
-        display_name: "OpenAI: GPT-5.4 Mini",
-        group: "OpenAI",
-      },
-    ],
-  },
-  zai: {
-    value: "zai/glm-5.2",
-    models: [{ id: "glm-5.2", display_name: "GLM-5.2" }],
-  },
-};
+  }),
+  createMockLlmConnectionModels({
+    key: "azure-prod",
+    name: "Azure prod",
+    type: "azure",
+    models: [createMockLlmModel({ id: "gpt-5", display_name: "GPT-5" })],
+  }),
+];
 
-type MetabotUsageQuota = {
-  is_locked?: boolean;
-  tokens: number | null;
-  free_tokens?: number | null;
-  updated_at: string | null;
-};
-
-type MetabotSettingsApiResponse =
-  | MetabotSettingsResponse
-  | (() => Promise<MetabotSettingsResponse>);
-
-type MetabotSettingKey =
-  | "llm-metabot-provider"
-  | "llm-anthropic-api-key"
-  | "llm-azure-api-key"
-  | "llm-azure-api-base-url"
-  | "llm-mistral-api-key"
-  | "llm-openai-api-key"
-  | "llm-openrouter-api-key"
-  | "llm-zai-api-key"
-  | "llm-bedrock-access-key-id"
-  | "llm-bedrock-secret-access-key"
-  | "llm-bedrock-region"
-  | "llm-bedrock-session-token";
-
-const API_KEY_SETTING_BY_PROVIDER: Partial<
-  Record<MetabotProvider, MetabotSettingKey>
-> = {
-  anthropic: "llm-anthropic-api-key",
-  mistral: "llm-mistral-api-key",
-  openai: "llm-openai-api-key",
-  openrouter: "llm-openrouter-api-key",
-  zai: "llm-zai-api-key",
-};
-
-type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
-type MetabotSettingsUpdateBody = {
-  provider: MetabotProvider;
-  model?: string;
-  "api-key"?: string | null;
-  credentials?: MetabotCredentials | null;
-};
-
-type SetupOptions = {
-  isHosted?: boolean;
-  hasDeprecatedMetabaseAiProvider?: boolean;
-  offerMetabaseManagedAi?: boolean;
-  llmProxyConfigured?: boolean;
-  savedProviderValue?: string | null;
-  isConfigured?: boolean;
-  providerSettingIsEnv?: boolean;
-  providerSettingEnvName?: string;
-  apiKeySettingIsEnv?: boolean;
-  apiKeySettingEnvName?: string;
-  isAdmin?: boolean;
-  anyStoreUserEmailAddress?: string;
-  metabasePricePerUnit?: number;
-  metabaseBillingPeriodMonths?: number;
-  metabotUsageQuotas?: MetabotUsageQuota[] | null;
-  tokenStatusFeatures?: TokenStatusFeature[];
-  refreshedTokenStatusFeatures?: TokenStatusFeature[];
-  purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
-  deferPurchaseCloudAddOnResponse?: boolean;
-  removeCloudAddOnResponse?: number | { status: number; body: unknown };
-  apiKeyValues?: Partial<Record<MetabotProvider, string | null>>;
-  pauseUpdateResponse?: boolean;
-  deferMetabotSettingsUpdateResponse?: boolean;
-  settingUpdateResponse?: number | { status: number; body?: unknown };
-  metabotSettingsUpdateResponse?: number | { status: number; body?: unknown };
-  responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
-  updateResponse?: MetabotSettingsResponse;
-  renderAsModal?: boolean;
-  onClose?: jest.Mock;
+type SetupOpts = {
+  connections?: LlmProviderConnection[];
+  providerTypes?: LlmProviderType[];
+  models?: LlmConnectionModels[];
+  modelRef?: string | null;
+  modelRefEnvVar?: string;
+  providerTypesFail?: boolean;
+  createdConnection?: LlmProviderConnection;
+  updatedConnection?: LlmProviderConnection;
 };
 
 async function setup({
-  isHosted = false,
-  hasDeprecatedMetabaseAiProvider,
-  offerMetabaseManagedAi,
-  llmProxyConfigured = isHosted,
-  savedProviderValue = "anthropic/claude-haiku-4-5",
-  isConfigured = true,
-  providerSettingIsEnv = false,
-  providerSettingEnvName = "LLM_METABOT_PROVIDER",
-  apiKeySettingIsEnv = false,
-  apiKeySettingEnvName = "LLM_ANTHROPIC_API_KEY",
-  isAdmin = false,
-  metabasePricePerUnit = 3.75,
-  metabaseBillingPeriodMonths = 1,
-  metabotUsageQuotas = null,
-  tokenStatusFeatures = [],
-  refreshedTokenStatusFeatures = tokenStatusFeatures,
-  purchaseCloudAddOnResponse = 200,
-  deferPurchaseCloudAddOnResponse = false,
-  removeCloudAddOnResponse = 200,
-  apiKeyValues,
-  pauseUpdateResponse = false,
-  deferMetabotSettingsUpdateResponse = false,
-  settingUpdateResponse = 204,
-  metabotSettingsUpdateResponse,
-  responses,
-  updateResponse = {
-    value: "anthropic/claude-sonnet-4-5",
-    models: DEFAULT_RESPONSES.anthropic.models,
-  },
-  renderAsModal = false,
-  onClose = jest.fn(),
-}: SetupOptions = {}) {
+  connections = [],
+  providerTypes = [ANTHROPIC_TYPE, AZURE_TYPE, BEDROCK_TYPE],
+  models = [],
+  modelRef = null,
+  modelRefEnvVar,
+  providerTypesFail = false,
+  createdConnection = ANTHROPIC_CONNECTION,
+  updatedConnection = ANTHROPIC_CONNECTION,
+}: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const purchaseCloudAddOnDeferred = defer<void>();
-  const updateMetabotSettingsDeferred = defer<void>();
-
-  const mergedApiKeyValues: Record<
-    MetabotApiKeyProvider | "azure" | "bedrock",
-    string | null
-  > = {
-    anthropic: "**********45",
-    azure: null,
-    bedrock: null,
-    mistral: null,
-    openai: null,
-    openrouter: null,
-    zai: null,
-    ...apiKeyValues,
-  };
-
-  const createTokenFeatureFlags = (features: TokenStatusFeature[]) =>
-    createMockTokenFeatures({
-      hosting: isHosted,
-      "offer-metabase-ai-managed":
-        offerMetabaseManagedAi ??
-        (isHosted || features.includes("offer-metabase-ai-managed")),
-      "metabase-ai-managed": features.includes("metabase-ai-managed"),
-      "metabot-v3":
-        hasDeprecatedMetabaseAiProvider ?? features.includes("metabot-v3"),
-    });
-
   const sessionProperties = createMockSettings({
-    "is-hosted?": isHosted,
-    "llm-proxy-configured?": llmProxyConfigured,
-    "llm-metabot-provider": savedProviderValue,
-    "llm-metabot-configured?": isConfigured,
-    "token-features": createTokenFeatureFlags(tokenStatusFeatures),
-    "token-status": createMockTokenStatus({
-      features: tokenStatusFeatures,
-    }),
+    "llm-metabot-provider": modelRef,
   });
 
   setupPropertiesEndpoints(sessionProperties);
-
-  const settingsDefinitions: Record<
-    MetabotSettingKey,
-    MetabotSettingDefinition
-  > = {
-    "llm-metabot-provider": createMockSettingDefinition({
+  setupSettingsEndpoints([
+    createMockSettingDefinition({
       key: "llm-metabot-provider",
-      value: savedProviderValue,
-      is_env_setting: providerSettingIsEnv,
-      env_name: providerSettingIsEnv ? providerSettingEnvName : undefined,
+      value: modelRef,
+      is_env_setting: modelRefEnvVar != null,
+      env_name: modelRefEnvVar,
     }),
-    "llm-anthropic-api-key": createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: mergedApiKeyValues.anthropic ?? undefined,
-      is_env_setting: apiKeySettingIsEnv,
-      env_name: apiKeySettingIsEnv ? apiKeySettingEnvName : undefined,
-    }),
-    "llm-azure-api-key": createMockSettingDefinition({
-      key: "llm-azure-api-key",
-      value: mergedApiKeyValues.azure ?? undefined,
-    }),
-    // The base URL is configured whenever the Azure API key is — they are saved together.
-    "llm-azure-api-base-url": createMockSettingDefinition({
-      key: "llm-azure-api-base-url",
-      value: mergedApiKeyValues.azure
-        ? "https://my-resource.services.ai.azure.com/anthropic"
-        : undefined,
-    }),
-    "llm-mistral-api-key": createMockSettingDefinition({
-      key: "llm-mistral-api-key",
-      value: mergedApiKeyValues.mistral ?? undefined,
-    }),
-    "llm-openai-api-key": createMockSettingDefinition({
-      key: "llm-openai-api-key",
-      value: mergedApiKeyValues.openai ?? undefined,
-    }),
-    "llm-openrouter-api-key": createMockSettingDefinition({
-      key: "llm-openrouter-api-key",
-      value: mergedApiKeyValues.openrouter ?? undefined,
-    }),
-    "llm-zai-api-key": createMockSettingDefinition({
-      key: "llm-zai-api-key",
-      value: mergedApiKeyValues.zai ?? undefined,
-    }),
-    "llm-bedrock-access-key-id": createMockSettingDefinition({
-      key: "llm-bedrock-access-key-id",
-      value: mergedApiKeyValues.bedrock ?? undefined,
-    }),
-    // The secret access key is configured whenever the access key ID is — they are saved together.
-    "llm-bedrock-secret-access-key": createMockSettingDefinition({
-      key: "llm-bedrock-secret-access-key",
-      value: mergedApiKeyValues.bedrock ? "**********ET" : undefined,
-    }),
-    "llm-bedrock-region": createMockSettingDefinition({
-      key: "llm-bedrock-region",
-      value: mergedApiKeyValues.bedrock ? "us-east-1" : undefined,
-    }),
-    "llm-bedrock-session-token": createMockSettingDefinition({
-      key: "llm-bedrock-session-token",
-      value: mergedApiKeyValues.bedrock ? "**********EN" : undefined,
-    }),
-  };
-
-  fetchMock.get("path:/api/setting", () => Object.values(settingsDefinitions));
-
-  const responseMap: Record<MetabotProvider, MetabotSettingsApiResponse> = {
-    ...DEFAULT_RESPONSES,
-    ...responses,
-  };
-
-  if (isHosted) {
-    setupBillingEndpoints({
-      billingPeriodMonths: metabaseBillingPeriodMonths,
-      hasBasicTransformsAddOn: false,
-      hasAdvancedTransformsAddOn: false,
-      skipCloudAddOns: true,
+  ]);
+  setupUpdateSettingEndpoint();
+  if (providerTypesFail) {
+    fetchMock.get("path:/api/llm/provider-types", {
+      status: 500,
+      body: { message: "Provider types are unavailable" },
     });
-    setupMetabaseManagedAiEndpoints({
-      billingPeriodMonths: metabaseBillingPeriodMonths,
-      metabasePricePerUnit,
-      metabotUsageQuota: metabotUsageQuotas?.[0] ?? null,
-      purchaseCloudAddOnResponse: deferPurchaseCloudAddOnResponse
-        ? async () => {
-            await purchaseCloudAddOnDeferred.promise;
-            return purchaseCloudAddOnResponse;
-          }
-        : purchaseCloudAddOnResponse,
-      removeCloudAddOnResponse,
-    });
+  } else {
+    setupLlmProviderTypesEndpoint(providerTypes);
+  }
+  setupLlmProvidersEndpoint(connections);
+  setupLlmModelsEndpoint(models);
+  setupCreateLlmProviderEndpoint(createdConnection);
+  setupUpdateLlmProviderEndpoint(updatedConnection);
+  setupDeleteLlmProviderEndpoint();
 
-    fetchMock.post("path:/api/premium-features/token/refresh", () => {
-      sessionProperties["token-features"] = createTokenFeatureFlags(
-        refreshedTokenStatusFeatures,
-      );
-      sessionProperties["token-status"] = createMockTokenStatus({
-        features: refreshedTokenStatusFeatures,
-      });
+  const view = renderWithProviders(
+    <>
+      <AIProviderSettingsSection />
+      <UndoListing />
+    </>,
+    {
+      storeInitialState: {
+        settings: mockSettings(sessionProperties),
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
+  );
 
-      return sessionProperties["token-status"];
-    });
+  if (providerTypesFail) {
+    await screen.findByText(/Provider types are unavailable/);
+  } else if (connections.length > 0) {
+    await screen.findByText(connections[0].name);
+  } else {
+    await screen.findByRole("button", { name: /Add a provider/ });
   }
 
-  const settings = mockSettings(sessionProperties);
-  setupEnterpriseOnlyPlugin("metabot");
-
-  // Unjustified type cast. FIXME
-  for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
-    const response = responseMap[provider];
-
-    fetchMock.get({
-      url: "path:/api/metabot/settings",
-      query: { provider },
-      response,
-    });
-  }
-
-  fetchMock.put("path:/api/metabot/settings", (call) => {
-    if (metabotSettingsUpdateResponse !== undefined) {
-      return metabotSettingsUpdateResponse;
-    }
-
-    if (pauseUpdateResponse) {
-      return new Promise(() => undefined);
-    }
-
-    if (deferMetabotSettingsUpdateResponse) {
-      return updateMetabotSettingsDeferred.promise.then(() =>
-        handleMetabotSettingsUpdate(call),
-      );
-    }
-
-    return handleMetabotSettingsUpdate(call);
-  });
-
-  const handleMetabotSettingsUpdate = (call: { options?: RequestInit }) => {
-    // Unjustified type cast. FIXME
-    const body = JSON.parse(
-      String(call.options?.body ?? "{}"),
-    ) as MetabotSettingsUpdateBody;
-
-    const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[body.provider];
-
-    if ("api-key" in body && apiKeySettingKey) {
-      const maskedApiKey = body["api-key"]
-        ? `**********${String(body["api-key"]).slice(-2)}`
-        : undefined;
-
-      settingsDefinitions[apiKeySettingKey] = createMockSettingDefinition({
-        ...settingsDefinitions[apiKeySettingKey],
-        key: apiKeySettingKey,
-        value: maskedApiKey,
-      });
-    }
-
-    if (body.provider === "bedrock" && "credentials" in body) {
-      const mask = (value: string | null | undefined) =>
-        value ? `**********${String(value).slice(-2)}` : undefined;
-
-      // `credentials: null` is an explicit clear — the backend wipes all the saved key material.
-      // Fields inside the map follow the same presence contract: an absent field keeps the saved
-      // value, a null field clears it.
-      const requestCredentials = body.credentials ?? null;
-      const updateBedrockSetting = (
-        settingKey:
-          | "llm-bedrock-access-key-id"
-          | "llm-bedrock-secret-access-key"
-          | "llm-bedrock-session-token",
-        field: keyof BedrockCredentials,
-      ) => {
-        if (requestCredentials !== null && !(field in requestCredentials)) {
-          return;
-        }
-        settingsDefinitions[settingKey] = createMockSettingDefinition({
-          ...settingsDefinitions[settingKey],
-          key: settingKey,
-          value: mask(requestCredentials?.[field]),
-        });
-      };
-
-      updateBedrockSetting("llm-bedrock-access-key-id", "access-key-id");
-      updateBedrockSetting(
-        "llm-bedrock-secret-access-key",
-        "secret-access-key",
-      );
-      updateBedrockSetting("llm-bedrock-session-token", "session-token");
-    }
-
-    if ("model" in body) {
-      sessionProperties["llm-metabot-provider"] = updateResponse.value;
-      sessionProperties["llm-metabot-configured?"] = true;
-      settingsDefinitions["llm-metabot-provider"] = createMockSettingDefinition(
-        {
-          ...settingsDefinitions["llm-metabot-provider"],
-          key: "llm-metabot-provider",
-          value: updateResponse.value,
-        },
-      );
-
-      return updateResponse;
-    }
-
-    const providerResponse = responseMap[body.provider];
-    const providerSettings =
-      typeof providerResponse === "function"
-        ? DEFAULT_RESPONSES[body.provider]
-        : providerResponse;
-
-    return {
-      value: sessionProperties["llm-metabot-provider"],
-      models: providerSettings.models,
-    };
-  };
-
-  fetchMock.put("path:/api/setting", (call) => {
-    if (settingUpdateResponse !== 204) {
-      return settingUpdateResponse;
-    }
-
-    // Unjustified type cast. FIXME
-    const body = JSON.parse(String(call.options?.body ?? "{}")) as Partial<
-      Record<MetabotSettingKey, string | null>
-    >;
-
-    Object.entries(body).forEach(([key, nextValue]) => {
-      if (key in settingsDefinitions) {
-        // Unjustified type cast. FIXME
-        settingsDefinitions[key as keyof typeof settingsDefinitions] =
-          createMockSettingDefinition({
-            // Unjustified type cast. FIXME
-            ...settingsDefinitions[key as keyof typeof settingsDefinitions],
-            // Unjustified type cast. FIXME
-            key: key as keyof typeof settingsDefinitions,
-            // Unjustified type cast. FIXME
-            value: (nextValue ??
-              undefined) as MetabotSettingDefinition["value"],
-          });
-      }
-
-      if (key === "llm-metabot-provider") {
-        sessionProperties["llm-metabot-provider"] = nextValue ?? null;
-        sessionProperties["llm-metabot-configured?"] = Boolean(nextValue);
-      }
-    });
-
-    return 204;
-  });
-
-  const user = createMockUser({ is_superuser: isAdmin });
-
-  const storeInitialState = { settings, currentUser: user };
-  const view = renderAsModal
-    ? renderWithProviders(
-        <AIProviderConfigurationForm isModal onClose={onClose} />,
-        {
-          storeInitialState,
-        },
-      )
-    : renderWithProviders(
-        <Route
-          path="/admin/metabot*"
-          element={<AIProviderSettingsSection />}
-        />,
-        {
-          withRouter: true,
-          initialRoute: "/admin/metabot",
-          storeInitialState,
-        },
-      );
-
-  if (!isHosted && !renderAsModal) {
-    await screen.findByText(
-      isConfigured
-        ? /Connected to|Connect to an AI provider/
-        : "Connect to an AI provider",
-    );
-  }
-
-  return {
-    ...view,
-    onClose,
-    resolvePurchaseCloudAddOnResponse: () =>
-      purchaseCloudAddOnDeferred.resolve(),
-    resolveMetabotSettingsUpdateResponse: () =>
-      updateMetabotSettingsDeferred.resolve(),
-  };
+  return view;
 }
 
-async function openModelSelector() {
-  await userEvent.click(screen.getByLabelText("Model"));
-  await userEvent.keyboard("{ArrowDown}");
+async function openAddProviderModal() {
+  await userEvent.click(screen.getByRole("button", { name: /Add a provider/ }));
+  return await screen.findByRole("dialog");
 }
 
-async function selectProvider(name: string) {
-  await userEvent.click(screen.getByLabelText("Provider"));
+async function selectOption(name: string) {
   await userEvent.click(await screen.findByRole("option", { name }));
 }
 
-async function openDisconnectProviderModal() {
+async function openProviderMenu() {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Disconnect" }),
+    screen.getByRole("button", { name: "Provider options" }),
   );
 }
 
-async function confirmDisconnectProvider() {
-  await openDisconnectProviderModal();
+async function openAdvancedSettings(modal: HTMLElement) {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Disconnect provider" }),
+    within(modal).getByRole("button", { name: /Advanced settings/ }),
   );
 }
-
-const METABOT_SETTINGS_PATH = "/api/metabot/settings";
-const SETTING_PATH = "/api/setting";
-
-async function findPutRequests() {
-  const requests = await findRequests("PUT");
-  return requests.map(({ url, body }) => ({
-    path: new URL(url, location.origin).pathname,
-    body,
-  }));
-}
-
-async function findPutBodies(path: string) {
-  return (await findPutRequests())
-    .filter((request) => request.path === path)
-    .map(({ body }) => body);
-}
-
-const findMetabotSettingsUpdates = () => findPutBodies(METABOT_SETTINGS_PATH);
-
-const findSettingUpdates = () => findPutBodies(SETTING_PATH);
 
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
   });
 
-  it("shows the env var message and disables both provider and model inputs when provider is env-backed", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      providerSettingIsEnv: true,
-      apiKeyValues: { anthropic: "**********45" },
-    });
+  it("reports a failure to load the providers instead of an empty list", async () => {
+    await setup({ providerTypesFail: true });
 
     expect(
-      await screen.findByTestId("setting-env-var-message"),
-    ).toHaveTextContent(
-      "This has been set by the LLM_METABOT_PROVIDER environment variable.",
-    );
-    expect(screen.getByLabelText("Provider")).toBeDisabled();
-    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-  });
-
-  it("shows the providers as selectable in the provider dropdown", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    await userEvent.click(screen.getByLabelText("Provider"));
-
-    for (const name of [
-      /Anthropic/,
-      /OpenAI/,
-      /OpenRouter/,
-      /Mistral/,
-      /Z\.AI/,
-      /Microsoft Azure/,
-      /Amazon Bedrock/,
-    ]) {
-      const option = await screen.findByRole("option", { name });
-      expect(option).toBeInTheDocument();
-      expect(option).not.toHaveAttribute("aria-disabled", "true");
-      expect(option).not.toHaveAttribute("data-combobox-disabled");
-    }
-
-    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
-  });
-
-  it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
-    const { store } = await setup();
-    const apiKey = await screen.findByLabelText("API key");
-    const model = await screen.findByLabelText("Model");
-    const disconnect = await screen.findByRole("button", {
-      name: "Disconnect",
-    });
-
-    expect(apiKey).toBeEnabled();
-    expect(model).toBeEnabled();
-    expect(disconnect).toBeEnabled();
-    expect(disconnect).not.toHaveAttribute("data-loading", "true");
-
-    const sessionPropertiesDeferred = defer<unknown>();
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => sessionPropertiesDeferred.promise,
-    );
-
-    act(() => {
-      store.dispatch(Api.util.invalidateTags(["session-properties"]));
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties").length,
-      ).toBeGreaterThan(1);
-    });
-
-    expect(apiKey).toBeEnabled();
-    expect(model).toBeEnabled();
-    expect(disconnect).toBeEnabled();
-    expect(disconnect).not.toHaveAttribute("data-loading", "true");
-
-    sessionPropertiesDeferred.resolve({});
-  });
-
-  it("shows the connected badge with the saved provider and model", async () => {
-    await setup();
-    await screen.findByLabelText("API key");
-    await screen.findByLabelText("Model");
-
-    expect(
-      await screen.findByText("Connected to Anthropic"),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Not connected")).not.toBeInTheDocument();
-  });
-
-  it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
-    await setup();
-    // Wait for the saved key from the setting-details
-    await waitFor(() =>
-      expect(screen.getByLabelText("API key")).not.toHaveValue(""),
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
+      screen.getByText("Provider types are unavailable"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.clear(screen.getByLabelText("API key"));
-    await userEvent.type(screen.getByLabelText("API key"), "sk-ant-rotated");
-
-    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Disconnect" }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "anthropic", "api-key": "sk-ant-rotated" },
-      ]);
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Disconnect" }),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows a saved API key validation error without disconnecting", async () => {
-    await setup({
-      responses: {
-        anthropic: {
-          value: "anthropic/claude-haiku-4-5",
-          "credentials-error": "Anthropic API key expired or invalid",
-          models: [],
-        },
-      },
-    });
-
-    expect(await screen.findByLabelText("API key")).toHaveValue("**********45");
-    expect(
-      await screen.findByText("Anthropic API key expired or invalid"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Error connecting to Anthropic"),
-    ).toBeInTheDocument();
-
-    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
-
-    const settingsRequest = fetchMock.callHistory.calls(
-      "path:/api/metabot/settings",
-    )[0];
-    expect(settingsRequest?.url).toContain("provider=anthropic");
-    expect(settingsRequest?.url).not.toContain("api-key");
-  });
-
-  it("disables an env-backed API key field with a saved key validation error", async () => {
-    await setup({
-      apiKeySettingIsEnv: true,
-      responses: {
-        anthropic: {
-          value: "anthropic/claude-haiku-4-5",
-          "credentials-error": "Anthropic API key expired or invalid",
-          models: [],
-        },
-      },
-    });
-
-    // Wait for the env-backed state from setting-details
-    await waitFor(() => {
-      expect(screen.getByLabelText("API key")).toBeDisabled();
-    });
-    expect(
-      await screen.findByText("Anthropic API key expired or invalid"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("setting-env-var-message")).toHaveTextContent(
-      "This has been set by the LLM_ANTHROPIC_API_KEY environment variable.",
-    );
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
-  });
-
-  it("clears the saved API key error and shows Connect when the key changes", async () => {
-    await setup({
-      responses: {
-        anthropic: {
-          value: "anthropic/claude-haiku-4-5",
-          "credentials-error": "Anthropic API key expired or invalid",
-          models: [],
-        },
-      },
-    });
-
-    await screen.findByText("Anthropic API key expired or invalid");
-
-    await userEvent.clear(screen.getByLabelText("API key"));
-    await userEvent.type(screen.getByLabelText("API key"), "sk-ant-rotated");
-
-    expect(
-      screen.queryByText("Anthropic API key expired or invalid"),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
-  });
-
-  it("shows the disconnected title when not configured", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/^Connected to /)).not.toBeInTheDocument();
-  });
-
-  it("does not preselect a provider in the disconnected state", async () => {
-    await setup({
-      savedProviderValue: "anthropic/claude-haiku-4-5",
-      isConfigured: false,
-    });
-
-    expect(await screen.findByLabelText("Provider")).toHaveValue("");
-  });
-
-  // TODO: Add these tests back once we allow configuring the model provider from the UI.
-  // eslint-disable-next-line jest/no-commented-out-tests
-  // it("shows the model loader when switching providers", async () => {
-  //   const openAIRequest = { resolve: null as null | (() => void) };
-  //
-  //   await setup({
-  //     apiKeyValues: { anthropic: "**********45", openai: "**********54" },
-  //     responses: {
-  //       openai: async () => {
-  //         await new Promise<void>((resolve) => {
-  //           openAIRequest.resolve = resolve;
-  //         });
-  //
-  //         return DEFAULT_RESPONSES.openai;
-  //       },
-  //     },
-  //   });
-  //
-  //   await selectProvider("OpenAI");
-  //
-  //   await waitFor(() => {
-  //     expect(screen.getByLabelText("Model")).toHaveAttribute(
-  //       "placeholder",
-  //       "Loading models...",
-  //     );
-  //   });
-  //
-  //   if (openAIRequest.resolve) {
-  //     openAIRequest.resolve();
-  //   }
-  // });
-  //
-  // eslint-disable-next-line jest/no-commented-out-tests
-  // it("shows the new model list and resets the selected model when switching providers", async () => {
-  //   await setup({
-  //     apiKeyValues: { anthropic: "**********45", openai: "**********54" },
-  //   });
-  //   await screen.findByLabelText("Model");
-  //
-  //   await selectProvider("OpenAI");
-  //
-  //   await waitFor(() => {
-  //     expect(screen.getByLabelText("Model")).toHaveValue("");
-  //   });
-  //
-  //   await waitFor(() => {
-  //     expect(screen.getByLabelText("Model")).toHaveAttribute(
-  //       "placeholder",
-  //       "Select a model",
-  //     );
-  //   });
-  //
-  //   await waitFor(() => {
-  //     expect(
-  //       fetchMock.callHistory.called(
-  //         "path:/api/metabot/settings?provider=openai",
-  //       ),
-  //     ).toBe(true);
-  //   });
-  //
-  //   expect(screen.getByLabelText("Model")).toHaveAttribute(
-  //     "placeholder",
-  //     "Select a model",
-  //   );
-  // });
-
-  it("shows model groups from the backend in the model picker", async () => {
-    await setup();
-    await screen.findByLabelText("Model");
-
-    await openModelSelector();
-
-    expect(await screen.findByText("Sonnet")).toBeInTheDocument();
-  });
-
-  it("does not show the API key input when no provider is selected", async () => {
-    await setup({ savedProviderValue: null, isConfigured: false });
-
-    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
-  });
-
-  it("does not show the model selector when there is no API key", async () => {
-    await setup({
-      apiKeyValues: { anthropic: null },
-    });
-
-    await screen.findByLabelText("API key");
-    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-  });
-
-  it("keeps the provider selector visible after verifying an API key", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      apiKeyValues: { anthropic: null },
-    });
-
-    await selectProvider("Anthropic");
-    await userEvent.type(screen.getByLabelText("API key"), "sk-ant-valid");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await screen.findByLabelText("Model");
-    expect(screen.getByLabelText("Provider")).toHaveValue("Anthropic");
-  });
-
-  it("shows the connected Metabase-managed state without an API key or model picker", async () => {
-    await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-    });
-
-    expect(
-      await screen.findByText("Current billing cycle"),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
-  });
-
-  it("explains the legacy Metabase AI pricing migration", async () => {
-    await setup({
-      isHosted: true,
-      hasDeprecatedMetabaseAiProvider: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-    });
-
-    expect(
-      await screen.findByText(
-        "You're on legacy tiered AI pricing today. On your next billing cycle, you'll switch to metered AI pricing. If you'd like to switch to a third-party AI provider and use their API, click Disconnect.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows pricing details in a tooltip for the Metabase provider", async () => {
-    await setup({
-      isHosted: true,
-      isAdmin: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      isConfigured: false,
-    });
-
-    await selectProvider("Metabase");
-    await screen.findByText("About Metabase AI service");
-    await screen.findByTestId("metabase-ai-pricing-details");
-
-    await userEvent.hover(screen.getByTestId("metabase-ai-pricing-details"));
-
-    expect(
-      await screen.findByText(
-        "Tokens are chunks of text used by AI models. Usage includes both prompts and responses.",
-      ),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("link", { name: "Terms of Service" }),
-    ).toHaveAttribute("href", "https://www.metabase.com/license/hosting");
-  });
-
-  it("shows a contact-admin notice for non-admin users on the Metabase provider", async () => {
-    await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      isConfigured: false,
-      isAdmin: false,
-      anyStoreUserEmailAddress: "store-admin@metabase.test",
-    });
-
-    await selectProvider("Metabase");
-    expect(
-      await screen.findByText(
-        "Please ask an Admin user to enable this for you.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Accept terms & connect" }),
+      screen.queryByRole("button", { name: /Add a provider/ }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows a direct connect button when the Metabase provider feature is already enabled", async () => {
-    const user = userEvent.setup();
-
-    await setup({
-      isHosted: true,
-      savedProviderValue: null,
-      isConfigured: false,
-      isAdmin: false,
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      updateResponse: {
-        value: "metabase/anthropic/claude-sonnet-4-6",
-        models: DEFAULT_RESPONSES.metabase.models,
-      },
-    });
-
-    await selectProvider("Metabase");
-
-    const connectButton = await screen.findByRole("button", {
-      name: "Connect",
-    });
-
-    expect(
-      screen.queryByRole("checkbox", {
-        name: /I agree with the Metabase AI Service/i,
-      }),
-    ).not.toBeInTheDocument();
-
-    await user.click(connectButton);
-
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
-        true,
-      );
-    });
-
-    expect(
-      fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-      ),
-    ).toBe(false);
-
-    const [settingsRequest] = fetchMock.callHistory.calls(
-      "path:/api/metabot/settings",
-      {
-        method: "PUT",
-      },
-    );
-
-    expect(settingsRequest?.options?.body).toBe(
-      JSON.stringify({ provider: "metabase", model: "" }),
-    );
-  });
-
-  it("calls onClose after directly connecting to the Metabase provider in modal mode", async () => {
-    const onClose = jest.fn();
-
-    await setup({
-      isHosted: true,
-      savedProviderValue: null,
-      isConfigured: false,
-      isAdmin: false,
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      updateResponse: {
-        value: "metabase/anthropic/claude-sonnet-4-6",
-        models: DEFAULT_RESPONSES.metabase.models,
-      },
-      renderAsModal: true,
-      onClose,
-    });
-
-    await selectProvider("Metabase");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Connect" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/metabot/settings", {
-          method: "PUT",
-        }),
-      ).toBe(true);
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("waits for the purchase and settings save before showing Metabase AI as ready", async () => {
-    let resolvePurchaseCloudAddOnResponse = () => {};
-    let resolveMetabotSettingsUpdateResponse = () => {};
-
-    try {
-      jest.useFakeTimers({ advanceTimers: true });
-      const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
-      });
-
-      ({
-        resolvePurchaseCloudAddOnResponse,
-        resolveMetabotSettingsUpdateResponse,
-      } = await setup({
-        isHosted: true,
-        savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-        isConfigured: false,
-        isAdmin: true,
-        tokenStatusFeatures: [],
-        refreshedTokenStatusFeatures: ["metabase-ai-managed"],
-        deferPurchaseCloudAddOnResponse: true,
-        deferMetabotSettingsUpdateResponse: true,
-        updateResponse: {
-          value: "metabase/anthropic/claude-sonnet-4-6",
-          models: DEFAULT_RESPONSES.metabase.models,
-        },
-      }));
-
-      await selectProvider("Metabase");
-      const termsCheckbox = await screen.findByRole("checkbox", {
-        name: /I agree with the Metabase AI Service/i,
-      });
-      const connectButton = await screen.findByRole("button", {
-        name: "Connect",
-      });
-
-      expect(connectButton).toBeDisabled();
-      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-
-      await user.click(termsCheckbox);
-
-      expect(connectButton).toBeEnabled();
-
-      await user.click(connectButton);
-
-      expect(connectButton).toBeDisabled();
-      expect(
-        await screen.findByText("Setting up Metabot AI, please wait"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Current billing cycle"),
-      ).not.toBeInTheDocument();
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called(
-            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-          ),
-        ).toBe(true);
-      });
-
-      const [request] = fetchMock.callHistory.calls(
-        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-        {
-          method: "POST",
-        },
-      );
-
-      expect(request?.options?.body).toBe(
-        JSON.stringify({ terms_of_service: true }),
-      );
-
-      expect(
-        fetchMock.callHistory
-          .calls("path:/api/metabot/settings")
-          .some(
-            (call) =>
-              call.request?.method === "PUT" || call.options?.method === "PUT",
-          ),
-      ).toBe(false);
-
-      act(() => {
-        jest.advanceTimersByTime(1000);
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory.called(
-            "path:/api/premium-features/token/refresh",
-          ),
-        ).toBe(true);
-      });
-
-      expect(
-        screen.getByText("Setting up Metabot AI, please wait"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
-      expect(
-        fetchMock.callHistory
-          .calls("path:/api/metabot/settings")
-          .some(
-            (call) =>
-              call.request?.method === "PUT" || call.options?.method === "PUT",
-          ),
-      ).toBe(false);
-
-      await act(async () => {
-        resolvePurchaseCloudAddOnResponse();
-        await Promise.resolve();
-      });
-
-      await waitFor(() => {
-        expect(
-          fetchMock.callHistory
-            .calls("path:/api/metabot/settings")
-            .some(
-              (call) =>
-                call.request?.method === "PUT" ||
-                call.options?.method === "PUT",
-            ),
-        ).toBe(true);
-      });
-
-      expect(
-        screen.getByText("Setting up Metabot AI, please wait"),
-      ).toBeInTheDocument();
-      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Current billing cycle"),
-      ).not.toBeInTheDocument();
-
-      await act(async () => {
-        resolveMetabotSettingsUpdateResponse();
-        await Promise.resolve();
-      });
-
-      expect(
-        await screen.findByRole("button", { name: "Done" }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Metabot AI is ready")).toBeInTheDocument();
-      expect(screen.getByText("Current billing cycle")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Connect" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Disconnect" }),
-      ).toBeInTheDocument();
-
-      const settingsRequest = fetchMock.callHistory
-        .calls("path:/api/metabot/settings")
-        .find(
-          (call) =>
-            call.request?.method === "PUT" || call.options?.method === "PUT",
-        );
-
-      expect(settingsRequest?.options?.body).toBe(
-        JSON.stringify({ provider: "metabase", model: "" }),
-      );
-
-      const callHistory = fetchMock.callHistory.calls();
-      const [purchaseRequest] = fetchMock.callHistory.calls(
-        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-        {
-          method: "POST",
-        },
-      );
-
-      if (!settingsRequest || !purchaseRequest) {
-        throw new Error("Expected purchase and settings requests to exist");
-      }
-
-      expect(callHistory.indexOf(purchaseRequest)).toBeLessThan(
-        callHistory.indexOf(settingsRequest),
-      );
-    } finally {
-      resolvePurchaseCloudAddOnResponse();
-      resolveMetabotSettingsUpdateResponse();
-      jest.useRealTimers();
-    }
-  });
-
-  it("calls onClose after purchasing the Metabase add-on and connecting in modal mode", async () => {
-    const onClose = jest.fn();
-    const {
-      resolvePurchaseCloudAddOnResponse,
-      resolveMetabotSettingsUpdateResponse,
-    } = await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      isConfigured: false,
-      isAdmin: true,
-      tokenStatusFeatures: [],
-      refreshedTokenStatusFeatures: ["metabase-ai-managed"],
-      deferPurchaseCloudAddOnResponse: true,
-      deferMetabotSettingsUpdateResponse: true,
-      updateResponse: {
-        value: "metabase/anthropic/claude-sonnet-4-6",
-        models: DEFAULT_RESPONSES.metabase.models,
-      },
-      renderAsModal: true,
-      onClose,
-    });
-
-    await selectProvider("Metabase");
-
-    await userEvent.click(
-      await screen.findByRole("checkbox", {
-        name: /I agree with the Metabase AI Service/i,
-      }),
-    );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Connect" }),
-    );
-
-    expect(onClose).not.toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-        ),
-      ).toBe(true);
-    });
-
-    await act(async () => {
-      resolvePurchaseCloudAddOnResponse();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory
-          .calls("path:/api/metabot/settings")
-          .some(
-            (call) =>
-              call.request?.method === "PUT" || call.options?.method === "PUT",
-          ),
-      ).toBe(true);
-    });
-
-    expect(onClose).not.toHaveBeenCalled();
-
-    await act(async () => {
-      resolveMetabotSettingsUpdateResponse();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("shows live pricing for the Metabase provider", async () => {
-    await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      metabasePricePerUnit: 4.25,
-    });
-
-    expect(await screen.findByText("Price per token")).toBeInTheDocument();
-    expect(screen.getByText("$4.25 per 1M tokens")).toBeInTheDocument();
-  });
-
-  it("shows included usage for the connected Metabase provider while still within the free limit", async () => {
-    const updatedAt = "2026-04-02T19:29:12Z";
-    await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      metabasePricePerUnit: 4.25,
-      metabotUsageQuotas: [
-        {
-          tokens: 250000,
-          free_tokens: 1000000,
-          updated_at: updatedAt,
-        },
-      ],
-    });
-
-    expect(await screen.findByText("Included use")).toBeInTheDocument();
-    expect(screen.getByText("Free trial tokens")).toBeInTheDocument();
-    expect(screen.getByText("250,000 / 1,000,000")).toBeInTheDocument();
-    expect(screen.getByText("Price per token afterward")).toBeInTheDocument();
-    expect(screen.queryByText("Current billing cycle")).not.toBeInTheDocument();
-    expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
-  });
-
-  it("shows the normal usage summary for the connected Metabase provider after free tokens run out", async () => {
-    const updatedAt = "2026-04-02T19:29:12Z";
-    await setup({
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      metabasePricePerUnit: 4.25,
-      metabotUsageQuotas: [
-        {
-          tokens: 1250000,
-          free_tokens: 1000000,
-          updated_at: updatedAt,
-        },
-      ],
-    });
-
-    expect(
-      await screen.findByText("Current billing cycle"),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("1,250,000")).toBeInTheDocument();
-    expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
-    expect(screen.getByText("Total tokens")).toBeInTheDocument();
-    expect(screen.getByText("Total cost")).toBeInTheDocument();
-    expect(screen.getByText("Price per token")).toBeInTheDocument();
-    expect(screen.getByText("$1.06")).toBeInTheDocument();
-    expect(screen.queryByText("Included use")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Price per token afterward"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disconnects when clicking use a different AI provider from the locked managed-provider state", async () => {
-    await setup({
-      isAdmin: true,
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      metabotUsageQuotas: [
-        {
-          is_locked: true,
-          tokens: 250000,
-          updated_at: "2026-04-02T19:29:12Z",
-        },
-      ],
-    });
-
-    expect(
-      await screen.findByText("You've run out of AI service tokens"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/You've used all of your included AI service tokens\./),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Current billing cycle")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Use a different AI provider" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Start paid subscription" }),
-    ).toBeInTheDocument();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Use a different AI provider" }),
-    );
-
-    expect(
-      await screen.findByText("Disconnect AI provider?"),
-    ).toBeInTheDocument();
-    expect(
-      fetchMock.callHistory.calls("path:/api/setting", { method: "PUT" }),
-    ).toHaveLength(0);
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Disconnect provider" }),
-    );
-
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
-    });
-
-    const request = fetchMock.callHistory
-      .calls("path:/api/setting")
-      .find((call) => call.request?.method === "PUT");
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({
-        "llm-metabot-provider": null,
-      }),
-    );
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-    expect(
-      screen.queryByText("You've run out of AI service tokens"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("resets the form in modal mode without updating settings", async () => {
-    await setup({
-      isAdmin: true,
-      isHosted: true,
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      metabotUsageQuotas: [
-        {
-          is_locked: true,
-          tokens: 250000,
-          updated_at: "2026-04-02T19:29:12Z",
-        },
-      ],
-      renderAsModal: true,
-    });
-
-    expect(await screen.findByLabelText("Provider")).toHaveValue("");
-
-    await selectProvider("Metabase");
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: "Use a different AI provider",
-      }),
-    );
-
-    expect(await screen.findByLabelText("Provider")).toHaveValue("");
-    expect(
-      screen.queryByRole("button", { name: "Use a different AI provider" }),
-    ).not.toBeInTheDocument();
-    expect(
-      fetchMock.callHistory
-        .calls("path:/api/setting")
-        .some((call) => call.request?.method === "PUT"),
-    ).toBe(false);
-  });
-
-  it("saves when picking a model", async () => {
-    const { store } = await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-    });
-    await selectProvider("Anthropic");
-    await screen.findByLabelText("Model");
-
-    await openModelSelector();
-    await userEvent.click(await screen.findByText("Claude Sonnet 4.5"));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "anthropic", model: "claude-sonnet-4-5" },
-      ]);
-    });
-
-    await waitFor(() => {
-      expect(
-        store
-          .getState()
-          .undo.some(
-            (toast) => toast.message === "Settings saved successfully",
-          ),
-      ).toBe(true);
-    });
-
-    expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("connects to OpenAI by saving the API key and selecting a model", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      apiKeyValues: { openai: null },
-      updateResponse: {
-        value: "openai/gpt-5.4",
-        models: DEFAULT_RESPONSES.openai.models,
-      },
-    });
-
-    await selectProvider("OpenAI");
-    await userEvent.type(screen.getByLabelText("API key"), "sk-openai-test");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "openai", "api-key": "sk-openai-test" },
-      ]);
-    });
-
-    await screen.findByLabelText("Model");
-    await openModelSelector();
-    await userEvent.click(await screen.findByText("gpt-5.4"));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "openai", "api-key": "sk-openai-test" },
-        { provider: "openai", model: "gpt-5.4" },
-      ]);
-    });
-
-    expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disconnects OpenAI by clearing both the provider and API key settings", async () => {
-    await setup({
-      savedProviderValue: "openai/gpt-5.4",
-      isConfigured: true,
-      apiKeyValues: { openai: "**********ey" },
-    });
-
-    await screen.findByText("Connected to OpenAI");
-    await screen.findByLabelText("API key");
-    await confirmDisconnectProvider();
-
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-        "llm-openai-api-key": null,
-      });
-    });
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-  });
-
-  it("connects to OpenRouter by saving the API key and selecting a model", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      apiKeyValues: { openrouter: null },
-      updateResponse: {
-        value: "openrouter/anthropic/claude-sonnet-4.6",
-        models: DEFAULT_RESPONSES.openrouter.models,
-      },
-    });
-
-    await selectProvider("OpenRouter");
-    await userEvent.type(
-      screen.getByLabelText("API key"),
-      "sk-or-v1-openrouter-test",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
-      ]);
-    });
-
-    await screen.findByLabelText("Model");
-    await openModelSelector();
-    await userEvent.click(await screen.findByText("OpenAI: GPT-5.4 Mini"));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "openrouter", "api-key": "sk-or-v1-openrouter-test" },
-        { provider: "openrouter", model: "openai/gpt-5.4-mini" },
-      ]);
-    });
-
-    expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disconnects OpenRouter by clearing both the provider and API key settings", async () => {
-    await setup({
-      savedProviderValue: "openrouter/openai/gpt-5.4-mini",
-      isConfigured: true,
-      apiKeyValues: { openrouter: "**********st" },
-    });
-
-    await screen.findByText("Connected to OpenRouter");
-    await screen.findByLabelText("API key");
-    await confirmDisconnectProvider();
-
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-        "llm-openrouter-api-key": null,
-      });
-    });
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-  });
-
-  it("connects to Mistral by saving the API key and selecting a model", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      apiKeyValues: { mistral: null },
-      updateResponse: {
-        value: "mistral/mistral-medium-3-5",
-        models: DEFAULT_RESPONSES.mistral.models,
-      },
-    });
-
-    await selectProvider("Mistral");
-    await userEvent.type(screen.getByLabelText("API key"), "mistral-key.test");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "mistral", "api-key": "mistral-key.test" },
-      ]);
-    });
-
-    await screen.findByLabelText("Model");
-    await openModelSelector();
-    await userEvent.click(await screen.findByText("Mistral Medium 3.5"));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "mistral", "api-key": "mistral-key.test" },
-        { provider: "mistral", model: "mistral-medium-3-5" },
-      ]);
-    });
-
-    expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disconnects Mistral by clearing both the provider and API key settings", async () => {
-    await setup({
-      savedProviderValue: "mistral/mistral-medium-3-5",
-      isConfigured: true,
-      apiKeyValues: { mistral: "**********st" },
-    });
-
-    await screen.findByText("Connected to Mistral");
-    await screen.findByLabelText("API key");
-    await confirmDisconnectProvider();
-
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-        "llm-mistral-api-key": null,
-      });
-    });
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-  });
-
-  it("connects to Z.AI by saving the API key and selecting a model", async () => {
-    await setup({
-      savedProviderValue: null,
-      isConfigured: false,
-      apiKeyValues: { zai: null },
-      updateResponse: {
-        value: "zai/glm-5.2",
-        models: DEFAULT_RESPONSES.zai.models,
-      },
-    });
-
-    await selectProvider("Z.AI");
-    await userEvent.type(screen.getByLabelText("API key"), "zai-key.test");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "zai", "api-key": "zai-key.test" },
-      ]);
-    });
-
-    await screen.findByLabelText("Model");
-    await openModelSelector();
-    await userEvent.click(await screen.findByText("GLM-5.2"));
-
-    await waitFor(async () => {
-      expect(await findMetabotSettingsUpdates()).toEqual([
-        { provider: "zai", "api-key": "zai-key.test" },
-        { provider: "zai", model: "glm-5.2" },
-      ]);
-    });
-
-    expect(
-      screen.queryByRole("button", { name: "Connect" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disconnects Z.AI by clearing both the provider and API key settings", async () => {
-    await setup({
-      savedProviderValue: "zai/glm-5.2",
-      isConfigured: true,
-      apiKeyValues: { zai: "**********st" },
-    });
-
-    await screen.findByText("Connected to Z.AI");
-    await screen.findByLabelText("API key");
-    await confirmDisconnectProvider();
-
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-        "llm-zai-api-key": null,
-      });
-    });
-
-    expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-  });
-
-  it("disconnects an API-key provider by clearing both the provider and API key settings", async () => {
+  it("shows the empty state when nothing is connected", async () => {
     await setup();
 
-    await screen.findByLabelText("API key");
-    await openDisconnectProviderModal();
-
-    expect(
-      await screen.findByText("Disconnect AI provider?"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Connect to an AI provider")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This will disconnect your AI provider and disable AI features across your instance until you connect a provider again.",
+        "Select your AI provider to use AI explorations, SQL generation and Metabot.",
       ),
     ).toBeInTheDocument();
-    expect(await findSettingUpdates()).toEqual([]);
+    expect(
+      screen.getByRole("button", { name: /Add a provider/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+  });
+
+  it("lists the configured connections", async () => {
+    await setup({
+      connections: [ANTHROPIC_CONNECTION, AZURE_CONNECTION],
+      models: CONNECTION_MODELS,
+    });
+
+    expect(screen.getByText("AI providers")).toBeInTheDocument();
+    expect(
+      screen.getByText("Metabot can use models from any of these providers."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Anthropic")).toBeInTheDocument();
+    expect(screen.getByText("Azure prod")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Add another provider/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("picks the provider and fills the key in when one is pasted", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    expect(
+      within(modal).queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.paste("sk-ant-api03-pasted");
+
+    const apiKey = await within(modal).findByLabelText(/API key/);
+    expect(apiKey).toHaveValue("sk-ant-api03-pasted");
+    expect(within(modal).getByText("Anthropic")).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Disconnect provider" }),
+      within(modal).getByRole("button", { name: "Connect" }),
     );
 
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-        "llm-anthropic-api-key": null,
-      });
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+          body: {
+            type: "anthropic",
+            name: "Anthropic",
+            config: { "api-key": "sk-ant-api03-pasted" },
+          },
+        }),
+      ).toBe(true);
     });
+  });
+
+  it("stays on the picker when the pasted text is not a recognizable key", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.paste("just some text");
+
+    expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
+  });
+
+  it("adds a provider through the modal", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
 
     expect(
-      await screen.findByText("Connect to an AI provider"),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider")).toHaveValue("");
-    expect(
-      screen.queryByRole("button", { name: "Disconnect" }),
+      within(modal).queryByRole("button", { name: "Connect" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("disconnects an env-backed API-key provider by clearing only the provider setting", async () => {
-    await setup({
-      apiKeySettingIsEnv: true,
-      responses: {
-        anthropic: {
-          value: "anthropic/claude-haiku-4-5",
-          "credentials-error": "Anthropic API key expired or invalid",
-          models: [],
-        },
-      },
-    });
-
-    await screen.findByText("Anthropic API key expired or invalid");
-
-    await confirmDisconnectProvider();
-
-    await waitFor(async () => {
-      expect(await findSettingUpdates()).toContainEqual({
-        "llm-metabot-provider": null,
-      });
-    });
-
     expect(
-      await screen.findByText("Connect to an AI provider"),
+      within(modal).getByRole("button", { name: /Anthropic/ }),
     ).toBeInTheDocument();
-  });
 
-  it("disconnects the Metabase-managed provider by removing the add-on before clearing the provider setting", async () => {
-    await setup({
-      isHosted: true,
-      tokenStatusFeatures: ["metabase-ai-managed", "offer-metabase-ai-managed"],
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-    });
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    );
 
-    await screen.findByText("Connected to Metabase");
-    await confirmDisconnectProvider();
-
+    await openAdvancedSettings(modal);
+    expect(within(modal).getByLabelText("Display name")).toHaveValue(
+      "Anthropic",
+    );
     expect(
-      fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
-      ),
-    ).toBe(false);
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeDisabled();
+
+    await userEvent.type(within(modal).getByLabelText(/API key/), "sk-ant-new");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Connect" }),
+    );
+
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-        ),
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+          body: {
+            type: "anthropic",
+            name: "Anthropic",
+            config: { "api-key": "sk-ant-new" },
+          },
+        }),
       ).toBe(true);
     });
 
     await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-
-    const [removeRequest] = fetchMock.callHistory.calls(
-      "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-      {
-        method: "DELETE",
-      },
-    );
-    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
-      method: "PUT",
-    });
-
-    expect(removeRequest).toBeDefined();
-    expect(request?.options?.body).toBe(
-      JSON.stringify({
-        "llm-metabot-provider": null,
-      }),
-    );
-
-    const callHistory = fetchMock.callHistory.calls();
-
-    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
-      callHistory.indexOf(request),
-    );
   });
 
-  it("disconnects the tiered Metabase provider by removing the add-on before clearing the provider setting", async () => {
-    await setup({
-      isHosted: true,
-      tokenStatusFeatures: ["metabot-v3", "offer-metabase-ai-managed"],
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-    });
+  it("offers the Azure deployment as two fields rather than a hand-typed prefix", async () => {
+    await setup();
 
-    await screen.findByText("Connected to Metabase");
-    await confirmDisconnectProvider();
+    const modal = await openAddProviderModal();
+    await userEvent.click(within(modal).getByRole("button", { name: "Azure" }));
 
+    expect(within(modal).getByLabelText("Model provider")).toBeVisible();
+    expect(within(modal).getByLabelText("Model provider")).toHaveValue(
+      "OpenAI",
+    );
+    expect(within(modal).getByLabelText(/Deployment name/)).toBeVisible();
+
+    await userEvent.type(within(modal).getByLabelText(/API key/), "azure-new");
+    await userEvent.type(
+      within(modal).getByLabelText(/Base URL/),
+      "https://azure.test",
+    );
+    await userEvent.type(
+      within(modal).getByLabelText(/Deployment name/),
+      "gpt-4.1-mini",
+    );
+
+    // the pre-selected model provider counts as filled in, so it does not block Connect
     expect(
-      fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-      ),
-    ).toBe(false);
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
+  });
+
+  it("submits every descriptor field the provider type declares", async () => {
+    await setup({ createdConnection: AZURE_CONNECTION });
+
+    const modal = await openAddProviderModal();
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Azure" }));
+
+    await userEvent.type(within(modal).getByLabelText(/API key/), "azure-new");
+    await userEvent.type(
+      within(modal).getByLabelText(/Base URL/),
+      "https://azure.test",
+    );
+
+    await userEvent.type(
+      within(modal).getByLabelText(/Deployment name/),
+      "my-deployment",
+    );
+    await userEvent.click(within(modal).getByLabelText("Model provider"));
+    await selectOption("Anthropic");
+
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Connect" }),
+    );
+
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called(
-          "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
-        ),
+        fetchMock.callHistory.called("path:/api/llm/providers", {
+          method: "POST",
+          body: {
+            type: "azure",
+            name: "Azure",
+            config: {
+              "api-key": "azure-new",
+              "api-base-url": "https://azure.test",
+              "deployment-name": "my-deployment",
+              "model-family": "anthropic",
+            },
+          },
+        }),
       ).toBe(true);
     });
-
-    await waitFor(() => {
-      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
-    });
-
-    const [removeRequest] = fetchMock.callHistory.calls(
-      "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
-      {
-        method: "DELETE",
-      },
-    );
-    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
-      method: "PUT",
-    });
-
-    expect(removeRequest).toBeDefined();
-    expect(request?.options?.body).toBe(
-      JSON.stringify({
-        "llm-metabot-provider": null,
-      }),
-    );
-
-    const callHistory = fetchMock.callHistory.calls();
-
-    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
-      callHistory.indexOf(request),
-    );
   });
 
-  it("does not disconnect the tiered Metabase provider if no offer-metabase-ai-managed is set", async () => {
-    await setup({
-      isHosted: true,
-      offerMetabaseManagedAi: false,
-      tokenStatusFeatures: ["metabot-v3"],
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-    });
+  it("returns to provider selection from the configuration step", async () => {
+    await setup();
 
-    await screen.findByText("Connected to Metabase");
-
-    await confirmDisconnectProvider();
-
-    expect(
-      fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
-      ),
-    ).toBe(false);
-    expect(
-      fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
-      ),
-    ).toBe(false);
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting", { method: "PUT" }),
-      ).toBe(true);
-    });
-
-    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
-      method: "PUT",
-    });
-
-    expect(request?.options?.body).toBe(
-      JSON.stringify({
-        "llm-metabot-provider": null,
-      }),
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
     );
-  });
 
-  it("does not clear the provider setting if removing the Metabase-managed add-on fails", async () => {
-    await setup({
-      isHosted: true,
-      tokenStatusFeatures: ["metabase-ai-managed"],
-      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
-      removeCloudAddOnResponse: 500,
-    });
+    expect(within(modal).getByLabelText(/API key/)).toBeInTheDocument();
 
-    await screen.findByText("Current billing cycle");
-    await confirmDisconnectProvider();
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Unable to disconnect from this AI provider."),
-      ).toBeInTheDocument();
-    });
+    await userEvent.click(within(modal).getByRole("button", { name: "Back" }));
 
     expect(
-      fetchMock.callHistory
-        .calls("path:/api/setting")
-        .some((call) => call.request?.method === "PUT"),
-    ).toBe(false);
-    expect(
-      screen.getByRole("button", { name: "Disconnect" }),
+      within(modal).getByRole("button", { name: /Anthropic/ }),
     ).toBeInTheDocument();
+    expect(within(modal).queryByLabelText(/API key/)).not.toBeInTheDocument();
   });
 
-  it("shows an error toast when disconnect fails", async () => {
-    const { store } = await setup({ settingUpdateResponse: { status: 500 } });
+  it("keeps the optional fields behind advanced settings", async () => {
+    await setup();
 
-    await confirmDisconnectProvider();
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Anthropic" }),
+    );
+
+    expect(within(modal).getByLabelText(/API key/)).toBeVisible();
+    expect(within(modal).getByLabelText("Display name")).not.toBeVisible();
+    expect(within(modal).getByLabelText("API base URL")).not.toBeVisible();
+
+    await openAdvancedSettings(modal);
+
+    await waitFor(() =>
+      expect(within(modal).getByLabelText("Display name")).toBeVisible(),
+    );
+    expect(within(modal).getByLabelText("API base URL")).toBeVisible();
+  });
+
+  it("keeps an optional field up front unless it is marked advanced", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Amazon Bedrock" }),
+    );
+
+    expect(within(modal).getByLabelText(/Access key ID/)).toBeVisible();
+    expect(within(modal).getByLabelText(/Secret access key/)).toBeVisible();
+    expect(within(modal).getByLabelText("Region")).toBeVisible();
+    expect(within(modal).getByLabelText("Session token")).not.toBeVisible();
+  });
+
+  it("opens advanced settings for a connection that already customized one", async () => {
+    await setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          config: {
+            "api-key": "sk-ant-saved",
+            "base-url": "https://proxy.internal",
+          },
+        }),
+      ],
+      models: CONNECTION_MODELS,
+    });
+
+    await openProviderMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Edit/ }),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByLabelText("API base URL")).toBeVisible();
+    expect(within(modal).getByLabelText("API base URL")).toHaveValue(
+      "https://proxy.internal",
+    );
+  });
+
+  it("edits an existing connection", async () => {
+    await setup({
+      connections: [ANTHROPIC_CONNECTION],
+      models: CONNECTION_MODELS,
+    });
+
+    await openProviderMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Edit/ }),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).queryByLabelText("Provider")).not.toBeInTheDocument();
+
+    await openAdvancedSettings(modal);
+    const displayName = within(modal).getByLabelText("Display name");
+    await userEvent.clear(displayName);
+    await userEvent.type(displayName, "Anthropic prod");
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(
-        store
-          .getState()
-          .undo.some(
-            (toast) => toast.message === "Unable to save provider settings.",
-          ),
+        fetchMock.callHistory.called("path:/api/llm/providers/anthropic", {
+          method: "PUT",
+          body: {
+            name: "Anthropic prod",
+            config: { "api-key": "sk-ant-saved" },
+          },
+        }),
       ).toBe(true);
     });
   });
 
-  describe("Microsoft Azure", () => {
-    it("shows the Azure fields without a model dropdown when selected", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
+  it("removes a connection after confirming", async () => {
+    await setup({
+      connections: [ANTHROPIC_CONNECTION],
+      models: CONNECTION_MODELS,
+    });
 
-      await selectProvider("Microsoft Azure");
+    await openProviderMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Remove/ }),
+    );
 
+    expect(
+      await screen.findByText("Remove this provider?"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.called("path:/api/llm/providers/anthropic", {
+        method: "DELETE",
+      }),
+    ).toBe(false);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove provider" }),
+    );
+
+    await waitFor(() => {
       expect(
-        await screen.findByLabelText("Model provider"),
-      ).toBeInTheDocument();
-      expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
-      expect(screen.getByLabelText("API key")).toBeInTheDocument();
-      expect(screen.getByLabelText("Deployment name")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-    });
-
-    it("connects Azure by sending the composed model and the credentials object", async () => {
-      await setup({
-        savedProviderValue: null,
-        isConfigured: false,
-        updateResponse: {
-          value: "azure/openai/my-deployment",
-          models: [],
-        },
-      });
-
-      await selectProvider("Microsoft Azure");
-
-      const connectButton = screen.getByRole("button", { name: "Connect" });
-      expect(connectButton).toBeDisabled();
-
-      await userEvent.click(await screen.findByLabelText("Model provider"));
-      await userEvent.click(
-        await screen.findByRole("option", { name: "OpenAI" }),
-      );
-      await userEvent.type(
-        screen.getByLabelText("Base URL"),
-        "https://my-resource.services.ai.azure.com/openai",
-      );
-      await userEvent.type(screen.getByLabelText("API key"), "azure-key");
-      await userEvent.type(
-        screen.getByLabelText("Deployment name"),
-        "my-deployment",
-      );
-
-      expect(connectButton).toBeEnabled();
-      await userEvent.click(connectButton);
-
-      await waitFor(async () => {
-        expect(await findMetabotSettingsUpdates()).toEqual([
-          {
-            provider: "azure",
-            model: "openai/my-deployment",
-            credentials: {
-              "api-key": "azure-key",
-              "base-url": "https://my-resource.services.ai.azure.com/openai",
-            },
-          },
-        ]);
-      });
-    });
-
-    it("shows the saved family, base URL, and deployment for a connected Azure provider", async () => {
-      await setup({
-        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
-        apiKeyValues: { azure: "**********ey" },
-      });
-
-      // The saved values hydrate from the async setting-details fetch, so
-      // wait for them rather than asserting synchronously.
-      await waitFor(() =>
-        expect(screen.getByLabelText("Model provider")).toHaveValue(
-          "Anthropic",
-        ),
-      );
-      await waitFor(() =>
-        expect(screen.getByLabelText("Base URL")).toHaveValue(
-          "https://my-resource.services.ai.azure.com/anthropic",
-        ),
-      );
-      expect(screen.getByLabelText("Deployment name")).toHaveValue(
-        "claude-sonnet-4-5",
-      );
-      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Disconnect" }),
-      ).toBeInTheDocument();
-    });
-
-    it("sends untouched Azure credential fields as null when editing only the deployment", async () => {
-      await setup({
-        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
-        apiKeyValues: { azure: "**********ey" },
-        updateResponse: {
-          value: "azure/anthropic/renamed-deployment",
-          models: [],
-        },
-      });
-
-      const deploymentInput = await screen.findByLabelText("Deployment name");
-      // Wait for the saved deployment to hydrate before editing it — clearing
-      // the still-empty input is a no-op the arriving value then overwrites.
-      await waitFor(() =>
-        expect(deploymentInput).toHaveValue("claude-sonnet-4-5"),
-      );
-      await userEvent.clear(deploymentInput);
-      await userEvent.type(deploymentInput, "renamed-deployment");
-
-      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-      // The untouched key and base URL round-trip as displayed values in the form, but must be
-      // sent as null so the backend keeps the real saved values.
-      await waitFor(async () => {
-        expect(await findMetabotSettingsUpdates()).toEqual([
-          {
-            provider: "azure",
-            model: "anthropic/renamed-deployment",
-            credentials: {
-              "api-key": null,
-              "base-url": null,
-            },
-          },
-        ]);
-      });
-    });
-
-    it("disconnects Azure by clearing the credentials before the provider setting", async () => {
-      await setup({
-        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
-        apiKeyValues: { azure: "**********ey" },
-      });
-
-      await screen.findByLabelText("Deployment name");
-      await confirmDisconnectProvider();
-
-      // The credentials must be cleared before the provider setting.
-      await waitFor(async () => {
-        expect(await findPutRequests()).toEqual([
-          {
-            path: METABOT_SETTINGS_PATH,
-            body: { provider: "azure", credentials: null },
-          },
-          {
-            path: SETTING_PATH,
-            body: { "llm-metabot-provider": null },
-          },
-        ]);
-      });
-
-      expect(
-        await screen.findByText("Connect to an AI provider"),
-      ).toBeInTheDocument();
+        fetchMock.callHistory.called("path:/api/llm/providers/anthropic", {
+          method: "DELETE",
+        }),
+      ).toBe(true);
     });
   });
 
-  describe("Amazon Bedrock", () => {
-    it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await selectProvider("Amazon Bedrock");
-
-      expect(await screen.findByLabelText("Access key ID")).toBeInTheDocument();
-      expect(screen.getByLabelText("Secret access key")).toBeInTheDocument();
-      expect(screen.getByLabelText("Region")).toBeInTheDocument();
-      expect(screen.getByLabelText("Session token")).toBeInTheDocument();
-      expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+  it("renders an env-backed connection as read-only", async () => {
+    await setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "openai",
+          type: "openai",
+          name: "OpenAI",
+          source: "env",
+          env_vars: ["MB_LLM_OPENAI_API_KEY"],
+        }),
+      ],
     });
 
-    it("connects Amazon Bedrock by sending the credentials object", async () => {
-      await setup({ savedProviderValue: null, isConfigured: false });
-
-      await selectProvider("Amazon Bedrock");
-
-      await userEvent.type(
-        await screen.findByLabelText("Access key ID"),
-        "AKIDEXAMPLE",
-      );
-      await userEvent.type(
-        screen.getByLabelText("Secret access key"),
-        "test-secret",
-      );
-      await userEvent.type(screen.getByLabelText("Region"), "us-east-2");
-      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-      // The untouched session token field is omitted entirely — only changed fields are sent.
-      await waitFor(async () => {
-        expect(await findMetabotSettingsUpdates()).toEqual([
-          {
-            provider: "bedrock",
-            credentials: {
-              "access-key-id": "AKIDEXAMPLE",
-              "secret-access-key": "test-secret",
-              region: "us-east-2",
-            },
-          },
-        ]);
-      });
-    });
-
-    it("does not echo obfuscated credentials when editing only the region of a connected Bedrock provider", async () => {
-      await setup({
-        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
-        apiKeyValues: { bedrock: "**********LE" },
-      });
-
-      const regionInput = await screen.findByLabelText("Region");
-      await userEvent.clear(regionInput);
-      await userEvent.type(regionInput, "us-west-2");
-
-      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-      // The untouched access key, secret, and session token round-trip as obfuscated placeholders
-      // in the form, and must be omitted so the backend leaves the real saved values intact.
-      await waitFor(async () => {
-        expect(await findMetabotSettingsUpdates()).toEqual([
-          {
-            provider: "bedrock",
-            credentials: {
-              region: "us-west-2",
-            },
-          },
-        ]);
-      });
-    });
-
-    it("clears the session token by sending an explicit null without touching the other fields", async () => {
-      await setup({
-        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
-        apiKeyValues: { bedrock: "**********LE" },
-      });
-
-      const sessionTokenInput = await screen.findByLabelText("Session token");
-      await userEvent.clear(sessionTokenInput);
-
-      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-
-      // null means an explicit clear; the untouched fields are omitted so the saved keys survive.
-      await waitFor(async () => {
-        expect(await findMetabotSettingsUpdates()).toEqual([
-          {
-            provider: "bedrock",
-            credentials: {
-              "session-token": null,
-            },
-          },
-        ]);
-      });
-    });
-
-    it("shows the grouped model picker for a connected Bedrock provider", async () => {
-      await setup({
-        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
-        apiKeyValues: { bedrock: "**********LE" },
-      });
-
-      await screen.findByLabelText("Access key ID");
-      await screen.findByLabelText("Model");
-
-      await openModelSelector();
-
-      expect(await screen.findByText("Anthropic")).toBeInTheDocument();
-      expect(screen.getByText("OpenAI")).toBeInTheDocument();
-    });
-
-    it("disconnects Bedrock by clearing the credentials before the provider setting", async () => {
-      await setup({
-        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
-        apiKeyValues: { bedrock: "**********LE" },
-      });
-
-      await screen.findByLabelText("Access key ID");
-      await confirmDisconnectProvider();
-
-      // The credentials must be cleared before the provider setting.
-      await waitFor(async () => {
-        expect(await findPutRequests()).toEqual([
-          {
-            path: METABOT_SETTINGS_PATH,
-            body: { provider: "bedrock", credentials: null },
-          },
-          {
-            path: SETTING_PATH,
-            body: { "llm-metabot-provider": null },
-          },
-        ]);
-      });
-
-      expect(
-        await screen.findByText("Connect to an AI provider"),
-      ).toBeInTheDocument();
-    });
-
-    it("does not clear the provider setting if clearing the Bedrock credentials fails", async () => {
-      const { store } = await setup({
-        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
-        apiKeyValues: { bedrock: "**********LE" },
-        metabotSettingsUpdateResponse: { status: 500 },
-      });
-
-      await screen.findByLabelText("Access key ID");
-      await confirmDisconnectProvider();
-
-      await waitFor(() => {
-        expect(
-          store
-            .getState()
-            .undo.some(
-              (toast) => toast.message === "Unable to save provider settings.",
-            ),
-        ).toBe(true);
-      });
-
-      expect(await findSettingUpdates()).toEqual([]);
-      expect(
-        screen.getByRole("button", { name: "Disconnect" }),
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.getByText("MB_LLM_OPENAI_API_KEY", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Provider options" }),
+    ).not.toBeInTheDocument();
   });
 });
 
-const DEFAULT_PROVIDER_VALUE = "anthropic/claude-sonnet-4-6";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
-const DIVERGENT_MODELS = [
-  { id: "claude-sonnet-4-6", display_name: "Claude Sonnet 4.6" },
-  { id: "claude-sonnet-5", display_name: "Claude Sonnet 5" },
-];
+describe("AIProviderSetup (ad-hoc connect modal)", () => {
+  afterEach(() => {
+    reinitialize();
+  });
 
-function setupDivergentReadsBackend({
-  delayAdminSettingDetailsRefetch = false,
-}: { delayAdminSettingDetailsRefetch?: boolean } = {}) {
-  fetchMock.removeRoutes();
-  fetchMock.clearHistory();
+  async function setupModal() {
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
 
-  const backend: { apiKeySaved: boolean; providerRow: string | null } = {
-    apiKeySaved: false,
-    providerRow: null,
-  };
-
-  const providerValue = () => backend.providerRow ?? DEFAULT_PROVIDER_VALUE;
-  const isConfigured = () => backend.apiKeySaved;
-
-  const sessionPropertiesResponse = () =>
-    createMockSettings({
-      "llm-metabot-provider": providerValue(),
-      "llm-metabot-configured?": isConfigured(),
+    const sessionProperties = createMockSettings({
+      "llm-metabot-provider": null,
     });
 
-  const disconnectedSnapshot = sessionPropertiesResponse();
-  let pendingStaleSessionPropertiesReads = 0;
+    setupPropertiesEndpoints(sessionProperties);
+    setupSettingsEndpoints([
+      createMockSettingDefinition({ key: "llm-metabot-provider", value: null }),
+    ]);
+    setupUpdateSettingEndpoint();
+    setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE]);
+    setupLlmProvidersEndpoint([]);
+    setupLlmModelsEndpoint(CONNECTION_MODELS);
+    setupCreateLlmProviderEndpoint(ANTHROPIC_CONNECTION);
 
-  fetchMock.get("path:/api/session/properties", () => {
-    if (pendingStaleSessionPropertiesReads > 0) {
-      pendingStaleSessionPropertiesReads -= 1;
-      return disconnectedSnapshot;
-    }
-    return sessionPropertiesResponse();
-  });
-
-  const adminSettingDetailsResponse = () => [
-    createMockSettingDefinition({
-      key: "llm-metabot-provider",
-      value: backend.providerRow ?? undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: backend.apiKeySaved ? "**********ey" : undefined,
-    }),
-  ];
-
-  const detailsRefetchDeferred = defer<void>();
-  let adminSettingDetailsRequestCount = 0;
-
-  fetchMock.get("path:/api/setting", async () => {
-    adminSettingDetailsRequestCount += 1;
-    if (
-      delayAdminSettingDetailsRefetch &&
-      adminSettingDetailsRequestCount > 1
-    ) {
-      await detailsRefetchDeferred.promise;
-    }
-    return adminSettingDetailsResponse();
-  });
-
-  fetchMock.get("path:/api/metabot/settings", () => ({
-    value: providerValue(),
-    models: backend.apiKeySaved ? DIVERGENT_MODELS : [],
-  }));
-
-  fetchMock.put("path:/api/metabot/settings", (call) => {
-    const body: MetabotSettingsUpdateBody = JSON.parse(
-      String(call.options?.body ?? "{}"),
-    );
-    const currentProviderFromGetter = providerValue().split("/")[0];
-    const providerChanged = currentProviderFromGetter !== body.provider;
-
-    if ("api-key" in body) {
-      backend.apiKeySaved = Boolean(body["api-key"]);
-    }
-
-    const model =
-      body.model ?? (providerChanged ? DEFAULT_ANTHROPIC_MODEL : null);
-    if (model) {
-      backend.providerRow = `${body.provider}/${model}`;
-    }
-
-    return { value: providerValue(), models: DIVERGENT_MODELS };
-  });
-
-  renderWithProviders(
-    <Route path="/admin/metabot*" element={<AIProviderSettingsSection />} />,
-    {
-      withRouter: true,
-      initialRoute: "/admin/metabot",
+    const onDone = jest.fn();
+    renderWithProviders(<AIProviderSetup onDone={onDone} />, {
       storeInitialState: {
-        settings: mockSettings(disconnectedSnapshot),
+        settings: mockSettings(sessionProperties),
         currentUser: createMockUser({ is_superuser: true }),
       },
-    },
-  );
-
-  return {
-    backend,
-    releaseAdminSettingDetailsRefetch: () => detailsRefetchDeferred.resolve(),
-    markNextSessionPropertiesReadStale: () => {
-      pendingStaleSessionPropertiesReads += 1;
-    },
-  };
-}
-
-async function connectToAnthropicFromScratch() {
-  await screen.findByText("Connect to an AI provider");
-  await userEvent.click(await screen.findByLabelText("Provider"));
-  await userEvent.click(
-    await screen.findByRole("option", { name: "Anthropic" }),
-  );
-  await userEvent.type(
-    await screen.findByLabelText("API key"),
-    "sk-ant-test-key",
-  );
-  await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-}
-
-describe("AIProviderSettingsSection with divergent settings reads", () => {
-  it("keeps the entered API key and offers the model picker while the setting-details refetch lags behind session-properties", async () => {
-    const { releaseAdminSettingDetailsRefetch } = setupDivergentReadsBackend({
-      delayAdminSettingDetailsRefetch: true,
     });
 
-    await connectToAnthropicFromScratch();
+    return { onDone };
+  }
+
+  it("shows the model picker after connecting rather than closing", async () => {
+    const { onDone } = await setupModal();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Anthropic" }),
+    );
+    await userEvent.type(screen.getByLabelText(/API key/), "sk-ant-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(await screen.findByLabelText("Model")).toBeInTheDocument();
-    expect(screen.getByLabelText("API key")).toHaveValue("sk-ant-test-key");
+    expect(onDone).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByLabelText("Model"));
-    expect(
-      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
-    ).toBeInTheDocument();
-    await userEvent.keyboard("{Escape}");
-
-    releaseAdminSettingDetailsRefetch();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("API key")).toHaveValue("**********ey");
-    });
-    expect(
-      await screen.findByText("Connected to Anthropic"),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("button", { name: "Disconnect" }),
-    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onDone).toHaveBeenCalled();
   });
 
-  it("keeps the provider and model selection when a stale node serves the session-properties refetch after picking a model", async () => {
-    const { backend, markNextSessionPropertiesReadStale } =
-      setupDivergentReadsBackend();
+  it("starts with provider selection and does not offer a provider list action", async () => {
+    await setupModal();
 
-    await connectToAnthropicFromScratch();
-    await screen.findByText("Connected to Anthropic");
-    await waitFor(() => {
-      expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 4.6");
-    });
-
-    // Let the session-properties refetch land before arming the one-shot stale marker.
-    // Otherwise that in-flight refetch consumes it and the model-pick refetch below
-    // gets fresh data instead of stale.
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/session/properties"),
-      ).toHaveLength(2);
-    });
-    await act(async () => {
-      await fetchMock.callHistory.flush(true);
-    });
-
-    markNextSessionPropertiesReadStale();
-
-    await userEvent.click(screen.getByLabelText("Model"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Claude Sonnet 5" }),
-    );
-
-    await waitFor(() => {
-      expect(backend.providerRow).toBe("anthropic/claude-sonnet-5");
-    });
-
-    // Wait for the stale refetch to flip the section back to the setup layout
-    // then check the form kept the new selection instead of resetting to the stale snapshot.
-    expect(await screen.findByLabelText("Provider")).toHaveValue("Anthropic");
-    expect(screen.getByLabelText("API key")).toBeInTheDocument();
-    expect(screen.getByLabelText("Model")).toHaveValue("Claude Sonnet 5");
+    expect(
+      screen.queryByRole("button", { name: /Add a provider/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Anthropic" }),
+    ).toBeInTheDocument();
   });
 });

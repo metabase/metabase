@@ -1,30 +1,36 @@
 (ns metabase.metrics.transforms
-  "Toucan JSON transforms for dimension and dimension-mapping columns."
-  (:require
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]))
+  "Toucan JSON transforms for dimension and dimension-mapping columns
+   used by both Card and Measure models.
 
-(defn normalize-dimension
-  "Normalize a dimension after JSON parsing, converting string values to keywords."
-  [dim]
+   Dimensions are kebab-case (`display-name`, `dimension-id`, …) everywhere — in memory,
+   on the wire, and in the JSON at rest. See [[metabase.lib-metric.schema/persisted-dimension]]."
+  (:require
+   [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli :as mu]))
+
+(mu/defn normalize-dimension :- ::lib-metric.schema/persisted-dimension
+  "Normalize a dimension after JSON parsing. Keys are kebab-case and type values are keywords.
+  See [[lib-metric.schema/persisted-dimension]]."
+  [dim :- :map]
   (cond-> dim
     (:status dim)                (update :status keyword)
     (:effective-type dim)        (update :effective-type keyword)
     (:semantic-type dim)         (update :semantic-type keyword)
+    (:has-field-values dim)      (update :has-field-values keyword)
     (:default-temporal-unit dim) (update :default-temporal-unit keyword)
     (:sources dim)               (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))))
 
 (defn normalize-target-ref
-  "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."
-  [[clause-type opts & rest]]
-  (into [(keyword clause-type)
-         (cond-> opts
-           (:base-type opts)      (update :base-type keyword)
-           (:effective-type opts) (update :effective-type keyword))]
-        rest))
+  "Normalize a target ref after JSON parsing, e.g. [\"field\" {...} id] to a well-formed
+   MBQL 5 [:field {...} id] ref, via the ref schema."
+  [target]
+  (lib/normalize :metabase.lib.schema.ref/ref target))
 
 (defn normalize-dimension-mapping
-  "Normalize a dimension mapping after JSON parsing."
+  "Normalize a dimension mapping after JSON parsing, converting string values to keywords."
   [mapping]
   (-> mapping
       (update :type keyword)

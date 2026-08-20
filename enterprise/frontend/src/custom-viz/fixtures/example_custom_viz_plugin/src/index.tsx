@@ -4,6 +4,7 @@ import { Visualization } from "./Visualization";
 
 type Settings = {
   threshold?: number;
+  metricColumn?: string | null;
 };
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
@@ -56,6 +57,25 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
               isNonNegative: false,
             },
             placeholder: "Set threshold",
+          };
+        },
+      }),
+      metricColumn: defineSetting({
+        id: "metricColumn",
+        title: "Metric column",
+        widget: "field",
+        getDefault(series) {
+          return series[0].data.cols[0]?.name;
+        },
+        getProps(series) {
+          const columns = series[0].data.cols;
+          return {
+            columns,
+            options: columns.map((col) => ({
+              name: col.display_name,
+              value: col.name,
+            })),
+            showColumnSetting: true,
           };
         },
       }),

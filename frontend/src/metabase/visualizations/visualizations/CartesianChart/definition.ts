@@ -50,7 +50,6 @@ type CartesianChartAdditions = Pick<
 
 const cartesianChartAdditions: CartesianChartAdditions = {
   noHeader: true,
-  usesEChartsRenderer: true,
   supportsVisualizer: true,
 
   isSensible: ({ cols, rows }) => {

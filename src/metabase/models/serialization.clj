@@ -64,6 +64,7 @@
    ;; legacy usages -- do not use in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -75,6 +76,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [toucan2.core :as t2]
@@ -1010,13 +1012,13 @@
   [id]
   (reverse
    (t2/select :model/Field
-              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
-                                 {:union-all [{:from   [[:metabase_field :mf]]
-                                               :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                               :where  [:= :id id]}
-                                              {:from   [[:metabase_field :pf]]
-                                               :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
-                                               :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
+              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
+                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [[:metabase_field :mf]]
+                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
+                                                                                 :where  [:= :id id]}
+                                                               ^:allow-subquery {:from   [[:metabase_field :pf]]
+                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
+                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
                :from           [:parents]
                :select         [:name :table_id]})))
 
@@ -1026,12 +1028,12 @@
   `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
   [table-id [field & rest]]
   (when field
-    {:from   [:metabase_field]
-     :select [:id]
-     :where  [:and
-              [:= :table_id table-id]
-              [:= :name field]
-              [:= :parent_id (recursively-find-field-q table-id rest)]]}))
+    ^:allow-subquery {:from   [:metabase_field]
+                      :select [:id]
+                      :where  [:and
+                               [:= :table_id table-id]
+                               [:= :name field]
+                               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
 ;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
 ;; database and table exporters above. Fields are unbounded in number (millions on large
@@ -1270,7 +1272,34 @@
     (m :guard map?)
     (import-mbql-map m)))
 
-(defn- normalize-imported [x]
+;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+(def ^:dynamic *skip-schema-validation?*
+  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
+  false)
+
+(defn- validate-imported-query!
+  "Throws when `query` is a full MBQL 5 query that this instance's query schema rejects. Anything else - bare refs,
+  the MBQL fragments inside visualization settings, legacy MBQL 4 queries - is left alone."
+  [query]
+  (when (and (= (:lib/type query) :mbql/query)
+             (not (mr/validate ::lib.schema/query query)))
+    (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
+      ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
+      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export
+      (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
+                           "either exported by a newer Metabase whose query shape this version cannot represent, "
+                           "or stored by an instance that never validated it. Pass continue_on_error to skip just "
+                           "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
+                           "for the whole import.")
+                      ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
+                      ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
+                      {:schema-errors errors}))))
+  query)
+
+(defn- normalize-imported
+  "Normalizes ingested MBQL/structure into this instance's representation, returning `x` unchanged if normalization
+  fails."
+  [x]
   (when x
     (try
       (if (mbql-ref? x)
@@ -1278,6 +1307,7 @@
         (lib/normalize x))
       (catch Throwable e
         (log/warnf "Error normalizing imported MBQL: %s" (ex-message e))
+        ;; many structures will fail normalization, but that is expected
         x))))
 
 (defn- import-mbql*
@@ -1312,12 +1342,16 @@
     x))
 
 (defn import-mbql
-  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
+  "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
+  IDs embedded, convert the IDs back to raw numeric IDs.
+
+  Throws if an MBQL 5 expression doesn't match the schema."
   [x]
-  (-> x
-      import-mbql*
-      normalize-imported
-      repair-card-template-tag-names))
+  (some-> x
+          import-mbql*
+          normalize-imported
+          (cond-> (not *skip-schema-validation?*) validate-imported-query!)
+          repair-card-template-tag-names))
 
 (declare ^:private mbql-deps-map)
 
