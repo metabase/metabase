@@ -4,9 +4,9 @@ import L from "leaflet";
 import { type ComponentClass, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Button } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DatasetData,
@@ -295,31 +295,19 @@ export function PinMap(props: PinMapProps) {
         )}
       >
         {shouldShowDefaultViewChangeButton ? (
-          <div
-            className={cx(
-              "PinMapUpdateButton",
-              ButtonsS.Button,
-              ButtonsS.ButtonSmall,
-              ButtonsS.ButtonWhite,
-              S.pinMapButton,
-              {
-                [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
-              },
-            )}
+          <Button
+            className={cx("PinMapUpdateButton", S.pinMapButton)}
+            size="sm"
+            disabled={disableUpdateButton}
             onClick={updateSettings}
           >
             {t`Set as default view`}
-          </div>
+          </Button>
         ) : null}
         {!isDashboard && mapInstance?.supportsFilter() && (
-          <div
-            className={cx(
-              "PinMapUpdateButton",
-              ButtonsS.Button,
-              ButtonsS.ButtonSmall,
-              ButtonsS.ButtonWhite,
-              S.pinMapButton,
-            )}
+          <Button
+            className={cx("PinMapUpdateButton", S.pinMapButton)}
+            size="sm"
             onClick={() => {
               if (!mapInstance) {
                 return;
@@ -332,7 +320,7 @@ export function PinMap(props: PinMapProps) {
             }}
           >
             {filtering ? t`Cancel filter` : t`Draw box to filter`}
-          </div>
+          </Button>
         )}
       </div>
     </div>
