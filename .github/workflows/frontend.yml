@@ -120,6 +120,7 @@ jobs:
         with:
           test-suite: fe-tests-unit
           adapter: frontend
+          is-rerun: ${{ github.run_attempt != '1' }}
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
         continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
