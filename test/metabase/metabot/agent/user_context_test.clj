@@ -443,7 +443,7 @@
         "Formatting result should contain database id")))
 
 (deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp     (mt/metadata-provider)
@@ -454,7 +454,7 @@
                       (assoc source :transform-source-type :query))]
           (is (string? text))
           (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
           (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
           (is (re-find #"\"source-table\"" text))
           (is (not (re-find #"lib/metadata" text))

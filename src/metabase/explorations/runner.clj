@@ -82,7 +82,7 @@
   `lib/prepare-for-serialization` so the metadata provider — a record
   holding caching atoms that Nippy can't freeze — is stripped before
   serialization. Without this prep, Nippy chokes on the `Atom` inside the
-  mp the moment we hand it a qp-result whose input query is a pMBQL value
+  mp the moment we hand it a qp-result whose input query is a MBQL 5 value
   with `:lib/metadata` still attached."
   ^bytes [qp-result]
   (qp/do-with-serialization

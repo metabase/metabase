@@ -30,8 +30,8 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
-  URLs require legacy MBQL format; non-pMBQL values pass through unchanged.
+  "Normalize a MBQL 5 query (has `:lib/type`) to legacy MBQL. Frontend /question#
+  URLs require legacy MBQL format; non-MBQL 5 values pass through unchanged.
 
   Agent state is JSON-persisted between turns, which preserves namespaced keys but
   turns enum values such as `:mbql/query`, `:field`, and `:day` into strings.
@@ -56,7 +56,7 @@
 (defn pseudo-card->link
   "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
   `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
-  A pMBQL `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
+  A MBQL 5 `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
   [pc]
   (let [pc (cond-> (merge {:visualization_settings {}} pc)
              (:dataset_query pc) (update :dataset_query ->legacy-mbql))]
