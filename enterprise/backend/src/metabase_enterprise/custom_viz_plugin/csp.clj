@@ -6,26 +6,9 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (java.net URI)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- loopback-origin
-  "The `scheme://host[:port]` origin of `url`, or nil unless it names a loopback host. Re-checking the host
-   here (rather than trusting [[cache/validate-dev-url!]] at write time) keeps a row stored before that
-   validation existed from reaching the header."
-  [^String url]
-  (try
-    (let [uri    (URI. url)
-          scheme (some-> (.getScheme uri) u/lower-case-en)
-          host   (some-> (.getHost uri) u/lower-case-en)
-          port   (.getPort uri)]
-      (when (and scheme (cache/loopback-host? host))
-        (str scheme "://" host (when (pos? port) (str ":" port)))))
-    (catch Exception _ nil)))
 
 (defenterprise custom-viz-dev-connect-src-hosts
   "Origins of the configured custom-viz dev servers, so a superuser's browser can fetch the plugin bundle,
@@ -39,6 +22,6 @@
   (if-not (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
     []
     (into []
-          (comp (keep loopback-origin) (distinct))
+          (comp (keep cache/loopback-origin) (distinct))
           (t2/select-fn-set :dev_bundle_url :model/CustomVizPlugin
                             :status :active :enabled true :dev_bundle_url [:not= nil]))))

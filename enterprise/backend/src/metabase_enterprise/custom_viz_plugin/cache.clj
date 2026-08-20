@@ -24,7 +24,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.net InetAddress)
+   (java.net InetAddress URI)
    (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
 
@@ -287,9 +287,7 @@
 
 ;;; ------------------------------------------------ Dev Server URL ------------------------------------------------
 
-;; Dev plugins are loaded by the browser, straight from the developer's dev server -- Metabase never requests
-;; the URL itself. So what is validated below is not an outbound request but a string that ends up in the app
-;; document's CSP `connect-src`, see [[metabase-enterprise.custom-viz-plugin.csp]].
+;; Dev plugins are loaded by the browser, straight from the developer's dev server.
 
 (defn loopback-host?
   "Whether `host` names the machine the browser runs on: the name `localhost`"
@@ -301,38 +299,55 @@
            (.isLoopbackAddress (InetAddress/ofLiteral host))
            (catch Exception _ false))))))
 
-(defn- parse-uri
-  ^java.net.URI [^String url ^String label]
-  (try
-    (java.net.URI. url)
-    (catch Exception _
-      (throw (ex-info (str label " is not a valid URL.") {:status-code 400 :url url})))))
+(defn- parse-dev-url
+  "Parse `url` into `{:origin \"scheme://host[:port]\"}` when it is usable as a dev server URL, or
+   `{:problem \"...\"}` saying why not.
+
+   One definition of the rule, shared by the write path ([[validate-dev-url!]], which throws the problem at
+   the admin) and the read path ([[loopback-origin]], which just drops the row). Keeping them together is
+   the point: if they could drift, a URL could be storable but never reach the CSP, or the reverse."
+  [^String url]
+  (if-let [uri (try (URI. url) (catch Exception _ nil))]
+    (let [scheme (some-> (.getScheme uri) u/lower-case-en)
+          host   (some-> (.getHost uri) u/lower-case-en)
+          port   (.getPort uri)]
+      (cond
+        (not (contains? #{"http" "https"} scheme))
+        {:problem (str "must use http or https, got: " (or scheme url))}
+
+        (not (loopback-host? host))
+        {:problem (str "must point at localhost, got: " (or host url))}
+
+        (not (and (contains? #{nil "" "/"} (.getPath uri))
+                  (nil? (.getQuery uri))
+                  (nil? (.getFragment uri))))
+        {:problem "must be a bare origin like http://localhost:5174, with no path or query."}
+
+        :else
+        {:origin (str scheme "://" host (when (pos? port) (str ":" port)))}))
+    {:problem "is not a valid URL."}))
 
 (defn validate-dev-url!
-  "Validate a dev server URL, returning it normalized to a bare `scheme://host[:port]` origin.
+  "Validate a dev server URL, returning it normalized to a bare `scheme://host[:port]` origin, or throwing a
+   400 naming what is wrong with it.
 
    The host must be loopback. The browser doing the fetching always runs on the developer's own machine, so
    every legitimate dev server is local, and holding the value to loopback is what makes widening
-   `connect-src` to it harmless -- you cannot exfiltrate to another machine's loopback. Deliberately a
-   literal name check with no DNS resolution: this validates a CSP header token, it does not decide whether
-   to open a connection."
+   `connect-src` to it harmless -- you cannot exfiltrate to another machine's loopback."
   ^String [^String url ^String label]
-  (let [uri    (parse-uri url label)
-        scheme (some-> (.getScheme uri) u/lower-case-en)
-        host   (some-> (.getHost uri) u/lower-case-en)
-        port   (.getPort uri)]
-    (when-not (contains? #{"http" "https"} scheme)
-      (throw (ex-info (str label " must use http or https, got: " (or scheme url))
-                      {:status-code 400 :url url})))
-    (when-not (loopback-host? host)
-      (throw (ex-info (str label " must point at localhost, got: " (or host url))
-                      {:status-code 400 :url url})))
-    (when-not (and (contains? #{nil "" "/"} (.getPath uri))
-                   (nil? (.getQuery uri))
-                   (nil? (.getFragment uri)))
-      (throw (ex-info (str label " must be a bare origin like http://localhost:5174, with no path or query.")
-                      {:status-code 400 :url url})))
-    (str scheme "://" host (when (pos? port) (str ":" port)))))
+  (let [{:keys [origin problem]} (parse-dev-url url)]
+    (when problem
+      (throw (ex-info (str label " " problem) {:status-code 400 :url url})))
+    origin))
+
+(defn loopback-origin
+  "The normalized origin of `url`, or nil unless [[validate-dev-url!]] would accept it.
+
+   The read-path counterpart, used to build the CSP `connect-src` entry. Re-checking here rather than
+   trusting what is stored keeps a row written before these rules existed from reaching the header; such a
+   row simply contributes nothing instead of throwing."
+  ^String [^String url]
+  (:origin (parse-dev-url url)))
 
 (defn set-or-clear-dev-bundle!
   "Set or clear the dev server URL for a plugin, normalized to an origin. Persists to the database."

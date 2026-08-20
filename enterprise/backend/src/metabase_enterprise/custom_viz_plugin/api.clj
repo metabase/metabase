@@ -26,10 +26,6 @@
              [403 "Custom visualization plugin dev mode is not enabled."]))
 
 (defn- validate-manifest!
-  "Structurally validate a client-supplied `metabase-plugin.json`. The browser reads it from the dev server --
-   Metabase never requests the dev URL itself -- so it arrives in the request body and gets the same check the
-   server-side fetch used to apply. Nil (the browser could not reach the dev server) passes through, so the
-   caller can fall back to an explicit identifier."
   [manifest]
   (when manifest
     (when-let [error (manifest/validation-error manifest)]
@@ -168,10 +164,8 @@
         (try (.delete tempfile) (catch Exception _))))))
 
 (api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
-  "Register a dev-only custom visualization plugin served by a local dev server.
-   No bundle upload is required — the browser loads the bundle straight from the dev server URL, so the
-   caller passes the `metabase-plugin.json` it read from there.
-   Requires custom viz plugin dev mode to be enabled."
+  "Register a dev-only custom visualization plugin from a local dev server.
+  No bundle upload is required as files are served from the dev server URL."
   [_route-params
    _query-params
    {:keys [identifier dev_bundle_url manifest]} :- [:map
@@ -217,10 +211,7 @@
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with version mismatches are included, with soft `warnings` attached.
-   Dev-only plugins are excluded unless dev mode is on and the caller is a superuser: the browser loads a
-   dev bundle directly from the dev server, and only a superuser's document carries the CSP `connect-src`
-   entry that permits it (see [[metabase-enterprise.custom-viz-plugin.csp]]). Advertising one to anybody else
-   would just render a visualization that cannot load."
+   Dev-only plugins are excluded when dev mode is disabled and user is not superuser"
   []
   (let [dev-mode? (and (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
                        api/*is-superuser?*)
@@ -288,7 +279,7 @@
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for an upload-backed plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
-   Dev plugins are not served here — the browser fetches those from the dev server itself."
+   Dev plugins are not served here, browser fetches those from the dev server itself."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
@@ -318,7 +309,7 @@
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match the manifest `icon`. Only the icon is served — plugins do not
    ship arbitrary assets.
-   Dev plugins are not served here — the browser fetches the icon from the dev server itself."
+   Dev plugins are not served here, the browser fetches the icon from the dev server itself."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [path]} :- [:map [:path ms/NonBlankString]]
    _body
@@ -347,11 +338,7 @@
 (api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
   "Set or clear the dev server URL for a plugin (e.g. `http://localhost:5174`).
    The browser fetches the bundle from `{origin}/index.js`, the icon from `{origin}/assets/{name}` and the
-   hot-reload stream from `{origin}/__sse`; Metabase itself never requests the URL. Stored normalized to a
-   bare origin, because it is also what widens the CSP `connect-src` for superusers
-   (see [[metabase-enterprise.custom-viz-plugin.csp]]).
-   Persisted to the database so it survives server restarts.
-   Requires custom viz plugin dev mode to be enabled."
+   hot-reload stream from `{origin}/__sse`; Metabase itself never requests the URL."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
