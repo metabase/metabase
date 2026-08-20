@@ -318,14 +318,7 @@
       (throw (ex-info (str label " must use http or https, got: " (or scheme url))
                       {:status-code 400 :url url})))
     (when-not (contains? loopback-hosts host)
-      (throw (ex-info (str label " must point at localhost, got: " (or host url) "."
-                           ;; host.docker.internal was the documented answer for Metabase-in-Docker back
-                           ;; when the server did the fetching. It resolves inside the container only, so
-                           ;; now that the browser fetches it cannot work -- and is no longer needed.
-                           (when (= host "host.docker.internal")
-                             (str " Use http://localhost:5174 instead: your browser loads the plugin"
-                                  " directly, so it reaches a dev server on your own machine even when"
-                                  " Metabase runs in Docker.")))
+      (throw (ex-info (str label " must point at localhost, got: " (or host url))
                       {:status-code 400 :url url})))
     (when-not (and (contains? #{nil "" "/"} (.getPath uri))
                    (nil? (.getQuery uri))

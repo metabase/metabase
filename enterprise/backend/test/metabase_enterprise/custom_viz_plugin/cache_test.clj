@@ -138,11 +138,8 @@
       (is (thrown-with-msg? Exception #"must point at localhost"
                             (cache/validate-dev-url! url "Dev server URL"))
           url)))
-  (testing "the host.docker.internal refusal names its replacement, since it is what the docs used to say"
-    (is (thrown-with-msg? Exception #"Use http://localhost:5174 instead"
-                          (cache/validate-dev-url! "http://host.docker.internal:5174" "Dev server URL"))))
-  (testing "but an unrelated host gets no Docker advice"
-    (is (thrown-with-msg? Exception #"must point at localhost, got: evil\.com\.$"
+  (testing "the refusal names the offending host, the same way for every host"
+    (is (thrown-with-msg? Exception #"must point at localhost, got: evil\.com$"
                           (cache/validate-dev-url! "https://evil.com" "Dev server URL"))))
   (testing "SECURITY: rejects anything richer than an origin, so only scheme://host[:port] reaches the header"
     (doseq [url ["http://localhost:5174/evil" "http://localhost:5174?a=1" "http://localhost:5174#f"]]
