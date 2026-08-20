@@ -6,13 +6,17 @@ import {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
+import { getCard } from "metabase/query_builder";
+// The query builder's actions, harness and store selectors are not part of its
+// interface, so the spec reaches them by path.
+/* eslint-disable metabase/enforce-module-public-api */
 import { cancelQuery } from "metabase/query_builder/actions";
 import { setup } from "metabase/query_builder/containers/test-utils";
 import {
-  getCard,
   getFirstQueryResult,
   getIsRunning,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/store/selectors";
+/* eslint-enable metabase/enforce-module-public-api */
 import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";

@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
+import { getCard } from "metabase/query_builder";
+// The query builder's test harness is not part of its interface, so the spec reaches it by path.
+// eslint-disable-next-line metabase/enforce-module-public-api
 import { setup } from "metabase/query_builder/containers/test-utils";
-import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";

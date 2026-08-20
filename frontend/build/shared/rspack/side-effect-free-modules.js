@@ -30,9 +30,14 @@ const SIDE_EFFECT_FREE_PATHS = [
   // the lezer tokenizer, so a picker importing only `getClauseDefinition` from it
   // would otherwise pull CodeMirror into the initial bundle.
   path.join(REPO_ROOT, "frontend/src/metabase/querying/expressions") + path.sep,
+  path.join(REPO_ROOT, "frontend/src/metabase/query_builder") + path.sep,
 ];
 
 const SIDE_EFFECT_FREE_RULE = {
+  // Script files only. A CSS module is reachable only through the script that imports it,
+  // so it is dropped with that script and needs no flag of its own.
+  // Leaving CSS at rspack's default also keeps a stray `import "./x.css"` from being shaken.
+  test: /\.[jt]sx?$/,
   include: SIDE_EFFECT_FREE_PATHS,
   sideEffects: false,
 };
