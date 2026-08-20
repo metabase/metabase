@@ -71,7 +71,7 @@ jobs:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && (github.event.pull_request.head.repo.full_name == 'metabase/metabase' || (github.event_name == 'push' && github.repository == 'metabase/metabase')) }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4

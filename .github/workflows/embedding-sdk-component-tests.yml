@@ -160,7 +160,8 @@ jobs:
              await core.summary.addRaw(summary).write();
 
   decide-target-ref:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       target-ref: ${{ steps.get-target-ref.outputs.value }}
     steps:
