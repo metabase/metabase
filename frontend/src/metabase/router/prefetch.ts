@@ -1,8 +1,9 @@
 type LoadPage = () => Promise<unknown>;
 
 type Registration = {
-  pathPrefix: string;
+  path: string;
   load: LoadPage;
+  isExact: boolean;
   isStarted: boolean;
 };
 
@@ -16,13 +17,19 @@ const registrations: Registration[] = [];
  * is a good signal that the click is coming, and acting on it buys most of that
  * time back.
  *
- * `pathPrefix` matches the start of a link's target, so one registration covers
- * a page and everything below it. Two pages may register the same prefix, which
- * is what a route that renders one page or another depending on the license
- * needs.
+ * `path` matches the start of a link's target, so one registration covers a page
+ * and everything below it. Two pages may register the same prefix, which is what
+ * a route that renders one page or another depending on the license needs.
+ *
+ * `exact` matches the whole path instead. The home page needs it: every path
+ * starts with "/", so a prefix registration would fetch it from any link.
  */
-export function registerPagePrefetch(pathPrefix: string, load: LoadPage): void {
-  registrations.push({ pathPrefix, load, isStarted: false });
+export function registerPagePrefetch(
+  path: string,
+  load: LoadPage,
+  { exact = false }: { exact?: boolean } = {},
+): void {
+  registrations.push({ path, load, isExact: exact, isStarted: false });
 }
 
 /**
@@ -35,7 +42,11 @@ export function registerPagePrefetch(pathPrefix: string, load: LoadPage): void {
  */
 export function prefetchPage(path: string): void {
   for (const registration of registrations) {
-    if (registration.isStarted || !path.startsWith(registration.pathPrefix)) {
+    const matches = registration.isExact
+      ? path === registration.path
+      : path.startsWith(registration.path);
+
+    if (registration.isStarted || !matches) {
       continue;
     }
 
