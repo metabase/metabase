@@ -140,13 +140,13 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
    Commit it alongside the built bundle (the file `path` points at).
 
-   **`description`** — optional, and **must stay one line**: a single short
-   sentence saying what the app does, shown beside its name in the admin UI so
-   admins can tell apps apart at a glance. Do not use a YAML block scalar (`|`,
-   `>`) or write a paragraph — the UI renders it on one truncated line, and
-   anything over 255 characters is rejected on sync. Replace the template's
-   placeholder with a real sentence about *this* app, or delete the line entirely
-   if a one-liner adds nothing beyond the name.
+   **`description`** — optional: a single short sentence saying what the app
+   does, shown under its name in the admin UI so admins can tell apps apart at a
+   glance. Sync folds any whitespace into single spaces and rejects anything over
+   255 characters; the admin list wraps what is left rather than cutting it off,
+   so a sentence reads well there and a paragraph crowds out the rows around it.
+   Replace the template's placeholder with a real sentence about *this* app, or
+   delete the line entirely if it adds nothing beyond the name.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an

@@ -90,20 +90,27 @@
     (t2/update! :model/DataApp :name slug row)
     (t2/insert! :model/DataApp (assoc row :name slug))))
 
+(defn- app-metadata-changed?
+  "Whether the metadata a sync stores whether or not the bundle loaded differs from
+   the `existing` row. The failure path stores exactly these, so it asks this
+   directly; the success path adds the bundle to the question."
+  [existing {:keys [display_name description bundle_path allowed_hosts]}]
+  (or (not= (:display_name existing) display_name)
+      (not= (:description existing) description)
+      (not= (:bundle_path existing) bundle_path)
+      (not= (vec (or (:allowed_hosts existing) []))
+            (vec (or allowed_hosts [])))))
+
 (defn- app-content-changed?
   "Whether the just-synced content differs from the `existing` row (nil = a new
    app). Compares only content-bearing fields — a `last_synced_sha` /
    `last_synced_at` bump on an otherwise-identical app is NOT a change, so callers
    can count real changes (e.g. for the remote-sync pull summary)."
-  [existing {:keys [display_name description bundle_path bundle_hash allowed_hosts]}]
+  [existing {:keys [bundle_hash] :as fields}]
   (or (nil? existing)
       (some? (:sync_error existing))
-      (not= (:display_name existing) display_name)
-      (not= (:description existing) description)
-      (not= (:bundle_path existing) bundle_path)
       (not= (:bundle_hash existing) bundle_hash)
-      (not= (vec (or (:allowed_hosts existing) []))
-            (vec (or allowed_hosts [])))))
+      (app-metadata-changed? existing fields)))
 
 (defn- mark-config-error!
   "Record a `data_app.yaml` parse failure on an app that already has a row, keeping the
@@ -145,14 +152,18 @@
                                      :sync_error      nil))
         (app-content-changed? existing fields)))
     (catch Throwable e
-      (upsert-by-name! slug {:display_name  display_name
-                             :description   description
-                             :allowed_hosts allowed_hosts
-                             :bundle_path   bundle
-                             :sync_error    (ex-message e)})
-      (log/warnf "[data-app] failed to sync app %s: %s" slug (ex-message e))
-      ;; a failing app counts as a change unless it was already failing identically
-      (or (nil? existing) (not= (:sync_error existing) (ex-message e))))))
+      (let [fields {:display_name  display_name
+                    :description   description
+                    :allowed_hosts allowed_hosts
+                    :bundle_path   bundle}]
+        (upsert-by-name! slug (assoc fields :sync_error (ex-message e)))
+        (log/warnf "[data-app] failed to sync app %s: %s" slug (ex-message e))
+        ;; A failing app counts as a change when the failure is new, and also when
+        ;; the metadata above moved: the upsert stores an edited description even
+        ;; though the bundle still fails, so the pull summary has to admit it.
+        (or (nil? existing)
+            (not= (:sync_error existing) (ex-message e))
+            (app-metadata-changed? existing fields))))))
 
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:

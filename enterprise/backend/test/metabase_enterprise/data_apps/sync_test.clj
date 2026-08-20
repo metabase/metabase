@@ -66,6 +66,24 @@
         (is (=? {:changed 1} (sync-app)))
         (is (nil? (t2/select-one-fn :description :model/DataApp :name "a")))))))
 
+(deftest metadata-edits-count-while-an-app-keeps-failing-test
+  (testing "an app whose bundle is missing still stores metadata edits, so they count as changes"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [sync-app (fn [& {:as app}]
+                       (data-app.sync/import-from-snapshot!
+                        (snapshot {"data_apps/a/data_app.yaml"
+                                   (str "name: A\npath: index.js\n"
+                                        (when-let [d (:description app)]
+                                          (format "description: %s\n" d)))})))]
+        (is (=? {:changed 1} (sync-app :description "First")) "the first failure is a change")
+        (is (some? (t2/select-one-fn :sync_error :model/DataApp :name "a")))
+        (testing "re-syncing the same failing app unchanged is not a change"
+          (is (=? {:changed 0} (sync-app :description "First"))))
+        (testing "editing the description is a change even though the bundle still fails"
+          (is (=? {:changed 1} (sync-app :description "Second")))
+          (is (= "Second" (t2/select-one-fn :description :model/DataApp :name "a"))
+              "the edit is stored, which is why the pull cannot report it as a no-op"))))))
+
 (deftest switching-repos-prunes-old-apps-overrides-shared-adds-new-test
   (testing "syncing a different repo: drop apps only the old repo had, override shared slugs, add new ones"
     (mt/with-model-cleanup [:model/DataApp]
