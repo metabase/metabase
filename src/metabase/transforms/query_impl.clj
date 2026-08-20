@@ -19,6 +19,9 @@
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method on-start user-id parent-run]}]
    (try
+     ;; Before the run row is booked, so a refusal surfaces as a 403 on the request that asked for the run
+     ;; rather than as a failed run.
+     (transforms.u/check-source-query-permissions! transform)
      (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
