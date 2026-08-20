@@ -260,6 +260,45 @@
         (is (= [(mt/user->id :rasta)]
                (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id pc-id)))))))
 
+(deftest recipients-are-validated-test
+  (testing "GHY-4329: a recipient that is neither an email address nor an active user's id is a
+            teaching error — the same check `alert_write` applies, so a typo comes back as a
+            sentence instead of landing in the channel as a malformed row"
+    (mt/with-model-cleanup [:model/Pulse]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                     :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                  :creator_id (mt/user->id :crowberto)}
+                     :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                     :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
+                                                      :schedule_type :daily :schedule_hour 15}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
+                                                     :user_id (mt/user->id :rasta)}]
+        (testing "a string that isn't an email address"
+          (is (re-find #"neither a user id nor an email address"
+                       (tool-error (call-tool! :crowberto nil
+                                               (wire {:method       "create"
+                                                      :dashboard_id dash-id
+                                                      :schedule     {:schedule_type "hourly"}
+                                                      :recipients   ["data-team"]}))))))
+        (testing "a user id nobody has — named as the id it is, rather than surfacing as the FK
+                  violation the insert would otherwise be"
+          (is (re-find #"No active user with id 13371337"
+                       (tool-error (call-tool! :crowberto nil
+                                               (wire {:method       "create"
+                                                      :dashboard_id dash-id
+                                                      :schedule     {:schedule_type "hourly"}
+                                                      :recipients   [13371337]}))))))
+        (testing "on update too, and the stored recipients are left alone"
+          (is (re-find #"neither a user id nor an email address"
+                       (tool-error (call-tool! :crowberto nil
+                                               (wire {:method "update" :id pulse-id
+                                                      :recipients ["ops at example.com"]})))))
+          (is (= [(mt/user->id :rasta)]
+                 (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id pc-id)))
+          (is (empty? (:emails (t2/select-one-fn :details :model/PulseChannel :id pc-id)))))))))
+
 ;;; ------------------------------------------------ schedules -----------------------------------------------------
 
 (deftest incomplete-schedules-are-teaching-errors-test

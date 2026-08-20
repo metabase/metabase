@@ -18,6 +18,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.recipients :as mcp.recipients]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
@@ -159,21 +160,10 @@
 (defn- email-recipient
   "One email-handler recipient: an integer is a Metabase user, a string is a bare email address."
   [recipient]
-  (cond
-    (int? recipient)
-    (do
-      (when-not (t2/exists? :model/User :id recipient :is_active true)
-        (common/throw-teaching-error
-         (format "No active user with id %d — pass a user id from the people list, or an email address."
-                 recipient)))
-      {:type :notification-recipient/user :user_id recipient})
-
-    (u/email? recipient)
-    {:type :notification-recipient/raw-value :details {:value recipient}}
-
-    :else
-    (common/throw-teaching-error
-     (format "Recipient %s is neither a user id nor an email address." (pr-str recipient)))))
+  (let [[kind value] (mcp.recipients/classify recipient)]
+    (case kind
+      :user  {:type :notification-recipient/user :user_id value}
+      :email {:type :notification-recipient/raw-value :details {:value value}})))
 
 (defn- slack-recipient
   "The single raw-value recipient a slack handler carries: the channel's display name plus its
