@@ -38,7 +38,13 @@
   build: a document containing a Markdown link opens with the editor reporting a change.
 
   Known lossy edges: strikethrough/underline marks serialize as plain text (no CommonMark
-  form the parser could round-trip); a smartLink whose `model` this grammar has no token for
+  form the parser could round-trip); a GFM pipe table degrades to one paragraph, its rows kept
+  on their own lines by hard breaks — the line structure is as much of a grid as a schema with
+  no table node can hold, and the Markdown written back ends each row with the `\\` those hard
+  breaks serialize as; a `[text][ref]` link becomes an ordinary link mark and loses the
+  definition's optional title, while a definition no link consumed stays as the prose line it
+  was written as rather than rendering to nothing (an image reference consumes nothing, an image
+  having no node here either); a smartLink whose `model` this grammar has no token for
   degrades to its label as prose, and a card embed whose `name` contains a `{%`/`%}` delimiter
   keeps its embed but loses the name (neither is expressible in a token); an inline
   `{% entity %}` typed literally into prose is indistinguishable from a real token and
@@ -66,11 +72,11 @@
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
                              HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline
-                             IndentedCodeBlock Link MailLink OrderedList Paragraph
-                             SoftLineBreak StrongEmphasis Text TextBase ThematicBreak)
+                             IndentedCodeBlock Link LinkRef MailLink OrderedList Paragraph
+                             Reference SoftLineBreak StrongEmphasis Text TextBase ThematicBreak)
    (com.vladsch.flexmark.ext.autolink AutolinkExtension)
    (com.vladsch.flexmark.parser Parser)
-   (com.vladsch.flexmark.util.ast Block Node)
+   (com.vladsch.flexmark.util.ast Block Document Node)
    (com.vladsch.flexmark.util.data MutableDataSet)))
 
 (set! *warn-on-reflection* true)
@@ -336,12 +342,61 @@
   (cond-> node
     (seq content) (assoc :content (vec content))))
 
+(def ^:private table-delimiter-row-re
+  "A line made of nothing but pipes, dashes, colons and spaces. Recognizing a GFM delimiter row by
+  its alphabet rather than by cell structure keeps the match linear and has no false negatives —
+  every real delimiter row is drawn from exactly these characters."
+  #"[ \t]*[-:|][-:| \t]*")
+
+(defn- table-delimiter-row?
+  "True when `line` is the `|---|:--:|` row that makes the line above it a table header. Both a pipe
+  and a dash are required, so a setext underline or a thematic break is never one."
+  [^String line]
+  (and (str/includes? line "|")
+       (str/includes? line "-")
+       (boolean (re-matches table-delimiter-row-re line))))
+
+(defn- inline-lines
+  "The source text of each line of a paragraph's inline children, split at soft line breaks. Built
+  from the leaf nodes rather than the paragraph's own chars because a block's chars carry the line
+  prefixes of any enclosing blockquote or list item, and an inline node never spans one."
+  [nodes]
+  (reduce (fn [lines ^Node node]
+            (if (instance? SoftLineBreak node)
+              (conj lines "")
+              (update lines (dec (count lines)) str (.getChars node))))
+          [""]
+          nodes))
+
+(defn- table-paragraph?
+  "True when a paragraph holds a GFM pipe table: a row containing a pipe, followed by a delimiter
+  row. The editor's schema has no table node, so a table is prose whatever happens here — but a
+  paragraph joins its lines with a space, which runs the entire grid onto one line, and the line
+  structure is the only part of a table this schema can still carry."
+  [nodes]
+  (->> (inline-lines nodes)
+       (partition 2 1)
+       (some (fn [[header delimiter]]
+               (and (str/includes? header "|") (table-delimiter-row? delimiter))))
+       boolean))
+
+(defn- reference-link-url
+  "The URL a `[text][ref]` link resolves to, or nil when nothing in the document defines `ref`. The
+  definition is a block of its own that carries no ProseMirror node, so this lookup is the only way
+  the URL reaches the AST."
+  [^LinkRef node]
+  (when (.isDefined node)
+    (when-let [^Reference ref (.getReferenceNode node ^Document (.getDocument node))]
+      (unescape-md (str (.getUrl ref))))))
+
 (defn- convert-inline
   "Convert one flexmark inline node to a seq of ProseMirror inline nodes, with `marks`
-  accumulated from enclosing emphasis/link nodes."
-  [node marks]
+  accumulated from enclosing emphasis/link nodes. `hard-breaks?` renders a soft line break as a
+  `hardBreak` instead of the space CommonMark gives it — the table case, where the line structure
+  is the content."
+  [node marks hard-breaks?]
   (letfn [(children-with [extra-mark]
-            (mapcat #(convert-inline % (conj marks extra-mark)) (fm-children node)))]
+            (mapcat #(convert-inline % (conj marks extra-mark) hard-breaks?) (fm-children node)))]
     (condp instance? node
       Text           [(text-node (unescape-md (str (.getChars ^Node node))) marks)]
       StrongEmphasis (children-with (mark "bold"))
@@ -355,20 +410,25 @@
                                      s))
                                  (conj marks (mark "code")))]
       ;; flexmark keeps backslash escapes in the destination it reports.
-      Link           (mapcat #(convert-inline % (conj marks (link-mark (unescape-md (str (.getUrl ^Link node))))))
+      Link           (mapcat #(convert-inline % (conj marks (link-mark (unescape-md (str (.getUrl ^Link node))))) hard-breaks?)
                              (fm-children node))
+      ;; A reference link is the same link mark as an inline one, resolved through the definition
+      ;; block. An undefined reference is not a link at all — CommonMark leaves it as literal text.
+      LinkRef        (if-let [url (reference-link-url node)]
+                       (mapcat #(convert-inline % (conj marks (link-mark url)) hard-breaks?) (fm-children node))
+                       [(text-node (str (.getChars ^Node node)) marks)])
       AutoLink       [(text-node (str (.getText ^AutoLink node))
                                  (conj marks (link-mark (str (.getUrl ^AutoLink node)))))]
       MailLink       [(text-node (str (.getText ^MailLink node))
                                  (conj marks (link-mark (str "mailto:" (.getText ^MailLink node)))))]
-      SoftLineBreak  [(text-node " " marks)]
+      SoftLineBreak  (if hard-breaks? [{:type "hardBreak"}] [(text-node " " marks)])
       HardLineBreak  [{:type "hardBreak"}]
       HtmlEntity     [(text-node (str (.getChars ^Node node)) marks)]
       HtmlInline     [(text-node (str (.getChars ^Node node)) marks)]
       ;; AutolinkExtension wraps a text run containing a bare URL in a TextBase around
       ;; [Text AutoLink Text] children.
-      TextBase       (into [] (mapcat #(convert-inline % marks)) (fm-children node))
-      ;; Anything without a ProseMirror counterpart (images, refs, …) keeps its source text.
+      TextBase       (into [] (mapcat #(convert-inline % marks hard-breaks?)) (fm-children node))
+      ;; Anything without a ProseMirror counterpart (images, …) keeps its source text.
       [(text-node (str (.getChars ^Node node)) marks)])))
 
 (defn- merge-adjacent-text
@@ -421,8 +481,8 @@
         inlines))
 
 (defn- convert-inlines
-  [nodes]
-  (-> (into [] (mapcat #(convert-inline % [])) nodes)
+  [nodes hard-breaks?]
+  (-> (into [] (mapcat #(convert-inline % [] hard-breaks?)) nodes)
       merge-adjacent-text
       expand-entity-tokens
       (->> (remove #(and (= "text" (:type %)) (= "" (:text %))))
@@ -448,12 +508,15 @@
 (defn- convert-block
   [node]
   (condp instance? node
-    Paragraph         [(with-content {:type  "paragraph"
-                                      :attrs {:_id (mint-id)}}
-                         (convert-inlines (fm-children node)))]
+    Paragraph         (let [children (fm-children node)]
+                        [(with-content {:type  "paragraph"
+                                        :attrs {:_id (mint-id)}}
+                           (convert-inlines children (table-paragraph? children)))])
+    ;; A heading is one line however it was written, so its lines join with a space even when a
+    ;; setext underline let it hold more than one.
     Heading           [(with-content {:type  "heading"
                                       :attrs {:level (.getLevel ^Heading node) :_id (mint-id)}}
-                         (convert-inlines (fm-children node)))]
+                         (convert-inlines (fm-children node) false))]
     BulletList        [(with-content {:type  "bulletList"
                                       :attrs {:_id (mint-id)}}
                          (map convert-list-item (fm-children node)))]
@@ -470,6 +533,11 @@
                         :attrs   {:_id (mint-id)}
                         :content [{:type "text" :text (str/trimr (str (.getChars ^Node node)))}]}]
     HtmlCommentBlock  []
+    ;; A definition still in the tree is one [[unlink-consumed-references!]] found no link for, so
+    ;; its URL reaches the document only as the prose it was written as.
+    Reference         [{:type    "paragraph"
+                        :attrs   {:_id (mint-id)}
+                        :content [{:type "text" :text (str/trimr (str (.getChars ^Node node)))}]}]
     ;; Anything unrecognized flattens to its converted children.
     (convert-blocks (fm-children node))))
 
@@ -497,10 +565,28 @@
                      (map #(vector % (inc (long depth))))
                      (fm-children node)))))))
 
+(defn- unlink-consumed-references!
+  "Drop from `root` every top-level link reference definition that a `[text][ref]` link resolved
+  through: the URL is on the link mark now, and leaving the definition would put it in the document
+  a second time as prose. What stays is the definitions nothing consumed, whose URL exists nowhere
+  else. Mutating the tree keeps the used/unused split out of every converter's arguments; the tree
+  belongs to this call and is discarded right after.
+
+  Only definitions parented by the document go — a consumed one leaves at least the block holding
+  its link behind, whereas a definition inside a blockquote or a list item can be that container's
+  only child, and a container with no children is a document the editor's `block+` model rejects."
+  [^Node root]
+  (doseq [node (vec (iterator-seq (.iterator (.getDescendants root))))
+          :when (instance? LinkRef node)]
+    (when-let [^Node ref (.getReferenceNode ^LinkRef node ^Document (.getDocument ^Node node))]
+      (when (instance? Document (.getParent ref))
+        (.unlink ref)))))
+
 (defn- markdown-chunk->nodes
   [text]
   (let [root (.parse flexmark-parser ^String text)]
     (check-nesting-depth! root)
+    (unlink-consumed-references! root)
     (-> root fm-children convert-blocks)))
 
 ;;; ------------------------------------------------ Parse: containers ---------------------------------------------

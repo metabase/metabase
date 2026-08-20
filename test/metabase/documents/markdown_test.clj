@@ -485,6 +485,132 @@
         (is (not (str/includes? m "\\<"))
             (format "%s mid-paragraph was escaped: %s" label (pr-str m)))))))
 
+;;; ------------------------------------------------ Tables -------------------------------------------------------
+
+(def ^:private table-markdown
+  "A GFM pipe table. The editor's schema has no table node, so this can only ever come back as
+  prose — but every row is its own line, and a paragraph joins its lines with a space, so without
+  help the whole grid collapses onto one line and stops being readable as a table at all."
+  (str "| Region | Revenue |\n"
+       "| --- | --- |\n"
+       "| EMEA | 12 |\n"
+       "| APAC | 9 |"))
+
+(def ^:private table-rows
+  ["| Region | Revenue |" "| --- | --- |" "| EMEA | 12 |" "| APAC | 9 |"])
+
+(defn- block-lines
+  "The text of each line of a block node, split at its `hardBreak`s."
+  [node]
+  (reduce (fn [lines {:keys [type text]}]
+            (if (= "hardBreak" type)
+              (conj lines "")
+              (update lines (dec (count lines)) str text)))
+          [""]
+          (:content node)))
+
+(deftest ^:parallel table-rows-keep-their-own-lines-test
+  (testing "a table parses to one paragraph per table, with a line break between rows. LLM agents
+           emit tables constantly and the rows arrive separated by soft line breaks, which convert
+           to spaces — the pipes survive but the grid does not, so what comes back is one run-on
+           line no reader can recover the table from."
+    (is (= table-rows (block-lines (first (:content (md/parse table-markdown)))))))
+  (testing "a line of prose ahead of the table is a line of the same paragraph and keeps its break too"
+    (is (= (into ["Quarterly numbers:"] table-rows)
+           (block-lines (first (:content (md/parse (str "Quarterly numbers:\n" table-markdown)))))))))
+
+(deftest ^:parallel table-survives-round-trip-test
+  (testing "serialize → parse is a fixed point on a table, and the Markdown written back still has
+           one row per line — a document read after a write has to show the agent the table it sent"
+    (let [ast      (md/parse table-markdown)
+          markdown (reserialize ast)
+          lines    (str/split-lines markdown)]
+      (is (= 4 (count lines))
+          (format "table did not serialize one row per line: %s" (pr-str markdown)))
+      (is (every? #(str/starts-with? % "|") lines)
+          (format "a serialized table row lost its leading pipe: %s" (pr-str markdown)))
+      (is (= (strip-ids (:content ast)) (strip-ids (:content (md/parse markdown))))
+          (format "table round trip changed the document: %s" (pr-str markdown))))))
+
+(deftest ^:parallel table-in-a-container-keeps-its-rows-test
+  (testing "a table nested in a blockquote or a list item keeps its rows, and the line prefixes the
+           serializer adds are applied to every line the parser will see"
+    (doseq [[label markdown] {"blockquote" (str/join "\n" (map #(str "> " %) table-rows))
+                              "list item"  (str "- " (str/join "\n  " table-rows))}]
+      (let [reparsed (md/parse (reserialize (md/parse markdown)))
+            table    (->> (tree-seq :content :content reparsed)
+                          (filter #(= "paragraph" (:type %)))
+                          (some #(when (seq (:content %)) %)))]
+        (is (= table-rows (block-lines table))
+            (format "table in a %s did not survive the round trip" label))))))
+
+(deftest ^:parallel wrapped-prose-still-joins-its-lines-test
+  (testing "an ordinary soft-wrapped paragraph is not a table and keeps CommonMark's behavior — its
+           lines join with a space and no hard break is invented for them"
+    (is (= ["one two three"] (block-lines (first (:content (md/parse "one\ntwo\nthree"))))))
+    (is (not (str/includes? (reserialize (md/parse "one\ntwo\nthree")) "\\"))))
+  (testing "a run of pipes that is not a table — no delimiter row — is prose too"
+    (is (= ["a | b c | d"] (block-lines (first (:content (md/parse "a | b\nc | d"))))))))
+
+;;; -------------------------------------------- Reference links --------------------------------------------------
+
+(def ^:private reference-link-markdown
+  (str "See [the docs][d] and [d] for more.\n"
+       "\n"
+       "[d]: https://example.com/docs"))
+
+(defn- link-hrefs
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (mapcat :marks)
+       (keep #(when (= "link" (:type %)) (get-in % [:attrs :href])))
+       vec))
+
+(deftest ^:parallel reference-link-keeps-its-url-test
+  (testing "a reference link resolves to a link mark carrying the definition's URL. `LinkRef` has no
+           branch of its own, so it used to fall through to its source text and the URL — which
+           lives in a separate definition block that converts to nothing — was gone from the
+           document with nothing to recover it from."
+    (let [ast (md/parse reference-link-markdown)]
+      (is (= ["https://example.com/docs" "https://example.com/docs"] (link-hrefs ast)))
+      (is (= ["See the docs and d for more."] (block-lines (first (:content ast))))))))
+
+(deftest ^:parallel reference-link-survives-round-trip-test
+  (testing "the resolved link round-trips as an inline link — the definition it came from is
+           consumed, so the second pass has nothing left to resolve"
+    (let [ast      (md/parse reference-link-markdown)
+          markdown (reserialize ast)]
+      (is (str/includes? markdown "https://example.com/docs")
+          (format "the URL is not in the serialized document: %s" (pr-str markdown)))
+      (is (= (strip-ids (:content ast)) (strip-ids (:content (md/parse markdown))))
+          (format "reference link round trip changed the document: %s" (pr-str markdown))))))
+
+(deftest ^:parallel undefined-reference-link-stays-text-test
+  (testing "a reference with no definition is not a link — CommonMark leaves it as literal text, and
+           so does the round trip"
+    (let [ast (md/parse "See [the docs][missing] for more.")]
+      (is (= [] (link-hrefs ast)))
+      (is (= "See [the docs][missing] for more."
+             (get-in (md/parse (reserialize ast)) [:content 0 :content 0 :text]))))))
+
+(deftest ^:parallel unused-reference-definition-keeps-its-url-test
+  (testing "a definition no link consumed still holds a URL a reader can use, so it stays as prose
+           rather than converting to nothing"
+    (let [ast (md/parse "[d]: https://example.com/docs")]
+      (is (= ["[d]: https://example.com/docs"] (block-lines (first (:content ast)))))
+      (testing "and its text survives the round trip. Not an AST fixed point: the URL is bare prose
+               now, so the second pass gives it the autolink mark any prose URL gets."
+        (is (= ["[d]: https://example.com/docs"]
+               (block-lines (first (:content (md/parse (reserialize ast)))))))))))
+
+(deftest ^:parallel lone-reference-definition-in-a-blockquote-keeps-its-content-test
+  (testing "a blockquote holding nothing but a definition still has children — the editor's schema
+           declares `block+`, so a container that loses its only child is a document it cannot load"
+    (let [quoted (get-in (md/parse "> [d]: https://example.com/docs") [:content 0])]
+      (is (= "blockquote" (:type quoted)))
+      (is (seq (:content quoted)) "the blockquote came back with no :content")
+      (is (= ["[d]: https://example.com/docs"] (block-lines (first (:content quoted))))))))
+
 (deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
   (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
            attr — serializes as its label rather than failing the whole document body"
