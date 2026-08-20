@@ -118,9 +118,11 @@
 
 (def fields-catalog-uri
   "URI of the fields catalog: content type -> the dot-paths its `fields` argument accepts.
-   Rendered at read time because tool namespaces register their projections at load time."
+   Rendered at read time because tool namespaces register their projections at load time.
+   The scheme is `catalog://`, NOT `metabase://` — that was v1's resource scheme, and the leak
+   test bans it from anything an agent can read so nothing steers one at v1 affordances."
   (register-resource!
-   {:uri         "metabase://catalogs/fields"
+   {:uri         "catalog://metabase/fields"
     :name        "Fields Catalog"
     :description "The dot-paths each content type supports in `fields` arguments (e.g. get_content), keyed by type."
     :mimeType    "application/json"

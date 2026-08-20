@@ -147,10 +147,14 @@
           listed (-> (mcp-request (jsonrpc-request "resources/list")
                                   {"mcp-session-id" session-id})
                      (get-in [:body :result :resources]))]
-      (testing "GHY-4157: resources/list serves the MCP Apps iframe shells"
-        (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri}
+      (testing "GHY-4157: resources/list serves the MCP Apps iframe shells and the fields catalog"
+        (is (= #{v2.resources/visualize-query-uri v2.resources/render-drill-through-uri
+                 v2.resources/fields-catalog-uri}
                (set (map :uri listed))))
-        (is (every? #(= "text/html;profile=mcp-app" (:mimeType %)) listed)))
+        (is (every? #(= "text/html;profile=mcp-app" (:mimeType %))
+                    (remove #(= v2.resources/fields-catalog-uri (:uri %)) listed)))
+        (is (= "application/json"
+               (:mimeType (first (filter #(= v2.resources/fields-catalog-uri (:uri %)) listed))))))
       (testing "GHY-4157: resources/read renders a shell the host can sandbox"
         (let [content (-> (mcp-request (jsonrpc-request "resources/read"
                                                         {:uri v2.resources/visualize-query-uri})
