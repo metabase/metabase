@@ -8,7 +8,7 @@
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -182,6 +182,13 @@
        ;; the first place."
        3600)})
 
+(defonce ^{:doc "Monitor held while creating or destroying an app-db c3p0 pool, and by the Prometheus JMX reader.
+
+  Creating a pool locks the PoolBackedDataSource and then the DynamicPooledDataSourceManagerMBean; a JMX attribute
+  read takes them in the opposite order (https://github.com/swaldman/c3p0/issues/95)."}
+  c3p0-pool-monitor
+  (Object.))
+
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is."
@@ -191,6 +198,31 @@
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
           pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)]
-      (com.mchange.v2.c3p0.DataSources/pooledDataSource
-       data-source
-       (connection-pool/map->properties pool-props)))))
+      (locking c3p0-pool-monitor
+        (com.mchange.v2.c3p0.DataSources/pooledDataSource
+         data-source
+         (connection-pool/map->properties pool-props))))))
+
+(mu/defn single-connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
+  "Create a lazy one-connection pool backed by the same unpooled data source as `data-source`.
+
+  This is intended for tiny app-db coordination operations that must be able to make progress while the caller holds a
+  connection from the main application pool. It must not be used for general application queries."
+  ^PoolBackedDataSource [db-type :- :keyword
+                         ^javax.sql.DataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (let [^javax.sql.DataSource
+        unpooled   (if (instance? PoolBackedDataSource data-source)
+                     (let [connection-pool-data-source (.getConnectionPoolDataSource ^PoolBackedDataSource data-source)]
+                       (if (instance? WrapperConnectionPoolDataSource connection-pool-data-source)
+                         (.getNestedDataSource ^WrapperConnectionPoolDataSource connection-pool-data-source)
+                         (throw (ex-info "Cannot create an isolated app-db pool from this pooled data source"
+                                         {:connection-pool-data-source (class connection-pool-data-source)}))))
+                     data-source)
+        pool-props (assoc (application-db-connection-pool-props)
+                          "dataSourceName" (format "metabase-%s-app-db-coordination" (name db-type))
+                          "initialPoolSize" 0
+                          "minPoolSize" 0
+                          "maxPoolSize" 1
+                          "acquireIncrement" 1)]
+    (locking c3p0-pool-monitor
+      (DataSources/pooledDataSource unpooled (connection-pool/map->properties pool-props)))))

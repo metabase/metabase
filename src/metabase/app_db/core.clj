@@ -41,13 +41,16 @@
   db-type
   do-before-commit
   do-after-commit
+  do-with-independent-connection-transaction
   in-transaction?
   quoting-style
   unique-identifier
   transaction-state
   with-unshared-connection]
  [mdb.connection-pool-setup
-  recent-activity?]
+  c3p0-pool-monitor
+  recent-activity?
+  single-connection-pool-data-source]
  [mdb.data-source
   broken-out-details->DataSource]
  [mdb.env
