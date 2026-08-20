@@ -2443,6 +2443,52 @@
                      :parameter_mappings mappings}]
                    (dashcards)))))))))
 
+(deftest add-virtual-card-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "A user without data permissions on a table may not add a parameter mapping targeting one of its fields,
+             even when the mapping is on a virtual dashcard (nil card_id)"
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                            :slug "category_id"
+                                                                            :id   "_CATEGORY_ID_"
+                                                                            :type "category"}]}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
+                    (mt/user-http-request
+                     :rasta :put 403 (format "dashboard/%d" dashboard-id)
+                     {:dashcards [{:id                     -1
+                                   :card_id                nil
+                                   :row                    0
+                                   :col                    0
+                                   :size_x                 4
+                                   :size_y                 4
+                                   :parameter_mappings     [{:parameter_id "_CATEGORY_ID_"
+                                                             :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]
+                                   :visualization_settings {:virtual_card {:display "text"}
+                                                            :text         "Hello"}}]
+                      :tabs      []})))
+            (is (= []
+                   (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+            (testing "and may add it once they do have data permissions"
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+              (is (=? [{:card_id            nil
+                        :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                              :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
+                      (:dashcards (mt/user-http-request
+                                   :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                                   {:dashcards [{:id                     -1
+                                                 :card_id                nil
+                                                 :row                    0
+                                                 :col                    0
+                                                 :size_x                 4
+                                                 :size_y                 4
+                                                 :parameter_mappings     [{:parameter_id "_CATEGORY_ID_"
+                                                                           :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]
+                                                 :visualization_settings {:virtual_card {:display "text"}
+                                                                          :text         "Hello"}}]
+                                    :tabs      []})))))))))))
+
 (deftest adding-archived-cards-to-dashboard-is-not-allowed
   (mt/with-temp
     [:model/Dashboard {dashboard-id :id} {}

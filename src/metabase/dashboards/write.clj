@@ -130,39 +130,21 @@
   {:added "0.41.0"}
   [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
   (when (seq parameter-mappings)
-    ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
-    ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
-    ;; if there happen to be a lot of parameters
-    (let [card-ids              (into #{}
-                                      (comp (map :card-id)
-                                            (remove nil?))
-                                      parameter-mappings)]
-      (when (seq card-ids)
-        (let [card-id->query        (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids])
-              field-ids             (set (for [{:keys [target card-id]} parameter-mappings
-                                               :when                    card-id
-                                               :let                     [query    (or (card-id->query card-id)
-                                                                                      (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
-                                                                                                           card-id)
-                                                                                                      {:status-code 404
-                                                                                                       :card-id     card-id})))
-                                                                         field-id (param-target->field-id target query)]
-                                               :when                    field-id]
-                                           field-id))
-              table-ids             (when (seq field-ids)
-                                      (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
-              table-id->database-id (when (seq table-ids)
-                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))]
-          (doseq [table-id table-ids
-                  :let     [database-id (table-id->database-id table-id)]]
-            ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
-            (when-not (query-perms/can-query-table? database-id table-id)
-              (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                                   (pr-str (t2/select-one-fn :name :model/Table :id table-id)))
-                              {:status-code        403
-                               :database-id        database-id
-                               :table-id           table-id
-                               :actual-permissions @api/*current-user-permissions-set*})))))))))
+    (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
+          card-id->query (when (seq card-ids)
+                           (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+          field-ids      (into []
+                               (keep (fn [{:keys [target card-id]}]
+                                       (when target
+                                         (let [query (when card-id
+                                                       (or (card-id->query card-id)
+                                                           (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
+                                                                                card-id)
+                                                                           {:status-code 404
+                                                                            :card-id     card-id}))))]
+                                           (param-target->field-id target query)))))
+                               parameter-mappings)]
+      (query-perms/check-parameter-field-permissions field-ids))))
 
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
