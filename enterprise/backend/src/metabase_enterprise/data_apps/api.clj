@@ -8,11 +8,15 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -60,12 +64,20 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
+   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:permission_group_id     [:maybe ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
    [:sync_error      [:maybe :string]]
    [:created_at      :any]
    [:updated_at      :any]])
+
+(def ^:private DraftDataAppResponse
+  "Draft returns resource entity ids to populate in data_app.yaml."
+  (into DataAppResponse
+        [[:resource_collection_entity_id ms/NonBlankString]
+         [:permission_group_entity_id ms/NonBlankString]]))
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
@@ -76,6 +88,26 @@
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
+
+(def ^:private QuerySource
+  [:map
+   [:type :string]
+   [:id ms/PositiveInt]])
+
+(def ^:private QueryDefinition
+  [:map {:closed false}
+   [:stages [:sequential {:min 1}
+             [:map {:closed false}
+              [:source QuerySource]]]]])
+
+(def ^:private QueryResolutionResponse
+  [:map
+   [:database_id ms/PositiveInt]
+   [:dataset_query ms/Map]])
+
+(def ^:private ResourcePermissionsRequest
+  [:map
+   [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -131,6 +163,14 @@
     app
     (select-keys app [:name :display_name])))
 
+(defn- read-check-data-app
+  "Check whether the current user can access a data app and its resource collection."
+  [app]
+  (api/read-check app)
+  (when-let [collection-id (:resource_collection_id app)]
+    (api/read-check :model/Collection collection-id))
+  app)
+
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
   "List the data apps provided by the connected repository. Pass `available=true`
    to return only enabled apps without sync errors."
@@ -169,10 +209,48 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
+  "Resolve an authored data-app query definition into a serializable Metabase query."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   query-def :- QueryDefinition]
+  (api/check-superuser)
+  (api/check-404 (data-app/select-one-non-blob :name slug))
+  (let [{source-type :type, table-id :id} (get-in query-def [:stages 0 :source])
+        _           (api/check-400 (= (keyword source-type) :table)
+                                   "Data app query definitions must use a table source.")
+        database-id (api/check-404 (t2/select-one-fn :db_id :model/Table :id table-id))
+        query        (-> (lib-be/application-database-metadata-provider database-id)
+                         (lib/test-query query-def)
+                         lib/prepare-for-serialization)]
+    {:database_id database-id
+     :dataset_query query}))
+
+(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
+  "Create or reuse a data app draft before its first repository import."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (api/check-400 (data-app.config/valid-slug? slug)
+                 "Data app draft slugs must use lowercase letters, numbers, and dashes.")
+  (data-app.sync/ensure-draft! slug)
+  (let [app (data-app/select-one-non-blob :name slug)]
+    (merge app (data-app.resources/resource-entity-ids app))))
+
+(api.macros/defendpoint :put ["/:slug/resources/permissions" :slug slug-regex] :- DataAppResponse
+  "Reconcile the database view-data permissions required by a data app's synchronized
+   queries and actions."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {database-ids :database_ids} :- ResourcePermissionsRequest]
+  (api/check-superuser)
+  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
+    (data-app.resources/reconcile-view-data! app (set database-ids)))
+  (data-app/select-one-non-blob :name slug))
+
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (data-app-response (api/read-check (data-app/select-one-non-blob :name slug :enabled true))))
+  (data-app-response (read-check-data-app (data-app/select-one-non-blob :name slug :enabled true))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -184,7 +262,7 @@
    respond
    raise]
   (try
-    (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
+    (let [row  (read-check-data-app (data-app/select-one-non-blob :name slug :enabled true))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

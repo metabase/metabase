@@ -6,9 +6,44 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, filter, sum, useMetabaseQuery } from "..";
+import { useAction } from "../../use-action";
+import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
+
+const queryWithInvalidSavedQuestionSourceId = {
+  savedQuestionSourceId: "54",
+  source: TEST_SCHEMA.tables.orders,
+} as const;
+
+// @ts-expect-error saved-question source IDs are numeric
+defineQuery(queryWithInvalidSavedQuestionSourceId);
+
+// @ts-expect-error query definitions with breakouts require aggregations
+defineQuery({
+  source: TEST_SCHEMA.tables.orders,
+  breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+});
+
+const actionWithInvalidActionSourceId = {
+  copiedActionId: "91",
+  action: TEST_SCHEMA.models.orders.actions.create,
+} as const;
+
+// @ts-expect-error generated action source IDs are numeric
+defineAction(actionWithInvalidActionSourceId);
+
+// @ts-expect-error action definitions must reference a generated action
+defineAction({ action: TEST_SCHEMA.tables.orders });
+
+const CreateOrder = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.create,
+});
+
+const UpdateOrder = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.update,
+});
 
 // --------
 // Compile-time contracts that must **fail** type-checking.
@@ -108,7 +143,25 @@ const _invalidMetricSourceQuery = {
   source: TEST_SCHEMA.metrics.revenue,
 } satisfies MetabaseQueryOptions;
 
+// @ts-expect-error `unit` buckets a date, so only a date dimension offers it
+breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
+
 function InvalidTypeFixtures() {
+  // @ts-expect-error pass the `defineAction` export, not the schema entry
+  useAction(TEST_SCHEMA.models.orders.actions.create);
+
+  // @ts-expect-error the definition's parameter slugs are the only keys
+  useAction(CreateOrder).execute({ stauts: "shipped" });
+
+  // @ts-expect-error a parameter value is typed by its `jsType`
+  useAction(CreateOrder).execute({ status: 1 });
+
+  // @ts-expect-error required parameters cannot be omitted
+  useAction(UpdateOrder).execute({});
+
+  // @ts-expect-error `result` is discriminated by the action's kind
+  void useAction(CreateOrder).result?.["rows-updated"];
+
   const scalarAggregationResult = useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
@@ -160,6 +213,29 @@ function InvalidTypeFixtures() {
 
   // @ts-expect-error grouped queries return only their breakouts and aggregations
   void groupedQuestionResult.data?.rows[0]?.AMOUNT;
+
+  const staticQuery = {
+    source: TEST_SCHEMA.tables.orders,
+    savedQuestionSourceId: 41,
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+
+  useMetabaseQuery(staticQuery, {
+    // @ts-expect-error the dynamic stage sees result columns, not other tables
+    filters: [filter(TEST_SCHEMA.tables.products.fields.price, ">", 1)],
+  });
+
+  // @ts-expect-error grouped dynamic clauses must include an explicit aggregation
+  useMetabaseQuery(staticQuery, {
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+  });
+
+  const groupedDynamicResult = useMetabaseQuery(staticQuery, {
+    aggregations: [count()],
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+  });
+
+  // @ts-expect-error grouping in the dynamic stage drops the source columns
+  void groupedDynamicResult.data?.rows[0]?.AMOUNT;
 
   return null;
 }

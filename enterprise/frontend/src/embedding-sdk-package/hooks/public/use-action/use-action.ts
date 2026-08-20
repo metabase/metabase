@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 import type { ExecuteActionResult } from "embedding-sdk-bundle/lib/execute-action";
-import type { SdkActionId } from "embedding-sdk-bundle/types/action";
+import type { SdkActionInput } from "embedding-sdk-bundle/types/action";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
@@ -10,52 +10,12 @@ import type {
   ActionExecuteError,
   ActionKind,
   ActionResultForKind,
+  UseAction,
+  UseActionResult,
 } from "./types";
 
 /**
- * @interface
- * @expand
- * @category useAction
- */
-export type UseActionResult<
-  TParameters extends Record<string, unknown> = Record<string, unknown>,
-  TKind extends ActionKind | undefined = undefined,
-> = {
-  /**
-   * Trigger the action with the given parameters. Returns the response body
-   * on success AND throws on failure — the same error is stored in `error`
-   * for render-time consumers. Resolves to the discriminated `result` shape
-   * (see `ActionResultForKind<TKind>`); when `TKind` is omitted it resolves
-   * to `AnyActionResult`, narrowable via `"<key>" in r`.
-   *
-   * Resolves to `null` (without making a request) when `actionId` is `null`
-   * or the SDK is not yet initialized — guard the host-side caller with
-   * `if (!actionId) return;` if these cases are reachable.
-   */
-  execute: (
-    parameters: TParameters,
-  ) => Promise<ActionResultForKind<TKind> | null>;
-  isExecuting: boolean;
-  /** Last response, or `null` before first call and after `reset()`. */
-  result: ActionResultForKind<TKind> | null;
-  /** Last thrown error, normalized to the public `ActionExecuteError` shape, or `null`. */
-  error: ActionExecuteError | null;
-  /** Clear `result` and `error`. */
-  reset: () => void;
-};
-
-/**
- * Triggers a pre-existing Metabase action. The first arg is the action's
- * numeric id or its `entity_id` string; supply `TParameters` as the first
- * generic to type the `execute` argument, and optionally `TKind` as the
- * second generic to type the discriminated `result` shape.
- *
- * Without `TKind`, `result` defaults to a union of every possible response
- * body (`AnyActionResult`) — authors who don't know the kind upfront can
- * narrow with `"<key>" in result` instead of casting from
- * `Record<string, unknown>`.
- *
- *   useAction<{ name: string; email: string }, "create">(42);
+ * Triggers a pre-existing Metabase action.
  *
  * Unlike the query hooks, this does NOT run on mount — the caller invokes
  * `execute` explicitly from an event handler. To gate execution
@@ -65,11 +25,11 @@ export type UseActionResult<
  * @function
  * @category useAction
  */
-export const useAction = <
+const useActionImpl = <
   TParameters extends Record<string, unknown> = Record<string, unknown>,
   TKind extends ActionKind | undefined = undefined,
 >(
-  actionId: SdkActionId | null,
+  actionId: SdkActionInput | null,
 ): UseActionResult<TParameters, TKind> => {
   const {
     state: {
@@ -129,3 +89,6 @@ export const useAction = <
     reset,
   };
 };
+
+/** @notExported UseAction */
+export const useAction: UseAction = useActionImpl;

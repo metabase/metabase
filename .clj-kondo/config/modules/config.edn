@@ -3193,10 +3193,20 @@
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           collections
+           lib
+           lib-be
            models
+           permissions
            premium-features
            settings
-           util}}
+           util}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Table}}
 
   enterprise/data-complexity-score
   {:team "Metabot"

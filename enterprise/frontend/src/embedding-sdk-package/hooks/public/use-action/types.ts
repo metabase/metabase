@@ -9,11 +9,9 @@
  * schema directly.
  */
 
-import type {
-  RowValue,
-  SchemaColumn,
-  SchemaJavaScriptType,
-} from "../data-schema";
+import type { SdkActionId } from "embedding-sdk-bundle/types/action";
+
+import type { RowValue, SchemaJavaScriptType } from "../data-schema";
 
 /**
  * Flat public kind union. Maps onto the backend's namespaced
@@ -137,14 +135,9 @@ export type ActionResultForKind<TKind extends ActionKind | undefined> =
 // ============================================================================
 // Data App schema-derived helpers
 // ----------------------------------------------------------------------------
-// These layer on top of the schema-agnostic types above. They read the shape
-// of a single action entry in a generated `metabase.data.ts` schema and
-// derive the hook's `TParameters` / `TKind` generics, so a Data App author
-// writes `useAction<ActionParametersFromDataAppSchema<typeof action>,
-// ActionKindFromDataAppSchema<typeof action>>(action.id)` and gets
-// compile-time parameter checking plus a typed `result` with no casts.
-// Mode-1 (raw SDK) callers don't import these — they declare `TParameters`
-// by hand and pass `TKind` as a literal.
+// These read a single action entry in a generated `metabase.data.ts` schema
+// and derive the hook's `TParameters` / `TKind`. `useAction` applies them to a
+// `defineAction(...)` export, so a Data App writes neither generic.
 // ============================================================================
 
 /**
@@ -163,19 +156,22 @@ export type ActionImplicitKind =
 
 /**
  * Shape of a single action parameter as it appears in a generated
- * `metabase.data.ts` schema entry.
+ * `metabase.data.ts` schema entry. An action parameter is not a column, so it
+ * carries no `name`.
  *
  * @category useAction
  */
-export type ActionParameterSchema = SchemaColumn & {
+export type ActionParameterSchema = {
   slug: string;
+  displayName?: string;
+  jsType?: SchemaJavaScriptType;
   required?: boolean;
 };
 
 /**
  * Shape of a single action entry in a generated `metabase.data.ts` schema.
- * The `id` is the numeric action id passed to `useAction`; `parameters`
- * drives `ActionParametersFromDataAppSchema`; `implicitKind` / `type` drive
+ * The entry is what `defineAction` wraps; `parameters` drives
+ * `ActionParametersFromDataAppSchema`, and `implicitKind` / `type` drive
  * `ActionKindFromDataAppSchema`.
  *
  * @category useAction
@@ -258,3 +254,53 @@ export type ActionKindFromDataAppSchema<TAction> = TAction extends {
         : TAction extends { type: "query" }
           ? "sql"
           : ActionKind;
+
+/**
+ * @interface
+ * @expand
+ * @category useAction
+ */
+export type UseActionResult<
+  TParameters extends Record<string, unknown> = Record<string, unknown>,
+  TKind extends ActionKind | undefined = undefined,
+> = {
+  /**
+   * Trigger the action with the given parameters. Returns the response body
+   * on success AND throws on failure — the same error is stored in `error`
+   * for render-time consumers. Resolves to the discriminated `result` shape
+   * (see `ActionResultForKind<TKind>`); when `TKind` is omitted it resolves
+   * to `AnyActionResult`, narrowable via `"<key>" in r`.
+   *
+   * Resolves to `null` (without making a request) when `actionId` is `null`
+   * or the SDK is not yet initialized — guard the host-side caller with
+   * `if (!actionId) return;` if these cases are reachable.
+   */
+  execute: (
+    parameters: TParameters,
+  ) => Promise<ActionResultForKind<TKind> | null>;
+  isExecuting: boolean;
+  /** Last response, or `null` before first call and after `reset()`. */
+  result: ActionResultForKind<TKind> | null;
+  /** Last thrown error, normalized to the public `ActionExecuteError` shape, or `null`. */
+  error: ActionExecuteError | null;
+  /** Clear `result` and `error`. */
+  reset: () => void;
+};
+
+export interface UseAction {
+  /** A `defineAction(...)` export, which types `execute` and `result` itself. */
+  <TDefinition extends { action: ActionSchema }>(
+    action: TDefinition | null,
+  ): UseActionResult<
+    ActionParametersFromDataAppSchema<TDefinition["action"]>,
+    ActionKindFromDataAppSchema<TDefinition["action"]>
+  >;
+
+  /** An id, which describes nothing: `useAction<Parameters, "create">(42)`. */
+  <
+    TParameters extends Record<string, unknown> = Record<string, unknown>,
+    TKind extends ActionKind | undefined = undefined,
+  >(
+    actionId: SdkActionId | null,
+  ): UseActionResult<TParameters, TKind>;
+}

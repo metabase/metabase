@@ -7,6 +7,7 @@
   mixed (serdes + data apps), and serdes-only."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
@@ -19,7 +20,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
-
 (defn- import-at!
   "Run `import!` against the source's snapshot at `version`, complete the task (so
   `last-version` advances for the next pull), and return the result."
@@ -30,11 +30,17 @@
     (impl/handle-task-result! result task)
     result))
 
-(defn- app-tree
+(defn- app-tree!
   "Repo files for one data app: its `data_app.yaml` + a bundle at `dist/index.js`."
   [slug bundle]
-  {(str "data_apps/" slug "/data_app.yaml")  (str "name: " slug "\npath: dist/index.js\n")
-   (str "data_apps/" slug "/dist/index.js") bundle})
+  (let [{:keys [resource_collection_entity_id permission_group_entity_id]}
+        (data-app.test-util/ensure-manifest-resources! slug)]
+    {(str "data_apps/" slug "/data_app.yaml")
+     (format (str "name: %s\npath: dist/index.js\n"
+                  "resource_collection_entity_id: %s\n"
+                  "permission_group_entity_id: %s\n")
+             slug resource_collection_entity_id permission_group_entity_id)
+     (str "data_apps/" slug "/dist/index.js") bundle}))
 
 ;; One self-contained serdes entity (a bare collection — no DB deps), used as the
 ;; "data" change. Reuses the path/content shape the mock harness imports cleanly.
@@ -58,9 +64,9 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp]
-            (let [outcome (pull-outcome! (app-tree "sales" "BUNDLE-V1")
-                                         (app-tree "sales" "BUNDLE-V2"))]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+            (let [outcome (pull-outcome! (app-tree! "sales" "BUNDLE-V1")
+                                         (app-tree! "sales" "BUNDLE-V2"))]
               (is (= "pulled" (:kind outcome)) "not reported as skipped")
               (is (= 1 (:count outcome)) "the one changed data app is counted"))))))))
 
@@ -69,9 +75,9 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp :model/Collection]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
-            (let [app     (app-tree "sales" "BUNDLE")
+            (let [app     (app-tree! "sales" "BUNDLE")
                   outcome (pull-outcome! app (merge coll-file app))]
               (is (= "pulled" (:kind outcome)))
               (is (= 1 (:count outcome)) "the collection counts; the unchanged app adds 0"))))))))
@@ -81,9 +87,9 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp :model/Collection]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection AND changes the data app's bundle.
-            (let [outcome (pull-outcome! (app-tree "ops" "BUNDLE")
-                                         (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
+            (let [outcome (pull-outcome! (app-tree! "ops" "BUNDLE")
+                                         (merge coll-file (app-tree! "ops" "BUNDLE-V2")))]
               (is (= "pulled" (:kind outcome)))
               (is (= 2 (:count outcome)) "the collection (1) plus the changed data app (1)"))))))))

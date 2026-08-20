@@ -12,6 +12,8 @@ Keep the semantic layer and presentation layer separate.
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
+- Never remove, edit, or copy a generated `savedQuestionSourceId` or `copiedActionId`, even if it appears unused. Preserve it during refactors; use `npm run sync-resources` to repair or replace generated IDs.
+- Treat `resource_collection_entity_id` and `permission_group_entity_id` as server-issued manifest identities. Let `npm run sync-resources` add missing values. Preserve existing values unless the user intentionally changes the linked resources. Never invent either ID.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
@@ -33,6 +35,7 @@ Keep the semantic layer and presentation layer separate.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
 - Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
 - Do not build shared filter arrays with `ReturnType<typeof filter>[]` or `push(...)`; this can collapse overload inference. Pass raw filter state between components and build each query's `filters: [...]` inline with spreads.
+- Keep runtime state out of the base query in `queries/`. A clause whose value comes from a control — a selected plan, a date range, a search box — belongs in the second argument to `useMetabaseQuery`/`useMetabaseQueryObject`, not in the query. See "Static and dynamic query parts".
 - Do not include `fields` in queries with `aggregations` and `breakouts`; breakouts determine grouped result columns. Use `fields` only for row-selection queries.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess table keys, field keys, or column names from the Metabase API, business intuition, or old mock data; only use entries actually emitted in `src/metabase.data.ts`.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
@@ -100,6 +103,43 @@ When the app needs saved questions, include `question-collections=<id-or-entity-
 
 If schema generation fails while building a selected saved question, model, or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present. This usually means a selected model/question/action was readable enough to select, but its details could not be built, often because its source table, source card, or action details are not published, accessible, valid, or resolvable in the fetch context. The schema would otherwise omit the entire `schema.models.<model>` or `schema.questions.<question>` entry, or return a model whose `actions` map silently omits an action, so the user needs to curate or publish the missing dependency before regenerating.
 
+## Synchronize every query and action
+
+Everything an end-to-end prototype runs is permission-bound: it runs against a copy in the app's own collection, and read access to that collection is what grants the app's viewers permission to run it at all. Declare each one as a named export in a root-level directory beside `package.json` — `queries/` for `defineQuery(...)`, `actions/` for `defineAction(...)`. `npm run sync-resources` scans only those two directories, so a definition under `src/queries/`, `src/actions/`, or any other source directory is silently never synchronized. Discovery covers `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts`.
+
+```ts
+import { defineAction, defineQuery } from "@metabase/embedding-sdk-react/data-app";
+import schema from "../src/metabase.data";
+
+// queries/revenue.query.ts
+export const RevenueQuery = defineQuery({ source: schema.tables.orders });
+
+// actions/orders.action.ts
+export const CreateOrder = defineAction({
+  action: schema.models.orders.actions.create,
+});
+```
+
+One `sync-resources` run reconciles both. For a query it materializes the authored table query as a saved question and injects `savedQuestionSourceId`. For an action it copies the action's parent model into the app collection, copies the action onto that copy, and injects `copiedActionId`; a model is copied once no matter how many of its actions the app declares, siblings reuse that copy, and it disappears with the last declaration. Never copy a model into the app collection by hand.
+
+Pass the definition itself to the hook and let the SDK resolve what runs — a production build runs the copy, while the dev preview runs the authored table or action, so an app works before its first synchronization:
+
+```ts
+const { data } = useMetabaseQuery(RevenueQuery, {
+  filters: [filter(RevenueQuery.source.fields.status, "=", selectedStatus)],
+});
+
+const { execute, isExecuting, error } = useAction(CreateOrder);
+```
+
+Never pass an inline table-source query (not even a read-only, filter-option, or helper query), a raw action id, `savedQuestionSourceId`, `copiedActionId`, or a hand-built `{ source: { type: "card", id } }`, and never spread a definition into a new object. Each defeats the swap; the authored ids also bypass the permission boundary, and `schema.models.<model>.actions.<action>` is a type error. Keep fixed permission-boundary filters, aggregations, and breakouts inside `defineQuery` — synchronization bakes them into the saved question, so don't apply them again outside it, and put runtime clauses in the hook's second argument (see *Static and dynamic query parts*). `useAction` needs no generics: the definition types `execute`'s parameters and `result`.
+
+Wire `package.json` with `"sync-resources": "embedding-sdk-react data-apps sync-resources"` and `"build": "npm run sync-resources && vite build"`, then run `npm run build` after adding, changing, renaming, or removing any definition; run `sync-resources` directly only to inspect generated state before a build. It reads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, and adds any missing server-issued resource entity ID to `data_app.yaml`, preserving the ones already in the manifest.
+
+Inline generated ids and `resources_metadata.json` are generated state: never delete or hand-edit either. A missing id is restored automatically when the definition still identifies its resource — a query by its table and authored hash matching one unclaimed lockfile entry, an action by naming the same action — while a duplicated id fails the run. Do not test or hand off the app until `npm run build` succeeds, `data_app.yaml` carries both resource entity IDs, every live definition carries a positive generated id, and `resources_metadata.json` holds its matching entry; commit every generated change. The build stops before bundling when synchronization fails.
+
+If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card creation, deletion, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them, so an action the app needs must already exist in Metabase and be picked up by a regenerated schema; if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
+
 ## Standard pattern
 
 ```ts
@@ -141,6 +181,35 @@ Use keyed schema objects:
 - metric dimensions: `schema.metrics.<metric>.dimensions.<group>.<dimension>`
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`.
+
+## Static and dynamic query parts
+
+Both query hooks take an optional second argument: the clauses that change while the app runs.
+
+```ts
+// revenue.query.ts — static, and identical on every render
+const orders = schema.tables.orders;
+
+export const RevenueQuery = defineQuery({
+  source: orders,
+  aggregations: [aggregations.sum(orders.fields.total)],
+  breakouts: [
+    breakout(orders.fields.createdAt, { unit: "month" }),
+    breakout(orders.fields.plan),
+  ],
+});
+
+// the component supplies only what the UI changes
+const { data } = useMetabaseQuery(RevenueQuery, {
+  filters: plan === null ? [] : [filter(orders.fields.plan, "=", plan)],
+});
+```
+
+Split them this way even when nothing appears to depend on it: the first argument must be identical on every render, and only the second may vary with runtime state.
+
+The dynamic clauses run as their own stage, so they see the **result columns** of the static query, not its source table. That is why `plan` is a breakout above: a control that filters on a source column only works if that column survives into the result. If it does not, add it as a breakout, or leave the static query unaggregated. Likewise, filter an aggregated static query on `count`/`sum`, not on the fields behind them.
+
+Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object, or `copiedActionId` on an action definition. Both are generated synchronization state — see *Synchronize every query and action*.
 
 ## Table query recipes
 
@@ -513,8 +582,7 @@ import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-ap
 type SortKey = "revenue" | "orders";
 type ScorecardTable = typeof scorecardTable;
 
-type ScorecardField =
-  ScorecardTable["fields"][keyof ScorecardTable["fields"]];
+type ScorecardField = ScorecardTable["fields"][keyof ScorecardTable["fields"]];
 
 const sortFields = {
   revenue: scorecardTable.fields.netRevenue,
@@ -657,10 +725,12 @@ If no curated schema entry supports the intended UI, leave the section out or as
 ## Final Checks
 
 - Run `npm run typecheck`.
+- Run `npm run build`; it synchronizes queries before producing the bundle.
 - Keep TypeScript diagnostics compact in the chat or handoff. Use the full output locally to fix the app, but report grouped root causes and only a few representative diagnostics instead of pasting the entire `tsc` output.
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
 - Search touched files for `row[0]`, `row[1]`, `row.orderedAt`, `row.orderDate`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, result-key guesses, entity `<select>` filters, and unsupported business-field interpretations.
 - Verify every date preset bar includes Custom last unless explicitly omitted, every visible date filter affects the current page, and no page shows duplicate date filters for one scope.
+- Verify `data_app.yaml` contains 21-character `resource_collection_entity_id` and `permission_group_entity_id` values.
 - Verify `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
 - For every visible filter, verify "All" maps to no filter, selected values come from runtime query results, and each non-All option changes every card it claims to affect.
 
@@ -669,6 +739,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Creating or searching for Metabase content during app building.
 - Importing older hooks instead of `useMetabaseQuery`.
 - Copying raw numeric IDs into constants instead of using generated schema objects.
+- Inventing resource entity IDs instead of using the values returned by the data app draft.
 - Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.
 - Passing raw strings for table fields.
 - Adding lookup helpers instead of using keyed generated schema objects.
