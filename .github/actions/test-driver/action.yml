@@ -127,40 +127,12 @@ runs:
       # ultimately fails.
       continue-on-error: true
 
-    # Unlike the JUnit report below, this uploads on a green run too — a suite that passes slowly is
-    # exactly what profiling is for. Only the rendered flamegraph is kept: the raw collapsed stacks it
-    # was built from run to hundreds of MB on a long suite, and are reproducible locally.
-    - name: Summarize test wall times
-      if: ${{ !cancelled() && steps.run-test.outputs.profiled == 'true' }}
-      continue-on-error: true
-      shell: bash
-      run: |
-        {
-          echo "### Slowest test namespaces (seconds)"
-          echo '```'
-          grep -h '<testsuite' target/junit/*.xml 2>/dev/null \
-            | sed -E 's|.*<testsuite name="([^"]*)" time="([^"]*)".*|\2 \1|' \
-            | sort -rn | head -25
-          echo '```'
-          echo "### Slowest tests (seconds)"
-          echo '```'
-          grep -h '<testcase' target/junit/*.xml 2>/dev/null \
-            | sed -E 's|.*classname="([^"]*)" name="([^"]*)" time="([^"]*)".*|\3 \1/\2|' \
-            | sort -rn | head -25
-          echo '```'
-        } >> "$GITHUB_STEP_SUMMARY"
-
-    - name: Upload profile
-      if: ${{ !cancelled() && steps.run-test.outputs.profiled == 'true' }}
-      continue-on-error: true
-      uses: actions/upload-artifact@v7
+    - name: Collect profile
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/collect-profile
       with:
-        name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
-        path: |
-          target/clj-async-profiler/results/*flamegraph.html
-          target/junit/**/*.xml
-        retention-days: 14
-        if-no-files-found: warn
+        profiled: ${{ steps.run-test.outputs.profiled }}
+        artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
 
     - name: Report failed tests to ci-conductor
       if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
