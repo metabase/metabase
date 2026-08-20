@@ -251,11 +251,52 @@
            (deps.test/synchronously-run-backfill!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :products)))
-           (events/publish-event! :event/card-update {:object card :previous-object card :user-id api/*current-user-id*})
+           (events/publish-event! :event/card-update
+                                  {:object          card
+                                   :previous-object (assoc card :dataset_query
+                                                           (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                                   :user-id         api/*current-user-id*})
            (assert-stale :card card-id)))))))
 
+(deftest card-update-with-no-dependency-relevant-change-does-not-mark-stale-test
+  (testing (str "An update whose payload shows none of the inputs to a card's dependency calculation "
+                "changed would recompute an identical graph, so it is not marked stale.")
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (mt/with-temp [:model/Card {card-id :id :as card}
+                      {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+         (events/publish-event! :event/card-update {:object          (assoc card :name "Renamed")
+                                                    :previous-object card
+                                                    :user-id         api/*current-user-id*})
+         (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+             "a rename does not queue the card for dependency recomputation"))))))
+
+(deftest ^:sequential cosmetic-card-update-does-not-sweep-dependents-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (testing (str "Re-analysis validates each dependent's own query against current metadata, so only "
+                   "this card's query, declared columns, type or existence can change their verdict. An "
+                   "edit touching none of those must not queue the whole downstream subtree.")
+       (mt/with-temp [:model/Card {parent-id :id :as parent}
+                      {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                      :model/Card {child-id :id :as child}
+                      {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
+                      :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
+                                           :to_entity_type :card :to_entity_id parent-id}]
+         (deps.findings/upsert-analysis! parent)
+         (deps.findings/upsert-analysis! child)
+         (events/publish-event! :event/card-update {:object          (assoc parent :name "Renamed")
+                                                    :previous-object parent
+                                                    :user-id         api/*current-user-id*})
+         (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                       :analyzed_entity_type :card :analyzed_entity_id parent-id))
+             "the renamed card's own analysis stays fresh")
+         (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                       :analyzed_entity_type :card :analyzed_entity_id child-id))
+             "and its dependent is not queued for re-analysis"))))))
+
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
-  (testing ":event/metric-dimensions-update marks the metric card stale and recomputes deps, including mapped-dimension tables"
+  (testing "a metric dimension write marks the metric card stale and recomputes deps, including mapped-dimension tables"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -265,12 +306,18 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (t2/update! :model/Card card-id
-                       {:dimension_mappings [{:type         :table
-                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                              :table-id     (mt/id :categories)
-                                              :target       [:field {} (mt/id :categories :name)]}]})
-           (events/publish-event! :event/metric-dimensions-update {:object {:id card-id}})
+           ;; the dimension endpoints announce their writes as card updates, passing the card as it was
+           ;; before the write — see `metabase.metrics.api/notify-dimensions-changed!`
+           (let [before (t2/select-one :model/Card :id card-id)]
+             (t2/update! :model/Card card-id
+                         {:dimension_mappings [{:type         :table
+                                                :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                :table-id     (mt/id :categories)
+                                                :target       [:field {} (mt/id :categories :name)]}]})
+             (events/publish-event! :event/card-update
+                                    {:object          (t2/select-one :model/Card :id card-id)
+                                     :previous-object before
+                                     :user-id         api/*current-user-id*}))
            (assert-stale :card card-id)
            (deps.test/synchronously-run-backfill!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
@@ -705,7 +752,11 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
+           (events/publish-event! :event/card-update
+                                  {:object          parent-card
+                                   :previous-object (assoc parent-card :dataset_query
+                                                           (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                                   :user-id         api/*current-user-id*})
            ;; No analysis record should exist yet - mark-entity-stale! is a no-op for never-analyzed entities
            (assert-has-analyses
             {:card {parent-card-id nil}})
@@ -764,7 +815,11 @@
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
          ;; Event marks entity stale in analysis_finding
-         (events/publish-event! :event/card-update {:object parent :previous-object parent :user-id api/*current-user-id*})
+         (events/publish-event! :event/card-update
+                                {:object          parent
+                                 :previous-object (assoc parent :dataset_query
+                                                         (lib/native-query mp "select * from orders"))
+                                 :user-id         api/*current-user-id*})
          (testing "Parent card should be marked stale"
            (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card

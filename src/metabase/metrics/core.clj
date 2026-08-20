@@ -203,11 +203,10 @@
           :metadata/metric
           (if (dimensions-initialized? entity)
             (refresh-metric-dimensions! entity computed-pairs persisted-dims persisted-mappings)
-            (if (nil? persisted-dims)
-              (seed-metric-dimensions! entity computed-pairs)
-              (save-dimensions! entity
-                                (lib-metric/extract-persisted-dimensions persisted-dims)
-                                persisted-mappings))))))))
+            ;; Nothing is stored, but `persisted-dims` is non-nil: the 23→24 upgrade synthesized them
+            ;; on read, so this is a pre-curation metric and there is nothing to seed or persist.
+            (when (nil? persisted-dims)
+              (seed-metric-dimensions! entity computed-pairs))))))))
 
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."

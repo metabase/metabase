@@ -432,8 +432,9 @@
         (is (= "week" (:default_temporal_unit resp)))
         (is (= :week (:default-temporal-unit stored)))
         (is (= "week" (:default_temporal_unit fetched)))
-        (is (not-any? #{:event/metric-dimensions-update} @topics)
-            "changing presentation metadata does not invalidate the dependency graph")))))
+        (is (some #{:event/card-update} @topics)
+            "every dimension write is announced, including a presentation-only one — the columns are
+             part of the card's serialization")))))
 
 (deftest update-dimension-default-temporal-unit-validation-test
   (testing "default_temporal_unit must be visible and compatible with the dimension type"
