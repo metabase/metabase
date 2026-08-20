@@ -10,4 +10,4 @@
   ;; pinned: aws-java-sdk-core pulls jackson-core 2.17.2 which has resource exhaustion vulns
   ;; and jackson-databind 2.17.2 which has a deserialization vuln
   com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
-  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}}}
+  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.22.2"}}}
