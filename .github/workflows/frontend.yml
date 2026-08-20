@@ -43,14 +43,17 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Get Eslint cache key
-        uses: ./.github/actions/get-cache-keys
-        id: get-cache-keys
-      - name: Restore ESLint cache
-        uses: actions/cache/restore@v4
+      - name: Cache spec
+        id: cache-spec
+        run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+      # Small enough, and written by few enough jobs, that this one reads and writes its own cache
+      # rather than waiting on cache-warm.
+      - name: ESLint cache
+        uses: actions/cache@v5
         with:
-          path: ${{ github.workspace}}/.eslintcache
-          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+          path: ${{ steps.cache-spec.outputs.eslint-path }}
+          key: ${{ steps.cache-spec.outputs.eslint-key }}
+          restore-keys: ${{ steps.cache-spec.outputs.eslint-restore-key }}
 
       - name: Compile CLJS
         run: bun run build-pure:cljs
