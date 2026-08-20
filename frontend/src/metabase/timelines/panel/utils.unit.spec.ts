@@ -1,5 +1,4 @@
 import { dayjs } from "metabase/dayjs";
-
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   createMockTimeline,

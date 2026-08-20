@@ -1,9 +1,9 @@
-import dayjs, { type Dayjs } from "dayjs";
 import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type {
