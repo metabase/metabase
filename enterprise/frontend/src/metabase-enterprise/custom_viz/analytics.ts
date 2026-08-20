@@ -33,10 +33,6 @@ export const trackCustomVizPluginToggled = (
   trackSimpleEvent({ event: "custom_viz_plugin_toggled", event_detail });
 };
 
-export const trackCustomVizPluginRefreshed = () => {
-  trackSimpleEvent({ event: "custom_viz_plugin_refreshed" });
-};
-
 function warningsEventDetail(warnings: readonly CustomVizPluginWarning[]) {
   return warnings.length > 0
     ? warnings.map((warning) => warning.type).join(",")

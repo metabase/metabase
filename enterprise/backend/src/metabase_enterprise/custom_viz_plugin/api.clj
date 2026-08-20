@@ -360,32 +360,6 @@
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
-(api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
-  "Update a dev-only plugin's metadata from the `metabase-plugin.json` the browser read from the dev server.
-   For uploaded plugins this is rejected — to update an upload-backed plugin, PUT a new bundle to
-   `/:id/bundle`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [manifest]} :- [:map [:manifest {:optional true} [:maybe ms/Map]]]]
-  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
-    (api/check-400 (dev-only-plugin? plugin)
-                   "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
-    (check-dev-mode-enabled!)
-    (api/check-400 (some? manifest)
-                   "No metabase-plugin.json supplied; the browser reads it from the dev server.")
-    (let [manifest     (validate-manifest! manifest)
-          version-str  (get-in manifest [:metabase :version])]
-      (t2/update! :model/CustomVizPlugin id
-                  {:display_name     (or (:name manifest) (:identifier plugin))
-                   :icon             (:icon manifest)
-                   :manifest         manifest
-                   :metabase_version version-str})
-      (let [result (custom-viz-plugin/select-one-non-blob :id id)]
-        (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                                :previous-object plugin
-                                                                :user-id         api/*current-user-id*})
-        (plugin->response result)))))
-
 (def routes
   "`/api/ee/custom-viz-plugin` routes."
   (api.macros/ns-handler *ns* +auth))

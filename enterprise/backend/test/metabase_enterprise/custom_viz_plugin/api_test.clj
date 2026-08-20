@@ -65,12 +65,6 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
                                      {:dev_bundle_url "http://localhost:5174"})))))
-    (testing "non-admin cannot refresh plugins"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-4"
-                                                      :display_name "auth-test-4"
-                                                      :status       :active}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 (str "ee/custom-viz-plugin/" id "/refresh"))))))
     (testing "non-admin cannot upload a new bundle"
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-5"
                                                       :display_name "auth-test-5"
@@ -442,43 +436,6 @@
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
 
 ;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
-
-(deftest refresh-upload-plugin-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "refresh returns 400 for upload-backed plugins (users should POST a new bundle instead)"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "refresh-upload"
-                                                      :display_name "refresh-upload"
-                                                      :status       :active
-                                                      :bundle_hash  "abc"}]
-        (let [resp (mt/user-http-request :crowberto :post 400
-                                         (str "ee/custom-viz-plugin/" id "/refresh"))]
-          (is (re-find #"upload a new bundle" (or (:message resp) (str resp)))))))))
-
-(deftest refresh-dev-plugin-test
-  (mt/with-premium-features #{:custom-viz}
-    (with-dev-mode-enabled
-      (testing "refresh updates a dev-only plugin from the manifest the browser read"
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-refresh"
-                                                        :display_name   "dev-refresh"
-                                                        :status         :active
-                                                        :dev_bundle_url "http://localhost:5174"}]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh")
-                                           {:manifest {:name "Updated Name"
-                                                       :icon "new-icon.svg"
-                                                       :sdk  {:version "2.0.1"}}})]
-            (is (= "Updated Name" (:display_name resp)))
-            (is (= "2.0.1" (get-in resp [:manifest :sdk :version]))
-                "the refreshed dev manifest, including any sdk.version stamp, is persisted")
-            (is (= [] (:warnings resp))
-                "dev-only plugins get no warnings even for an untested SDK version"))))
-      (testing "a structurally invalid manifest is refused"
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-refresh-invalid"
-                                                        :display_name   "dev-refresh-invalid"
-                                                        :status         :active
-                                                        :dev_bundle_url "http://localhost:5174"}]
-          (is (str/includes? (mt/user-http-request :crowberto :post 400 (str "ee/custom-viz-plugin/" id "/refresh")
-                                                   {:manifest {:name 123}})
-                             "is invalid")))))))
 
 ;;; ------------------------------------------------ /list version warnings ------------------------------------------------
 

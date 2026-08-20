@@ -86,11 +86,6 @@ export interface CreateDevCustomVizPluginRequest {
   manifest?: CustomVizPluginManifest;
 }
 
-export interface RefreshCustomVizPluginRequest {
-  id: CustomVizPluginId;
-  manifest: CustomVizPluginManifest;
-}
-
 export interface UpdateCustomVizPluginRequest {
   id: CustomVizPluginId;
   enabled?: boolean;
