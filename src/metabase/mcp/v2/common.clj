@@ -362,7 +362,7 @@
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
 
 (defn readback
-  "GHY-4217: `row` when `token-scopes` could read the entity back through the read tools, else a
+  "`row` when `token-scopes` could read the entity back through the read tools, else a
    minimal `{id, url?, note}` acknowledgement — a write succeeding must never double as a read,
    or the write scope becomes a read oracle for content the token's read scopes deny (a no-op
    update would return the full entity). `read-scopes` is everything the read path would demand:
@@ -450,10 +450,7 @@
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 
 (def card-display-values
-  "Visualization types a card (or an MCP Apps visualization) can render as. Shared so the display
-   a tool saves and the display a tool renders can't drift apart. Callers that want a per-field
-   `:description` build their own enum from these — Malli properties can't be added to a built
-   schema without wrapping it in an `:and`, which publishes as JSON Schema `allOf`."
+  "Visualization types a card (or an MCP Apps visualization) can render as."
   ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
@@ -474,8 +471,7 @@
 (defn portable-query?
   "True when `query` is a full query whose first stage names its source the way the portable
    external dialect does — an FK path `[db schema table]` or a card entity_id — rather than a
-   numeric id. Those forms mean nothing to [[metabase.lib-be.core/normalize-query]]; they need
-   the representations pipeline."
+   numeric id."
   [query]
   (let [stage (first (:stages query))]
     (or (vector? (:source-table stage))
@@ -528,7 +524,7 @@
   (let [decoded (try
                   (-> encoded u/decode-base64 json/decode+kw)
                   (catch Exception _ ::invalid))]
-    (if (map? decoded)
+    (if (map? decoded) ;; catch ::invalid and non-map values
       decoded
       (throw-teaching-error "Query handle contents are invalid — run the query again to get a fresh handle."))))
 
