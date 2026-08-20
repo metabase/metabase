@@ -17,7 +17,7 @@ export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
   "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
-export const getSaveDomImageStyles = (isEmbeddingSdk: boolean) => css`
+export const getSaveDomImageStyles = (allowTextOverflow: boolean) => css`
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
@@ -36,10 +36,9 @@ export const getSaveDomImageStyles = (isEmbeddingSdk: boolean) => css`
       border: 1px solid var(--mb-color-border-neutral);
     }
 
-    /* the renderer for saving to image/pdf does not support text overflow
-     with line height in custom themes in the embedding sdk.
-     this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk &&
+    /* The export renderer clips text vertically when a custom theme changes the line height.
+       The flag works around that by capturing with overflow visible. */
+    ${allowTextOverflow &&
     css`
       [data-dashcard-key].${GlobalDashboardS.Card} * {
         overflow: visible !important;
