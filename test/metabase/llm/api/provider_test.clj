@@ -1,5 +1,6 @@
 (ns metabase.llm.api.provider-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
@@ -276,6 +277,18 @@
                 (mt/user-http-request :crowberto :post 400 "llm/providers"
                                       {:type   "vllm"
                                        :config {:base-url "http://vllm.internal:8000/v1"}})))
+        (is (= [] (llm.provider/connections)))))))
+
+(deftest create-vllm-connection-rejects-an-unreachable-base-url-test
+  (testing (str "vLLM is the one provider whose base URL the admin types, so a typo has to come back as the "
+                "adapter's message on the form — not as the 500 an untagged transport failure would produce.")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (java.net.ConnectException. "Connection refused")))]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (= (str "Could not reach the vLLM server at http://vllm.internal:8000/v1. "
+                    "Check that it is running and that the base URL is correct.")
+               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                               {:type   "vllm"
+                                                :config {:base-url "http://vllm.internal:8000/v1"}}))))
         (is (= [] (llm.provider/connections)))))))
 
 (deftest models-listing-does-not-probe-test

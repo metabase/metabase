@@ -515,6 +515,23 @@
         (testing "and is not retryable"
           (is (false? (#'self/retryable-error? e))))))))
 
+(deftest vllm-mid-stream-non-io-error-is-translated-test
+  (testing "a mid-stream failure that is not IO gets the shared provider translation, the same as every
+           other adapter — `io-guarded` composes with `reducible-with-api-errors` rather than replacing it"
+    (with-redefs [self.core/sse-reducible (fn [_]
+                                            (reify clojure.lang.IReduceInit
+                                              (reduce [_ _rf _init]
+                                                (throw (ex-info "clj-http: status 500"
+                                                                {:status 500 :body "{\"message\":\"boom\"}"})))))
+                  debug/capture-stream    (fn [r _] r)
+                  http/request            (fn [_] {:body nil})]
+      (let [e (try (into [] (vllm/vllm-raw {:model       "vllm-test"
+                                            :input       [{:role :user :content "hi"}]
+                                            :credentials credentials}))
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :provider-api-error (:error-code (ex-data e))))
+        (is (re-find #"vLLM returned an internal server error" (ex-message e)))))))
+
 (deftest vllm-request-timeout-names-vllm-and-its-setting-test
   (testing "a timeout while establishing the request gets the same treatment the preflight already gives it,
            rather than `rethrow-api-error!`'s \"vllm API request failed: Read timed out\""
@@ -674,6 +691,28 @@
            clojure.lang.ExceptionInfo
            #"base URL should end in /v1"
            (vllm/list-models {:credentials {:base-url "http://vllm.internal:8000"}}))))))
+
+(deftest list-models-unreachable-server-is-a-client-error-test
+  (testing "a refused connection while fetching the catalog names the base URL and is tagged 400, so a
+           mistyped base URL reaches the admin as the message instead of a 500"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ConnectException. "Connection refused")))]
+      (let [e (try (vllm/list-models {:credentials credentials})
+                   (catch clojure.lang.ExceptionInfo e e))]
+        (is (= {:api-error true :status-code 400 :error-code :vllm-unreachable}
+               (select-keys (ex-data e) [:api-error :status-code :error-code])))
+        (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e)))))))
+
+(deftest list-models-timeout-names-the-server-test
+  (testing "the catalog fetch runs on the shared request timeout, so a stall there reports that budget
+           rather than the vLLM generation one"
+    (mt/with-temporary-setting-values [llm.settings/llm-request-timeout-ms      120000
+                                       llm.settings/llm-vllm-request-timeout-ms 300000]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (SocketTimeoutException. "Read timed out")))]
+        (let [e (try (vllm/list-models {:credentials credentials})
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (= {:api-error true :status-code 400 :error-code :vllm-timeout}
+                 (select-keys (ex-data e) [:api-error :status-code :error-code])))
+          (is (re-find #"http://vllm\.internal:8000/v1 did not respond within 120000ms" (ex-message e))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Preflight

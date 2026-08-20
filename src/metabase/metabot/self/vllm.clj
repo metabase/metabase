@@ -108,6 +108,30 @@
   {:socket-timeout     (min (llm/llm-vllm-request-timeout-ms) probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
+;;; ----------------------------------------------- Transport errors ---------------------------------------------
+
+(defn- unreachable-ex
+  "The vLLM error for a non-timeout transport failure. `extra` is the caller's own ex-data tags."
+  [^IOException e base-url extra]
+  (ex-info (tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
+                (str base-url))
+           (merge {:api-error true :error-code :vllm-unreachable} extra)
+           e))
+
+(defn- list-models-io-ex
+  "The vLLM error for a transport failure while fetching the model catalog — the request behind the
+  admin Connect button. Tagged `:status-code 400` so a mistyped base URL surfaces the message rather
+  than the 500 `core/rethrow-api-error!`'s untagged no-response branch would produce."
+  [^IOException e base-url]
+  (if (instance? SocketTimeoutException e)
+    (ex-info (tru "The vLLM server at {0} did not respond within {1}ms. Check that it is running and not overloaded."
+                  (str base-url) (str (llm/llm-request-timeout-ms)))
+             {:api-error   true
+              :status-code 400
+              :error-code  :vllm-timeout}
+             e)
+    (unreachable-ex e base-url {:status-code 400})))
+
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
 (defn- list-all-models
@@ -129,6 +153,10 @@
        "vLLM" res
        {:detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
                      (str (:url auth)))}))
+    ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
+    ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
+    (catch IOException e
+      (throw (list-models-io-ex e (:url auth))))
     (catch Exception e
       (core/rethrow-api-error! "vllm" vllm-error-msg e))))
 
@@ -421,16 +449,14 @@
               :error-code :vllm-timeout
               :retryable? false}
              e)
-    (ex-info (tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
-                  (str base-url))
-             {:api-error  true
-              :error-code :vllm-unreachable
-              :retryable? false}
-             e)))
+    (unreachable-ex e base-url {:retryable? false})))
 
 (defn- io-guarded
   "Wrap a stream reducible so a transport failure while consuming it surfaces as [[stream-io-ex]]
-  rather than a raw `IOException`. The adapter's own `try` covers only establishing the request."
+  rather than a raw `IOException`. The adapter's own `try` covers only establishing the request.
+
+  Goes inside `core/reducible-with-api-errors`, never outside: [[stream-io-ex]] tags `:api-error
+  true`, which `core/rethrow-api-error!` rethrows unchanged, so this translation wins for IO."
   [reducible timeout-ms]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -470,7 +496,8 @@
                                      :model    model
                                      :url      "/chat/completions"
                                      :request  req})
-              (io-guarded timeout-ms)))
+              (io-guarded timeout-ms)
+              (core/reducible-with-api-errors "vllm" vllm-error-msg)))
         ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
         ;; cannot swallow one `vllm-error-msg` would have translated.
         (catch IOException e
