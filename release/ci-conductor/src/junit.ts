@@ -64,7 +64,7 @@ function elementBody(inner: string): string {
  * Pure (string → normalized), so it's the unit-tested core that each suite's
  * adapter wraps with its own file discovery / labeling.
  */
-export function parseJunit(xml: string): NormalizedTest[] {
+export function parseJunit(xml: string, ignorePassingTests: boolean = true): NormalizedTest[] {
   try {
     const tests: NormalizedTest[] = [];
     // <testcase ...>...</testcase> (failing) or <testcase .../> (passing,
@@ -88,13 +88,13 @@ export function parseJunit(xml: string): NormalizedTest[] {
     for (const match of xml.matchAll(testcaseRe)) {
       const attrs = match[1];
       const inner = match[2];
-      if (!inner) {
+      if (!inner && ignorePassingTests) {
         continue; // self-closing => passed
       }
 
       const problems = [...inner.matchAll(problemRe)];
-      if (problems.length === 0) {
-        continue;
+      if (problems.length === 0 && ignorePassingTests) {
+        continue;      
       }
 
       const name = (attr(attrs, "name") || "").trim();
@@ -127,9 +127,7 @@ export function parseJunit(xml: string): NormalizedTest[] {
         file: file || null,
         message,
         stack: stack || undefined,
-        // JUnit only tells us a test failed/errored, never that it recovered,
-        // so everything is "failure".
-        status: "failure",
+        status: problems.length === 0 && !ignorePassingTests ? "passed" : "failure",
       });
     }
     return tests;

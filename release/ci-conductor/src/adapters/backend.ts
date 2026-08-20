@@ -33,12 +33,13 @@ const selectHawkJunit = (entries: string[]): string[] =>
  * normalized shape).
  */
 export function normalizeBackendJunit(
+  ignorePassingTests: boolean = true,
   dir: string = JUNIT_DIR,
 ): NormalizedTest[] {
   const files = findJunitFiles(dir, selectHawkJunit);
   const failures = files.flatMap((file) => {
     try {
-      return parseJunit(readFileSync(file, "utf8"));
+      return parseJunit(readFileSync(file, "utf8"), ignorePassingTests);
     } catch (error) {
       console.error(`[ci-conductor] failed to read ${file}`, error);
       return [];
