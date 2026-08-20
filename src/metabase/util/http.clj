@@ -88,7 +88,7 @@
 
   `:external-only` allows only globally routable public addresses. `:allow-private` adds private, unique-local,
   and carrier-grade NAT addresses. `:allow-loopback` adds loopback, for the caller whose legitimate target
-  is a server on the same host."
+  is a server on the same host. `:allow-all` imposes no address restriction."
   [policy ^InetAddress addr]
   (case policy
     :external-only  (public-address? addr)
