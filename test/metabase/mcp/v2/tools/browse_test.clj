@@ -634,7 +634,7 @@
           (testing "adversarial — a directly-supplied destination id is refused across every action"
             (are [action extra] (thrown-with-msg?
                                  clojure.lang.ExceptionInfo
-                                 #"database \d+ not found — it may not exist, or you may not have access to it\."
+                                 #"Database \d+ not found — it may not exist, or you may not have access to it\."
                                  (tools.browse/browse-data (merge {:action action} extra) {}))
               "list_schemas" {:database_id tenant-b}
               "list_tables"  {:database_id tenant-b :schema "public"}
@@ -660,7 +660,7 @@
         (mt/with-test-user :rasta
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"database \d+ not found — it may not exist, or you may not have access to it\."
+               #"Database \d+ not found — it may not exist, or you may not have access to it\."
                (tools.browse/browse-data {:action "list_tables" :database_id stub :schema "public"} {})))
           (let [[envelope] (call! {:action "get_fields" :table_ids [stub-t]})]
             (is (empty? (:tables envelope)))
@@ -899,7 +899,7 @@
         (mt/with-test-user :rasta
           (are [id] (thrown-with-msg?
                      clojure.lang.ExceptionInfo
-                     #"database \d+ not found — it may not exist, or you may not have access to it\."
+                     #"Database \d+ not found — it may not exist, or you may not have access to it\."
                      (tools.browse/browse-data {:action "list_schemas" :database_id id} {}))
             db-id
             Integer/MAX_VALUE))))))

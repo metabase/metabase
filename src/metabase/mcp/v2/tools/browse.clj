@@ -111,14 +111,11 @@
    the same filter [[list-databases]] pages means the tool never serves a database it would not
    list, independent of what the schema/table helpers happen to filter."
   [database-id]
-  (try
-    (api/read-check (t2/select-one :model/Database
-                                   :id database-id
-                                   {:where (schema.table/browsable-databases-honeysql-filter)}))
-    (catch clojure.lang.ExceptionInfo e
-      (if (contains? #{403 404} (:status-code (ex-data e)))
-        (common/throw-not-found :database database-id)
-        (throw e)))))
+  (common/resolve-and-read-with :model/Database database-id
+                                (fn [id]
+                                  (api/read-check (t2/select-one :model/Database
+                                                                 :id id
+                                                                 {:where (schema.table/browsable-databases-honeysql-filter)})))))
 
 ;;; ------------------------------------------------ List plumbing -------------------------------------------------
 
@@ -150,28 +147,17 @@
 
 ;;; ------------------------------------------------ list_* actions ------------------------------------------------
 
-(def ^:private database-select-columns
-  "Columns `list_databases` selects for the `:database` projection."
-  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every
-  ;; row — nothing projected reads them, and `mi/can-read?` needs only `:id`.
-  (into [:model/Database] database-detailed-keys))
-
-(def ^:private no-databases-hint
-  "Steering for an empty list_databases: without it an empty envelope reads as `this instance has
-   no data`, and the caller stops instead of reporting the permission gap."
-  ;; Deliberately does not distinguish \"none exist\" from \"none readable\" — same collapse as
-  ;; [[common/throw-not-found]], and true either way.
-  "No databases are visible to you — browsing data needs query-builder or table-metadata permission on at least one database.")
-
 (defn- list-databases
   [args]
-  (let [rows (t2/select database-select-columns
+  ;; Naming the columns keeps `t2/select` from decrypting the `details`/`settings` blobs on every row. Nothing
+  ;; projected reads them, and `mi/can-read?` needs only `:id`.
+  (let [rows (t2/select (into [:model/Database] database-detailed-keys)
                         {:where    (schema.table/browsable-databases-honeysql-filter)
                          :order-by [[:%lower.name :asc]]})
         ;; `mi/can-read?` below is one permission check per database; load them in one query first.
         _    (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) rows)})
         dbs  (filterv mi/can-read? rows)]
-    (paged-list-content args dbs {:empty-hint no-databases-hint}
+    (paged-list-content args dbs {:empty-hint "No databases are visible to you. Browsing data needs query-builder or table-metadata permission on at least one database."}
                         #(project-rows :database args %))))
 
 (defn- list-schemas
