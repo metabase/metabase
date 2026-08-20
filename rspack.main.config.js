@@ -32,6 +32,9 @@ const {
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
 const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
+  RoutePreloadManifest,
+} = require("./frontend/build/shared/rspack/route-preloads");
+const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
@@ -354,6 +357,7 @@ const config = {
     new OnScriptError(),
     ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
+    new RoutePreloadManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
