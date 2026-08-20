@@ -2507,6 +2507,25 @@
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
 
+(deftest adding-archived-cards-as-series-to-dashboard-is-not-allowed
+  (testing "GHY-4334: the archived check covers a dashcard's series cards, not just its main card"
+    (mt/with-temp
+      [:model/Dashboard {dashboard-id :id} {}
+       :model/Card      {card-id :id}      {}
+       :model/Card      {series-id :id}    {:archived true}]
+      (is (= "The object has been archived."
+             (:message (mt/user-http-request :rasta :put 404 (format "dashboard/%d" dashboard-id)
+                                             {:dashcards [{:id                     -1
+                                                           :card_id                card-id
+                                                           :row                    4
+                                                           :col                    4
+                                                           :size_x                 4
+                                                           :size_y                 4
+                                                           :series                 [{:id series-id}]
+                                                           :visualization_settings {}}]
+                                              :tabs      []}))))
+      (is (zero? (t2/count :model/DashboardCard :dashboard_id dashboard-id))))))
+
 ;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
 (deftest update-cards-test

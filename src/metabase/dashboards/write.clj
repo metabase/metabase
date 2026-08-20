@@ -181,9 +181,8 @@
 
 (defn- create-dashcards!
   [dashboard dashcards]
-  (doseq [{:keys [card_id]} dashcards
-          :when  (pos-int? card_id)]
-    (api/check-not-archived (api/read-check :model/Card card_id)))
+  (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
+    (api/check-not-archived (api/read-check :model/Card card-id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
