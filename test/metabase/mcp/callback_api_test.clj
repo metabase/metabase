@@ -180,6 +180,38 @@
     (is (=? {:status 401}
             (client/client-full-response :get 401 (str "embed-mcp/queries/" (random-uuid)))))))
 
+(defn- get-query-with-ui-credential
+  [expected-status handle credential session-id]
+  (client/client-full-response :get expected-status (str "embed-mcp/queries/" handle)
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}))
+
+(deftest queries-get-accepts-ui-credential-test
+  (testing "the iframe exchanges a handle using only the scoped UI credential it was rendered with —
+            no Metabase session cookie is involved, so the credential alone must authenticate this route"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id nil)
+            credential (mcp.session/issue-ui-credential session-id user-id)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
+        (is (=? {:status 200
+                 :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
+                (get-query-with-ui-credential 200 handle credential session-id))))))
+  (testing "a UI credential minted for one MCP session cannot resolve a handle belonging to another"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id          (mt/user->id :crowberto)
+            credential-id    (mcp.session/create! user-id nil)
+            other-session-id (mcp.session/create! user-id nil)
+            credential       (mcp.session/issue-ui-credential credential-id user-id)
+            handle           (mcp.session/store-handle! other-session-id user-id "ZW5jb2RlZA==")]
+        (is (= 404 (:status (get-query-with-ui-credential 404 handle credential other-session-id)))))))
+  (testing "an invalid UI credential does not authenticate the handle exchange"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [user-id    (mt/user->id :crowberto)
+            session-id (mcp.session/create! user-id nil)
+            handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
+        (is (= 401 (:status (get-query-with-ui-credential 401 handle "not-a-credential" session-id))))))))
+
 (deftest feedback-post-persists-mcp-visualization-feedback-test
   (testing "MCP feedback is persisted to mcp_feedback with the visualization context inline"
     (mt/with-model-cleanup [:model/McpFeedback]

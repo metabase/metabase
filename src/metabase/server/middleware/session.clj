@@ -316,13 +316,28 @@
     [:post "/api/embed-mcp/drills"]
     [:post "/api/embed-mcp/feedback"]})
 
+(def ^:private mcp-ui-parameterized-request-surface
+  "The part of the iframe's surface whose uri carries a path parameter, and so cannot be written as a
+   literal `[method uri]` pair. Each regex must match the whole uri and pin every path segment it does
+   not parameterize, so an entry here stays exactly as narrow as a literal one."
+  #{[:get #"/api/embed-mcp/queries/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"]})
+
+(defn- on-mcp-ui-request-surface?
+  [{:keys [request-method uri]}]
+  (or (contains? mcp-ui-request-surface [request-method uri])
+      (boolean (some (fn [[method pattern]]
+                       (and (= method request-method)
+                            (re-matches pattern uri)))
+                     mcp-ui-parameterized-request-surface))))
+
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential rendered into an MCP visualization iframe.
-   It is accepted only for [[mcp-ui-request-surface]], so possession never
-   authenticates arbitrary API routes."
+   It is accepted only for [[mcp-ui-request-surface]] and
+   [[mcp-ui-parameterized-request-surface]], so possession never authenticates
+   arbitrary API routes."
   [request]
   (when (and (init-status/complete?)
-             (contains? mcp-ui-request-surface [(:request-method request) (:uri request)]))
+             (on-mcp-ui-request-surface? request))
     (when-let [{:keys [uid sid] :as claims}
                (mcp/resolve-ui-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
       (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?)) [uid]))
