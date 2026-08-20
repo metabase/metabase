@@ -118,6 +118,7 @@ function DashCardInner({
     navigateToNewCardFromDashboard,
     reportAutoScrolledToDashcard,
     isGuestEmbed,
+    withTimelineEvents = false,
   } = useDashboardContext();
 
   const dashcardData = useSelector((state) =>
@@ -399,6 +400,7 @@ function DashCardInner({
             isTrashedOnRemove={isTrashedOnRemove}
             onAddParameter={handleAddParameter}
             onEditVisualization={handleEditVisualization}
+            withTimelineEvents={withTimelineEvents}
           />
         )}
         <DashCardVisualization

@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getIsEditing } from "metabase/dashboard/selectors";
+import { getDashCardById, getIsEditing } from "metabase/dashboard/selectors";
 import {
   getDashCardTimelineEventsVisibility,
   getTimelineEventsVisibilityContext,
@@ -17,7 +17,7 @@ import { isDefaultVisibility } from "metabase/visualizations/lib/timeline-events
 import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
-import { onUpdateDashCardVisualizationSettings } from "./core";
+import { setMultipleDashCardAttributes } from "./core";
 import { setSidebar } from "./ui";
 
 export const setDashCardTimelineEventsVisibility = createAction<
@@ -62,14 +62,20 @@ export const updateDashCardsTimelineEventsVisibility =
     }
 
     if (getIsEditing(state)) {
-      changed.forEach(([dashcardId, visibility]) =>
-        dispatch(
-          onUpdateDashCardVisualizationSettings(dashcardId, {
-            "timeline_events.visibility": isDefaultVisibility(visibility)
-              ? undefined
-              : visibility,
-          }),
-        ),
+      dispatch(
+        setMultipleDashCardAttributes({
+          dashcards: changed.map(([dashcardId, visibility]) => ({
+            id: dashcardId,
+            attributes: {
+              visualization_settings: {
+                ...getDashCardById(state, dashcardId)?.visualization_settings,
+                "timeline_events.visibility": isDefaultVisibility(visibility)
+                  ? undefined
+                  : visibility,
+              },
+            },
+          })),
+        }),
       );
     } else {
       dispatch(
