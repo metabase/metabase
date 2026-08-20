@@ -258,6 +258,25 @@
                      :type      :password
                      :advanced? true
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
+   {:type          "vllm"
+    :label         (deferred-tru "vLLM")
+    ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
+    ;; new connection starts on comes from the catalog that connecting fetches (see
+    ;; [[metabase.metabot.self.vllm/list-models]]).
+    :default-model nil
+    :fields        [{:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :required?   true
+                     :placeholder "http://vllm.internal:8000/v1"
+                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                    {:key      :api-key
+                     :label    (deferred-tru "API key")
+                     :type     :password
+                     ;; not required: a server started without --api-key takes no key, and a base URL on its own
+                     ;; is a complete configuration
+                     :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -472,7 +491,12 @@
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
                             :session-token     {:setting :llm-bedrock-session-token}
-                            :region            {:setting :llm-bedrock-region}}}})
+                            :region            {:setting :llm-bedrock-region}}}
+   "vllm"       {:type     "vllm"
+                 ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
+                 ;; no key, so the URL alone brings a usable connection into existence
+                 :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
+                            :api-key  {:setting :llm-vllm-api-key}}}})
 
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
