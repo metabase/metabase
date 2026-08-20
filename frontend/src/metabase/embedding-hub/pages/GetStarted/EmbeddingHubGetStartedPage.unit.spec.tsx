@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
-  setupLlmProvidersEndpoint,
   setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
