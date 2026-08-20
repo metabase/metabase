@@ -121,7 +121,7 @@
 
 (defn tokenize
   {:malli/schema [:=> [:cat :string :boolean]
-                      [:sequential [:or [:fn Str?] [:fn Tok?]]]]}
+                  [:sequential [:or [:fn Str?] [:fn Tok?]]]]}
   [s handle-sql-comments]
   (let [patterns (if handle-sql-comments (sql-patterns) (base-patterns))]
     (list/fold patterns (list (->Str s)) apply-pattern)))
@@ -172,12 +172,12 @@
                     mode
                     (list* (->Literal text) acc))
       (let [subject (parse-tokens strict
-                      more
-                      optional-level
-                      param-level
-                      in-string
-                      comment-mode
-                      (list))]
+                                  more
+                                  optional-level
+                                  param-level
+                                  in-string
+                                  comment-mode
+                                  (list))]
         (if (instance? Ok subject)
           (let [inner (nth (:value subject) 0) rest' (nth (:value subject) 1)]
             (parse-tokens strict
@@ -315,7 +315,7 @@
   "Parse parameters in `s`, returning literal fragments interleaved with
   Param and Optional fragments."
   {:malli/schema [:=> [:cat :string :boolean :boolean]
-                      [:or [:fn p/Ok?] [:fn p/Error?]]]}
+                  [:or [:fn p/Ok?] [:fn p/Error?]]]}
   [s handle-sql-comments strict]
   (let [subject (tokenize s handle-sql-comments)]
     (cond

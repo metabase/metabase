@@ -16,7 +16,7 @@
   (:import
    (gleam.prelude Ok)
    (metabase.lib.parse_impl EmptyParam InvalidParamName Literal Optional
-                 OptionalWithoutParam Param Str Unterminated)))
+                            OptionalWithoutParam Param Str Unterminated)))
 
 (set! *warn-on-reflection* true)
 
