@@ -7,12 +7,11 @@ import {
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
-  Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
-import { LOCATION_CHANGE, push } from "metabase/router";
+import { LOCATION_CHANGE, navigate } from "metabase/router";
 import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 
@@ -45,11 +44,11 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
+export const openUrl = (url: string) => () => {
   if (shouldOpenInBlankWindow(url)) {
     openInBlankWindow(url);
   } else {
-    dispatch(push(url));
+    navigate(url);
   }
 };
 

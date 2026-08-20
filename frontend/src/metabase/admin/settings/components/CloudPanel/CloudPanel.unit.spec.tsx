@@ -8,7 +8,7 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getPlan } from "metabase/common/utils/plan";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getSettings } from "metabase/selectors/settings";
+import { getSettings } from "metabase/settings";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 

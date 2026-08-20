@@ -29,16 +29,16 @@ function setup({ configured }: { configured: boolean }) {
 
 describe("RequireMetabotConfigured", () => {
   it("redirects to the AI settings index when AI is not configured", async () => {
-    const { history } = setup({ configured: false });
+    const { router } = setup({ configured: false });
 
     expect(await screen.findByText("METABOT INDEX")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(INDEX_PATH);
+    expect(router?.location.pathname).toBe(INDEX_PATH);
   });
 
   it("renders the requested sub-page when AI is configured", async () => {
-    const { history } = setup({ configured: true });
+    const { router } = setup({ configured: true });
 
     expect(await screen.findByText("SUB PAGE CONTENT")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(SUB_PAGE_PATH);
+    expect(router?.location.pathname).toBe(SUB_PAGE_PATH);
   });
 });

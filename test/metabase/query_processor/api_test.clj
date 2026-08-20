@@ -77,10 +77,6 @@
             (Thread/sleep 100)
             (recur (dec retries)))))))
 
-(def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true
-                :js-int-to-string? true}})
-
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
@@ -97,11 +93,13 @@
                   :row_count              1
                   :status                 "completed"
                   :context                "ad-hoc"
-                  :json_query             (-> (mt/mbql-query checkins
-                                                {:aggregation [[:count]]})
-                                              (assoc-in [:query :aggregation] [["count"]])
-                                              (assoc :type "query")
-                                              (merge query-defaults))
+                  :json_query             {:lib/type   "mbql/query"
+                                           :database   (mt/id)
+                                           :stages     [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table (mt/id :checkins)
+                                                         :aggregation  [["count" {:lib/uuid string?}]]}]
+                                           :middleware {:add-default-userland-constraints? true
+                                                        :js-int-to-string?                 true}}
                   :started_at             true
                   :running_time           true
                   :average_execution_time nil
@@ -171,9 +169,10 @@
                          [:error       #"Syntax error in SQL statement"]
                          [:json_query  [:map
                                         [:database   [:= (mt/id)]]
-                                        [:type       [:= "native"]]
-                                        [:native     [:map
-                                                      [:query [:= "foobar"]]]]
+                                        [:lib/type   [:= "mbql/query"]]
+                                        [:stages     [:sequential [:map
+                                                                   [:lib/type [:= "mbql.stage/native"]]
+                                                                   [:native   [:= "foobar"]]]]]
                                         [:middleware [:map
                                                       [:add-default-userland-constraints? [:= true]]
                                                       [:js-int-to-string?                 [:= true]]]]]]
@@ -314,7 +313,12 @@
                     :row_count   5
                     :status      "completed"
                     :context     "ad-hoc"
-                    :json_query  (merge query-defaults card-query)
+                    :json_query  {:lib/type   "mbql/query"
+                                  :database   (mt/id)
+                                  :stages     [{:lib/type    "mbql.stage/mbql"
+                                                :source-card (u/the-id card)}]
+                                  :middleware {:add-default-userland-constraints? true
+                                               :js-int-to-string?                 true}}
                     :database_id (mt/id)}
                    (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
                        (update-in [:data :native_form :query]
@@ -582,8 +586,7 @@
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-                           "FROM \"PUBLIC\".\"VENUES\" "
-                           "LIMIT 1048575")
+                           "FROM \"PUBLIC\".\"VENUES\"")
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
@@ -608,9 +611,7 @@
                          "FROM"
                          "  \"PUBLIC\".\"CHECKINS\""
                          "WHERE"
-                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"
-                         "LIMIT"
-                         "  1048575"]
+                         "  \"PUBLIC\".\"CHECKINS\".\"DATE\" = date '2015-11-13'"]
                 :params nil}
                (-> (mt/user-http-request :crowberto :post 200 "dataset/native"
                                          (assoc (mt/mbql-query checkins
@@ -644,9 +645,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (assoc
@@ -661,9 +660,7 @@
                              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
                              "  \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\"\n"
                              "FROM\n"
-                             "  \"PUBLIC\".\"VENUES\"\n"
-                             "LIMIT\n"
-                             "  1048575")
+                             "  \"PUBLIC\".\"VENUES\"")
                 :params nil}
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
@@ -1031,13 +1028,12 @@
 
 (deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
+    (testing "MBQL 5 query should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
-            query             (-> (lib/query metadata-provider venues)
-                                  lib/disable-default-limit)]
+            query             (lib/query metadata-provider venues)]
         (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
-            "Expected no LIMIT in SQL for query with disable-default-limit")))))
+            "Expected no LIMIT in SQL")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."

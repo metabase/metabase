@@ -1,14 +1,16 @@
 import { useCallback } from "react";
 
 import {
-  sessionApi,
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
-  useUpdateSettingMutation,
 } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getSetting,
+  settingsApi,
+  useUpdateSettingMutation,
+} from "metabase/settings";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import type { MappingSettingKey } from "./GroupMappingsWidgetView";
@@ -50,7 +52,7 @@ export function GroupMappingsWidget(props: GroupMappingsWidgetProps) {
       // For this particular setting we don't need to fully wait for the refetch.
       // So long as unwrap succeeds, we can update the cache to reflect the new value
       dispatch(
-        sessionApi.util.updateQueryData(
+        settingsApi.util.updateQueryData(
           "getSessionProperties",
           undefined,
           (draft) => {

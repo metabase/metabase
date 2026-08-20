@@ -2,6 +2,8 @@
   "/api/ee/cloud-add-ons endpoints. "
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase-enterprise.cloud-add-ons.core :as cloud-add-ons]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -35,6 +37,8 @@
   (deferred-tru "This add-on does not support a quantity."))
 (def ^:private error-bundle-only
   (deferred-tru "This add-on can only be purchased as part of a bundle."))
+(def ^:private error-add-on-on-another-subscription
+  (deferred-tru "This add-on is already active on another subscription in your Metabase Cloud account. Usage-based add-ons can only be active on one subscription at a time."))
 
 (def ^:private response-not-hosted
   {:status 400 :body error-not-hosted})
@@ -48,6 +52,8 @@
   {:status 400 :body {:errors {:quantity error-quantity-not-supported}}})
 (def ^:private response-bundle-only
   {:status 400 :body error-bundle-only})
+(def ^:private response-add-on-on-another-subscription
+  {:status 400 :body error-add-on-on-another-subscription})
 (def ^:private response-success-empty
   {:status 200 :body {}})
 
@@ -65,11 +71,7 @@
    "dwh-rent"
    "etl-connections"])
 
-(def ^:private add-on-bundles
-  "Product types whose purchase provisions additional add-ons in the same upsert call. Purchasing
-  Storage (`dwh-rent`) also provisions `etl-connections`, mirroring the store's storage purchase flow."
-  {"dwh-rent" [{:product-type "dwh-rent" :prepaid-units 0}
-               {:product-type "etl-connections" :prepaid-units 1}]})
+(def ^:private add-on-bundles cloud-add-ons/add-on-bundles)
 
 (def ^:private bundle-only-product-types
   "Product types that are only ever provisioned as part of a bundle (see `add-on-bundles`) and can
@@ -89,13 +91,14 @@
       [(cond-> {:product-type product-type}
          quantity (assoc :prepaid-units quantity))]))
 
-(defn- add-ons-for-removal
-  "Add-ons to remove for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
-  into all their members; everything else is a single add-on."
-  [product-type]
-  (if-let [bundle (add-on-bundles product-type)]
-    (mapv #(select-keys % [:product-type]) bundle)
-    [{:product-type product-type}]))
+(def ^:private store-meter-name-conflict-message
+  "already has a product with the same metric-name")
+
+(defn- store-meter-name-conflict?
+  [exception]
+  (let [upsert-error (:upsert-add-ons (ex-data exception))]
+    (boolean (and (string? upsert-error)
+                  (str/includes? upsert-error store-meter-name-conflict-message)))))
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
@@ -210,7 +213,9 @@
       response-success-empty
       (catch Exception e
         (log/warnf "Error purchasing add-on '%s': %s" product-type (ex-message e))
-        (handle-store-api-error e {400 error-cannot-purchase})))))
+        (if (store-meter-name-conflict? e)
+          response-add-on-on-another-subscription
+          (handle-store-api-error e {400 error-cannot-purchase}))))))
 
 (api.macros/defendpoint :delete "/:product-type" :- [:map
                                                      [:status :int]
@@ -228,8 +233,7 @@
 
     :else
     (try
-      (hm.client/call :change-add-ons :remove-add-ons (add-ons-for-removal product-type))
-      (premium-features/clear-cache!)
+      (cloud-add-ons/remove-add-on! product-type)
       response-success-empty
       (catch Exception e
         (log/warnf "Error removing add-on '%s': %s" product-type (ex-message e))

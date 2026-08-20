@@ -32,6 +32,7 @@ export function SliceNameWidget({
     // only 1rem bottom padding
     <Box w="100%" pb="0.5rem">
       <SliceNameInput
+        resetOnEsc
         value={row.name}
         description={
           row.name !== row.originalName ? row.originalName : undefined

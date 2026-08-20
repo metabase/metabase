@@ -42,6 +42,10 @@ Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQues
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
 
+### [Custom visualizations in embeds](./custom-visualizations.md)
+
+Allowlist the custom visualizations that your embedded components can load. Available in modular embeds that use SSO, with web components or the React SDK.
+
 ### [Translating embeds](./translations.md)
 
 Upload a translation dictionary to translate questions and dashboards in modular embeds.

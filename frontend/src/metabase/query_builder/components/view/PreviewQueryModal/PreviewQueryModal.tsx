@@ -8,7 +8,6 @@ import { NativeQueryPreview } from "metabase/querying/notebook/components/Native
 import { useSelector } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const PreviewQueryModal = ({
   onClose = () => undefined,
@@ -16,7 +15,7 @@ export const PreviewQueryModal = ({
   onClose?: () => void;
 }) => {
   const question = checkNotNull(useSelector(getQuestion));
-  const parameters: UiParameter[] = useSelector(getNextRunParameters);
+  const parameters = useSelector(getNextRunParameters);
 
   return (
     <Modal opened onClose={onClose} title={t`Query preview`}>

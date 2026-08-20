@@ -376,7 +376,7 @@ export async function sendPreReleaseMessage({
     releaseCommitLink,
     milestoneLink,
     githubBuildLink,
-    userName ? `started by ${mentionUserByGithubLogin(userName)}` : null
+    userName ? `started from ${owner}/${repo} by ${mentionUserByGithubLogin(userName)}` : null
   ].filter(Boolean).join(" - ");
 
   const message = `${title}\n${preReleaseMessage}`;

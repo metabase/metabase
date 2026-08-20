@@ -22,13 +22,18 @@
 (defn- check-session-header!
   "Validate the `Mcp-Session-Id` header against `user-id`. Throws an api/check
    exception on failure so defendpoint surfaces the right status code."
-  [session-id user-id]
+  [session-id user-id request]
   (api/check (not (str/blank? session-id))
              [400 (tru "Missing Mcp-Session-Id header")])
   (api/check (mcp.session/valid-id? session-id)
              [404 (tru "Invalid or expired session")])
   (api/check (mcp.session/owned-by-user? session-id user-id)
-             [404 (tru "Invalid or expired session")]))
+             [404 (tru "Invalid or expired session")])
+  ;; A UI credential carries the session it was minted for. Normal browser
+  ;; sessions intentionally continue to use the existing ownership check alone.
+  (when-let [credential-session-id (:mcp-ui-session-id request)]
+    (api/check (= credential-session-id session-id)
+               [404 (tru "Invalid or expired session")])))
 
 (def ^:private feedback-text-max-length
   10000)
@@ -56,7 +61,7 @@
    {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
    request]
   (let [session-id (mcp-session-id-from-headers request)]
-    (check-session-header! session-id api/*current-user-id*)
+    (check-session-header! session-id api/*current-user-id* request)
     {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
 
 (api.macros/defendpoint :post "/feedback" :- [:map
@@ -76,7 +81,7 @@
                                  [:query  {:optional true} OptionalFeedbackText]]]]
    request]
   (let [session-id (mcp-session-id-from-headers request)
-        _          (check-session-header! session-id api/*current-user-id*)]
+        _          (check-session-header! session-id api/*current-user-id* request)]
     (metabot.config/check-metabot-enabled!)
     (persist-mcp-feedback! body))
   api/generic-204-no-content)

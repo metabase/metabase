@@ -7,7 +7,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
-(deftest ^:sequential post-product-type-test
+(deftest ^:synchronized post-product-type-test
   (testing "POST /api/ee/cloud-add-ons/metabase-ai"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -40,6 +40,20 @@
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :post 500 "ee/cloud-add-ons/metabase-ai"
                                           {:terms_of_service true})))))
+        (testing "explains the limitation when the add-on is already on another subscription in the organization"
+          (let [store-error {:status         400
+                             :upsert-add-ons "This organization already has a product with the same metric-name."}]
+            (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" store-error)))]
+              (is (=? (str "This add-on is already active on another subscription in your Metabase Cloud account."
+                           " Usage-based add-ons can only be active on one subscription at a time.")
+                      (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
+                                            {:terms_of_service true}))))))
+        (testing "falls back to the generic message when a different upsert-add-ons error comes back"
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status         400
+                                                                                       :upsert-add-ons "Some other problem."})))]
+            (is (=? "Could not purchase this add-on."
+                    (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/metabase-ai"
+                                          {:terms_of_service true})))))
         (testing "succeeds"
           (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
                 {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
@@ -57,7 +71,7 @@
                   (is (= (mt/user->id :crowberto) user_id))
                   (is (= {:add-on {:product-type "metabase-ai"}} details)))))))))))
 
-(deftest ^:sequential post-transforms-test
+(deftest ^:synchronized post-transforms-test
   (doseq [[product-type feature] [["python-execution"            :transforms-python]
                                   ["transforms"                  :transforms-basic]
                                   ["transforms-basic"            :transforms-basic]
@@ -83,7 +97,7 @@
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 (str "ee/cloud-add-ons/" product-type) {})))))))))
 
-(deftest ^:sequential post-dwh-rent-test
+(deftest ^:synchronized post-dwh-rent-test
   (testing "POST /api/ee/cloud-add-ons/dwh-rent"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -124,7 +138,7 @@
                                  {:product-type "etl-connections" :prepaid-units 1}]}
                        details))))))))))
 
-(deftest ^:sequential post-etl-connections-test
+(deftest ^:synchronized post-etl-connections-test
   (testing "POST /api/ee/cloud-add-ons/etl-connections"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -139,7 +153,7 @@
             (is (empty? @store-api-calls)
                 "Store API was not called")))))))
 
-(deftest ^:sequential delete-product-type-test
+(deftest ^:synchronized delete-product-type-test
   (testing "DELETE /api/ee/cloud-add-ons/metabase-ai-managed"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -178,7 +192,7 @@
               (is (not-empty @clear-token-cache-calls)
                   "Token cache was cleared"))))))))
 
-(deftest ^:sequential delete-dwh-rent-test
+(deftest ^:synchronized delete-dwh-rent-test
   (testing "DELETE /api/ee/cloud-add-ons/dwh-rent"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -205,7 +219,7 @@
             (is (not-empty @clear-token-cache-calls)
                 "Token cache was cleared")))))))
 
-(deftest ^:sequential delete-etl-connections-test
+(deftest ^:synchronized delete-etl-connections-test
   (testing "DELETE /api/ee/cloud-add-ons/etl-connections"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -220,7 +234,7 @@
             (is (empty? @store-api-calls)
                 "Store API was not called")))))))
 
-(deftest ^:sequential get-plans-test
+(deftest ^:synchronized get-plans-test
   (testing "GET /api/ee/cloud-add-ons/plans"
     (testing "requires superuser"
       (mt/with-premium-features #{}
@@ -250,7 +264,7 @@
               (is (=? (:body plan-data)
                       (mt/user-http-request :crowberto :get 200 "ee/cloud-add-ons/plans"))))))))))
 
-(deftest ^:sequential get-addons-test
+(deftest ^:synchronized get-addons-test
   (testing "GET /api/ee/cloud-add-ons/addons"
     (testing "requires superuser"
       (mt/with-premium-features #{}

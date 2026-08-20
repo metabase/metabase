@@ -4,8 +4,7 @@ import {
   useGetTimelineEventQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import MoveEventModal, {
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
@@ -29,7 +28,7 @@ type ContainerProps = Omit<
 
 function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const setTimeline = useSetTimeline();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
@@ -59,7 +58,7 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
       await setTimeline(event, newTimeline);
     }
     if (oldTimeline) {
-      dispatch(push(Urls.timelineInCollection(oldTimeline)));
+      navigate(Urls.timelineInCollection(oldTimeline));
     }
   };
 

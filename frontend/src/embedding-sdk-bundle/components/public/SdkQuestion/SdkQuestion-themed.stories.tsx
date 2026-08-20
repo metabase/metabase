@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { questionIds } from "embedding-sdk-bundle/test/storybook-id-args";
-import { storybookThemes } from "embedding-sdk-bundle/test/storybook-themes";
+import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
 import {
   type MetabaseTheme,
   defineMetabaseTheme,

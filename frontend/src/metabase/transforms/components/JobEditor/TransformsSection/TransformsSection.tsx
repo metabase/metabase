@@ -7,8 +7,7 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -71,13 +70,13 @@ export function TransformTable({
     () => getColumns(transformRunByTransformId),
     [transformRunByTransformId],
   );
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleRowActivate = useCallback(
     (row: Row<Transform>) => {
-      dispatch(push(Urls.transform(row.original.id)));
+      navigate(Urls.transform(row.original.id));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<Transform>({

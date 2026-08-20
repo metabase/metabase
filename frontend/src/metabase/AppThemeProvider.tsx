@@ -1,12 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import type { DisplayTheme } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useUpdateSettingMutation } from "metabase/settings";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";

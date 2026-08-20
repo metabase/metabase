@@ -23,7 +23,7 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import { useSyncUrlParameters } from "metabase/querying/components/use-sync-url-parameters";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";

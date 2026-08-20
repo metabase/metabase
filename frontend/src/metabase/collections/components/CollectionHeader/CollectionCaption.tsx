@@ -6,12 +6,12 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
+import { getIsTenantUser, getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser, getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 

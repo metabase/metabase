@@ -5,6 +5,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { navigate } from "metabase/router";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -29,11 +30,17 @@ import {
   updateDashboardAndCards,
 } from "./";
 
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
+  navigate: jest.fn(),
+}));
+
 describe("dashboard actions", () => {
   let dispatch: jest.MockedFunction<Dispatch>;
   let getState: GetState;
 
   beforeEach(() => {
+    jest.mocked(navigate).mockClear();
     dispatch = jest.fn();
     getState = () =>
       createMockState({
@@ -216,13 +223,7 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: ["/dashboard/1"],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1");
     });
 
     // The v3 history rebuilds `search` from `query`, so pushing a location
@@ -236,13 +237,7 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: ["/dashboard/1?tab=2-tab-two"],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1?tab=2-tab-two");
     });
 
     // The location is captured when the caller rendered, so navigating with no
@@ -256,9 +251,7 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: "@@router/CALL_HISTORY_METHOD" }),
-      );
+      expect(navigate).not.toHaveBeenCalled();
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_EDITING_DASHBOARD,
         payload: null,

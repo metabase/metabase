@@ -134,6 +134,26 @@
   [transform-id]
   (format "%s/data-studio/transforms/%s/run" (site-url) transform-id))
 
+(defn document-path
+  "Relative path for a document"
+  [^Integer id]
+  (format "/document/%d" id))
+
+(defn document-url
+  "URL for a document"
+  [^Integer id]
+  (str (site-url) (document-path id)))
+
+(defn exploration-path
+  "Relative path for an exploration"
+  [^Integer id]
+  (format "/question/research/%d" id))
+
+(defn exploration-url
+  "URL for an exploration"
+  [^Integer id]
+  (str (site-url) (exploration-path id)))
+
 (defn security-center-url
   "Url for the Security Center"
   []

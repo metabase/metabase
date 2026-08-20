@@ -682,7 +682,7 @@
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
-                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
+                                                 [:= :this.collection_id nil]] "Our analytics"
                                                 :else nil]]}
    :where        [:and
                   :active

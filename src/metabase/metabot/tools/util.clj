@@ -218,8 +218,8 @@
         ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
         ;; library-published (under a Library root). Each disjunct is gated on its feature.
         curated-conds (cond-> []
-                        verified? (conj [:= :mr.status [:inline "verified"]])
-                        official? (conj [:= :collection.authority_level [:inline "official"]])
+                        verified? (conj [:= :mr.status "verified"])
+                        official? (conj [:= :collection.authority_level "official"])
                         (seq library-coll-ids) (conj [:in :report_card.collection_id (vec library-coll-ids)]))
         ;; Columns are qualified with report_card because the official-collections branch joins
         ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
@@ -228,20 +228,20 @@
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
-        base-query {:select [:report_card.*]
-                    :from   [[:report_card]]
-                    :where [:and
-                            [:!= :report_card.database_id audit-app/audit-db-id]
-                            collection-filter
-                            [:in :report_card.type [:inline ["metric" "model"]]]
-                            [:= :report_card.archived false]
-                            (when api/*current-user-id*
-                              (collection/visible-collection-filter-clause :report_card.collection_id))]}]
+        base-query ^:allow-subquery {:select [:report_card.*]
+                                     :from   [[:report_card]]
+                                     :where [:and
+                                             [:!= :report_card.database_id audit-app/audit-db-id]
+                                             collection-filter
+                                             [:in :report_card.type ["metric" "model"]]
+                                             [:= :report_card.archived false]
+                                             (when api/*current-user-id*
+                                               (collection/visible-collection-filter-clause :report_card.collection_id))]}]
     (cond-> base-query
       verified?
       (update :left-join (fnil into []) [[:moderation_review :mr] [:and
                                                                    [:= :mr.moderated_item_id :report_card.id]
-                                                                   [:= :mr.moderated_item_type [:inline "card"]]
+                                                                   [:= :mr.moderated_item_type "card"]
                                                                    [:= :mr.most_recent true]]])
 
       official?

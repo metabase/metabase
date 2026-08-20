@@ -378,7 +378,7 @@ describe("MetricAbout", () => {
         name: /Product Category/,
       });
       expect(categoryOption).toContainElement(
-        within(categoryOption).getByLabelText("string icon"),
+        within(categoryOption).getByLabelText("label icon"),
       );
       await userEvent.click(categoryOption);
 
@@ -505,6 +505,53 @@ describe("MetricAbout", () => {
       expect(
         fetchMock.callHistory.calls("path:/api/card/42/query"),
       ).toHaveLength(0);
+      expect(await getMetricDatasetRequest()).toEqual(
+        expect.objectContaining({
+          definition: expect.not.objectContaining({
+            projections: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it("shows a scalar when curated dimensions exist but none is the default", async () => {
+      const dimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          createMockMetricDimension({
+            id: dimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: false,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          {
+            dimension_id: dimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+
+      setup(
+        makeMetricCard([
+          createMockField({ name: "created_at", base_type: "type/DateTime" }),
+          createMockField({ name: "count", base_type: "type/Integer" }),
+        ]),
+        TIME_SERIES,
+        { metric, metricDataset: SCALAR_DATASET },
+      );
+
+      expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
+        "150",
+      );
+      expect(
+        screen.queryByRole("button", { name: /Select dimension:/ }),
+      ).not.toBeInTheDocument();
       expect(await getMetricDatasetRequest()).toEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({

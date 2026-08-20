@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import { getUserAttributes } from "metabase/current-user";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
@@ -14,7 +15,6 @@ import {
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUserAttributes } from "metabase/selectors/user";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {

@@ -18,7 +18,7 @@ import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -31,6 +31,7 @@ import {
 
 export function TenantCollectionPermissionsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   useListCollectionsTreeQuery(tenantCollectionsQuery);
 
   // These selectors resolve the selected collection from the route, so they
@@ -53,7 +54,7 @@ export function TenantCollectionPermissionsPage() {
   }, [dispatch]);
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
-    dispatch(push(`/admin/permissions/tenant-collections/${id}`));
+    navigate(`/admin/permissions/tenant-collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (

@@ -10,7 +10,11 @@ import { Menu } from "metabase/ui";
 
 import { NewMenuItemAIExploration } from "./NewMenuItemAIExploration";
 
-function setup() {
+function setup(
+  { hasNlqAccess } = {
+    hasNlqAccess: true,
+  },
+) {
   const metabotInitialState = assocIn(
     getMetabotInitialState(),
     ["conversations", "ask", "messages"],
@@ -20,7 +24,7 @@ function setup() {
   const TestComponent = () => (
     <Menu opened>
       <Menu.Dropdown>
-        <NewMenuItemAIExploration />
+        <NewMenuItemAIExploration hasNlqAccess={hasNlqAccess} />
       </Menu.Dropdown>
     </Menu>
   );
@@ -38,7 +42,7 @@ function setup() {
 }
 
 describe("NewMenuItemAIExploration", () => {
-  it("links to the ask mode question page", () => {
+  it("links to the ask mode question page when hasNlqAccess is true", () => {
     setup();
 
     expect(
@@ -56,5 +60,15 @@ describe("NewMenuItemAIExploration", () => {
     );
 
     expect(getMessages(store.getState(), "ask")).toHaveLength(0);
+  });
+
+  it("should link to the research mode page when hasNlqAccess is false", () => {
+    setup({
+      hasNlqAccess: false,
+    });
+
+    expect(
+      screen.getByRole("menuitem", { name: /AI exploration/ }),
+    ).toHaveAttribute("href", "/question/research");
   });
 });

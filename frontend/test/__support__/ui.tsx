@@ -27,10 +27,10 @@ import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 
+import "metabase/auth/plugins";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { makeMainReducers } from "metabase/reducers-main";
@@ -42,17 +42,16 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import {
-  type History,
-  type LocationDescriptor,
+  type Location,
   type MemoryTestRouterHolder,
   Route,
-  RouterProviderV7Memory,
+  type RouteObject,
+  RouterProviderMemory,
   createLocationMirror,
-  createV7Navigator,
-  routerMiddleware,
   toFacadeLocation,
-  toNavigateArgs,
+  toRouteObjects,
 } from "metabase/router";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -104,7 +103,7 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const { wrapper, store, history } = getTestStoreAndWrapper({
+  const { wrapper, store, router } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
@@ -124,8 +123,29 @@ export function renderWithProviders(
   return {
     ...utils,
     store,
-    history,
+    router,
   };
+}
+
+/**
+ * Renders route objects, for a spec that has them already, such as the app's own
+ * `getRoutes`. Pass a function to build them from the store the harness makes.
+ */
+export function renderRoutes(
+  routes: RouteObject[] | ((store: Store<State>) => RouteObject[]),
+  { initialRoute = "/", ...options }: RenderWithProvidersOptions = {},
+) {
+  const {
+    wrapper: Wrapper,
+    store,
+    router,
+  } = getTestStoreAndWrapper({ ...options, initialRoute, withRouter: true });
+
+  const utils = testingLibraryRender(
+    <Wrapper routes={typeof routes === "function" ? routes(store) : routes} />,
+  );
+
+  return { ...utils, store, router };
 }
 
 export function renderHookWithProviders<TProps, TResult>(
@@ -146,7 +166,7 @@ export function renderHookWithProviders<TProps, TResult>(
   const {
     wrapper: Wrapper,
     store,
-    history,
+    router,
   } = getTestStoreAndWrapper({
     mode,
     initialRoute,
@@ -171,7 +191,7 @@ export function renderHookWithProviders<TProps, TResult>(
 
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
-  return { ...renderHookReturn, store, history };
+  return { ...renderHookReturn, store, router };
 }
 
 type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
@@ -189,7 +209,10 @@ export function getTestStoreAndWrapper({
   theme,
 }: GetTestStoreAndWrapperOptions) {
   let {
-    settings, // pull settings out because they aren't in the store
+    // Pull settings and currentUser out because they have no reducer;
+    // createMockState mirrors them into the bootstrap / getCurrentUser cache.
+    settings,
+    currentUser,
     ...initialState
   }: Partial<StoreSeedState> = createMockState(storeInitialState);
 
@@ -199,10 +222,10 @@ export function getTestStoreAndWrapper({
   }
 
   // The router can only be built once the route tree is known, which is at
-  // render. Specs still get their handle up front, so hand the adapter a holder
-  // the provider fills in.
+  // render. Specs still get their handle up front, so hand it a holder the
+  // provider fills in.
   const routerHolder: MemoryTestRouterHolder = { current: null };
-  const history = withRouter ? createV3HistoryAdapter(routerHolder) : undefined;
+  const router = withRouter ? createTestRouter(routerHolder) : undefined;
 
   let reducers;
 
@@ -216,11 +239,7 @@ export function getTestStoreAndWrapper({
     reducers = { ...reducers, ...customReducers };
   }
 
-  const routerNavigator = withRouter ? createV7Navigator() : undefined;
-  const storeMiddleware = _.compact([
-    Api.middleware,
-    routerNavigator && routerMiddleware(routerNavigator),
-  ]);
+  const storeMiddleware = [Api.middleware];
 
   // Unjustified type cast. FIXME
   const store = getStore(
@@ -248,7 +267,7 @@ export function getTestStoreAndWrapper({
     );
   };
 
-  return { wrapper, store, history };
+  return { wrapper, store, router };
 }
 
 /**
@@ -288,6 +307,7 @@ const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
 
 export function TestWrapper({
   children,
+  routes,
   store,
   routerHolder,
   withRouter,
@@ -299,7 +319,12 @@ export function TestWrapper({
   displayTheme,
   withCssVariables = false,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  /**
+   * Routes to mount, for a spec that has them as objects already, such as the
+   * app's own `getRoutes`. Takes the place of rendering a `<Route>` tree.
+   */
+  routes?: RouteObject[];
   store: any;
   routerHolder?: MemoryTestRouterHolder;
   withRouter: boolean;
@@ -338,6 +363,7 @@ export function TestWrapper({
                 <MaybeKBar hasKBar={withKBar}>
                   <MaybeRouter
                     hasRouter={withRouter}
+                    routes={routes}
                     routerHolder={routerHolder}
                     initialRoute={initialRoute}
                   >
@@ -355,13 +381,23 @@ export function TestWrapper({
 }
 
 /**
- * The v3 `history` surface the specs drive and assert against
- * (`getCurrentLocation()`, `push`, `goBack`, `listen`, ...), backed by the memory
- * data router. Lets specs written against the v3 engine keep working unchanged.
- * Cast to `History` so the handle specs already destructure keeps its type; it
- * implements the subset they use.
+ * The router handle specs drive and assert against, backed by the memory data
+ * router.
  */
-function createV3HistoryAdapter(holder: MemoryTestRouterHolder): History {
+export type TestRouter = {
+  navigate(to: string, options?: { replace?: boolean }): void;
+  back(): void;
+  forward(): void;
+  readonly location: Location;
+  /**
+   * Observe every location the router passes through, for specs asserting on
+   * transient navigations that `location` alone cannot show. Returns an
+   * unsubscribe.
+   */
+  onLocationChange(listener: (location: Location) => void): () => void;
+};
+
+function createTestRouter(holder: MemoryTestRouterHolder): TestRouter {
   const requireRouter = () => {
     if (!holder.current) {
       throw new Error("The router handle is only available after render");
@@ -369,36 +405,28 @@ function createV3HistoryAdapter(holder: MemoryTestRouterHolder): History {
     return holder.current;
   };
 
-  const getCurrentLocation = () =>
-    toFacadeLocation(requireRouter().state.location);
-
-  // v3's history methods returned void. Swallow the router's promise rather than
-  // handing it back: specs drive these inside `act()`, which switches to its
-  // async mode the moment the callback returns a thenable. Split by argument
-  // shape so neither call has to fight `navigate`'s overload.
-  const navigateTo = (...[to, options]: ReturnType<typeof toNavigateArgs>) => {
-    requireRouter().navigate(to, options);
-  };
-  const navigateBy = (delta: number) => {
-    requireRouter().navigate(delta);
-  };
-
-  const adapter = {
-    getCurrentLocation,
-    get location() {
-      return getCurrentLocation();
+  // Swallow the router's promise rather than handing it back: specs drive these
+  // inside `act()`, which switches to its async mode the moment the callback
+  // returns a thenable.
+  return {
+    navigate: (to, options) => {
+      requireRouter().navigate(to, options);
     },
-    push: (location: LocationDescriptor) =>
-      navigateTo(...toNavigateArgs(location)),
-    replace: (location: LocationDescriptor) =>
-      navigateTo(...toNavigateArgs(location, { replace: true })),
-    go: (n: number) => navigateBy(n),
-    goBack: () => navigateBy(-1),
-    goForward: () => navigateBy(1),
-    listen: (
-      listener: (location: ReturnType<typeof getCurrentLocation>) => void,
-    ) => {
+    back: () => {
+      requireRouter().navigate(-1);
+    },
+    forward: () => {
+      requireRouter().navigate(1);
+    },
+    get location() {
+      // `toFacadeLocation` normalizes `state` from v7's `null` to `undefined`,
+      // which the legacy readers, and the specs covering them, test for.
+      return toFacadeLocation(requireRouter().state.location);
+    },
+    onLocationChange: (listener) => {
       const router = requireRouter();
+      // The router notifies on every state update, not just navigations, so
+      // compare keys to report a location once.
       let lastKey = router.state.location.key;
       return router.subscribe(({ location }) => {
         if (location.key === lastKey) {
@@ -409,11 +437,6 @@ function createV3HistoryAdapter(holder: MemoryTestRouterHolder): History {
       });
     },
   };
-
-  // The adapter implements the subset of v3's `History` the specs actually call,
-  // not the full interface, so widen through `unknown` to keep the `history`
-  // handle they destructure typed as before.
-  return adapter as unknown as History;
 }
 
 function childrenAreRouteTree(children: React.ReactNode): boolean {
@@ -425,7 +448,7 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
       return true;
     }
     // Routes are often grouped in a fragment (`<><Route/><Route/></>`); descend
-    // so the tree is still recognized, matching how `mapToV7` unwraps fragments.
+    // so the tree is still recognized, matching how react-router unwraps fragments.
     if (child.type === Fragment) {
       return childrenAreRouteTree(child.props.children);
     }
@@ -435,11 +458,13 @@ function childrenAreRouteTree(children: React.ReactNode): boolean {
 
 function MaybeRouter({
   children,
+  routes,
   hasRouter,
   routerHolder,
   initialRoute,
 }: {
-  children: React.ReactElement;
+  children?: React.ReactElement;
+  routes?: RouteObject[];
   hasRouter: boolean;
   routerHolder?: MemoryTestRouterHolder;
   initialRoute: string;
@@ -451,24 +476,33 @@ function MaybeRouter({
   );
 
   if (!hasRouter) {
-    return children;
+    return <>{children}</>;
   }
-  // Tests pass either a `<Route>` tree (rendered as-is) or a bare component.
-  // `<Routes>` only renders `<Route>` children, so wrap a bare component in a
-  // catch-all route.
-  const content = childrenAreRouteTree(children) ? (
-    children
-  ) : (
-    <Route path="*" element={children} />
-  );
   return (
-    <RouterProviderV7Memory
+    <RouterProviderMemory
+      routes={routes ?? toRoutes(children)}
       initialRoute={initialRoute}
       routerHolder={routerHolder}
       onLocationChange={onLocationChange}
-    >
-      {content}
-    </RouterProviderV7Memory>
+    />
+  );
+}
+
+/**
+ * Tests render either a `<Route>` tree or a bare component. Only a bare
+ * component needs anything doing to it: it gets a catch-all route to sit in.
+ * A spec that has routes as objects passes them as `routes` instead.
+ */
+function toRoutes(children?: React.ReactElement): RouteObject[] {
+  if (!children) {
+    return [];
+  }
+  return toRouteObjects(
+    childrenAreRouteTree(children) ? (
+      children
+    ) : (
+      <Route path="*" element={children} />
+    ),
   );
 }
 

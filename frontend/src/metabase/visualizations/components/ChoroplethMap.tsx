@@ -8,10 +8,10 @@ import _ from "underscore";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import {
@@ -32,15 +32,21 @@ import type {
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,
-  DatasetColumn,
   GeoJSONData,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { ChartWithLegend } from "./ChartWithLegend";
-import { LeafletChoropleth } from "./LeafletChoropleth";
-import { LegacyChoropleth } from "./LegacyChoropleth";
+import {
+  type FeatureClickContext,
+  buildFeatureClickObject,
+} from "./ChoroplethMap.utils";
+import {
+  type FeatureInteraction,
+  LeafletChoropleth,
+} from "./LeafletChoropleth";
+import { LegacyChoropleth, type ProjectionFrame } from "./LegacyChoropleth";
 import { computeMinimalBounds } from "./leaflet-bounds";
 
 const geoJsonCache = new Map<string, GeoJSONData>();
@@ -141,7 +147,6 @@ type ChoroplethMapState = {
 };
 
 type Projection = d3.GeoProjection | null;
-type ProjectionFrame = [[number, number], [number, number]];
 
 function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
   return value.type === "FeatureCollection";
@@ -160,15 +165,25 @@ function getDetails(
 }
 
 function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
-  const [state, setState] = useState<ChoroplethMapState>({
-    geoJson: null,
-    geoJsonPath: null,
+  const [state, setState] = useState<ChoroplethMapState>(() => {
+    if (geoJsonPath) {
+      const cached = geoJsonCache.get(geoJsonPath);
+      if (cached) {
+        return {
+          geoJson: cached,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(getFeatures(cached)),
+        };
+      }
+    }
+    return { geoJson: null, geoJsonPath: null };
   });
 
   useEffect(() => {
     if (!geoJsonPath) {
       return;
     }
+
     let cancelled = false;
     setState({ geoJson: null, geoJsonPath });
     loadGeoJson(geoJsonPath, (geoJson) => {
@@ -188,11 +203,11 @@ function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
   return state;
 }
 
-// projectionFrame is the lng/lat of the top left and bottom right corners
-function getMapProjection(region: string | undefined): {
-  projection: Projection;
-  projectionFrame: ProjectionFrame | null;
-} {
+type MapProjection =
+  | { projection: d3.GeoProjection; projectionFrame: ProjectionFrame }
+  | { projection: null; projectionFrame: null };
+
+function getMapProjection(region: string | undefined): MapProjection {
   // special case builtin maps to use legacy choropleth map
   if (region === "us_states") {
     return {
@@ -249,79 +264,13 @@ function computeAspectRatio(
   return 1;
 }
 
-type FeatureClickContext = {
-  cols: DatasetColumn[];
-  dimensionIndex: number;
-  metricIndex: number;
-  settings: VisualizationSettings;
-  getFeatureName: (feature: Feature) => string;
-  getFeatureKey: (feature: Feature, opts?: { lowerCase?: boolean }) => string;
-};
-
-function buildFeatureClickObject(
-  row: RowValue[] | undefined,
-  feature: Feature | null,
-  ctx: FeatureClickContext,
-) {
-  const {
-    cols,
-    dimensionIndex,
-    metricIndex,
-    settings,
-    getFeatureName,
-    getFeatureKey,
-  } = ctx;
-
-  if (row == null) {
-    // This branch lets you click on empty regions. We use in dashboard cross-filtering.
-    return {
-      value: null,
-      column: cols[metricIndex],
-      dimensions: [],
-      data: feature
-        ? [
-            {
-              key: cols[dimensionIndex].display_name,
-              value: getFeatureKey(feature, { lowerCase: false }),
-              col: cols[dimensionIndex],
-            },
-          ]
-        : [],
-      settings,
-    };
-  }
-
-  return {
-    value: row[metricIndex],
-    column: cols[metricIndex],
-    dimensions: [
-      {
-        value: row[dimensionIndex],
-        column: cols[dimensionIndex],
-      },
-    ],
-    data: row.map((value, index) => ({
-      key: cols[index].display_name,
-      value:
-        index === dimensionIndex && feature != null
-          ? getFeatureName(feature)
-          : value,
-      // We set clickBehaviorValue to the raw data value for use in a filter via crossfiltering.
-      // `value` above is used in the tool tips so it needs to use `getFeatureName`.
-      clickBehaviorValue: value,
-      col: cols[index],
-    })),
-    origin: { row, cols },
-    settings,
-  };
-}
-
 function ChoroplethMapInner(props: ChoroplethMapProps) {
   const {
     series,
     className,
     gridSize,
     hovered,
+    highlighted,
     onHoverChange,
     visualizationIsClickable,
     onVisualizationClick,
@@ -358,6 +307,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const [
     {
       data: { cols, rows },
+      card,
     },
   ] = series;
   const dimensionIndex = _.findIndex(
@@ -401,11 +351,12 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     settings,
     getFeatureName,
     getFeatureKey,
+    cardId: card.id,
   };
 
   const onClickFeature =
     onVisualizationClick != null
-      ? (click: { feature: Feature; event: MouseEvent }) => {
+      ? (click: FeatureInteraction) => {
           const row = rowByFeatureKey.get(getFeatureKey(click.feature));
           const clickData = {
             ...buildFeatureClickObject(row, click.feature, clickContext),
@@ -418,7 +369,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       : undefined;
 
   const onHoverFeature = onHoverChange
-    ? (hover: { feature: Feature; event: MouseEvent } | null) => {
+    ? (hover: FeatureInteraction | null) => {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && hover) {
           onHoverChange({
@@ -443,6 +394,23 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const getColor = (feature: Feature): string => {
     const value = getFeatureValue(feature);
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
+  };
+
+  const isSeriesHighlighted = card.id === highlighted?.cardId;
+  const dimensionColumn = cols[dimensionIndex];
+  const highlightedDimension = highlighted?.dimensions?.find(
+    (d) => d.columnName === dimensionColumn?.name,
+  );
+  const highlightedKey =
+    isSeriesHighlighted && highlightedDimension
+      ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
+      : null;
+
+  const isFeatureHighlighted = (feature: Feature): boolean | null => {
+    if (!isSeriesHighlighted || !highlightedDimension) {
+      return null;
+    }
+    return getFeatureKey(feature) === highlightedKey;
   };
 
   const aspectRatio = computeAspectRatio(
@@ -481,11 +449,13 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       isDocument={isDocument}
       isMetricsViewer={isMetricsViewer}
     >
-      {projection ? (
+      {projection && isFeatureCollection(geoJson) ? (
         <LegacyChoropleth
           series={series}
           geoJson={geoJson}
           getColor={getColor}
+          isFeatureHighlighted={isFeatureHighlighted}
+          highlightedKey={highlightedKey}
           onHoverFeature={onHoverFeature}
           onClickFeature={onClickFeature}
           projection={projection}

@@ -21,12 +21,23 @@ For **downgrades**, the script expects the target to refuse startup, then runs c
 
 ### `dev.sh` — local development
 
-Starts a single Metabase version in Docker with H2 and opens Cypress interactively. Snapshot/restore works via `/api/testing/*` endpoints, controlled by the `CROSS_VERSION_DEV_MODE` env var.
+Starts a single Metabase version in Docker (same Compose stack as `test.sh`) and opens Cypress interactively.
 
 ```bash
 ./dev.sh --version v1.57.6
 ./dev.sh --version v1.58.3 --port 3001
 ```
+
+## Test data
+
+The Postgres container runs [`metabase/qa-databases:postgres-sample-15`](https://github.com/metabase/metabase-qa). It serves two databases:
+
+| Database | Contents |
+|----------|----------|
+| `metabase` | Metabase's application db (created by `init/00-create-app-db.sql`) |
+| `sample` | The QA sample data, loaded by the image's own `sample_data.sql.gz` |
+
+Both databases are created on first boot only and the data is persisted as a volume, so `docker compose down -v` is required to reset them.
 
 ## E2E test specs
 
@@ -61,7 +72,6 @@ Both `test.sh` and `dev.sh` resolve which spec folder to use for a given version
 |----------|---------|-------------|
 | `METABASE_PORT` | `3000` (`3077` in dev) | Port to expose Metabase |
 | `HEALTH_TIMEOUT` | `120` | Seconds to wait for health check |
-| `CROSS_VERSION_DEV_MODE` | — | Set automatically by `dev.sh`; enables snapshot/restore helpers in specs |
 
 ## Requirements
 
