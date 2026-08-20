@@ -57,6 +57,7 @@ const DEFAULT_PURE_CALLEES = [
   { module: "ttag", names: ["t", "c", "jt", "ngettext", "msgid"] },
   { module: "color", names: "*" },
   { module: "@lezer/highlight", names: "*" },
+  { module: "@lezer/lr", names: ["deserialize"] },
   { module: "@codemirror/language", names: "*" },
   {
     module: "@reduxjs/toolkit",

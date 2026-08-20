@@ -45,7 +45,14 @@ const SIDE_EFFECT_FREE_PATHS = [
  * List `<module>/api` here when a module is enrolled: those files register their endpoints on the shared Api at import,
  * so a bundle has to evaluate them even when it only reaches them by name.
  */
-const SIDE_EFFECT_PATHS = [];
+const SIDE_EFFECT_PATHS = [
+  // The pratt parser tables are built by module-scope calls that mutate the exported NODE_TYPE objects.
+  // Their results are unused, so a PURE annotation would let the minifier delete the setup.
+  path.join(
+    REPO_ROOT,
+    "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
+  ),
+];
 
 const SIDE_EFFECT_FREE_RULE = {
   include: SIDE_EFFECT_FREE_PATHS,
