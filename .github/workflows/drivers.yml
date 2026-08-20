@@ -92,26 +92,6 @@ jobs:
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
-      # Per-driver configured status from ci-test-config (skip | info | required)
-      h2-status: ${{ steps.driver-decisions.outputs.h2-status }}
-      athena-status: ${{ steps.driver-decisions.outputs.athena-status }}
-      bigquery-status: ${{ steps.driver-decisions.outputs.bigquery-status }}
-      clickhouse-status: ${{ steps.driver-decisions.outputs.clickhouse-status }}
-      databricks-status: ${{ steps.driver-decisions.outputs.databricks-status }}
-      druid-jdbc-status: ${{ steps.driver-decisions.outputs.druid-jdbc-status }}
-      mongo-status: ${{ steps.driver-decisions.outputs.mongo-status }}
-      mongo-ssl-status: ${{ steps.driver-decisions.outputs.mongo-ssl-status }}
-      mongo-sharded-cluster-status: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-status }}
-      mysql-mariadb-status: ${{ steps.driver-decisions.outputs.mysql-mariadb-status }}
-      oracle-status: ${{ steps.driver-decisions.outputs.oracle-status }}
-      postgres-status: ${{ steps.driver-decisions.outputs.postgres-status }}
-      presto-jdbc-status: ${{ steps.driver-decisions.outputs.presto-jdbc-status }}
-      redshift-status: ${{ steps.driver-decisions.outputs.redshift-status }}
-      snowflake-status: ${{ steps.driver-decisions.outputs.snowflake-status }}
-      sparksql-status: ${{ steps.driver-decisions.outputs.sparksql-status }}
-      sqlite-status: ${{ steps.driver-decisions.outputs.sqlite-status }}
-      sqlserver-status: ${{ steps.driver-decisions.outputs.sqlserver-status }}
-      vertica-status: ${{ steps.driver-decisions.outputs.vertica-status }}
       # Per-driver quarantine conflict flags (set when driver is quarantined but has file changes)
       athena-quarantine-conflict: ${{ steps.driver-decisions.outputs.athena-quarantine-conflict }}
       bigquery-quarantine-conflict: ${{ steps.driver-decisions.outputs.bigquery-quarantine-conflict }}
@@ -133,28 +113,6 @@ jobs:
       sqlserver-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlserver-quarantine-conflict }}
       vertica-quarantine-conflict: ${{ steps.driver-decisions.outputs.vertica-quarantine-conflict }}
     steps:
-      # Up front (before any driver job), drop info-driver comments from older commits so a
-      # superseded comment disappears immediately rather than waiting for this run's drivers.
-      # Keeps this commit's comment (if any) so a re-run doesn't flicker.
-      - name: Remove stale info-driver comments
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v9
-        continue-on-error: true
-        with:
-          script: | # js
-            const pr = context.payload.pull_request;
-            if (!pr) return;
-            const { owner, repo } = context.repo;
-            const PREFIX = "<!-- info-driver-result";
-            const keep = `<!-- info-driver-results:${pr.head.sha} -->`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner, repo, issue_number: pr.number, per_page: 100,
-            });
-            for (const c of comments) {
-              if (c.body.includes(PREFIX) && !c.body.includes(keep)) {
-                await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
-              }
-            }
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Fetch base branch
@@ -229,7 +187,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -239,9 +196,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -306,7 +260,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -316,9 +269,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -392,7 +342,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -402,8 +351,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -448,7 +395,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -458,8 +404,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -522,7 +466,6 @@ jobs:
         artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -532,9 +475,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -598,7 +538,6 @@ jobs:
         artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -608,9 +547,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -631,7 +567,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -641,8 +576,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -664,7 +597,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -674,8 +606,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -807,7 +737,6 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -817,8 +746,6 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -889,7 +816,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -899,8 +825,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -973,7 +897,6 @@ jobs:
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -983,8 +906,6 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -1020,7 +941,6 @@ jobs:
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1030,8 +950,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -1107,7 +1025,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1117,8 +1034,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1213,7 +1128,6 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -1223,9 +1137,6 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
-          report-variant: ${{ matrix.version.name }}-${{ matrix.job.name }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1303,7 +1214,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1313,8 +1223,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1389,7 +1297,6 @@ jobs:
           ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: ${{ !matrix.job.skip && !cancelled() }}
@@ -1399,9 +1306,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1475,7 +1379,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1485,9 +1388,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1530,7 +1430,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1540,8 +1439,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1573,7 +1470,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1583,8 +1479,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1651,7 +1545,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1661,8 +1554,6 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1777,7 +1668,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1787,22 +1677,13 @@ jobs:
         bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
         role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
 
   drivers-tests-result:
     needs:
-      # Supplies each driver's configured status (info/skip/required) so this gate can ignore
-      # "info" drivers regardless of their result -- including cancelled or timed-out runs, which
-      # the per-job continue-on-error cannot force green because the controlling step never
-      # completes. Not a driver job; it is filtered out of the pass/fail check below.
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
       - be-tests-athena-ee
-      # Listed unconditionally; ci-test-config controls their effect via per-driver status.
-      # An "info" driver is reported as passing, so it never blocks this check; flip it to
-      # "required" in the config to make a real failure gate, with no change here.
       - be-tests-snowflake-ee
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-databricks-ee
@@ -1831,46 +1712,18 @@ jobs:
         uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
-          # Job name -> configured driver status, from determine-driver-skips. An "info" driver is
-          # data-collection only and must never gate; a cancelled/timed-out info job lands here as
-          # cancelled/failure (its own continue-on-error can't force it green), so we drop info jobs
-          # from the gate entirely. Empty/unknown status falls back to "required" (gates as before).
-          statuses: |
-            {
-              "be-tests-athena-ee": "${{ needs.determine-driver-skips.outputs.athena-status }}",
-              "be-tests-bigquery-cloud-sdk-ee": "${{ needs.determine-driver-skips.outputs.bigquery-status }}",
-              "be-tests-clickhouse-ee": "${{ needs.determine-driver-skips.outputs.clickhouse-status }}",
-              "be-tests-databricks-ee": "${{ needs.determine-driver-skips.outputs.databricks-status }}",
-              "be-tests-druid-jdbc-ee": "${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}",
-              "be-tests-h2": "${{ needs.determine-driver-skips.outputs.h2-status }}",
-              "be-tests-mongo": "${{ needs.determine-driver-skips.outputs.mongo-status }}",
-              "be-tests-mongo-ssl": "${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}",
-              "be-tests-mongo-sharded-cluster-ee": "${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}",
-              "be-tests-mysql-mariadb": "${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}",
-              "be-tests-oracle": "${{ needs.determine-driver-skips.outputs.oracle-status }}",
-              "be-tests-postgres": "${{ needs.determine-driver-skips.outputs.postgres-status }}",
-              "be-tests-presto-jdbc-ee": "${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}",
-              "be-tests-redshift-ee": "${{ needs.determine-driver-skips.outputs.redshift-status }}",
-              "be-tests-snowflake-ee": "${{ needs.determine-driver-skips.outputs.snowflake-status }}",
-              "be-tests-sparksql-ee": "${{ needs.determine-driver-skips.outputs.sparksql-status }}",
-              "be-tests-sqlite-ee": "${{ needs.determine-driver-skips.outputs.sqlite-status }}",
-              "be-tests-sqlserver": "${{ needs.determine-driver-skips.outputs.sqlserver-status }}"
-            }
         with:
           script: | # js
             const needs = JSON.parse(process.env.needs);
-            const statuses = JSON.parse(process.env.statuses);
 
-            // Drop the determine-driver-skips bookkeeping job, then drop "info" drivers: they are
-            // non-gating, so their result (including cancelled/timed-out) must not fail this check.
+            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
+            // job whose result gates this check.
             const jobs = Object.entries(needs)
               .filter(([jobName]) => jobName !== 'determine-driver-skips')
               .map(([jobName, jobValues]) => ({
                 name: jobName,
-                result: jobValues.result,
-                status: statuses[jobName] || 'required'
-              }))
-              .filter(job => job.status !== 'info');
+                result: jobValues.result
+              }));
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {

@@ -141,7 +141,6 @@ jobs:
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.fe-tests.outcome }}
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}

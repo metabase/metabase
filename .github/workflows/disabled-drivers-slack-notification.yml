@@ -34,18 +34,18 @@ jobs:
             const lastUpdated = config.metadata?.last_updated || 'unknown';
             const reason = config.metadata?.reason || 'No reason provided';
 
+            // "skip" is the only status CI reads: the driver is not run at all. A driver that
+            // runs but must not gate is expressed as a suite-level rule in CI Conductor, which
+            // reports it in its own UI.
             const skipped = drivers.filter(d => d.status === 'skip').map(d => d.name);
-            const info = drivers.filter(d => d.status === 'info').map(d => d.name);
 
-            if (skipped.length === 0 && info.length === 0) {
-              console.log('No drivers are disabled or collecting data. Skipping Slack notification.');
+            if (skipped.length === 0) {
+              console.log('No drivers are disabled. Skipping Slack notification.');
               return;
             }
 
             const list = (names) => names.map(d => `\`${d}\``).join('  ');
-            const lines = [];
-            if (skipped.length) lines.push(`:no_entry: *Disabled (not run):* ${list(skipped)}`);
-            if (info.length) lines.push(`:information_source: *Collecting data (non-blocking):* ${list(info)}`);
+            const lines = [`:no_entry: *Disabled (not run):* ${list(skipped)}`];
 
             if (!process.env.SLACK_BOT_TOKEN) {
               throw new Error('SLACK_BOT_TOKEN is required');
