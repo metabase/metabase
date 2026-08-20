@@ -119,8 +119,8 @@
   "Convert a plugin record to the safe runtime response shape.
    `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
    instead of served from the browser's `immutable` cache."
-  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
-    :as   plugin}]
+  [dev-mode? {:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
+              :as   plugin}]
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
@@ -130,7 +130,7 @@
            :bundle_hash  bundle_hash
            :manifest     manifest
            :warnings     (plugin-warnings plugin)}
-    dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
+    (and dev-mode? dev_bundle_url) (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -220,7 +220,7 @@
                                                      {:order-by [[:display_name :asc]]})]
     (->> plugins
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
-         (mapv (comp plugin->runtime-response api/read-check)))))
+         (mapv (comp (partial plugin->runtime-response dev-mode?) api/read-check)))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."

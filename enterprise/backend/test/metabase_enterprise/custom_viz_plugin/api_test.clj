@@ -732,21 +732,40 @@
                                              :display_name   "Dev Viz"
                                              :status         :active
                                              :enabled        true
+                                             :dev_bundle_url "http://localhost:5174"}
+                   ;; an upload-backed plugin that *also* carries a dev URL
+                   :model/CustomVizPlugin _ {:identifier     "hybrid-viz-list"
+                                             :display_name   "Hybrid Viz"
+                                             :status         :active
+                                             :enabled        true
+                                             :bundle_hash    "def"
                                              :dev_bundle_url "http://localhost:5174"}]
-      (testing "dev-only plugins are hidden from /list when dev mode is off"
-        (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
-              identifiers (set (map :identifier result))]
-          (is (contains? identifiers "upload-viz-list"))
-          (is (not (contains? identifiers "dev-viz-list")))))
-      (testing "dev-only plugins are visible in /list to a superuser when dev mode is on"
-        (cvp.tu/with-dev-mode true
-          (let [result      (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/list")
-                identifiers (set (map :identifier result))]
-            (is (contains? identifiers "upload-viz-list"))
-            (is (contains? identifiers "dev-viz-list")))))
-      (testing "but stay hidden from a non-superuser even with dev mode on"
-        (cvp.tu/with-dev-mode true
+      (letfn [(row-for [result identifier]
+                (some #(when (= identifier (:identifier %)) %) result))]
+        (testing "dev-only plugins are hidden from /list when dev mode is off"
           (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
             (is (contains? identifiers "upload-viz-list"))
-            (is (not (contains? identifiers "dev-viz-list")))))))))
+            (is (not (contains? identifiers "dev-viz-list")))
+            (testing "and an upload-backed plugin is served without its dev URL"
+              (is (contains? identifiers "hybrid-viz-list"))
+              (is (nil? (:dev_bundle_url (row-for result "hybrid-viz-list")))
+                  "the dev URL would send this user's browser to a dev server on their own machine"))))
+        (testing "dev-only plugins are visible in /list to a superuser when dev mode is on"
+          (cvp.tu/with-dev-mode true
+            (let [result      (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/list")
+                  identifiers (set (map :identifier result))]
+              (is (contains? identifiers "upload-viz-list"))
+              (is (contains? identifiers "dev-viz-list"))
+              (testing "and they are the one audience that gets the dev URL"
+                (is (= "http://localhost:5174"
+                       (:dev_bundle_url (row-for result "hybrid-viz-list"))))))))
+        (testing "but stay hidden from a non-superuser even with dev mode on"
+          (cvp.tu/with-dev-mode true
+            (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                  identifiers (set (map :identifier result))]
+              (is (contains? identifiers "upload-viz-list"))
+              (is (not (contains? identifiers "dev-viz-list")))
+              (testing "and the dev URL stays off an upload-backed plugin for them too"
+                (is (nil? (:dev_bundle_url (row-for result "hybrid-viz-list")))
+                    "dev mode is global, so it must not by itself hand the URL to a non-superuser")))))))))
