@@ -40,7 +40,8 @@ concurrency:
 jobs:
   get-cache-keys:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Get cache keys
