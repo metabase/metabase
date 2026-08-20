@@ -318,7 +318,7 @@ jobs:
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
       - semantic-search-tests-postgres
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
     if: always() && !cancelled()
