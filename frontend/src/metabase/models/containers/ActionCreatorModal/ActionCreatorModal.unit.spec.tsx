@@ -100,9 +100,14 @@ describe("actions > containers > ActionCreatorModal", () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION.id}`;
     await setup({ initialRoute });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("action-creator")).toBeInTheDocument();
-    });
+    // The modal renders nothing while the action and its model load, so on a
+    // busy CI worker this can take longer than the default 1s timeout.
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it("redirects back to the model detail page if the action is not found", async () => {
