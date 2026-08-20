@@ -642,8 +642,8 @@
 
 (defn- escape-line-start
   "Escape a leading character that would otherwise start a block construct — a CommonMark one
-  (heading, list, blockquote, fence, thematic break), a `:::` container fence, or a `{% card %}`
-  block token — when this paragraph line is re-parsed. Prose is the one place an arbitrary
+  (heading, list, blockquote, fence, thematic break, HTML block), a `:::` container fence, or a
+  `{% card %}` block token — when this paragraph line is re-parsed. Prose is the one place an arbitrary
   stored string reaches the output verbatim, so this is what keeps a text node that merely
   *looks* like markup from becoming markup on the next parse. Leading indentation of four or
   more columns (or any tab) would read as an indented code block, so it collapses to three
@@ -658,7 +658,7 @@
     (cond
       ;; `card-token-line-body` is the same predicate the scanner uses, so a line is escaped
       ;; exactly when it would otherwise be read as a card embed — never more, never less.
-      (or (re-find #"^(#{1,6}([ \t]|$)|>|[-+]([ \t]|$)|:::|~~~|=+[ \t]*$|-+[ \t]*$)" body)
+      (or (re-find #"^(#{1,6}([ \t]|$)|>|<|[-+]([ \t]|$)|:::|~~~|=+[ \t]*$|-+[ \t]*$)" body)
           (card-token-line-body body))
       (str ws "\\" body)
 

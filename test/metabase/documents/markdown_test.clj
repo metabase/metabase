@@ -432,6 +432,59 @@
         (is (= text (get-in (md/parse (reserialize ast)) [:content 0 :content 0 :text]))
             (format "%s after %s did not survive the round trip" label (pr-str prefix)))))))
 
+;;; ------------------------------------------------ HTML ---------------------------------------------------------
+
+(def ^:private html-line-start-strings
+  "Prose that opens a line with `<`. Emitted verbatim, each one is re-read as HTML rather than as
+  the text it came from — and an HTML comment block converts to no nodes at all, so the prose is
+  silently gone by the time the document is written back."
+  {"html comment"         "<!-- secret note -->"
+   "block-level tag"      "<div>hi</div>"
+   "inline tag"           "<span>hi</span>"
+   "declaration"          "<!DOCTYPE html>"
+   "processing intruction" "<?php echo 1; ?>"
+   "cdata"                "<![CDATA[x]]>"})
+
+(deftest ^:parallel html-at-line-start-survives-round-trip-test
+  (testing "text that begins with `<` stays text through serialize → parse. An HTML comment is the
+           worst of these: `convert-block` maps `HtmlCommentBlock` to no nodes, so the paragraph
+           comes back empty and the prose is lost with no error anywhere."
+    (doseq [[label text] html-line-start-strings]
+      (let [ast      {:type "doc" :content [(para text)]}
+            reparsed (md/parse (reserialize ast))]
+        (is (= text (get-in reparsed [:content 0 :content 0 :text]))
+            (format "%s at paragraph start did not survive the round trip" label))
+        (is (= (strip-ids (:content ast)) (strip-ids (:content reparsed)))
+            (format "%s at paragraph start changed the document" label))))))
+
+(deftest ^:parallel html-at-line-start-in-a-blockquote-keeps-its-content-test
+  (testing "a container whose only child is prose starting with `<` still has children after the
+           round trip — the editor's schema declares `block+`, so a blockquote that loses its
+           paragraph is a document the editor cannot load"
+    (doseq [[label text] html-line-start-strings]
+      (let [ast      {:type    "doc"
+                      :content [{:type "blockquote" :attrs {:_id "q"} :content [(para text)]}
+                                {:type "paragraph" :attrs {:_id "z"}}]}
+            quoted   (get-in (md/parse (reserialize ast)) [:content 0])]
+        (is (= "blockquote" (:type quoted))
+            (format "%s in a blockquote changed the block type" label))
+        (is (seq (:content quoted))
+            (format "%s in a blockquote left the container with no :content" label))
+        (is (= text (get-in quoted [:content 0 :content 0 :text]))
+            (format "%s in a blockquote did not survive the round trip" label))))))
+
+(deftest ^:parallel html-mid-paragraph-survives-round-trip-test
+  (testing "a `<` that is not at the start of a line needs no escape and still round-trips — the
+           escape is line-start only, so it must not fire mid-prose"
+    (doseq [[label html] html-line-start-strings]
+      (let [text     (str "before " html " after")
+            ast      {:type "doc" :content [(para text)]}
+            {m :markdown} (md/serialize ast)]
+        (is (= text (get-in (md/parse m) [:content 0 :content 0 :text]))
+            (format "%s mid-paragraph did not survive the round trip" label))
+        (is (not (str/includes? m "\\<"))
+            (format "%s mid-paragraph was escaped: %s" label (pr-str m)))))))
+
 (deftest ^:parallel unrepresentable-smart-link-model-degrades-to-text-test
   (testing "a smartLink whose model has no token — a link type the frontend added, or a corrupted
            attr — serializes as its label rather than failing the whole document body"
