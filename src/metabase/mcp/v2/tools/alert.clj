@@ -359,6 +359,25 @@
                             action metabot.scope/agent-query-run)
                     {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
 
+(defn- execute-scope-trigger
+  "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
+   commits the alert to nothing it wasn't already committed to. Every field that newly puts the
+   question in front of the scheduler counts, not just the delivery target: resuming a paused alert
+   restarts the sends, and a new schedule changes how often they happen. Pausing (`active: false`)
+   is deliberately absent — a kill switch must never need more scope than the thing it kills. The
+   alert's stored state is not consulted, so `active: true` on an already-running alert is refused
+   too: telling that no-op from a real resume would take a read the token may not be entitled to."
+  [updates]
+  (cond
+    (some #(contains? updates %) [:channel :slack_channel :recipients])
+    "Changing where an alert delivers"
+
+    (true? (:active updates))
+    "Resuming a paused alert"
+
+    (contains? updates :schedule)
+    "Changing an alert's schedule"))
+
 (def ^:private alert-write-args-schema
   [:map {:closed true}
    [:method [:enum "create" "update"]]
@@ -392,9 +411,9 @@
   mixing user ids and email addresses that defaults to you, or \"slack\" with slack_channel, a channel name like
   \"#data-team\" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the
   alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no
-  archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, or
-  changing its delivery, additionally requires the agent:query:execute scope — the alert runs the question and
-  delivers its results. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
+  archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing
+  its delivery or its schedule, or resuming a paused one additionally requires the agent:query:run scope — the alert
+  runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
   {:name         "alert_write"
    :scope        metabot.scope/agent-delivery-write
    :annotations  {:readOnlyHint false :destructiveHint false}
@@ -408,6 +427,6 @@
                       (case op
                         :create (do (check-query-execute-scope! token-scopes "Creating an alert")
                                     (create! a))
-                        :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
-                                      (check-query-execute-scope! token-scopes "Changing where an alert delivers"))
+                        :update (do (when-let [reason (execute-scope-trigger b)]
+                                      (check-query-execute-scope! token-scopes reason))
                                     (update! a b)))))))

@@ -623,6 +623,48 @@
             execute_query's own scope, so a client holding the default grant can satisfy the gate"
     (is (contains? (registry/registered-scopes) "agent:query:run"))))
 
+(deftest restoring-and-rescheduling-gate-on-query-execute-test
+  (testing "restoring a trashed subscription starts the sends again, and a new schedule changes how
+            often they happen — both commit the scheduler to running the dashboard's questions, so
+            both need the execute scope. Only trashing stays free: a kill switch must never need
+            more scope than the thing it kills"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/Pulse {pulse-id :id} {:name "Weekly" :dashboard_id dash-id
+                                                :creator_id (mt/user->id :crowberto)}
+                   :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
+                   :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
+                                          :schedule_type :daily :schedule_hour 15}]
+      (let [write-only #{"agent:delivery:write"}
+            with-exec  #{"agent:delivery:write" "agent:query:run"}]
+        (testing "trashing needs no execute scope"
+          (is (= pulse-id (:id (tool-result (call-tool! :crowberto write-only
+                                                        (wire {:method "update" :id pulse-id
+                                                               :archived true}))))))
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))
+        (testing "restoring it is refused, naming the missing scope, and it stays trashed"
+          (is (re-find #"agent:query:run"
+                       (tool-error (call-tool! :crowberto write-only
+                                               (wire {:method "update" :id pulse-id :archived false})))))
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))
+        (testing "with the execute scope the restore goes through"
+          (is (= pulse-id (:id (tool-result (call-tool! :crowberto with-exec
+                                                        (wire {:method "update" :id pulse-id
+                                                               :archived false}))))))
+          (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))
+        (testing "raising a daily subscription to hourly is refused, and the schedule is untouched"
+          (is (re-find #"agent:query:run"
+                       (tool-error (call-tool! :crowberto write-only
+                                               (wire {:method "update" :id pulse-id
+                                                      :schedule {:schedule_type "hourly"}})))))
+          (is (= [:daily] (mapv :schedule_type (pulse-channels pulse-id)))))
+        (testing "and goes through with the execute scope"
+          (is (= pulse-id (:id (tool-result (call-tool! :crowberto with-exec
+                                                        (wire {:method "update" :id pulse-id
+                                                               :schedule {:schedule_type "hourly"}}))))))
+          (is (= [:hourly] (mapv :schedule_type (pulse-channels pulse-id)))))))))
+
 (deftest scope-gates-the-tool-test
   (testing "GHY-4156: a token without the subscribe scope can't call the tool at all"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}]

@@ -352,6 +352,26 @@
                             action metabot.scope/agent-query-run)
                     {:status-code 403 ::common/error-code common/error-code-invalid-request}))))
 
+(defn- execute-scope-trigger
+  "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
+   commits the subscription to nothing it wasn't already committed to. Every field that newly puts
+   the dashboard in front of the scheduler counts, not just the delivery target: restoring a trashed
+   subscription restarts the sends, and a new schedule changes how often they happen. Trashing
+   (`archived: true`) is deliberately absent — a kill switch must never need more scope than the
+   thing it kills. The subscription's stored state is not consulted, so `archived: false` on a live
+   subscription is refused too: telling that no-op from a real restore would take a read the token
+   may not be entitled to. Mirrors alert_write's trigger set."
+  [updates]
+  (cond
+    (some #(contains? updates %) [:channel :slack_channel :recipients])
+    "Changing where a subscription delivers"
+
+    (false? (:archived updates))
+    "Restoring a trashed subscription"
+
+    (contains? updates :schedule)
+    "Changing a subscription's schedule"))
+
 (registry/deftool subscription-write
   "Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. \"send me this dashboard
   every Monday morning\". method: \"create\" requires dashboard_id and schedule; method: \"update\" requires id and
@@ -363,8 +383,9 @@
   ({id, value} pairs naming the dashboard's own filters) makes a filtered subscription. On update, only the fields
   you pass change: a schedule-only update keeps the recipients, and a recipients list replaces the current one.
   A subscription that already delivers to both email and Slack needs channel to say which to edit. Creating a
-  subscription, or changing its delivery, additionally requires the agent:query:execute scope — the subscription runs
-  the dashboard's questions and delivers the results. This is for dashboards on a schedule — use alert_write for a
+  subscription, changing its delivery or its schedule, or restoring a trashed one additionally requires the
+  agent:query:run scope — the subscription runs the dashboard's questions and delivers the results. Trashing one
+  never does. This is for dashboards on a schedule — use alert_write for a
   question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
   update it."
   {:name         "subscription_write"
@@ -376,8 +397,8 @@
         id       (case op
                    :create (do (check-query-execute-scope! token-scopes "Creating a subscription")
                                (create! a))
-                   :update (do (when (some #(contains? b %) [:channel :slack_channel :recipients])
-                                 (check-query-execute-scope! token-scopes "Changing where a subscription delivers"))
+                   :update (do (when-let [reason (execute-scope-trigger b)]
+                                 (check-query-execute-scope! token-scopes reason))
                                (update! a b)))]
     (common/success-content
      (common/readback token-scopes [metabot.scope/agent-content-read]

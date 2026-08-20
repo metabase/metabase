@@ -600,6 +600,46 @@
             execute_query's own scope, so a client holding the default grant can satisfy the gate"
     (is (contains? (registry/registered-scopes) "agent:query:run"))))
 
+(deftest resuming-and-rescheduling-gate-on-query-execute-test
+  (testing "resuming a paused alert starts the sends again, and a new schedule changes how often they
+            happen — both commit the scheduler to running the question, so both need the execute
+            scope. Only pausing stays free: a kill switch must never need more scope than the thing
+            it kills"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [write-only #{metabot.scope/agent-delivery-write}
+              with-exec  #{metabot.scope/agent-delivery-write metabot.scope/agent-query-run}
+              id         (:id (tool-result (call-tool! :crowberto with-exec
+                                                       (wire {:method "create" :card_id card-id
+                                                              :schedule (daily-schedule 9)}))))
+              cron       #(mapv :cron_schedule (t2/select :model/NotificationSubscription :notification_id id))]
+          (testing "pausing needs no execute scope"
+            (is (= id (:id (tool-result (call-tool! :crowberto write-only
+                                                    (wire {:method "update" :id id :active false}))))))
+            (is (false? (t2/select-one-fn :active :model/Notification :id id))))
+          (testing "resuming it is refused, naming the missing scope, and the alert stays paused"
+            (is (re-find #"agent:query:run"
+                         (tool-error (call-tool! :crowberto write-only
+                                                 (wire {:method "update" :id id :active true})))))
+            (is (false? (t2/select-one-fn :active :model/Notification :id id))))
+          (testing "with the execute scope the resume goes through"
+            (is (= id (:id (tool-result (call-tool! :crowberto with-exec
+                                                    (wire {:method "update" :id id :active true}))))))
+            (is (true? (t2/select-one-fn :active :model/Notification :id id))))
+          (testing "raising a daily alert to hourly is refused, and the cron is untouched"
+            (is (re-find #"agent:query:run"
+                         (tool-error (call-tool! :crowberto write-only
+                                                 (wire {:method "update" :id id
+                                                        :schedule {:schedule_type "hourly"
+                                                                   :schedule_minute 0}})))))
+            (is (= ["0 0 9 * * ? *"] (cron))))
+          (testing "and goes through with the execute scope"
+            (is (= id (:id (tool-result (call-tool! :crowberto with-exec
+                                                    (wire {:method "update" :id id
+                                                           :schedule {:schedule_type "hourly"
+                                                                      :schedule_minute 0}}))))))
+            (is (= ["0 0 * * * ? *"] (cron)))))))))
+
 (deftest write-response-respects-read-scopes-test
   (testing "GHY-4217: a write scope must not double as a read scope — without the alert read scopes
             the response is a minimal ack, so a no-op update can't read the recipients back"
