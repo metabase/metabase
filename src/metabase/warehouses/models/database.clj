@@ -536,11 +536,12 @@
   [engine database keys-to-check]
   (when-not (exempt-audit-db? database)
     (when-let [engine (some-> engine keyword)]
-      (doseq [k     keys-to-check
-              :let  [details (get database k)]
-              :when (map? details)]
-        (driver.u/validate-connection-hosts! engine (cond->> details
-                                                      (not= k :details) (merge (:details database))))))))
+      (driver.u/with-database-network-policy database
+        (doseq [k     keys-to-check
+                :let  [details (get database k)]
+                :when (map? details)]
+          (driver.u/validate-connection-hosts! engine (cond->> details
+                                                        (not= k :details) (merge (:details database)))))))))
 
 (t2/define-before-update :model/Database
   [database]

@@ -846,6 +846,37 @@
                                         :engine     (u/qualified-name ::host-details-driver)
                                         :details    {:host "127.0.0.1"}}))))))
 
+(deftest attached-dwh-relaxes-the-network-policy-test
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (mt/with-premium-features #{:attached-dwh}
+      ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have
+      (when config/ee-available?
+        (testing "an attached DWH on a private address can be written"
+          (mt/with-temp [:model/Database db {:engine          (u/qualified-name ::host-details-driver)
+                                             :is_attached_dwh true
+                                             :details         {:host "10.224.7.141"}}]
+            (testing "and updated"
+              (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}})))))))
+      (testing "loopback and link-local stay blocked even for the attached DWH"
+        (doseq [host ["127.0.0.1" "169.254.169.254"]]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"private or internal network address"
+               (t2/insert! :model/Database {:name            "attached dwh"
+                                            :engine          (u/qualified-name ::host-details-driver)
+                                            :is_attached_dwh true
+                                            :details         {:host host}}))
+              (str "should be refused: " host)))))
+    (testing "without the :attached-dwh token feature the flag confers no exemption"
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"private or internal network address"
+             (t2/insert! :model/Database {:name            "dwh-flavored smuggling"
+                                          :engine          (u/qualified-name ::host-details-driver)
+                                          :is_attached_dwh true
+                                          :details         {:host "10.224.7.141"}})))))))
+
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
     (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
