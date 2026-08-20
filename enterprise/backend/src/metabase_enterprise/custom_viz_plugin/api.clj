@@ -371,14 +371,14 @@
                                                :headers        {"Accept" "text/event-stream"}}))]
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
-              (when-not (= "text/event-stream" (cache/response-content-type resp))
-                (throw (ex-info "Dev server did not return an event stream" {:status-code 400})))
-              (loop []
-                (when-not (a/poll! canceled-chan)
-                  (when-let [line (.readLine rdr)]
-                    (.write os (.getBytes (str line "\n") "UTF-8"))
-                    (.flush os)
-                    (recur))))))
+              (if-not (= "text/event-stream" (cache/response-content-type resp))
+                (sr/write-error! os {:message "Dev server did not return an event stream"} nil 400)
+                (loop []
+                  (when-not (a/poll! canceled-chan)
+                    (when-let [line (.readLine rdr)]
+                      (.write os (.getBytes (str line "\n") "UTF-8"))
+                      (.flush os)
+                      (recur)))))))
           (catch Exception e
             (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
 

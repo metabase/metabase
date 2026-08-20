@@ -350,6 +350,7 @@
   #{"application/json" "text/json"})
 
 (defn response-content-type
+  "Return the lower-case media type from a clj-http response, without parameters."
   [resp]
   (some-> (get-in resp [:headers :content-type])
           (str/split #";") first str/trim u/lower-case-en))
