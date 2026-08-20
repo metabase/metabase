@@ -174,6 +174,26 @@
       (is (true? (mcp.session/owned-by-user? session-id user-id)))
       (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
 
+(deftest owned-by-user-tolerates-cross-user-rows-test
+  (testing "GHY-4333: an Mcp-Session-Id is client-supplied and unsigned, so two users can each materialize a
+            core_session for the same id. Each must keep access to its own row — checking ownership on key_hashed
+            alone picks one of them arbitrarily and locks the other out of every subsequent request."
+    (let [owner-id   (mt/user->id :crowberto)
+          other-id   (mt/user->id :rasta)
+          session-id (mcp.session/create! owner-id nil)]
+      (testing "both users pass the check while nothing has been materialized"
+        (is (true? (mcp.session/owned-by-user? session-id owner-id)))
+        (is (true? (mcp.session/owned-by-user? session-id other-id))))
+      (mcp.session/get-or-create-session-key! session-id owner-id)
+      (mcp.session/get-or-create-session-key! session-id other-id)
+      (is (= 2 (t2/count :core_session :key_hashed (derived-hash session-id)))
+          "rows are scoped to (key_hashed, user_id), so each user materializes their own")
+      (testing "neither user is locked out by the other's row"
+        (is (true? (mcp.session/owned-by-user? session-id owner-id)))
+        (is (true? (mcp.session/owned-by-user? session-id other-id))))
+      (testing "a third user with no row of their own is still rejected"
+        (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :lucky))))))))
+
 (deftest delete-noop-without-session-test
   (testing "delete! is a no-op when no core_session was ever created"
     (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)]

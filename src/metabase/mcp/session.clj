@@ -285,12 +285,17 @@
   (derive-embedding-session-key session-id))
 
 (defn owned-by-user?
-  "Return true if no `core_session` has been materialized for this session yet
-  (i.e. no ownership to violate), or if the existing row belongs to `user-id`."
+  "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
+  one of the materialized rows belongs to `user-id`."
   [session-id user-id]
+  ;; `Mcp-Session-Id` is client-supplied and unsigned, so two users can present the same id and each materialize their
+  ;; own row before either check runs — the window spans requests, so no transaction here can close it. Matching the
+  ;; (key_hashed, user_id) scoping that `get-or-create-embedding-session!` and `delete!` already use makes that
+  ;; harmless: each user sees their own row instead of one arbitrarily shadowing the other. Reading the owner from
+  ;; key_hashed alone would pick one row of the set and lock every other user out of a session they already hold.
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))
-        owner      (t2/select-one-fn :user_id :core_session :key_hashed key-hashed)]
-    (or (nil? owner) (= owner user-id))))
+        owners     (t2/select-fn-set :user_id :core_session :key_hashed key-hashed)]
+    (or (empty? owners) (contains? owners user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
 ;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
