@@ -508,7 +508,7 @@
                              (= key-name :starburst-legacy-impersonation))
                            (#'stats/snowplow-features-data)))))))
 
-(deftest deployment-model-test
+(deftest ^:synchronized deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
     (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly true)]
       (is (= "cloud" (@#'stats/deployment-model))))
@@ -516,9 +516,10 @@
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
-                                  io/file                              (constantly (java.io.File. mock-file))]
-        (is (= "docker" (@#'stats/deployment-model)))))
+      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)]
+        ;; `io/file` is a hot, cheap function; permanently proxying it would tax the rest of the test JVM.
+        (with-redefs [io/file (constantly (java.io.File. mock-file))]
+          (is (= "docker" (@#'stats/deployment-model))))))
     (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
                                 stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))

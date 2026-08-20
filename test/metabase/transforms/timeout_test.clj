@@ -19,7 +19,7 @@
 (defn- minutes-ago ^OffsetDateTime [^long n]
   (.minusMinutes (OffsetDateTime/now ZoneOffset/UTC) n))
 
-(deftest timeout-observability-test
+(deftest ^:synchronized timeout-observability-test
   (mt/with-premium-features #{:transforms-basic :audit-app}
     (mt/with-prometheus-system! [_ system]
       (testing "transform-run sweeper bumps counter, observes histogram, and publishes audit event per timed-out run"
@@ -65,8 +65,9 @@
       (testing "no metric activity when there are no stale runs"
         (let [inc-calls     (atom [])
               observe-calls (atom [])]
-          (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! inc-calls conj metric))
-                                      analytics/observe! (fn [metric & _] (swap! observe-calls conj metric))]
+          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+          (with-redefs [analytics/inc!     (fn [metric & _] (swap! inc-calls conj metric))
+                        analytics/observe! (fn [metric & _] (swap! observe-calls conj metric))]
             (mt/with-temp [:model/Transform    {transform-id :id} {}
                            :model/TransformRun _ {:transform_id   transform-id
                                                   :status         :started
