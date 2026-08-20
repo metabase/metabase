@@ -51,7 +51,9 @@ function metabaseDevServer() {
       server = createServer((req, res) => {
         let url: string;
         try {
-          url = new URL(req.url ?? "/", "http://localhost").pathname;
+          url = decodeURIComponent(
+            new URL(req.url ?? "/", "http://localhost").pathname,
+          );
         } catch {
           res.writeHead(400);
           res.end("Bad request");
@@ -99,8 +101,7 @@ function metabaseDevServer() {
         const filePath =
           url === "/" ? join(distDir, "index.html") : join(distDir, url);
 
-        // Prevent directory traversal
-        if (!filePath.startsWith(distDir)) {
+        if (!filePath.startsWith(distDir) || filePath.includes("\0")) {
           res.writeHead(403);
           res.end("Forbidden");
           return;

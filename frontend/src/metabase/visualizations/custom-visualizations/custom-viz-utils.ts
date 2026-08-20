@@ -16,6 +16,14 @@ export function formatValue(value: unknown, options?: ColumnSettings): string {
 }
 
 /**
+ * Encode a relative path for use inside a URL path, keeping the `/` separators
+ * intact — asset paths may be nested, e.g. `icons/icon.svg`.
+ */
+function encodePathSegments(path: string): string {
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+
+/**
  * Build a URL for a plugin's static asset.
  */
 export function getPluginAssetUrl(
@@ -27,7 +35,7 @@ export function getPluginAssetUrl(
     return undefined;
   }
   if (devBundleUrl) {
-    return `${devBundleUrl.replace(/\/+$/, "")}/assets/${encodeURIComponent(assetPath)}`;
+    return `${devBundleUrl.replace(/\/+$/, "")}/assets/${encodePathSegments(assetPath)}`;
   }
   return getSubpathSafeUrl(
     `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`,
