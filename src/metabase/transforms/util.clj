@@ -54,7 +54,7 @@
 (defn- source-query-permissions-ok?
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission
   check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
-  checked too; a query that fails to preprocess counts as not permitted. True when no user is bound."
+  checked too. True when no user is bound."
   [query]
   (if-not api/*current-user-id*
     true
@@ -62,7 +62,13 @@
       (qp.setup/with-qp-setup [query query]
         (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
         true)
-      (catch clojure.lang.ExceptionInfo _ false))))
+      (catch clojure.lang.ExceptionInfo e
+        ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
+        ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
+        ;; is left to validation and execution, which report the specific problem.
+        (let [data (ex-data e)]
+          (not (or (:permissions-error? data)
+                   (= 403 (:status-code data)))))))))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
