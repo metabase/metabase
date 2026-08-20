@@ -180,7 +180,7 @@
                          (:name manifest)
                          (throw (ex-info (if manifest
                                            "metabase-plugin.json is missing a \"name\" field."
-                                           "Could not read metabase-plugin.json from the dev server. Check that it is running.")
+                                           "No manifest was sent. Include the contents of metabase-plugin.json, or an explicit identifier.")
                                          {:status-code 400})))
         _            (api/check-400
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))

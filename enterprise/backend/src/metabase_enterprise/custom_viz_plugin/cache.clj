@@ -290,7 +290,7 @@
 ;; Dev plugins are loaded by the browser, straight from the developer's dev server.
 
 (defn loopback-host?
-  "Whether `host` names the machine the browser runs on: the name `localhost`"
+  "Whether `host` names the machine the browser runs on localhost or a loopback address."
   [^String host]
   (boolean
    (when-not (str/blank? host)
