@@ -73,6 +73,16 @@ const getDefaultSortingOptions = (
       };
 };
 
+// `itemsSorting` keeps the snake_case `SortingOptions` shape that `BaseItemsTable` emits, which is shared with
+// tables driving endpoints that still take snake_case (e.g. /api/ee/stale/:id). The collection items endpoint
+// takes kebab-case, so translate here rather than changing the shared UI type.
+const toItemsSortingParams = (
+  sorting: SortingOptions<ListCollectionItemsSortColumn>,
+) => ({
+  "sort-column": sorting.sort_column,
+  "sort-direction": sorting.sort_direction,
+});
+
 export type CollectionItemsTableProps = {
   collectionId?: CollectionId;
 } & Partial<{
@@ -267,8 +277,8 @@ export const CollectionItemsTable = ({
               models: appliedFilters ?? models,
               limit: pageSize,
               offset: pageSize * page,
-              show_dashboard_questions: showDashboardQuestionsInList,
-              ...itemsSorting,
+              "show-dashboard-questions": showDashboardQuestionsInList,
+              ...toItemsSortingParams(itemsSorting),
               ...(appliedSearchText.length > 0 ? { q: appliedSearchText } : {}),
             }
       }

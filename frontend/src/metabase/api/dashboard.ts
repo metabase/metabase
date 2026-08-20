@@ -16,7 +16,6 @@ import type {
   GetPublicDashboard,
   GetRemappedDashboardParameterValueRequest,
   GetValidDashboardFilterFieldsRequest,
-  ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -167,10 +166,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<
-          ListCollectionItemsRequest,
-          "id" | "q" | "include_available_models"
-        > & { id: DashboardId }
+        { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",

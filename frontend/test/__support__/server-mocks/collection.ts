@@ -176,7 +176,7 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
-  const pinnedState = url.searchParams.get("pinned_state");
+  const pinnedState = url.searchParams.get("pinned-state");
 
   // As in the API, requesting no models at all returns every item.
   const matchedItems: CollectionItem[] = models.includes("no_models")

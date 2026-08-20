@@ -869,7 +869,7 @@
         (letfn [(fetch [pin-state]
                   (:data (mt/user-http-request :crowberto :get 200
                                                (str "collection/" (u/the-id collection) "/items")
-                                               :pinned_state pin-state)))]
+                                               :pinned-state pin-state)))]
           (is (= #{"pinned-1" "pinned-2"}
                  (->> (fetch "is_pinned")
                       (map :name)
@@ -915,7 +915,7 @@
         (testing "combines search with the pinned-state filter"
           (is (= #{["collection" "Old revenue stuff"]
                    ["dashboard" "Revenue overview"]}
-                 (item-identities (fetch :q "revenue" :pinned_state "is_not_pinned")))))
+                 (item-identities (fetch :q "revenue" :pinned-state "is_not_pinned")))))
         (testing "trims search text and treats blank search text as absent"
           (let [all-items (item-identities (fetch))]
             (is (= (item-identities (fetch :q "revenue"))
@@ -1014,11 +1014,11 @@
                        :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") params))]
         (let [all-models        ["card" "collection" "dashboard" "metric" "timeline"]
               unpinned-models   ["card" "collection" "dashboard" "timeline"]
-              all-response      (fetch :include_available_models true)
-              unpinned-response (fetch :include_available_models true :pinned_state "is_not_pinned")
-              pinned-response   (fetch :include_available_models true :pinned_state "is_pinned")
-              search-response   (fetch :include_available_models true :q "zzz")
-              models-response   (fetch :include_available_models true :models "card")]
+              all-response      (fetch :include-available-models true)
+              unpinned-response (fetch :include-available-models true :pinned-state "is_not_pinned")
+              pinned-response   (fetch :include-available-models true :pinned-state "is_pinned")
+              search-response   (fetch :include-available-models true :q "zzz")
+              models-response   (fetch :include-available-models true :models "card")]
           (testing "is absent unless explicitly requested"
             (let [response (fetch)]
               (is (not (contains? response :available_models)))))
@@ -1046,7 +1046,7 @@
       (testing "reports explorations so they can be filtered on"
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items")
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= ["card" "exploration"] (:available_models response))))))))
 
 (deftest collection-items-metadata-test
@@ -1088,12 +1088,6 @@
                  (mt/user-http-request :rasta :get 403
                                        (str "collection/" (u/the-id collection) "/items/metadata")))))))))
 
-(defn- kebab->snake-params
-  "The items endpoints still take snake_case query params; the metadata endpoints take kebab-case. Translate a
-  metadata param list so the same scope can be requested from both."
-  [params]
-  (mapv #(if (keyword? %) (keyword (str/replace (name %) #"-" "_")) %) params))
-
 (deftest collection-items-metadata-matches-items-list-test
   (testing "GET /api/collection/:id/items/metadata describes the same list as GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {}
@@ -1118,8 +1112,8 @@
                                 params)
                 listed   (apply mt/user-http-request :crowberto :get 200
                                 (str "collection/" (u/the-id collection) "/items")
-                                :include_available_models true
-                                (kebab->snake-params params))]
+                                :include-available-models true
+                                params)]
             (is (= (:total listed) (:total_items metadata)))
             (is (= (:available_models listed) (:available_models metadata)))))))))
 
@@ -1164,7 +1158,7 @@
                      :model/Dashboard _ {:name "UXW5016 root dashboard" :collection_id nil}]
         (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")
               listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (set/subset? #{"card" "dashboard"} (set (:available_models metadata))))
           (is (= (:available_models listed) (:available_models metadata)))
           (is (= (:total listed) (:total_items metadata))))))
@@ -1219,7 +1213,7 @@
       (letfn [(fetch []
                 (mt/user-http-request :crowberto :get 200
                                       (str "collection/" (u/the-id collection) "/items")
-                                      :include_available_models true))]
+                                      :include-available-models true))]
         (testing "excludes tables when the library feature is disabled"
           (mt/with-premium-features #{}
             (let [response (fetch)]
@@ -1243,7 +1237,7 @@
           (letfn [(fetch []
                     (mt/user-http-request :rasta :get 200
                                           (str "collection/" (u/the-id parent-collection) "/items")
-                                          :include_available_models true))]
+                                          :include-available-models true))]
             (testing "does not include a child collection the user cannot read"
               (let [response (fetch)]
                 (is (not (contains? (set (:available_models response)) "collection")))
@@ -1269,7 +1263,7 @@
                                            (str "collection/" (u/the-id collection) "/items")
                                            :archived true
                                            :q "revenue"
-                                           :include_available_models true)]
+                                           :include-available-models true)]
         (is (= 1 (:total response)))
         (is (= #{["card" "Old revenue"]}
                (set (map (juxt :model :name) (:data response)))))
@@ -1293,7 +1287,7 @@
       (let [response (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (collection/trash-collection-id) "/items")
                                            :q "quarterly revenue"
-                                           :include_available_models true)]
+                                           :include-available-models true)]
         (is (= 1 (:total response)))
         (is (= #{[(:id matching-card) "Trashed quarterly revenue"]}
                (set (map (juxt :id :name) (:data response)))))
@@ -1311,7 +1305,7 @@
       (testing "searches root items and reports models before search filtering"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :q "UXW4950 ROOT revenue"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= 1 (:total response)))
           (is (= #{["card" "UXW4950 root revenue"]}
                  (set (map (juxt :model :name) (:data response)))))
@@ -1320,13 +1314,13 @@
       (testing "restricts metadata to namespace-valid models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "currency"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (= ["collection"] (:available_models response)))
           (is (some #(= (:id currency-collection) (:id %)) (:data response)))))
       (testing "never reports snippets in available models"
         (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :namespace "snippets"
-                                             :include_available_models true)]
+                                             :include-available-models true)]
           (is (some #(= (:model %) "snippet") (:data response)))
           (is (not (contains? (set (:available_models response)) "snippet")))))
       (testing "restricts metadata to collections for a user without root read permission"
@@ -1334,7 +1328,7 @@
           (perms/grant-collection-read-permissions! (perms/all-users-group) visible-collection)
           (let [response         (mt/user-http-request :rasta :get 200 "collection/root/items"
                                                        :q "UXW4950 ROOT revenue"
-                                                       :include_available_models true)
+                                                       :include-available-models true)
                 available-models (set (:available_models response))]
             (is (= [] (:data response)))
             (is (= #{"collection"} available-models))))))))
@@ -1555,24 +1549,24 @@
         (testing "Results can be ordered by last-edited-at"
           (testing "ascending"
             (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_at&sort-direction=asc"))
                         :data
                         (map :name)))))
           (testing "descending"
             (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_at&sort-direction=desc"))
                         :data
                         (map :name))))))
         (testing "Results can be ordered by last-edited-by"
           (testing "ascending"
             ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
             (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_by&sort-direction=asc"))
                         :data
                         (map :name)))))
           (testing "descending"
             (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=last_edited_by&sort-direction=desc"))
                         :data
                         (map :name))))))))))
 
@@ -1588,12 +1582,12 @@
                      :model/Pulse      _ {:name "AA" :collection_id collection-id}]
         (testing "sort direction asc"
           (is (= [["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=asc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=model&sort-direction=asc"))
                       :data
                       (map (juxt :model :name))))))
         (testing "sort direction desc"
           (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort-column=model&sort-direction=desc"))
                       :data
                       (map (juxt :model :name))))))))))
 
@@ -1606,7 +1600,7 @@
                      :model/Dashboard  _ {:name "ZZ" :collection_id (u/the-id parent)}]
         (is (= "collection"
                (-> (mt/user-http-request :rasta :get 200
-                                         (str "collection/" (u/the-id parent) "/items?sort_column=model&sort_direction=desc"))
+                                         (str "collection/" (u/the-id parent) "/items?sort-column=model&sort-direction=desc"))
                    :data first :model)))))))
 
 (deftest collection-items-include-latest-revision-test
@@ -2159,7 +2153,7 @@
                all-types (map :type (:data response))]
            (is (not-any? #{collection/library-collection-type} all-types))))
        (testing "Can choose to include include library items"
-         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include_library true)
+         (let [response (mt/user-http-request :rasta :get 200 "collection/root/items" :include-library true)
                all-types (map :type (:data response))]
            (is (some #{collection/library-collection-type} all-types))))))))
 
@@ -2879,8 +2873,8 @@
 
 (deftest fetch-root-items-collection-type-filter-test
   (testing "GET /api/collection/root/items"
-    (testing "collection_type parameter filters collections to only those with matching type"
-      (testing "collection_type=remote-synced returns only remote-synced collections"
+    (testing "collection-type parameter filters collections to only those with matching type"
+      (testing "collection-type=remote-synced returns only remote-synced collections"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection"}
                        :model/Collection _ {:name "Remote Synced Collection"
                                             :is_remote_synced true}
@@ -2888,7 +2882,7 @@
                                             :is_remote_synced true}
                        :model/Collection _ {:name "Second Normal Collection"}]
           (let [response (mt/user-http-request :crowberto :get 200 "collection/root/items"
-                                               :collection_type "remote-synced")
+                                               :collection-type "remote-synced")
                 collections (->> (:data response)
                                  (filter #(= (:model %) "collection")))
                 collection-names (set (map :name collections))]
@@ -2902,7 +2896,7 @@
               (doseq [coll collections]
                 (is (true? (:is_remote_synced coll))
                     (str "Collection " (:name coll) " should have is_remote_synced=true")))))))
-      (testing "without collection_type parameter, all collections are returned"
+      (testing "without collection-type parameter, all collections are returned"
         (mt/with-temp [:model/Collection _ {:name "Normal Collection Test"}
                        :model/Collection _ {:name "Remote Synced Collection Test"
                                             :is_remote_synced true}]
@@ -3726,7 +3720,7 @@
                [dash-id "dashboard"]}
              (set (map (juxt :id :model)
                        (:data
-                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))
+                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true")))))))))
   (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                  :model/Collection {coll-id :id} {:location (collection/children-location parent)}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3738,7 +3732,7 @@
         (is (= ["dashboard" "card"]
                (:here
                 (first
-                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
+                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show-dashboard-questions=true")))))))))))
 
 (deftest dashboard-questions-have-dashboard-hydrated
   (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -3749,7 +3743,7 @@
       (is (= {:name dash-name
               :id dash-id
               :moderation_status nil}
-             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+             (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
                   :data
                   (filter #(= (:model %) "card"))
                   first
@@ -3761,7 +3755,7 @@
                                                 :moderator_id        (mt/user->id :rasta)
                                                 :most_recent         true}]
         (is (= {:name dash-name :id dash-id :moderation_status "verified"}
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true"))
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show-dashboard-questions=true"))
                     :data
                     (filter #(= (:model %) "card"))
                     first
@@ -4052,7 +4046,7 @@
         (is (not (some #(= (:id e) (:id %)) items)))))))
 
 (deftest exploration-pinning-test
-  (testing "explorations with collection_position appear under ?pinned_state=is_pinned"
+  (testing "explorations with collection_position appear under ?pinned-state=is_pinned"
     (mt/with-temp [:model/User        owner {}
                    :model/Collection  coll  {}
                    :model/Exploration pinned   {:name                "Pinned"
@@ -4063,7 +4057,7 @@
                                                 :creator_id    (:id owner)
                                                 :collection_id (:id coll)}]
       (let [pinned-items (->> (:data (mt/user-http-request :crowberto :get 200
-                                                           (str "collection/" (:id coll) "/items?pinned_state=is_pinned")))
+                                                           (str "collection/" (:id coll) "/items?pinned-state=is_pinned")))
                               (filter #(= "exploration" (:model %)))
                               (map :id)
                               set)]
