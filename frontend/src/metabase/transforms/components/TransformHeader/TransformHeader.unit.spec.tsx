@@ -72,13 +72,13 @@ describe("TransformHeader", () => {
       setup({ isEditMode: true });
 
       expect(
-        screen.queryByRole("tab", { name: "Definition" }),
+        screen.queryByRole("link", { name: "Definition" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("tab", { name: "Run" }),
+        screen.queryByRole("link", { name: "Run" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("tab", { name: "Target" }),
+        screen.queryByRole("link", { name: "Settings" }),
       ).not.toBeInTheDocument();
     });
   });
