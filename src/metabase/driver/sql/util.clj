@@ -106,11 +106,23 @@
 
 ;;; TODO (Cam 2026-04-27) -- rename this to `escape-single-quotes` to make it clearer what we're escaping
 (defn escape-sql
-  "Escape single quotes in a SQL string. `escape-style` is either `:ansi` (escape a single quote with two single quotes)
-  or `:backslashes` (escape a single quote with a backslash).
+  "Escape single quotes in a SQL string. `escape-style` is one of
 
-    (escape-sql \"Tito's Tacos\" :ansi)        ; -> \"Tito''s Tacos\"
-    (escape-sql \"Tito's Tacos\" :backslashes) ; -> \"Tito\\'s Tacos\"
+  * `:ansi` -- escape a single quote with two single quotes. Correct only on engines that do *not* treat `\\` as an
+    escape character inside a string literal (Postgres with `standard_conforming_strings`, H2, SQL Server, Oracle...).
+
+  * `:backslashes` -- escape the backslash, then escape a single quote with a backslash. For engines that only
+    understand the backslash form (BigQuery, Presto...).
+
+  * `:ansi+backslashes` -- escape the backslash, then escape a single quote with two single quotes. For engines that
+    always accept both forms, such as Snowflake: doubling the backslash means no `\\` can ever escape our closing quote,
+    and doubling the quote terminates the literal where we intended. Do not use this on engines whose backslash
+    handling is configurable: it is injection-safe in either mode, but does not preserve the value when backslashes
+    are treated literally.
+
+    (escape-sql \"Tito's Tacos\" :ansi)             ; -> \"Tito''s Tacos\"
+    (escape-sql \"Tito's Tacos\" :backslashes)      ; -> \"Tito\\'s Tacos\"
+    (escape-sql \"Tito's Tacos\" :ansi+backslashes) ; -> \"Tito''s Tacos\"
 
   !!!! VERY IMPORTANT !!!!
 
@@ -120,14 +132,17 @@
   encode the strings as hex and splice in something along the lines of `utf8_string(hex_decode(<hex-string>))`
   instead. This is intended only for escaping trusted strings, or for generating the SQL equivalent version of an MBQL
   query for debugging purposes or powering the 'convert to SQL' feature."
-  {:arglists '([s :ansi] [s :backslashes])}
+  {:arglists '([s :ansi] [s :backslashes] [s :ansi+backslashes])}
   ^String [^String s escape-style]
   (when s
     (case escape-style
-      :ansi        (str/replace s "'" "''")
-      :backslashes (-> s
-                       (str/replace "\\" "\\\\")
-                       (str/replace "'" "\\'")))))
+      :ansi             (str/replace s "'" "''")
+      :backslashes      (-> s
+                            (str/replace "\\" "\\\\")
+                            (str/replace "'" "\\'"))
+      :ansi+backslashes (-> s
+                            (str/replace "\\" "\\\\")
+                            (str/replace "'" "''")))))
 
 (defn quote-literal
   "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style`.
@@ -139,7 +154,7 @@
   ^String [^String s escape-style]
   (when s
     (case escape-style
-      (:ansi :backslashes) (str \' (escape-sql s escape-style) \'))))
+      (:ansi :backslashes :ansi+backslashes) (str \' (escape-sql s escape-style) \'))))
 
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.
