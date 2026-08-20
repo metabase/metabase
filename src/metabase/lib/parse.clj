@@ -7,9 +7,12 @@
   continues to use parse.cljc. Signatures, output shapes, and error behavior
   are identical; equivalence is enforced by the ported upstream test table
   plus 20,000-case differential fuzzing in the gleam-clj repo."
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.string :as str]
-   [mb-lib-parse :as impl])
+   [mb-lib-parse :as impl]
+   [metabase.util :as u]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (gleam.prelude Ok)
    (mb_lib_parse EmptyParam InvalidParamName Literal Optional
@@ -26,12 +29,13 @@
 (defn- token->keyword [token]
   (-> token class .getSimpleName
       (str/replace #"([a-z])([A-Z])" "$1-$2")
-      str/lower-case
+      u/lower-case-en
       keyword))
 
-(defn- tokenize
-  "Kept for parity with parse.cljc (tests exercise it directly): strings
-  interleaved with {:text ... :token ...} maps."
+(defn tokenize
+  "Kept for parity with parse.cljc (tests exercise it directly; public here
+  rather than private so clj-kondo attributes usage correctly across the
+  clj/cljc pair): strings interleaved with {:text ... :token ...} maps."
   [s handle-sql-comments]
   (mapv (fn [piece]
           (if (instance? Str piece)
