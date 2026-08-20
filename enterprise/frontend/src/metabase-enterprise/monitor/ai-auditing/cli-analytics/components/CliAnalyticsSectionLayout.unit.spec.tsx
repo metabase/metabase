@@ -15,9 +15,10 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/constants";
+import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/constants";
 import type { Database, Dataset, Field } from "metabase-types/api";
 import {
   createMockColumn,
@@ -31,17 +32,20 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { McpAnalyticsPage } from "./McpAnalyticsPage";
+import { CliAnalyticsSectionLayout } from "./CliAnalyticsSectionLayout";
+import { CliCallsPage } from "./CliCallsPage";
+import { CliUsagePage } from "./CliUsagePage";
 
 registerVisualizations();
 
-const MCP_TOOL_CALLS_TABLE_ID = 2001;
+const AGENT_API_CALLS_TABLE_ID = 2001;
 const GROUP_MEMBERS_TABLE_ID = 2002;
 
 // Field ids are deterministic — `table_id * 100 + field index` (see `buildTable`). Indices below
-// match the field order of the `v_mcp_tool_calls` table defined further down.
-const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
-const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
+// match the field order of the `v_agent_api_calls` table defined further down.
+const CALL_ID_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 0;
+const CREATED_AT_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 1;
+const OPERATION_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 2;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -81,16 +85,15 @@ const auditDatabase: Database = createMockDatabase({
   id: AUDIT_DB_ID,
   name: "Audit DB",
   tables: [
-    buildTable(MCP_TOOL_CALLS_TABLE_ID, "v_mcp_tool_calls", [
-      ["text", "tool_call_id", "type/PK"],
+    buildTable(AGENT_API_CALLS_TABLE_ID, "v_agent_api_calls", [
+      ["text", "call_id", "type/PK"],
       ["dateTime", "created_at", "type/CreationTimestamp"],
-      ["text", "tool_name", "type/Category"],
+      ["text", "operation", "type/Category"],
       ["text", "status", "type/Category"],
       ["integer", "duration_ms", "type/Quantity"],
       ["integer", "user_id", "type/FK"],
       ["text", "user_display_name", "type/Name"],
       ["text", "client_display_name", "type/Category"],
-      ["text", "client_version", "type/Category"],
     ]),
     buildTable(GROUP_MEMBERS_TABLE_ID, "v_group_members", [
       ["integer", "user_id", "type/Description"],
@@ -102,13 +105,11 @@ const auditDatabase: Database = createMockDatabase({
 
 // A breakout/count dataset that satisfies both the chart visualizations
 // (breakout + aggregation columns) and the events table (named columns).
-// Aggregation column first so the page's no-breakout count probe (reads rows[0][0]) sees a
-// positive number; the `source` tags still let the breakout charts find the right columns.
 const datasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [
-      [12, "search_data"],
-      [7, "run_query"],
+      [12, "POST /api/agent/v1/query"],
+      [7, "GET /api/agent/v1/search"],
     ],
     cols: [
       createMockColumn({
@@ -118,8 +119,8 @@ const datasetResponse: Dataset = createMockDataset({
       }),
       createMockColumn({
         source: "breakout",
-        name: "tool_name",
-        display_name: "Tool name",
+        name: "operation",
+        display_name: "Operation",
       }),
     ],
   }),
@@ -128,13 +129,11 @@ const datasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
-// A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
-// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
 const multiPageDatasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [
-      [60, "search_data"],
-      [7, "run_query"],
+      [60, "POST /api/agent/v1/query"],
+      [7, "GET /api/agent/v1/search"],
     ],
     cols: [
       createMockColumn({
@@ -144,8 +143,8 @@ const multiPageDatasetResponse: Dataset = createMockDataset({
       }),
       createMockColumn({
         source: "breakout",
-        name: "tool_name",
-        display_name: "Tool name",
+        name: "operation",
+        display_name: "Operation",
       }),
     ],
   }),
@@ -172,13 +171,11 @@ const emptyDatasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
-/** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
 function setupEndpoints(
   dataset: Dataset = datasetResponse,
   datasetError = false,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
-  // useAuditTable pulls the table's fields (and its FK targets') from here.
   fetchMock.post("path:/api/dataset/query_metadata", {
     databases: [auditDatabase],
     tables: auditDatabase.tables ?? [],
@@ -196,11 +193,15 @@ function setupEndpoints(
   }
 }
 
-/** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
 function setup({
   dataset,
   datasetError,
-}: { dataset?: Dataset; datasetError?: boolean } = {}) {
+  initialRoute = Urls.monitorAiAuditingCliUsage(),
+}: {
+  dataset?: Dataset;
+  datasetError?: boolean;
+  initialRoute?: string;
+} = {}) {
   // TreeTable measures column/row sizes via the DOM; jsdom needs a stubbed rect
   // for its virtualized rows to render.
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -208,14 +209,19 @@ function setup({
   setupEndpoints(dataset, datasetError);
 
   return renderWithProviders(
-    <Route path="/monitor/ai-auditing/mcp" element={<McpAnalyticsPage />} />,
+    <Route path={Urls.monitorAiAuditingCli()}>
+      <Route index element={redirect("usage")} />
+      <Route element={<CliAnalyticsSectionLayout />}>
+        <Route path="usage" element={<CliUsagePage />} />
+        <Route path="calls" element={<CliCallsPage />} />
+      </Route>
+    </Route>,
     {
-      initialRoute: "/monitor/ai-auditing/mcp",
+      initialRoute,
       withRouter: true,
       storeInitialState: createMockState({
         settings: mockSettings({
           "token-features": createMockTokenFeatures({ audit_app: true }),
-          "mcp-enabled?": true,
         }),
       }),
     },
@@ -231,9 +237,7 @@ type EventsMbqlStage = {
 };
 
 /**
- * The first MBQL stage of every adhoc `dataset` request issued so far. The row-level events query
- * is the one that carries a `:page` clause on stage 0 (the chart queries don't), so tests filter
- * on `.page`. Non-string bodies are skipped.
+ * The first MBQL stage of every adhoc `dataset` request issued so far.
  */
 const eventsDatasetStages = (): EventsMbqlStage[] =>
   fetchMock.callHistory
@@ -247,82 +251,128 @@ const eventsDatasetStages = (): EventsMbqlStage[] =>
     })
     .filter((stage): stage is EventsMbqlStage => stage != null);
 
-describe("McpAnalyticsPage", () => {
-  it("renders the header, filters, and charts tab", async () => {
+describe("CliAnalyticsSectionLayout", () => {
+  it("redirects from root route to the /usage sub-route", async () => {
+    const { router } = setup({ initialRoute: Urls.monitorAiAuditingCli() });
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
+    });
+    expect(
+      await screen.findByRole("heading", { name: "CLI analytics" }),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects from root route even when the section has no data", async () => {
+    const { router } = setup({
+      dataset: emptyDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingCli(),
+    });
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
+    });
+    expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
+  });
+
+  it("keeps the URL filter params when navigating between /usage and /calls", async () => {
+    const { router } = setup({
+      initialRoute: `${Urls.monitorAiAuditingCliUsage()}?date=past7days~&user=1`,
+    });
+
+    await screen.findByRole("heading", { name: "CLI analytics" });
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
+    });
+    const search = router?.location.search ?? "";
+    expect(search).toContain("date=past7days~");
+    expect(search).toContain("user=1");
+
+    await userEvent.click(await screen.findByRole("link", { name: "Usage" }));
+
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliUsage());
+    });
+    const backSearch = router?.location.search ?? "";
+    expect(backSearch).toContain("date=past7days~");
+    expect(backSearch).toContain("user=1");
+  });
+
+  it("renders the header, filters, and /usage route by default", async () => {
     setup();
 
     expect(
-      await screen.findByRole("heading", { name: "MCP analytics" }),
+      await screen.findByRole("heading", { name: "CLI analytics" }),
     ).toBeInTheDocument();
     expect(
       screen.getByTestId("conversation-filters-date-select"),
     ).toBeInTheDocument();
-    // Tabs appear only after the initial count query resolves (the page shows a loader first).
     expect(
-      await screen.findByRole("tab", { name: "Usage" }),
+      await screen.findByRole("link", { name: "Usage" }),
     ).toBeInTheDocument();
 
-    // Charts run ad-hoc dataset queries through /api/dataset.
     await waitFor(() => {
       expect(fetchMock.callHistory.called("dataset")).toBe(true);
     });
-    expect(await screen.findByText("Calls by tool")).toBeInTheDocument();
+    expect(await screen.findByText("Calls by operation")).toBeInTheDocument();
     // The errors section renders because the (mocked) error count is > 0.
-    expect(await screen.findByText("Errors by type")).toBeInTheDocument();
+    expect(await screen.findByText("Errors by operation")).toBeInTheDocument();
   });
 
-  it("switches to the events tab and renders the row-level table", async () => {
-    setup();
+  it("navigates to the /calls route and renders the sortable row-level table", async () => {
+    const { router } = setup();
 
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+    await screen.findByRole("heading", { name: "CLI analytics" });
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
 
-    const eventsPanel = screen.getByRole("tabpanel");
+    expect(router?.location.pathname).toBe(Urls.monitorAiAuditingCliCalls());
     expect(
-      await within(eventsPanel).findByRole("treegrid", { name: "Tool calls" }),
+      await screen.findByRole("treegrid", { name: "Calls" }),
     ).toBeInTheDocument();
-    // curated column header + a cell value from the mocked dataset row
-    expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
-      await within(eventsPanel).findByText("search_data"),
+      await screen.findByRole("columnheader", { name: "Operation" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("POST /api/agent/v1/query"),
     ).toBeInTheDocument();
   });
 
-  it("sorts the events table server-side when a column header is clicked", async () => {
-    setup();
+  it("sorts the /calls table server-side when a column header is clicked", async () => {
+    setup({ initialRoute: Urls.monitorAiAuditingCliCalls() });
 
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+    await screen.findByRole("treegrid", { name: "Calls" });
 
-    // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
     await userEvent.click(
-      await screen.findByRole("columnheader", { name: "Tool" }),
+      await screen.findByRole("columnheader", { name: "Operation" }),
     );
 
     await waitFor(() => {
-      const sortedAscending = eventsDatasetStages().some(
+      const sortedStage = eventsDatasetStages().find(
         (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
       );
-      expect(sortedAscending).toBe(true);
+      expect(
+        sortedStage?.["order-by"]?.map(([direction, , [, , fieldId]]) => [
+          direction,
+          fieldId,
+        ]),
+      ).toEqual([
+        ["asc", OPERATION_FIELD_ID],
+        ["desc", CALL_ID_FIELD_ID],
+      ]);
     });
   });
 
-  it("paginates the events table when there are more matching rows than one page", async () => {
-    setup({ dataset: multiPageDatasetResponse });
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+  it("paginates the /calls table when there are more matching rows than one page", async () => {
+    setup({
+      dataset: multiPageDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingCliCalls(),
+    });
 
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
     });
-    // First page: previous disabled, next enabled (total 60 spans multiple pages of 25).
     expect(within(pagination).getByLabelText("Previous page")).toBeDisabled();
     const nextButton = within(pagination).getByLabelText("Next page");
     expect(nextButton).toBeEnabled();
@@ -338,98 +388,75 @@ describe("McpAnalyticsPage", () => {
     });
   });
 
-  it("updates the page URL param immediately when Next is clicked", async () => {
-    const { router } = setup({ dataset: multiPageDatasetResponse });
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
+  it("updates the page URL param when Next is clicked", async () => {
+    const { router } = setup({
+      dataset: multiPageDatasetResponse,
+      initialRoute: Urls.monitorAiAuditingCliCalls(),
+    });
 
     const pagination = await screen.findByRole("navigation", {
       name: "pagination",
     });
     await userEvent.click(within(pagination).getByLabelText("Next page"));
-
-    expect(router?.location.search).toContain("page=1");
+    await waitFor(() => {
+      expect(router?.location.search).toContain("page=1");
+    });
   });
 
-  it("issues exactly one events query per page change (no redundant refetch)", async () => {
-    const { router } = setup({ dataset: multiPageDatasetResponse });
+  it("orders the /calls query by a total order (created_at + call_id) for stable paging", async () => {
+    setup({ initialRoute: Urls.monitorAiAuditingCliCalls() });
 
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
-    await within(screen.getByRole("tabpanel")).findByRole("treegrid");
-
-    // Dataset calls for the events query's second page (MBQL `:page` is 1-indexed, so UI page 1).
-    const page2EventsCalls = () =>
-      eventsDatasetStages().filter((stage) => stage.page?.page === 2);
-
-    await userEvent.click(await screen.findByLabelText("Next page"));
-
-    // Wait for the debounced URL update to land — it's the last re-render trigger around a page
-    // change, and where the old `sortingOptions`-object dependency used to fire redundant refetches.
-    await waitFor(() => expect(router?.location.search).toContain("page=1"));
-
-    // The query memo depends on the primitive sort values, so it stays referentially stable across
-    // those re-renders: one page change → exactly one events request, not one per render.
-    expect(page2EventsCalls()).toHaveLength(1);
-  });
-
-  it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
-    setup();
-
-    await screen.findByRole("heading", { name: "MCP analytics" });
-    await userEvent.click(
-      await screen.findByRole("tab", { name: "Tool calls" }),
-    );
-
-    // The events request is the paginated one (carries a `page` clause); its order-by must be
-    // created_at followed by the tool_call_id (PK) tiebreaker, so pages can't skip/duplicate rows
-    // on tied timestamps.
+    // The calls request is the paginated one (carries a `page` clause); its order-by must be
+    // created_at + call_id (PK) tiebreaker, so pages can't skip/duplicate rows on
+    // tied timestamps.
     await waitFor(() => {
       const eventsStage = eventsDatasetStages().find(
         (stage) => stage.page != null,
       );
       expect(eventsStage?.["order-by"]?.map((clause) => clause[2][2])).toEqual([
         CREATED_AT_FIELD_ID,
-        TOOL_CALL_ID_FIELD_ID,
+        CALL_ID_FIELD_ID,
       ]);
     });
-  });
-
-  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
-    setup({ dataset: emptyDatasetResponse });
-
-    expect(
-      await screen.findByRole("heading", { name: "MCP analytics" }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
-
-    // Tabs and filters stay visible even when the view is empty — only the tab content swaps out.
-    const usageTab = screen.getByRole("tab", { name: "Usage" });
-    expect(usageTab).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Tool calls" })).toBeInTheDocument();
-    expect(
-      screen.getByTestId("conversation-filters-date-select"),
-    ).toBeInTheDocument();
-
-    const panel = screen.getByRole("tabpanel");
-    expect(usageTab).toHaveAttribute("aria-controls", panel.id);
-    expect(within(panel).getByText("No MCP activity")).toBeInTheDocument();
   });
 
   it("shows an error instead of spinning forever when the count query fails", async () => {
     setup({ datasetError: true });
 
     expect(
-      await screen.findByRole("heading", { name: "MCP analytics" }),
+      await screen.findByRole("heading", { name: "CLI analytics" }),
     ).toBeInTheDocument();
-    // Regression: the count query erroring (e.g. a 500) used to leave isInitialLoading
-    // stuck true forever, so the page never got past the loader.
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
-    expect(screen.queryByText("Calls by tool")).not.toBeInTheDocument();
+    expect(screen.queryByText("Calls by operation")).not.toBeInTheDocument();
+  });
+
+  it("keeps the shared filters visible after navigating between /usage and /calls", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "CLI analytics" });
+    expect(
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("link", { name: "Calls" }));
+    await screen.findByRole("treegrid", { name: "Calls" });
+    expect(
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the header, tabs, and filters visible and shows an empty state in place of the tab content when there is no activity", async () => {
+    setup({ dataset: emptyDatasetResponse });
+
+    expect(
+      await screen.findByRole("heading", { name: "CLI analytics" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("No CLI activity")).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Calls" })).toBeInTheDocument();
+    expect(
+      screen.getByTestId("conversation-filters-date-select"),
+    ).toBeInTheDocument();
   });
 });
