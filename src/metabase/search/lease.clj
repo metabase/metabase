@@ -3,7 +3,9 @@
 
   Lease lifecycle operations are short autocommit statements. When a caller already owns an ambient app-db
   transaction they use a lazy, isolated one-connection pool; otherwise they use the ordinary app-db connection path.
-  Protected mutations fence ownership on their own connection, in the same transaction as the mutation."
+  Protected mutations fence ownership on their own connection, in the same transaction as the mutation, unless the
+  lease was acquired inside a caller's transaction; then they join that transaction (see
+  [[do-with-mutation-connection]])."
   (:require
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
@@ -31,6 +33,10 @@
 (def ^:dynamic *acquire-retry-interval-ms*
   "How often a waiting caller retries a busy lease."
   1000)
+
+(def ^:dynamic *acquire-timeout-ms*
+  "How long a waiting caller keeps retrying a busy lease before giving up."
+  5000)
 
 (def ^:dynamic *lease-context*
   "The claim and local lost state for the reindex running on this thread. Nil outside a leased reindex."
@@ -72,7 +78,8 @@
             (reset! coordination-pool {:app-db-id app-db-id, :pool pool})
             (when cached-pool
               (try
-                (DataSources/destroy cached-pool)
+                (locking mdb/c3p0-pool-monitor
+                  (DataSources/destroy cached-pool))
                 (catch Throwable e
                   (log/warnf "Failed to destroy the previous search lease connection pool: %s" (ex-message e)))))
             pool))))))
@@ -252,15 +259,12 @@
   (when-let [{:keys [claim] :as context} *lease-context*]
     (throw-if-lost!)
     (assert-coordinate-current!)
-    (try
-      (when-not (renew-on-current-connection! conn claim)
-        (mark-lost! context)
-        (throw (lost-ex claim)))
-      (catch Throwable e
-        (mark-lost! context)
-        (if (= ::lease-lost (:type (ex-data e)))
-          (throw e)
-          (throw (lost-ex claim e))))))
+    ;; Only a renewal that ran and matched no row proves the lease is gone. A renewal that could not run (pool
+    ;; timeout, dropped connection) fails this mutation but leaves the heartbeat to decide, as it does for its own
+    ;; renewal errors.
+    (when-not (renew-on-current-connection! conn claim)
+      (mark-lost! context)
+      (throw (lost-ex claim))))
   true)
 
 (defn do-in-fenced-transaction!
@@ -277,6 +281,24 @@
    (fn [conn]
      (assert-current-in-transaction! conn)
      (thunk conn))))
+
+(defn do-with-mutation-connection
+  "Run `thunk` with the connection a protected index mutation must use.
+
+  A lease acquired outside any transaction fences each mutation in its own short transaction on a fresh
+  connection. A lease acquired inside a caller's transaction keeps every mutation on that connection (as a nested
+  transaction), so the caller decides when the work becomes visible or is rolled back; the database fence is
+  skipped there because a renewal would otherwise hold the lease row until the caller commits."
+  [thunk]
+  (if (some-> *lease-context* :ambient-transaction?)
+    (do
+      (throw-if-lost!)
+      (assert-coordinate-current!)
+      (t2/with-connection [conn]
+        (t2/with-transaction [conn conn]
+          (thunk conn))))
+    (t2/with-connection [conn (mdb/app-db)]
+      (do-in-fenced-transaction! conn thunk))))
 
 (defn assert-current!
   "Prove current ownership with a short lifecycle operation. Used only where no protected DB mutation follows."
@@ -326,25 +348,26 @@
 
 (defn- wait-for-claim
   [coordinate wait?]
-  (loop [reported-busy? false]
-    (if-let [claim (try-acquire! coordinate)]
-      claim
-      (do
-        (when-not reported-busy?
-          (record-event! (where-coordinate coordinate) :busy))
-        (when wait?
-          (try
-            (Thread/sleep (long *acquire-retry-interval-ms*))
-            (catch InterruptedException e
-              (.interrupt (Thread/currentThread))
-              (throw e)))
-          (recur true))))))
+  (let [deadline-ns (+ (System/nanoTime) (* 1000000 (long *acquire-timeout-ms*)))]
+    (loop [reported-busy? false]
+      (if-let [claim (try-acquire! coordinate)]
+        claim
+        (do
+          (when-not reported-busy?
+            (record-event! (where-coordinate coordinate) :busy))
+          (when (and wait? (< (System/nanoTime) deadline-ns))
+            (try
+              (Thread/sleep (long *acquire-retry-interval-ms*))
+              (catch InterruptedException e
+                (.interrupt (Thread/currentThread))
+                (throw e)))
+            (recur true)))))))
 
 (defn do-with-lease
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
-  By default a busy caller waits and retries without holding a connection, preserving the previous cluster-lock
-  behavior. Pass `{:wait? false}` for an explicit non-blocking attempt."
+  By default a busy caller retries without holding a connection for up to [[*acquire-timeout-ms*]], then gives up
+  with `{:acquired? false}`. Pass `{:wait? false}` for a single non-blocking attempt."
   ([coordinate thunk]
    (do-with-lease coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
@@ -352,7 +375,10 @@
      (let [stopped               (promise)
            heartbeat             (volatile! nil)
            last-renewal-start-ns (atom (:last-renewal-start-ns claim))
-           context               {:claim claim, :lost? (atom false), :last-renewal-start-ns last-renewal-start-ns}
+           context               {:claim                 claim
+                                  :lost?                 (atom false)
+                                  :last-renewal-start-ns last-renewal-start-ns
+                                  :ambient-transaction?  (mdb/in-transaction?)}
            timer                 (u/start-timer)]
        (try
          (record-event! claim (if (:taken-over? claim) :taken-over :acquired))

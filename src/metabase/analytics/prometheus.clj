@@ -136,19 +136,21 @@
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
   ;; We should not be using specific driver implementations
-  (let [pool-var (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)]
+  (let [pool-var     (requiring-resolve 'metabase.driver.sql-jdbc.connection/pool-cache-key->connection-pool)
+        app-db-monitor @(requiring-resolve 'metabase.app-db.core/c3p0-pool-monitor)]
     ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
     ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
     ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
     ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-cache-key->connection-pool` is)
-    ;; to prevent the deadlock. Hopefully.
+    ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor with every pool creator to prevent the
+    ;; deadlock: `pool-cache-key->connection-pool` for driver pools, `c3p0-pool-monitor` for app-db pools. Hopefully.
     ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
-    (locking @pool-var
-      (let [bean-id   (.getCanonicalName jmx-bean)
-            props     [:numConnections :numIdleConnections :numBusyConnections
-                       :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-        (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))))
+    (locking app-db-monitor
+      (locking @pool-var
+        (let [bean-id   (.getCanonicalName jmx-bean)
+              props     [:numConnections :numIdleConnections :numBusyConnections
+                         :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+          (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."

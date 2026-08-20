@@ -55,9 +55,10 @@
       [(str/join " OR " (map #(str "(" % ")") terms))])))
 
 (defn- with-appdb-lease
+  "Run `thunk` under the appdb reindex lease without waiting: a busy lease means the index is already being built."
   [operation thunk]
   (let [{:keys [acquired? result]}
-        (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk)]
+        (search.lease/do-with-lease (search.lease/coordinates :search.engine/appdb) thunk {:wait? false})]
     (if acquired?
       result
       (log/infof "Skipping appdb search %s; another node holds its lease" operation))))

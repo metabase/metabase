@@ -124,6 +124,18 @@
         (future-cancel waiter)
         (delete-coordinate! coordinate)))))
 
+(deftest busy-lease-wait-gives-up-after-timeout-test
+  (let [coordinate  (coordinate)
+        first-claim (lease/try-acquire! coordinate)]
+    (try
+      (binding [lease/*acquire-retry-interval-ms* 5
+                lease/*acquire-timeout-ms*        50]
+        (is (= {:acquired? false}
+               (lease/do-with-lease coordinate (fn [] (throw (ex-info "should not run" {})))))))
+      (finally
+        (lease/release! first-claim)
+        (delete-coordinate! coordinate)))))
+
 (deftest persistent-heartbeat-errors-eventually-stop-local-work-test
   (let [coordinate (coordinate)]
     (try
@@ -341,6 +353,37 @@
           "the independent mutation is not rolled back with the caller's connection")
       (finally
         (lease/release! claim)
+        (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
+        (delete-coordinate! coordinate)))))
+
+(deftest lease-acquired-in-transaction-keeps-mutations-on-the-caller-connection-test
+  (let [coordinate (coordinate)
+        version    (:version coordinate)
+        index-name (str (random-uuid))
+        insert!    #(t2/insert! :conn % :model/SearchIndexMetadata
+                                {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                                 :status :pending, :index_name index-name})]
+    (try
+      (testing "the mutation sees the caller's uncommitted rows and rolls back with it"
+        (is (thrown-with-msg?
+             Exception
+             #"roll back caller"
+             (t2/with-transaction [_outer-conn]
+               (t2/insert! :model/SearchIndexMetadata
+                           {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                            :status :active, :index_name (str index-name "-active")})
+               (lease/do-with-lease
+                coordinate
+                (fn []
+                  (lease/do-with-mutation-connection
+                   (fn [conn]
+                     (is (= 1 (t2/count :conn conn :model/SearchIndexMetadata :engine :appdb :version version)))
+                     (insert! conn)))))
+               (throw (Exception. "roll back caller")))))
+        (is (nil? (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine :appdb :version version))))
+      (testing "the lease itself is still released outside the caller's transaction"
+        (is (false? (apply t2/exists? :search_index_lease (mapcat identity (#'lease/where-coordinate coordinate))))))
+      (finally
         (t2/delete! :model/SearchIndexMetadata :engine :appdb :version version)
         (delete-coordinate! coordinate)))))
 

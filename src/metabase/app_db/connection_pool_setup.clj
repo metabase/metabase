@@ -182,6 +182,13 @@
        ;; the first place."
        3600)})
 
+(defonce ^{:doc "Monitor held while creating or destroying an app-db c3p0 pool, and by the Prometheus JMX reader.
+
+  Creating a pool locks the PoolBackedDataSource and then the DynamicPooledDataSourceManagerMBean; a JMX attribute
+  read takes them in the opposite order (https://github.com/swaldman/c3p0/issues/95)."}
+  c3p0-pool-monitor
+  (Object.))
+
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is."
@@ -191,9 +198,10 @@
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
           pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)]
-      (com.mchange.v2.c3p0.DataSources/pooledDataSource
-       data-source
-       (connection-pool/map->properties pool-props)))))
+      (locking c3p0-pool-monitor
+        (com.mchange.v2.c3p0.DataSources/pooledDataSource
+         data-source
+         (connection-pool/map->properties pool-props))))))
 
 (mu/defn single-connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a lazy one-connection pool backed by the same unpooled data source as `data-source`.
@@ -216,4 +224,5 @@
                           "minPoolSize" 0
                           "maxPoolSize" 1
                           "acquireIncrement" 1)]
-    (DataSources/pooledDataSource unpooled (connection-pool/map->properties pool-props))))
+    (locking c3p0-pool-monitor
+      (DataSources/pooledDataSource unpooled (connection-pool/map->properties pool-props)))))
