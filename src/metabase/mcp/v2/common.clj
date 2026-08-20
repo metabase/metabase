@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-api.query-guards :as query-guards]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.models.collection :as collection]
@@ -359,6 +360,20 @@
                                        (str/join ", " (nearest-paths path catalog))))))
      (select-tree response-map (paths->tree fields)))))
 
+;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
+
+(defn check-execute-sql-enabled!
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
+   opens the refusal sentence, naming what the instance refused. Every v2 path that runs or stores
+   raw SQL consults this one gate — a switch an admin turned off must not be reachable by a
+   second route."
+  [subject]
+  (when-not (agent-api.settings/mcp-execute-sql-enabled)
+    (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
+                                 "with the mcp-execute-sql-enabled setting.")
+                            subject)
+                    {:status-code 403}))))
+
 ;;; ------------------------------------------------ _write dispatch -----------------------------------------------
 
 (defn readback
@@ -436,16 +451,71 @@
 
 ;;; -------------------------------------------- Representations pipeline ------------------------------------------
 
+(defn ellipsize
+  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+  [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit)
+      (str (subs s 0 limit) "…")
+      s)))
+
+(defn humanize-detail
+  "Flatten a [[malli.error/humanize]] explanation into one line of `path: expectation`.
+
+   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
+   multi-element collection names which element it is in; a run of plain strings is a single
+   value's alternative messages and joins without positions."
+  [errors]
+  (cond
+    (map? errors)
+    (str/join "; " (map (fn [[k v]] (str (u/qualified-name k) ": " (humanize-detail v))) errors))
+
+    (and (sequential? errors) (every? string? errors))
+    (str/join ", " errors)
+
+    (sequential? errors)
+    (str/join "; " (keep-indexed (fn [i v]
+                                   (when (some? v)
+                                     (format "[%d] %s" i (humanize-detail v))))
+                                 errors))
+
+    :else
+    (str errors)))
+
+(def ^:private max-schema-detail-length
+  "Character budget for the humanized schema explanation appended to a structural failure. A
+   deeply nested query explains in kilobytes; the leading paths are the ones worth fixing first,
+   and an unbounded dump would crowd out the rest of the agent's context."
+  500)
+
+(defn- with-schema-detail
+  "`e` with its humanized schema explanation folded into the message, or unchanged when it carries
+   none. The representations pipeline computes the explanation and files it under `:humanized` but
+   states only the bare verdict, which leaves an agent nothing to edit; only structural validation
+   failures carry the key, so the dialect steering is always apt where it lands."
+  [^clojure.lang.ExceptionInfo e]
+  (if-let [humanized (:humanized (ex-data e))]
+    (ex-info (str (ex-message e)
+                  " Invalid at " (ellipsize (humanize-detail humanized) max-schema-detail-length)
+                  ". Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes.")
+             (ex-data e)
+             (ex-cause e))
+    e))
+
 (defn execute-representations-query
   "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
    the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
    dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
-   `search` rather than v1's `read_resource` / `metabase://` URIs."
+   `search` rather than v1's `read_resource` / `metabase://` URIs. A structural failure gains the
+   offending paths ([[with-schema-detail]]), which the pipeline computes but does not state."
   [external-query]
   (binding [serdes.resolve/*numeric-ids-allowed?* true]
-    (metabot.construct/execute-representations-query
-     external-query
-     {:recovery-hint v2.recovery-hints/recovery-hint})))
+    (try
+      (metabot.construct/execute-representations-query
+       external-query
+       {:recovery-hint v2.recovery-hints/recovery-hint})
+      (catch clojure.lang.ExceptionInfo e
+        (throw (with-schema-detail e))))))
 
 ;;; ------------------------------------------------ Shared schemas ------------------------------------------------
 
@@ -459,14 +529,6 @@
   (into [:enum] card-display-values))
 
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
-
-(defn ellipsize
-  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
-  [s limit]
-  (let [s (str s)]
-    (if (> (count s) limit)
-      (str (subs s 0 limit) "…")
-      s)))
 
 (defn portable-query?
   "True when `query` is a full query whose first stage names its source the way the portable

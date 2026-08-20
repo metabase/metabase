@@ -197,22 +197,12 @@
 
 ;;; ------------------------------------------------ Dispatch ------------------------------------------------------
 
-(defn- format-validation-detail
-  [errors]
-  (cond
-    (map? errors)        (str/join "; " (map (fn [[k v]]
-                                               (str (if (keyword? k) (name k) (str k))
-                                                    ": " (format-validation-detail v)))
-                                             errors))
-    (sequential? errors) (str/join ", " (map format-validation-detail errors))
-    :else                (str errors)))
-
 (defn- validation-error-message
   "Validate `arguments` against the tool's Malli schema; returns a teaching-style message
    string on failure, nil when valid."
   [schema arguments]
   (when-let [explanation ((mr/explainer schema) arguments)]
-    (str "Invalid arguments: " (format-validation-detail (me/humanize explanation)))))
+    (str "Invalid arguments: " (common/humanize-detail (me/humanize explanation)))))
 
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]

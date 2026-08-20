@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
@@ -21,6 +22,9 @@
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+;; required for its side effect: registering `get_content`, which the definition round-trip drives.
+(comment metabase.mcp.v2.tools.content/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -698,6 +702,82 @@
         (is (str/includes? msg "does not accept URIs"))
         (is (str/includes? msg "aggregation"))
         (is (not (str/includes? msg "portable_entity_id")))))))
+
+;;; --------------------------------------- Schema failures and dialect round-trips --------------------------------
+
+;;; GHY-4313. `:query` stays an open `[:map]` at the registry boundary on purpose: the dialect
+;;; `execute_query` accepts is the union of the numeric-id and portable-name forms *plus* the
+;;; repair layer's forgiveness, which no single lib schema describes. What these pin down instead
+;;; is the two properties a strict schema was meant to buy — a structural failure teaches rather
+;;; than stonewalls, and the shapes the tool documents keep working.
+
+(deftest ^:parallel schema-invalid-query-names-the-offending-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid (str (random-uuid))
+          msg (error-text (registry/call-tool execute-scope sid "execute_query"
+                                              {:query (numeric-orders-query {:limit "ten"})}))]
+      (testing "a structurally invalid query is refused with the path and the expectation, not a bare verdict"
+        (is (str/includes? msg "limit"))
+        (is (str/includes? msg "should be an integer"))
+        (is (str/includes? msg "stages")))
+      (testing "and never as an opaque internal failure"
+        (is (not (str/includes? msg "Internal error")))))))
+
+(deftest ^:parallel schema-failure-locates-the-offending-stage-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [sid   (str (random-uuid))
+          query {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql" :source-table (mt/id :orders)}
+                            {:lib/type "mbql.stage/mbql" :fields "not-a-list"}]}
+          msg   (error-text (registry/call-tool execute-scope sid "execute_query" {:query query}))]
+      (testing "the failing stage is named by index — a model editing a multi-stage query needs to know which one"
+        (is (str/includes? msg "1"))
+        (is (str/includes? msg "fields"))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest repair-forgiven-shortcuts-still-execute-test
+  (testing "GHY-4313: the shortcuts the repair layer exists to forgive are not schema failures"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [sid (str (random-uuid))]
+          (testing "a stage that omits lib/type still runs"
+            (is (= 1 (:returned (payload (call! sid {:query {:lib/type "mbql/query"
+                                                             :stages   [{:source-table (mt/id :orders)
+                                                                         :limit        1}]}}))))))
+          (testing "a clause written without its options map still runs"
+            (is (= 1 (:returned (payload (call! sid {:query (numeric-orders-query
+                                                             {:aggregation [["count"]]})})))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest documented-dialect-example-executes-test
+  (testing "GHY-4313: the worked example in the execute_query tool description runs as written"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [body (payload (call! (str (random-uuid))
+                                   {:query {:lib/type "mbql/query"
+                                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                                        :source-table (mt/id :orders)
+                                                        :aggregation  [["count" {}]]
+                                                        :breakout     [["field"
+                                                                        {:temporal-unit "month"}
+                                                                        (mt/id :orders :created_at)]]}]}
+                                    :row_limit 5}))]
+          (is (pos? (:returned body))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest definition-round-trip-executes-test
+  (testing "GHY-4313: get_content's `definition` output is accepted back as `query` verbatim, as the tool docs promise"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-temp [:model/Card card {:dataset_query (lib/limit (orders-card-query) 5)}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [sid        (str (random-uuid))
+                content    (registry/call-tool #{"agent:content:read"} sid "get_content"
+                                               {:items   [{:type "question" :id (:id card)}]
+                                                :include ["definition"]})
+                definition (-> content response-text json/decode+kw
+                               :results first :definition)]
+            (is (some? definition) "get_content returned no definition to round-trip")
+            (is (pos? (:returned (payload (call! sid {:query definition :row_limit 5})))))))))))
 
 ;;; ------------------------------------------- QP input whitelist -------------------------------------------------
 
