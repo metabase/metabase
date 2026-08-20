@@ -1,6 +1,10 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { CardRoot } from "./HomeCard.styled";
+import { Link } from "metabase/common/components/Link";
+import { Card, Flex } from "metabase/ui";
+
+import S from "./HomeCard.module.css";
 
 interface HomeCardProps {
   className?: string;
@@ -17,8 +21,18 @@ export const HomeCard = ({
   onClick,
 }: HomeCardProps): JSX.Element => {
   return (
-    <CardRoot className={className} to={url} onClick={onClick}>
-      {children}
-    </CardRoot>
+    <Card
+      component={Link}
+      className={cx(S.root, className)}
+      to={url}
+      onClick={onClick}
+      bg="background_page-primary"
+      maw={{ base: "100%", sm: "50%" }}
+      p={{ base: "md", lg: "lg" }}
+      radius="md"
+      withBorder
+    >
+      <Flex align="center">{children}</Flex>
+    </Card>
   );
 };
