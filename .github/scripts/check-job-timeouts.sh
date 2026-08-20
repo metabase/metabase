@@ -40,7 +40,9 @@ status=0
 for file in "${workflows[@]}"; do
   # `awk NF` drops the blank line yq emits when a file has nothing to report.
   missing="$(
-    yq '
+    # --header-preprocess=false: yq otherwise slurps any leading comment block before parsing, which
+    # shifts every line number it reports by the size of that block.
+    yq --header-preprocess=false '
       .jobs
       | to_entries
       | .[]
