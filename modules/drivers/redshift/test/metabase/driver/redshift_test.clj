@@ -3,15 +3,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [diehard.core :as dh]
    [metabase.driver :as driver]
-   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sync :as driver.s]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -207,13 +204,17 @@
                         e)))))
   (log/info (u/format-color 'blue "[ok]")))
 
-;;; TEMPORARY diagnostic for the v58 `sync-materialized-views-test` failures. Pure observability - it runs after each
-;;; `describe-database` attempt and changes nothing the assertion depends on. Remove once the cause is known.
+;;; TEMPORARY diagnostic for the v58 `sync-materialized-views-test` failures. Remove once the cause is known.
+;;;
+;;; Nothing here runs until the assertion has already been decided, and nothing is named in the `ns` form - a probe
+;;; that runs before or between attempts buys the catalog time to catch up and hides the failure it was added to
+;;; explain. Hence `requiring-resolve` at call time rather than a require.
 
 (defn- mv-diagnostic-snapshot
   "Everything `describe-database` depends on, read through `spec`."
   [spec schema mview-nm]
-  (let [q (fn [sql & params] (jdbc/query spec (into [sql] params)))]
+  (let [q              (fn [sql & params] (jdbc/query spec (into [sql] params)))
+        get-tables-sql @(requiring-resolve 'metabase.driver.redshift/get-tables-sql)]
     {:current-user  (:usr (first (q "SELECT current_user AS usr")))
      ;; `SET SESSION AUTHORIZATION` sticks to a physical connection, and `has_schema_privilege` is evaluated for
      ;; whoever the connection currently is.
@@ -234,7 +235,7 @@
                              schema (str "%" mview-nm "%")))
      ;; The exact query `describe-database*` runs, before its schema-filter step. Separates "the query did not return
      ;; the row" from "the filter dropped it", which the returned table set alone cannot distinguish.
-     :get-tables    (let [rows (q (first @#'redshift/get-tables-sql))
+     :get-tables    (let [rows (q (first get-tables-sql))
                           ours (filter #(= (:schema %) schema) rows)]
                       {:total         (count rows)
                        :in-session    (count ours)
@@ -242,40 +243,66 @@
                        :matching      (mapv (juxt :schema :name :type) (filter #(= (:name %) mview-nm) rows))
                        :session-names (vec (take 60 (sort (map :name ours))))})}))
 
+(def ^:private mv-visibility-timeout-ms
+  "How long to keep asking after the assertion failed. Long enough that catalog propagation lag would have to be
+  implausible to exceed it, so a timeout means the object is gone rather than late."
+  30000)
+
+(defn- poll-until-visible!
+  "Keep calling `describe-database` until it reports `mview-nm`, and say how long after the DDL that took."
+  [database mview-nm ddl-timer]
+  (loop []
+    (let [names   (try
+                    (into #{} (map :name) (:tables (driver/describe-database :redshift database)))
+                    (catch Throwable _ #{}))
+          elapsed (long (u/since-ms ddl-timer))]
+      (cond
+        (contains? names mview-nm)           {:visible-after-ms elapsed}
+        (> elapsed mv-visibility-timeout-ms) {:never-visible-within-ms elapsed}
+        :else                                (do (Thread/sleep 1000) (recur))))))
+
 (defn- print-mv-diagnostic!
   "`log/info` is suppressed in the driver CI jobs, so this prints. Never throws: a failed probe must not mask the
   failure being diagnosed."
-  [label database mview-nm table-names]
-  (let [schema (redshift.tx/unique-session-schema)
-        probe  (fn [spec]
-                 (try
-                   (mv-diagnostic-snapshot spec schema mview-nm)
+  [database mview-nm table-names ddl-timer ms-describe]
+  (let [schema   (redshift.tx/unique-session-schema)
+        probe    (fn [spec]
+                   (try
+                     (mv-diagnostic-snapshot spec schema mview-nm)
+                     (catch Throwable e
+                       {:probe-failed (ex-message e)})))
+        probe-at (long (u/since-ms ddl-timer))
+        ;; Snapshot first, poll second: the snapshots have to describe the moment the assertion failed, not the
+        ;; moment 30 seconds later.
+        admin    (probe (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift)))
+        ;; Through `do-with-connection-with-options`, not the raw pooled spec: that is the path `describe-database`
+        ;; takes, so the probe sees the same role and connection options it did.
+        pool     (try
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    :redshift database nil
+                    (fn [conn] (probe {:connection conn})))
                    (catch Throwable e
-                     {:probe-failed (ex-message e)})))
-        result {:schema          schema
-                :expected        mview-nm
-                :returned        (vec (sort table-names))
-                :db-name         (:name database)
+                     {:probe-failed (ex-message e)}))
+        result {:schema           schema
+                :expected         mview-nm
+                :returned         (some-> table-names sort vec)
+                :ms-ddl->describe ms-describe
+                :ms-ddl->probe    probe-at
+                :visibility       (poll-until-visible! database mview-nm ddl-timer)
+                :admin            admin
+                :db-pool          pool
+                :db-name          (:name database)
                 :details-filters (select-keys (:details database)
                                               [:db :schema-filters-type :schema-filters-patterns])
-                :filter-patterns (driver.s/db-details->schema-filter-patterns database)
+                :filter-patterns ((requiring-resolve 'metabase.driver.sync/db-details->schema-filter-patterns)
+                                  database)
                 :override?       redshift.tx/*override-describe-database-to-filter-by-db-name?*
                 ;; Off on master/release, on for PR builds - the one documented behavior difference between the
                 ;; branches where this fails and the branches where it does not.
                 :fake-sync?      (driver/database-supports? :redshift :test/use-fake-sync nil)
-                :ref-name        (System/getenv "GITHUB_REF_NAME")
-                :admin           (probe (sql-jdbc.conn/connection-details->spec
-                                         :redshift (tx/dbdef->connection-details :redshift)))
-                ;; Through `do-with-connection-with-options`, not the raw pooled spec: that is the path
-                ;; `describe-database` takes, so the probe sees the same role and connection options it did.
-                :db-pool         (try
-                                   (sql-jdbc.execute/do-with-connection-with-options
-                                    :redshift database nil
-                                    (fn [conn] (probe {:connection conn})))
-                                   (catch Throwable e
-                                     {:probe-failed (ex-message e)}))}]
+                :ref-name        (System/getenv "GITHUB_REF_NAME")}]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "[mv-diagnostic %s] %s" label (pr-str result)))))
+    (println (format "[mv-diagnostic] %s" (pr-str result)))))
 
 (deftest redshift-types-test
   (mt/test-driver
@@ -415,25 +442,19 @@
           (let [table-name    (tx/db-qualified-table-name (:name database) "sync_t")
                 qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
-                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)
-                attempt       (atom 0)]
+                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)]
             (execute!
              (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (dh/with-retry {:delay-ms    1000
-                              :max-retries 3}
-                (swap! attempt inc)
-                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
-                  (print-mv-diagnostic! (format "attempt-%d-%s"
-                                                @attempt
-                                                (if (contains? table-names mview-nm) "ok" "missing"))
-                                        database mview-nm table-names)
+            (let [ddl-timer (u/start-timer)]
+              (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+                (let [table-names (into #{} (map :name)
+                                        (:tables (driver/describe-database :redshift database)))
+                      ms-describe (long (u/since-ms ddl-timer))]
                   (when-not (contains? table-names mview-nm)
-                    (throw (ex-info "Materialized view not yet visible in describe-database results"
-                                    {:expected mview-nm :actual table-names})))
+                    (print-mv-diagnostic! database mview-nm table-names ddl-timer ms-describe))
                   (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
