@@ -46,10 +46,10 @@ export function normalizeBackendJunit(
     }
   });
   log(
-    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} failing test(s)`,
+    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} ${ignorePassingTests ? "failing " : ""}test(s)`,
   );
   for (const test of failures) {
-    log(`  failing: ${test.path || "(no namespace)"} / ${test.name}`);
+    log(`  ${test.status ?? 'failure'}: ${test.path || "(no namespace)"} / ${test.name}`);
   }
   return failures;
 }

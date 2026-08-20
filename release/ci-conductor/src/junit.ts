@@ -99,13 +99,10 @@ export function parseJunit(xml: string, ignorePassingTests: boolean = true): Nor
         continue; // self-closing => passed
       }
 
-      // Always ignore skipped tests
-      if (skippedRe.test(inner)) {
-        continue;
-      }
-
       const problems = [...inner.matchAll(problemRe)];
-      if (problems.length === 0 && ignorePassingTests) {
+      // Don't report a test to CI Conductor if the test has no failures and we are ignoring passing tests OR
+      // the test has no failures and a skipped tag.
+      if (problems.length === 0 && ( ignorePassingTests || skippedRe.test(inner))) {
         continue;
       }
 
