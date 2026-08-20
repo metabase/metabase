@@ -2238,8 +2238,7 @@
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
 
-;;; Columns that started being encrypted at rest in v64. Listed as raw table names so this keeps working as the
-;;; models move around.
+;;; Columns that started being encrypted at rest in v64. Raw table names so this keeps working as the models move.
 (def ^:private dwh-derived-columns
   [[:report_card :result_metadata]
    [:metabase_field :fingerprint]
@@ -2247,27 +2246,70 @@
    [:metabase_fieldvalues :human_readable_values]
    [:user_parameter_value :value]])
 
-(defn- rewrite-column!
-  "Apply `f` to every non-nil `column` in `table`, a page of ids at a time so the big tables don't load whole.
-  Rows `f` leaves unchanged are not written."
-  [table column f]
-  (doseq [ids (partition-all 1000 (t2/select-pks-vec [table :id]))
-          {:keys [id value]} (t2/select [table :id [column :value]] :id [:in ids])
-          :when (some? value)
-          :let  [rewritten (f value)]
-          :when (not= rewritten value)]
-    (t2/update! table {:id id} {column rewritten})))
+;; small: `metabase_fieldvalues.values` rows can reach ~100KB, and a page is held in memory
+(def ^:dynamic *encryption-batch-size*
+  "Rows per page when re-encrypting. Bound smaller in tests."
+  500)
 
-(define-reversible-migration EncryptDwhDerivedColumns
+(defn- rewrite-column!
+  "Apply `f` to every non-nil `column` in `table`, striding through the id range a page at a time. Each page is its
+  own statement, so no single transaction spans the whole table. Rows `f` leaves unchanged are not written."
+  [table column f]
+  (let [{:keys [min-id max-id]} (t2/query-one {:select [[[:min :id] :min-id] [[:max :id] :max-id]]
+                                               :from   [table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (let [rewritten (into {}
+                                (keep (fn [{:keys [id value]}]
+                                        (when (some? value)
+                                          (let [v (f value)]
+                                            (when (not= v value)
+                                              [id v])))))
+                                (t2/query {:select [:id [column :value]]
+                                           :from   [table]
+                                           :where  [:and
+                                                    [:>= :id start]
+                                                    [:< :id (+ start *encryption-batch-size*)]]}))]
+            (when (seq rewritten)
+              ;; one UPDATE per page rather than per row: on a table with millions of fields that is the difference
+              ;; between thousands of round trips and millions
+              (t2.execute/query-one
+               {:update table
+                :set    {column (into [:case]
+                                      (concat (mapcat (fn [[id v]] [[:= :id id] v]) rewritten)
+                                              [:else column]))}
+                :where  [:in :id (keys rewritten)]})))
+          (recur (+ start *encryption-batch-size*)))))))
+
+(defn- encrypt-dwh-derived-columns! []
   ;; an instance that already had a key set never re-runs `encrypt-db`, so without this its existing rows would stay
-  ;; in the clear until something happened to rewrite them — which for a stable schema may be never.
+  ;; in the clear until something happened to rewrite them, which for a stable schema may be never
   (when (encryption/default-encryption-enabled?)
     (doseq [[table column] dwh-derived-columns]
       (rewrite-column! table column
                        (fn [v]
                          (if (encryption/possibly-encrypted-string? v)
                            v
-                           (encryption/maybe-encrypt v))))))
-  ;; on rollback, hand these back to the older version as plaintext it can read
-  (doseq [[table column] dwh-derived-columns]
-    (rewrite-column! table column encryption/maybe-decrypt)))
+                           (encryption/maybe-encrypt v)))))))
+
+;; Intentionally not using define-reversible-migration: a single transaction over millions of fields can hit
+;; connection/transaction timeouts. Partial completion is safe either way, because `maybe-decrypt` reads plaintext
+;; and ciphertext alike, and a re-run skips rows it already converted.
+(defrecord EncryptDwhDerivedColumns []
+  CustomTaskChange
+  (execute [_ _database]
+    (encrypt-dwh-derived-columns!))
+  (getConfirmationMessage [_]
+    "Custom migration: EncryptDwhDerivedColumns")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  ;; hand these back to the older version as plaintext it can read
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (doseq [[table column] dwh-derived-columns]
+        (rewrite-column! table column encryption/maybe-decrypt)))))

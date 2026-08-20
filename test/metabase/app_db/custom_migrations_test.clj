@@ -3015,3 +3015,31 @@
           (is (= plaintext (:fingerprint (t2/query-one {:select [:fingerprint]
                                                         :from   [:metabase_field]
                                                         :where  [:= :id field-id]})))))))))
+
+(deftest encrypt-dwh-derived-columns-batching-test
+  (testing "v64.2026-08-19T00:00:00: striding covers every row when the table spans several batches"
+    (impl/test-migrations ["v64.2026-08-19T00:00:00"] [migrate!]
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
+            table-id  (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            plaintext (fn [n] (json/encode {:global {:distinct-count n}}))
+            field-ids (mapv (fn [n]
+                              (t2/insert-returning-pk! :metabase_field
+                                                       {:name          (str "sightings_" n)
+                                                        :table_id      table-id
+                                                        :base_type     "type/Integer"
+                                                        :database_type "INTEGER"
+                                                        :active        true
+                                                        :fingerprint   (plaintext n)
+                                                        :created_at    :%now
+                                                        :updated_at    :%now}))
+                            (range 7))]
+        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-batching-key"
+          (binding [custom-migrations/*encryption-batch-size* 2]
+            (migrate!))
+          (testing "every row is encrypted, and each keeps its own value"
+            (doseq [[n id] (map-indexed vector field-ids)]
+              (let [stored (:fingerprint (t2/query-one {:select [:fingerprint]
+                                                        :from   [:metabase_field]
+                                                        :where  [:= :id id]}))]
+                (is (not= (plaintext n) stored))
+                (is (= (plaintext n) (encryption/maybe-decrypt stored)))))))))))
