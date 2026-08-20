@@ -136,18 +136,18 @@
 
 (defn- fix-h2-card-metadata! [audit-db-id]
   ;; not `t2/update! :model/Card` — that would re-run metadata inference
-  (let [result-metadata-in (get-in (t2/transforms :model/Card) [:result_metadata :in])]
-    (t2/with-connection [^java.sql.Connection conn]
-      (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
-        (reduce
-         (fn [_ {:keys [id result_metadata]}]
-           (when (seq result_metadata)
-             (.setString stmt 1 (result-metadata-in (mapv #(update % :name u/upper-case-en) result_metadata)))
+  (t2/with-connection [^java.sql.Connection conn]
+    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
+      (reduce
+       (fn [_ {:keys [id result_metadata]}]
+         (when (seq result_metadata)
+           (let [encrypt (get-in (t2/transforms :model/Card) [:result_metadata :in])]
+             (.setString stmt 1 (encrypt (mapv #(update % :name u/upper-case-en) result_metadata)))
              (.setInt stmt 2 id)
-             (.addBatch stmt)))
-         nil
-         (t2/reducible-select [:model/Card :id :card_schema :result_metadata] :database_id audit-db-id))
-        (.executeBatch stmt)))))
+             (.addBatch stmt))))
+       nil
+       (t2/reducible-select [:model/Card :id :card_schema :result_metadata] :database_id audit-db-id))
+      (.executeBatch stmt))))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]

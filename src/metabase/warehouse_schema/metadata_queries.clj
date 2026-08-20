@@ -56,4 +56,6 @@
                                 [:= :type "full"]
                                 [:= :field_id field-id]
                                 [:not= :human_readable_values nil]]})]
-    (some->> (seq remapped) (zipmap orig))))
+    ;; a legacy map-shaped value comes back from the model as all-nils; treat that as no remapping
+    (when (some some? remapped)
+      (zipmap orig remapped))))
