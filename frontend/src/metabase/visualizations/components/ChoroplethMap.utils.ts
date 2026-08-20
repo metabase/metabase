@@ -81,8 +81,8 @@ export function buildFeatureClickObject(
     };
   }
 
-  // Several rows map to this feature (e.g. an extra breakout), so the metric is
-  // summed and only the columns with a single value for the feature are exposed.
+  // Multiple rows map to this feature (e.g. an extra breakout), so we sum the
+  // metric and expose only the dimension and metric columns.
   const value = rows.reduce<RowValue>(
     (sum, row) => sumMetric(sum, row[metricIndex]),
     null,
