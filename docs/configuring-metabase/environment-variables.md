@@ -2470,6 +2470,16 @@ This variable also controls the geocoding service that Metabase uses to know the
 
 Should new email notifications be sent to admins, for all new SSO users?
 
+### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false.
+
+On import, Metabase validates every question against the query format this version understands, and refuses any it cannot read. Set this to true to skip that validation. Skipping it will not necessarily make the import succeed. Import may still fail on a later step.
+
 ### `MB_SESSION_COOKIE_SAMESITE`
 
 - Type: keyword

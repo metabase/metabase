@@ -23,7 +23,12 @@ import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
 import boundaries from "eslint-plugin-boundaries";
+import {
+  SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_PATHS,
+} from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import { NO_MODULE_SIDE_EFFECTS_OPTIONS } from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
@@ -1199,6 +1204,79 @@ const configs = [
     rules: {
       // Disable new v9 rule - fixing this is out of scope for eslint upgrade
       "storybook/no-renderer-packages": "off",
+    },
+  },
+
+  // ============================================
+  // SIDE-EFFECT-FREE MODULES
+  // ============================================
+  {
+    // Rspack drops any file in these directories whose exports go unused, so an
+    // import-time effect there is silently lost in production. Declaring a
+    // directory in SIDE_EFFECT_FREE_PATHS enrols it here.
+    files: SIDE_EFFECT_FREE_PATHS.map(
+      (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
+    ),
+    ignores: [
+      // A directory entry (trailing separator) covers every file under it
+      ...SIDE_EFFECT_PATHS.map((entry) =>
+        entry.endsWith(path.sep)
+          ? `${path.relative(__dirname, entry)}/**`
+          : path.relative(__dirname, entry),
+      ),
+      "**/*.unit.spec.*",
+      "**/*.stories.*",
+      "**/tests/**",
+      "**/__support__/**",
+      "**/*.d.ts",
+    ],
+    rules: {
+      "metabase/no-module-side-effects": [
+        "error",
+        NO_MODULE_SIDE_EFFECTS_OPTIONS,
+      ],
+    },
+  },
+
+  // ============================================
+  // BASE API OBJECT ACCESS
+  // ============================================
+  {
+    // Endpoints are injected into the one `Api` object at import time by the
+    // file that owns them, so they exist only once that file has been
+    // evaluated. Reaching them by name through the base object works only while
+    // something else imports the owner, and a side-effect-free api module lets
+    // production shake the owner away. Consumers go through the owner's
+    // exports instead.
+    files: [
+      "frontend/src/**/*.{ts,tsx,js,jsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
+    ],
+    ignores: [
+      // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
+      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
+      "frontend/src/metabase/redux/store/mocks/api.ts",
+    ],
+    rules: {
+      "metabase/no-base-api-access": [
+        "error",
+        {
+          // Where an endpoint is declared is a path question: the api module, or a module's `api/` folder or `api.ts`.
+          allowInjectionIn: [
+            `${__dirname}/frontend/src/metabase/api/**`,
+            "**/api/**",
+            "**/api.ts",
+          ],
+          // Reaching an endpoint by name is never fine in product code, whatever the file is called.
+          // Test support seeds the cache by endpoint name, after importing the whole api index so every owner has run.
+          allowReachIn: [
+            `${__dirname}/frontend/src/metabase/api/**`,
+            `${__dirname}/frontend/test/**`,
+            "**/__support__/**",
+            "**/*.unit.spec.*",
+          ],
+        },
+      ],
     },
   },
 ];
