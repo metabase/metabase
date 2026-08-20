@@ -590,6 +590,52 @@
              (str "event does not match the wire schema: " (pr-str event))))
        events))))
 
+(defn- usage-part [finish-reason raw-finish-reason]
+  {:type              :usage
+   :model             "m"
+   :usage             {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+   :finish-reason     finish-reason
+   :raw-finish-reason raw-finish-reason})
+
+(deftest parts->aisdk-sse-xf-finish-reason-test
+  (let [error-part {:type :error :error {:message "tool blew up mid-turn"}}]
+    (testing "a truncated turn emits finishReason \"length\" and without an error"
+      (is (= ["text-start" "text-delta" "text-end" "finish"]
+             (mapv :type
+                   (sse-events [{:type :text :id "t1" :text "partial"}
+                                (usage-part "length" "max_tokens")]))))
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [{:type :text :id "t1" :text "partial"}
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "an in-turn error part does not override a length finish"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [error-part
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "a filtered turn emits finishReason \"content-filter\""
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "a loop stopped at max iterations emits finishReason \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "tool-calls"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a terminal-tool stop stays \"stop\" even though the provider reported \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :terminal-tool}])))))
+    (testing "an in-turn error part outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a length finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [(usage-part "length" "max_tokens")
+                                 {:type :finish :finish-reason :max-iterations}])))))))
+
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
     (is (= [["start" "msg-1"] ["start-step" nil]

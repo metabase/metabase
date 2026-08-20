@@ -376,7 +376,7 @@
     :data             -> data-<data-type>
     :error            -> [start + start-step]? error
     :usage            -> (accumulated; emitted as finish.message_metadata)
-    :finish           -> (ignored — the completion arity emits the finish)
+    :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
   ([{:keys [message-id message-metadata]}]
@@ -384,6 +384,7 @@
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
            finish-reason     (volatile! nil)
+           loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -428,10 +429,11 @@
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
                               :finishReason (cond
-                                              (= @finish-reason "length")         "length"
-                                              @error?                             "error"
-                                              (= @finish-reason "content-filter") "content-filter"
-                                              :else                               "stop")}
+                                              (= @finish-reason "length")              "length"
+                                              @error?                                  "error"
+                                              (= @finish-reason "content-filter")      "content-filter"
+                                              (= @loop-finish-reason :max-iterations)  "tool-calls"
+                                              :else                                    "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -515,7 +517,10 @@
                 (rf (ensure-started result) (format-error-line part)))
 
               :finish
-              result
+              (do
+                (when-let [fr (:finish-reason part)]
+                  (vreset! loop-finish-reason fr))
+                result)
 
               :usage
               ;; cumulative per-model snapshot; last-wins, emitted on finish
