@@ -107,7 +107,7 @@ jobs:
           # branch context, labels, and file changes to decide what runs.
           MAGE_ARGS=(
             --git-ref="${BASE_REF}"
-            --is-master-or-release="${IS_MASTER_OR_RELEASE}"
+            --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
             --only-driver="${ONLY_DRIVER}"
@@ -124,7 +124,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
+          FORCE_RUN: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 

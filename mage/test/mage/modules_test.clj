@@ -11,7 +11,7 @@
 (defn- make-ctx
   "Create a context map with sensible defaults, overridable by opts."
   [opts]
-  (merge {:is-master-or-release false
+  (merge {:force-run false
           :pr-labels #{}
           :skip false
           :particular-driver-changed? #{}}
@@ -59,7 +59,7 @@
       (is (nil? (#'mage.modules/parse-only-driver blank))))))
 
 ;;; =============================================================================
-;;; Priority 4: Driver's own files changed (beats the CI config skip list)
+;;; Priority 5: Driver's own files changed (beats the CI config skip list)
 ;;; =============================================================================
 
 (deftest particular-driver-changes-beat-configured-skip
@@ -75,7 +75,7 @@
         (is (= "driver files changed" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 5: CI config skip list (respected on PR branches, ignored on master/release)
+;;; Priority 6: CI config skip list (ignored on a force-run)
 ;;; =============================================================================
 
 (deftest skipped-driver-does-not-run
@@ -91,34 +91,23 @@
           (is (false? (:should-run result)))
           (is (= "driver is skipped by CI config" (:reason result))))))))
 
-(deftest effective-skip-list-ignored-on-master-and-release
-  (testing "the remote skip list is dropped on master/release, but honored on PR branches"
-    (let [skipped #{:databricks}]
-      (is (= #{} (#'mage.modules/effective-skipped-drivers skipped true))
-          "master/release: nothing is skipped")
-      (is (= #{:databricks} (#'mage.modules/effective-skipped-drivers skipped false))
-          "PR/feature branch: skipped drivers stay skipped"))))
-
-(deftest skipped-driver-runs-on-master
-  (testing "a driver marked skip in the remote config still runs (and gates) on master/release"
-    ;; Production clears the skip set on master/release via effective-skipped-drivers,
-    ;; so the decision falls through Priority 5 to Priority 6.
-    (let [skipped (#'mage.modules/effective-skipped-drivers #{:mysql} true)
-          result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:is-master-or-release true})
+(deftest skipped-driver-runs-on-force-run
+  (testing "a driver marked skip in the remote config still runs (and gates) on a force-run"
+    (let [result (mage.modules/driver-decision :mysql
+                                               (make-ctx {:force-run true})
                                                true ; driver-deps-affected?
-                                               skipped
+                                               #{:mysql} ; skipped
                                                #{})] ; updated
       (is (true? (:should-run result)))
-      (is (= "master/release branch" (:reason result))))))
+      (is (= "force-run (master/release branch or ci:run-all label)" (:reason result))))))
 
 (deftest skip-config-names-are-translated
   (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
     (testing "directory names are translated to internal keywords"
       ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping).
-      ;; Use a PR/feature branch here, since the skip list is ignored on master/release.
+      ;; Not a force-run here, since the skip list is ignored on one.
       (let [result (mage.modules/driver-decision :bigquery
-                                                 (make-ctx {:is-master-or-release false})
+                                                 (make-ctx {:force-run false})
                                                  false
                                                  #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
                                                  #{})]
@@ -132,7 +121,7 @@
           "mongo should map to multiple test jobs"))))
 
 ;;; =============================================================================
-;;; Priority 1: Global skip
+;;; Priority 2: Global skip
 ;;; =============================================================================
 
 (deftest global-skip-skips-all-drivers
@@ -158,14 +147,14 @@
       (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 2: H2 and Postgres always run
+;;; Priority 3: H2 and Postgres always run
 ;;; =============================================================================
 
 (deftest h2-and-postgres-always-run
   (testing "H2 and Postgres always run when not globally skipped"
     (doseq [driver [:h2 :postgres]]
       (let [result (mage.modules/driver-decision driver
-                                                 (make-ctx {:is-master-or-release false})
+                                                 (make-ctx {:force-run false})
                                                  false ; driver module not affected
                                                  #{} ; skipped
                                                  #{})] ; updated
@@ -186,7 +175,7 @@
         (is (= "workflow skip (no backend changes)" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 3: ci:run-all-drivers / ci:run-<driver> labels
+;;; Priority 4: ci:run-all-drivers / ci:run-<driver> labels
 ;;; =============================================================================
 
 (deftest ci-run-all-drivers-forces-run
@@ -241,21 +230,20 @@
       (is (= "ci:run-mysql label" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 6: Master/release branch
+;;; Priority 1: Global force-run
 ;;; =============================================================================
 
-(deftest master-branch-runs-all-drivers
-  (testing "All drivers run on master/release branch"
-    ;; H2/Postgres hit priority 2 first, others hit priority 6
-    (doseq [driver [:mysql :mongo :athena :bigquery :snowflake]]
+(deftest force-run-runs-all-drivers
+  (testing "All drivers run on a force-run, even the globally skipped ones"
+    (doseq [driver [:h2 :postgres :mysql :mongo :athena :bigquery :snowflake]]
       (let [result (mage.modules/driver-decision driver
-                                                 (make-ctx {:is-master-or-release true})
+                                                 (make-ctx {:force-run true :skip true})
                                                  false ; even if not affected
-                                                 #{} ; skipped
+                                                 #{driver} ; skipped
                                                  #{})] ; updated
         (is (true? (:should-run result))
-            (str driver " should run on master"))
-        (is (= "master/release branch" (:reason result)))))))
+            (str driver " should run on a force-run"))
+        (is (= "force-run (master/release branch or ci:run-all label)" (:reason result)))))))
 
 ;;; =============================================================================
 ;;; Priority 11: Driver deps affected (self-hosted only)
@@ -263,7 +251,7 @@
 
 (deftest driver-deps-affected-runs-self-hosted-drivers
   (testing "Self-hosted drivers run when driver module is affected"
-    ;; H2/Postgres hit priority 2 first, others hit priority 11
+    ;; H2/Postgres hit priority 3 first, others hit priority 11
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -335,7 +323,7 @@
 
 (deftest self-hosted-driver-not-affected-skips
   (testing "Self-hosted driver skips when driver module not affected"
-    ;; H2/Postgres always run (priority 2), so test other self-hosted drivers
+    ;; H2/Postgres always run (priority 3), so test other self-hosted drivers
     (doseq [driver [:mysql :mongo :oracle :sqlserver]]
       (let [result (mage.modules/driver-decision driver
                                                  (make-ctx {})
@@ -457,12 +445,12 @@
       (is (= #{} (#'mage.modules/skip-drivers))))))
 
 (deftest non-skip-driver-follows-normal-run-rules
-  (testing "a driver that isn't skipped follows the normal decision rules (runs on master)"
+  (testing "a driver that isn't skipped follows the normal decision rules (runs on a force-run)"
     (with-redefs [mage.modules/read-ci-test-config (constantly example-config)]
       (let [result (mage.modules/driver-decision :snowflake
-                                                 (make-ctx {:is-master-or-release true})
+                                                 (make-ctx {:force-run true})
                                                  false
                                                  (#'mage.modules/skip-drivers)
                                                  #{})]
         (is (true? (:should-run result)))
-        (is (= "master/release branch" (:reason result)))))))
+        (is (= "force-run (master/release branch or ci:run-all label)" (:reason result)))))))
