@@ -13,7 +13,6 @@ import { Group, Stack } from "metabase/ui";
 import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 
 import { fetchDevServerManifest } from "../dev-server";
-import { getDevUrlError } from "../dev-url-validation";
 
 type FormState = {
   devBundleUrl: string;
@@ -30,21 +29,13 @@ export function AddDevCustomVizForm() {
     async (values: FormState) => {
       const devBundleUrl = values.devBundleUrl;
 
-      const urlError = getDevUrlError(devBundleUrl);
-      if (urlError) {
-        throw new Error(urlError);
-      }
-
-      // The browser reads the manifest, because Metabase never requests the dev URL itself. A dev server
-      // that is not running is the common case here, so say so rather than surfacing a bare fetch error.
-      let manifest;
-      try {
-        manifest = await fetchDevServerManifest(devBundleUrl);
-      } catch {
-        throw new Error(
-          t`Couldn't reach the dev server at ${devBundleUrl}. Check that it's running.`,
-        );
-      }
+      // The browser reads the manifest, because Metabase never requests the dev URL itself. Best-effort:
+      // a URL the CSP won't let us reach, or a dev server that isn't running, both land here. Submit
+      // anyway and let the backend explain — it validates the URL before it looks for a manifest, so it
+      // answers "must point at localhost" or "check that it is running" as appropriate.
+      const manifest = await fetchDevServerManifest(devBundleUrl).catch(
+        () => undefined,
+      );
 
       return createDevPlugin({
         dev_bundle_url: devBundleUrl,

@@ -17,8 +17,6 @@ import {
 } from "metabase-enterprise/api";
 import type { CustomVizPlugin } from "metabase-types/api";
 
-import { getDevUrlError } from "../dev-url-validation";
-
 import { CustomVizIcon } from "./CustomVizIcon";
 
 type Props = {
@@ -41,18 +39,11 @@ export function EditDevCustomVizForm({ plugin }: Props) {
   );
 
   const handleSubmit = useCallback(
-    (values: FormState) => {
-      const urlError = values.devBundleUrl
-        ? getDevUrlError(values.devBundleUrl)
-        : null;
-      if (urlError) {
-        throw new Error(urlError);
-      }
-      return setDevUrl({
+    (values: FormState) =>
+      setDevUrl({
         id: plugin.id,
         dev_bundle_url: values.devBundleUrl || null,
-      }).unwrap();
-    },
+      }).unwrap(),
     [plugin.id, setDevUrl],
   );
 
