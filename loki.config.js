@@ -11,6 +11,7 @@ module.exports = {
     "^Patterns/Overlays",
     "^Components/Inputs/Checkbox (Overview|Checkbox\\.Card)",
     "^Components/Inputs/DatePicker Dates range",
+    "^Components/Inputs/Radio (Overview|Radio\\.Card)",
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
     "^Components/overlays/Tooltip",
