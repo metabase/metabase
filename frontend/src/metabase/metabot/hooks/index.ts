@@ -6,5 +6,4 @@ export { useBranchableMessages } from "./use-branchable-messages";
 export { useMetabotAgent } from "./use-metabot-agent";
 export { useMetabotConversation } from "./use-metabot-conversation";
 export { useMetabotAgentsManager } from "./use-metabot-agents-manager";
-export { useDashCardAnalysis } from "./useDashCardAnalysis";
 export { useUserMetabotPermissions } from "./use-user-metabot-permissions";
