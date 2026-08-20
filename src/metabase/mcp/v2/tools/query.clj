@@ -93,18 +93,26 @@
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------
 
+(def ^:private query-passthrough-keys
+  "The only keys of an incoming query that MCP forwards to the QP. Everything else — `:middleware`,
+   `:info`, `:constraints`, and any unknown key — is MCP's to set, because the query map is
+   caller-controlled: the tool's `:query` is an open `[:map]`, and an agent that could name its own
+   `:info` would forge `query_execution` attribution. The QP strips some of these itself; that is
+   defense in depth, not this boundary's contract."
+  [:lib/type :database :stages :parameters])
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation,
    capping this call's rows at `row-limit` (within the backend's 2000/10000 userland
    ceilings). Returns the QP result; surfaces a failed run as a teaching error."
   [serialized-query row-limit]
   (let [result (qp/process-query
-                (-> serialized-query
-                    (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                (-> (select-keys serialized-query query-passthrough-keys)
+                    (assoc :middleware {:js-int-to-string? true})
                     qp/userland-query-with-default-constraints
                     (assoc :constraints {:max-results           row-limit
-                                         :max-results-bare-rows row-limit})
-                    (update :info merge {:executed-by api/*current-user-id*
+                                         :max-results-bare-rows row-limit}
+                           :info        {:executed-by api/*current-user-id*
                                          :context     :agent})))]
     (when-not (= (:status result) :completed)
       (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))

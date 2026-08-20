@@ -15,6 +15,7 @@
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.query :as tools.query]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
@@ -697,3 +698,95 @@
         (is (str/includes? msg "does not accept URIs"))
         (is (str/includes? msg "aggregation"))
         (is (not (str/includes? msg "portable_entity_id")))))))
+
+;;; ------------------------------------------- QP input whitelist -------------------------------------------------
+
+;;; GHY-4313: the tool's `:query` is an open map, so these drive the tool with extra keys in it and
+;;; assert on what reaches the query processor — the QP itself is stubbed, so nothing but the
+;;; boundary's own filtering can account for a key's absence.
+
+(def ^:private fake-qp-result
+  "The minimum a stubbed `process-query` has to return for the tool to finish a page."
+  {:status :completed
+   :data   {:cols [{:name "ID" :base_type :type/BigInteger :display_name "ID"}]
+            :rows [[1]]}})
+
+(defn- capture-qp-query!
+  "Call `execute_query` with `arguments`, stubbing the QP so nothing executes, and return the
+   query map that reached [[metabase.query-processor.core/process-query]]. Throws if the tool
+   returned an error, so a rejected call can never look like a stripped key."
+  [arguments]
+  (let [captured (atom nil)]
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
+                                                       (reset! captured query)
+                                                       fake-qp-result)]
+          (let [result (call! (str (random-uuid)) arguments)]
+            (when (:isError result)
+              (throw (ex-info "expected success, got tool error" {:result result})))))))
+    (or @captured
+        (throw (ex-info "process-query was never called" {:arguments arguments})))))
+
+(defn- pk-ordered-orders-query
+  "An ORDERS query already ordered by its PK, merged with `extra`. Its row order is total, so
+   [[metabase.mcp.v2.query/with-total-order]] passes it through as-is — what is stored is what
+   reaches the QP."
+  [extra]
+  (merge (numeric-orders-query {:limit    1
+                                :order-by [["asc" {} ["field" {} (mt/id :orders :id)]]]})
+         {:database (mt/id)}
+         extra))
+
+(defn- stored-handle!
+  "Mint a query handle over `stored` for rasta. The handle path skips the representations
+   pipeline, so the stored query reaches the execution boundary with the keys it was minted with."
+  [session-id stored]
+  (mt/with-current-user (mt/user->id :rasta)
+    (common/mint-query-handle! session-id (mt/user->id :rasta)
+                               (common/encode-serialized-query stored))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest query-info-never-reaches-the-qp-test
+  (testing "GHY-4313: a query's own :info never reaches the QP — MCP alone attributes the execution"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid            (str (random-uuid))
+            handle         (stored-handle! sid (pk-ordered-orders-query {:info {:card-id 999}}))
+            {:keys [info]} (capture-qp-query! {:query_handle handle})]
+        (is (not (contains? info :card-id)))
+        (is (= (mt/user->id :rasta) (:executed-by info)))
+        (is (= :agent (:context info)))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest caller-middleware-never-reaches-the-qp-test
+  (testing "GHY-4313: the caller cannot set query :middleware — MCP alone chooses the QP options"
+    (let [{:keys [middleware]} (capture-qp-query!
+                                {:query (assoc (numeric-orders-query {:limit 1})
+                                               :middleware {:ignore-cached-results? true})})]
+      (is (not (contains? middleware :ignore-cached-results?)))
+      (is (true? (:js-int-to-string? middleware))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest unknown-caller-key-never-reaches-the-qp-test
+  (testing "GHY-4313: a top-level key MCP does not pass through is dropped before the QP sees the query"
+    (let [captured (capture-qp-query! {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")})]
+      (is (not (contains? captured :evil))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest query-shape-still-reaches-the-qp-test
+  (testing "GHY-4313: the query itself survives the whitelist — the QP runs what the caller asked for"
+    (let [captured (capture-qp-query! {:query (numeric-orders-query {:limit 1})})]
+      (is (= :mbql/query (:lib/type captured)))
+      (is (= (mt/id) (:database captured)))
+      (is (= 1 (count (:stages captured))))
+      (is (= (mt/id :orders) (get-in captured [:stages 0 :source-table])))
+      (is (= 1 (get-in captured [:stages 0 :limit]))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest stored-parameters-still-reach-the-qp-test
+  (testing "GHY-4313: a stored query's :parameters survive the whitelist — bound values ride the handle"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            params [{:type "number/=" :target ["variable" ["template-tag" "n"]] :value 1}]
+            handle (stored-handle! sid (pk-ordered-orders-query {:parameters params}))]
+        (is (= params (:parameters (capture-qp-query! {:query_handle handle}))))))))
