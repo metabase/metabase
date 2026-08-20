@@ -2966,3 +2966,52 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest encrypt-dwh-derived-columns-test
+  (testing "v64.2026-08-19T00:00:00: an instance that already had a key set gets its existing rows encrypted"
+    (impl/test-migrations ["v64.2026-08-19T00:00:00"] [migrate!]
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
+            table-id  (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            plaintext (json/encode {:global {:distinct-count 41}})
+            field-id  (t2/insert-returning-pk! :metabase_field
+                                               {:name          "sightings"
+                                                :table_id      table-id
+                                                :base_type     "type/Integer"
+                                                :database_type "INTEGER"
+                                                :active        true
+                                                :fingerprint   plaintext
+                                                :created_at    :%now
+                                                :updated_at    :%now})
+            stored    (fn [] (:fingerprint (t2/query-one {:select [:fingerprint]
+                                                          :from   [:metabase_field]
+                                                          :where  [:= :id field-id]})))]
+        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-test-key"
+          (migrate!)
+          (testing "the existing row is encrypted now, not left waiting for a rewrite that may never come"
+            (is (not= plaintext (stored)))
+            (is (= plaintext (encryption/maybe-decrypt (stored)))))
+          (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
+            (migrate! :down 63)
+            (testing "and rollback hands it back as plaintext an older version can read"
+              (is (= plaintext (stored))))))))))
+
+(deftest encrypt-dwh-derived-columns-no-key-test
+  (testing "v64.2026-08-19T00:00:00: with no key set there is nothing to encrypt, so rows are left alone"
+    (impl/test-migrations ["v64.2026-08-19T00:00:00"] [migrate!]
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
+            table-id  (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            plaintext (json/encode {:global {:distinct-count 41}})
+            field-id  (t2/insert-returning-pk! :metabase_field
+                                               {:name          "sightings"
+                                                :table_id      table-id
+                                                :base_type     "type/Integer"
+                                                :database_type "INTEGER"
+                                                :active        true
+                                                :fingerprint   plaintext
+                                                :created_at    :%now
+                                                :updated_at    :%now})]
+        (encryption-test/with-secret-key nil
+          (migrate!)
+          (is (= plaintext (:fingerprint (t2/query-one {:select [:fingerprint]
+                                                        :from   [:metabase_field]
+                                                        :where  [:= :id field-id]})))))))))

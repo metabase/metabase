@@ -2237,3 +2237,37 @@
                              :where  [:and
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
+
+;;; Columns that started being encrypted at rest in v64. Listed as raw table names so this keeps working as the
+;;; models move around.
+(def ^:private dwh-derived-columns
+  [[:report_card :result_metadata]
+   [:metabase_field :fingerprint]
+   [:metabase_fieldvalues :values]
+   [:metabase_fieldvalues :human_readable_values]
+   [:user_parameter_value :value]])
+
+(defn- rewrite-column!
+  "Apply `f` to every non-nil `column` in `table`, a page of ids at a time so the big tables don't load whole.
+  Rows `f` leaves unchanged are not written."
+  [table column f]
+  (doseq [ids (partition-all 1000 (t2/select-pks-vec [table :id]))
+          {:keys [id value]} (t2/select [table :id [column :value]] :id [:in ids])
+          :when (some? value)
+          :let  [rewritten (f value)]
+          :when (not= rewritten value)]
+    (t2/update! table {:id id} {column rewritten})))
+
+(define-reversible-migration EncryptDwhDerivedColumns
+  ;; an instance that already had a key set never re-runs `encrypt-db`, so without this its existing rows would stay
+  ;; in the clear until something happened to rewrite them — which for a stable schema may be never.
+  (when (encryption/default-encryption-enabled?)
+    (doseq [[table column] dwh-derived-columns]
+      (rewrite-column! table column
+                       (fn [v]
+                         (if (encryption/possibly-encrypted-string? v)
+                           v
+                           (encryption/maybe-encrypt v))))))
+  ;; on rollback, hand these back to the older version as plaintext it can read
+  (doseq [[table column] dwh-derived-columns]
+    (rewrite-column! table column encryption/maybe-decrypt)))
