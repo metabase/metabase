@@ -1,17 +1,30 @@
 import type { CustomVizPluginManifest } from "metabase-types/api";
 
-/**
- * Direct browser access to a custom-viz dev server running on the developer's own machine — Metabase
- * proxies none of it. `dev_bundle_url` is validated to a loopback origin on the backend and added to the
- * app document's CSP `connect-src` for superusers, see `metabase-enterprise.custom-viz-plugin.csp`.
- *
- * Uses plain `fetch` rather than `api.fetch`, which resolves URLs against `location.origin` and so cannot
- * go cross-origin. No session credentials are sent; the dev server answers `Access-Control-Allow-Origin: *`.
- */
-
 const MANIFEST_PATH = "metabase-plugin.json";
 const BUNDLE_PATH = "index.js";
 const SSE_PATH = "__sse";
+
+const TIMEOUT_MS = 5000;
+
+export type DevServerErrorKind =
+  /** Not an absolute http(s) URL, so it would have been fetched from Metabase's own origin. */
+  | "invalid-url"
+  /** Connection refused, DNS failure, blocked by CORS, or no answer within `TIMEOUT_MS`. */
+  | "unreachable"
+  /** Answered, but not with a 2xx — typically nothing is being served at that path. */
+  | "not-ok"
+  /** Answered 2xx with something that is not JSON, e.g. a dev server's index.html 404 fallback. */
+  | "invalid-manifest";
+
+export class DevServerError extends Error {
+  constructor(
+    readonly kind: DevServerErrorKind,
+    message: string,
+  ) {
+    super(message);
+    this.name = "DevServerError";
+  }
+}
 
 export function getDevServerUrl(devBundleUrl: string, path: string): string {
   return `${devBundleUrl.replace(/\/+$/, "")}/${path}`;
@@ -21,19 +34,33 @@ export function getDevServerSseUrl(devBundleUrl: string): string {
   return getDevServerUrl(devBundleUrl, SSE_PATH);
 }
 
-/**
- * No cache-busting query string: the CLI dev server resolves the raw `req.url` onto the filesystem, so
- * `index.js?t=1` 404s. `cache: "no-store"` is what keeps rebuilds from being served stale.
- */
 async function fetchFromDevServer(url: string): Promise<Response> {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Dev server responded ${res.status} for ${url}`);
+  if (!/^https?:\/\//i.test(url)) {
+    throw new DevServerError(
+      "invalid-url",
+      `Dev server URL must be absolute, got ${url}`,
+    );
   }
-  return res;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new DevServerError("unreachable", `Could not reach ${url}: ${error}`);
+  }
+
+  if (!response.ok) {
+    throw new DevServerError(
+      "not-ok",
+      `Dev server responded ${response.status} for ${url}`,
+    );
+  }
+  return response;
 }
 
-/** The bundle source, to be evaluated inside the plugin sandbox. */
 export async function fetchDevServerBundle(
   devBundleUrl: string,
 ): Promise<string> {
@@ -43,12 +70,18 @@ export async function fetchDevServerBundle(
   return res.text();
 }
 
-/** The manifest, sent on to the backend which validates it like an uploaded bundle's. */
 export async function fetchDevServerManifest(
   devBundleUrl: string,
 ): Promise<CustomVizPluginManifest> {
   const res = await fetchFromDevServer(
     getDevServerUrl(devBundleUrl, MANIFEST_PATH),
   );
-  return res.json();
+  try {
+    return await res.json();
+  } catch (error) {
+    throw new DevServerError(
+      "invalid-manifest",
+      `${getDevServerUrl(devBundleUrl, MANIFEST_PATH)} did not return JSON: ${error}`,
+    );
+  }
 }

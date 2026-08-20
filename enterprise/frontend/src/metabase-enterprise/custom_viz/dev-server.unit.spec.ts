@@ -1,11 +1,16 @@
 import fetchMock from "fetch-mock";
 
 import {
+  DevServerError,
   fetchDevServerBundle,
   fetchDevServerManifest,
   getDevServerSseUrl,
   getDevServerUrl,
 } from "./dev-server";
+
+function errorKind(error: unknown) {
+  return error instanceof DevServerError ? error.kind : error;
+}
 
 const DEV_URL = "http://localhost:5174";
 
@@ -23,9 +28,6 @@ describe("dev server URLs", () => {
     );
   });
 
-  // The CLI's dev server resolves requests straight onto the filesystem using the raw `req.url`, so a
-  // cache-busting `?t=…` makes it look for a file with the query in its name and 404. Freshness comes from
-  // `cache: "no-store"` instead. A query string here breaks hot reload against any already-published SDK.
   it.each([
     ["bundle", getDevServerUrl(DEV_URL, "index.js")],
     ["manifest", getDevServerUrl(DEV_URL, "metabase-plugin.json")],
@@ -42,13 +44,14 @@ describe("fetchDevServerBundle", () => {
     expect(await fetchDevServerBundle(DEV_URL)).toBe("export default 1;");
   });
 
-  it("requests the bundle with no HTTP caching", async () => {
+  it("requests the bundle with no HTTP caching, and gives up rather than hanging", async () => {
     fetchMock.get(`${DEV_URL}/index.js`, "export default 1;");
 
     await fetchDevServerBundle(DEV_URL);
 
     const call = fetchMock.callHistory.lastCall(`${DEV_URL}/index.js`);
     expect(call?.options.cache).toBe("no-store");
+    expect(call?.options.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("throws when the dev server does not serve the bundle", async () => {
@@ -75,5 +78,47 @@ describe("fetchDevServerManifest", () => {
     await expect(fetchDevServerManifest(DEV_URL)).rejects.toThrow(
       `Dev server responded 500 for ${DEV_URL}/metabase-plugin.json`,
     );
+  });
+});
+
+describe("dev server failure modes", () => {
+  it.each(["localhost:5174", "//localhost:5174", "/localhost:5174"])(
+    "refuses to fetch %p, which is not an absolute URL",
+    async (url) => {
+      await expect(fetchDevServerBundle(url).catch(errorKind)).resolves.toBe(
+        "invalid-url",
+      );
+      expect(fetchMock.callHistory.calls()).toHaveLength(0);
+    },
+  );
+
+  it("reports an unreachable dev server", async () => {
+    fetchMock.get(`${DEV_URL}/metabase-plugin.json`, {
+      throws: new TypeError("Failed to fetch"),
+    });
+
+    await expect(
+      fetchDevServerManifest(DEV_URL).catch(errorKind),
+    ).resolves.toBe("unreachable");
+  });
+
+  it("reports a manifest that is served but missing", async () => {
+    fetchMock.get(`${DEV_URL}/metabase-plugin.json`, 404);
+
+    await expect(
+      fetchDevServerManifest(DEV_URL).catch(errorKind),
+    ).resolves.toBe("not-ok");
+  });
+
+  it("reports a manifest URL that answers with HTML instead of JSON", async () => {
+    fetchMock.get(`${DEV_URL}/metabase-plugin.json`, {
+      status: 200,
+      body: "<!doctype html><title>vite</title>",
+      headers: { "content-type": "text/html" },
+    });
+
+    await expect(
+      fetchDevServerManifest(DEV_URL).catch(errorKind),
+    ).resolves.toBe("invalid-manifest");
   });
 });
