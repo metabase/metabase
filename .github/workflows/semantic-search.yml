@@ -143,6 +143,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mariadb-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -226,6 +228,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mysql-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
