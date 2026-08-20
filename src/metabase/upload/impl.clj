@@ -255,9 +255,7 @@
   [header-and-rows]
   (let [header (first header-and-rows)
         auto-pk-indices (auto-pk-column-indices header)]
-    (cond->> header-and-rows
-      auto-pk-indices
-      (map (partial remove-indices auto-pk-indices)))))
+    (map (partial remove-indices auto-pk-indices) header-and-rows)))
 
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
@@ -902,7 +900,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-read? table))
+        (not (mi/can-query? table))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
@@ -920,13 +918,17 @@
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
   [table database]
-  (when-not (:is_attached_dwh database) ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+  (if (:is_attached_dwh database)
+    ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+    (when-not api/*is-superuser?*
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))
     (cond
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (mi/can-write? table))
+      (not (and (mi/can-query? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 

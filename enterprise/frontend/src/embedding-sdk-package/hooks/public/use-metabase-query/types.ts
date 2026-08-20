@@ -183,11 +183,14 @@ export type FieldAggregationSchema<
   ];
 };
 
-type AnyAggregation<TTable = unknown> =
+type DimensionAggregation<TDimension> =
   | CountAggregation
   | CountAggregationSchema
-  | FieldAggregation<FieldAggregationOperator, FieldReference<TTable>>
-  | FieldAggregationSchema<FieldAggregationOperator, FieldReference<TTable>>
+  | FieldAggregation<FieldAggregationOperator, TDimension>
+  | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
+
+type AnyAggregation<TTable = unknown> =
+  | DimensionAggregation<FieldReference<TTable>>
   | MeasureReference<TTable>
   | MetricReference<TTable>;
 
@@ -328,9 +331,13 @@ export type MetabaseBreakoutObjectForDimension<TDimension> =
           binning?: BinningOptions;
         } & BinningOptionsInput);
 
-export type MetabaseBreakout<TTable = unknown> =
-  | FieldReference<TTable>
-  | MetabaseBreakoutObjectForDimension<FieldReference<TTable>>;
+type BreakoutForDimension<TDimension> =
+  | TDimension
+  | MetabaseBreakoutObjectForDimension<TDimension>;
+
+export type MetabaseBreakout<TTable = unknown> = BreakoutForDimension<
+  FieldReference<TTable>
+>;
 
 export type OrderByDirection = "asc" | "desc";
 
@@ -339,10 +346,14 @@ type MetabaseOrderByObjectForDimension<TDimension> =
     direction?: OrderByDirection;
   };
 
-export type MetabaseOrderBy<TTable = unknown> =
-  | (FieldReference<TTable> & { direction?: OrderByDirection })
-  | MetabaseOrderByObjectForDimension<FieldReference<TTable>>
+type OrderByForDimension<TDimension> =
+  | (TDimension & { direction?: OrderByDirection })
+  | MetabaseOrderByObjectForDimension<TDimension>
   | AggregationResultOrderBy;
+
+export type MetabaseOrderBy<TTable = unknown> = OrderByForDimension<
+  FieldReference<TTable>
+>;
 
 type AggregationResultOrderBy = {
   type: "column";
@@ -359,40 +370,67 @@ export type BinningOptions =
   | { strategy: "num-bins"; "num-bins": number }
   | { strategy: "bin-width"; "bin-width": number };
 
-type TableQueryBase<TTable> = {
-  source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
-  fields?: readonly FieldReference<TTable>[];
+/**
+ * The clauses one query stage accepts. A table stage scopes them to its fields,
+ * Segments, Measures, and Metrics; a question stage scopes them to the
+ * question's result columns.
+ */
+type StageClauses<TDimension, TAggregation, TFilter> = {
   filters?: readonly (
-    | SegmentReference<TTable>
-    | MetabaseDimensionFilterForDimension<FieldReference<TTable>>
+    | TFilter
+    | MetabaseDimensionFilterForDimension<TDimension>
   )[];
-  orderBys?: readonly MetabaseOrderBy<TTable>[];
+  orderBys?: readonly OrderByForDimension<TDimension>[];
   limit?: number;
   enabled?: boolean;
 } & (
   | {
       breakouts?: undefined;
-      aggregations?: readonly AnyAggregation<TTable>[];
+      aggregations?: readonly TAggregation[];
     }
   | {
-      breakouts: readonly MetabaseBreakout<TTable>[];
-      aggregations: readonly [
-        AnyAggregation<TTable>,
-        ...AnyAggregation<TTable>[],
-      ];
+      breakouts: readonly BreakoutForDimension<TDimension>[];
+      aggregations: readonly [TAggregation, ...TAggregation[]];
     }
 );
 
+type TableQueryBase<TTable> = {
+  source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
+  fields?: readonly FieldReference<TTable>[];
+} & StageClauses<
+  FieldReference<TTable>,
+  AnyAggregation<TTable>,
+  SegmentReference<TTable>
+>;
+
+type QuestionResultColumn<TQuestion> = TQuestion extends {
+  columns?: infer TColumns;
+}
+  ? TupleElement<NonNullable<TColumns>>
+  : never;
+
+/**
+ * What `filter`, `breakout`, and `orderBy` take on a question source. A card
+ * stage exposes the question's result columns, not the fields underneath, so they
+ * resolve by name — an app without a generated schema names one by hand.
+ */
+export type QuestionColumnReference<TQuestion = unknown> = [
+  QuestionResultColumn<TQuestion>,
+] extends [never]
+  ? SchemaColumn & { type: "column" }
+  : QuestionResultColumn<TQuestion>;
+
 export type QuestionQuery<TQuestion = unknown> = {
   source: TQuestion extends QuestionSchema ? TQuestion : QuestionSchema;
+
+  // A card stage returns the question's columns; there is no field list to
+  // narrow. Use the question's own `fields` upstream instead.
   fields?: never;
-  filters?: never;
-  aggregations?: never;
-  breakouts?: never;
-  orderBys?: never;
-  limit?: never;
-  enabled?: boolean;
-};
+} & StageClauses<
+  QuestionColumnReference<TQuestion>,
+  DimensionAggregation<QuestionColumnReference<TQuestion>>,
+  never
+>;
 
 type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
@@ -451,17 +489,32 @@ type QueryAggregationColumns<TQuery> = TQuery extends {
     : never
   : never;
 
-type DefaultTableColumns<TEntity, TQuery> = TQuery extends { fields: unknown }
-  ? never
+/**
+ * Whether the query replaces its source's columns with its own. Grouped and
+ * field-selected queries return only what they ask for, so the source's default
+ * columns must drop out of the result row.
+ */
+type ReshapesResultColumns<TQuery> = TQuery extends { fields: unknown }
+  ? true
   : TQuery extends { aggregations: unknown }
-    ? never
+    ? true
     : TQuery extends { breakouts: unknown }
-      ? never
-      : TEntity extends { fields?: infer TFields }
-        ? Values<NonNullable<TFields>>
-        : never;
+      ? true
+      : false;
 
-type InferQuerySchema<TEntity, TQuery> = InferSchema<TEntity, EmptyRow> &
+type DefaultTableColumns<TEntity, TQuery> =
+  ReshapesResultColumns<TQuery> extends true
+    ? never
+    : TEntity extends { fields?: infer TFields }
+      ? Values<NonNullable<TFields>>
+      : never;
+
+type DefaultSourceRow<TEntity, TQuery> =
+  ReshapesResultColumns<TQuery> extends true
+    ? EmptyRow
+    : InferSchema<TEntity, EmptyRow>;
+
+type InferQuerySchema<TEntity, TQuery> = DefaultSourceRow<TEntity, TQuery> &
   RowsFromColumns<
     | DefaultTableColumns<TEntity, TQuery>
     | QueryFieldColumns<TQuery>

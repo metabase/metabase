@@ -1,24 +1,14 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
   setupDatabaseEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type {
-  EnterpriseSettings,
-  TokenFeatures,
-  Transform,
-} from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
-  createMockTokenFeatures,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformRun,
@@ -39,13 +29,13 @@ jest.mock(
 );
 
 type SetupOpts = {
-  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
+  remoteSyncReadOnly?: boolean;
   transform?: Transform;
 };
 
 function setup({
   transform = createMockTransform(),
-  remoteSyncType,
+  remoteSyncReadOnly = false,
 }: SetupOpts) {
   setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
   setupUsersEndpoints([
@@ -61,40 +51,20 @@ function setup({
     }),
   ]);
 
-  let state: State;
-  if (remoteSyncType) {
-    const tokenFeatures: Partial<TokenFeatures> = {
-      remote_sync: !!remoteSyncType,
-    };
-    const settings = mockSettings({
-      "remote-sync-type": remoteSyncType,
-      "remote-sync-enabled": !!remoteSyncType,
-      "token-features": createMockTokenFeatures(tokenFeatures),
-    });
-    state = createMockState({
-      settings,
-    });
-
-    const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
-    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
-  } else {
-    state = createMockState({
-      settings: mockSettings({
-        "remote-sync-type": remoteSyncType,
-        "remote-sync-enabled": !!remoteSyncType,
-      }),
-    });
-  }
-
   renderWithProviders(
     <Route
       path={Urls.transform(transform.id)}
-      element={<TransformSettingsSection transform={transform} />}
+      element={
+        <TransformSettingsSection
+          transform={transform}
+          readOnly={remoteSyncReadOnly}
+          remoteSyncReadOnly={remoteSyncReadOnly}
+        />
+      }
     />,
     {
       withRouter: true,
       initialRoute: Urls.transform(transform.id),
-      storeInitialState: state,
     },
   );
 }
@@ -122,7 +92,7 @@ describe("TransformSettingsSection", () => {
 
   describe("when remote sync is read-only", () => {
     beforeEach(() => {
-      setup({ remoteSyncType: "read-only" });
+      setup({ remoteSyncReadOnly: true });
     });
 
     it("does not show the change target button", async () => {

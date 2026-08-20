@@ -1,18 +1,19 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import {
   type Location,
-  push,
   queryToSearch,
-  replace,
   subscribeLocation,
+  useIsNavigating,
+  useIsNavigationHeld,
+  useNavigate,
 } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -31,8 +32,11 @@ export function useDashboardUrlQuery(location: Location) {
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
   const siteUrl = useSetting("site-url");
+  const isNavigationHeld = useIsNavigationHeld();
+  const isNavigating = useIsNavigating();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const parameterValuesBySlug = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -51,6 +55,7 @@ export function useDashboardUrlQuery(location: Location) {
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
   const previousQueryParams = usePrevious(queryParams);
+  const hasDeferredSyncRef = useRef(false);
 
   useEffect(() => {
     /**
@@ -60,6 +65,29 @@ export function useDashboardUrlQuery(location: Location) {
      * settings because now the base URL (including the query string) is different.
      */
     if (isEmbedPreview() || !dashboardId) {
+      return;
+    }
+
+    /**
+     * A leave prompt is up, and the router holds a single pending navigation.
+     * Syncing now would replace the destination the user is being asked about,
+     * and letting them through would then take them somewhere else. Note that
+     * the sync was skipped, because `previousQueryParams` still advances and
+     * would otherwise swallow it once the prompt is answered.
+     */
+    if (isNavigationHeld) {
+      hasDeferredSyncRef.current = true;
+      return;
+    }
+
+    /**
+     * The router is on its way somewhere else and has not committed it yet,
+     * which a `route.lazy` destination makes possible. Syncing now would replace
+     * that pending navigation and strand the user on the dashboard. Note the
+     * skip the same way, so the sync still happens if we stay put.
+     */
+    if (isNavigating) {
+      hasDeferredSyncRef.current = true;
       return;
     }
 
@@ -74,9 +102,13 @@ export function useDashboardUrlQuery(location: Location) {
       }
     }
 
-    if (_.isEqual(previousQueryParams, queryParams)) {
+    if (
+      !hasDeferredSyncRef.current &&
+      _.isEqual(previousQueryParams, queryParams)
+    ) {
       return;
     }
+    hasDeferredSyncRef.current = false;
 
     const currentQuery = parseSearchQuery(location.search);
 
@@ -92,8 +124,10 @@ export function useDashboardUrlQuery(location: Location) {
         previousQueryParams?.tab &&
         queryParams.tab !== previousQueryParams.tab;
 
-      const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
+      navigate(
+        { ...location, search: queryToSearch(nextQuery) },
+        { replace: !isDashboardTabChange, state: location.state },
+      );
     }
   }, [
     dashboardId,
@@ -101,7 +135,9 @@ export function useDashboardUrlQuery(location: Location) {
     previousQueryParams,
     location,
     siteUrl,
-    dispatch,
+    navigate,
+    isNavigationHeld,
+    isNavigating,
   ]);
 
   useEffect(() => {

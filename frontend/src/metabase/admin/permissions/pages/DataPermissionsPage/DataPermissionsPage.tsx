@@ -26,7 +26,7 @@ import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 const EMPTY_DATABASE_LIST: Database[] = [];
 
-function DataPermissionsPage() {
+export function DataPermissionsPage() {
   const params = useParams<{ databaseId: string }>();
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const databases = useSelector(
@@ -99,6 +99,3 @@ function DataPermissionsPage() {
     </PermissionsPageLayout>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataPermissionsPage;

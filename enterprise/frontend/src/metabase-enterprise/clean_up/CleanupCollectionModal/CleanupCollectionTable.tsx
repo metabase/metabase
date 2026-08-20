@@ -56,7 +56,7 @@ export const CleanupCollectionTable = ({
           {/* Select */}
           <Columns.Select.Col />
           {/* Name */}
-          <Columns.Name.Col isInDragLayer={false} />
+          <Columns.Name.Col />
           {/* Collection */}
           <TableColumn width="280px" />
           {/* Last used at */}

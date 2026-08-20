@@ -1,9 +1,8 @@
-import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { dayjs } from "metabase/dayjs";
 import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type {
   DatePickerOperator,
@@ -15,6 +14,7 @@ import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
+import { useSetting } from "metabase/settings";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
 
 // width needed to show Previous 12 months option w/ clipping

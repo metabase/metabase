@@ -40,7 +40,8 @@
    :table-grid
    :table-rows-sample
    :transform-inspector
-   :slackbot])
+   :slackbot
+   :exploration])
 
 (mr/def ::hash
   #?(:clj bytes?

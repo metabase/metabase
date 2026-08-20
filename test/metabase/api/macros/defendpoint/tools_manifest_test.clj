@@ -286,11 +286,11 @@
                   :params          {:route {:binding '{:keys [id]}
                                             :schema  [:map [:id :int]]}}
                   :docstr          "Get a table."
-                  :metadata        {:scope "agent:table:read"
+                  :metadata        {:scope "agent:metadata:read"
                                     :tool  {:name "get_table"}}
                   :body            '(nil)}
           result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
-      (is (= "agent:table:read" (:scope result)))))
+      (is (= "agent:metadata:read" (:scope result)))))
   (testing "Scope is omitted when metadata has no :scope"
     (let [form   {:method          :get
                   :route           {:path "/v1/test"}

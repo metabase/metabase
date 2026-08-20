@@ -10,7 +10,13 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
 import CS from "metabase/css/core/index.css";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   alertIsValid,
@@ -23,11 +29,6 @@ import {
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  canAccessSettings,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -48,7 +49,6 @@ import type {
   NotificationCardSendCondition,
   NotificationCronSubscription,
   NotificationHandler,
-  ScheduleType,
   UpdateAlertNotificationRequest,
   UserId,
   VisualizationSettings,
@@ -85,7 +85,7 @@ function getAlertTriggerOptionsMap(
   };
 }
 
-const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
+const ALERT_SCHEDULE_OPTIONS: ScheduleValueType[] = [
   "every_n_minutes",
   "hourly",
   "daily",
@@ -136,7 +136,6 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const questionId = question.id();
   const isEditMode = !!editingNotification;
-  const subscription = notification?.subscriptions[0];
 
   const { data: channelSpec, isLoading: isLoadingChannelInfo } =
     useGetChannelInfoQuery();
@@ -261,17 +260,24 @@ export const CreateOrEditQuestionAlertModal = ({
     : hasConfiguredEmailOrSlackChannel; // webhooks are available only for users with "Settings access" permission - WRK-63
 
   const handleScheduleChange = useCallback(
-    (updatedSubscription: NotificationCronSubscription) => {
-      if (!subscription) {
+    (updatedSubscription?: NotificationCronSubscription) => {
+      if (!notification) {
         return;
       }
 
       setNotification({
         ...notification,
-        subscriptions: [updatedSubscription],
+        subscriptions: updatedSubscription
+          ? [
+              {
+                ...editingNotification?.subscriptions[0],
+                ...updatedSubscription,
+              },
+            ]
+          : [],
       });
     },
-    [setNotification, subscription, notification],
+    [setNotification, notification, editingNotification],
   );
 
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
@@ -283,7 +289,7 @@ export const CreateOrEditQuestionAlertModal = ({
     );
   }
 
-  if (!notification || !subscription) {
+  if (!notification) {
     return null;
   }
 
@@ -361,7 +367,7 @@ export const CreateOrEditQuestionAlertModal = ({
           }}
         >
           <NotificationSchedule
-            subscription={subscription}
+            initialSubscription={notification?.subscriptions[0]}
             scheduleOptions={ALERT_SCHEDULE_OPTIONS}
             onScheduleChange={handleScheduleChange}
           />

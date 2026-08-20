@@ -5,6 +5,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { Api } from "metabase/api";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import { documentsReducer as documents } from "metabase/documents/documents.slice";
+import { explorationsReducer as explorations } from "metabase/explorations/explorations.slice";
 import * as parameters from "metabase/parameters/reducers";
 import { reducer as analyticsExport } from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
@@ -16,7 +17,6 @@ import entities from "metabase/redux/entities";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
-import { currentUser } from "metabase/redux/user";
 
 import { metabotReducer as metabot } from "./metabot/state";
 
@@ -25,7 +25,6 @@ export const commonReducers = {
   app,
   embed,
   embeddingDataPicker,
-  currentUser,
   undo,
   entities,
   documents,
@@ -38,4 +37,5 @@ export const commonReducers = {
   parameters: combineReducers(parameters),
   downloads,
   metabot,
+  explorations,
 };

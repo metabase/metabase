@@ -43,7 +43,10 @@
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
-  These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
+  These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause.
+
+  DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
+  {:deprecated "0.64.0"}
   [legacy-inner-query :- :map
    legacy-ag-clause]
   (let [ag-clause (lib/->mbql5 legacy-ag-clause)]

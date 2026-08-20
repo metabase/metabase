@@ -11,8 +11,7 @@ import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
-import { useDispatch } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -33,10 +32,10 @@ import S from "./TaskRunDetailsPage.module.css";
 export const TaskRunDetailsPage = () => {
   const { runId } = useParams();
   const { data: taskRun, error, isLoading } = useGetTaskRunQuery(Number(runId));
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.monitorTaskDetails(task.id)));
+    navigate(Urls.monitorTaskDetails(task.id));
   };
 
   if (!taskRun || error || isLoading) {

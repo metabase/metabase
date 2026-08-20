@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import {
   cancelEditingDashboard,
   fetchDashboard,
@@ -19,8 +20,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useMaybeLocation } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 

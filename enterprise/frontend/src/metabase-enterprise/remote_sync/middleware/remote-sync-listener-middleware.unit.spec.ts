@@ -9,8 +9,11 @@ import {
   setupRemoteSyncDirtyEndpoint,
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
-import { Api, sessionApi } from "metabase/api";
+import { Api } from "metabase/api";
+import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
+import { dashboardApi } from "metabase/api/dashboard";
+import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
@@ -18,17 +21,9 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import {
-  type SyncTaskState,
-  initialState,
-  remoteSyncReducer,
-} from "../sync-task-slice";
+import { initialState, remoteSyncReducer } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
-
-interface TestState {
-  remoteSyncPlugin: SyncTaskState;
-}
 
 const createTestStore = (
   settingsOverrides: Partial<EnterpriseSettings> = {},
@@ -41,6 +36,16 @@ const createTestStore = (
     }),
     preloadedState: {
       remoteSyncPlugin: initialState,
+      // Settings are served from the getSessionProperties RTK Query cache.
+      [Api.reducerPath]: seedApiQueryCache(undefined, [
+        {
+          endpointName: "getSessionProperties",
+          value: createMockSettings({
+            "remote-sync-transforms": false,
+            ...settingsOverrides,
+          }),
+        },
+      ]),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -52,20 +57,6 @@ const createTestStore = (
         // and the test store's State type (test store uses simplified State)
         .concat(remoteSyncListenerMiddleware.middleware as any),
   });
-
-  // Settings are served from the getSessionProperties RTK Query cache.
-  store.dispatch(
-    sessionApi.util.upsertQueryEntries([
-      {
-        endpointName: "getSessionProperties",
-        arg: undefined,
-        value: createMockSettings({
-          "remote-sync-transforms": false,
-          ...settingsOverrides,
-        }),
-      },
-    ]),
-  );
 
   return store;
 };
@@ -103,13 +94,11 @@ describe("remote-sync-listener-middleware", () => {
 
       // Wait for the request to complete and middleware to process
       await waitForCondition(() => {
-        // Unjustified type cast. FIXME
-        const state = store.getState() as TestState;
+        const state = store.getState();
         return state.remoteSyncPlugin?.showModal === true;
       });
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
@@ -139,8 +128,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -169,8 +157,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -198,8 +185,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -224,13 +210,11 @@ describe("remote-sync-listener-middleware", () => {
 
       // The import listener triggers on matchPending, so modal should show immediately
       await waitForCondition(() => {
-        // Unjustified type cast. FIXME
-        const state = store.getState() as TestState;
+        const state = store.getState();
         return state.remoteSyncPlugin?.showModal === true;
       });
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(true);
       expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
@@ -261,8 +245,7 @@ describe("remote-sync-listener-middleware", () => {
       // Give middleware time to process the rejection
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Unjustified type cast. FIXME
-      const state = store.getState() as TestState;
+      const state = store.getState();
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
@@ -616,6 +599,74 @@ describe("remote-sync-listener-middleware", () => {
         const dirtyCalls = fetchMock.callHistory.calls("remote-sync-dirty");
         expect(dirtyCalls.length).toBeGreaterThan(1);
       });
+    });
+  });
+  describe("card, dashboard and document listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    it("invalidates when a card is updated, whatever its sync state was", async () => {
+      fetchMock.put("path:/api/card/1", { id: 1, is_remote_synced: false });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        cardApi.endpoints.updateCard.initiate({ id: 1, name: "Renamed" }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a card is deleted, without needing its previous state", async () => {
+      fetchMock.delete("path:/api/card/1", 204);
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(cardApi.endpoints.deleteCard.initiate(1));
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a dashboard is updated", async () => {
+      fetchMock.put("path:/api/dashboard/2", {
+        id: 2,
+        is_remote_synced: false,
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        dashboardApi.endpoints.updateDashboard.initiate({
+          id: 2,
+          name: "Renamed",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
     });
   });
 });

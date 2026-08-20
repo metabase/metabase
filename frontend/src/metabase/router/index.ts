@@ -1,36 +1,40 @@
-export * from "./middleware";
-export * from "./navigation";
-export * from "./Navigate";
+export {
+  Link,
+  NavLink,
+  type NavLinkProps,
+  type NavLinkRenderProps,
+  matchPath,
+  Navigate,
+  Outlet,
+  Route,
+  useInRouterContext,
+  useLocation,
+  useNavigationType,
+  useParams,
+  useSearchParams,
+} from "react-router";
+export * from "./use-navigate";
+export * from "./prefetch";
+export * from "./use-prefetch-on-visible";
 export * from "./redirect";
-export * from "./router-link";
-export * from "./route";
-export * from "./Outlet";
+export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
-export * from "./use-location";
-export * from "./use-navigate";
-export * from "./use-navigation-type";
-export * from "./use-params";
-export * from "./use-route-leave-hook";
-export * from "./use-search-params";
+export * from "./use-is-navigating";
+export * from "./use-maybe-location";
+export * from "./use-route-leave-blocker";
 export {
   createMemoryAppRouter,
   type MemoryTestRouter,
   type MemoryTestRouterHolder,
-} from "./v7/create-router";
-export { queryToSearch, toFacadeLocation } from "./v7/location";
+} from "./create-router";
+export { queryToSearch, toFacadeLocation } from "./location";
+export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
-  createLocationMirror,
-  type LocationMirror,
-} from "./v7/location-mirror";
-export {
-  createV7Navigator,
+  getIsNavigationPending,
+  navigate,
+  notifyLocationListeners,
   subscribeLocation,
-  toNavigateArgs,
-} from "./v7/navigator";
-export { getRawBrowserHistory } from "./v7/raw-history";
-// The memory-router engine is test-only. It reaches the barrel rather than a
-// deep import because `sideEffects: false` lets rspack drop it from the app
-// bundles, where nothing references it.
-export { RouterProviderV7Memory } from "./v7/RouterProviderV7";
+} from "./navigator";
+export { getRawBrowserHistory } from "./raw-history";

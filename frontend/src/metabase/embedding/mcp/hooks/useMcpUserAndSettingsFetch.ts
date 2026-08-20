@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refetchSiteSettings, userApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { userUpdated } from "metabase/redux/user";
+import { refetchCurrentUser } from "metabase/current-user";
+import { refetchSiteSettings } from "metabase/settings";
 
 import {
   type McpAppsUserAndSettingsFetchErrorType,
@@ -13,7 +12,7 @@ import {
 
 interface UseMcpUserAndSettingsFetchOptions {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   store: SdkStore;
 }
 
@@ -24,7 +23,7 @@ interface UseMcpUserAndSettingsFetchResult {
 
 export function useMcpUserAndSettingsFetch({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   store,
 }: UseMcpUserAndSettingsFetchOptions): UseMcpUserAndSettingsFetchResult {
   const [isSettingsReady, setIsSettingsReady] = useState(false);
@@ -45,7 +44,7 @@ export function useMcpUserAndSettingsFetch({
         setIsSettingsReady(false);
         setFetchError(null);
 
-        if (!sessionToken) {
+        if (!uiCredential) {
           setErrorByType("auth");
           return;
         }
@@ -55,20 +54,17 @@ export function useMcpUserAndSettingsFetch({
           return;
         }
 
-        const [currentUser] = await Promise.all([
-          runRtkEndpoint(
-            undefined,
-            store.dispatch,
-            userApi.endpoints.getCurrentUser,
-          ),
-          store.dispatch(refetchSiteSettings()),
+        // `unwrap` both so an auth/network failure lands in the catch below
+        // instead of silently reporting ready.
+        await Promise.all([
+          store.dispatch(refetchCurrentUser()).unwrap(),
+          store.dispatch(refetchSiteSettings()).unwrap(),
         ]);
 
         if (!isMounted) {
           return;
         }
 
-        store.dispatch(userUpdated(currentUser));
         setIsSettingsReady(true);
       } catch (error) {
         console.error("Error initializing MCP app", error);
@@ -84,7 +80,7 @@ export function useMcpUserAndSettingsFetch({
     return () => {
       isMounted = false;
     };
-  }, [instanceUrl, sessionToken, store]);
+  }, [instanceUrl, uiCredential, store]);
 
   return { isSettingsReady, userAndSettingsFetchError: fetchError };
 }

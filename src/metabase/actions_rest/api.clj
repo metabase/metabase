@@ -130,6 +130,9 @@
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
+    (when-let [model-id (:model_id action)]
+      (when (not= model-id (:model_id existing-action))
+        (api/write-check :model/Card model-id)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
@@ -190,7 +193,7 @@
                            [:action-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters [:map-of :string :any]]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
@@ -232,7 +235,7 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
-                                               [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (when (= type :http)

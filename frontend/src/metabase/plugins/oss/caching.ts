@@ -83,6 +83,7 @@ export const defaultMinDurationMs = 1000;
 /** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
 export const getPositiveIntegerSchema = () =>
   Yup.number()
+    .typeError(t`Enter a positive number.`)
     .positive(t`Enter a positive number.`)
     .integer(t`Enter an integer.`);
 

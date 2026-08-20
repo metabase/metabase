@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
+import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
@@ -234,7 +234,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   isMetabotEnabled,
 }: {
   question: Question | undefined;
-  series: RawSeries;
+  series: RawSeries | null;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
   queryResult: any;
@@ -269,12 +269,15 @@ export const registerQueryBuilderMetabotContextFn = async ({
     error: queryResult?.error?.toString(),
   };
 
-  const chart_configs = await getChartConfigs({
-    question,
-    series,
-    visualizationSettings,
-    timelineEvents,
-  });
+  const chart_configs =
+    series != null
+      ? await getChartConfigs({
+          question,
+          series,
+          visualizationSettings,
+          timelineEvents,
+        })
+      : [];
 
   return {
     user_is_viewing: [

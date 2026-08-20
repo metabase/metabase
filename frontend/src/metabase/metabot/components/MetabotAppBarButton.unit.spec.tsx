@@ -88,12 +88,19 @@ describe("MetabotAppBarButton", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should disable the button on the full-page AI exploration (/question/ask) surface", async () => {
-    setup({ isMetabotEnabled: true, pathname: "/question/ask" });
-    expect(
-      await screen.findByRole("button", { name: /Chat with Metabot/ }),
-    ).toBeDisabled();
-  });
+  it.each([
+    "/question/ask",
+    "/question/ask/",
+    "/metabot/conversation/past-conversation-id",
+  ])(
+    "should disable the button on the full-page metabot surface (%s)",
+    async (pathname) => {
+      setup({ isMetabotEnabled: true, pathname });
+      expect(
+        await screen.findByRole("button", { name: /Chat with Metabot/ }),
+      ).toBeDisabled();
+    },
+  );
 
   it("should not disable the button on other question pages", async () => {
     setup({ isMetabotEnabled: true, pathname: "/question/123" });

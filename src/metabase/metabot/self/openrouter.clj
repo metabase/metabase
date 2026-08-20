@@ -9,7 +9,6 @@
   adapter converts those directly to Chat Completions messages."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -48,28 +47,32 @@
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
   Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
-  {"anthropic/claude-fable-5"     "Claude Fable 5"
-   "anthropic/claude-opus-5"      "Claude Opus 5"
-   "anthropic/claude-opus-4.8"    "Claude Opus 4.8"
-   "anthropic/claude-opus-4.7"    "Claude Opus 4.7"
-   "anthropic/claude-opus-4.6"    "Claude Opus 4.6"
-   "anthropic/claude-opus-4.5"    "Claude Opus 4.5"
-   "anthropic/claude-opus-4.1"    "Claude Opus 4.1"
-   "anthropic/claude-sonnet-5"    "Claude Sonnet 5"
-   "anthropic/claude-sonnet-4.6"  "Claude Sonnet 4.6"
-   "anthropic/claude-sonnet-4.5"  "Claude Sonnet 4.5"
-   "anthropic/claude-haiku-4.5"   "Claude Haiku 4.5"
-   "deepseek/deepseek-v4-pro"     "DeepSeek V4 Pro"
-   "mistralai/mistral-medium-3-5" "Mistral Medium 3.5"
-   "openai/gpt-5.6-sol"           "GPT-5.6 Sol"
-   "openai/gpt-5.6-terra"         "GPT-5.6 Terra"
-   "openai/gpt-5.6-luna"          "GPT-5.6 Luna"
-   "openai/gpt-5.5"               "GPT-5.5"
-   "openai/gpt-5.5-pro"           "GPT-5.5 Pro"
-   "openai/gpt-5.4"               "GPT-5.4"
-   "openai/gpt-5.4-pro"           "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"          "GPT-5.4 Mini"
-   "z-ai/glm-5.2"                 "GLM-5.2"})
+  {"anthropic/claude-fable-5"        "Claude Fable 5"
+   "anthropic/claude-opus-5"         "Claude Opus 5"
+   "anthropic/claude-opus-4.8"       "Claude Opus 4.8"
+   "anthropic/claude-opus-4.7"       "Claude Opus 4.7"
+   "anthropic/claude-opus-4.6"       "Claude Opus 4.6"
+   "anthropic/claude-opus-4.5"       "Claude Opus 4.5"
+   "anthropic/claude-opus-4.1"       "Claude Opus 4.1"
+   "anthropic/claude-sonnet-5"       "Claude Sonnet 5"
+   "anthropic/claude-sonnet-4.6"     "Claude Sonnet 4.6"
+   "anthropic/claude-sonnet-4.5"     "Claude Sonnet 4.5"
+   "anthropic/claude-haiku-4.5"      "Claude Haiku 4.5"
+   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro 0423"
+   "deepseek/deepseek-v4-pro-0813"   "DeepSeek V4 Pro 0813"
+   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash 0731"
+   "mistralai/mistral-medium-3-5"    "Mistral Medium 3.5"
+   "moonshotai/kimi-k3"              "Kimi K3"
+   "openai/gpt-5.6-sol"              "GPT-5.6 Sol"
+   "openai/gpt-5.6-terra"            "GPT-5.6 Terra"
+   "openai/gpt-5.6-luna"             "GPT-5.6 Luna"
+   "openai/gpt-5.5"                  "GPT-5.5"
+   "openai/gpt-5.5-pro"              "GPT-5.5 Pro"
+   "openai/gpt-5.4"                  "GPT-5.4"
+   "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
+   "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
+   "qwen/qwen3.8-max"                "Qwen3.8 Max"
+   "z-ai/glm-5.2"                    "GLM-5.2"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -84,9 +87,8 @@
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-openrouter-api-key)))]
-                                    {:url     (llm/llm-openrouter-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -101,7 +103,8 @@
 
 (defn list-models
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
   ([opts]
@@ -113,12 +116,17 @@
 
 ;;; Streaming response → AISDK v5 chunks
 
+(def ^:private stop-reasons
+  "OpenRouter normalizes each upstream model's reason into the Chat Completions set (the raw value stays in
+  `native_finish_reason`), and adds `error` for a mid-generation upstream failure."
+  (assoc chat-completions/stop-reasons "error" "error"))
+
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
   OpenRouter streams the generic Chat Completions dialect; see
   [[chat-completions/chat-completions->aisdk-chunks-xf]]."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 ;;; HTTP request
 
@@ -126,6 +134,21 @@
   "Whether an OpenRouter model id routes to Anthropic (e.g. `anthropic/claude-haiku-4.5`)."
   [model]
   (str/starts-with? (str model) "anthropic/"))
+
+(def ^:private required-tool-choice-unsupported-models
+  "Models that don't support `:tool_choice \"required\"`"
+  #{"qwen/qwen3.8-max"})
+
+(defn- supports-required-tool-choice?
+  "Whether `model` accepts `:tool_choice \"required\"`."
+  [model]
+  (not (contains? required-tool-choice-unsupported-models model)))
+
+(defn- required-tool-choice->auto
+  "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
+  [req]
+  (cond-> req
+    (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
 
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
@@ -140,15 +163,20 @@
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (cond-> (chat-completions/request-body (assoc opts :model model))
     (and system (anthropic-model? model))
-    (update-in [:messages 0 :content] claude/system->cached-content-blocks)))
+    (update-in [:messages 0 :content] claude/system->cached-content-blocks)
+
+    (not (supports-required-tool-choice? model))
+    required-tool-choice->auto))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -159,10 +187,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-openrouter-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "openrouter" "OpenRouter"
                                           (when api-key
-                                            {:url     (llm/llm-openrouter-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth
@@ -173,11 +201,15 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "openrouter"
                                      :model    model
                                      :url      "/v1/chat/completions"
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "openrouter" openrouter-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 

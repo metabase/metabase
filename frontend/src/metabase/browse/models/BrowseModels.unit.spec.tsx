@@ -491,7 +491,7 @@ describe("BrowseModels", () => {
   });
 
   it("should render links that point directly to /model/{id}-{slug} (metabase#55166)", async () => {
-    const { history } = setup({ modelCount: 25 });
+    const { router } = setup({ modelCount: 25 });
     const recentModelsGrid = await screen.findByRole("grid", {
       name: /Recents/,
     });
@@ -516,6 +516,6 @@ describe("BrowseModels", () => {
     expect(screen.queryByTestId("model-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(recentModelsGrid).getByText("Model 1"));
     expect(screen.getByTestId("model-detail-page")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/model/1-model-1");
+    expect(router?.location.pathname).toBe("/model/1-model-1");
   });
 });

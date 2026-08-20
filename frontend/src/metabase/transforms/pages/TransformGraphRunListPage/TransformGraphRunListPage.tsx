@@ -1,7 +1,6 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import {
   useListTransformGraphRunsQuery,
@@ -9,11 +8,9 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
-import { replace, useLocation } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
@@ -48,7 +45,7 @@ export function TransformGraphRunListPage() {
     useDisclosure();
   const [selectedRun, setSelectedRun] = useState<TransformGraphRun>();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -95,9 +92,9 @@ export function TransformGraphRunListPage() {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformGraphRunListParams) => {
-      dispatch(replace(Urls.transformGraphRunList(newParams)));
+      navigate(Urls.transformGraphRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(
@@ -140,11 +137,7 @@ export function TransformGraphRunListPage() {
       data-testid="transform-graph-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
+        <TransformsHeader showMetabotButton />
         {isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

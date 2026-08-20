@@ -20,15 +20,15 @@ import {
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import type { To } from "metabase/router";
 import {
-  push,
   queryToSearch,
   useLocation,
+  useNavigate,
   useNavigationType,
 } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
@@ -78,14 +78,13 @@ function SearchBar({
   const previousLocation = usePrevious(location);
   const container = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onInputContainerClick = useCallback(() => {
@@ -161,7 +160,7 @@ function SearchBar({
       ...filters,
     };
     onChangeLocation({
-      pathname: "search",
+      pathname: "/search",
       search: queryToSearch(query),
     });
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);

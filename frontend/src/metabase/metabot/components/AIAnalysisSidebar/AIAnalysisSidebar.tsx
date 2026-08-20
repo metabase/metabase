@@ -6,10 +6,10 @@ import { t } from "ttag";
 import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useSetting } from "metabase/common/hooks";
 import { AIAnalysisContent } from "metabase/metabot/components/AIAnalysisContent/AIAnalysisContent";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
+import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import {
   getChartImagePngDataUri,

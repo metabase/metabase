@@ -28,11 +28,13 @@ const getDurationStrategyValidationSchema = () =>
   Yup.object({
     type: Yup.string().equals(["duration"]),
     duration: getPositiveIntegerSchema().default(24),
-    unit: Yup.string().test(
-      "is-duration-unit",
-      "${path} is not a valid duration",
-      (value) => !!value && durationUnits.has(value),
-    ),
+    unit: Yup.string()
+      .test(
+        "is-duration-unit",
+        "${path} is not a valid duration",
+        (value) => !!value && durationUnits.has(value),
+      )
+      .default(CacheDurationUnit.Hours),
     refresh_automatically: Yup.boolean().nullable().default(false),
   });
 
@@ -47,7 +49,7 @@ export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
   },
   duration: {
     label: () => t`Duration`,
-    description: () => t`Keep the cache for a number of hours`,
+    description: () => t`Keep the cache for a set duration`,
     validationSchema: getDurationStrategyValidationSchema,
     shortLabel: () => t`Duration`,
   },

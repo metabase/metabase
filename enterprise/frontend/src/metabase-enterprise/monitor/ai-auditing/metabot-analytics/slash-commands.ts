@@ -1,8 +1,8 @@
+import { getUserIsAdmin } from "metabase/current-user";
 import { getMetabotConversation } from "metabase/metabot/state";
 import type { MetabotSlashCommandHandler } from "metabase/plugins/oss/audit";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { navigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 export const handleMetabotSlashCommand: MetabotSlashCommandHandler = ({
@@ -26,6 +26,6 @@ export const handleMetabotSlashCommand: MetabotSlashCommandHandler = ({
     dispatch(addUndo({ message: "No message history to inspect" }));
     return true;
   }
-  dispatch(push(Urls.monitorAiAuditingConversationDetail(conversationId)));
+  navigate(Urls.monitorAiAuditingConversationDetail(conversationId));
   return true;
 };

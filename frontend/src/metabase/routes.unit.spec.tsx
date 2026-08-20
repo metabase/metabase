@@ -1,11 +1,7 @@
-import { render, waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
-import {
-  getTestStoreAndWrapper,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -15,7 +11,7 @@ import { LegacyBrowseRedirect, getRoutes } from "./routes";
 function setupLegacyBrowseRedirect(initialRoute: string) {
   setupCurrentUserEndpoint(createMockUser());
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="browse">
       <Route path="databases/:slug" element={<div>browse databases</div>} />
       <Route path=":dbIdAndSlug" element={<LegacyBrowseRedirect />} />
@@ -23,25 +19,23 @@ function setupLegacyBrowseRedirect(initialRoute: string) {
     { withRouter: true, initialRoute },
   );
 
-  return history;
+  return router;
 }
 
 describe("LegacyBrowseRedirect", () => {
   it("redirects a v48-era /browse/<dbId>-<slug> url onto /browse/databases", async () => {
-    const history = setupLegacyBrowseRedirect("/browse/5-orders");
+    const router = setupLegacyBrowseRedirect("/browse/5-orders");
 
     await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/5-orders",
-      ),
+      expect(router?.location.pathname).toBe("/browse/databases/5-orders"),
     );
     expect(screen.getByText("browse databases")).toBeInTheDocument();
   });
 
   it("does not redirect a segment without the legacy hyphenated shape", async () => {
-    const history = setupLegacyBrowseRedirect("/browse/orders");
+    const router = setupLegacyBrowseRedirect("/browse/orders");
 
-    expect(history?.getCurrentLocation().pathname).toBe("/browse/orders");
+    expect(router?.location.pathname).toBe("/browse/orders");
   });
 });
 
@@ -73,13 +67,11 @@ function setupAppRoutes({
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
 }) {
-  const { wrapper, store, history } = getTestStoreAndWrapper({
-    withRouter: true,
+  const { router } = renderRoutes(getRoutes, {
     initialRoute,
     storeInitialState: { currentUser: user },
   });
-  render(getRoutes(store), { wrapper });
-  return { history };
+  return { router };
 }
 
 describe("application routes", () => {
@@ -105,18 +97,18 @@ describe("application routes", () => {
       ["/admin/tools/notifications", "/monitor/notifications"],
       ["/admin/tools/notifications/13", "/monitor/notifications/13"],
     ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { history } = setupAppRoutes({ initialRoute });
+      const { router } = setupAppRoutes({ initialRoute });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe(expectedPathname);
+        expect(router?.location.pathname).toBe(expectedPathname);
       });
     });
 
     it("redirects the legacy Admin Tools index to the Monitor index", async () => {
-      const { history } = setupAppRoutes({ initialRoute: "/admin/tools" });
+      const { router } = setupAppRoutes({ initialRoute: "/admin/tools" });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/monitor");
+        expect(router?.location.pathname).toBe("/monitor");
       });
     });
   });
@@ -135,10 +127,10 @@ describe("application routes", () => {
       ["/admin/metabot/usage-auditing/mcp", "/monitor/ai-auditing/mcp"],
       ["/admin/metabot/usage-auditing/cli", "/monitor/ai-auditing/cli"],
     ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
-      const { history } = setupAppRoutes({ initialRoute });
+      const { router } = setupAppRoutes({ initialRoute });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe(expectedPathname);
+        expect(router?.location.pathname).toBe(expectedPathname);
       });
     });
 
@@ -149,13 +141,13 @@ describe("application routes", () => {
         <Route path="usage" element={<div>AI Auditing</div>} />
       );
 
-      const { history } = setupAppRoutes({
+      const { router } = setupAppRoutes({
         initialRoute: "/admin/metabot/usage-auditing",
         user: createMockUser({ is_data_analyst: true }),
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
   });

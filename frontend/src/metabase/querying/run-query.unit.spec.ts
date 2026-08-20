@@ -110,7 +110,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -129,7 +128,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/card/pivot/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -146,7 +144,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });
@@ -167,7 +164,6 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         `path:/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${question.id()}/query`,
       );
       expect(await call?.request?.json()).toEqual({
-        collection_preview: false,
         ignore_cache: false,
         parameters: [],
       });

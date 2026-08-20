@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -14,6 +15,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -613,6 +615,31 @@
         (let [query (native-query-with-snippet mp :snippet-id 1, :snippet-name "Old Name")]
           (is (= expected
                  (#'params.values/stage->params-map query (lib/query-stage query -1)))))))))
+
+(deftest snippet-read-permissions-test
+  (let [mp       (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets [{:id      1
+                                            :name    "expensive_venues"
+                                            :content "venues WHERE price = 4"}]})
+        expected {"expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
+        query    (native-query-with-snippet mp :snippet-id 1)
+        resolve! #(#'params.values/stage->params-map query (lib/query-stage query -1))]
+    (testing "Snippet resolves when the current user can read it"
+      (binding [api/*current-user-id* 1]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly true)]
+          (is (= expected (resolve!))))))
+    (testing "Snippet does not resolve when the current user cannot read it"
+      (binding [api/*current-user-id* 1]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Snippet [\d,]+ \"expensive_venues\" not found\."
+               (resolve!))))))
+    (testing "Snippet resolves when there is no current user, e.g. subscriptions"
+      (binding [api/*current-user-id* nil]
+        (mt/with-dynamic-fn-redefs [snippet.perms/can-read? (constantly false)]
+          (is (= expected (resolve!))))))))
 
 (deftest ^:parallel unnormalized-snippet-test
   (testing "Snippet parsing should normalize snippet names when parsing"

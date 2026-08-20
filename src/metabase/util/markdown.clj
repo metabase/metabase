@@ -4,7 +4,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.system.core :as system]
    [metabase.util :as u])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
@@ -197,6 +196,12 @@
       (str/replace "`" "\u00ad`\u00ad")
       (str/replace "~" "\u00ad~\u00ad")))
 
+(def ^:private ^:dynamic *site-url*
+  "The instance's site URL, bound by [[process-markdown]] from its `site-url` argument. A dynamic var rather
+  than a threaded parameter because [[resolve-uri]] is reached through the AST multimethods and flexmark's
+  link-resolver callback."
+  nil)
+
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email."
@@ -205,7 +210,7 @@
                                       (cond-> s
                                         (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [site-url (ensure-slash (system/site-url))]
+      (if-let [site-url (ensure-slash *site-url*)]
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 
@@ -410,20 +415,23 @@
 
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
-  (Slack's markup language, or HTML for email)."
-  {:arglists '([markdown channel-type])}
-  (fn [_markdown channel-type] channel-type))
+  (Slack's markup language, or HTML for email). `site-url` is the instance's site URL, used to absolutize
+  relative links; callers look it up so this namespace stays settings-free."
+  {:arglists '([markdown channel-type site-url])}
+  (fn [_markdown channel-type _site-url] channel-type))
 
 (defmethod process-markdown :slack
-  [markdown _channel-type]
-  (-> (.parse ^Parser parser ^String markdown)
-      to-clojure
-      ast->slack
-      flatten
-      str/join
-      str/trim))
+  [markdown _channel-type site-url]
+  (binding [*site-url* site-url]
+    (-> (.parse ^Parser parser ^String markdown)
+        to-clojure
+        ast->slack
+        flatten
+        str/join
+        str/trim)))
 
 (defmethod process-markdown :html
-  [markdown _channel-type]
-  (let [ast (.parse ^Parser parser ^String markdown)]
-    (.render ^HtmlRenderer renderer ^Document ast)))
+  [markdown _channel-type site-url]
+  (binding [*site-url* site-url]
+    (let [ast (.parse ^Parser parser ^String markdown)]
+      (.render ^HtmlRenderer renderer ^Document ast))))

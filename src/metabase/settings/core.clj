@@ -106,6 +106,7 @@
   has-advanced-setting-access?
   migrate-encrypted-settings!
   obfuscate-value
+  obfuscated-value?
   read-setting
   registered-settings
   registered?

@@ -269,7 +269,10 @@
             (is (=? template recreated-template))))))))
 
 (deftest api-rejects-handlebars-resource-templates-test
-  (let [resource-template {:name         "test"
+  (let [;; the request schema only admits the handlebars-text template type, so the API rejects a
+        ;; handlebars-resource one before the endpoint gets a chance to look at it
+        rejected          {:errors {:handlers {:template {:details {:type "enum of :email/handlebars-text, email/handlebars-text"}}}}}
+        resource-template {:name         "test"
                            :channel_type "channel/email"
                            :details      {:type    "email/handlebars-resource"
                                           :subject "test"
@@ -277,7 +280,7 @@
     (testing "POST /api/notification rejects handlebars-resource templates"
       (mt/with-model-cleanup [:model/Notification]
         (mt/with-temp [:model/Card {card-id :id} {}]
-          (is (=? "invalid template"
+          (is (=? rejected
                   (mt/user-http-request :crowberto :post 400 "notification"
                                         {:payload_type "notification/card"
                                          :payload      {:card_id card-id}
@@ -287,7 +290,7 @@
                                                                          :user_id (mt/user->id :crowberto)}]}]}))))))
     (testing "POST /api/notification/send rejects handlebars-resource templates"
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :post 400 "notification/send"
                                       {:payload_type "notification/card"
                                        :payload      {:card_id        card-id
@@ -301,7 +304,7 @@
         [notification {:handlers [{:channel_type "channel/email"
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}]}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
                                       (update notification :handlers
                                               (fn [[handler]]
@@ -750,6 +753,51 @@
                      (testing "can send if advanced-permissions is enabled"
                        (perms/grant-application-permissions! group :subscription)
                        (create-notification! (:id user) 200)))))))))))))
+
+(deftest send-notification-by-id-permissions-test
+  (testing "POST /api/notification/:id/send requires write access to the notification"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/User {other-user-id :id} {:is_superuser false}]
+        (notification.tu/with-card-notification
+          [notification {:notification {:creator_id (mt/user->id :rasta)}
+                         :handlers     [{:channel_type "channel/email"
+                                         :recipients   [{:type    :notification-recipient/user
+                                                         :user_id (mt/user->id :lucky)}]}]}]
+          (let [send! (fn [user-or-id expected-status]
+                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                          (mt/user-http-request user-or-id :post expected-status
+                                                (format "notification/%d/send" (:id notification)))))]
+            (testing "admin can send"
+              (send! :crowberto 200))
+            (testing "creator can send"
+              (send! :rasta 200))
+            (testing "a recipient can read the notification but cannot send it"
+              (mt/user-http-request :lucky :get 200 (format "notification/%d" (:id notification)))
+              (send! :lucky 403))
+            (testing "unrelated users cannot send"
+              (send! other-user-id 403))))))))
+
+(deftest send-unsaved-notification-inline-channel-permissions-test
+  (testing "POST /api/notification/send with an inline channel requires channel write permission"
+    (mt/with-premium-features #{}
+      (mt/with-model-cleanup [:model/Notification]
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (let [inline-http-handler {:channel_type :channel/http
+                                     :channel      {:type    :channel/http
+                                                    :name    "adhoc-webhook"
+                                                    :details {:url         "https://example.com/webhook"
+                                                              :auth-method "none"}}}
+                send! (fn [user-or-id expected-status]
+                        (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                          (mt/user-http-request user-or-id :post expected-status "notification/send"
+                                                {:payload_type  :notification/card
+                                                 :handlers      [inline-http-handler]
+                                                 :subscriptions []
+                                                 :payload       {:card_id card-id}})))]
+            (testing "an admin can supply an inline channel"
+              (send! :crowberto 200))
+            (testing "a non-admin user cannot"
+              (send! :rasta 403))))))))
 
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"

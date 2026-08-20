@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { hasFeature } from "metabase/databases";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Checkbox, Flex } from "metabase/ui";
@@ -39,7 +40,9 @@ export function StringFilterPicker({
   const metadata = useSelector(getMetadata);
   const database = metadata.database(Lib.databaseID(query));
   const supportsCaseSensitivity =
-    database?.hasFeature("case-sensitivity-string-filter-options") ?? true;
+    (database != null &&
+      hasFeature(database, "case-sensitivity-string-filter-options")) ||
+    database == null;
 
   const {
     type,

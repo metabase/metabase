@@ -1,6 +1,7 @@
 import { cardCreated, cardUpdated } from "metabase/redux/cards";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import { tablesReducer } from "./tables-reducer";
 
@@ -9,13 +10,15 @@ describe("tablesReducer", () => {
     function getQuestion({
       id = 5,
       name = "Q1",
+      description = null,
       collection = null,
-      dataset_query = { database: 1 },
+      dataset_query = createMockStructuredDatasetQuery({ database: 1 }),
       archived = false,
     } = {}) {
       const question = {
         id,
         name,
+        description,
         collection,
         dataset_query,
         archived,

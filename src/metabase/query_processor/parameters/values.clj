@@ -11,6 +11,7 @@
   (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse.types :as params.types]
@@ -20,6 +21,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -275,6 +277,13 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
+    (when (and api/*current-user-id*
+               (not (mi/can-read? :model/NativeQuerySnippet snippet-id)))
+      (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
+                      {:snippet-id   snippet-id
+                       :snippet-name snippet-name
+                       :tag          tag
+                       :type         qp.error-type/invalid-parameter})))
     (lib/parsed-referenced-query-snippet-param (:id snippet) (:content snippet))))
 
 (mu/defmethod parse-tag :temporal-unit :- ::params.types/temporal-unit

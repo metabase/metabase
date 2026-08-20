@@ -2,8 +2,8 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Button,
   Combobox,

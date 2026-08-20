@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -15,10 +16,34 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved Anthropic connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-ant-byok" :base-url "https://api.anthropic.com"})
+
 (defn- fixture
   "Load cached Claude raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(claude/claude-raw (merge {:model "claude-haiku-4-5" :credentials byok-credentials} opts))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; e2e localhost safeguard
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest request-e2e-localhost-safeguard-test
+  (testing "during e2e tests, self.core/request refuses a non-localhost URL before hitting the network"
+    (with-redefs [config/is-e2e? true
+                  http/request  (fn [& _] (throw (ex-info "http/request should not be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"non-localhost"
+           (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"})))))
+  (testing "outside e2e mode the safeguard is inert (request proceeds to http/request)"
+    (with-redefs [config/is-e2e? false
+                  http/request  (fn [_] {:status 200 :body "ok"})]
+      (is (= {:status 200 :body "ok"}
+             (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -166,6 +191,27 @@
           usage  (first (filter #(= :usage (:type %)) chunks))]
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
+
+(deftest ^:parallel claude-stop-reason-on-usage-chunk-test
+  (letfn [(usage-chunk [stop-reason]
+            (let [events [{:type "message_start"
+                           :message {:id "msg-1" :model "claude-haiku-4-5" :usage {:input_tokens 10}}}
+                          {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                          {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "hi"}}
+                          {:type "message_delta"
+                           :delta {:stop_reason stop-reason}
+                           :usage {:input_tokens 10 :output_tokens 64}}
+                          {:type "message_stop"}]]
+              (->> (into [] (claude/claude->aisdk-chunks-xf) events)
+                   (filter #(= :usage (:type %)))
+                   first)))]
+    (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "max_tokens" "length"
+        "end_turn"   "stop"
+        "pause_turn" "stop"
+        "compaction" "other"))))
 
 (deftest ^:parallel claude-thinking-blocks-translated-test
   (testing "thinking content blocks become reasoning chunks; signature rides the end"
@@ -354,41 +400,47 @@
 (deftest claude-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
-          (with-redefs [self.core/sse-reducible identity
-                        debug/capture-stream    (fn [r _] r)
-                        http/request            (fn [req] {:body req})]
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Prefers the connection's own credentials over the ai proxy"
+          (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
+                        debug/capture-stream                (fn [r _] r)
+                        http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.anthropic.com/v1/messages"
                      :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
-                    (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+                    (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                        :credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
-          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
-                        self.core/sse-reducible             identity
+          (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://proxy.example/anthropic/v1/messages"
                      :headers {"x-metabase-instance-token" "proxy-token"}
                      :body    string?}
-                    (claude/claude-raw {:input [{:role :user :content "hi"}]
+                    (claude/claude-raw {:input     [{:role :user :content "hi"}]
                                         :ai-proxy? true})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Anthropic API key is set"
+               (claude/claude-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
-                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+                 (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"No Anthropic API key is set"
-                   (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))))
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))))))
 
 (defn- capture-claude-request-body!
   "Invoke `claude-raw` with stubbed HTTP, returning the decoded request body map."
@@ -398,7 +450,7 @@
                   http/request            (fn [req]
                                             (reset! captured (json/decode+kw (:body req)))
                                             {:body req})]
-      (claude/claude-raw opts))
+      (claude/claude-raw (merge {:credentials byok-credentials} opts)))
     @captured))
 
 (deftest claude-tools-cache-breakpoint-test
@@ -438,15 +490,29 @@
       (testing "older budget-token models get no thinking (off in v1)"
         (is (nil? (thinking {:model "claude-haiku-4-5"})))
         (is (nil? (thinking {:model "claude-sonnet-4-5"}))))
-      (testing "thinking raises the max_tokens floor to leave room for the answer"
-        (is (= 16384 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8"}))))
-        (is (= 32000 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8" :max-tokens 32000})))))
       (testing "forced tool choice is incompatible with thinking, so it is suppressed"
         (is (nil? (thinking {:model "claude-opus-4-8"
                              :schema {:type "object" :properties {:answer {:type "string"}}}})))
         (is (nil? (thinking {:model       "claude-opus-4-8"
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
+
+(deftest ^:parallel every-supported-model-has-a-ceiling-test
+  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
+    (is (pos-int? max-tokens) id)
+    (is (seq display-name) id)))
+
+(deftest claude-max-tokens-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [max-tokens #(:max_tokens (capture-claude-request-body!
+                                    (merge {:input [{:role :user :content "hi"}]} %)))]
+      (are [opts tokens] (= tokens (max-tokens opts))
+        {:model "claude-opus-4-8"}                             128000
+        {:model "claude-haiku-4-5-20251001"}                    64000
+        {:model "claude-opus-4-8" :max-tokens 32000}            32000
+        ;; Bedrock ids reach us vendor-prefixed
+        {:model "anthropic.claude-opus-4-8"}                   128000
+        {:model "my-deployment-3"} @#'claude/default-max-tokens))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -515,7 +581,8 @@
                                    #"\{%\s*if\s+current_user_info\s*%\}"
                                    #"\{%\s*if\s+viewing_context\s*%\}"
                                    #"\{\{\s*viewing_context"
-                                   #"\{\{\s*first_day_of_week\s*\}\}"])]
+                                   #"\{\{\s*first_day_of_week\s*\}\}"
+                                   #"\{%\s*if\s+research_plan\s*%\}"])]
           (testing (.getName f)
             (if has-volatile?
               (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")
@@ -524,9 +591,8 @@
 (deftest claude-list-models-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Prefers the connection's own credentials over the ai proxy"
           (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                      (is (=? {:method  :get
                                                               :url     "https://api.anthropic.com/v1/models"
@@ -535,35 +601,48 @@
                                                              req))
                                                      {:body "{\"data\":[]}"})]
             (is (= {:models []}
-                   (claude/list-models {})))))
+                   (claude/list-models {:credentials byok-credentials})))))
         (testing "Uses ai proxy when explicitly requested"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
-                                      http/request                        (fn [req]
-                                                                            (is (=? {:method  :get
-                                                                                     :url     "https://proxy.example/anthropic/v1/models"
-                                                                                     :headers {"anthropic-version"         "2023-06-01"
-                                                                                               "x-metabase-instance-token" "proxy-token"}}
-                                                                                    req))
-                                                                            {:body "{\"data\":[]}"})]
+          (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                     (is (=? {:method  :get
+                                                              :url     "https://proxy.example/anthropic/v1/models"
+                                                              :headers {"anthropic-version"         "2023-06-01"
+                                                                        "x-metabase-instance-token" "proxy-token"}}
+                                                             req))
+                                                     {:body "{\"data\":[]}"})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Anthropic API key is set"
+               (claude/list-models {}))))
+        (testing "Throws an error if nothing is defined"
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
-                 (claude/list-models {})))))
-        (testing "Throws an error if nothing is defined"
-          (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
-            (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"No Anthropic API key is set"
-                   (claude/list-models {}))))))))))
+                 (claude/list-models {})))))))))
+
+(deftest claude-raw-explicit-credentials-test
+  (testing "the connection's api-key and base-url are what get used"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key      "sk-ant-elsewhere"
+                                       llm.settings/llm-anthropic-api-base-url "https://elsewhere.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/messages"
+                                                          :headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (claude/claude-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key  "sk-ant-explicit"
+                                               :base-url "https://explicit.example"}})))))))
 
 (deftest list-models-explicit-credentials-test
-  (testing "a passed-in api-key is used over the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+  (testing "the connection's api-key is what gets used"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
                                                          req))
@@ -571,15 +650,13 @@
         (is (= {:models []}
                (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"x-api-key" "sk-ant-setting"}}
-                                                         req))
-                                                 {:body "{\"data\":[]}"})]
-        (is (= {:models []}
-               (claude/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -599,21 +676,16 @@
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"]
-      (with-redefs [http/request (fn [_]
-                                   {:body (json/encode
-                                           {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
-                                                   {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
-                                                   {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
-                                                   {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
-        (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
-                {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
-                {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
-               (:models (claude/list-models))))))))
-
-;;; ──────────────────────────────────────────────────────────────────
-;;; temperature support tests
-;;; ──────────────────────────────────────────────────────────────────
+    (with-redefs [http/request (fn [_]
+                                 {:body (json/encode
+                                         {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                 {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                 {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                 {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+      (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
+              {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
+              {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+             (:models (claude/list-models {:credentials byok-credentials})))))))
 
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"

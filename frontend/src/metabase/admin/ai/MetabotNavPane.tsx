@@ -4,8 +4,8 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
