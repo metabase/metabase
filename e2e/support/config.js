@@ -210,7 +210,7 @@ const defaultConfig = {
   viewportHeight: 800,
   viewportWidth: 1280,
   // enable video recording in run mode
-  video: true,
+  video: process.env["CYPRESS_VIDEO"] !== "false",
   videoCompression: true,
 };
 
