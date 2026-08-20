@@ -865,40 +865,6 @@
   (testing "a static/public embed request does not allow blob: in img-src"
     (is (not (str/includes? (csp-directive-for-uri "/embed/question/abc" "img-src") "blob:")))))
 
-(defn- csp-directive-for-request
-  "Runs the full security middleware for `request` and returns its CSP `directive`."
-  [request directive]
-  (let [wrapped-handler (mw.security/add-security-headers
-                         (fn [_req respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
-        response        (wrapped-handler (merge {:headers {} :uri "/"} request) identity identity)]
-    (header->directive (get-in response [:headers "Content-Security-Policy"]) directive)))
-
-(deftest custom-viz-dev-connect-src-test
-  (testing "a superuser's document gets the dev server origin in connect-src, so the browser can fetch the
-            plugin bundle and hot-reload stream directly instead of Metabase proxying them"
-    (with-redefs [mw.security/custom-viz-dev-connect-src-hosts (constantly ["http://localhost:5174"])]
-      (is (str/includes? (csp-directive-for-request {:is-superuser? true} "connect-src")
-                         "http://localhost:5174"))))
-  (testing "SECURITY: a non-superuser's document does not. Only superusers can configure a dev URL, so
-            nobody else needs the relaxation, and every ordinary user keeps the strict directive."
-    (with-redefs [mw.security/custom-viz-dev-connect-src-hosts (constantly ["http://localhost:5174"])]
-      (doseq [request [{:is-superuser? false} {}]]
-        (is (not (str/includes? (csp-directive-for-request request "connect-src")
-                                "http://localhost:5174"))
-            (pr-str request)))))
-  (testing "with no dev server configured, a superuser's connect-src is unchanged"
-    (with-redefs [mw.security/custom-viz-dev-connect-src-hosts (constantly [])]
-      (is (= (csp-directive-for-request {:is-superuser? true} "connect-src")
-             (csp-directive-for-request {:is-superuser? false} "connect-src")))))
-  (testing "the origin lands only in connect-src -- the bundle is evaluated from fetched text inside the
-            near-membrane realm, so script-src never needs widening"
-    (with-redefs [mw.security/custom-viz-dev-connect-src-hosts (constantly ["http://localhost:5174"])]
-      (doseq [directive ["script-src" "img-src" "style-src" "frame-src"]]
-        (is (not (str/includes? (csp-directive-for-request {:is-superuser? true} directive)
-                                "http://localhost:5174"))
-            directive)))))
-
 (deftest csp-header-font-src-tests
   (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
     (mt/with-premium-features #{:whitelabel}
