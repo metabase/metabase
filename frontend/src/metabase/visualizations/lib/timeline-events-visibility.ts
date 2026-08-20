@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import _ from "underscore";
 
 import { isCollectionTimeline } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import type {
   AggregatedEventsVisibility,
   TimelineEventsVisibilityContext,
