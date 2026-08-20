@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
-   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
    [metabase.test :as mt]
@@ -21,10 +20,6 @@
     (mt/with-temporary-setting-values [csp-img-enabled true
                                        custom-viz-enabled true]
       (thunk))))
-
-(defmacro ^:private with-dev-mode-enabled [& body]
-  `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
-     ~@body))
 
 (defn- multipart-upload!
   "Send a multipart `bundle-bytes` tar.gz to `path` as user `user`, expecting `status`.
@@ -189,7 +184,7 @@
 
 (deftest dev-url-set-and-clear-test
   (mt/with-premium-features #{:custom-viz}
-    (with-dev-mode-enabled
+    (cvp.tu/with-dev-mode true
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-sec"
                                                       :display_name "dev-sec"
                                                       :status       :active}]
@@ -329,7 +324,7 @@
 
 (deftest register-dev-plugin-test
   (mt/with-premium-features #{:custom-viz}
-    (with-dev-mode-enabled
+    (cvp.tu/with-dev-mode true
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "dev plugin registration with manifest name"
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
@@ -624,7 +619,7 @@
 
 (deftest audit-log-create-dev-test
   (mt/with-premium-features #{:custom-viz :audit-app}
-    (with-dev-mode-enabled
+    (cvp.tu/with-dev-mode true
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
           (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
@@ -715,7 +710,7 @@
                (mt/user-http-request :crowberto :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
                                      {:dev_bundle_url "http://localhost:5174"})))))
     (testing "dev endpoints work when dev mode is enabled"
-      (with-dev-mode-enabled
+      (cvp.tu/with-dev-mode true
         (mt/with-model-cleanup [:model/CustomVizPlugin]
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                            {:dev_bundle_url "http://localhost:5174"
@@ -744,13 +739,13 @@
           (is (contains? identifiers "upload-viz-list"))
           (is (not (contains? identifiers "dev-viz-list")))))
       (testing "dev-only plugins are visible in /list to a superuser when dev mode is on"
-        (with-dev-mode-enabled
+        (cvp.tu/with-dev-mode true
           (let [result      (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
             (is (contains? identifiers "upload-viz-list"))
             (is (contains? identifiers "dev-viz-list")))))
       (testing "but stay hidden from a non-superuser even with dev mode on"
-        (with-dev-mode-enabled
+        (cvp.tu/with-dev-mode true
           (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
             (is (contains? identifiers "upload-viz-list"))
