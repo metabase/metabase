@@ -61,6 +61,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -120,6 +121,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-clickhouse-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -169,6 +171,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -222,6 +225,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -276,6 +280,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -320,6 +325,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -373,6 +379,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results
@@ -424,6 +431,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-transforms'
+        granular-rerun: 'false'
         test-args: >-
           :only-tags [:mb/transforms-python-test]
     - name: Upload Test Results

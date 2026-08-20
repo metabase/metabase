@@ -152,6 +152,7 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -287,6 +288,7 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -397,6 +399,7 @@ jobs:
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'

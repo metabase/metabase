@@ -214,8 +214,37 @@ jobs:
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
 
+      # Granular rerun: on a re-run of a failed job, restore the list of tests
+      # that failed on the previous attempt (uploaded below) so the test step
+      # can target only those instead of the whole partition. Best-effort: a
+      # missing/empty artifact leaves no file and the run falls back to the full
+      # partition. First attempts skip this entirely.
+      #
+      # Scoped to the IMMEDIATELY preceding attempt: an attempt that passed, or
+      # that failed with nothing attributable to a var, uploads no artifact, and
+      # a narrow set must not outlive it. Reading `attempt - 1` means "only what
+      # the last attempt actually recorded" — anything else falls back to the
+      # full partition. Workflow expressions have no arithmetic, so the shell
+      # computes it.
+      - name: Resolve previous attempt
+        if: ${{ github.run_attempt != '1' }}
+        run: echo "RERUN_PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
+      - name: Restore previously-failed tests
+        if: ${{ github.run_attempt != '1' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: failed-tests-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}-attempt-${{ env.RERUN_PREV_ATTEMPT }}
+          path: target
+
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
+        # On a rerun with a non-empty failed-tests file, target only those vars
+        # via hawk `:only`, dropping the tag/partition args — the listed vars are
+        # exactly this job's failures, already filtered and partitioned on the
+        # first attempt. Otherwise run exactly as before. Quote the file so the
+        # whole `[ns/var ...]` vector reaches clojure -X as a single argument.
         run: |
           BASE="clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev"
           # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
@@ -226,11 +255,15 @@ jobs:
             echo "profiled=true" >> "$GITHUB_OUTPUT"
             BASE="$BASE:profile-tests"
           fi
-          # Names may be separated by commas or spaces; hawk wants them as one vector argument.
+          # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
+          # attempt. Names may be separated by commas or spaces; hawk wants them as one vector argument.
           if [ -n "$ONLY_TESTS" ]; then
             ONLY="[$(echo "$ONLY_TESTS" | tr ',' ' ')]"
             echo "Running only: $ONLY"
             $BASE :only "$ONLY"
+          elif [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+            echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
+            $BASE :only "$(cat target/failed-tests)"
           else
             $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
@@ -252,6 +285,29 @@ jobs:
         with:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           adapter: backend
+
+      # Granular rerun: record which tests failed so a re-run of this job targets
+      # only those (restored above). Reuses the backend JUnit adapter from the
+      # ci-conductor sources the report step just prepared. Best-effort: writes
+      # nothing unless every failure is attributable to a var, so an
+      # unattributable failure falls back to a full partition rerun.
+      - name: Collect failed tests for rerun
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        continue-on-error: true
+        # Clear the restored set first, so a collector that dies before deciding
+        # can't leave the previous attempt's file to be uploaded as this one's.
+        run: |
+          rm -f target/failed-tests
+          bun release/ci-conductor/src/collect-failed-backend.ts
+
+      - name: Upload failed tests for rerun
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: failed-tests-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}-attempt-${{ github.run_attempt }}
+          path: target/failed-tests
+          if-no-files-found: ignore
 
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}

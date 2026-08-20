@@ -304,7 +304,7 @@ jobs:
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
     - name: Upload Test Results
@@ -390,7 +390,7 @@ jobs:
       with:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Upload Test Results
@@ -519,6 +519,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
+        artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
@@ -594,6 +595,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
+        artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
@@ -800,7 +802,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
-          logs-artifact-suffix: ${{ matrix.version.name }}
+          artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -885,7 +887,7 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Upload Test Results
@@ -1100,7 +1102,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
-        logs-artifact-suffix: ${{ matrix.version.name }}
+        artifact-suffix: ${{ matrix.version.name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1206,7 +1208,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
-          logs-artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
+          artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
@@ -1385,7 +1387,7 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
         test-args: >-
           ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
     - name: Upload Test Results
@@ -1471,7 +1473,7 @@ jobs:
       with:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
     - name: Upload Test Results
@@ -1647,7 +1649,7 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.version.name }}
+        artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
         driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Upload Test Results
