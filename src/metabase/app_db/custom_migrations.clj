@@ -2270,7 +2270,11 @@
                                            :from   [table]
                                            :where  [:and
                                                     [:>= :id start]
-                                                    [:< :id (+ start *encryption-batch-size*)]]}))]
+                                                    [:< :id (+ start *encryption-batch-size*)]
+                                                    ;; most rows have nothing to convert: every PK, retired,
+                                                    ;; sensitive and inactive field has a null fingerprint, and
+                                                    ;; most FieldValues have no human-readable remapping
+                                                    [:not= column nil]]}))]
             (when (seq rewritten)
               ;; one UPDATE per page rather than per row: on a table with millions of fields that is the difference
               ;; between thousands of round trips and millions
