@@ -21,13 +21,14 @@ describe("embedding hub routes", () => {
       "embedding/get-started/sso-setup",
       "embedding/security",
       "embedding/authentication",
+      "embedding/authentication/sso-setup",
     ]);
   });
 
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    expect(loaders).toHaveLength(5);
+    expect(loaders).toHaveLength(7);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
