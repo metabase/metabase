@@ -73,7 +73,8 @@
         display-text (or label
                          (when (= model "user") (str "@" entityId))
                          (str model " " entityId))
-        url-fn       (model->url-fn model)]
+        url-fn       (when (pos-int? entityId)
+                       (model->url-fn model))]
     (if url-fn
       [:a {:href (url-fn entityId)} display-text]
       ;; Unknown model or user mention — render as escaped plain text

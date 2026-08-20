@@ -339,6 +339,12 @@
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
 
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
+
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
 ;; arguments and returns an expression clause.
@@ -1660,6 +1666,7 @@
   all-measure-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids

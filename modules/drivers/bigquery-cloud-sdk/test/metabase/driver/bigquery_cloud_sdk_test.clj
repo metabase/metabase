@@ -1637,5 +1637,5 @@
   (testing "no clustering index -> no clause"
     (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
   (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
-    (is (= "CLUSTER BY `c``; DROP TABLE x; --`"
+    (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
            (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

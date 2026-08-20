@@ -4,11 +4,13 @@
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
@@ -186,9 +188,9 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
+  (process-query-for-card-with-public-uuid uuid :api parameters))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -207,12 +209,12 @@
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                                      [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (json/decode+kw parameters)
+   parameters
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -295,7 +297,7 @@
   pre-loaded Dashboard `dashboard`.
 
   Additional options:
-  * `parameters`    - MBQL query parameters, either already parsed or as a serialized JSON string
+  * `parameters`    - MBQL query parameters, already decoded and validated by the caller's endpoint schema
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
   * `qp`            - QP function to run the query with. Default [[qp/process-query]] + [[qp/userland-context]]
 
@@ -312,8 +314,7 @@
                  {:dashboard     dashboard
                   :dashcard      dashcard
                   :card          card
-                  :parameters    (cond-> parameters
-                                   (string? parameters) json/decode+kw)
+                  :parameters    parameters
                   :export-format export-format
                   :qp            qp
                   :make-run      process-query-for-card-with-id-run-fn})]
@@ -341,7 +342,7 @@
                                           [:dashcard-id ms/PositiveInt]
                                           [:card-id     ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
@@ -369,12 +370,7 @@
                                                         [:export-format ::qp.schema/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
-                                                      [:parameters    {:optional true} [:maybe
-                                                                                        {:decode/api
-                                                                                         (fn [x]
-                                                                                           (cond-> x
-                                                                                             (string? x) json/decode+kw))}
-                                                                                        [:sequential ::parameters.schema/parameter-with-value]]]
+                                                      [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
@@ -393,12 +389,6 @@
                               :format-rows?          format_rows
                               :pivot?                pivot_results}))))
 
-(def ^:private ActionParameterValue
-  "A value submitted for an action execution parameter, keyed by parameter id. The FE types these as
-  `string | number | boolean | null` (`ParametersForActionExecution` in `metabase-types/api/actions.ts`); dates and
-  other rich types are submitted in their string form."
-  [:maybe [:or :string number? :boolean]])
-
 (api.macros/defendpoint :post "/dashboard/:uuid/dashcard/:dashcard-id/execute/values" :- [:map-of :string :any]
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
@@ -408,7 +398,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters [:map-of :string ActionParameterValue]]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
     (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
@@ -431,7 +421,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters], :as _body} :- [:map
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword ActionParameterValue]]]
+                                       [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]
                                        [:modelId    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
@@ -452,7 +442,8 @@
           ;; you're by definition allowed to run it without a perms check anyway
           (request/as-admin
             ;; Undo middleware string->keyword coercion
-            (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+            (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)
+                                       {:allow-http-actions? false})))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -615,9 +606,9 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
+  (process-query-for-card-with-public-uuid uuid :api parameters
                                            :qp qp.pivot/run-pivot-query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -633,7 +624,7 @@
                                           [:card-id     ms/PositiveInt]
                                           [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
@@ -669,7 +660,7 @@
                       [:uuid ms/UUIDString]]
    _query-params
    {:keys [parameters], :as _body} :- [:map
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]
+                                       [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
   (let [throttle-message (try
                            (throttle/check action-execution-throttle uuid)
                            nil
@@ -695,7 +686,8 @@
                                      :type      (:type action)
                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
-            (actions/execute-action! action (update-keys parameters name))))))))
+            (actions/execute-action! action (update-keys parameters name)
+                                     {:allow-http-actions? false})))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 
@@ -714,12 +706,11 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card       (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))
-        parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
@@ -742,14 +733,13 @@
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
        [:latField string?]
        [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
         dashcard   (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card       (api/check-404 (t2/select-one :model/Card card-id))
-        parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
@@ -775,13 +765,15 @@
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
   [& conditions]
-  (let [document (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
-                                           :archived false, conditions))
-                     ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
-                     (t2/hydrate :cards))]
+  (let [document     (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+                                               :archived false, conditions))
+                         ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
+                         (t2/hydrate :cards))
+        embedded-ids (set (prose-mirror/card-ids document))]
     (-> document
         ;; Filter sensitive fields from all cards before exposing publicly
-        (update :cards #(update-vals % remove-card-non-public-columns))
+        (update :cards #(-> (select-keys % embedded-ids)
+                            (update-vals remove-card-non-public-columns)))
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
@@ -794,8 +786,10 @@
 
   Returns the loaded `:model/Card` entity so the caller can thread it downstream without re-selecting it."
   [uuid card-id]
-  (let [document-id (api/check-404 (t2/select-one-pk :model/Document :public_uuid uuid :archived false))]
-    (api/check-404 (t2/select-one :model/Card :id card-id :document_id document-id :archived false))))
+  (let [document (api/check-404 (t2/select-one [:model/Document :id :document :content_type]
+                                               :public_uuid uuid :archived false))]
+    (api/check-404 (when (contains? (set (prose-mirror/card-ids document)) card-id)
+                     (t2/select-one :model/Card :id card-id :document_id (:id document) :archived false)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -825,14 +819,14 @@
                               [:uuid    ms/UUIDString]
                               [:card-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (validate-card-in-public-document uuid card-id)]
     ;; Run the query as admin since public documents are available to everyone anyway
     (u/prog1 (process-query-for-card-with-id
               card
               :api
-              (json/decode+kw parameters)
+              parameters
               :constraints (qp.constraints/default-query-constraints))
       (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question}))))
 
@@ -849,9 +843,7 @@
                                             [:export-format ::qp.schema/export-format]]
    _query-params
    {:keys [parameters format_rows pivot_results]} :- [:map
-                                                      [:parameters    {:optional true} [:maybe [:or
-                                                                                                [:sequential ::parameters.schema/parameter-with-value]
-                                                                                                ms/JSONString]]]
+                                                      [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
@@ -860,8 +852,7 @@
     (process-query-for-card-with-id
      card
      export-format
-     (cond-> parameters
-       (string? parameters) json/decode+kw)
+     parameters
      :constraints nil
      :middleware {:process-viz-settings? true
                   :js-int-to-string?     false

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { refetchCurrentUser } from "metabase/api";
+import { refetchCurrentUser } from "metabase/current-user";
 import { refetchSiteSettings } from "metabase/settings";
 
 import {

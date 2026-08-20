@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { hasRequiredFeature } from "metabase/databases";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import {
@@ -87,7 +88,11 @@ export function getSupportedClauses({
   database?: Database | null;
 }) {
   return clausesForMode(expressionMode)
-    .filter((clause) => database?.hasFeature(clause.requiresFeature))
+    .filter(
+      (clause) =>
+        database != null &&
+        hasRequiredFeature(database, clause.requiresFeature),
+    )
     .filter(function disableOffsetInFilterExpressions(clause) {
       const isOffset = clause.name === "offset";
       const isFilterExpression = expressionMode === "filter";

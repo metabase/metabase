@@ -236,6 +236,12 @@
   [session-id]
   (some? (session-parts session-id)))
 
+(defn- assert-session-id!
+  [session-id]
+  (when-not (valid-id? session-id)
+    (throw (ex-info "Invalid MCP session id" {:session-id session-id})))
+  session-id)
+
 (defn create!
   "Create a new MCP session. Returns a session id string.
    No database row is written — the session is just an opaque correlator until
@@ -321,6 +327,7 @@
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
+   (assert-session-id! mcp-session-id)
    ;; Materializing a core_session here serves two purposes: its FK is what makes handles
    ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
    ;; filters on for cross-session ownership.
@@ -334,6 +341,11 @@
                    prompt (assoc :prompt prompt)))
      handle-id)))
 
+(defn- handle-id?
+  [handle-id]
+  (and (string? handle-id)
+       (some? (parse-uuid handle-id))))
+
 (defn- find-handle-row
   "Look up the handle row by `handle-id`, scoped to `user-id`.
    Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
@@ -341,7 +353,7 @@
    on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
    cross-session resolutions for telemetry."
   [mcp-session-id user-id handle-id]
-  (when (and user-id handle-id)
+  (when (and user-id (handle-id? handle-id))
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
     (let [row (t2/select-one :model/McpQueryHandle
@@ -379,6 +391,7 @@
    `core_session_id` was never set — e.g. handles for regular query payloads that
    aren't backed by an MCP iframe and so never materialize a `core_session`."
   [session-id user-id]
+  (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session
                :where       [:and

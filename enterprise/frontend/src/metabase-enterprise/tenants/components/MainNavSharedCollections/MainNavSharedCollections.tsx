@@ -9,6 +9,7 @@ import { CreateCollectionForm } from "metabase/common/collections/components/Cre
 import type { CreateCollectionProperties } from "metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { buildCollectionTree } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
   PaddedSidebarLink,
   SidebarHeading,
@@ -16,7 +17,6 @@ import {
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
 import {

@@ -31,7 +31,14 @@
    [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
-(defmethod sql.qp/quote-style :clickhouse [_] :mysql)
+(sql/register-dialect!
+ ::clickhouse
+ (update (sql/get-dialect :mysql) :quote
+         (fn [mysql-quote]
+           (fn [s]
+             (mysql-quote (str/replace s "\\" "\\\\"))))))
+
+(defmethod sql.qp/quote-style :clickhouse [_] ::clickhouse)
 
 ;; without try, there might be test failures when QP is not yet initialized
 ;; e.g., when a test is preparing the dataset
@@ -213,9 +220,9 @@
        expr
        [:'toIntervalSecond
         [:'minus
-         [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
-         [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
-      [:'toTimeZone expr target-timezone])))
+         [:'timeZoneOffset [:'toTimeZone expr (sql.qp/->honeysql driver target-timezone)]]
+         [:'timeZoneOffset [:'toTimeZone expr (sql.qp/->honeysql driver source-timezone)]]]]]
+      [:'toTimeZone expr (sql.qp/->honeysql driver target-timezone)])))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]
@@ -290,13 +297,23 @@
   [driver [_ _opts field]]
   [:'log10 (sql.qp/->honeysql driver field)])
 
+(defn- format-quantile
+  [_fn [p field]]
+  (let [[p-sql & p-args]         (sql/format-expr p {:nested true})
+        [field-sql & field-args] (sql/format-expr field {:nested true})]
+    (into [(format "quantile(%s)(%s)" p-sql field-sql)]
+          cat
+          [p-args field-args])))
+
+(sql/register-fn! ::quantile #'format-quantile)
+
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
   [driver [_ _opts field p]]
-  [:raw "quantile(" (sql.qp/->honeysql driver p) ")(" (sql.qp/->honeysql driver field) ")"])
+  [::quantile (sql.qp/->honeysql driver p) (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:'extract (sql.qp/->honeysql driver arg) pattern])
+  [:'extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:clickhouse :split-part]
   [driver [_ _opts text divider position]]
@@ -357,6 +374,7 @@
   [driver value]
   (let [[_ {:keys [base-type]} value] value]
     (when (some? value)
+      (sql.qp/check-value-literal driver value)
       (condp #(isa? %2 %1) base-type
         :type/IPAddress [:'toIPv4 value]
         (sql.qp/->honeysql driver value)))))
@@ -450,8 +468,13 @@
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))
    {::rows-between-unbounded []}))
 
+(def ^:private clickhouse-interval-units
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
+  (when-not (contains? clickhouse-interval-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
   (let [type-info (h2x/type-info dt)]
     (cond-> (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))])
       type-info (h2x/with-type-info type-info))))

@@ -9,7 +9,6 @@
   adapter converts those directly to Chat Completions messages."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -59,8 +58,9 @@
    "anthropic/claude-sonnet-4.6"     "Claude Sonnet 4.6"
    "anthropic/claude-sonnet-4.5"     "Claude Sonnet 4.5"
    "anthropic/claude-haiku-4.5"      "Claude Haiku 4.5"
-   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro"
-   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash"
+   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro 0423"
+   "deepseek/deepseek-v4-pro-0813"   "DeepSeek V4 Pro 0813"
+   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash 0731"
    "mistralai/mistral-medium-3-5"    "Mistral Medium 3.5"
    "moonshotai/kimi-k3"              "Kimi K3"
    "openai/gpt-5.6-sol"              "GPT-5.6 Sol"
@@ -71,6 +71,7 @@
    "openai/gpt-5.4"                  "GPT-5.4"
    "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
    "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
+   "qwen/qwen3.8-max"                "Qwen3.8 Max"
    "z-ai/glm-5.2"                    "GLM-5.2"})
 
 (defn- supported-model?
@@ -86,9 +87,8 @@
     (throw (ai-proxy-unsupported-ex)))
   (try
     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-openrouter-api-key)))]
-                                    {:url     (llm/llm-openrouter-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"Authorization" (str "Bearer " k)}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -103,7 +103,8 @@
 
 (defn list-models
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
   ([opts]
@@ -134,6 +135,21 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
+(def ^:private required-tool-choice-unsupported-models
+  "Models that don't support `:tool_choice \"required\"`"
+  #{"qwen/qwen3.8-max"})
+
+(defn- supports-required-tool-choice?
+  "Whether `model` accepts `:tool_choice \"required\"`."
+  [model]
+  (not (contains? required-tool-choice-unsupported-models model)))
+
+(defn- required-tool-choice->auto
+  "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
+  [req]
+  (cond-> req
+    (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
+
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
 
@@ -147,15 +163,20 @@
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (cond-> (chat-completions/request-body (assoc opts :model model))
     (and system (anthropic-model? model))
-    (update-in [:messages 0 :content] claude/system->cached-content-blocks)))
+    (update-in [:messages 0 :content] claude/system->cached-content-blocks)
+
+    (not (supports-required-tool-choice? model))
+    required-tool-choice->auto))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
+  [{:keys [model tools credentials ai-proxy?] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
@@ -166,10 +187,10 @@
                       :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key  (not-empty (llm/llm-openrouter-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "openrouter" "OpenRouter"
                                           (when api-key
-                                            {:url     (llm/llm-openrouter-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"Authorization" (str "Bearer " api-key)}})
                                           ai-proxy?)
               response (core/request auth

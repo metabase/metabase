@@ -1,8 +1,8 @@
 import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
+import { getUserIsAdmin } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {

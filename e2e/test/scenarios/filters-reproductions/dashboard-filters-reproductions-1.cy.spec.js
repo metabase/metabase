@@ -1,7 +1,5 @@
 const { H } = cy;
 
-import dayjs from "dayjs";
-
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -10,6 +8,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockDashboardCard,
   createMockParameter,

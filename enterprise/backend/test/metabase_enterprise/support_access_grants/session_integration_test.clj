@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.support-access-grants.session-integration-test
+(ns ^:synchronized metabase-enterprise.support-access-grants.session-integration-test
   "Tests for session API integration with support access grants.
   Tests the fallback mechanism in /api/session/reset_password and /api/session/password_reset_token_valid
   that tries support-access-grant provider first, then falls back to emailed-secret-password-reset."

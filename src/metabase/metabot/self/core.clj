@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -47,6 +49,9 @@
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
                         tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :credentials      - Credentials of the provider connection serving this request, in that provider
+                        type's `:config` shape (e.g. `{:api-key ...}`), with the type's field defaults
+                        filled in. An adapter serves a request from these alone and throws without them.
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
@@ -61,6 +66,7 @@
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} :any]
+   [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
@@ -372,7 +378,7 @@
     :data             -> data-<data-type>
     :error            -> [start + start-step]? error
     :usage            -> (accumulated; emitted as finish.message_metadata)
-    :finish           -> (ignored — the completion arity emits the finish)
+    :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
   ([{:keys [message-id message-metadata]}]
@@ -380,6 +386,7 @@
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
            finish-reason     (volatile! nil)
+           loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -424,10 +431,11 @@
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
                               :finishReason (cond
-                                              (= @finish-reason "length")         "length"
-                                              @error?                             "error"
-                                              (= @finish-reason "content-filter") "content-filter"
-                                              :else                               "stop")}
+                                              (= @finish-reason "length")              "length"
+                                              @error?                                  "error"
+                                              (= @finish-reason "content-filter")      "content-filter"
+                                              (= @loop-finish-reason :max-iterations)  "tool-calls"
+                                              :else                                    "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -511,7 +519,10 @@
                 (rf (ensure-started result) (format-error-line part)))
 
               :finish
-              result
+              (do
+                (when-let [fr (:finish-reason part)]
+                  (vreset! loop-finish-reason fr))
+                result)
 
               :usage
               ;; cumulative per-model snapshot; last-wins, emitted on finish
@@ -592,6 +603,32 @@
                args)
     args))
 
+(def ^:private stringified-scalar-transformer
+  "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
+  Restricted to the types models get wrong — strings, keywords and enums are left alone."
+  (mtx/transformer
+   {:name     :llm-stringified-scalars
+    :decoders (select-keys (mtx/-string-decoders)
+                           [:int :double :float :boolean 'int? 'double? 'float? 'boolean?
+                            'integer? 'nat-int? 'neg-int? 'pos-int? 'number? 'decimal?])}))
+
+(defn- tool-args-schema
+  "The schema for a tool's argument map, from its `[:=> [:cat args] out]` schema."
+  [tool]
+  (let [[_:=> [_:cat args] _out] (:schema tool)]
+    args))
+
+(defn- coerce-stringified-scalars
+  "Coerce string tool `arguments` to the scalar types the tool's schema declares.
+  Some models send numbers as JSON strings, e.g. `{\"limit\": \"15\"}`.
+  Values that can't be parsed and tools without a usable schema are left alone."
+  [tool arguments]
+  (or (try
+        (some-> (tool-args-schema tool)
+                (mc/decode arguments stringified-scalar-transformer))
+        (catch Exception _ nil))
+      arguments))
+
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
@@ -626,6 +663,7 @@
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
                              arguments (or (coerce-stringified-json arguments) {})
+                             arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
                          (log/debug "Executing tool" {:tool-name tool-name})

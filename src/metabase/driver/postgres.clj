@@ -597,8 +597,21 @@
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
 (mu/defn- quoted? [database-type :- driver-api/schema.common.non-blank-string]
-  (and (str/starts-with? database-type "\"")
+  (and (>= (count database-type) 2)
+       (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(mu/defn- enum-type-components :- [:sequential {:min 1} :string]
+  [database-type :- driver-api/schema.common.non-blank-string]
+  (if (quoted? database-type)
+    (str/split (subs database-type 1 (dec (count database-type))) #"\"\.\"" -1)
+    [database-type]))
+
+(mu/defn- enum-cast
+  [database-type :- driver-api/schema.common.non-blank-string
+   raw-value]
+  (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
+      (h2x/with-database-type-info database-type)))
 
 (defmethod sql.qp/date [:postgres :day]
   [_ _ expr]
@@ -620,12 +633,11 @@
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver [_ {:keys [base-type database-type] :as opts} raw-value]]
   (when (some? raw-value)
+    (sql.qp/check-value-literal driver raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
       :type/IPAddress    (h2x/cast :inet raw-value)
-      :type/PostgresEnum (if (quoted? database-type)
-                           (h2x/cast database-type raw-value)
-                           (h2x/quoted-cast database-type raw-value))
+      :type/PostgresEnum (enum-cast database-type raw-value)
       ((get-method sql.qp/->honeysql [:sql :value])
        driver [:value opts raw-value]))))
 
@@ -687,7 +699,7 @@
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ _opts arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
-    [::regex-match-first identifier pattern]))
+    [::regex-match-first identifier (sql.qp/->honeysql driver pattern)]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ _opts text divider position]]

@@ -16,6 +16,7 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
@@ -178,6 +179,7 @@
   (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
+  (embeddings.startup/ensure-in-process-provider!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
