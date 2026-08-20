@@ -656,6 +656,19 @@
   for heavy rows, but not 1 -- a handful averages out per-row size variance."
   10)
 
+(def ^:private ^:dynamic *result-max-wait-time-ms*
+  "How long `jobs.getQueryResults` may block server-side waiting for the query job to finish, in milliseconds.
+
+  Without it the client waits by polling: submit the job, ask for results, sleep, ask again. The sleep is
+  `DirectRetryingExecutor`'s backoff, so a job that finishes just after a poll is not noticed until the next one, and
+  the gaps grow. Handing the wait to the server instead returns the moment the job completes. Sync is the case that
+  suffers: every `INFORMATION_SCHEMA` lookup is its own job, so the per-job wait is paid once per lookup rather than
+  amortized over a long-running query.
+
+  Bounded well under [[metabase.driver.settings/db-query-timeout-minutes]]: when the job outlives this, the call
+  returns without results and the library polls again, which is the pre-existing behaviour."
+  10000)
+
 (def ^:private sample-cell-overhead-bytes
   "Approximate JVM footprint of a single parsed cell beyond its character data (the `FieldValue` wrapper plus boxing).
   Added per cell so the budget tracks in-memory size, not just the wire bytes."
@@ -1002,7 +1015,8 @@
                            (driver-api/the-classloader)
                            (try
                              (*page-callback*)
-                             (let [result-options [(BigQuery$QueryResultsOption/pageSize (or *page-size* initial-page-rows))]
+                             (let [result-options [(BigQuery$QueryResultsOption/pageSize (or *page-size* initial-page-rows))
+                                                   (BigQuery$QueryResultsOption/maxWaitTime *result-max-wait-time-ms*)]
                                    result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
                                (if result
                                  (deliver result-promise [:ready result])
