@@ -1102,35 +1102,36 @@
 
 (deftest run-agent-loop-announces-a-model-fallback-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                       llm-metabot-provider test-provider]
-      (let [models-called (atom [])
-            run!          (fn []
-                            (mt/with-dynamic-fn-redefs [self/call-llm
-                                                        (fn [model & _]
-                                                          (swap! models-called conj model)
-                                                          (mut/mock-llm-response [{:type :text :text "Hello"}]))]
-                              (into [] (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
-                                                              :state      {}
-                                                              :profile-id :embedding_next
-                                                              :context    {}}))))]
-        (testing "nothing is announced while the selected provider is serving requests"
-          (is (empty? (filter #(= "model_fallback" (:data-type %)) (run!))))
-          (is (= [test-provider] @models-called)))
-        (testing "a turn moved off a failing provider says so, and says what it moved to"
-          (reset! models-called [])
-          (llm.health/record-failure! "openrouter" "invalid api key" true)
-          (let [parts (run!)]
-            (is (=? [{:type      :data
-                      :data-type "model_fallback"
-                      :data      {:model                  "anthropic/claude-sonnet-4-6"
-                                  :model_name             "Claude Sonnet 4.6"
-                                  :provider_name          "anthropic"
-                                  :previous_model         test-provider
-                                  :previous_provider_name "openrouter"}}]
-                    (filter #(= "model_fallback" (:data-type %)) parts)))
-            (testing "and the request itself goes to the connection it named"
-              (is (= ["anthropic/claude-sonnet-4-6"] @models-called)))))))))
+    (mt/with-premium-features #{:ai-controls}
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [models-called (atom [])
+              run!          (fn []
+                              (mt/with-dynamic-fn-redefs [self/call-llm
+                                                          (fn [model & _]
+                                                            (swap! models-called conj model)
+                                                            (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+                                (into [] (agent/run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                                                :state      {}
+                                                                :profile-id :embedding_next
+                                                                :context    {}}))))]
+          (testing "nothing is announced while the selected provider is serving requests"
+            (is (empty? (filter #(= "model_fallback" (:data-type %)) (run!))))
+            (is (= [test-provider] @models-called)))
+          (testing "a turn moved off a failing provider says so, and says what it moved to"
+            (reset! models-called [])
+            (llm.health/record-failure! "openrouter" "invalid api key" true)
+            (let [parts (run!)]
+              (is (=? [{:type      :data
+                        :data-type "model_fallback"
+                        :data      {:model                  "anthropic/claude-sonnet-4-6"
+                                    :model_name             "Claude Sonnet 4.6"
+                                    :provider_name          "anthropic"
+                                    :previous_model         test-provider
+                                    :previous_provider_name "openrouter"}}]
+                      (filter #(= "model_fallback" (:data-type %)) parts)))
+              (testing "and the request itself goes to the connection it named"
+                (is (= ["anthropic/claude-sonnet-4-6"] @models-called))))))))))
 
 (deftest error-part-tags-provider-errors-test
   (testing "an exception the adapters tagged :api-error carries a code, so the client can show its message and

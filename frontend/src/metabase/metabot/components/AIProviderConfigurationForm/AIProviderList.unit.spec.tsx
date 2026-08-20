@@ -28,6 +28,7 @@ import {
   createMockLlmProviderType,
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -39,6 +40,7 @@ type SetupOpts = {
   connections?: LlmProviderConnection[];
   activeModel?: LlmActiveModel;
   isFallbackEnabled?: boolean;
+  hasAiControls?: boolean;
 };
 
 const setup = ({
@@ -47,12 +49,14 @@ const setup = ({
   connections,
   activeModel = createMockLlmActiveModel(),
   isFallbackEnabled = true,
+  hasAiControls = true,
 }: SetupOpts = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
   const sessionProperties = createMockSettings({
-    "llm-provider-fallback-enabled?": isFallbackEnabled,
+    "llm-provider-fallback-enabled?": hasAiControls && isFallbackEnabled,
+    "token-features": createMockTokenFeatures({ ai_controls: hasAiControls }),
   });
   setupPropertiesEndpoints(sessionProperties);
   setupSettingsEndpoints([
@@ -278,6 +282,15 @@ describe("AIProviderList", () => {
         }),
       ]);
     });
+  });
+
+  it("offers no fallback section without the AI Controls feature", async () => {
+    setup({ hasAiControls: false });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-fallback-settings"),
+    ).not.toBeInTheDocument();
   });
 
   it("names the provider and model in use while the fallback is carrying requests", async () => {

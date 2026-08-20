@@ -477,7 +477,15 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :default    true
   :visibility :settings-manager
   :export?    true
-  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
+  ;; Gated through the getter rather than `:feature`, which serves the *default* — true — to instances without the
+  ;; feature: exactly the ones the fallback must stay off for. Reading as false is the single gate every caller
+  ;; shares, [[metabase.metabot.settings/effective-model-ref]] included.
+  :getter     (fn []
+                (and (premium-features/enable-ai-controls?)
+                     (setting/get-value-of-type :boolean :llm-provider-fallback-enabled?)))
+  :doc        "Only available on plans with the AI Controls feature; without it the fallback is off and this setting reads as false.
+
+When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
 
 `llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.")
 

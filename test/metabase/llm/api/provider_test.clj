@@ -1317,28 +1317,29 @@
                  (mt/user-http-request :crowberto :put 400 "llm/provider-order" {:order []})))))
 
 (deftest active-model-test
-  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
-                                                    (connection "openai" "openai" {:api-key "sk-o"})]]
-    (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-      (testing "with nothing failing, what is in use is what was selected"
-        (is (= {:model_ref          "anthropic/claude-sonnet-4-6"
-                :model              "claude-sonnet-4-6"
-                :model_name         "Claude Sonnet 4.6"
-                :connection_key     "anthropic"
-                :connection_name    "anthropic"
-                :selected_model_ref "anthropic/claude-sonnet-4-6"
-                :is_fallback        false}
-               (mt/user-http-request :crowberto :get 200 "llm/active-model"))))
-      (testing "once it fails, the connection actually serving requests is reported, with the model it runs"
-        (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
-        (is (= {:model_ref          "openai/gpt-5.4"
-                :model              "gpt-5.4"
-                :model_name         "GPT-5.4"
-                :connection_key     "openai"
-                :connection_name    "openai"
-                :selected_model_ref "anthropic/claude-sonnet-4-6"
-                :is_fallback        true}
-               (mt/user-http-request :crowberto :get 200 "llm/active-model")))))))
+  (mt/with-premium-features #{:ai-controls}
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                      (connection "openai" "openai" {:api-key "sk-o"})]]
+      (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+        (testing "with nothing failing, what is in use is what was selected"
+          (is (= {:model_ref          "anthropic/claude-sonnet-4-6"
+                  :model              "claude-sonnet-4-6"
+                  :model_name         "Claude Sonnet 4.6"
+                  :connection_key     "anthropic"
+                  :connection_name    "anthropic"
+                  :selected_model_ref "anthropic/claude-sonnet-4-6"
+                  :is_fallback        false}
+                 (mt/user-http-request :crowberto :get 200 "llm/active-model"))))
+        (testing "once it fails, the connection actually serving requests is reported, with the model it runs"
+          (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+          (is (= {:model_ref          "openai/gpt-5.4"
+                  :model              "gpt-5.4"
+                  :model_name         "GPT-5.4"
+                  :connection_key     "openai"
+                  :connection_name    "openai"
+                  :selected_model_ref "anthropic/claude-sonnet-4-6"
+                  :is_fallback        true}
+                 (mt/user-http-request :crowberto :get 200 "llm/active-model"))))))))
 
 (deftest failure-and-order-endpoints-need-admin-test
   (mt/with-temporary-setting-values [llm-providers []]
