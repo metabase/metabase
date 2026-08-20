@@ -133,6 +133,7 @@
            database-ids            (source/database-ids source database)
            models                  (models-for-scope source database-ids include-models?)]
        (if (or library-scope
+               (seq question-collection-refs)
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]
