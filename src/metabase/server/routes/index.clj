@@ -5,6 +5,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clout.core :as clout]
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
@@ -66,6 +67,53 @@
     [locale-override]
     (load-fn (or locale-override (i18n/user-locale-string)))))
 
+(def ^:private route-preloads-resource "frontend_client/app/dist/route-preloads.json")
+
+(defn- compile-entry
+  "Compile an entry's URL patterns once, with the same matcher the API endpoints use."
+  [entry]
+  (update entry :patterns #(mapv clout/route-compile %)))
+
+(defn- matches-route? [uri {:keys [patterns]}]
+  (boolean (some #(clout/route-matches % {:uri uri}) patterns)))
+
+(defn- load-route-preloads* []
+  (when-let [resource (io/resource route-preloads-resource)]
+    (try
+      (mapv compile-entry (json/decode+kw (slurp resource)))
+      (catch Throwable e
+        ;; A page without hints is slower, not broken.
+        (log/warnf e "Failed to read %s" route-preloads-resource)
+        nil))))
+
+(def ^:private ^{:arglists '([])} load-route-preloads (memoize/memo load-route-preloads*))
+
+(defn- strip-base-path
+  "The request URI carries the path Metabase is mounted under, and the manifest does not."
+  [uri]
+  (let [base (str/replace (base-href) #"/$" "")]
+    (if (and (seq base) (str/starts-with? uri base))
+      (subs uri (count base))
+      uri)))
+
+(defn- preload-tag [file]
+  (format "<link rel=\"preload\" href=\"%s\" as=\"%s\">"
+          (hiccup.util/escape-html file)
+          (if (str/ends-with? file ".css") "style" "script")))
+
+(defn- route-preload-tags
+  "Preload hints for the page this URI renders.
+
+  The page it lands on is a chunk of its own, and nothing in the document points
+  at that chunk, so the browser only asks for it once the app has downloaded,
+  parsed and run. These hints start that fetch while the app is still arriving.
+  The manifest is built from the route files, in the order its patterns are to be
+  tried; see `frontend/build/shared/rspack/route-preloads.js`."
+  [uri]
+  (let [path (strip-base-path (or uri "/"))]
+    (when-let [entry (first (filter (partial matches-route? path) (load-route-preloads)))]
+      (str/join (map preload-tag (:files entry))))))
+
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
 
@@ -99,6 +147,7 @@
                                                           custom-favicon)))
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
+     :routePreloads          (when-not embeddable? (route-preload-tags uri))
      :baseHref               (hiccup.util/escape-html (base-href))
      :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
