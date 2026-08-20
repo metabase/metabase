@@ -8,12 +8,12 @@
    served straight from the local filesystem. When a plugin's bundle is replaced
    or the plugin is deleted, the on-disk directory is evicted.
 
-   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and
-   bypass this storage; only the dev http fetch helpers below are used for them."
+   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and bypass this storage
+   altogether: the browser fetches them straight from the dev server, so the only dev concern here is
+   validating and normalizing that URL before it reaches the CSP."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
@@ -21,7 +21,6 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.files :as u.files]
-   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -34,9 +33,6 @@
 
 (defn- bytes-hash [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
-
-(defn- string-hash [^String s]
-  (bytes-hash (.getBytes s "UTF-8")))
 
 ;;; ------------------------------------------------ Layout ------------------------------------------------
 
@@ -288,143 +284,64 @@
   ^bytes [plugin ^String asset-name]
   (read-cached-bytes plugin (dist-path (asset-rel-path asset-name))))
 
-;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
+;;; ------------------------------------------------ Dev Server URL ------------------------------------------------
 
-(defn- allowed-schemes
-  "Set of URL schemes allowed for dev bundle URLs."
-  []
-  #{"http" "https"})
+;; Dev plugins are loaded by the browser, straight from the developer's dev server -- Metabase never requests
+;; the URL itself. So what is validated below is not an outbound request but a string that ends up in the app
+;; document's CSP `connect-src`, see [[metabase-enterprise.custom-viz-plugin.csp]].
 
-(def ^:private dev-network-policy
-  :allow-loopback)
+(def loopback-hosts
+  "Hosts naming the machine the browser runs on. `URI.getHost` brackets IPv6 literals, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]"})
 
-(defn- internal-address-ex
-  [^String label ^String url]
-  (ex-info (str label " resolves to an internal network address.")
-           {:status-code 400 :url url}))
+(defn- parse-uri
+  ^java.net.URI [^String url ^String label]
+  (try
+    (java.net.URI. url)
+    (catch Exception _
+      (throw (ex-info (str label " is not a valid URL.") {:status-code 400 :url url})))))
 
-(defn- validate-url!
-  "Validate that a URL uses an allowed scheme and does not name an address the dev fetches would refuse to
-   connect to. Throws on invalid input."
-  [^String url ^String label]
-  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
-    (when-not (contains? (allowed-schemes) scheme)
-      (throw (ex-info (str label " must use http or https, got: " scheme)
+(defn validate-dev-url!
+  "Validate a dev server URL, returning it normalized to a bare `scheme://host[:port]` origin.
+
+   The host must be loopback. The browser doing the fetching always runs on the developer's own machine, so
+   every legitimate dev server is local, and holding the value to loopback is what makes widening
+   `connect-src` to it harmless -- you cannot exfiltrate to another machine's loopback. Deliberately a
+   literal name check with no DNS resolution: this validates a CSP header token, it does not decide whether
+   to open a connection."
+  ^String [^String url ^String label]
+  (let [uri    (parse-uri url label)
+        scheme (some-> (.getScheme uri) u/lower-case-en)
+        host   (some-> (.getHost uri) u/lower-case-en)
+        port   (.getPort uri)]
+    (when-not (contains? #{"http" "https"} scheme)
+      (throw (ex-info (str label " must use http or https, got: " (or scheme url))
                       {:status-code 400 :url url})))
-    (when-not (u.http/host-allowed-for-network-policy? dev-network-policy url)
-      (throw (internal-address-ex label url)))))
-
-(defn- rethrow-if-refused!
-  "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
-   the surrounding catch would report a refused address as a dev server that happens to be down."
-  [^Exception e ^String url]
-  (when (:ssrf (ex-data e))
-    (throw (internal-address-ex "Dev bundle URL" url))))
-
-(defn dev-base-url
-  "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
-  ^String [^String url]
-  (validate-url! url "Dev bundle URL")
-  (if (str/ends-with? url "/") url (str url "/")))
-
-(defn- dev-url
-  "Build a full dev URL by joining the base URL with a relative path."
-  ^String [^String base-url ^String relative-path]
-  (str (dev-base-url base-url) relative-path))
-
-(def dev-http-opts
-  "clj-http options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
-  {:socket-timeout     5000
-   :connection-timeout 5000
-   :redirect-strategy  :none
-   :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
-
-;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
-;; at an internal service. Requiring the content-type the dev server would have answered with narrows what
-;; such a service can hand back: an admin console answers text/html, not application/javascript.
-
-(def ^:private bundle-content-types
-  "What a dev server serves `index.js` as. The CLI's own server says `application/javascript`
-   (`custom-viz/src/templates/vite.config.ts`); `text/javascript` is the equally standard spelling that
-   another dev server may use."
-  #{"application/javascript" "text/javascript"})
-
-(def ^:private manifest-content-types
-  #{"application/json" "text/json"})
-
-(defn response-content-type
-  "The response's content-type, lower-cased and stripped of any `; charset=...`. Nil when the header is absent."
-  [resp]
-  (some-> (get-in resp [:headers :content-type])
-          (str/split #";") first str/trim u/lower-case-en))
-
-(defn- check-content-type!
-  "Throw a 400 unless the response's content-type is one of `allowed`. A missing header is refused too -- every
-   path the dev server serves sets one, so its absence means whatever answered is not a dev server."
-  [resp allowed ^String url]
-  (let [ctype (response-content-type resp)]
-    (when-not (contains? allowed ctype)
-      (throw (ex-info (str "Dev bundle URL returned " (or ctype "no content type")
-                           ", expected " (str/join " or " (sort allowed)))
-                      {:status-code 400 :url url})))))
-
-(defn fetch-dev-bundle
-  "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str}, or nil when the dev server is transiently
-   unavailable (e.g. mid-rebuild)."
-  [^String base-url]
-  ;; the try covers only the request: a refusal from the checks below is a 400 for the caller, not a dev
-  ;; server that happens to be down, and must not be swallowed into nil here.
-  (when-let [resp (try
-                    (http/get (dev-url base-url bundle-rel-path)
-                              (assoc dev-http-opts :as :string))
-                    (catch Exception e
-                      (rethrow-if-refused! e base-url)
-                      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
-                      nil))]
-    (check-content-type! resp bundle-content-types base-url)
-    (let [content (:body resp)]
-      {:content content
-       :hash    (string-hash content)})))
-
-(defn fetch-dev-manifest
-  "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure. Throws ex-info with
-   `:status-code 400` when the manifest is structurally invalid."
-  [^String base-url]
-  (when-let [parsed (when-let [resp (try
-                                      (http/get (dev-url base-url (manifest/manifest-path))
-                                                (assoc dev-http-opts :as :string))
-                                      (catch Exception e
-                                        (rethrow-if-refused! e base-url)
-                                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-                                        nil))]
-                      (check-content-type! resp manifest-content-types base-url)
-                      (manifest/parse-manifest (:body resp)))]
-    (when-let [error (manifest/validation-error parsed)]
-      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                      {:status-code 400})))
-    parsed))
-
-(defn fetch-dev-asset
-  "Fetch a static asset from a dev base URL.
-   Returns the bytes or nil on failure."
-  ^bytes [^String base-url ^String asset-name]
-  (let [resp (http/get (dev-url base-url (asset-rel-path asset-name))
-                       (assoc dev-http-opts :as :byte-array))]
-    ;; the manifest already fixes the image type this asset must be, so there is no separate allowlist
-    (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
-    (:body resp)))
+    (when-not (contains? loopback-hosts host)
+      (throw (ex-info (str label " must point at localhost, got: " (or host url) "."
+                           ;; host.docker.internal was the documented answer for Metabase-in-Docker back
+                           ;; when the server did the fetching. It resolves inside the container only, so
+                           ;; now that the browser fetches it cannot work -- and is no longer needed.
+                           (when (= host "host.docker.internal")
+                             (str " Use http://localhost:5174 instead: your browser loads the plugin"
+                                  " directly, so it reaches a dev server on your own machine even when"
+                                  " Metabase runs in Docker.")))
+                      {:status-code 400 :url url})))
+    (when-not (and (contains? #{nil "" "/"} (.getPath uri))
+                   (nil? (.getQuery uri))
+                   (nil? (.getFragment uri)))
+      (throw (ex-info (str label " must be a bare origin like http://localhost:5174, with no path or query.")
+                      {:status-code 400 :url url})))
+    (str scheme "://" host (when (pos? port) (str ":" port)))))
 
 (defn set-or-clear-dev-bundle!
-  "Set or clear the dev base URL for a plugin. Persists to the database."
+  "Set or clear the dev server URL for a plugin, normalized to an origin. Persists to the database."
   [id dev-bundle-url]
-  (let [url (not-empty dev-bundle-url)]
-    (some-> url (validate-url! "Dev bundle URL"))
+  (let [url (some-> (not-empty dev-bundle-url) (validate-dev-url! "Dev server URL"))]
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
-  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
+  "Resolve the dev server URL for a plugin from the database. Returns the URL string or nil.
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
@@ -432,22 +349,9 @@
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
-(defn resolve-bundle
-  "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
-   Returns {:content str :hash str} or nil."
-  [plugin]
-  (let [id      (:id plugin)
-        dev-url (resolve-dev-bundle id)]
-    (if dev-url
-      (fetch-dev-bundle dev-url)
-      (get-bundle plugin))))
-
 (defn resolve-asset
-  "Resolve a static asset for a plugin, respecting dev base URL if set.
-   Only serves assets whitelisted by the plugin's manifest.
-   Returns a byte array or nil."
+  "Resolve a static asset for an upload-backed plugin. Only serves assets whitelisted by the plugin's
+   manifest. Returns a byte array or nil."
   ^bytes [plugin ^String asset-name]
   (when (asset-whitelisted? plugin asset-name)
-    (if-let [dev-url (resolve-dev-bundle (:id plugin))]
-      (fetch-dev-asset dev-url asset-name)
-      (get-asset plugin asset-name))))
+    (get-asset plugin asset-name)))

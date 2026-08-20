@@ -1,9 +1,7 @@
 (ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
-   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
    [metabase.test :as mt]
@@ -117,67 +115,48 @@
       (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
                             (cache/validate-bundle! bytes))))))
 
-;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
-
-(deftest dev-base-url-test
-  (testing "accepts http URLs"
-    (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174")))
-    (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174/"))))
-  (testing "accepts https URLs"
-    (is (= "https://dev.example.com/" (cache/dev-base-url "https://dev.example.com"))))
-  (testing "SECURITY: rejects ftp:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/dev-base-url "ftp://evil.com/bundle"))))
-  (testing "SECURITY: rejects jar:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/dev-base-url "jar:file:///app.jar!/secret"))))
-  (testing "SECURITY: rejects URLs with no scheme"
-    (is (thrown? Exception
-                 (cache/dev-base-url "localhost:5174"))))
-  (testing "SECURITY: rejects file:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/dev-base-url "file:///etc/passwd")))))
-
-(deftest fetch-dev-manifest-test
-  (testing "returns a well-formed manifest"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name "dev-viz"})})]
-      (is (= {:name "dev-viz"}
-             (cache/fetch-dev-manifest "http://localhost:5174")))))
-  (testing "returns nil when the manifest cannot be fetched"
-    (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
-      (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
-  (testing "rejects a structurally invalid manifest, same as the upload path"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
-                                        :body    (json/encode {:name 123})})]
-      (is (thrown-with-msg? Exception #"is invalid"
-                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
-
-(deftest dev-fetch-requires-the-dev-servers-content-type-test
-  (testing "a response that isn't what the dev server would have served is refused, not parsed --
-            a dev URL may still be pointed at an internal service, and this bounds what it can hand back"
-    (doseq [[what ctype body] [["an internal admin page" "text/html" "<html>secrets</html>"]
-                               ["a response with no content type" nil "{\"name\":\"x\"}"]]]
-      (testing what
-        (with-redefs [http/get (constantly {:headers (when ctype {:content-type ctype})
-                                            :body    body})]
-          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
-                                (cache/fetch-dev-manifest "http://localhost:5174")))
-          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
-                                (cache/fetch-dev-bundle "http://localhost:5174")))))))
-  (testing "the content types the CLI's own dev server serves are accepted"
-    (with-redefs [http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
-                                        :body    "export default {}"})]
-      (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
-          "a charset parameter on the header is stripped before comparison"))))
+(deftest validate-dev-url-test
+  (testing "normalizes an acceptable URL to a bare origin"
+    (are [in out] (= out (cache/validate-dev-url! in "Dev server URL"))
+      "http://localhost:5174"  "http://localhost:5174"
+      "http://localhost:5174/" "http://localhost:5174"
+      "http://LOCALHOST:5174"  "http://localhost:5174"
+      "https://127.0.0.1:5174" "https://127.0.0.1:5174"
+      "http://[::1]:5174"      "http://[::1]:5174"
+      "http://localhost"       "http://localhost"))
+  (testing "SECURITY: rejects every scheme but http/https"
+    (doseq [url ["ftp://localhost:5174" "file:///etc/passwd" "jar:file:///app.jar!/secret"
+                 "javascript:alert(1)" "localhost:5174"]]
+      (is (thrown-with-msg? Exception #"http or https|not a valid URL"
+                            (cache/validate-dev-url! url "Dev server URL"))
+          url)))
+  (testing "SECURITY: rejects non-loopback hosts. The value widens the app document's CSP connect-src, and
+            the browser that does the fetching always runs on the developer's own machine, so nothing but a
+            local origin is ever legitimate."
+    (doseq [url ["http://host.docker.internal:5174" "http://10.0.0.5:5174" "http://169.254.169.254"
+                 "https://evil.com" "http://evil.com#@localhost" "http://localhost.evil.com"]]
+      (is (thrown-with-msg? Exception #"must point at localhost"
+                            (cache/validate-dev-url! url "Dev server URL"))
+          url)))
+  (testing "the host.docker.internal refusal names its replacement, since it is what the docs used to say"
+    (is (thrown-with-msg? Exception #"Use http://localhost:5174 instead"
+                          (cache/validate-dev-url! "http://host.docker.internal:5174" "Dev server URL"))))
+  (testing "but an unrelated host gets no Docker advice"
+    (is (thrown-with-msg? Exception #"must point at localhost, got: evil\.com\.$"
+                          (cache/validate-dev-url! "https://evil.com" "Dev server URL"))))
+  (testing "SECURITY: rejects anything richer than an origin, so only scheme://host[:port] reaches the header"
+    (doseq [url ["http://localhost:5174/evil" "http://localhost:5174?a=1" "http://localhost:5174#f"]]
+      (is (thrown-with-msg? Exception #"bare origin"
+                            (cache/validate-dev-url! url "Dev server URL"))
+          url))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "test-viz"
                                                     :display_name "test-viz"
                                                     :status       :active}]
-      (testing "sets a valid http URL"
-        (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
+      (testing "stores a valid URL, normalized to a bare origin"
+        (cache/set-or-clear-dev-bundle! id "http://LOCALHOST:5174/")
         (is (= "http://localhost:5174"
                (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
       (testing "clears the URL with nil"
@@ -189,7 +168,10 @@
         (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
       (testing "SECURITY: rejects file:// URLs"
         (is (thrown-with-msg? Exception #"http or https"
-                              (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")))))))
+                              (cache/set-or-clear-dev-bundle! id "file:///etc/passwd"))))
+      (testing "SECURITY: rejects a non-loopback host before it can reach the CSP"
+        (is (thrown-with-msg? Exception #"must point at localhost"
+                              (cache/set-or-clear-dev-bundle! id "https://evil.com")))))))
 
 ;;; ------------------------------------------------ Asset Whitelist ------------------------------------------------
 
@@ -262,23 +244,3 @@
                                                     :bundle_hash  "deadbeef"}]
         (is (nil? (cache/get-bundle plugin))
             "mismatch between bundle bytes and bundle_hash must not be served")))))
-
-;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------
-
-(deftest resolve-bundle-dev-url-takes-precedence-test
-  (testing "resolve-bundle prefers dev URL over the uploaded bundle when both are present"
-    (mt/with-premium-features #{:custom-viz}
-      (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "precedence"
-                                                        :display_name   "precedence"
-                                                        :status         :active
-                                                        :bundle_hash    "abc123"
-                                                        :dev_bundle_url "http://localhost:5174"}]
-          (let [dev-called? (atom false)
-                fs-called?  (atom false)]
-            (mt/with-dynamic-fn-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
-                                        cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
-              (let [result (cache/resolve-bundle {:id id})]
-                (is (true? @dev-called?) "dev bundle fetch should be called")
-                (is (false? @fs-called?) "filesystem bundle should not be called when dev URL is set")
-                (is (= "dev-js" (:content result)))))))))))

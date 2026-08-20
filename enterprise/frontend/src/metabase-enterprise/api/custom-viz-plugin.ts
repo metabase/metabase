@@ -4,6 +4,7 @@ import type {
   CustomVizPlugin,
   CustomVizPluginId,
   CustomVizPluginRuntime,
+  RefreshCustomVizPluginRequest,
   ReplaceCustomVizPluginBundleRequest,
   UpdateCustomVizPluginRequest,
 } from "metabase-types/api";
@@ -120,13 +121,16 @@ export const customVizPluginApi = EnterpriseApi.injectEndpoints({
     }),
     refreshCustomVizPlugin: builder.mutation<
       CustomVizPlugin,
-      CustomVizPluginId
+      RefreshCustomVizPluginRequest
     >({
-      query: (id) => ({
+      // The manifest is read from the dev server by the browser, so it travels in the body rather than
+      // being fetched server-side.
+      query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/ee/custom-viz-plugin/${id}/refresh`,
+        body,
       }),
-      invalidatesTags: (_, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
           listTag("custom-viz-plugin"),
           idTag("custom-viz-plugin", id),

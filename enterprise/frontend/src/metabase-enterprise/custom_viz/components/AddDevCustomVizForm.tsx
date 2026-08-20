@@ -12,6 +12,9 @@ import {
 import { Group, Stack } from "metabase/ui";
 import { useCreateDevCustomVizPluginMutation } from "metabase-enterprise/api";
 
+import { fetchDevServerManifest } from "../dev-server";
+import { getDevUrlError } from "../dev-url-validation";
+
 type FormState = {
   devBundleUrl: string;
 };
@@ -24,10 +27,30 @@ export function AddDevCustomVizForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
 
   const handleSubmit = useCallback(
-    (values: FormState) =>
-      createDevPlugin({
-        dev_bundle_url: values.devBundleUrl,
-      }).unwrap(),
+    async (values: FormState) => {
+      const devBundleUrl = values.devBundleUrl;
+
+      const urlError = getDevUrlError(devBundleUrl);
+      if (urlError) {
+        throw new Error(urlError);
+      }
+
+      // The browser reads the manifest, because Metabase never requests the dev URL itself. A dev server
+      // that is not running is the common case here, so say so rather than surfacing a bare fetch error.
+      let manifest;
+      try {
+        manifest = await fetchDevServerManifest(devBundleUrl);
+      } catch {
+        throw new Error(
+          t`Couldn't reach the dev server at ${devBundleUrl}. Check that it's running.`,
+        );
+      }
+
+      return createDevPlugin({
+        dev_bundle_url: devBundleUrl,
+        manifest,
+      }).unwrap();
+    },
     [createDevPlugin],
   );
 
