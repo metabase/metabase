@@ -42,10 +42,6 @@
     [:sequential {:description (str "Limits tables and metrics to library collections. "
                                     "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
      CollectionRef]]
-   [:question-collection-refs {:optional true}
-    [:sequential {:description (str "Includes saved questions from collections. "
-                                    "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
-     CollectionRef]]
    [:include-data-library? {:optional true}
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
@@ -70,13 +66,12 @@
   (throw (ex-info message {:status-code 400})))
 
 (defn- validate-options!
-  [{:keys [database library-collection-refs question-collection-refs
+  [{:keys [database library-collection-refs
            include-data-library? include-metric-library?] :as options}]
   (when-not (mr/validate SemanticSchemaOptions options)
     (invalid-options! "Invalid semantic schema options."))
   (let [include-library-root? (or include-data-library? include-metric-library?)
         collection-scoped?    (or (seq library-collection-refs)
-                                  (seq question-collection-refs)
                                   include-library-root?)]
     (when (and collection-scoped? database)
       (invalid-options!
@@ -113,16 +108,14 @@
   ([options]
    (fetch-items options source/app-db-source))
   ([options source]
-   (let [{:keys [database library-collection-refs question-collection-refs
+   (let [{:keys [database library-collection-refs
                  include-data-library? include-metric-library? include-models?]
           :or {library-collection-refs  []
-               question-collection-refs []
                include-data-library?    false
                include-metric-library?  false
                include-models?          false}} options]
      (validate-options! (assoc options
                                :library-collection-refs library-collection-refs
-                               :question-collection-refs question-collection-refs
                                :include-data-library? include-data-library?
                                :include-metric-library? include-metric-library?
                                :include-models? include-models?))
@@ -133,7 +126,6 @@
            database-ids            (source/database-ids source database)
            models                  (models-for-scope source database-ids include-models?)]
        (if (or library-scope
-               (seq question-collection-refs)
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]

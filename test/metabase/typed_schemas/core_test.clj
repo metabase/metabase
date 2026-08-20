@@ -99,13 +99,10 @@
             :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (build/fetch-items {:include-data-library? true} source)))))
 
-(deftest fetch-items-preserves-question-only-scope-test
-  (let [source (literal-source
-                {:questions [{:type "card", :key "existingQuestion", :id 1}]
-                 :tables    [{:type "table", :key "orders", :id 2}]
-                 :metrics   [{:type "metric", :key "revenue", :id 3}]})]
-    (is (= {:models [], :tables [], :metrics []}
-           (build/fetch-items {:question-collection-refs [{:id 1}]} source)))))
+(deftest options-reject-question-collection-refs-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid semantic schema options\."
+                        (build/fetch-items {:question-collection-refs [{:id 1}]}))))
 
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.
