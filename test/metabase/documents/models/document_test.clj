@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as document]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -424,6 +426,25 @@
         (t2/update! :model/Document document-id {:collection_position nil})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (nil? (:collection_position updated-document))))))))
+
+(deftest update-document-rejects-non-placeholder-card-keys-test
+  (testing "a :cards key that isn't a negative placeholder id is rejected at update-document!'s own
+            boundary, not as an internal error deeper in create-cards-for-document!"
+    (mt/with-temp [:model/Document existing-document {:name "Test Document"}]
+      (mt/with-test-user :crowberto
+        (let [e (try
+                  (document/update-document!
+                   existing-document
+                   {:document (documents.test-util/text->prose-mirror-ast "Body")
+                    :cards    {0 {:name                   "Zero Key Card"
+                                  :dataset_query          (lib-be/normalize-query (mt/mbql-query venues))
+                                  :display                "table"
+                                  :visualization_settings {}}}})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (some? e) "a non-negative :cards key is refused")
+          (is (= 'update-document! (:fn-name (ex-data e)))
+              "the rejection comes from update-document!'s input schema"))))))
 
 ;;; ------------------------------------------------- Serialization Tests -------------------------------------------
 

@@ -228,7 +228,7 @@
        [:document {:optional true} :any]
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-       [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+       [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]
        [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
         document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
