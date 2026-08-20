@@ -224,6 +224,20 @@ function InvalidTypeFixtures() {
     filters: [filter(TEST_SCHEMA.tables.products.fields.price, ">", 1)],
   });
 
+  useMetabaseQuery(staticQuery, {
+    // @ts-expect-error Segments belong to a table source, so the dynamic stage
+    // cannot resolve one. Filter the static query with it instead.
+    filters: [TEST_SCHEMA.tables.orders.segments.completed],
+  });
+
+  useMetabaseQuery(staticQuery, {
+    aggregations: [
+      // @ts-expect-error Measures belong to a table source, so the dynamic stage
+      // cannot resolve one. Aggregate the static query with it instead.
+      TEST_SCHEMA.tables.orders.measures.revenue,
+    ],
+  });
+
   // @ts-expect-error grouped dynamic clauses must include an explicit aggregation
   useMetabaseQuery(staticQuery, {
     breakouts: [TEST_SCHEMA.tables.orders.fields.status],
