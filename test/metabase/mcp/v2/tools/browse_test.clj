@@ -684,7 +684,7 @@
             (let [[envelope hint] (call! {:action "list_databases" :limit 500})]
               (is (zero? (:total envelope))
                   "with every database blocked, rasta sees none")
-              (is (= (str "No databases are visible to you — browsing data needs query-builder "
+              (is (= (str "No databases are visible to you. Browsing data needs query-builder "
                           "or table-metadata permission on at least one database.")
                      hint)))))
         ;; Database visibility keys off create-queries, not view-data — see the `mi/can-read?`
