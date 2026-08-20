@@ -1,0 +1,21 @@
+name: Check pre-resolved aliases
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+  merge_group:
+
+jobs:
+  check-preresolve-aliases:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
+      # path filter says .github changed would reintroduce the failure it exists to catch.
+      - name: Check cache-warm pre-resolves every alias combination CI uses
+        run: .github/scripts/check-preresolve-aliases.sh
