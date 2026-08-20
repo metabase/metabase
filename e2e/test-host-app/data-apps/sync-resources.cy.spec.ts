@@ -73,9 +73,9 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         "number",
       );
       return cy
-        .request<{ data: AppCard[] }>(
-          `/api/collection/${app.resource_collection_id}/items?models=card`,
-        )
+        .request<{
+          data: AppCard[];
+        }>(`/api/collection/${app.resource_collection_id}/items?models=card`)
         .then(({ body }) => body.data);
     });
 
@@ -158,11 +158,27 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             recreated[0].id,
             "the deleted card is not resurrected",
           ).not.to.eq(card.id);
-          cy.readFile(QUERIES_FILE()).should(
-            "contain",
-            `savedQuestionSourceId: ${recreated[0].id}`,
-          );
+          cy.readFile(QUERIES_FILE())
+            .should("contain", `savedQuestionSourceId: ${recreated[0].id}`)
+            .should("not.contain", `savedQuestionSourceId: ${card.id}`);
         });
+      });
+    });
+  });
+
+  it("names the trash when a restored declaration points at a trashed copy", () => {
+    syncOneQuery().then((card) => {
+      cy.readFile(QUERIES_FILE()).then((authored: string) => {
+        cy.request("PUT", `/api/card/${card.id}`, { archived: true });
+
+        removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+        sync();
+        cy.readFile(LOCKFILE()).then((lockfile) => {
+          expect(lockfile.queries, "the entry is dropped").to.have.length(0);
+        });
+
+        cy.writeFile(QUERIES_FILE(), authored);
+        syncExpectingRefusal(`card ${card.id}, which is in the trash`);
       });
     });
   });
