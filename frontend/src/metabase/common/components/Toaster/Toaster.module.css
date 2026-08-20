@@ -1,0 +1,121 @@
+.toast {
+  position: relative;
+  bottom: -10px;
+  overflow-x: hidden;
+  min-width: 300px;
+  max-width: 500px;
+  width: fit-content;
+
+  /* The 12px radius from Figma has no matching step in the Mantine radius scale (md = 8px). */
+  border-radius: 12px;
+
+  /* Figma Elevation/Light/sm — no matching --mantine-shadow-* step. */
+  box-shadow:
+    0 5px 15px 0 rgb(0 0 0 / 10%),
+    0 1px 4px 0 rgb(0 0 0 / 5%);
+  opacity: 0;
+  transition: all 200ms ease-out;
+}
+
+[data-mantine-color-scheme="dark"] .toast {
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+
+  /* Figma Elevation/Dark/sm — no matching --mantine-shadow-* step. */
+  box-shadow:
+    0 5px 15px 0 rgb(0 0 0 / 20%),
+    0 1px 4px 0 rgb(0 0 0 / 7%);
+}
+
+.toast[data-show] {
+  bottom: 0;
+  opacity: 1;
+}
+
+.toast[data-fixed] {
+  position: fixed;
+  bottom: 10px;
+  left: 20px;
+}
+
+.toast[data-fixed][data-show] {
+  bottom: 20px;
+}
+
+.message {
+  /* The 20px line height from Figma (md text style) has no matching Mantine step. */
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.button {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: bold;
+
+  /* The 16px line height from Figma (button label style) has no matching Mantine step. */
+  line-height: 16px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+
+  /* Figma Elevation/Dark/xs — no matching --mantine-shadow-* step. */
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 20%);
+}
+
+.button:disabled {
+  background-color: var(--mb-color-button-on_dark-disabled);
+  color: var(--mb-color-button-label-on_dark-disabled);
+  border: none;
+  box-shadow: none;
+  cursor: default;
+}
+
+.primary {
+  background-color: var(--mb-color-button-on_dark-primary-default);
+  color: var(--mb-color-button-label-on_dark-primary);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-primary-hover);
+}
+
+.primary:active:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-primary-pressed);
+}
+
+.secondary {
+  background-color: var(--mb-color-button-on_dark-secondary-default);
+  color: var(--mb-color-button-label-on_dark-secondary);
+  border: 0.5px solid var(--mb-color-border-on_dark);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-secondary-hover);
+}
+
+.secondary:active:not(:disabled) {
+  background-color: var(--mb-color-button-on_dark-secondary-pressed);
+}
+
+.dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-tooltip-text);
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+.dismiss:hover {
+  background-color: var(--mb-color-button-on_dark-secondary-hover);
+}
+
+.dismiss:active {
+  background-color: var(--mb-color-button-on_dark-secondary-pressed);
+}

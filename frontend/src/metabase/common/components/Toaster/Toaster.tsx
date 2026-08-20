@@ -1,15 +1,11 @@
-import type { HTMLAttributes } from "react";
+import cx from "classnames";
+import type { HTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Icon, Portal } from "metabase/ui";
+import { Flex, Group, Icon, Portal, Text, UnstyledButton } from "metabase/ui";
 
-import {
-  ToasterButton,
-  ToasterContainer,
-  ToasterDismiss,
-  ToasterMessage,
-} from "./Toaster.styled";
+import S from "./Toaster.module.css";
 
 export interface ToastProps extends HTMLAttributes<HTMLDivElement> {
   message: string;
@@ -21,7 +17,11 @@ export interface ToastProps extends HTMLAttributes<HTMLDivElement> {
   canClose?: boolean;
   secondaryText?: string;
   secondaryAriaLabel?: string;
-  onConfirm: () => void;
+  /** Content rendered before the message, e.g. an `<Icon size={16} />`. */
+  leftSection?: ReactNode;
+  /** Content rendered after the action buttons, before the close button. */
+  rightSection?: ReactNode;
+  onConfirm?: () => void;
   onDismiss?: () => void;
   onSecondary?: () => void;
   "data-testid"?: string;
@@ -37,6 +37,8 @@ export const Toast = ({
   canClose = true,
   secondaryText,
   secondaryAriaLabel = t`Cancel`,
+  leftSection,
+  rightSection,
   onConfirm,
   onDismiss,
   onSecondary,
@@ -44,28 +46,58 @@ export const Toast = ({
   "data-testid": dataTestId = "toast",
   ...divProps
 }: ToastProps): JSX.Element => (
-  <ToasterContainer
+  <Flex
+    className={cx(S.toast, className)}
     data-testid={dataTestId}
-    show={show}
-    fixed={fixed}
-    className={className}
+    data-show={show ? true : undefined}
+    data-fixed={fixed ? true : undefined}
+    align="center"
+    gap="lg"
+    p="md"
+    bg="tooltip-background"
     {...divProps}
   >
-    <ToasterMessage>{message}</ToasterMessage>
-    {secondaryText && onSecondary && (
-      <ToasterButton onClick={onSecondary} aria-label={secondaryAriaLabel}>
-        {secondaryText}
-      </ToasterButton>
-    )}
-    <ToasterButton onClick={onConfirm} aria-label={confirmAriaLabel}>
-      {confirmText}
-    </ToasterButton>
-    {canClose && (
-      <ToasterDismiss onClick={onDismiss} aria-label={closeAriaLabel}>
-        <Icon name="close" />
-      </ToasterDismiss>
-    )}
-  </ToasterContainer>
+    <Group flex={1} gap="sm" align="center" wrap="nowrap">
+      {leftSection}
+      <Text className={S.message} flex={1} c="tooltip-text" fz="md">
+        {message}
+      </Text>
+    </Group>
+    <Group gap="md" align="center" wrap="nowrap">
+      {(onConfirm || (secondaryText && onSecondary) || rightSection) && (
+        <Group gap="sm" align="center" wrap="nowrap">
+          {onConfirm && (
+            <UnstyledButton
+              className={cx(S.button, S.primary)}
+              onClick={onConfirm}
+              aria-label={confirmAriaLabel}
+            >
+              {confirmText}
+            </UnstyledButton>
+          )}
+          {secondaryText && onSecondary && (
+            <UnstyledButton
+              className={cx(S.button, S.secondary)}
+              onClick={onSecondary}
+              aria-label={secondaryAriaLabel}
+            >
+              {secondaryText}
+            </UnstyledButton>
+          )}
+          {rightSection}
+        </Group>
+      )}
+      {canClose && (
+        <UnstyledButton
+          className={S.dismiss}
+          onClick={onDismiss}
+          aria-label={closeAriaLabel}
+        >
+          <Icon name="close" size={12} />
+        </UnstyledButton>
+      )}
+    </Group>
+  </Flex>
 );
 
 export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
@@ -73,17 +105,19 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   confirmText?: string;
   isShown: boolean;
   fixed?: boolean;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
   onConfirm: () => void;
   onDismiss: () => void;
 }
 
-// TODO: Port to Mantine Notifications or consolidate with Undo-style toasts or
-// BulkActionsToast
 export const Toaster = ({
   message,
   confirmText = t`Turn on`,
   isShown,
   fixed,
+  leftSection,
+  rightSection,
   onConfirm,
   onDismiss,
   className,
@@ -113,6 +147,8 @@ export const Toaster = ({
         confirmText={confirmText}
         show={open}
         fixed={fixed}
+        leftSection={leftSection}
+        rightSection={rightSection}
         onConfirm={onConfirm}
         onDismiss={onDismiss}
         className={className}
