@@ -32,6 +32,9 @@
      [:source-tables   [:map-of :string :int]]
      [:type [:= "python"]]
      [:body :string]
+     ;; caps how many rows of each source table are handed to the script -- read by
+     ;; `metabase-enterprise.transforms-python.execute`, so it has to be declared here or the API strips it
+     [:limit {:optional true} [:maybe ms/PositiveInt]]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
 
 (mr/def ::append-config

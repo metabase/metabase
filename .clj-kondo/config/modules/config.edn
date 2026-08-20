@@ -67,7 +67,19 @@
            search
            settings
            util
-           warehouses}}
+           warehouses}
+   :model-exports #{:model/Action
+                    :model/HTTPAction
+                    :model/ImplicitAction
+                    :model/QueryAction}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   actions-rest
   {:team "Gadget"
@@ -80,7 +92,8 @@
            permissions
            public-sharing
            queries
-           util}}
+           util}
+   :model-imports #{:model/Action :model/Card :model/Database}}
 
   activity-feed
   {:team "UX West"
@@ -93,7 +106,14 @@
            config
            events
            models
-           util}}
+           util}
+   :model-exports #{:model/RecentViews}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/QueryExecution
+                    :model/Table}}
 
   analytics
   {:team "UX West"
@@ -119,7 +139,26 @@
            system
            task
            util
-           version}}
+           version}
+   :model-imports #{:model/CacheConfig
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/Document
+                    :model/Field
+                    :model/ModerationReview
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/QueryCache
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table
+                    :model/User}}
 
   analyze
   {:team "Querying"
@@ -131,7 +170,8 @@
            models
            query-processor
            sync
-           util}}
+           util}
+   :model-imports #{:model/Field :model/Table}}
 
   ;; TODO -- consolidate these into a `.core` API namespace.
   api
@@ -151,7 +191,26 @@
            events
            models
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
+                    :model/Document
+                    :model/ModelIndexValue
+                    :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/Segment
+                    :model/Table
+                    :model/Timeline
+                    :model/User}}
 
   api-keys
   {:team "UX West"
@@ -164,7 +223,9 @@
            models
            permissions
            users
-           util}}
+           util}
+   :model-exports #{:model/ApiKey}
+   :model-imports #{:model/User}}
 
   api-routes
   {:team "UX West"
@@ -177,19 +238,25 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
-           metabase.app-db.setup}
+           metabase.app-db.setup
+           metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
            config
            connection-pool
            task
-           util}}
+           util}
+   :model-imports #{:model/Database
+                    :model/QueryCache
+                    :model/Secret
+                    :model/Setting}}
 
   appearance
   {:team "UX West"
    :api  #{metabase.appearance.core
            metabase.appearance.init}
-   :uses #{settings util}}
+   :uses #{settings util}
+   :model-imports #{:model/Dashboard}}
 
   audit-app
   {:team "UX West"
@@ -203,7 +270,29 @@
            settings
            task
            task-history
-           util}}
+           util}
+   :model-exports #{:model/AuditLog}
+   :model-imports #{:model/ApiKey
+                    :model/Card
+                    :model/Channel
+                    :model/Collection
+                    :model/Comment
+                    :model/Dashboard
+                    :model/Database
+                    :model/Document
+                    :model/Glossary
+                    :model/Notification
+                    :model/NotificationHandler
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Pulse
+                    :model/QueryExecution
+                    :model/RemoteSyncTask
+                    :model/Segment
+                    :model/Table
+                    :model/Transform
+                    :model/TransformRun
+                    :model/User}}
 
   auth-identity
   {:team "UX West"
@@ -216,7 +305,9 @@
            notification
            premium-features
            request
-           util}}
+           util}
+   :model-exports #{:model/AuthIdentity}
+   :model-imports #{:model/Session :model/User}}
 
   auth-provider
   {:team "UX West"
@@ -238,7 +329,16 @@
            app-db
            collections
            queries
-           util}}
+           util}
+   :model-exports #{:model/BookmarkOrdering
+                    :model/CardBookmark
+                    :model/CollectionBookmark
+                    :model/DashboardBookmark
+                    :model/DocumentBookmark}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document}}
 
   bug-reporting
   {:team "UX West"
@@ -252,7 +352,8 @@
            permissions
            premium-features
            settings
-           util}}
+           util}
+   :model-imports #{:model/Database}}
 
   cache
   {:team "UX West"
@@ -263,12 +364,18 @@
            app-db
            config
            events
+           lib
            models
            permissions
            premium-features
            request
            settings
-           util}}
+           util}
+   :model-exports #{:model/CacheConfig :model/QueryCache}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database}}
 
   ;; TODO -- way too many API namespaces.
   channel
@@ -307,7 +414,12 @@
            task
            timeline
            types
-           util}}
+           util}
+   :model-exports #{:model/Channel :model/ChannelTemplate}
+   :model-imports #{:model/Dashboard
+                    :model/Database
+                    :model/PulseChannel
+                    :model/User}}
 
   classloader
   {:team "DevEx"
@@ -329,7 +441,15 @@
            settings
            store-api
            task
-           util}}
+           util}
+   :model-imports #{:model/AuditLog
+                    :model/Card
+                    :model/LoginHistory
+                    :model/Session
+                    :model/Setting
+                    :model/User
+                    :model/UserParameterValue
+                    :model/ViewLog}}
 
   cmd
   {:team "UX West"
@@ -346,7 +466,78 @@
            query-processor
            search
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/ApiKey
+                    :model/ApplicationPermissionsRevision
+                    :model/AuditLog
+                    :model/AuthIdentity
+                    :model/BookmarkOrdering
+                    :model/Card
+                    :model/CardBookmark
+                    :model/Channel
+                    :model/ChannelTemplate
+                    :model/Collection
+                    :model/CollectionBookmark
+                    :model/CollectionPermissionGraphRevision
+                    :model/Comment
+                    :model/CommentReaction
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/DashboardBookmark
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/DataPermissions
+                    :model/Database
+                    :model/Dimension
+                    :model/Document
+                    :model/DocumentBookmark
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Glossary
+                    :model/HTTPAction
+                    :model/ImplicitAction
+                    :model/LoginHistory
+                    :model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/MetabotPrompt
+                    :model/ModelIndex
+                    :model/ModelIndexValue
+                    :model/ModerationReview
+                    :model/NativeQuerySnippet
+                    :model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription
+                    :model/ParameterCard
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/PermissionsRevision
+                    :model/PersistedInfo
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
+                    :model/QueryAction
+                    :model/RecentViews
+                    :model/Revision
+                    :model/Sandbox
+                    :model/Secret
+                    :model/Segment
+                    :model/Session
+                    :model/Setting
+                    :model/Table
+                    :model/Tenant
+                    :model/Timeline
+                    :model/TimelineEvent
+                    :model/User
+                    :model/UserParameterValue
+                    :model/ViewLog}}
 
   collections
   {:team "UX West"
@@ -364,12 +555,23 @@
            premium-features
            remote-sync
            search
-           util}}
+           util}
+   :model-exports #{:model/Collection}
+   :model-imports #{:model/Card
+                    :model/CollectionBookmark
+                    :model/CollectionPermissionGraphRevision
+                    :model/Dashboard
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Permissions
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline
+                    :model/User}}
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api
-           metabase.collections-rest.init}
+   :api  #{metabase.collections-rest.api}
    :uses #{api
            app-db
            collections
@@ -384,9 +586,16 @@
            queries
            request
            revisions
-           settings
            upload
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline}}
 
   comments
   {:team "UX West"
@@ -400,7 +609,9 @@
            request
            users
            users-rest
-           util}}
+           util}
+   :model-exports #{:model/Comment :model/CommentReaction}
+   :model-imports #{:model/Document :model/User}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
@@ -419,7 +630,8 @@
   {:team "UX West"
    :api  #{metabase.content-translation.models}
    :uses #{premium-features
-           util}}
+           util}
+   :model-exports #{:model/ContentTranslation}}
 
   content-verification
   {:team "UX West"
@@ -427,7 +639,9 @@
            metabase.content-verification.init}
    :uses #{app-db
            models
-           util}}
+           util}
+   :model-exports #{:model/ModerationReview}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   core
   {:team "UX West"
@@ -456,11 +670,25 @@
            permissions
            public-sharing
            queries
+           query-permissions
            query-processor
            search
            settings
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-exports #{:model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/DashboardBookmark
+                    :model/ModerationReview
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/Revision
+                    :model/User}}
 
   dashboards-rest
   {:team "UX West"
@@ -489,7 +717,21 @@
            request
            revisions
            util
-           xrays}}
+           xrays}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Field
+                    :model/ParameterCard
+                    :model/Pulse
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient
+                    :model/Query
+                    :model/User}}
 
   database-routing
   {:team "UX West"
@@ -508,7 +750,9 @@
            batch-processing
            collections
            events
+           lib-be
            models
+           parameters
            public-sharing
            queries
            query-permissions
@@ -516,7 +760,13 @@
            revisions
            search
            util
-           view-log}}
+           view-log}
+   :model-exports #{:model/Document}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
 
   driver
   {:team "Drivers"
@@ -556,7 +806,11 @@
            system
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
 
   driver-api
   {:team "Drivers"
@@ -592,7 +846,23 @@
            metabase.eid-translation.init}
    :uses #{api
            settings
-           util}}
+           util}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Dimension
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/PermissionsGroup
+                    :model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/Segment
+                    :model/Timeline
+                    :model/User}}
 
   embedding
   {:team "Embedding"
@@ -606,7 +876,8 @@
            premium-features
            server
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   embedding-rest
   {:team "Embedding"
@@ -616,6 +887,7 @@
            eid-translation
            embedding
            events
+           lib
            models
            notification
            parameters
@@ -624,14 +896,24 @@
            query-processor
            request
            tiles
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   events
   {:team "DevEx"
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Segment
+                    :model/Table
+                    :model/User}}
 
   formatter
   {:team "UX West"
@@ -657,7 +939,9 @@
    :uses #{api
            events
            models
-           util}}
+           util}
+   :model-exports #{:model/Glossary}
+   :model-imports #{:model/User}}
 
   graph
   {:team "Querying"
@@ -678,7 +962,9 @@
            search
            sync
            task
-           util}}
+           util}
+   :model-exports #{:model/ModelIndex :model/ModelIndexValue}
+   :model-imports #{:model/Card :model/Collection}}
 
   initialization-status
   {:team "UX West"
@@ -689,7 +975,11 @@
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models}}
+           models}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/QueryExecution
+                    :model/User}}
 
   legacy-mbql
   {:team "Querying"
@@ -763,11 +1053,23 @@
   lib-be
   {:team "Querying"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init}
-   :uses #{lib
+           metabase.lib-be.init
+           metabase.lib-be.schema}
+   :uses #{legacy-mbql
+           lib
            models
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/NativeQuerySnippet
+                    :model/PersistedInfo
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   logger
   {:team "DevEx"
@@ -791,7 +1093,8 @@
            channel
            request
            settings
-           util}}
+           util}
+   :model-exports #{:model/LoginHistory}}
 
   model-persistence
   {:team "Querying"
@@ -813,7 +1116,9 @@
            system
            task
            task-history
-           util}}
+           util}
+   :model-exports #{:model/PersistedInfo}
+   :model-imports #{:model/Card :model/Database}}
 
   models
   {:team "DevEx"
@@ -830,7 +1135,17 @@
            legacy-mbql
            lib
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Field
+                    :model/NativeQuerySnippet
+                    :model/Segment
+                    :model/Table
+                    :model/User}}
 
   native-query-snippets
   {:team "Querying"
@@ -843,7 +1158,9 @@
            models
            permissions
            premium-features
-           util}}
+           util}
+   :model-exports #{:model/NativeQuerySnippet}
+   :model-imports #{:model/Collection :model/User}}
 
   notification
   {:team "Gadget"
@@ -861,6 +1178,7 @@
            dashboards
            driver
            events
+           lib
            models
            parameters
            permissions
@@ -874,7 +1192,19 @@
            task
            task-history
            users
-           util}}
+           util}
+   :model-exports #{:model/Notification
+                    :model/NotificationCard
+                    :model/NotificationHandler
+                    :model/NotificationRecipient
+                    :model/NotificationSubscription}
+   :model-imports #{:model/Card
+                    :model/Channel
+                    :model/ChannelTemplate
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/User}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -898,7 +1228,12 @@
            query-processor
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   permissions
   {:team "UX West"
@@ -917,7 +1252,18 @@
            remote-sync
            settings
            util
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-exports #{:model/ApplicationPermissionsRevision
+                    :model/CollectionPermissionGraphRevision
+                    :model/DataPermissions
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/PermissionsRevision}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Table
+                    :model/User}}
 
   permissions-rest
   {:team "UX West"
@@ -925,11 +1271,19 @@
    :uses #{api
            audit-app
            events
+           lib
            permissions
            premium-features
            request
            settings
-           util}}
+           util}
+   :model-imports #{:model/DataPermissions
+                    :model/Database
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/PermissionsRevision
+                    :model/Table
+                    :model/User}}
 
   pivot
   {:team "UX West"
@@ -956,7 +1310,8 @@
            config
            internal-stats
            settings
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   product-feedback
   {:team "UX West"
@@ -970,7 +1325,11 @@
            premium-features
            settings
            task
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Database
+                    :model/User}}
 
   public-sharing
   {:team "UX West"
@@ -989,6 +1348,7 @@
            api
            dashboards
            dashboards-rest
+           documents
            events
            lib
            models
@@ -998,7 +1358,11 @@
            query-processor
            request
            tiles
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -1017,6 +1381,7 @@
            lib
            models
            notification
+           parameters
            permissions
            premium-features
            query-processor
@@ -1025,7 +1390,18 @@
            task-history
            util
            enterprise/advanced-permissions
-           enterprise/sandbox}}
+           enterprise/sandbox}
+   :model-exports #{:model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient}
+   :model-imports #{:model/Card
+                    :model/Channel
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Notification
+                    :model/User}}
 
   queries
   {:team "Querying"
@@ -1053,19 +1429,36 @@
            premium-features
            public-sharing
            pulse
-           query-permissions
            query-processor
            request
            search
            util
            view-log
-           warehouse-schema}}
+           warehouse-schema}
+   :model-exports #{:model/Card
+                    :model/ParameterCard
+                    :model/Query
+                    :model/QueryExecution
+                    :model/QueryTable}
+   :model-imports #{:model/Action
+                    :model/CardBookmark
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Database
+                    :model/Document
+                    :model/Field
+                    :model/ModerationReview
+                    :model/NativeQuerySnippet
+                    :model/Revision
+                    :model/Table
+                    :model/User}}
 
   queries-rest
   {:team "Querying"
    :api  #{metabase.queries-rest.api}
-   :uses #{analyze
-           api
+   :uses #{api
            collections
            eid-translation
            embedding
@@ -1082,7 +1475,13 @@
            request
            revisions
            search
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/CardBookmark
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Table}}
 
   query-permissions
   {:team "UX West"
@@ -1095,7 +1494,8 @@
            permissions
            query-processor
            request
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Field :model/Table}}
 
   query-processor
   {:team "Querying"
@@ -1165,7 +1565,15 @@
            settings
            system
            users
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Database
+                    :model/QueryCache
+                    :model/QueryExecution
+                    :model/Table}}
 
   remote-sync
   {:team "UX West"
@@ -1188,7 +1596,8 @@
            session
            settings
            users
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   revisions
   {:team "UX West"
@@ -1196,14 +1605,27 @@
            metabase.revisions.core
            metabase.revisions.init}
    :uses #{api
+           collections
            config
            dashboards
            events
            lib
            models
+           parameters
            queries
            query-permissions
-           util}}
+           util}
+   :model-exports #{:model/Revision}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Document
+                    :model/ParameterCard
+                    :model/Segment
+                    :model/Transform}}
 
   sample-data
   {:team "UX West"
@@ -1248,12 +1670,19 @@
            startup
            task
            util
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/Transform
+                    :model/User}}
 
   secrets
   {:team "Drivers"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
+   :uses #{api driver models premium-features util}
+   :model-exports #{:model/Secret}}
 
   segments
   {:team "Querying"
@@ -1268,7 +1697,9 @@
            permissions
            search
            util
-           xrays}}
+           xrays}
+   :model-exports #{:model/Segment}
+   :model-imports #{:model/Table :model/User}}
 
   server
   {:team "UX West"
@@ -1292,6 +1723,7 @@
            request
            session
            settings
+           setup
            system
            users
            util
@@ -1314,7 +1746,9 @@
            sso
            system
            task
-           util}}
+           util}
+   :model-exports #{:model/Session}
+   :model-imports #{:model/AuthIdentity :model/User}}
 
   settings
   {:team "DevEx"
@@ -1327,7 +1761,8 @@
            models
            premium-features
            util
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-exports #{:model/Setting}}
 
   settings-rest
   {:team "DevEx"
@@ -1344,7 +1779,8 @@
    :uses #{app-db
            config
            settings
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   setup-rest
   {:team "UX West"
@@ -1358,7 +1794,8 @@
            settings
            setup
            system
-           util}}
+           util}
+   :model-imports #{:model/AuthIdentity :model/User}}
 
   sso
   {:team "UX West"
@@ -1371,7 +1808,8 @@
            permissions
            premium-features
            settings
-           util}}
+           util}
+   :model-imports #{:model/PermissionsGroupMembership}}
 
   startup
   {:team "DevEx"
@@ -1411,7 +1849,11 @@
            task-history
            util
            warehouse-schema
-           warehouses}}
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   system
   {:team "UX West"
@@ -1457,7 +1899,8 @@
            config
            premium-features
            search
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -1482,7 +1925,9 @@
            config
            events
            models
-           util}}
+           util}
+   :model-exports #{:model/Timeline :model/TimelineEvent}
+   :model-imports #{:model/Collection :model/User}}
 
   types
   {:team "Querying"
@@ -1508,7 +1953,11 @@
            settings
            sync
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   user-key-value
   {:team "UX West"
@@ -1538,7 +1987,14 @@
            setup
            system
            tenants
-           util}}
+           util}
+   :model-exports #{:model/User :model/UserParameterValue}
+   :model-imports #{:model/AuthIdentity
+                    :model/Dashboard
+                    :model/Database
+                    :model/PermissionsGroupMembership
+                    :model/Session
+                    :model/Tenant}}
 
   users-rest
   {:team "UX West"
@@ -1561,7 +2017,14 @@
            tenants
            users
            util
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/LoginHistory
+                    :model/User}}
 
   util
   {:team "DevEx"
@@ -1594,7 +2057,9 @@
            models
            premium-features
            query-permissions
-           util}}
+           util}
+   :model-exports #{:model/ViewLog}
+   :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
   warehouse-schema
   {:team "UX West"
@@ -1621,7 +2086,18 @@
            query-processor
            search
            util
-           warehouses}}
+           warehouses}
+   :model-exports #{:model/Dimension
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Table}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Dependency
+                    :model/Segment
+                    :model/Transform}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -1644,7 +2120,12 @@
            upload
            util
            warehouse-schema
-           xrays}}
+           xrays}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   warehouses
   {:team "UX West"
@@ -1664,7 +2145,12 @@
            secrets
            settings
            sync
-           util}}
+           util}
+   :model-exports #{:model/Database}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   warehouses-rest
   {:team "UX West"
@@ -1693,7 +2179,12 @@
            util
            warehouse-schema
            warehouses
-           enterprise/advanced-permissions}}
+           enterprise/advanced-permissions}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   xrays
   {:team "Querying"
@@ -1710,13 +2201,26 @@
            lib
            lib-be
            models
+           permissions
            queries
            query-permissions
            query-processor
            segments
            settings
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/ModelIndex
+                    :model/ModelIndexValue
+                    :model/Query
+                    :model/Revision
+                    :model/Segment
+                    :model/Table}}
 
   enterprise/action-v2
   {:team "Gadget"
@@ -1730,7 +2234,11 @@
            models
            query-processor
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   enterprise/advanced-config
   {:team "UX West"
@@ -1748,7 +2256,8 @@
            setup
            sync
            users
-           util}}
+           util}
+   :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
   {:team "UX West"
@@ -1763,7 +2272,14 @@
            query-processor
            util
            warehouses
-           enterprise/impersonation}}
+           enterprise/impersonation}
+   :model-imports #{:model/ApplicationPermissionsRevision
+                    :model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Permissions
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
+                    :model/Table}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -1799,7 +2315,11 @@
            enterprise/advanced-config
            enterprise/scim
            enterprise/semantic-search
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Database
+                    :model/Sandbox
+                    :model/Transform
+                    :model/TransformRun}}
 
   enterprise/api
   {:team "UX West"
@@ -1836,7 +2356,22 @@
            sync
            users-rest
            util
-           enterprise/serialization}}
+           enterprise/serialization}
+   :model-imports #{:model/AuditLog
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Notification
+                    :model/NotificationRecipient
+                    :model/Permissions
+                    :model/Pulse
+                    :model/PulseChannelRecipient
+                    :model/QueryExecution
+                    :model/Table
+                    :model/User
+                    :model/ViewLog}}
 
   enterprise/auth-identity
   {:team "UX West"
@@ -1855,7 +2390,8 @@
    :uses #{api
            premium-features
            store-api
-           util}}
+           util}
+   :model-imports #{:model/User}}
 
   enterprise/cache
   {:team "UX West"
@@ -1864,7 +2400,13 @@
            premium-features
            query-processor
            task
-           util}}
+           util}
+   :model-imports #{:model/CacheConfig
+                    :model/Card
+                    :model/Dashboard
+                    :model/Query
+                    :model/QueryCache
+                    :model/QueryExecution}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"
@@ -1884,7 +2426,8 @@
            embedding
            premium-features
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/ContentTranslation}}
 
   enterprise/content-verification
   {:team "UX West"
@@ -1918,7 +2461,13 @@
            request
            sync
            util
-           warehouse-schema}}
+           warehouse-schema}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -1929,7 +2478,8 @@
            premium-features
            settings
            util
-           enterprise/harbormaster}}
+           enterprise/harbormaster}
+   :model-imports #{:model/Database}}
 
   enterprise/database-routing
   {:team "UX West"
@@ -1946,7 +2496,9 @@
            util
            warehouse-schema
            warehouses-rest
-           enterprise/transforms}}
+           enterprise/transforms}
+   :model-exports #{:model/DatabaseRouter}
+   :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -1971,7 +2523,19 @@
            revisions
            settings
            task
-           util}}
+           util}
+   :model-exports #{:model/Dependency}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Sandbox
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
 
   enterprise/email
   {:team "UX West"
@@ -1992,7 +2556,13 @@
            embedding
            permissions
            premium-features
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Sandbox
+                    :model/Table}}
 
   enterprise/gsheets
   {:team "Cloud"
@@ -2003,7 +2573,8 @@
            premium-features
            settings
            util
-           enterprise/harbormaster}}
+           enterprise/harbormaster}
+   :model-imports #{:model/Database :model/Setting}}
 
   enterprise/harbormaster
   {:team "Cloud"
@@ -2024,7 +2595,9 @@
            query-processor
            util
            warehouse-schema
-           enterprise/sandbox}}
+           enterprise/sandbox}
+   :model-exports #{:model/ConnectionImpersonation}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/internal-stats
   {:team "UX West"
@@ -2037,7 +2610,8 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}}
+           premium-features}
+   :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/llm
   {:team "Metabot"
@@ -2050,7 +2624,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Dashboard}}
 
   enterprise/metabot-v3
   {:team "Metabot"
@@ -2076,6 +2651,7 @@
            permissions
            premium-features
            pulse
+           query-permissions
            query-processor
            request
            search
@@ -2090,7 +2666,22 @@
            warehouses-rest
            enterprise/dependencies
            enterprise/transforms
-           enterprise/transforms-python}}
+           enterprise/transforms-python}
+   :model-exports #{:model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotMessage
+                    :model/MetabotPrompt}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Database
+                    :model/Field
+                    :model/Glossary
+                    :model/ModerationReview
+                    :model/QueryTable
+                    :model/Table
+                    :model/Transform
+                    :model/User}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -2100,7 +2691,8 @@
            models
            permissions
            query-processor
-           util}}
+           util}
+   :model-imports #{:model/Card :model/User}}
 
   enterprise/premium-features
   {:team "UX West"
@@ -2124,7 +2716,15 @@
            task
            task-history
            util
-           enterprise/serialization}}
+           enterprise/serialization}
+   :model-exports #{:model/RemoteSyncTask}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Timeline
+                    :model/User}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2137,6 +2737,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            premium-features
@@ -2147,7 +2748,15 @@
            util
            warehouse-schema
            warehouses
-           enterprise/api}}
+           enterprise/api}
+   :model-exports #{:model/Sandbox}
+   :model-imports #{:model/Card
+                    :model/ConnectionImpersonation
+                    :model/Database
+                    :model/Field
+                    :model/PermissionsGroupMembership
+                    :model/Table
+                    :model/User}}
 
   enterprise/scim
   {:team "UX West"
@@ -2164,7 +2773,11 @@
            system
            users
            util
-           enterprise/serialization}}
+           enterprise/serialization}
+   :model-imports #{:model/ApiKey
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/User}}
 
   enterprise/search
   {:team "UX West"
@@ -2213,7 +2826,8 @@
            task
            util
            enterprise/llm
-           enterprise/metabot-v3}}
+           enterprise/metabot-v3}
+   :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
 
   enterprise/serialization
   {:team "Querying"
@@ -2233,7 +2847,11 @@
            premium-features
            search
            setup
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/User}}
 
   enterprise/snippet-collections
   {:team "Querying"
@@ -2260,7 +2878,8 @@
            sso
            system
            util
-           enterprise/scim}}
+           enterprise/scim}
+   :model-imports #{:model/PermissionsGroup :model/Session}}
 
   enterprise/stale
   {:team "UX West"
@@ -2275,7 +2894,8 @@
            queries
            request
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/support-access-grants
   {:team "UX West"
@@ -2288,7 +2908,8 @@
            request
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
   enterprise/tenants
   {:team "Admin Webapp"
@@ -2303,7 +2924,9 @@
            premium-features
            request
            settings
-           util}}
+           util}
+   :model-exports #{:model/Tenant}
+   :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
   {:team "Querying"
@@ -2332,7 +2955,13 @@
            sync
            task
            task-history
-           util}}
+           util}
+   :model-exports #{:model/Transform :model/TransformRun}
+   :model-imports #{:model/Database
+                    :model/DatabaseRouter
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   enterprise/transforms-python
   {:team "Querying"
@@ -2348,7 +2977,11 @@
            query-processor
            settings
            util
-           enterprise/transforms}}
+           enterprise/transforms}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/TransformRun}}
 
   enterprise/upload-management
   {:team "UX West"
@@ -2357,7 +2990,8 @@
            models
            premium-features
            upload
-           util}}}
+           util}
+   :model-imports #{:model/Database :model/Table}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

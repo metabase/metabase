@@ -260,3 +260,48 @@
                  (get-in content-revision [:diff :before :document])))
           (is (= {:content [{:content [{:text "New content"}]}]}
                  (get-in content-revision [:diff :after :document]))))))))
+
+(deftest document-revert-cannot-resurrect-public-link-test
+  (testing "a curator cannot reinstate a revoked public link by reverting a revision (POST /api/revision/revert)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Shared Document"
+                                                   :document {:type "doc" :content []}
+                                                   :creator_id (mt/user->id :crowberto)}]
+        (let [public-uuid (str (random-uuid))]
+          ;; an admin publishes the document, then it is edited
+          (t2/update! :model/Document doc-id {:public_uuid       public-uuid
+                                              :made_public_by_id (mt/user->id :crowberto)})
+          (create-document-revision! doc-id true :crowberto)
+          (testing "the stored revision does not carry the public sharing columns"
+            (let [object (t2/select-one-fn :object :model/Revision :model "Document" :model_id doc-id)]
+              (is (not (contains? object :public_uuid)))
+              (is (not (contains? object :made_public_by_id)))))
+          ;; Revisions are immutable, so insert one shaped the way it would have been recorded before those
+          ;; columns were excluded — that is the snapshot a curator would replay.
+          (let [rev-id (t2/insert-returning-pk! :model/Revision
+                                                :model        "Document"
+                                                :model_id     doc-id
+                                                :user_id      (mt/user->id :crowberto)
+                                                :object       (assoc (revision/serialize-instance
+                                                                      :model/Document doc-id
+                                                                      (t2/select-one :model/Document :id doc-id))
+                                                                     :public_uuid       public-uuid
+                                                                     :made_public_by_id (mt/user->id :crowberto))
+                                                :is_creation  false
+                                                :is_reversion false)]
+            (t2/update! :model/Document doc-id {:name              "Unshared Document"
+                                                :public_uuid       nil
+                                                :made_public_by_id nil})
+            (create-document-revision! doc-id false :crowberto)
+            (testing "reverting restores the content but leaves the link revoked"
+              (is (:is_reversion (mt/user-http-request :rasta :post "revision/revert"
+                                                       {:entity      :document
+                                                        :id          doc-id
+                                                        :revision_id rev-id})))
+              (let [reverted (t2/select-one :model/Document :id doc-id)]
+                (is (= "Shared Document" (:name reverted)))
+                (is (nil? (:public_uuid reverted)))
+                (is (nil? (:made_public_by_id reverted)))))
+            (testing "the document is no longer reachable by an anonymous visitor"
+              (is (= "Not found."
+                     (mt/client :get 404 (str "public/document/" public-uuid)))))))))))

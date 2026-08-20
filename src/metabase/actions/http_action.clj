@@ -117,7 +117,16 @@
       (throw (ex-info (tru "Too many results returned: {0}" (pr-str results)) {:jq-query jq-query :results results})))))
 
 (defn execute-http-action!
-  "Calls an http endpoint based on action and params"
+  "HTTP actions are disabled. Not used by the product; refused unconditionally regardless of caller."
+  [_action _params->value]
+  (throw (ex-info (tru "HTTP actions are disabled.")
+                  {:type        :http
+                   :status-code 400})))
+
+;; Unreachable now that `execute-http-action!` above refuses unconditionally; kept, unused, while
+;; we decide the feature's fate rather than deleting the SSRF-capable request-building logic from history.
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var :unused-private-var]}
+(defn- execute-http-action-impl!
   [action params->value]
   (try
     (let [{:keys [method url body headers]} (:template action)
