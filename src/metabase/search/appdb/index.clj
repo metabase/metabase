@@ -201,18 +201,16 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  ;; Use an explicit mutation connection: this may run while the source stream or its caller owns an ambient Toucan
-  ;; transaction. PostgreSQL also needs the post-create indexes committed before returning.
-  (t2/with-connection [conn (mdb/app-db)]
-    (search.lease/do-in-fenced-transaction!
-     conn
-     (fn [conn]
-       (t2/query conn
-                 (-> (sql.helpers/create-table table-name)
-                     (sql.helpers/with-columns (specialization/table-schema base-schema))))
-       (let [table-name (name table-name)]
-         (doseq [stmt (specialization/post-create-statements table-name table-name)]
-           (t2/query conn stmt)))))))
+  ;; PostgreSQL needs the post-create indexes committed before returning, so this runs as its own transaction unless
+  ;; the lease was acquired inside a caller's transaction.
+  (search.lease/do-with-mutation-connection
+   (fn [conn]
+     (t2/query conn
+               (-> (sql.helpers/create-table table-name)
+                   (sql.helpers/with-columns (specialization/table-schema base-schema))))
+     (let [table-name (name table-name)]
+       (doseq [stmt (specialization/post-create-statements table-name table-name)]
+         (t2/query conn stmt))))))
 
 (defn- create-fresh-leased-pending!
   []
@@ -221,18 +219,18 @@
     (try
       ;; Reserve the name before creating the table, so orphan cleanup can never see a newly created leased table as
       ;; unreferenced. If creation fails, the next owner atomically replaces this pending reservation.
-      (t2/with-connection [conn (mdb/app-db)]
-        (search.lease/do-in-fenced-transaction!
-         conn
-         #(search-index-metadata/replace-pending-on-current-connection!
-           % :appdb (search.spec/index-version-hash) table-name)))
+      (search.lease/do-with-mutation-connection
+       #(search-index-metadata/replace-pending-on-current-connection!
+         % :appdb (search.spec/index-version-hash) table-name))
       (create-table! table-name)
       (sync-tracking-atoms!)
       table-name
       (catch Throwable e
         ;; A table created just before ownership was lost is deliberately left unreferenced and will be collected by
         ;; the ordinary orphan cleanup. Never let a stale owner delete a table a replacement may have adopted.
-        (sync-tracking-atoms!)
+        ;; An obsolete-locale owner must not sync either: its tracking would be for the old locale's tables.
+        (when-not (= ::search.lease/coordinate-obsolete (:type (ex-data e)))
+          (sync-tracking-atoms!))
         (throw e)))))
 
 (defn maybe-create-pending!
@@ -301,12 +299,16 @@
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
-          (let [active (t2/with-connection [conn (mdb/app-db)]
-                         (search.lease/do-in-fenced-transaction!
-                          conn
-                          #(some-> (search-index-metadata/active-pending-on-current-connection!
-                                    % :appdb (search.spec/index-version-hash) pending)
-                                   keyword)))]
+          (let [active (search.lease/do-with-mutation-connection
+                        #(some-> (search-index-metadata/active-pending-on-current-connection!
+                                  % :appdb (search.spec/index-version-hash) pending)
+                                 keyword))]
+            (when-not (= active pending)
+              ;; Another process replaced or retired our pending metadata between the sync and the fenced
+              ;; transaction; the table we built is left for orphan cleanup.
+              (sync-tracking-atoms!)
+              (throw (ex-info "Pending index was replaced before it could be activated"
+                              {:pending pending, :active active})))
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
         ;; Clean up while we're here
@@ -443,19 +445,26 @@
                         (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
                             (log/trace "indexed documents for " <>)))))]
-    (if leased?
+    (cond
+      leased?
       ;; Reuse the batch writer for both the ownership fence and write. This covers staged, force-sync, and in-place
       ;; rebuilds without acquiring a third connection alongside the streaming reader and batch writer.
+      (search.lease/do-with-mutation-connection do-writes)
+
+      reindexing?
+      ;; The ambient connection is the streaming reader's transaction, so write on a fresh connection to keep each
+      ;; batch committing on its own.
       (t2/with-connection [conn (mdb/app-db)]
-        (search.lease/do-in-fenced-transaction! conn do-writes))
+        (do-writes conn))
+
+      :else
       (t2/with-connection [conn]
         (do-writes conn)))))
 
 (defn clear-active-table!
-  "Delete the active table's contents in a fenced transaction."
+  "Delete the active table's contents on the lease's mutation connection."
   [table]
-  (t2/with-connection [conn (mdb/app-db)]
-    (search.lease/do-in-fenced-transaction! conn #(t2/delete! :conn % table))))
+  (search.lease/do-with-mutation-connection #(t2/delete! :conn % table)))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.

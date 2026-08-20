@@ -99,7 +99,9 @@
 (defn active-pending-on-current-connection!
   "Promote `expected-index-name` on the caller's current transaction and return the active index name.
 
-  Passing the expected name prevents an old worker from promoting a replacement owner's pending table."
+  Passing the expected name prevents an old worker from promoting a replacement owner's pending table.
+  When that pending row is gone the existing active name is returned unchanged, so callers compare the result with
+  the name they expected to promote."
   [conn engine version expected-index-name]
   (let [coordinate {:engine engine, :version version, :lang_code (i18n/site-locale-string)}
         pending    (cond-> (assoc coordinate :status :pending)

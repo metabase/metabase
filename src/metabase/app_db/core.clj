@@ -48,6 +48,7 @@
   transaction-state
   with-unshared-connection]
  [mdb.connection-pool-setup
+  c3p0-pool-monitor
   recent-activity?
   single-connection-pool-data-source]
  [mdb.data-source
