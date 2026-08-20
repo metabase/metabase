@@ -111,6 +111,14 @@
       (op-error! idx (format "%s): no dashcard with id %s on this dashboard."
                              "dashcard_id" id))))
 
+(defn- check-tab-id!
+  "A dashcard's target tab must be one of this dashboard's tabs — including a tab added earlier in
+   this batch under its negative id. nil means no tab, which stays legal. `op-name` names the op in
+   the teaching error."
+  [state idx op-name tab-id]
+  (when (and (some? tab-id) (not (find-row state :tabs tab-id)))
+    (op-error! idx (format "%s): no tab with id %s on this dashboard." op-name tab-id))))
+
 ;;; ---------------------------------------------- Placement -------------------------------------------------------
 
 (defn- placement
@@ -176,10 +184,11 @@
 
 (defn- insert-dashcard
   "Insert a new dashcard: check `(:id op)` is a fresh negative id, place it on
-   `(:dashboard_tab_id base)` honoring `op`'s position/size with `display`'s default size, and
-   append `base` merged with the placement."
+   `(:dashboard_tab_id base)` — a tab on this dashboard — honoring `op`'s position/size with
+   `display`'s default size, and append `base` merged with the placement."
   [state idx op base display]
   (check-new-id! state idx (:id op) (:op op))
+  (check-tab-id! state idx (:op op) (:dashboard_tab_id base))
   (insert-row state :dashcards
               (merge base (placement state op (:dashboard_tab_id base) display))))
 
@@ -303,8 +312,8 @@
   [state idx {:keys [dashcard_id tab position] :as op}]
   (let [dc     (resolve-dashcard! state idx dashcard_id)
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id dc))]
-    (when (and (contains? op :tab) (some? tab) (not (find-row state :tabs tab)))
-      (op-error! idx (format "move): no tab with id %s on this dashboard." tab)))
+    (when (contains? op :tab)
+      (check-tab-id! state idx "move" tab))
     (update-row state :dashcards dashcard_id
                 (fn [dc]
                   (merge dc

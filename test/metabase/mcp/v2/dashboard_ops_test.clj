@@ -365,6 +365,38 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"op 0.*99"
                           (dashboard-ops/compile-ops empty-dash [{:op "rename_tab" :tab_id 99 :name "x"}])))))
 
+(def ^:private one-tab-dash
+  {:id 1 :dashcards [] :tabs [{:id 5 :name "A"}] :parameters []})
+
+(deftest add-card-rejects-a-tab-not-on-this-dashboard-test
+  (testing "GHY-4147: `tab` naming a tab that belongs to a different dashboard is a teaching error
+            naming the op index — a dashcard on a foreign tab renders nowhere and cannot be repaired
+            in the editor"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0 \(add_card\): no tab with id 77 on this dashboard\."
+         (dashboard-ops/compile-ops one-tab-dash [{:op "add_card" :id -1 :card_id 42 :tab 77}]))))
+  (testing "GHY-4147: a tab id that exists nowhere teaches the same way instead of failing opaquely later"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 1 \(add_card\): no tab with id 999 on this dashboard\."
+         (dashboard-ops/compile-ops one-tab-dash
+                                    [{:op "add_card" :id -1 :card_id 42 :tab 5}
+                                     {:op "add_card" :id -2 :card_id 42 :tab 999}])))))
+
+(deftest virtual-dashcard-rejects-a-tab-not-on-this-dashboard-test
+  (testing "GHY-4147: the virtual add ops validate `tab` the same way add_card does"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0 \(add_text\): no tab with id 77 on this dashboard\."
+         (dashboard-ops/compile-ops one-tab-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}])))))
+
+(deftest duplicate-card-rejects-a-tab-not-on-this-dashboard-test
+  (testing "GHY-4147: duplicate_card's optional `tab` is validated too"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"op 0 \(duplicate_card\): no tab with id 77 on this dashboard\."
+         (dashboard-ops/compile-ops
+          (assoc one-tab-dash :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5
+                                           :row 0 :col 0 :size_x 4 :size_y 4}])
+          [{:op "duplicate_card" :id -1 :dashcard_id 7 :tab 77}])))))
+
 (def ^:private a-card
   "Minimal stand-in for a hydrated card; mapping-targets is stubbed in these tests, so only the
    id matters here."
