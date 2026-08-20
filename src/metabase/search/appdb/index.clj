@@ -303,9 +303,9 @@
 (defn- safe-batch-upsert!
   "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
 
-  Returns the name of the table that was written to, or nil if there is none being tracked, or nil
-  if the upsert failed for any other reason — in which case the failure is logged at ERROR and we
-  continue so the rest of the reindex can finish and activate whatever was successfully written.
+  Returns the name of the table that was written to, or nil if no table is being tracked or the
+  upsert failed. For other failures, the error is logged at ERROR and the reindex continues so it
+  can activate whatever was successfully written.
 
   We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
   [table-type table-name-fn entries]
