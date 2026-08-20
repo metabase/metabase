@@ -3,7 +3,10 @@ import { dayjs } from "metabase/dayjs";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getXAxisModel } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { isTimeSeriesAxis } from "metabase/visualizations/echarts/cartesian/model/guards";
-import type { DimensionModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type {
+  DimensionModel,
+  TimeSeriesXAxisModel,
+} from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   getPadding,
   getTicksOptions,
@@ -39,10 +42,14 @@ describe("getTicksOptions", () => {
       "graph.x_axis.scale": "timeseries",
     });
 
-    const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
-    if (!isTimeSeriesAxis(model)) {
-      throw new Error("expected timeseries x-axis model");
-    }
+    // graph.x_axis.scale is timeseries, so the model should be a TimeSeriesXAxisModel
+    const model = getXAxisModel(
+      dimensionModel,
+      rawSeries,
+      dataset,
+      settings,
+    ) as TimeSeriesXAxisModel;
+    expect(isTimeSeriesAxis(model)).toBe(true);
 
     const { xDomainPadded } = getTicksOptions(model, createMockChartLayout());
     const padding = getPadding(model.intervalsCount);

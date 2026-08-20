@@ -13,7 +13,11 @@ import {
   getXAxisModel,
 } from "./axis";
 import { isTimeSeriesAxis } from "./guards";
-import type { DimensionModel, SeriesExtents } from "./types";
+import type {
+  DimensionModel,
+  SeriesExtents,
+  TimeSeriesXAxisModel,
+} from "./types";
 
 describe("computeSplit", () => {
   const extents: SeriesExtents = {
@@ -113,10 +117,14 @@ describe("getXAxisModel", () => {
           { data: { results_timezone: resultsTimezone } },
         ),
       ];
-      const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
-      if (!isTimeSeriesAxis(model)) {
-        throw new Error("expected timeseries x-axis model");
-      }
+      // graph.x_axis.scale is timeseries, so the model should be a TimeSeriesXAxisModel
+      const model = getXAxisModel(
+        dimensionModel,
+        rawSeries,
+        dataset,
+        settings,
+      ) as TimeSeriesXAxisModel;
+      expect(isTimeSeriesAxis(model)).toBe(true);
       return model;
     };
 
