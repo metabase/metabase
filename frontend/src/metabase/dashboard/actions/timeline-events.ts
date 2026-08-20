@@ -11,6 +11,7 @@ import type {
   Dispatch,
   EventsSidebarProps,
   GetState,
+  State,
   TimelineEventsSelection,
 } from "metabase/redux/store";
 import { isDefaultVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -40,46 +41,68 @@ export type TimelineEventsVisibilityUpdate = (
   context: TimelineEventsVisibilityContext,
 ) => TimelineEventsVisibility;
 
+type DashCardVisibility = {
+  dashcardId: DashCardId;
+  visibility: TimelineEventsVisibility;
+};
+
+const getUpdatedVisibilities = (
+  state: State,
+  dashcardIds: DashCardId[],
+  update: TimelineEventsVisibilityUpdate,
+): DashCardVisibility[] => {
+  const context = getTimelineEventsVisibilityContext(state);
+  return dashcardIds.flatMap((dashcardId) => {
+    const visibility =
+      getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
+    const nextVisibility = update(visibility, context);
+    return _.isEqual(visibility, nextVisibility)
+      ? []
+      : [{ dashcardId, visibility: nextVisibility }];
+  });
+};
+
+const persistVisibilities = (
+  state: State,
+  visibilities: DashCardVisibility[],
+) =>
+  setMultipleDashCardAttributes({
+    dashcards: visibilities.map(({ dashcardId, visibility }) => ({
+      id: dashcardId,
+      attributes: {
+        visualization_settings: {
+          ...getDashCardById(state, dashcardId)?.visualization_settings,
+          "timeline_events.visibility": isDefaultVisibility(visibility)
+            ? undefined
+            : visibility,
+        },
+      },
+    })),
+  });
+
+const overrideVisibilities = (visibilities: DashCardVisibility[]) =>
+  setDashCardTimelineEventsVisibility(
+    Object.fromEntries(
+      visibilities.map(({ dashcardId, visibility }) => [
+        dashcardId,
+        visibility,
+      ]),
+    ),
+  );
+
 export const updateDashCardsTimelineEventsVisibility =
   (dashcardIds: DashCardId[], update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const context = getTimelineEventsVisibilityContext(state);
+    const visibilities = getUpdatedVisibilities(state, dashcardIds, update);
 
-    const changed = dashcardIds.flatMap(
-      (dashcardId): [DashCardId, TimelineEventsVisibility][] => {
-        const visibility =
-          getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
-        const nextVisibility = update(visibility, context);
-        return _.isEqual(visibility, nextVisibility)
-          ? []
-          : [[dashcardId, nextVisibility]];
-      },
-    );
-
-    if (changed.length === 0) {
+    if (visibilities.length === 0) {
       return;
     }
 
-    if (getIsEditing(state)) {
-      dispatch(
-        setMultipleDashCardAttributes({
-          dashcards: changed.map(([dashcardId, visibility]) => ({
-            id: dashcardId,
-            attributes: {
-              visualization_settings: {
-                ...getDashCardById(state, dashcardId)?.visualization_settings,
-                "timeline_events.visibility": isDefaultVisibility(visibility)
-                  ? undefined
-                  : visibility,
-              },
-            },
-          })),
-        }),
-      );
-    } else {
-      dispatch(
-        setDashCardTimelineEventsVisibility(Object.fromEntries(changed)),
-      );
-    }
+    dispatch(
+      getIsEditing(state)
+        ? persistVisibilities(state, visibilities)
+        : overrideVisibilities(visibilities),
+    );
   };
