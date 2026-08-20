@@ -6,6 +6,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
@@ -55,6 +56,31 @@
                          (merge expected-payload {"event" "interactive_embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
                        (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))))))))))
+
+(deftest enable-embedding-modular-test
+  (testing "Toggling modular embedding sends a simple_event whose event_detail decodes to the context map"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:embedding}
+        (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
+                                           enable-embedding-modular false]
+          (let [expected-detail {"embedding_app_origin_set"   true
+                                 "number_embedded_questions"  (t2/count :model/Card :enable_embedding true)
+                                 "number_embedded_dashboards" (t2/count :model/Dashboard :enable_embedding true)}
+                ;; `event_detail` arrives as a JSON string, unlike the typed columns `embed_share` used, so decode
+                ;; it before comparing -- that round trip is the thing worth asserting.
+                pop-events! #(for [event (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))]
+                               (update event :data update "event_detail" json/decode))]
+            (snowplow-test/with-fake-snowplow-collector
+              (embed.settings/enable-embedding-modular! true)
+              (is (= [{:data    {"event"        "modular_embedding_enabled"
+                                 "event_detail" expected-detail}
+                       :user-id (str (mt/user->id :crowberto))}]
+                     (pop-events!)))
+              (mt/with-temporary-setting-values [enable-embedding-modular false]
+                (is (= [{:data    {"event"        "modular_embedding_disabled"
+                                   "event_detail" expected-detail}
+                         :user-id (str (mt/user->id :crowberto))}]
+                       (pop-events!)))))))))))
 
 (deftest enabling-embedding-generates-secret-key-test
   (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"

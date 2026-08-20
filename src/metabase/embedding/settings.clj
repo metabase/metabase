@@ -8,6 +8,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.random :as u.random]
@@ -192,14 +193,17 @@
                     (when (not= new-value old-value)
                       (when (and new-value (str/blank? (embedding-secret-key)))
                         (embedding-secret-key! (u.random/secure-hex 32)))
-                      ;; The same `embed_share` event the other embedding toggles track; `modular-embedding` was
-                      ;; added to its enum in schema 1-0-3.
+                      ;; `simple_event` rather than the `embed_share` the legacy toggles use: that schema's `event`
+                      ;; is a closed enum, so `modular_embedding_*` would need a new version cut for a tracker being
+                      ;; retired for Metaplow. The context the enum-typed event carried moves into `event_detail`,
+                      ;; the way the SDK bundle already sends it.
                       (analytics/track-event!
-                       :snowplow/embed_share
-                       {:event                      (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
-                        :embedding-app-origin-set   (embedding-app-origin-set?)
-                        :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                        :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
+                       :snowplow/simple_event
+                       {:event        (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
+                        :event-detail (json/encode
+                                       {:embedding_app_origin_set   (embedding-app-origin-set?)
+                                        :number_embedded_questions  (t2/count :model/Card :enable_embedding true)
+                                        :number_embedded_dashboards (t2/count :model/Dashboard :enable_embedding true)})}))))))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
