@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useEnsureDefaultEmbeddingThemes } from "metabase/admin/embedding/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   AreaLayout,
   AreaNavButton,
