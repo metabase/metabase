@@ -63,7 +63,7 @@
          ;; We assume that failure corresponds to a unique index conflict (a pending entry already exists)
          false)))))
 
-(defn delete-index!
+(defn delete-pending-index!
   "Delete the given index if it is still pending."
   [engine version index-name]
   (t2/delete! :model/SearchIndexMetadata
