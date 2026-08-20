@@ -19,9 +19,13 @@ export type ClickActionModeGetter = (data: {
 }) => QueryClickActionsMode | ClickActionsMode;
 
 export type {
+  BrushClickObject,
+  BrushRange,
   ClickActionProps,
   ClickObject,
 } from "metabase-lib/v1/queries/drills/types";
+
+export { isBrushClickObject } from "metabase-lib/v1/queries/drills/types";
 
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 

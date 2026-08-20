@@ -2,23 +2,25 @@ import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { c, t } from "ttag";
+import { c, msgid, t } from "ttag";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
   FormProvider,
+  FormSelect,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
 import { PLUGIN_CACHING, isModelWithClearableCache } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -40,7 +42,7 @@ import type {
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
-import { defaultCronSchedule, rootId } from "../constants/simple";
+import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
   getDefaultValueForField,
@@ -197,12 +199,6 @@ const StrategyFormBody = ({
       setStatus("idle");
     }
   }, [dirty, wasDirty, setIsDirty, setStatus]);
-
-  useEffect(() => {
-    if (selectedStrategyType === "duration") {
-      setFieldValue("unit", CacheDurationUnit.Hours);
-    }
-  }, [selectedStrategyType, values, setFieldValue]);
 
   const headingId = "strategy-form-heading";
 
@@ -410,13 +406,15 @@ const ScheduleStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
-  const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
+  const initialSchedule = cronToBuilderValue(scheduleInCronFormat);
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(
-    (newCronSchedule: string) => {
-      setFieldValue("schedule", newCronSchedule);
+    ({ cronString }: ScheduleChangeEvent) => {
+      if (cronString) {
+        setFieldValue("schedule", cronString);
+      }
     },
     [setFieldValue],
   );
@@ -444,7 +442,7 @@ const ScheduleStrategyFormFields = ({
           </Text>
         </Stack>
         <Schedule
-          cronString={scheduleInCronFormat || defaultCronSchedule}
+          value={initialSchedule}
           scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
           onScheduleChange={onScheduleChange}
           verb={c("A verb in the imperative mood").t`Invalidate`}
@@ -619,33 +617,82 @@ const MultiplierFieldSubtitle = () => (
   </Text>
 );
 
+const getDurationUnitOptions = (duration: number) => {
+  const count = Number.isFinite(duration) ? duration : 2;
+  return [
+    {
+      value: CacheDurationUnit.Seconds,
+      label: c("Cache duration unit").ngettext(msgid`second`, `seconds`, count),
+    },
+    {
+      value: CacheDurationUnit.Minutes,
+      label: c("Cache duration unit").ngettext(msgid`minute`, `minutes`, count),
+    },
+    {
+      value: CacheDurationUnit.Hours,
+      label: c("Cache duration unit").ngettext(msgid`hour`, `hours`, count),
+    },
+    {
+      value: CacheDurationUnit.Days,
+      label: c("Cache duration unit").ngettext(msgid`day`, `days`, count),
+    },
+  ];
+};
+
 const DurationStrategyFormFields = ({
   targetModel,
   onSwitchToggle,
 }: {
   targetModel: CacheableModel;
   onSwitchToggle: () => void;
-}) => (
-  <>
-    <StrategyFormField
-      title={t`Cache duration`}
-      subtitle={
-        <Text fz="md" lh="1.25rem" c="text-secondary">
-          {t`Cached results are refreshed after this period.`}
-        </Text>
-      }
-      unit={c("Unit suffix shown after the cache duration input").t`hours`}
-    >
-      <PositiveNumberInput strategyType="duration" name="duration" />
-    </StrategyFormField>
-    <input type="hidden" name="unit" />
-    {["question", "dashboard"].includes(targetModel) && (
-      <PLUGIN_CACHING.PreemptiveCachingSwitch
-        handleSwitchToggle={onSwitchToggle}
-      />
-    )}
-  </>
-);
+}) => {
+  const { values, setFieldValue } = useFormikContext<CacheStrategy>();
+  const unit = values.type === "duration" ? values.unit : undefined;
+  const duration =
+    values.type === "duration" ? Number(values.duration) : Number.NaN;
+
+  useEffect(() => {
+    if (!unit) {
+      setFieldValue("unit", CacheDurationUnit.Hours);
+    }
+  }, [unit, setFieldValue]);
+
+  return (
+    <>
+      <StrategyFormField
+        title={t`Cache duration`}
+        subtitle={
+          <Text fz="md" lh="1.25rem" c="text-secondary">
+            {t`Cached results are refreshed after this period.`}
+          </Text>
+        }
+      >
+        <Flex align="flex-start" gap="sm">
+          <PositiveNumberInput
+            strategyType="duration"
+            name="duration"
+            placeholder="0"
+          />
+          <FormSelect
+            name="unit"
+            data={getDurationUnitOptions(duration)}
+            w="8rem"
+            allowDeselect={false}
+            aria-label={t`Cache duration unit`}
+            data-testid="duration-unit-select"
+          />
+        </Flex>
+      </StrategyFormField>
+      {["question", "dashboard"].includes(targetModel) && (
+        <PLUGIN_CACHING.PreemptiveCachingSwitch
+          handleSwitchToggle={onSwitchToggle}
+        />
+      )}
+    </>
+  );
+};
+
+const NUMBER_INPUT_WIDTH = "4.5rem";
 
 export const PositiveNumberInput = ({
   strategyType,
@@ -657,12 +704,19 @@ export const PositiveNumberInput = ({
     <FormTextInput
       type="number"
       name={props.name ?? ""}
+      // Store cleared fields as null: Formik turns "" into undefined before validation
+      nullable
       min={1}
       styles={{
         input: {
           // This is like `text-align: right` but it's RTL-friendly
           textAlign: "end",
-          maxWidth: "4.5rem",
+          maxWidth: NUMBER_INPUT_WIDTH,
+        },
+        error: {
+          width: NUMBER_INPUT_WIDTH,
+          overflow: "visible",
+          whiteSpace: "nowrap",
         },
       }}
       autoComplete="off"

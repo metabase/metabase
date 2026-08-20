@@ -17,6 +17,8 @@
    :is-data-analyst?               false
    :current-user-perms             #{"/"}
    :calculate-available-models?    false
+   :is-sandboxed-user?             false
+   :is-impersonated-user?          false
    :enabled-transform-source-types #{"mbql"}})
 
 (deftest ^:parallel ->applicable-models-test
@@ -40,7 +42,7 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric" "measure"}
+      (is (= #{"dashboard" "dataset" "document" "exploration" "action" "card" "metric" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -50,7 +52,7 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric" "transform" "measure"}
+      (is (= #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card" "metric" "transform" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -353,7 +355,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:= [:inline 0] [:inline 1]]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -366,7 +368,7 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:= [:inline 0] [:inline 1]]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -387,7 +389,7 @@
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
-              [:inline [:= 1 1]]]
+              [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -398,7 +400,7 @@
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
-              [:inline [:= 1 1]]]
+              [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
                       "indexed-entity"
@@ -464,5 +466,5 @@
         (let [result (search.filter/build-filters
                       base-search-query model
                       (merge default-search-ctx {:collection 1}))]
-          (is (some #{[:inline [:= 0 1]]}
+          (is (some #{[:= [:inline 0] [:inline 1]]}
                     (tree-seq sequential? seq (:where result)))))))))

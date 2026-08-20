@@ -2,7 +2,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,

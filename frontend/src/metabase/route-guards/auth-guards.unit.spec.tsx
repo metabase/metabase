@@ -31,7 +31,7 @@ describe("route-guards", () => {
 
       const Dashboard = () => <div>protected dashboard</div>;
 
-      const { history } = renderWithProviders(
+      const { router } = renderWithProviders(
         <>
           <Route element={<IsAuthenticated />}>
             <Route path="/dashboard/:slug" element={<Dashboard />} />
@@ -48,12 +48,43 @@ describe("route-guards", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
 
-      const location = history!.getCurrentLocation();
+      const location = router!.location;
       expect(new URLSearchParams(location.search).get("redirect")).toBe(
         "/dashboard/123",
+      );
+    });
+
+    it("keeps the URL hash in ?redirect= so deep links (e.g. shared comment links) survive the login bounce", async () => {
+      const state = createMockState({
+        currentUser: undefined,
+        settings: createMockSettingsState({ "has-user-setup": true }),
+      });
+
+      const { router } = renderWithProviders(
+        <>
+          <Route element={<IsAuthenticated />}>
+            <Route path="/dashboard/:slug" element={<Protected />} />
+          </Route>
+          <Route element={<IsNotAuthenticated />}>
+            <Route path="/auth/login" element={<LoginPage />} />
+          </Route>
+        </>,
+        {
+          storeInitialState: state,
+          withRouter: true,
+          initialRoute: "/dashboard/123?comments=true#comment-5",
+        },
+      );
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/auth/login");
+      });
+
+      expect(new URLSearchParams(router!.location.search).get("redirect")).toBe(
+        "/dashboard/123?comments=true#comment-5",
       );
     });
   });
@@ -65,7 +96,7 @@ describe("route-guards", () => {
         settings: createMockSettingsState({ "has-user-setup": true }),
       });
 
-      const { history } = renderWithProviders(
+      const { router } = renderWithProviders(
         <>
           <Route element={<IsAdmin />}>
             <Route path="/admin/settings" element={<Protected />} />
@@ -80,7 +111,7 @@ describe("route-guards", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+        expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
   });
@@ -93,7 +124,7 @@ describe("route-guards", () => {
         settings: createMockSettingsState({ "has-user-setup": true }),
       });
 
-      const { history } = renderWithProviders(
+      const { router } = renderWithProviders(
         <>
           <Route element={<IsNotAuthenticated />}>
             <Route path="/auth/login" element={<LoginPage />} />
@@ -108,7 +139,7 @@ describe("route-guards", () => {
       );
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/");
+        expect(router?.location.pathname).toBe("/");
       });
     });
   });
@@ -130,7 +161,7 @@ describe("route-guards", () => {
         settings: createMockSettingsState({ "has-user-setup": true }),
       });
 
-      const { history } = renderWithProviders(
+      const { router } = renderWithProviders(
         <Route element={<IsNotAuthenticated />}>
           <Route path="/auth/login" element={<LoginPage />} />
         </Route>,
@@ -141,7 +172,7 @@ describe("route-guards", () => {
         },
       );
 
-      return { history };
+      return { router };
     };
 
     afterEach(() => {
@@ -153,43 +184,43 @@ describe("route-guards", () => {
     });
 
     it("does a full-page redirect for a relative backend-only path", async () => {
-      const { history } = setup("/auth/sso/google");
+      const { router } = setup("/auth/sso/google");
 
       await waitFor(() => {
         expect(replaceLocationMock).toHaveBeenCalledWith(
           `${ORIGIN}/auth/sso/google`,
         );
       });
-      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      expect(router?.location.pathname).toBe("/auth/login");
     });
 
     it("normalizes a relative backend-only target without a leading slash", async () => {
-      const { history } = setup("auth/sso/google");
+      const { router } = setup("auth/sso/google");
 
       await waitFor(() => {
         expect(replaceLocationMock).toHaveBeenCalledWith(
           `${ORIGIN}/auth/sso/google`,
         );
       });
-      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      expect(router?.location.pathname).toBe("/auth/login");
     });
 
     it("does a full-page redirect for an absolute same-origin backend-only URL", async () => {
-      const { history } = setup(`${ORIGIN}/auth/sso/google`);
+      const { router } = setup(`${ORIGIN}/auth/sso/google`);
 
       await waitFor(() => {
         expect(replaceLocationMock).toHaveBeenCalledWith(
           `${ORIGIN}/auth/sso/google`,
         );
       });
-      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      expect(router?.location.pathname).toBe("/auth/login");
     });
 
     it("navigates in-app to the path of an absolute same-origin URL", async () => {
-      const { history } = setup(`${ORIGIN}/dashboard/1`);
+      const { router } = setup(`${ORIGIN}/dashboard/1`);
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation().pathname).toBe("/dashboard/1");
+        expect(router?.location.pathname).toBe("/dashboard/1");
       });
       expect(replaceLocationMock).not.toHaveBeenCalled();
     });
@@ -198,14 +229,14 @@ describe("route-guards", () => {
       const siteUrl = "https://metabase.example.com";
       mockSettings({ "site-url": siteUrl });
 
-      const { history } = setup(`${siteUrl}/dashboard/1`);
+      const { router } = setup(`${siteUrl}/dashboard/1`);
 
       await waitFor(() => {
         expect(replaceLocationMock).toHaveBeenCalledWith(
           `${siteUrl}/dashboard/1`,
         );
       });
-      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      expect(router?.location.pathname).toBe("/auth/login");
     });
 
     describe("when Metabase is hosted under a subpath (GIT-10551)", () => {
@@ -214,57 +245,55 @@ describe("route-guards", () => {
       });
 
       it("prefixes the subpath on a full-page redirect to a backend-only path", async () => {
-        const { history } = setup("/oauth/authorize?client_id=abc");
+        const { router } = setup("/oauth/authorize?client_id=abc");
 
         await waitFor(() => {
           expect(replaceLocationMock).toHaveBeenCalledWith(
             `${ORIGIN}/metabase/oauth/authorize?client_id=abc`,
           );
         });
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
 
       it("does not double the subpath when navigating in-app", async () => {
-        const { history } = setup("/dashboard/1");
+        const { router } = setup("/dashboard/1");
 
         await waitFor(() => {
-          expect(history?.getCurrentLocation().pathname).toBe("/dashboard/1");
+          expect(router?.location.pathname).toBe("/dashboard/1");
         });
         expect(replaceLocationMock).not.toHaveBeenCalled();
       });
 
       it("recognizes a backend-only path behind the subpath in an absolute URL", async () => {
-        const { history } = setup(`${ORIGIN}/metabase/oauth/authorize`);
+        const { router } = setup(`${ORIGIN}/metabase/oauth/authorize`);
 
         await waitFor(() => {
           expect(replaceLocationMock).toHaveBeenCalledWith(
             `${ORIGIN}/metabase/oauth/authorize`,
           );
         });
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
 
       it("does not strip a lookalike path prefix that is not the basename", async () => {
-        const { history } = setup(`${ORIGIN}/metabase-docs/foo`);
+        const { router } = setup(`${ORIGIN}/metabase-docs/foo`);
 
         await waitFor(() => {
-          expect(history?.getCurrentLocation().pathname).toBe(
-            "/metabase-docs/foo",
-          );
+          expect(router?.location.pathname).toBe("/metabase-docs/foo");
         });
         expect(replaceLocationMock).not.toHaveBeenCalled();
       });
 
       it("handles a nested subpath basename", async () => {
         setBasename("/bi/metabase");
-        const { history } = setup("/oauth/authorize?client_id=abc");
+        const { router } = setup("/oauth/authorize?client_id=abc");
 
         await waitFor(() => {
           expect(replaceLocationMock).toHaveBeenCalledWith(
             `${ORIGIN}/bi/metabase/oauth/authorize?client_id=abc`,
           );
         });
-        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+        expect(router?.location.pathname).toBe("/auth/login");
       });
     });
   });

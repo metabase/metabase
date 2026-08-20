@@ -6,9 +6,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import {
   Box,
-  Card,
   Ellipsified,
   Flex,
   LoadingOverlay,
@@ -304,14 +304,7 @@ function CliEventsTableInner({
 
   return (
     <Stack gap="md" flex={1} mih={0}>
-      <Card
-        flex="0 1 auto"
-        mih={0}
-        p={0}
-        pos="relative"
-        withBorder
-        data-testid="cli-events-table"
-      >
+      <MonitorTableCard aria-busy={isFetching} data-testid="cli-events-table">
         {error ? (
           <Flex mih="60vh" align="center" justify="center">
             <LoadingAndErrorWrapper loading={false} error={error} />
@@ -330,7 +323,7 @@ function CliEventsTableInner({
             />
           </>
         )}
-      </Card>
+      </MonitorTableCard>
 
       {data && !error && (
         <Flex justify="flex-end">

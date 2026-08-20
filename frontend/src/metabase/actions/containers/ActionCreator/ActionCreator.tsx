@@ -1,71 +1,43 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useCreateActionMutation,
-  useGetActionQuery,
-  useGetCardQuery,
-  useListDatabasesQuery,
-  useUpdateActionMutation,
-} from "metabase/api";
+import { useCreateActionMutation, useUpdateActionMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { connect, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type {
-  CardId,
-  DatabaseId,
-  WritebackAction,
-  WritebackActionId,
-} from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
 
-import ActionContext, { useActionContext } from "./ActionContext";
+import { useActionContext } from "./ActionContext";
 import ActionCreatorView from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
+import type { DataReferenceSlot } from "./types";
 
-interface OwnProps {
-  actionId?: WritebackActionId;
-  modelId?: CardId;
-  databaseId?: DatabaseId;
-
-  action?: WritebackAction;
+export interface ActionCreatorProps {
+  model?: Question;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
    */
   isRouted?: boolean;
+  dataReference: DataReferenceSlot;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
 }
 
-interface ModelLoaderProps {
-  model?: Question;
-}
-
-interface StateProps {
-  metadata: Metadata;
-}
-
-export type ActionCreatorProps = OwnProps;
-
-type Props = OwnProps & ModelLoaderProps & StateProps;
-
-const mapStateToProps = (state: State) => ({
-  metadata: getMetadata(state),
-});
-
-function ActionCreator({ model, onSubmit, onClose, isRouted }: Props) {
+export function ActionCreator({
+  model,
+  isRouted,
+  dataReference,
+  onSubmit,
+  onClose,
+}: ActionCreatorProps) {
   const [createAction] = useCreateActionMutation();
   const [updateAction] = useUpdateActionMutation();
   const [sendToast] = useToast();
@@ -166,6 +138,7 @@ function ActionCreator({ model, onSubmit, onClose, isRouted }: Props) {
         canSave={canSave}
         isNew={isNew}
         isEditable={isEditable}
+        dataReference={dataReference}
         onChangeAction={handleActionChange}
         onChangeFormSettings={handleFormSettingsChange}
         onClickSave={handleClickSave}
@@ -195,41 +168,3 @@ function ActionCreator({ model, onSubmit, onClose, isRouted }: Props) {
     </>
   );
 }
-
-function ActionCreatorWithContext({
-  metadata,
-  databaseId,
-  action,
-  ...props
-}: OwnProps & StateProps) {
-  useListDatabasesQuery();
-  useGetCardQuery(props.modelId != null ? { id: props.modelId } : skipToken);
-  const model = useSelector((state) =>
-    props.modelId != null
-      ? (getMetadata(state).question(props.modelId) ?? undefined)
-      : undefined,
-  );
-  const { data: initialAction } = useGetActionQuery(
-    props.actionId != null ? { id: props.actionId } : skipToken,
-  );
-  // This is needed in case we already have an action and pass it from the outside
-  const contextAction = action || initialAction;
-
-  return (
-    <ActionContext
-      initialAction={contextAction}
-      databaseId={databaseId}
-      metadata={metadata}
-    >
-      <ActionCreator
-        {...props}
-        model={model}
-        databaseId={databaseId}
-        metadata={metadata}
-      />
-    </ActionContext>
-  );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(ActionCreatorWithContext);

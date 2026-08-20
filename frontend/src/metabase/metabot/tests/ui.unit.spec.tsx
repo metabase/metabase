@@ -8,7 +8,7 @@ import {
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
-import { act, screen, waitFor, within } from "__support__/ui";
+import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -125,6 +125,44 @@ describe("metabot > ui", () => {
 
     await userEvent.click(await closeChatButton());
     await assertNotVisible();
+  });
+
+  describe("keyboard shortcut", () => {
+    // jsdom reports an empty navigator.platform, so tinykeys binds $mod to Control.
+    const pressShortcut = () =>
+      fireEvent.keyDown(window, { key: "e", ctrlKey: true });
+
+    it("should toggle visibility", async () => {
+      const { store } = setup({
+        withRouter: true,
+        initialRoute: "/question/123",
+      });
+      expect(await chat()).toBeInTheDocument();
+
+      hideMetabot(store.dispatch);
+      await assertNotVisible();
+
+      pressShortcut();
+      expect(await chat()).toBeInTheDocument();
+    });
+
+    it.each([
+      "/question/ask",
+      "/question/ask/",
+      "/metabot/conversation/past-conversation-id",
+    ])(
+      "should do nothing on the full-page metabot surface (%s)",
+      async (initialRoute) => {
+        const { store } = setup({ withRouter: true, initialRoute });
+        expect(await chat()).toBeInTheDocument();
+
+        hideMetabot(store.dispatch);
+        await assertNotVisible();
+
+        pressShortcut();
+        await assertNotVisible();
+      },
+    );
   });
 
   it("should be able to hide metabot via a prop", async () => {
@@ -477,6 +515,10 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [
@@ -553,14 +595,6 @@ describe("metabot > ui", () => {
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 
     const setupWithPastConversation = () => {
-      setup({
-        conversations: [
-          createMockMetabotConversation({
-            conversation_id: PAST_CONVERSATION_ID,
-            title: "Orders by month",
-          }),
-        ],
-      });
       setupGetMetabotConversationEndpoint(
         createMockMetabotConversationDetail({
           conversation_id: PAST_CONVERSATION_ID,
@@ -581,6 +615,14 @@ describe("metabot > ui", () => {
           ],
         }),
       );
+      return setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: PAST_CONVERSATION_ID,
+            title: "Orders by month",
+          }),
+        ],
+      });
     };
 
     const selectPastConversation = async () => {
@@ -611,6 +653,41 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(1);
       });
+    });
+
+    it("positions a loaded conversation before the next frame", async () => {
+      jest.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+      jest
+        .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+        .mockReturnValue(800);
+      const { store } = setupWithPastConversation();
+      act(() => {
+        store.dispatch(
+          metabotActions.setConversationSnapshot({
+            agentId: "omnibot",
+            conversationId: "current-conversation",
+            messages: [
+              {
+                id: "current-user",
+                role: "user",
+                type: "text",
+                message: "Current question",
+              },
+            ],
+            activeToolCalls: [],
+          }),
+        );
+      });
+      const previousMessages = await screen.findByTestId(
+        "metabot-chat-messages",
+      );
+      previousMessages.scrollTop = 100;
+
+      await selectPastConversation();
+      await screen.findByText("There are 42 orders.");
+
+      const messages = screen.getByTestId("metabot-chat-messages");
+      expect(messages.scrollTop).toBe(messages.scrollHeight);
     });
 
     it("continues the loaded conversation when a new message is submitted", async () => {

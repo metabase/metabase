@@ -10,7 +10,7 @@ import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DimensionType,
 } from "metabase/common/metrics/utils/dimension-types";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import {
   useMetricDefinition,
   useMetricDimensionQuery,
@@ -68,7 +68,7 @@ export function useMetricAboutQuery(
   );
 
   const defaultDimensionId =
-    metric?.dimensions.find(
+    metric?.dimensions?.find(
       (dimension) =>
         dimension.default && dimension.status !== "status/orphaned",
     )?.id ?? null;
@@ -78,7 +78,7 @@ export function useMetricAboutQuery(
     [definition],
   );
   const dimensionOptions =
-    metric?.dimensions.flatMap((dimension) => {
+    metric?.dimensions?.flatMap((dimension) => {
       const descriptor = dimensionDescriptors?.get(dimension.id);
       if (dimension.status === "status/orphaned" || !descriptor) {
         return [];

@@ -18,6 +18,7 @@ import {
 import {
   allowedHosts,
   appSlug,
+  buildIdHeader,
   bundleUrl,
   diagnosticsChangedEvent,
   rebuiltEvent,
@@ -98,6 +99,12 @@ async function loadAndRender() {
   }
 
   const code = await res.text();
+
+  // From here on, everything the app reports belongs to this bundle generation.
+  // Without the stamp a reader can't tell a live failure from one an earlier,
+  // half-finished edit left in the dev server's buffer.
+  devDiagnostics.setBuildId(Number(res.headers.get(buildIdHeader)));
+
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
   const rawProviderProps = providerProps ?? {};

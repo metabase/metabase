@@ -1,6 +1,7 @@
-import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { memoize } from "metabase/utils/memoize";
 import { isEmpty } from "metabase/utils/validate";
+import { formatValue } from "metabase/value-formatting";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ChartDataset,
@@ -20,7 +21,6 @@ import type {
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -492,7 +492,12 @@ export function getComboChartDataDensity(
     return seriesSettings?.show_series_values;
   });
 
-  let totalNumberOfDots = 0;
+  const numberOfDotsBySeriesKey: Record<DataKey, number> = Object.fromEntries(
+    seriesWithSymbols.map(({ dataKey }) => [
+      dataKey,
+      dataset.filter((datum) => datum[dataKey] != null).length,
+    ]),
+  );
 
   let totalNumberOfSeriesLabels = 0;
   let totalNumberOfStackedLabels = 0;
@@ -504,73 +509,68 @@ export function getComboChartDataDensity(
     size: CHART_STYLE.seriesLabels.size,
   };
 
-  dataset.forEach((datum) => {
-    totalNumberOfDots += seriesWithSymbols.filter(
-      (seriesModel) => datum[seriesModel.dataKey] != null,
-    ).length;
+  // if we will not be displaying any labels, we do not have to calculate the
+  // label statistics
+  const shouldCalculateLabelStats =
+    settings["graph.show_values"] &&
+    settings["graph.label_value_frequency"] !== "all";
 
-    // if we will not be displaying any labels, we do not have to calculate the
-    // label statistics
-    if (
-      !settings["graph.show_values"] ||
-      settings["graph.label_value_frequency"] === "all"
-    ) {
-      return;
-    }
+  if (shouldCalculateLabelStats) {
+    dataset.forEach((datum) => {
+      // series labels count + label width sum
+      seriesWithLabels.forEach((seriesModel) => {
+        const value = datum[seriesModel.dataKey];
 
-    // series labels count + label width sum
-    seriesWithLabels.forEach((seriesModel) => {
-      const value = datum[seriesModel.dataKey];
+        if (value != null) {
+          totalNumberOfSeriesLabels += 1;
 
-      if (value != null) {
-        totalNumberOfSeriesLabels += 1;
-
-        const formatter = seriesLabelsFormatters[seriesModel.dataKey];
-        sumOfSeriesLabelWidths += formatter
-          ? renderingContext.measureText(formatter(value), fontStyle)
-          : 0;
-      }
-    });
-
-    // stacked labels count + stacked label width sum
-    if (settings["stackable.stack_type"] !== "normalized") {
-      stackModels.forEach((stackModel) => {
-        const formatter = stackedLabelsFormatters[stackModel.display];
-
-        const positiveStackTotal = getStackTotalValue(
-          datum,
-          stackModel.seriesKeys,
-          POSITIVE_STACK_TOTAL_DATA_KEY,
-        );
-        const negativeStackTotal = getStackTotalValue(
-          datum,
-          stackModel.seriesKeys,
-          NEGATIVE_STACK_TOTAL_DATA_KEY,
-        );
-
-        if (positiveStackTotal !== null) {
-          totalNumberOfStackedLabels += 1;
-
-          sumOfStackedSeriesLabelWidths += formatter
-            ? renderingContext.measureText(
-                formatter(positiveStackTotal),
-                fontStyle,
-              )
-            : 0;
-        }
-        if (negativeStackTotal !== null) {
-          totalNumberOfStackedLabels += 1;
-
-          sumOfStackedSeriesLabelWidths += formatter
-            ? renderingContext.measureText(
-                formatter(negativeStackTotal),
-                fontStyle,
-              )
+          const formatter = seriesLabelsFormatters[seriesModel.dataKey];
+          sumOfSeriesLabelWidths += formatter
+            ? renderingContext.measureText(formatter(value), fontStyle)
             : 0;
         }
       });
-    }
-  });
+
+      // stacked labels count + stacked label width sum
+      if (settings["stackable.stack_type"] !== "normalized") {
+        stackModels.forEach((stackModel) => {
+          const formatter = stackedLabelsFormatters[stackModel.display];
+
+          const positiveStackTotal = getStackTotalValue(
+            datum,
+            stackModel.seriesKeys,
+            POSITIVE_STACK_TOTAL_DATA_KEY,
+          );
+          const negativeStackTotal = getStackTotalValue(
+            datum,
+            stackModel.seriesKeys,
+            NEGATIVE_STACK_TOTAL_DATA_KEY,
+          );
+
+          if (positiveStackTotal !== null) {
+            totalNumberOfStackedLabels += 1;
+
+            sumOfStackedSeriesLabelWidths += formatter
+              ? renderingContext.measureText(
+                  formatter(positiveStackTotal),
+                  fontStyle,
+                )
+              : 0;
+          }
+          if (negativeStackTotal !== null) {
+            totalNumberOfStackedLabels += 1;
+
+            sumOfStackedSeriesLabelWidths += formatter
+              ? renderingContext.measureText(
+                  formatter(negativeStackTotal),
+                  fontStyle,
+                )
+              : 0;
+          }
+        });
+      }
+    });
+  }
 
   const sumOfLabelWidths =
     sumOfSeriesLabelWidths + sumOfStackedSeriesLabelWidths;
@@ -594,7 +594,7 @@ export function getComboChartDataDensity(
     type,
     seriesDataKeysWithLabels,
     stackedDisplayWithLabels,
-    totalNumberOfDots,
+    numberOfDotsBySeriesKey,
     averageLabelWidth,
     totalNumberOfLabels,
   };

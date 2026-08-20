@@ -78,9 +78,7 @@
 (defn- cast-to-text-honeysql
   "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
   [driver col-name]
-  (sql.qp/->honeysql driver
-                     (sql.qp/mbql-clause driver ::sql.qp/cast-to-text
-                                         (h2x/identifier :field col-name))))
+  (sql.qp/->honeysql driver [::sql.qp/cast-to-text {} (h2x/identifier :field col-name)]))
 
 (defn- build-arm
   "HoneySQL for one UNION arm."

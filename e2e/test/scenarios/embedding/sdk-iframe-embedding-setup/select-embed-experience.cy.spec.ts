@@ -26,7 +26,7 @@ describe(suiteTitle, () => {
 
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("enable-embedding-static", true);
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

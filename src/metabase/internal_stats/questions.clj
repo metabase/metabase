@@ -17,23 +17,24 @@
   (condp = (db/db-type)
     :mysql [:json_contains_path
             :dataset_query
-            [:inline "one"]
-            [:inline "$.native.\"template-tags\".*"]]
+            ^:allow-raw-sql [:inline "one"]
+            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
 
 (defn- contains-embedding-param
   [param]
   (condp = (db/db-type)
     :mysql [:!= [:json_search
                  :embedding_params
-                 [:inline "one"]
-                 [:inline param]]
+                 ^:allow-raw-sql [:inline "one"]
+                 param]
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               [:inline (str "$.* ? (@ == \"" param "\")")]]))
+               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
+               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
@@ -43,9 +44,9 @@
   (let [json-supported? (contains? #{:mysql :mariadb :postgres} (db/db-type))]
     (t2/select-one (cond-> [:model/Card
                             [:%count.* :total]
-                            [(u/count-case [:= [:inline "native"] :query_type])
+                            [(u/count-case [:= "native" :query_type])
                              :native]
-                            [(u/count-case [:!= [:inline "native"] :query_type])
+                            [(u/count-case [:!= "native" :query_type])
                              :gui]
                             [(u/count-case [:!= :dashboard_id nil])
                              :is_dashboard_question]

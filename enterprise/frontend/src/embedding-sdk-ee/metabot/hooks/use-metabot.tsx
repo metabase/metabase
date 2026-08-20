@@ -6,6 +6,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
@@ -13,7 +14,6 @@ import type {
   MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { getFinalChartMessageIdsPerTurn } from "metabase/metabot/state";

@@ -61,14 +61,14 @@ describe("TablePermalinkRedirect", () => {
         name: "orders",
         display_name: "Orders",
       });
-      const { history } = setup({
+      const { router } = setup({
         databases: [SALES],
         tables: [table],
         initialRoute: "/browse/databases/Sales/schema/PUBLIC/table/orders",
       });
 
       await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/10-orders"),
+        expect(router?.location.pathname).toBe("/table/10-orders"),
       );
     });
 
@@ -80,14 +80,14 @@ describe("TablePermalinkRedirect", () => {
         name: "events",
         display_name: "Events",
       });
-      const { history } = setup({
+      const { router } = setup({
         databases: [SALES],
         tables: [table],
         initialRoute: "/browse/databases/Sales/table/events",
       });
 
       await waitFor(() =>
-        expect(history?.getCurrentLocation().pathname).toBe("/table/11-events"),
+        expect(router?.location.pathname).toBe("/table/11-events"),
       );
     });
   });

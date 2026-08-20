@@ -1,8 +1,8 @@
 import type { TreemapSeriesOption } from "echarts/charts";
 import { match } from "ts-pattern";
 
-import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
 import { getTextColorForBackground } from "metabase/ui/colors";
+import { formatPercent as formatPercentDefault } from "metabase/utils/formatting";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { RenderingContext } from "metabase/visualizations/types";
 

@@ -2,7 +2,6 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import type {
   ComputedVisualizationSettings,
@@ -16,6 +15,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { getVisualizationRaw } from "../registry";
 import {
   getComputedSettings,
   getPersistableDefaultSettings,

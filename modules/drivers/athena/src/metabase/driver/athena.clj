@@ -28,7 +28,18 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :athena, :parent #{:sql-mbql5 :sql-jdbc})
+(driver/register! :athena, :parent #{:sql-jdbc})
+
+(defmethod driver/host-carrying-parameters :athena
+  [_driver]
+  ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
+   "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"])
+
+(defmethod driver/non-host-parameters :athena
+  [_driver]
+  ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
@@ -61,6 +72,14 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+(defmethod driver/connection-hosts :athena
+  [_driver {:keys [hostname region]}]
+  (driver/hosts-from-details
+   {:host (if (str/blank? hostname)
+            (str "athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn"))
+            hostname)}
+   [:host]))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -153,7 +172,7 @@
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -352,7 +371,7 @@
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.

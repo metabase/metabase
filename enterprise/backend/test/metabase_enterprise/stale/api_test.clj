@@ -8,7 +8,8 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,6 +62,19 @@
               (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
                    ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
                  (->> result :data (map (juxt :model :id)) set)))))))))
+
+(deftest recursive-search-skips-archived-descendants-test
+  (testing "a recursive search does not descend into archived collections"
+    (mt/with-premium-features #{:collection-cleanup}
+      (with-collection-hierarchy! [{:keys [a b]}]
+        (stale.test/with-stale-items [:model/Card card   {:collection_id (:id a)}
+                                      :model/Card hidden {:collection_id (:id b)}]
+          (t2/update! :model/Collection (:id b) {:archived true})
+          (let [result (mt/user-http-request :crowberto :get 200 (stale-url a) :is_recursive true)
+                ids    (->> result :data (map (juxt :model :id)) set)]
+            (is (contains? ids ["card" (u/the-id card)]))
+            (is (not (contains? ids ["card" (u/the-id hidden)]))
+                "a card in an archived descendant collection must not be offered as stale")))))))
 
 (deftest can-fetch-stale-candidates-1c
   (mt/with-premium-features #{:collection-cleanup}

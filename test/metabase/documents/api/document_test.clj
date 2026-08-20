@@ -496,7 +496,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :post 403 "document/"
+                              :post 400 "document/"
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})
@@ -514,7 +514,7 @@
                                :display :table
                                :visualization_settings {}}}]
         (mt/user-http-request :crowberto
-                              :put 403 (format "document/%s" document-id)
+                              :put 400 (format "document/%s" document-id)
                               {:name "Document That Should Rollback"
                                :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
                                :cards invalid-cards})

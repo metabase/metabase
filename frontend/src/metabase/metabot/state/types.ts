@@ -2,6 +2,7 @@ import type {
   KnownDataPart,
   SearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
+import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
@@ -79,6 +80,14 @@ export type MetabotAgentTurnAbortedMessage = {
   externalId?: string;
 };
 
+export type MetabotAgentTurnIncompleteMessage = {
+  id: string;
+  role: "agent";
+  type: "turn_incomplete";
+  finishReason: Exclude<FinishReason, "stop" | "error">;
+  externalId?: string;
+};
+
 export type MetabotAgentTurnDisplayError = {
   type: "alert" | "locked" | "message";
   message: string;
@@ -115,6 +124,7 @@ export type MetabotAgentChatMessage =
   | MetabotDebugToolCallMessage
   | MetabotAgentChainOfThoughtMessage
   | MetabotAgentTurnAbortedMessage
+  | MetabotAgentTurnIncompleteMessage
   | MetabotAgentTurnErroredMessage
   | MetabotAgentTurnInProgressMessage;
 
@@ -174,7 +184,12 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "sql", "ask"] as const;
+export const fixedMetabotAgentIds = [
+  "omnibot",
+  "sql",
+  "ask",
+  "explorations",
+] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;

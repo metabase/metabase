@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
+import { hasFeature } from "metabase/databases";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -13,7 +14,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DataPermissionValue } from "metabase-types/api";
 
@@ -70,7 +71,7 @@ export function initializePlugin() {
       database,
     ) => [
       ...options,
-      ...(database.hasFeature("connection-impersonation")
+      ...(hasFeature(database, "connection-impersonation")
         ? [IMPERSONATED_PERMISSION_OPTION]
         : []),
       BLOCK_PERMISSION_OPTION,
@@ -138,12 +139,12 @@ export function initializePlugin() {
       label: t`Edit Impersonated`,
       iconColor: "warning",
       icon: "database",
-      actionCreator: (entityId, groupId, view) => {
+      onSelect: (entityId, groupId, view) => {
         if (entityId == null) {
           throw new Error("Impersonation can only be configured for databases");
         }
 
-        return push(getEditImpersonationUrl(entityId, groupId, view));
+        navigate(getEditImpersonationUrl(entityId, groupId, view));
       },
     });
 
