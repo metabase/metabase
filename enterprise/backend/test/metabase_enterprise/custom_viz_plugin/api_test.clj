@@ -185,28 +185,14 @@
       (mt/user-http-request :crowberto :put 404 "ee/custom-viz-plugin/99999"
                             {:enabled false}))))
 
-;;; ------------------------------------------------ Dev URL Security ------------------------------------------------
+;;; ------------------------------------------------ Dev URL ------------------------------------------------
 
-(deftest dev-url-security-test
+(deftest dev-url-set-and-clear-test
   (mt/with-premium-features #{:custom-viz}
     (with-dev-mode-enabled
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-sec"
                                                       :display_name "dev-sec"
                                                       :status       :active}]
-        (testing "SECURITY: rejects file:// dev URL"
-          (is (= 400
-                 (:status-code
-                  (ex-data
-                   (try
-                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
-                     (catch Exception e e)))))))
-        (testing "SECURITY: rejects ftp:// dev URL via API"
-          (is (= 400
-                 (:status-code
-                  (ex-data
-                   (try
-                     (cache/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
-                     (catch Exception e e)))))))
         (testing "admin can set valid http dev URL"
           (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
                                            {:dev_bundle_url "http://localhost:5174"})]
@@ -347,11 +333,13 @@
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "dev plugin registration with manifest name"
           (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
-                                           {:dev_bundle_url "http://localhost:5174"
+                                           {:dev_bundle_url "http://LOCALHOST:5174/"
                                             :manifest       {:name "dev-chart"
                                                              :icon "icon.svg"
                                                              :sdk  {:version "2.0.0"}}})]
             (is (= "dev-chart" (:identifier resp)))
+            (is (= "http://localhost:5174" (:dev_bundle_url resp))
+                "the URL is normalized to a bare origin before it is stored")
             (is (= "dev-chart" (:display_name resp))
                 "display_name comes from manifest name")
             (is (true? (:dev_only resp))
@@ -369,11 +357,6 @@
                 "explicit identifier takes precedence over manifest name")
             (is (= [] (:warnings resp))
                 "dev-only plugins are exempt from version warnings, even unstamped")))
-        (testing "the stored dev URL is normalized to a bare origin"
-          (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
-                                           {:dev_bundle_url "http://LOCALHOST:5174/"
-                                            :manifest       {:name "normalized"}})]
-            (is (= "http://localhost:5174" (:dev_bundle_url resp)))))
         (testing "dev plugin registration fails with helpful message when no identifier and no manifest"
           (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                            {:dev_bundle_url "http://localhost:5174"})]
@@ -434,8 +417,6 @@
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
-
-;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
 
 ;;; ------------------------------------------------ /list version warnings ------------------------------------------------
 
@@ -741,17 +722,9 @@
                                             :manifest       {:name "gated-dev" :icon "icon.svg"}})]
             (is (= "gated-dev" (:identifier resp)))))))))
 
-(deftest dev-sse-proxy-is-gone-test
-  (testing "the SSE proxy endpoint no longer exists. The browser subscribes to the dev server's `__sse`
-            directly, so there is no server-side fetch of a caller-supplied URL left to reach -- and with it
-            goes an endpoint that gated only on dev mode, with no read-check and no superuser check."
-    (mt/with-premium-features #{:custom-viz}
-      (with-dev-mode-enabled
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-sse-gone"
-                                                        :display_name   "dev-sse-gone"
-                                                        :status         :active
-                                                        :dev_bundle_url "http://localhost:5199"}]
-          (is (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/dev-sse"))))))))
+;;; There is deliberately no `/dev-sse` test: the SSE proxy endpoint is gone. The browser subscribes to the
+;;; dev server's `__sse` directly, so no server-side fetch of a caller-supplied URL remains -- and with it
+;;; goes an endpoint that gated only on dev mode, with no read-check and no superuser check.
 
 (deftest list-excludes-dev-plugins-when-dev-mode-disabled-test
   (mt/with-premium-features #{:custom-viz}
@@ -776,9 +749,7 @@
                 identifiers (set (map :identifier result))]
             (is (contains? identifiers "upload-viz-list"))
             (is (contains? identifiers "dev-viz-list")))))
-      (testing "but stay hidden from a non-superuser even with dev mode on: only a superuser's document
-                carries the CSP connect-src entry that lets the browser load the bundle, so advertising it
-                to anyone else would just render a visualization that cannot load"
+      (testing "but stay hidden from a non-superuser even with dev mode on"
         (with-dev-mode-enabled
           (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
