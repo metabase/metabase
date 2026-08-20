@@ -8,10 +8,6 @@ export type AuthChallengeFormProps = {
   onCancel: () => void;
 };
 
-/**
- * No `methods`: the gate hard-codes `["totp"]` on the enrollment branch (no email fallback while
- * enrolling), so there is nothing for the UI to branch on.
- */
 export type AuthEnrollmentFormProps = {
   enrollmentToken: string;
   secret: string;

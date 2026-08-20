@@ -65,10 +65,8 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
           idTag("user", user_id),
         ]),
     }),
-    // The `/api/session/*` MFA endpoints run before a session exists. `noEvent` keeps their 401s
-    // away from the global handler in app-main.js, which only exempts an exact `/api/session` and
-    // would otherwise `push("/auth/login")` and remount the login page mid-flow — killing the
-    // retry-on-a-wrong-code path.
+    // `/api/session/*` 401s mean "wrong code", not "session gone". `noEvent` stops app-main
+    // redirecting to /auth/login, which would remount the page and lose the retry.
     verifyMfa: builder.mutation<
       { id: string },
       { challenge_token: string; code: string; remember?: boolean }

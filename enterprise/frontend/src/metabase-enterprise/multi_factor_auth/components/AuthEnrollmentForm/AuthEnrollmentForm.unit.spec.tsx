@@ -76,8 +76,6 @@ describe("AuthEnrollmentForm", () => {
     ).toHaveLength(1);
   });
 
-  // Enrolling already set the session cookie, but the route guard only redirects off
-  // /auth/login once `completeLogin` puts the user in the store — so the codes stay put.
   it("should not complete the login until the recovery codes are acknowledged", async () => {
     setup();
 

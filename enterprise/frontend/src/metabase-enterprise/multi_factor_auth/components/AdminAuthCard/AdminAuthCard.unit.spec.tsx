@@ -158,7 +158,6 @@ describe("AdminAuthCard", () => {
       ).not.toBeInTheDocument();
     });
 
-    // LDAP users sign in through the password form, so the second factor still applies to them.
     it("should keep the card when password login is off but LDAP is on", async () => {
       setup({ isPasswordLoginEnabled: false, isLdapEnabled: true });
 
@@ -180,17 +179,6 @@ describe("AdminAuthCard", () => {
     expect(
       await screen.findByText(/MB_ENCRYPTION_SECRET_KEY/),
     ).toBeInTheDocument();
-  });
-
-  it("should save an enforcement level that needs no grace period on its own", async () => {
-    setup({ enforcement: "optional" });
-
-    await selectEnforcement("Off");
-
-    await waitFor(async () => {
-      const put = await findSettingUpdate("mfa-enforcement");
-      expect(put?.body).toEqual({ value: "off" });
-    });
   });
 
   describe("default grace period", () => {

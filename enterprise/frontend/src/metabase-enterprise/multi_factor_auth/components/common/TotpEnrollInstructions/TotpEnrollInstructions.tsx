@@ -12,10 +12,6 @@ type TotpEnrollInstructionsProps = {
   secret: string;
 };
 
-/**
- * Renders a fragment, not a Stack — every consumer already wraps its contents in one, so this keeps
- * these blocks as direct flex children and preserves the surrounding spacing.
- */
 export function TotpEnrollInstructions({
   otpauthUri,
   secret,

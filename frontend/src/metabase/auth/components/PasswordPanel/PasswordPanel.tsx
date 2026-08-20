@@ -39,8 +39,6 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
       const { mfaChallenge: challenge, mfaEnrollment: enrollment } =
         await dispatch(login({ data, redirectUrl })).unwrap();
 
-      // Both second-factor paths defer session creation to a follow-up request, which is the one
-      // that reads `remember` — so it has to survive this step.
       if (challenge) {
         setRemember(Boolean(data.remember));
         setMfaChallenge(challenge);

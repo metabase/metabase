@@ -30,14 +30,6 @@ type EnrollValues = { code: string };
 
 const INITIAL_VALUES: EnrollValues = { code: "" };
 
-/**
- * Forced enrollment during login, shown in place of the password form when the instance requires
- * MFA and this user has no second factor yet.
- *
- * Enrolling sets the session cookie, but the route guard only redirects off `/auth/login` once
- * `completeLogin` puts the user in the store — so that dispatch is deferred until the recovery
- * codes are acknowledged, which is the only time they are ever shown.
- */
 export function AuthEnrollmentForm({
   enrollmentToken,
   secret,

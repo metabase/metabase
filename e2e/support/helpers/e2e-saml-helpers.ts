@@ -19,7 +19,6 @@ export const setupSaml = () => {
   cy.log("Set up mock SAML IdP");
 
   cy.readFile<string>(MOCK_SAML_CERT_PATH, "utf8").then((certificate) => {
-    // One request: `saml-enabled` reads false until the URI and certificate are both stored.
     cy.request("PUT", "/api/setting", {
       "saml-enabled": true,
       "saml-identity-provider-uri": `${MOCK_SAML_IDP_URL}/api/saml/sso`,

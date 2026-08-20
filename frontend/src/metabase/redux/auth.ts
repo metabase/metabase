@@ -94,8 +94,6 @@ export const login = createAsyncThunk(
         return challenge;
       }
 
-      // No session cookie is set on this branch either — the user completes enrollment at
-      // `POST /api/session/mfa/enroll`, and that request is what logs them in.
       if (isMfaEnrollment(result)) {
         const enrollment: LoginResult = { mfaEnrollment: result };
         return enrollment;

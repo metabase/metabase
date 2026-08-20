@@ -11,7 +11,6 @@ const NEW_PASSWORD = "NewPassword2fa!123";
 
 const GRACE_PERIOD_DAYS = 14;
 
-/** Provisioned by the openldap service in e2e/test/scenarios/docker-compose.yml. */
 const LDAP_USER = { username: "user01@example.org", password: "123456" };
 
 /** mock-saml accepts any username and password, but only example.com/example.org domains. */

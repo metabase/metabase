@@ -45,9 +45,7 @@ async function freshAdminSession(): Promise<string | undefined> {
 }
 
 /**
-  Acts as the admin without touching the browser's cookies, for tests where a *different* user's
-  session is what's under test. Reuses the session `cy.signInAsAdmin` does, so MFA enforcement
-  invalidates it just the same — do the admin's work first.
+  Acts as the admin without touching the browser's cookies
  */
 export async function requestAsAdmin({
   method = "GET",
