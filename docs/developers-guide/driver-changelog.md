@@ -30,6 +30,9 @@ title: Driver interface changelog
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
 
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects compile the pivot-grouping bitmask via `GROUPING_ID(a, b, ...)`.
+
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
 

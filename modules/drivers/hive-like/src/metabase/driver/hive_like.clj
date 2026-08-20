@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -24,9 +25,16 @@
                   :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
-(doseq [[feature supported?] {:now           true
-                              :datetime-diff true}]
+(doseq [[feature supported?] {:now                 true
+                              :datetime-diff       true
+                              :native-pivot-tables true}]
   (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
+
+;; Hive supports both `GROUPING SETS` and `GROUPING_ID(a, b, ...)` (multi-arg bitmask), but
+;; `GROUPING(x)` is single-arg only — so we override the default `[:sql]` emitter (which uses `GROUPING(a, b, ...)`).
+(defmethod sql.pivot/pivot-grouping-hsql :hive-like
+  [_driver exprs]
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
