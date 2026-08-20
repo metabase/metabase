@@ -46,15 +46,14 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  // The terms speak of modular embedding and the SDK, and of shared accounts as
-  // unfair usage of a paid seat. Neither applies below the paywall, where guest
-  // embeds -- served to anonymous viewers over a signed JWT -- is the only
-  // method, so the modal stays paid-only.
-  const isEmbeddingToggle =
+  // Previously this covered modular embedding and the modular embedding SDK, not
+  // guest embeds. The merged toggle also covers guest embeds, so gate on the token
+  // feature to exclude them and match the previous behaviour.
+  const shouldShowModularEmbedTerms =
     settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
 
   const handleChange = (checked: boolean) => {
-    if (showModularEmbedTerms && isEmbeddingToggle && checked) {
+    if (showModularEmbedTerms && shouldShowModularEmbedTerms && checked) {
       openLegaleseModal();
       return;
     }
@@ -82,7 +81,7 @@ export function EmbeddingToggle({
         }}
       />
 
-      {isEmbeddingToggle && (
+      {shouldShowModularEmbedTerms && (
         <EmbeddingLegaleseModal
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
