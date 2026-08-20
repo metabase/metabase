@@ -9,7 +9,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-> To learn how to use the Metabase MCP server and CLI for AI data exploration, [register for our free MCP and CLI workshop](https://www.metabase.com/events/workshop-metabase-mcp-cli).
+> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
 
 ## Connect a client to your Metabase MCP server's URL
 
