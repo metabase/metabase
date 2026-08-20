@@ -1298,6 +1298,8 @@ The array of last two ISO8601 dates when an admin dismissed the license token mi
 
 The Anthropic API base URL.
 
+Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_ANTHROPIC_API_KEY`
 
 - Type: string
@@ -1305,6 +1307,8 @@ The Anthropic API base URL.
 - [Configuration file name](./config-file.md): `llm-anthropic-api-key`
 
 The Anthropic API Key.
+
+Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_ANTHROPIC_MODEL`
 
@@ -1322,6 +1326,8 @@ The Anthropic model to use.
 
 The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.
 
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_AZURE_API_KEY`
 
 - Type: string
@@ -1329,6 +1335,28 @@ The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.
 - [Configuration file name](./config-file.md): `llm-azure-api-key`
 
 The API key for the Azure resource hosting your models.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_AZURE_DEPLOYMENT_NAME`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-deployment-name`
+
+The name of the model deployment served by the Azure connection configured from the environment.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_AZURE_MODEL_FAMILY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-azure-model-family`
+
+Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.
+
+Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
 
@@ -1338,6 +1366,8 @@ The API key for the Azure resource hosting your models.
 
 The AWS Access Key ID for Amazon Bedrock.
 
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_BEDROCK_REGION`
 
 - Type: string
@@ -1345,6 +1375,8 @@ The AWS Access Key ID for Amazon Bedrock.
 - [Configuration file name](./config-file.md): `llm-bedrock-region`
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
@@ -1354,6 +1386,8 @@ The AWS region for Amazon Bedrock (e.g. us-east-1).
 
 The AWS Secret Access Key for Amazon Bedrock.
 
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_BEDROCK_SESSION_TOKEN`
 
 - Type: string
@@ -1361,6 +1395,8 @@ The AWS Secret Access Key for Amazon Bedrock.
 - [Configuration file name](./config-file.md): `llm-bedrock-session-token`
 
 The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
+
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_CONNECTION_TIMEOUT_MS`
 
@@ -1378,6 +1414,8 @@ TCP connection timeout in milliseconds for LLM API requests. A provider that is 
 
 The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.
 
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_GOOGLE_LOCATION`
 
 - Type: string
@@ -1385,6 +1423,8 @@ The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from
 - [Configuration file name](./config-file.md): `llm-google-location`
 
 The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`
 
@@ -1394,6 +1434,8 @@ The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-cent
 
 A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.
 
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_GOOGLE_PROJECT_ID`
 
 - Type: string
@@ -1402,6 +1444,8 @@ A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g.
 
 The Google Cloud project ID for the Gemini Enterprise Agent Platform.
 
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`
 
 - Type: string
@@ -1409,6 +1453,8 @@ The Google Cloud project ID for the Gemini Enterprise Agent Platform.
 - [Configuration file name](./config-file.md): `llm-google-service-account-key`
 
 A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
+
+Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_MAX_TOKENS`
 
@@ -1424,7 +1470,15 @@ Maximum tokens for LLM responses.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.
+The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.
+
+### `MB_LLM_MINI_MODEL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-mini-model`
+
+The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.
 
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
@@ -1434,6 +1488,8 @@ The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthro
 
 The Mistral API base URL used for Chat Completions.
 
+Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_MISTRAL_API_KEY`
 
 - Type: string
@@ -1441,6 +1497,8 @@ The Mistral API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-mistral-api-key`
 
 The Mistral API Key.
+
+Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_MOONSHOT_API_BASE_URL`
 
@@ -1450,6 +1508,8 @@ The Mistral API Key.
 
 The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
 
+Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_MOONSHOT_API_KEY`
 
 - Type: string
@@ -1457,6 +1517,8 @@ The Moonshot AI API base URL used for Chat Completions. Repoint this to use the 
 - [Configuration file name](./config-file.md): `llm-moonshot-api-key`
 
 The Moonshot AI API Key.
+
+Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
@@ -1466,6 +1528,8 @@ The Moonshot AI API Key.
 
 The OpenAI API base URL.
 
+Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_OPENAI_API_KEY`
 
 - Type: string
@@ -1473,6 +1537,8 @@ The OpenAI API base URL.
 - [Configuration file name](./config-file.md): `llm-openai-api-key`
 
 The OpenAI API Key.
+
+Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_OPENAI_MODEL`
 
@@ -1490,6 +1556,8 @@ The OpenAI Model (e.g. 'gpt-5.5', 'gpt-5.4-mini').
 
 The OpenRouter API base URL used for Chat Completions.
 
+Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_OPENROUTER_API_KEY`
 
 - Type: string
@@ -1497,6 +1565,20 @@ The OpenRouter API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-openrouter-api-key`
 
 The OpenRouter API Key.
+
+Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_PROVIDERS`
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `llm-providers`
+
+JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields.
+
+Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
+
+Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
 
 ### `MB_LLM_RATE_LIMIT_PER_IP`
 
@@ -1530,6 +1612,8 @@ Socket (inter-byte read) timeout in milliseconds for LLM API requests. For strea
 
 The Z.AI API base URL used for Chat Completions.
 
+Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_ZAI_API_KEY`
 
 - Type: string
@@ -1537,6 +1621,8 @@ The Z.AI API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-zai-api-key`
 
 The Z.AI API Key.
+
+Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -2825,7 +2911,7 @@ When enabled, run pivot queries as a single native GROUPING SETS query on driver
 - Default: `all`
 - [Configuration file name](./config-file.md): `user-visibility`
 
-Note: Sandboxed users will never see suggestions.
+Note: Users with row or column security restrictions will never see suggestions.
 
 ### `MB_WAREHOUSE_ALLOWED_NETWORKS`
 

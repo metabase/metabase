@@ -3,6 +3,7 @@ import type { StaticResponse } from "cypress/types/net-stubbing";
 import type { GetExplorationDataResponse } from "metabase-types/api";
 
 import { updateSetting } from "./api";
+import { setupAnthropicLlmProvider } from "./e2e-metabot-helpers";
 import { activateToken } from "./e2e-token-helpers";
 
 const MOCK_LLM_PORT = 6125;
@@ -10,16 +11,12 @@ const MOCK_LLM_RESPONSE = "Hello from Explorations!";
 
 export function enableExplorations(): void {
   activateToken("pro-self-hosted");
-  updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
   updateSetting("metabot-enabled?", true);
   cy.task("startMockLlmServer", {
     port: MOCK_LLM_PORT,
     responseText: MOCK_LLM_RESPONSE,
   });
-  updateSetting(
-    "llm-anthropic-api-base-url",
-    `http://localhost:${MOCK_LLM_PORT}`,
-  );
+  setupAnthropicLlmProvider({ baseUrl: `http://localhost:${MOCK_LLM_PORT}` });
   cy.intercept({
     method: "GET",
     pathname: "/api/exploration/dimensions",
