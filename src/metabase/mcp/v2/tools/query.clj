@@ -27,7 +27,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.agent-api.query-guards :as query-guards]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -278,10 +277,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
    re-checks inside `process-query`) so a refusal short-circuits before any query machinery
    spins up."
   [database-id]
-  (when-not (agent-api.settings/mcp-execute-sql-enabled)
-    (throw (ex-info (str "execute_sql is disabled on this instance — an admin can re-enable it "
-                         "with the mcp-execute-sql-enabled setting.")
-                    {:status-code 403})))
+  (common/check-execute-sql-enabled! "execute_sql")
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})

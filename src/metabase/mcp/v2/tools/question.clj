@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.skills :as skills]
@@ -116,15 +117,31 @@
                              (assoc :lib/type (if (:native %) :mbql.stage/native :mbql.stage/mbql)))
                     stages)))))
 
+(defn- check-native-source-gates!
+  "The gates an inline `native` source passes: the `agent:sql:run` scope and the
+   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
+   SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
+   would rebuild `execute_sql` without its scope or its kill switch. A `query_handle` needs neither
+   here: minting one already passed them. No-op on the scope half for unscoped callers (cookie
+   sessions bind the unrestricted sentinel, which matches everything)."
+  [token-scopes]
+  (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
+    (throw (ex-info (format (str "Saving a native (SQL) query requires the %s scope — this token can "
+                                 "write content but not author raw SQL.")
+                            metabot.scope/agent-sql-run)
+                    {:status-code 403 ::common/error-code common/error-code-invalid-request})))
+  (common/check-execute-sql-enabled! "Saving a native (SQL) query"))
+
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the
-   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL.
+   save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL
+   once `token-scopes` clears [[check-native-source-gates!]].
 
    Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
    strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
    the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
    by the JSON round-trip — must be restored first."
-  [{:keys [query_handle query native]} session-id]
+  [{:keys [query_handle query native]} session-id token-scopes]
   (let [sources (cond-> []
                   query_handle (conj :query_handle)
                   query        (conj :query)
@@ -147,10 +164,12 @@
            (str "Invalid inline query — see learn(\"query-dialect\"). " (ex-message e)))))
 
       native
-      (let [{:keys [database_id sql template_tags]} native
-            mp (lib-be/application-database-metadata-provider database_id)]
-        (-> (lib/native-query mp sql)
-            (apply-template-tags template_tags))))))
+      (do
+        (check-native-source-gates! token-scopes)
+        (let [{:keys [database_id sql template_tags]} native
+              mp (lib-be/application-database-metadata-provider database_id)]
+          (-> (lib/native-query mp sql)
+              (apply-template-tags template_tags)))))))
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
@@ -239,9 +258,9 @@
    the create response: [[card-response]] plus the saved card's `:url`."
   [{:keys [name description display visualization_settings cache_ttl collection_position
            card_type column_metadata dashboard_id] :as args}
-   session-id]
+   session-id token-scopes]
   (check-dashboard-collection-exclusive! dashboard_id args)
-  (let [dataset-query (resolve-query-source args session-id)
+  (let [dataset-query (resolve-query-source args session-id token-scopes)
         dashboard-id  (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         collection-id (if dashboard-id
                         (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)
@@ -285,14 +304,14 @@
    indistinguishable from an omitted one once JSON-RPC args are stripped of nulls."
   [id {:keys [name description display visualization_settings cache_ttl collection_position
               card_type archived column_metadata dashboard_id] :as args}
-   session-id]
+   session-id token-scopes]
   (check-dashboard-collection-exclusive! dashboard_id args)
   (let [card-before  (common/resolve-and-read-with
                       :model/Card id
                       (fn [cid] (api/write-check :model/Card cid)))
         dashboard-id (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         new-query    (when (or (:query_handle args) (:query args) (:native args))
-                       (resolve-query-source args session-id))
+                       (resolve-query-source args session-id token-scopes))
         raw-updates  (cond-> {}
                        (contains? args :name)                   (assoc :name name)
                        (contains? args :description)            (assoc :description description)
@@ -383,7 +402,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
   {:name         "question_write"
    :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
@@ -397,6 +416,6 @@
                   args)
         payload (common/readback token-scopes [metabot.scope/agent-content-read]
                                  (case op
-                                   :create (create! a session-id)
-                                   :update (update! a b session-id)))]
+                                   :create (create! a session-id token-scopes)
+                                   :update (update! a b session-id token-scopes)))]
     (common/success-content payload payload)))

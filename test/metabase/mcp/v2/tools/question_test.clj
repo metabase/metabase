@@ -30,15 +30,15 @@
   (mt/with-current-user (mt/user->id :rasta)
     (testing "zero sources is a teaching error"
       (is (thrown-with-msg? Exception #"exactly one"
-                            (#'v2.question/resolve-query-source {} nil))))
+                            (#'v2.question/resolve-query-source {} nil nil))))
     (testing "two sources is a teaching error"
       (is (thrown-with-msg? Exception #"exactly one"
                             (#'v2.question/resolve-query-source
                              {:query {:database (mt/id) :stages [{}]}
-                              :native {:database_id (mt/id) :sql "SELECT 1"}} nil))))
+                              :native {:database_id (mt/id) :sql "SELECT 1"}} nil nil))))
     (testing "native builds a native dataset_query"
       (let [q (#'v2.question/resolve-query-source
-               {:native {:database_id (mt/id) :sql "SELECT 1"}} nil)]
+               {:native {:database_id (mt/id) :sql "SELECT 1"}} nil nil)]
         (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]} q))))))
 
 (defn- tag-by-name
@@ -54,12 +54,12 @@
                             (#'v2.question/resolve-query-source
                              {:native {:database_id (mt/id)
                                        :sql "SELECT 1"
-                                       :template_tags {"missing" {:type "number"}}}} nil))))
+                                       :template_tags {"missing" {:type "number"}}}} nil nil))))
     (testing "a typed tag present in the SQL is applied"
       (let [q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id)
                          :sql "SELECT * FROM orders WHERE total > {{min_total}}"
-                         :template_tags {"min_total" {:type "number"}}}} nil)]
+                         :template_tags {"min_total" {:type "number"}}}} nil nil)]
         (is (= :number (:type (tag-by-name q "min_total"))))))
     (testing "a dimension tag without a widget_type is a teaching error"
       (is (thrown-with-msg? Exception #"dimension template tag requires a widget_type"
@@ -67,7 +67,7 @@
                              {:native {:database_id (mt/id)
                                        :sql "SELECT * FROM orders WHERE {{d}}"
                                        :template_tags {"d" {:type "dimension"
-                                                            :field_id (mt/id :orders :total)}}}} nil))))
+                                                            :field_id (mt/id :orders :total)}}}} nil nil))))
     (testing "a dimension tag with a field_id and widget type is applied"
       (let [field-id (mt/id :orders :total)
             q (#'v2.question/resolve-query-source
@@ -75,7 +75,7 @@
                          :sql "SELECT * FROM orders WHERE {{d}}"
                          :template_tags {"d" {:type "dimension"
                                               :field_id field-id
-                                              :widget_type "number/="}}}} nil)]
+                                              :widget_type "number/="}}}} nil nil)]
         (is (=? {:type :dimension
                  :widget-type :number/=
                  :dimension [:field {} field-id]}
@@ -89,13 +89,13 @@
                              {:native {:database_id (mt/id)
                                        :sql "SELECT * FROM orders WHERE {{d}}"
                                        :template_tags {"d" {:type "dimension"
-                                                            :widget_type "number/="}}}} nil))))
+                                                            :widget_type "number/="}}}} nil nil))))
     (testing "an unknown tag type names the valid types and embeds the tag shape"
       (is (thrown-with-msg? Exception #"(?s)temporal-unit.*learn\(\"native-parameters\"\)"
                             (#'v2.question/resolve-query-source
                              {:native {:database_id (mt/id)
                                        :sql "SELECT * FROM orders WHERE {{d}}"
-                                       :template_tags {"d" {:type "widget"}}}} nil))))))
+                                       :template_tags {"d" {:type "widget"}}}} nil nil))))))
 
 (deftest native-template-tags-more-kinds-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -103,14 +103,14 @@
       (let [q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id)
                          :sql "SELECT 1 WHERE {{flag}}"
-                         :template_tags {"flag" {:type "boolean"}}}} nil)]
+                         :template_tags {"flag" {:type "boolean"}}}} nil nil)]
         (is (= :boolean (:type (tag-by-name q "flag"))))))
     (testing "a temporal-unit tag takes a field_id and no widget_type"
       (let [field-id (mt/id :orders :created_at)
             q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id)
                          :sql "SELECT * FROM orders WHERE {{unit}}"
-                         :template_tags {"unit" {:type "temporal-unit" :field_id field-id}}}} nil)]
+                         :template_tags {"unit" {:type "temporal-unit" :field_id field-id}}}} nil nil)]
         (is (=? {:type :temporal-unit :dimension [:field {} field-id]}
                 (tag-by-name q "unit")))))))
 
@@ -126,7 +126,7 @@
                                               :name           "d"
                                               (keyword "display-name") "Total"
                                               (keyword "widget-type")  "number/="
-                                              :dimension      ["field" field-id nil]}}}} nil)]
+                                              :dimension      ["field" field-id nil]}}}} nil nil)]
         (is (=? {:type :dimension
                  :display-name "Total"
                  :widget-type :number/=
@@ -140,7 +140,7 @@
                                          (keyword "snippet: base") {:type          "snippet"
                                                                     :name          "snippet: base"
                                                                     (keyword "snippet-name") "base"
-                                                                    (keyword "display-name") "Snippet: base"}}}} nil)]
+                                                                    (keyword "display-name") "Snippet: base"}}}} nil nil)]
         (is (= :number (:type (tag-by-name q "min"))))
         (is (= :snippet (:type (tag-by-name q "snippet: base"))))))
     (testing "an MBQL 5 dimension ref (options second, id third) also yields the field"
@@ -150,7 +150,7 @@
                          :sql "SELECT * FROM orders WHERE {{d}}"
                          :template_tags {"d" {:type "dimension"
                                               (keyword "widget-type") "number/="
-                                              :dimension ["field" {} field-id]}}}} nil)]
+                                              :dimension ["field" {} field-id]}}}} nil nil)]
         (is (=? {:dimension [:field {} field-id]}
                 (tag-by-name q "d")))))))
 
@@ -295,7 +295,8 @@
                       :name "Native Model With CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}
                       :column_metadata [{:name "TOTAL" :display_name "Total $"}]}
-              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+              result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                         "question_write" args)]
           (is (:isError result))
           (is (re-find #"column_metadata isn't supported for models built from a native \(SQL\) query"
                        (-> result :content first :text)))))
@@ -304,7 +305,8 @@
                       :card_type "model"
                       :name "Native Model No CM"
                       :native {:database_id (mt/id) :sql "SELECT * FROM orders"}}
-              result (registry/call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
+              result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                         "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
 
@@ -492,6 +494,58 @@
           (is (:isError result))
           (testing "the card is untouched"
             (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
+
+(deftest native-source-requires-the-sql-scope-test
+  (testing "an inline `native` source stores raw SQL that run_saved_question then executes, so it is
+            execute_sql's capability and needs execute_sql's own scope — the content write scope
+            alone would reproduce raw SQL for a token the operator never granted it to"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [write-only  #{"agent:content:write"}
+              with-sql    #{"agent:content:write" "agent:sql:run"}
+              create-args {:method "create" :name "Native Q"
+                           :native {:database_id (mt/id) :sql "SELECT 1"}}]
+          (testing "create with only the write scope is refused, naming the missing scope"
+            (let [result (registry/call-tool write-only (str (random-uuid)) "question_write" create-args)]
+              (is (:isError result))
+              (is (re-find #"agent:sql:run" (-> result :content first :text)))
+              (is (zero? (t2/count :model/Card :name "Native Q")))))
+          (testing "the identical call goes through once the token carries the SQL scope"
+            (let [result (registry/call-tool with-sql (str (random-uuid)) "question_write" create-args)]
+              (is (not (:isError result)) (-> result :content first :text))
+              (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+                      (t2/select-one-fn :dataset_query :model/Card
+                                        :id (:id (:structuredContent result)))))))
+          (testing "update is gated too — swapping a stored MBQL query for SQL stores the same capability"
+            (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
+              (let [update-args {:method "update" :id (:id card)
+                                 :native {:database_id (mt/id) :sql "SELECT 2"}}
+                    refused     (registry/call-tool write-only (str (random-uuid)) "question_write" update-args)]
+                (is (:isError refused))
+                (is (re-find #"agent:sql:run" (-> refused :content first :text)))
+                (is (=? {:stages [{:lib/type :mbql.stage/mbql}]}
+                        (t2/select-one-fn :dataset_query :model/Card :id (:id card))))
+                (testing "and goes through with the SQL scope"
+                  (let [ok (registry/call-tool with-sql (str (random-uuid)) "question_write" update-args)]
+                    (is (not (:isError ok)) (-> ok :content first :text))
+                    (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 2"}]}
+                            (t2/select-one-fn :dataset_query :model/Card :id (:id card))))))))))))))
+
+;; not ^:parallel: mt/with-temporary-setting-values on the shared kill-switch setting
+(deftest native-source-honors-the-execute-sql-kill-switch-test
+  (testing "the mcp-execute-sql-enabled kill switch must cover every path that stores raw SQL, or
+            question_write plus run_saved_question rebuilds execute_sql on an instance where an
+            admin turned it off"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+          (let [result (registry/call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
+                                           "question_write"
+                                           {:method "create" :name "Killed Native Q"
+                                            :native {:database_id (mt/id) :sql "SELECT 1"}})]
+            (is (:isError result))
+            (is (str/includes? (-> result :content first :text) "mcp-execute-sql-enabled"))
+            (is (zero? (t2/count :model/Card :name "Killed Native Q")))))))))
 
 (deftest write-response-respects-read-scope-test
   (testing "GHY-4217: without agent:resource:read the response is a minimal ack — the write scope
