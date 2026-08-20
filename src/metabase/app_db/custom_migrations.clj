@@ -2286,24 +2286,15 @@
                 :where  [:in :id (keys rewritten)]})))
           (recur (+ start *encryption-batch-size*)))))))
 
-(defn- encrypt-dwh-derived-columns! []
-  ;; an instance that already had a key set never re-runs `encrypt-db`, so without this its existing rows would stay
-  ;; in the clear until something happened to rewrite them, which for a stable schema may be never
-  (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] dwh-derived-columns]
-      (rewrite-column! table column
-                       (fn [v]
-                         (if (encryption/possibly-encrypted-string? v)
-                           v
-                           (encryption/maybe-encrypt v)))))))
-
-;; Intentionally not using define-reversible-migration: a single transaction over millions of fields can hit
-;; connection/transaction timeouts. Partial completion is safe either way, because `maybe-decrypt` reads plaintext
-;; and ciphertext alike, and a re-run skips rows it already converted.
+;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, because
+;; `metabase_field` can hold millions of rows and a migration that long blocks startup. Rollback has to stay here
+;; though, since a downgraded version needs to find plaintext the moment it starts.
+;;
+;; Intentionally not using define-reversible-migration, to avoid wrapping that rollback in one transaction. Partial
+;; completion is safe either way: `maybe-decrypt` reads plaintext and ciphertext alike.
 (defrecord EncryptDwhDerivedColumns []
   CustomTaskChange
-  (execute [_ _database]
-    (encrypt-dwh-derived-columns!))
+  (execute [_ _database])
   (getConfirmationMessage [_]
     "Custom migration: EncryptDwhDerivedColumns")
   (setUp [_])

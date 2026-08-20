@@ -74,6 +74,64 @@
                             {:table table, :id id, :column column})))
           (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))))
 
+(def dwh-derived-columns
+  "Warehouse-derived columns that became encrypted at rest in v64. Raw table names so this keeps working as the
+  models move around."
+  [[:report_card :result_metadata]
+   [:metabase_field :fingerprint]
+   [:metabase_fieldvalues :values]
+   [:metabase_fieldvalues :human_readable_values]
+   [:user_parameter_value :value]])
+
+(defn- rewrite-page!
+  "Convert up to `batch-size` rows of `table`.`column` with an id above `after-id`, using `f`. Returns the greatest id
+  seen, or nil when nothing was left to do."
+  [table column f after-id batch-size]
+  (let [rows (t2/query {:select   [:id [column :value]]
+                        :from     [table]
+                        ;; most rows have nothing to convert: every pk, retired, sensitive and inactive field has a
+                        ;; null fingerprint, and most FieldValues have no human-readable remapping
+                        :where    [:and [:> :id after-id] [:not= column nil]]
+                        :order-by [[:id :asc]]
+                        :limit    batch-size})]
+    (when (seq rows)
+      (let [changed (into {}
+                          (keep (fn [{:keys [id value]}]
+                                  (let [v (f value)]
+                                    (when (not= v value)
+                                      [id v]))))
+                          rows)]
+        (when (seq changed)
+          ;; one UPDATE per page rather than per row: on a table with millions of fields that is the difference
+          ;; between thousands of round trips and millions
+          (t2/query-one {:update table
+                         :set    {column (into [:case]
+                                               (concat (mapcat (fn [[id v]] [[:= :id id] v]) changed)
+                                                       [:else column]))}
+                         :where  [:in :id (keys changed)]}))
+        (transduce (map :id) max 0 rows)))))
+
+(defn rewrite-dwh-derived-columns!
+  "Convert [[dwh-derived-columns]] with `f`, resuming from `cursor` and stopping once `deadline-ms` has passed (nil
+  runs to completion). Returns the cursor to resume from, or nil when every column is done."
+  [f cursor deadline-ms batch-size]
+  (loop [{:keys [index after-id] :or {index 0 after-id 0}} (or cursor {})]
+    (if-let [[table column] (get dwh-derived-columns index)]
+      (if-let [last-id (rewrite-page! table column f after-id batch-size)]
+        (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
+          {:index index :after-id last-id}
+          (recur {:index index :after-id last-id}))
+        ;; this column is done, move to the next one
+        (recur {:index (inc index) :after-id 0}))
+      nil)))
+
+(defn encrypt-value
+  "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op."
+  [v]
+  (if (encryption/possibly-encrypted-string? v)
+    v
+    (encryption/maybe-encrypt v)))
+
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
 
