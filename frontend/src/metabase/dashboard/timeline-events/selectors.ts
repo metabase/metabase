@@ -3,9 +3,11 @@ import { createCachedSelector } from "re-reselect";
 
 import {
   getCurrentDashcards,
+  getDashCardById,
   getDashboard,
+  getDashcards,
 } from "metabase/dashboard/selectors";
-import type { State } from "metabase/redux/store";
+import type { State, StoreDashcard } from "metabase/redux/store";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
@@ -38,11 +40,17 @@ export const getTimelineEventsVisibilityContext = createSelector(
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
+const getSavedTimelineEventsVisibility = (
+  dashcard: StoreDashcard | undefined,
+): TimelineEventsVisibility | undefined =>
+  dashcard?.visualization_settings?.["timeline_events.visibility"];
+
 export const getDashCardTimelineEventsVisibility = (
   state: State,
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
-  getTimelineEventsOverrides(state)[dashcardId];
+  getTimelineEventsOverrides(state)[dashcardId] ??
+  getSavedTimelineEventsVisibility(getDashCardById(state, dashcardId));
 
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
   [getTimelineEventsVisibilityContext, getDashCardTimelineEventsVisibility],
@@ -74,13 +82,16 @@ export const getDashboardTimelineEventsAggregate = createSelector(
     getTimelineEventsDashCardIds,
     getTimelineEventsVisibilityContext,
     getTimelineEventsOverrides,
+    (state: State) => getDashcards(state),
   ],
-  (dashcardIds, context, overrides) =>
+  (dashcardIds, context, overrides, dashcards) =>
     aggregateVisibleEventIds(
       dashcardIds.map((dashcardId) =>
         resolveVisibleTimelineEvents({
           ...context,
-          visibility: overrides[dashcardId],
+          visibility:
+            overrides[dashcardId] ??
+            getSavedTimelineEventsVisibility(dashcards[dashcardId]),
         }).map((event) => event.id),
       ),
     ),
