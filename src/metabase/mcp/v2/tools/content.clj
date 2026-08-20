@@ -495,7 +495,8 @@
 (defn- content-item-result
   "Build one batch item's result: its projection (with `include` sections or `fields`
    narrowing), or the `{type, id, error}` object that keeps a failing item from sinking the
-   rest of the batch."
+   rest of the batch. The `error` text is whatever [[common/->mcp-error-content]] judges safe to
+   return, so incidental exceptions collapse to a generic internal error."
   [{:keys [include] :as args} {:keys [type id fields] :as _item}]
   (try
     (let [{:keys [proj fetch]} (type->spec type)
@@ -516,7 +517,9 @@
                              sections))
               (assoc :type type)))))
     (catch Exception e
-      {:type type :id id :error (or (ex-message e) "Internal error")})))
+      ;; Fault isolation must not become a second, unjudged error channel: reuse the tool-level
+      ;; judgment and unwrap its text back into the item's `{type, id, error}` shape.
+      {:type type :id id :error (-> (common/->mcp-error-content e) :content first :text)})))
 
 (def ^:private get-content-args-schema
   [:map {:closed true}

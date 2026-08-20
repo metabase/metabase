@@ -6,7 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.mcp.v2.tools.content]
+   [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.mcp.v2.tools.content/keep-me)
+(comment tools.content/keep-me)
 
 (defn- call-content
   "Invoke get_content through the registry — the same seam the JSON-RPC route uses, so scope
@@ -346,6 +346,31 @@
           (testing "the failing item names its type and id alongside the error"
             (is (= {:type "question" :id 999999999} (select-keys (second rows) [:type :id])))
             (is (some? (:error (second rows))))))))))
+
+(deftest get-content-item-error-is-judged-safe-test
+  (testing "GHY-4322: a per-item failure is judged by the same rule as a tool-level error — an
+            incidental exception (JDBC, library ex-info, NPE) becomes a generic internal error
+            instead of leaking driver or app-DB detail, while deliberately caller-facing errors
+            keep their full teaching message"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Good" :dataset_query (venues-query)}]
+      (mt/with-test-user :crowberto
+        (with-redefs [tools.content/fetch-measure-or-segment
+                      (fn [& _]
+                        (throw (ex-info "ERROR: relation \"report_card\" does not exist"
+                                        {:sql "SELECT * FROM report_card"})))]
+          (let [[leaky teaching good]
+                (content-results {:items [{:type "measure" :id 1}
+                                          {:type "question" :id 999999999}
+                                          {:type "question" :id card-id}]})]
+            (testing "the incidental exception's message never reaches the caller"
+              (is (= {:type "measure" :id 1} (select-keys leaky [:type :id])))
+              (is (= "Internal error" (:error leaky)))
+              (is (not (str/includes? (:error leaky) "report_card"))))
+            (testing "a teaching error still surfaces its full message"
+              (is (str/includes? (:error teaching) "not found")))
+            (testing "fault isolation survives: the good item is unaffected"
+              (is (= "Good" (:name good)))
+              (is (nil? (:error good))))))))))
 
 (deftest get-content-card-type-mismatch-test
   (testing "GHY-4140: asking for a model with type question teaches the actual type"
