@@ -9,6 +9,7 @@ import {
   metabotActions,
   metabotReducer,
 } from "metabase/metabot/state";
+import { LOCATION_CHANGE } from "metabase/router";
 import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
@@ -313,6 +314,33 @@ describe("metabot reducer", () => {
       expect(store.getState().metabot.conversations[shared]).toBeDefined();
     });
 
+    it("does not keep a conversation when a snapshot arrives after every agent has moved on", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.attachAgentToConversation({
+          agentId: "ask",
+          conversationId: "convo-a",
+        }),
+      );
+      store.dispatch(
+        metabotActions.attachAgentToConversation({
+          agentId: "ask",
+          conversationId: "convo-b",
+        }),
+      );
+
+      // the fetch kicked off by loadConversation("convo-a") lands after the
+      // agent already walked away, e.g. two rapid history selections
+      store.dispatch(
+        metabotActions.setConversationSnapshot({
+          conversationId: "convo-a",
+          messages: [],
+        }),
+      );
+
+      expect(store.getState().metabot.conversations["convo-a"]).toBeUndefined();
+    });
+
     it("keeps an abandoned conversation that was written to this session", () => {
       const store = createTestStore();
       const abandoned = conversationIdForAgent(store, "omnibot");
@@ -330,6 +358,44 @@ describe("metabot reducer", () => {
       );
 
       expect(store.getState().metabot.conversations[abandoned]).toBeDefined();
+    });
+  });
+
+  describe("location changes", () => {
+    const locationChange = (pathname: string) => ({
+      type: LOCATION_CHANGE,
+      payload: { pathname, search: "", hash: "", state: undefined, key: "t" },
+    });
+
+    it("attaches the ask agent to the conversation in the URL", () => {
+      const store = createTestStore();
+      store.dispatch(locationChange("/metabot/conversation/convo-from-url"));
+
+      expect(conversationIdForAgent(store, "ask")).toBe("convo-from-url");
+      expect(
+        store.getState().metabot.conversations["convo-from-url"],
+      ).toBeDefined();
+    });
+
+    it("starts a fresh ask conversation on each navigation to the ask page", () => {
+      const store = createTestStore();
+      const seeded = conversationIdForAgent(store, "ask");
+
+      store.dispatch(locationChange("/question/ask"));
+      const first = conversationIdForAgent(store, "ask");
+      expect(first).not.toBe(seeded);
+
+      store.dispatch(locationChange("/question/ask"));
+      expect(conversationIdForAgent(store, "ask")).not.toBe(first);
+    });
+
+    it("leaves the ask agent alone on unrelated routes", () => {
+      const store = createTestStore();
+      const seeded = conversationIdForAgent(store, "ask");
+
+      store.dispatch(locationChange("/dashboard/1"));
+
+      expect(conversationIdForAgent(store, "ask")).toBe(seeded);
     });
   });
 

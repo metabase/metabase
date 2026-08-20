@@ -1,9 +1,15 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { castDraft } from "immer";
+import {
+  type PayloadAction,
+  type UnknownAction,
+  createSlice,
+} from "@reduxjs/toolkit";
+import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
+import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type {
   MetabotCodeEdit,
   MetabotStateContext,
@@ -44,11 +50,49 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotAgentId,
   MetabotChatMessage,
+  MetabotState,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId, hasInProgressMessage } from "./utils";
+
+const isLocationChange = (
+  action: UnknownAction,
+): action is PayloadAction<Location, typeof LOCATION_CHANGE> =>
+  action.type === LOCATION_CHANGE;
+
+const startNewConversationForAgent = (
+  state: WritableDraft<MetabotState>,
+  agentId: MetabotAgentId,
+) => {
+  const agent = getAgentOrThrow(state, agentId);
+  const previousConversationId = agent.conversationId;
+  const convo = createConversationForAgent(agentId);
+  state.conversations[convo.conversationId] = castDraft(convo);
+  agent.conversationId = convo.conversationId;
+  resetReactionState(state, agentId);
+  evictConversationIfUnused(state, previousConversationId);
+};
+
+const attachAgent = (
+  state: WritableDraft<MetabotState>,
+  agentId: MetabotAgentId,
+  conversationId: string,
+) => {
+  const agent = getAgentOrThrow(state, agentId);
+  if (agent.conversationId === conversationId) {
+    return;
+  }
+  const previousConversationId = agent.conversationId;
+  state.conversations[conversationId] ??= castDraft(
+    createConversationForAgent(agentId, { conversationId }),
+  );
+  agent.conversationId = conversationId;
+  resetReactionState(state, agentId);
+  evictConversationIfUnused(state, previousConversationId);
+};
 
 export const metabot = createSlice({
   name: "metabase/metabot",
@@ -75,30 +119,13 @@ export const metabot = createSlice({
       }
     },
     startNewConversation: (state, action: AgentPayloadAction) => {
-      const agent = getAgentOrThrow(state, action.payload.agentId);
-      const previousConversationId = agent.conversationId;
-      const convo = createConversationForAgent(action.payload.agentId);
-      state.conversations[convo.conversationId] = castDraft(convo);
-      agent.conversationId = convo.conversationId;
-      resetReactionState(state, action.payload.agentId);
-      evictConversationIfUnused(state, previousConversationId);
+      startNewConversationForAgent(state, action.payload.agentId);
     },
     attachAgentToConversation: (
       state,
       action: AgentPayloadAction<{ conversationId: string }>,
     ) => {
-      const { agentId, conversationId } = action.payload;
-      const agent = getAgentOrThrow(state, agentId);
-      if (agent.conversationId === conversationId) {
-        return;
-      }
-      const previousConversationId = agent.conversationId;
-      state.conversations[conversationId] ??= castDraft(
-        createConversationForAgent(agentId, { conversationId }),
-      );
-      agent.conversationId = conversationId;
-      resetReactionState(state, agentId);
-      evictConversationIfUnused(state, previousConversationId);
+      attachAgent(state, action.payload.agentId, action.payload.conversationId);
     },
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
@@ -468,6 +495,10 @@ export const metabot = createSlice({
 
       // NOTE: live reactions aren't reconstructed from a fetched snapshot
       resetReactionStateForConversation(state, conversationId);
+
+      // a snapshot can land after every agent moved on (e.g. rapid history
+      // selections) — don't let it resurrect an evicted conversation
+      evictConversationIfUnused(state, conversationId);
     },
   },
   extraReducers: (builder) => {
@@ -548,6 +579,22 @@ export const metabot = createSlice({
           convo.activeToolCalls = [];
           closeChain(convo);
           convo.isProcessing = false;
+        }
+      })
+      // The URL owns which conversation the full-page ask agent is on: a
+      // conversation route attaches the agent, and the new-question ask route
+      // starts a fresh conversation. Same-path navigations emit LOCATION_CHANGE
+      // too, so re-entering the ask route always resets.
+      .addMatcher(isLocationChange, (state, action) => {
+        const pathname = action.payload.pathname;
+        const convoId = matchPath(
+          `/${Urls.CONVERSATION_BASE_PATH}/:convoId`,
+          pathname,
+        )?.params.convoId;
+        if (convoId) {
+          attachAgent(state, "ask", convoId);
+        } else if (matchPath(Urls.newQuestion({ mode: "ask" }), pathname)) {
+          startNewConversationForAgent(state, "ask");
         }
       });
   },

@@ -9,6 +9,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  conversationIdForAgent,
   createTestMetabotState,
   enterChatMessage,
   mockAgentEndpoint,
@@ -145,7 +146,7 @@ describe("MetabotAsk", () => {
   });
 
   it("navigates to the conversation route after the first message", async () => {
-    const { router } = setupMetabotAsk({
+    const { router, store } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
     });
@@ -155,7 +156,7 @@ describe("MetabotAsk", () => {
 
     await waitFor(() => {
       expect(router?.location.pathname).toBe(
-        `/metabot/conversation/${ASK_CONVERSATION_ID}`,
+        `/metabot/conversation/${conversationIdForAgent(store, "ask")}`,
       );
     });
   });

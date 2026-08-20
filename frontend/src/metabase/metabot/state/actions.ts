@@ -971,6 +971,15 @@ export const forkConversation = createAsyncThunk(
       }),
     ).unwrap();
 
+    // attach new converation before setting snapshot so convo being
+    // forked will be evicted from the state
+    dispatch(
+      attachAgentToConversation({
+        agentId,
+        conversationId: conversation.conversation_id,
+      }),
+    );
+
     dispatch(
       setConversationSnapshot({
         conversationId: conversation.conversation_id,
@@ -980,13 +989,6 @@ export const forkConversation = createAsyncThunk(
         messages: normalizeFetchedChatMessages(conversation.messages),
         state: conversation.state,
         activeToolCalls: [],
-      }),
-    );
-
-    dispatch(
-      attachAgentToConversation({
-        agentId,
-        conversationId: conversation.conversation_id,
       }),
     );
 

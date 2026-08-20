@@ -28,13 +28,8 @@ const SUGGESTION_MODELS: SuggestionModel[] = [
 export const MetabotAsk = () => {
   const navigate = useNavigate();
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
-  const {
-    conversationId,
-    messages,
-    isDoingScience,
-    profile,
-    createNewConversation,
-  } = useMetabotAgent("ask");
+  const { conversationId, messages, isDoingScience, profile } =
+    useMetabotAgent("ask");
   const { isConfigured } = useUserMetabotPermissions();
   const isAskPage = useIsAskPage();
 
@@ -85,7 +80,9 @@ export const MetabotAsk = () => {
           <MetabotChat
             conversationId={conversationId}
             agentId="ask"
-            onNewConversation={createNewConversation}
+            onNewConversation={() =>
+              navigate(Urls.newQuestion({ mode: "ask" }))
+            }
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}

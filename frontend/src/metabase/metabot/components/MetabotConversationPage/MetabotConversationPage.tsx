@@ -9,7 +9,6 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import {
-  attachAgentToConversation,
   getIsConversationEmpty,
   getIsConversationInProgress,
   setConversationSnapshot,
@@ -31,9 +30,6 @@ export const MetabotConversationPage = () => {
   const { canUseNlq, isLoading } = useUserMetabotPermissions();
   const { conversationId } = useMetabotAgent("ask");
 
-  // The route owns which conversation the ask agent is on, so the agent trails
-  // the URL by a render. Until it catches up its selectors describe whichever
-  // conversation it was on before, which is not the one being asked for.
   const isAttached = urlConvoId != null && conversationId === urlConvoId;
 
   const isSettingsLoading = useSelector(getSettingsLoading);
@@ -42,20 +38,6 @@ export const MetabotConversationPage = () => {
   );
   const isEmpty = useSelector((state) =>
     isAttached ? getIsConversationEmpty(state, urlConvoId) : true,
-  );
-
-  useEffect(
-    function attachAgentToUrlConversation() {
-      if (urlConvoId) {
-        dispatch(
-          attachAgentToConversation({
-            agentId: "ask",
-            conversationId: urlConvoId,
-          }),
-        );
-      }
-    },
-    [dispatch, urlConvoId],
   );
 
   const { currentData: conversation, isError } = useGetMetabotConversationQuery(
