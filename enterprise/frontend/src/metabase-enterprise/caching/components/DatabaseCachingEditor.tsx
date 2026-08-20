@@ -25,6 +25,7 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Center, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import type { Database } from "metabase-types/api";
 
 import { PolicySidePanel } from "./PolicySidePanel";
 import {
@@ -39,6 +40,9 @@ type DatabaseRow = PolicyTableRowBase & {
   targetId: number;
   ariaLabel: string;
 };
+
+const emptyDatabaseList: Database[] = [];
+const MIN_DATABASE_ITEMS_TO_SHOW_SEARCH = 10;
 
 export const DatabaseCachingEditor = () => {
   const dispatch = useDispatch();
@@ -60,10 +64,7 @@ export const DatabaseCachingEditor = () => {
   } = useCacheConfigs({ model: ["root", "database"] });
 
   const databasesResult = useListDatabasesQuery();
-  const databases = useMemo(
-    () => databasesResult.data?.data ?? [],
-    [databasesResult.data],
-  );
+  const databases = databasesResult.data?.data ?? emptyDatabaseList;
 
   const rootStrategy =
     findWhere(configs ?? [], { model_id: rootId })?.strategy ??
@@ -104,20 +105,17 @@ export const DatabaseCachingEditor = () => {
     return [defaultPolicyRow, ...sortPolicyRows(databaseRows, sorting)];
   }, [databases, configs, rootStrategy, sorting]);
 
-  const visibleRows = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (query === "") {
-      return allRows;
-    }
-    return allRows.filter(
-      (row) =>
-        row.name.toLowerCase().includes(query) ||
-        row.policyLabel?.toLowerCase().includes(query),
-    );
-  }, [allRows, searchQuery]);
+  const query = searchQuery.trim().toLowerCase();
+  const visibleRows =
+    query === ""
+      ? allRows
+      : allRows.filter(
+          (row) =>
+            row.name.toLowerCase().includes(query) ||
+            row.policyLabel?.toLowerCase().includes(query),
+        );
 
-  // "More than 10 items" counts databases, not the pinned default-policy row
-  const shouldShowSearch = databases.length > 10;
+  const shouldShowSearch = databases.length > MIN_DATABASE_ITEMS_TO_SHOW_SEARCH;
 
   const {
     askBeforeDiscardingChanges,

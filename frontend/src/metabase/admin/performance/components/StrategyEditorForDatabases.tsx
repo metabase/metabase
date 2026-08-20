@@ -21,10 +21,10 @@ export const StrategyEditorForDatabases = () => {
   if (PLUGIN_CACHING.canOverrideRootStrategy) {
     return <PLUGIN_CACHING.DatabaseCachingEditor />;
   }
-  return <RootStrategyEditor />;
+  return <RootCachingStrategyEditor />;
 };
 
-const RootStrategyEditor = () => {
+const RootCachingStrategyEditor = () => {
   const [
     // The targetId is the id of the model that is currently being edited
     targetId,

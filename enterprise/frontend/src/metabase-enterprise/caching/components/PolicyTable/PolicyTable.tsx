@@ -85,10 +85,8 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
       enableSorting: true,
       accessorFn: (row) => row.collection?.name ?? "",
       cell: ({ row }) =>
-        row.original.collection ? (
+        row.original.collection && (
           <EllipsifiedCollectionPath collection={row.original.collection} />
-        ) : (
-          EMPTY_CELL_PLACEHOLDER
         ),
     };
     const policyColumn: TreeTableColumnDef<TRow> = {
