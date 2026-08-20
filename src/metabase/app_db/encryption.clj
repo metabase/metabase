@@ -59,8 +59,8 @@
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
   [conn table column encrypt-str-fn clear-undecryptable?]
-  ;; paged: metabase_field and metabase_fieldvalues are far too big to hold a whole column in memory
-  (doseq [ids (partition-all 1000 (t2/select-pks-vec table))
+  ;; paged, and ids-only: metabase_field and metabase_fieldvalues are far too big to hold a whole column in memory
+  (doseq [ids (partition-all 1000 (t2/select-pks-vec [table :id]))
           {:keys [id value]} (t2/select [table :id [column :value]] :id [:in ids])]
     (when (some? value)
       (let [decrypted (encryption/maybe-decrypt value)]
