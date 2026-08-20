@@ -25,7 +25,7 @@
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog ChangeLogHistoryServiceFactory ChangeLogIterator ChangeSet ChangeSet$ExecType)
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
@@ -548,6 +548,9 @@
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
    (with-scope-locked liquibase
+     ;; the history service is cached across Liquibase instances for equal Databases, so its ran-changeset cache can
+     ;; be stale if migrations ran through another connection; reset it before reading the ran changesets below
+     (.reset (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) (.getDatabase liquibase)))
      ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
      ;; to be considered)
      (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table-name liquibase))

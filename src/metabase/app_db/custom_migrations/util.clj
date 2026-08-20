@@ -21,10 +21,11 @@
   So this function temporarily starts the scheduler and runs the given function then shuts the scheduler back down.
 
   However, we have to be careful about running this after the scheduler has been fully started (such as running tests in a running REPL)
-  because `(qs/initialize)` _doesn't_ return a new instance but will return the normal scheduler instance which will them be incorrectly shut down.
+  because `(qs/initialize)` _doesn't_ return a new instance but will return the normal scheduler instance, which must not be shut down.
+  In that case we run against the already-started scheduler as-is, without starting or shutting it down.
 
-  Since we don't really need to run migrations against the scheduler in tests, this function will throw an exception if it sees an already-running scheduler.
-  The various 'run this test with a temp database' functions should set `*allow-temp-scheduling*` to false so this call does nothing, so you should still never see the exception."
+  Since we don't usually need to run migrations against the scheduler in tests, the various 'run this test with a temp database'
+  functions set `*allow-temp-scheduling*` to false so this call does nothing; tests that exercise scheduler migrations rebind it to true."
   [f]
   (when *allow-temp-scheduling*
     (classloader/the-classloader)
@@ -42,11 +43,14 @@
     (System/setProperty "org.quartz.jobStore.acquireTriggersWithinLock" "false")
     (let [scheduler (qs/initialize)]
       (System/clearProperty "org.quartz.jobStore.acquireTriggersWithinLock")
-      (when (qs/started? scheduler)
-        (throw (ex-info "Scheduler is already started, cannot start temporary one" {})))
-      (qs/start scheduler)
-      (f scheduler)
-      (qs/shutdown scheduler))))
+      (if (qs/started? scheduler)
+        (f scheduler)
+        (do
+          (qs/start scheduler)
+          (try
+            (f scheduler)
+            (finally
+              (qs/shutdown scheduler))))))))
 
 (defmacro with-temp-schedule!
   "Execute the body with a temporary Quartz scheduler.
