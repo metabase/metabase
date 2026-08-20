@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { getIsEditing } from "metabase/dashboard/selectors";
+import { getDashCardById, getIsEditing } from "metabase/dashboard/selectors";
 import {
   getDashCardTimelineEventsVisibility,
   getTimelineEventsVisibilityContext,
@@ -16,7 +16,7 @@ import { isDefaultVisibility } from "metabase/visualizations/lib/timeline-events
 import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
-import { onUpdateDashCardVisualizationSettings } from "./core";
+import { setMultipleDashCardAttributes } from "./core";
 import { setSidebar } from "./ui";
 
 export const setDashCardTimelineEventsVisibility = createAction<
@@ -44,28 +44,40 @@ export const updateDashCardsTimelineEventsVisibility =
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
     const context = getTimelineEventsVisibilityContext(state);
-    const visibilities = dashcardIds.map(
-      (dashcardId): [DashCardId, TimelineEventsVisibility] => [
-        dashcardId,
-        update(
-          getDashCardTimelineEventsVisibility(state, dashcardId) ?? {},
-          context,
-        ),
-      ],
-    );
+    const nextVisibility = (dashcardId: DashCardId) =>
+      update(
+        getDashCardTimelineEventsVisibility(state, dashcardId) ?? {},
+        context,
+      );
     if (getIsEditing(state)) {
-      visibilities.forEach(([dashcardId, visibility]) =>
-        dispatch(
-          onUpdateDashCardVisualizationSettings(dashcardId, {
-            "timeline_events.visibility": isDefaultVisibility(visibility)
-              ? undefined
-              : visibility,
+      dispatch(
+        setMultipleDashCardAttributes({
+          dashcards: dashcardIds.map((dashcardId) => {
+            const visibility = nextVisibility(dashcardId);
+            return {
+              id: dashcardId,
+              attributes: {
+                visualization_settings: {
+                  ...getDashCardById(state, dashcardId)?.visualization_settings,
+                  "timeline_events.visibility": isDefaultVisibility(visibility)
+                    ? undefined
+                    : visibility,
+                },
+              },
+            };
           }),
-        ),
+        }),
       );
     } else {
       dispatch(
-        setDashCardTimelineEventsVisibility(Object.fromEntries(visibilities)),
+        setDashCardTimelineEventsVisibility(
+          Object.fromEntries(
+            dashcardIds.map((dashcardId) => [
+              dashcardId,
+              nextVisibility(dashcardId),
+            ]),
+          ),
+        ),
       );
     }
   };

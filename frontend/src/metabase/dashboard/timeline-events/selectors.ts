@@ -3,7 +3,6 @@ import { createCachedSelector } from "re-reselect";
 
 import {
   getCurrentDashcards,
-  getDashCardById,
   getDashboard,
   getDashcards,
 } from "metabase/dashboard/selectors";
@@ -40,17 +39,23 @@ export const getTimelineEventsVisibilityContext = createSelector(
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
-const getSavedTimelineEventsVisibility = (
-  dashcard: StoreDashcard | undefined,
+const resolveDashCardVisibility = (
+  overrides: Record<DashCardId, TimelineEventsVisibility>,
+  dashcards: Record<DashCardId, StoreDashcard>,
+  dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
-  dashcard?.visualization_settings?.["timeline_events.visibility"];
+  overrides[dashcardId] ??
+  dashcards[dashcardId]?.visualization_settings?.["timeline_events.visibility"];
 
 export const getDashCardTimelineEventsVisibility = (
   state: State,
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
-  getTimelineEventsOverrides(state)[dashcardId] ??
-  getSavedTimelineEventsVisibility(getDashCardById(state, dashcardId));
+  resolveDashCardVisibility(
+    getTimelineEventsOverrides(state),
+    getDashcards(state),
+    dashcardId,
+  );
 
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
   [getTimelineEventsVisibilityContext, getDashCardTimelineEventsVisibility],
@@ -71,6 +76,9 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
+// metabase/dashboard/selectors is wrapped lazily in the input arrays below:
+// it can still be evaluating when this module is loaded through
+// metabase/dashboard/actions.
 export const getTimelineEventsDashCardIds = createSelector(
   [(state: State) => getCurrentDashcards(state)],
   (dashcards) =>
@@ -89,9 +97,11 @@ export const getDashboardTimelineEventsAggregate = createSelector(
       dashcardIds.map((dashcardId) =>
         resolveVisibleTimelineEvents({
           ...context,
-          visibility:
-            overrides[dashcardId] ??
-            getSavedTimelineEventsVisibility(dashcards[dashcardId]),
+          visibility: resolveDashCardVisibility(
+            overrides,
+            dashcards,
+            dashcardId,
+          ),
         }).map((event) => event.id),
       ),
     ),
