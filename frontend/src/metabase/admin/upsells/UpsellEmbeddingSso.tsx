@@ -33,8 +33,10 @@ export const UpsellEmbeddingSso = ({ source }: { source: string }) => {
 
   return (
     <DottedBackground px={0} py="2rem">
-      {/* Left-aligned, no extra horizontal padding: the card lines up
-          with the page heading, as the design shows. */}
+      {/* Left-aligned, no extra horizontal padding: the card lines up with the
+          page heading. The other page-level upsells (UpsellTenants,
+          UpsellEmbeddingTheme) centre theirs inside px="3.5rem" + p={40},
+          which indents this card off the title. */}
       <Stack align="flex-start">
         <LineDecorator>
           <UpsellCardContent

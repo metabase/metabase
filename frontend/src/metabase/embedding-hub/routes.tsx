@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Navigate, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -39,6 +41,15 @@ const setupSsoPage = () =>
     Component: SetupSsoPage,
   }));
 
+// The same wizard, mounted under Authentication: setting JWT up from that tab
+// keeps the admin on that tab, so the back link has to name it.
+const authenticationSetupSsoPage = () =>
+  import("metabase/embedding/setup-guide").then(({ SetupSsoPage }) => ({
+    Component: function AuthenticationSetupSsoPage() {
+      return <SetupSsoPage backLabel={t`Back to Authentication`} />;
+    },
+  }));
+
 /**
  * Every tab owns a path segment, and `/embedding` redirects to the first one,
  * so no tab's path is a prefix of another's.
@@ -66,7 +77,11 @@ export function getEmbeddingHubRoutes() {
         </Route>
 
         <Route path="security" lazy={embeddingHubSecurityPage} />
-        <Route path="authentication" lazy={embeddingHubAuthenticationPage} />
+
+        <Route path="authentication">
+          <Route index lazy={embeddingHubAuthenticationPage} />
+          <Route path="sso-setup" lazy={authenticationSetupSsoPage} />
+        </Route>
       </Route>
     </Route>
   );
