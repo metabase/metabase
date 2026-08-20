@@ -26,6 +26,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
 
@@ -572,6 +573,96 @@
           "filter without bucket should pass through unchanged")
       (is (=? {:type :tool-output-available :toolCallId "call-d5"}
               (last result))))))
+
+;;; stringified scalar coercion tests
+
+(defn- probe-tool
+  "A tool named `probe` that declares `args-schema` and records the arguments it is called with."
+  [args-schema received]
+  {"probe" {:tool-name "probe"
+            :doc       "Records the arguments it was called with."
+            :schema    [:=> [:cat args-schema] :any]
+            :fn        (fn [args]
+                         (reset! received args)
+                         {:output "ok"})}})
+
+(defn- run-probe
+  "Run one `probe` tool call with `arguments` against `tools`.
+  Returns the last output chunk."
+  [tools arguments]
+  (let [chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-coerce"}
+                 {:type :tool-input :id "call-c1" :function "probe" :arguments arguments}])]
+    (last (into [] (self.core/tool-executor-xf tools) chunks))))
+
+(defn- tool-received-args
+  "Run one `probe` tool call with `arguments` and return the arguments the tool function saw."
+  [args-schema arguments]
+  (let [received (atom nil)]
+    (run-probe (probe-tool args-schema received) arguments)
+    @received))
+
+(deftest ^:parallel tool-args-stringified-int-coerced-test
+  (testing "an integer sent as a string is parsed using the tool's schema"
+    (is (= {:limit 15}
+           (tool-received-args [:map [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]]
+                               {:limit "15"})))))
+
+(deftest ^:parallel tool-args-stringified-scalars-in-collections-coerced-test
+  (testing "stringified scalars nested inside collections are parsed too"
+    (is (= {:ids    [1 2]
+            :nested {:ratio 0.5}}
+           (tool-received-args [:map
+                                [:ids [:sequential :int]]
+                                [:nested [:map [:ratio :double]]]]
+                               {:ids    ["1" "2"]
+                                :nested {:ratio "0.5"}})))))
+
+(deftest ^:parallel tool-args-stringified-boolean-coerced-test
+  (testing "a boolean sent as a string is parsed"
+    (is (= {:verbose true}
+           (tool-received-args [:map [:verbose :boolean]] {:verbose "true"})))))
+
+(deftest ^:parallel tool-args-strings-left-alone-test
+  (testing "strings the schema actually asks for are never reinterpreted"
+    (is (= {:keyword_queries ["15"]
+            :entity_types    ["table"]}
+           (tool-received-args [:map
+                                [:keyword_queries [:sequential :string]]
+                                [:entity_types [:sequential [:enum "table" "model"]]]]
+                               {:keyword_queries ["15"]
+                                :entity_types    ["table"]})))))
+
+(deftest ^:parallel tool-args-unparseable-scalar-left-alone-test
+  (testing "a string that isn't a number is passed through so the tool still reports the error"
+    (is (= {:limit "abc"}
+           (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))))
+
+(deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
+  (testing "a tool without a usable schema still receives its arguments"
+    (is (= {:limit "15"}
+           (tool-received-args nil {:limit "15"})))))
+
+(deftest ^:parallel tool-args-coercion-precedes-decode-test
+  (testing "coercion happens before the tool's own :decode fn, which sees a real integer"
+    (let [received (atom nil)
+          tools    (update (probe-tool [:map [:limit :int]] received)
+                           "probe" assoc :decode #(update % :limit inc))]
+      (run-probe tools {:limit "15"})
+      (is (= {:limit 16}
+             @received)))))
+
+(deftest ^:parallel tool-args-stringified-int-satisfies-tool-validation-test
+  (testing "a stringified integer no longer fails a tool that validates its own arguments"
+    (let [args-schema [:map [:limit [:maybe [:int {:min 1 :max 50}]]]]
+          tools       {"probe" {:tool-name "probe"
+                                :doc       "Validates its arguments."
+                                :schema    [:=> [:cat args-schema] :any]
+                                :fn        (mu/fn [args :- args-schema]
+                                             {:output (str "limit=" (:limit args))})}}]
+      (is (=? {:type   :tool-output-available
+               :result {:output "limit=15"}}
+              (run-probe tools {:limit "15"}))))))
 
 ;;; AI SDK SSE output tests
 

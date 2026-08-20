@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -601,6 +603,32 @@
                args)
     args))
 
+(def ^:private stringified-scalar-transformer
+  "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
+  Restricted to the types models get wrong — strings, keywords and enums are left alone."
+  (mtx/transformer
+   {:name     :llm-stringified-scalars
+    :decoders (select-keys (mtx/-string-decoders)
+                           [:int :double :float :boolean 'int? 'double? 'float? 'boolean?
+                            'integer? 'nat-int? 'neg-int? 'pos-int? 'number? 'decimal?])}))
+
+(defn- tool-args-schema
+  "The schema for a tool's argument map, from its `[:=> [:cat args] out]` schema."
+  [tool]
+  (let [[_:=> [_:cat args] _out] (:schema tool)]
+    args))
+
+(defn- coerce-stringified-scalars
+  "Coerce string tool `arguments` to the scalar types the tool's schema declares.
+  Some models send numbers as JSON strings, e.g. `{\"limit\": \"15\"}`.
+  Values that can't be parsed and tools without a usable schema are left alone."
+  [tool arguments]
+  (or (try
+        (some-> (tool-args-schema tool)
+                (mc/decode arguments stringified-scalar-transformer))
+        (catch Exception _ nil))
+      arguments))
+
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
@@ -635,6 +663,7 @@
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
                              arguments (or (coerce-stringified-json arguments) {})
+                             arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
                          (log/debug "Executing tool" {:tool-name tool-name})
