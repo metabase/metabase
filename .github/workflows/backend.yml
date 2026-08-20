@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches).
+        type: boolean
+        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -68,7 +72,7 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
+    if: ${{ !inputs.skip && inputs.force-run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -80,8 +84,8 @@ jobs:
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
-    # PR / merge queue: lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    # Lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -181,21 +185,10 @@ jobs:
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # Old migrations tests only run on a force-run ref; everything else excludes
+      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
+      # anywhere outside of splicing it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
