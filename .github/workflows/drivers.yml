@@ -1411,7 +1411,7 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
+
   drivers-tests-result:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
