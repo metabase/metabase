@@ -188,7 +188,8 @@ jobs:
             --atomic \
             --timeout 10m
   preview_links:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     needs: [deploy_pr]
     steps:
       - uses: marocchino/sticky-pull-request-comment@v2
