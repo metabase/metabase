@@ -25,7 +25,7 @@
   db-type)
 
 (defmulti batch-upsert-on-connection!
-  "Insert or update multiple entries using the explicit transaction connection."
+  "Like [[batch-upsert!]], but writes on `conn` rather than the ambient connection."
   {:arglists '([conn table-name entries])}
   db-type)
 

@@ -9,6 +9,7 @@
    [metabase.search.lease :as lease]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2])
   (:import
@@ -25,10 +26,10 @@
 (use-fixtures :once with-current-schema!)
 
 (defn- coordinate []
-  {:engine "appdb", :version (str (random-uuid)), :lang-code "en"})
+  {:engine "appdb", :version (str (random-uuid)), :lang_code "en"})
 
-(defn- delete-coordinate! [{:keys [engine version lang-code]}]
-  (t2/delete! :search_index_lease :engine engine :version version :lang_code lang-code))
+(defn- delete-coordinate! [{:keys [engine version lang_code]}]
+  (t2/delete! :search_index_lease :engine engine :version version :lang_code lang_code))
 
 (deftest acquire-release-and-coordinate-granularity-test
   (let [coordinate-a (coordinate)
@@ -80,7 +81,7 @@
         (is (some? (t2/select-one :search_index_lease
                                   :engine (:engine expired-coordinate)
                                   :version (:version expired-coordinate)
-                                  :lang_code (:lang-code expired-coordinate)))
+                                  :lang_code (:lang_code expired-coordinate)))
             "acquiring an unrelated coordinate does not create a cross-coordinate locking sweep"))
       (finally
         (delete-coordinate! expired-coordinate)
@@ -95,7 +96,7 @@
         (is (nil? (t2/select-one :search_index_lease
                                  :engine (:engine coordinate)
                                  :version (:version coordinate)
-                                 :lang_code (:lang-code coordinate)))))
+                                 :lang_code (:lang_code coordinate)))))
       (testing "the body is skipped while another owner holds the lease"
         (let [claim (lease/try-acquire! coordinate)
               ran?  (atom false)]
@@ -148,7 +149,7 @@
                (lease/do-with-lease
                 coordinate
                 (fn []
-                  (Thread/sleep 80)
+                  (tu/poll-until 5000 @(:lost? lease/*lease-context*))
                   (lease/throw-if-lost!)))))))
       (finally
         (delete-coordinate! coordinate)))))
@@ -163,7 +164,7 @@
       (is (nil? (t2/select-one :search_index_lease
                                :engine (:engine coordinate)
                                :version (:version coordinate)
-                               :lang_code (:lang-code coordinate))))
+                               :lang_code (:lang_code coordinate))))
       (finally
         (delete-coordinate! coordinate)))))
 
@@ -188,7 +189,7 @@
              (t2/select-one-fn :owner :search_index_lease
                                :engine (:engine coordinate)
                                :version (:version coordinate)
-                               :lang_code (:lang-code coordinate)))
+                               :lang_code (:lang_code coordinate)))
           "the lease is visible even though the caller's ambient transaction rolled back")
       (finally
         (delete-coordinate! coordinate)))))
@@ -204,13 +205,13 @@
       (is (nil? (t2/select-one :search_index_lease
                                :engine (:engine coordinate)
                                :version (:version coordinate)
-                               :lang_code (:lang-code coordinate)))
+                               :lang_code (:lang_code coordinate)))
           "release remains committed when the caller's ambient transaction rolls back")
       (finally
         (delete-coordinate! coordinate)))))
 
 (deftest lease-holds-locale-stable-test
-  (let [coordinate (assoc (coordinate) :lang-code "en")]
+  (let [coordinate (assoc (coordinate) :lang_code "en")]
     (try
       (binding [i18n/*site-locale-override* "de"]
         (is (= {:acquired? true, :result "en"}
@@ -255,7 +256,7 @@
 (deftest stale-owner-cannot-activate-pending-index-test
   (let [version    (str (random-uuid))
         index-name (str (random-uuid))
-        coordinate {:engine "appdb", :version version, :lang-code (i18n/site-locale-string)}]
+        coordinate {:engine "appdb", :version version, :lang_code (i18n/site-locale-string)}]
     (try
       (is (true? (search-index-metadata/create-pending! :appdb version index-name)))
       (is (thrown-with-msg?
@@ -304,11 +305,13 @@
                             @allow-write
                             (t2/insert! :conn % :model/SearchIndexMetadata
                                         {:engine :appdb, :version version
-                                         :lang_code (:lang-code coordinate), :status :pending
+                                         :lang_code (:lang_code coordinate), :status :pending
                                          :index_name index-name})))))))
           (is (true? (deref fence-held 5000 false)))
           ;; Let the database lease expire while the fenced transaction still owns the row lock.
-          (Thread/sleep 250)
+          (let [db-now      #(:now (t2/query-one ["SELECT CURRENT_TIMESTAMP AS now"]))
+                fence-taken (db-now)]
+            (tu/poll-until 5000 (t/after? (db-now) (t/plus fence-taken lease/*lease-duration*))))
           (reset! contender (future (lease/try-acquire! coordinate)))
           (is (= ::blocked (deref @contender 50 ::blocked))
               "takeover waits for the transaction containing the protected mutation")
@@ -344,7 +347,7 @@
                  (lease/do-in-fenced-transaction!
                   conn
                   #(t2/insert! :conn % :model/SearchIndexMetadata
-                               {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                               {:engine :appdb, :version version, :lang_code (:lang_code coordinate)
                                 :status :pending, :index_name index-name}))))
              (throw (Exception. "roll back caller")))))
       (is (= index-name
@@ -361,7 +364,7 @@
         version    (:version coordinate)
         index-name (str (random-uuid))
         insert!    #(t2/insert! :conn % :model/SearchIndexMetadata
-                                {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                                {:engine :appdb, :version version, :lang_code (:lang_code coordinate)
                                  :status :pending, :index_name index-name})]
     (try
       (testing "the mutation sees the caller's uncommitted rows and rolls back with it"
@@ -370,7 +373,7 @@
              #"roll back caller"
              (t2/with-transaction [_outer-conn]
                (t2/insert! :model/SearchIndexMetadata
-                           {:engine :appdb, :version version, :lang_code (:lang-code coordinate)
+                           {:engine :appdb, :version version, :lang_code (:lang_code coordinate)
                             :status :active, :index_name (str index-name "-active")})
                (lease/do-with-lease
                 coordinate

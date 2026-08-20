@@ -46,7 +46,7 @@
   (indexes* nil engine version))
 
 (defn indexes-on-current-connection
-  "Like [[indexes]], using the caller's explicit transaction connection."
+  "Like [[indexes]], but queries on `conn` rather than the ambient connection."
   [conn engine version]
   (indexes* conn engine version))
 
@@ -88,7 +88,7 @@
               :status :pending))
 
 (defn replace-pending-on-current-connection!
-  "Replace any pending metadata for this coordinate with `index-name` on the caller's current transaction."
+  "Replace any pending metadata for this coordinate with `index-name`, writing on `conn`."
   [conn engine version index-name]
   (let [coordinate {:engine engine, :version version, :lang_code (i18n/site-locale-string)}]
     (apply t2/delete! :conn conn :model/SearchIndexMetadata (mapcat identity (assoc coordinate :status :pending)))
@@ -97,7 +97,7 @@
     true))
 
 (defn active-pending-on-current-connection!
-  "Promote `expected-index-name` on the caller's current transaction and return the active index name.
+  "Promote `expected-index-name` to active on `conn` and return the active index name.
 
   Passing the expected name prevents an old worker from promoting a replacement owner's pending table.
   When that pending row is gone the existing active name is returned unchanged, so callers compare the result with
