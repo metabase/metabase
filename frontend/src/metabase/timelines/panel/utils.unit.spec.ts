@@ -1,5 +1,4 @@
 import { dayjs } from "metabase/dayjs";
-
 import type { TimeSeriesInterval } from "metabase/viz-core";
 import {
   createMockTimeline,

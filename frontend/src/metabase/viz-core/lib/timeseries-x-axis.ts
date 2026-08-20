@@ -1,6 +1,6 @@
 import * as d3 from "d3";
-import dayjs from "dayjs";
 
+import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type { Series } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
