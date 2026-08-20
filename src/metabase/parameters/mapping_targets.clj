@@ -91,28 +91,28 @@
 (defn- mbql-targets
   "Filterable columns of `card`'s query as dimension targets."
   [card parameter]
-  (try
-    (vec (for [col   (params/filterable-columns-for-query card -1)
-               :when (column-compatible? (:type parameter) col)]
-           ;; `{:stage-number 0}` is not decoration — without it the target resolves wrong on multi-stage queries
-           {:target       [:dimension (dimension-ref col) {:stage-number 0}]
-            :column-name  (:name col)
-            :display-name (or (:display-name col) (:name col))}))
-    (catch Exception e
-      ;; an unrunnable card should narrow the wiring options, not fail the whole save
-      (log/warnf e "Could not enumerate mapping targets for card %s" (:id card))
-      [])))
+  (vec (for [col   (params/filterable-columns-for-query card -1)
+             :when (column-compatible? (:type parameter) col)]
+         ;; `{:stage-number 0}` is not decoration — without it the target resolves wrong on multi-stage queries
+         {:target       [:dimension (dimension-ref col) {:stage-number 0}]
+          :column-name  (:name col)
+          :display-name (or (:display-name col) (:name col))})))
 
 (defn valid-targets
   "The mapping targets `card` exposes for `parameter` (a parameter map with `:id` and `:type`), as
   `[{:target :column-name :display-name} …]`. Empty when the card exposes nothing compatible. Never throws — an
   unrunnable card yields no targets."
   [card parameter]
-  (let [query (card-query card)]
-    (cond
-      (nil? query)                   []
-      (lib/native-only-query? query) (vec (native-targets query parameter))
-      :else                          (mbql-targets card parameter))))
+  (try
+    (let [query (card-query card)]
+      (cond
+        (nil? query)                   []
+        (lib/native-only-query? query) (vec (native-targets query parameter))
+        :else                          (mbql-targets card parameter)))
+    (catch Exception e
+      ;; an unrunnable card should narrow the wiring options, not fail the whole save
+      (log/warnf e "Could not enumerate mapping targets for card %s" (:id card))
+      [])))
 
 (defn target-for-field
   "The target on `card` that `parameter` can use to filter on `field-id`, or nil when the card exposes no compatible

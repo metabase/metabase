@@ -82,6 +82,17 @@
                                                                 :type :number}}})}]
       (is (empty? (mapping-targets/valid-targets card {:id "p1" :type "date/all-options"}))))))
 
+(deftest malformed-stored-query-yields-no-targets-test
+  (testing "a card whose stored query is malformed yields no targets rather than throwing — the
+            docstring's 'never throws' guarantee covers normalization, not just column enumeration"
+    (doseq [dataset-query ["SELECT * FROM VENUES WHERE PRICE = {{price}}"
+                           [:native "SELECT 1"]]]
+      (let [card {:id 4321 :dataset_query dataset-query}]
+        (is (= [] (mapping-targets/valid-targets card {:id "p1" :type "string/="}))
+            (str "valid-targets on " (pr-str dataset-query)))
+        (is (nil? (mapping-targets/target-for-field card {:id "p1" :type "string/="} 1))
+            (str "target-for-field on " (pr-str dataset-query)))))))
+
 (def ^:private tagged-native-card
   {:id 9
    :dataset_query
