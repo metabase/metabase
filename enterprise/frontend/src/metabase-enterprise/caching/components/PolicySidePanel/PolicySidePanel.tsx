@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import S from "./PolicySidePanel.module.css";
 
@@ -26,20 +26,19 @@ export const PolicySidePanel = ({
     component="aside"
     direction="column"
     className={S.panel}
-    w="40rem"
+    w="28.75rem"
     maw="50%"
     h="100%"
     bg="background_page-primary"
     aria-label={title}
     data-testid="cache-policy-panel"
   >
-    <Group justify="space-between" px="2rem" pt="1.5rem">
+    <Group justify="space-between" px="2rem" pt="2rem">
       {(onPrevious !== undefined || onNext !== undefined) && (
         <Group gap="sm">
           <ActionIcon
             size="lg"
-            c="text-secondary"
-            bd="1px solid var(--mb-color-border-neutral)"
+            className={S.navButton}
             disabled={onPrevious === undefined}
             aria-label={t`Previous item`}
             onClick={onPrevious}
@@ -48,8 +47,7 @@ export const PolicySidePanel = ({
           </ActionIcon>
           <ActionIcon
             size="lg"
-            c="text-secondary"
-            bd="1px solid var(--mb-color-border-neutral)"
+            className={S.navButton}
             disabled={onNext === undefined}
             aria-label={t`Next item`}
             onClick={onNext}
@@ -60,7 +58,7 @@ export const PolicySidePanel = ({
       )}
       <ActionIcon
         variant="subtle"
-        c="text-secondary"
+        c="icon-primary"
         size="lg"
         ml="auto"
         aria-label={t`Close`}
@@ -69,15 +67,15 @@ export const PolicySidePanel = ({
         <Icon name="close" />
       </ActionIcon>
     </Group>
-    <Stack gap={0} px="2rem" pt="xl" pb="md">
+    <Stack gap={0} px="2rem" pt="xl" pb="xl">
       {subtitle && (
-        <Text size="sm" c="text-secondary">
+        <Text size="md" lh="1rem" fw="bold" c="text-secondary" mb="xs">
           {subtitle}
         </Text>
       )}
-      <Text fw="bold" fz="1.5rem" c="text-primary">
+      <Title order={3} c="text-primary">
         {title}
-      </Text>
+      </Title>
     </Stack>
     <Flex direction="column" mih={0} px="2rem" pb="lg" flex="1">
       {children}

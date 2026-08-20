@@ -39,6 +39,7 @@ import {
 } from "./CachingPoliciesFilters";
 
 const PAGE_SIZE = 25;
+const MIN_ITEMS_TO_SHOW_SEARCH = 11;
 
 type ItemRow = PolicyTableRowBase & {
   itemId: number;
@@ -113,7 +114,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
     [sortedRows, page],
   );
 
-  const shouldShowControls = allRows.length > 10;
+  const shouldShowControls = allRows.length >= MIN_ITEMS_TO_SHOW_SEARCH;
 
   const {
     askBeforeDiscardingChanges,

@@ -240,7 +240,7 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} gap="xl">
+          <Stack maw="35rem" gap="xl">
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -555,7 +555,7 @@ const StrategySelector = ({
     <section aria-labelledby={headingId}>
       {showHeading && <StrategySelectorHeading headingId={headingId} />}
       <Select
-        mt={showHeading ? "xl" : 0}
+        mt={showHeading ? "sm" : 0}
         data={data}
         value={values.type}
         onChange={(value) => {

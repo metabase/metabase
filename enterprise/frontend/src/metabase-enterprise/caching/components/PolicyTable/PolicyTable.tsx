@@ -2,7 +2,7 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Card,
@@ -64,6 +64,7 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
     const nameColumn: TreeTableColumnDef<TRow> = {
       id: "name",
       header: t`Name`,
+      width: "auto",
       minWidth: 200,
       enableSorting: true,
       accessorFn: (row) => row.name,
@@ -80,14 +81,18 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
       id: "collection",
       header: t`Collection`,
       width: "auto",
-      minWidth: 140,
-      maxAutoWidth: 320,
+      minWidth: 200,
       enableSorting: true,
-      accessorFn: (row) => row.collection?.name ?? "",
-      cell: ({ row }) =>
-        row.original.collection && (
-          <EllipsifiedCollectionPath collection={row.original.collection} />
-        ),
+      accessorFn: (row) =>
+        row.collection ? getCollectionPathAsString(row.collection) : "",
+      cell: ({ row }) => {
+        const { collection } = row.original;
+        if (!collection) {
+          return null;
+        }
+        const path = getCollectionPathAsString(collection);
+        return <Ellipsified tooltip={path}>{path}</Ellipsified>;
+      },
     };
     const policyColumn: TreeTableColumnDef<TRow> = {
       id: "policy",
@@ -100,7 +105,7 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
       cell: ({ row }) => (
         <Text
           size="md"
-          c={row.original.usesDefaultPolicy ? "text-secondary" : "text-primary"}
+          c={row.original.usesDefaultPolicy ? "text-disabled" : "text-primary"}
           data-uses-default-policy={row.original.usesDefaultPolicy}
         >
           {row.original.policyLabel ?? EMPTY_CELL_PLACEHOLDER}

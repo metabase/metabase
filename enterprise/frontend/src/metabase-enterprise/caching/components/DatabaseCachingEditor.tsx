@@ -42,7 +42,7 @@ type DatabaseRow = PolicyTableRowBase & {
 };
 
 const emptyDatabaseList: Database[] = [];
-const MIN_DATABASE_ITEMS_TO_SHOW_SEARCH = 10;
+const MIN_ITEMS_TO_SHOW_SEARCH = 11;
 
 export const DatabaseCachingEditor = () => {
   const dispatch = useDispatch();
@@ -115,7 +115,7 @@ export const DatabaseCachingEditor = () => {
             row.policyLabel?.toLowerCase().includes(query),
         );
 
-  const shouldShowSearch = databases.length > MIN_DATABASE_ITEMS_TO_SHOW_SEARCH;
+  const shouldShowSearch = databases.length >= MIN_ITEMS_TO_SHOW_SEARCH;
 
   const {
     askBeforeDiscardingChanges,
@@ -250,7 +250,7 @@ export const DatabaseCachingEditor = () => {
                 <Tooltip label={t`Reset all to default`}>
                   <ActionIcon
                     size="lg"
-                    c="text-secondary"
+                    c="icon-primary"
                     bd="1px solid var(--mb-color-border-neutral)"
                     aria-label={t`Reset all to default`}
                     onClick={handleResetAllToDefault}
@@ -269,6 +269,7 @@ export const DatabaseCachingEditor = () => {
           {resetConfirmationModal}
           {shouldShowSearch && (
             <DebouncedSearchInput
+              flex={0}
               value={searchQuery}
               placeholder={t`Search by name or policy…`}
               onChange={setSearchQuery}
