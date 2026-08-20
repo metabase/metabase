@@ -4,9 +4,9 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {io.github.escherize/mb-lib-parse          {:git/url "https://github.com/escherize/gleam-clj"
-                                              :git/sha "7d0a8e69ea391a9e6f6b7cb97690d7e3c6fa3510"
-                                              :deps/root "libs/mb-lib-parse"} ; Gleam-compiled metabase.lib.parse (see PR description)
+ {io.github.escherize/gleam-runtime           {:git/url "https://github.com/escherize/gleam-clj"
+                                              :git/sha "c11aa5ec1e2d27158ecaf53d84bbb8eab966eb97"
+                                              :deps/root "libs/gleam-runtime"} ; Gleam-compiled metabase.lib.parse (see PR description)
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   buddy/buddy-core                          {:mvn/version "1.12.0-430"          ; various cryptographic functions

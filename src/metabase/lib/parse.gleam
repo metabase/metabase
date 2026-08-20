@@ -1,8 +1,9 @@
-//// NOTE: this file is a read-along copy for reviewers. The buildable source
-//// of truth lives at github.com/escherize/gleam-clj, libs/mb-lib-parse/
-//// project/src/mb_lib_parse.gleam, compiled to the Clojure this branch pulls
-//// in as a git dep. Nothing in the Metabase build reads this file.
+//// Source of truth for the sibling parse_impl.clj, which is compiled from
+//// this file by gleam-clj (github.com/escherize/gleam-clj). Nothing in the
+//// Metabase build reads this file; it is here so the Gleam source and its
+//// compiled Clojure can be reviewed side by side.
 ////
+
 //// A typed reimplementation of metabase.lib.parse: parsing `{{param}}` and
 //// `[[optional]]` clauses in native query strings, with best-effort skipping
 //// of params inside SQL comments and string literals.

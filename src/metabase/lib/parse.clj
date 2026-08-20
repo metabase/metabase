@@ -2,20 +2,20 @@
   "Code for parsing parameters in raw SQL strings.
 
   JVM implementation: this .clj file shadows parse.cljc on the Clojure
-  classpath, delegating to a parser written in Gleam (typed, exhaustively
-  pattern-matched) and compiled to Clojure by gleam-clj. ClojureScript
+  classpath, delegating to a parser written in Gleam — the sibling parse.gleam,
+  compiled to the sibling parse_impl.clj by gleam-clj. ClojureScript
   continues to use parse.cljc. Signatures, output shapes, and error behavior
   are identical; equivalence is enforced by the ported upstream test table
   plus 20,000-case differential fuzzing in the gleam-clj repo."
   (:refer-clojure :exclude [mapv])
   (:require
    [clojure.string :as str]
-   [mb-lib-parse :as impl]
+   [metabase.lib.parse-impl :as impl]
    [metabase.util :as u]
    [metabase.util.performance :refer [mapv]])
   (:import
    (gleam.prelude Ok)
-   (mb_lib_parse EmptyParam InvalidParamName Literal Optional
+   (metabase.lib.parse_impl EmptyParam InvalidParamName Literal Optional
                  OptionalWithoutParam Param Str Unterminated)))
 
 (set! *warn-on-reflection* true)
