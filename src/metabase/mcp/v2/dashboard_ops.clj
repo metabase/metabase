@@ -182,6 +182,14 @@
     (seq (:inline_parameters dc))
     (update :inline_parameters (partial filterv #(not= parameter-id %)))))
 
+(defn- clear-inline-parameters
+  "Drop every inline placement from `dc`, leaving the key absent. Exactly one dashcard may place a
+   given parameter: `cleanup-orphaned-inline-parameters!` deletes the parameter from the dashboard
+   as soon as any dashcard placing it is deleted, so a second claimant takes the first one's filter
+   down with it."
+  [dc]
+  (dissoc dc :inline_parameters))
+
 (defn- insert-dashcard
   "Insert a new dashcard: check `(:id op)` is a fresh negative id, place it on
    `(:dashboard_tab_id base)` — a tab on this dashboard — honoring `op`'s position/size with
@@ -271,11 +279,17 @@
   (check-new-id! state idx id "duplicate_card")
   (let [source (resolve-dashcard! state idx dashcard_id)
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id source))]
+    ;; The clone keeps its wiring but not the placement, so the filter stays on the card the user
+    ;; put it on. The editor instead mints a fresh copy of each inline parameter; this grammar has
+    ;; `add_parameter` + `move_parameter` for that, so cloning one implicitly would be an
+    ;; unrequested dashboard-level edit under an id the caller never chose.
     (insert-dashcard state idx
                      (assoc op :size {:size_x (:size_x source) :size_y (:size_y source)})
-                     (merge (dissoc source :id :row :col :size_x :size_y :dashboard_tab_id
-                                    :created_at :updated_at :card :entity_id)
-                            {:id id :dashboard_tab_id tab-id})
+                     (-> source
+                         (dissoc :id :row :col :size_x :size_y :dashboard_tab_id
+                                 :created_at :updated_at :card :entity_id)
+                         clear-inline-parameters
+                         (merge {:id id :dashboard_tab_id tab-id}))
                      (card-display state (:card_id source)))))
 
 ;;; ------------------------------------------------- Edit ops ------------------------------------------------------
@@ -396,9 +410,11 @@
         state  (insert-row state :tabs {:id id :name (:name source)})]
     (reduce (fn [st card]
               (insert-row st :dashcards
-                          (assoc (dissoc card :created_at :updated_at :card)
-                                 :id (next-temp-id st)
-                                 :dashboard_tab_id id)))
+                          (-> card
+                              (dissoc :created_at :updated_at :card)
+                              clear-inline-parameters
+                              (assoc :id (next-temp-id st)
+                                     :dashboard_tab_id id))))
             state
             cards)))
 

@@ -16,6 +16,18 @@
   [dashcards]
   (assoc empty-dash :dashcards dashcards))
 
+(defn- inline-parameter-owners
+  "`{parameter-id [dashcard-id ...]}` for every inline placement in a compiled payload. A parameter
+   with more than one owner is the corruption GHY-4326 is about."
+  [dashcards]
+  (reduce (fn [owners dc]
+            (reduce (fn [owners parameter-id]
+                      (update owners parameter-id (fnil conj []) (:id dc)))
+                    owners
+                    (:inline_parameters dc)))
+          {}
+          dashcards))
+
 (deftest add-card-autoplaces-test
   (testing "GHY-4147: add_card with no position lands at the top-left of an empty dashboard"
     (let [{:keys [dashcards]} (dashboard-ops/compile-ops
@@ -180,6 +192,54 @@
           clone (first (filter #(= -1 (:id %)) dashcards))]
       (is (= (get-in existing [:visualization_settings :columnValuesMapping])
              (get-in clone [:visualization_settings :columnValuesMapping]))))))
+
+(deftest duplicate-card-does-not-clone-inline-parameters-test
+  (testing "GHY-4326: an inline parameter is a dashboard parameter *placed on* one dashcard, so the
+            clone does not inherit the placement — the parameter stays where the user put it. Two
+            dashcards claiming one id would make cleanup-orphaned-inline-parameters! strip the
+            parameter when either copy is deleted, silently removing the original's filter."
+    (let [mapping  {:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}
+          existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil
+                    :visualization_settings {}
+                    :inline_parameters ["p1"]
+                    :parameter_mappings [mapping]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               (assoc empty-dash
+                                      :dashcards [existing]
+                                      :parameters [{:id "p1" :name "Cat" :slug "cat" :type "string/="}])
+                               [{:op "duplicate_card" :id -1 :dashcard_id 7}])
+          clone    (first (filter #(= -1 (:id %)) dashcards))
+          source   (first (filter #(= 7 (:id %)) dashcards))]
+      (is (= ["p1"] (:inline_parameters source))
+          "the source keeps the placement")
+      (is (empty? (:inline_parameters clone))
+          "the clone claims no inline parameter")
+      (is (= {"p1" [7]} (inline-parameter-owners dashcards))
+          "exactly one dashcard owns p1")
+      (is (= [mapping] (:parameter_mappings clone))
+          "the wiring is still cloned — many dashcards may map one parameter, only one may place it"))))
+
+(deftest duplicate-tab-does-not-clone-inline-parameters-test
+  (testing "GHY-4326: duplicating a whole tab leaves every inline placement on the source cards"
+    (let [current {:id 1
+                   :tabs [{:id 5 :name "A"}]
+                   :parameters [{:id "p1" :name "Cat" :slug "cat" :type "string/="}
+                                {:id "p2" :name "Dog" :slug "dog" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :dashboard_tab_id 5 :visualization_settings {}
+                                :inline_parameters ["p1"]}
+                               {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4
+                                :dashboard_tab_id 5 :visualization_settings {}
+                                :inline_parameters ["p2"]}]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               current
+                               [{:op "duplicate_tab" :id -1 :tab_id 5}])
+          clones (filterv #(= -1 (:dashboard_tab_id %)) dashcards)]
+      (is (= 2 (count clones)))
+      (is (every? #(empty? (:inline_parameters %)) clones)
+          "no clone claims an inline parameter")
+      (is (= {"p1" [7] "p2" [8]} (inline-parameter-owners dashcards))
+          "each parameter is still owned by exactly the dashcard it was placed on"))))
 
 (def ^:private a-dashcard
   {:id 7 :card_id 9 :row 2 :col 3 :size_x 4 :size_y 4 :dashboard_tab_id nil
