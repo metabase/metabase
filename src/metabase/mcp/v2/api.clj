@@ -131,9 +131,15 @@
 
   The surface still *accepts* the write scopes, and its resource metadata still advertises them, so a client that
   wants to write can request them and the user can consent. This only decides what a client asks for when nothing
-  tells it otherwise — which for the major MCP clients is every scope the resource advertises, writes included."
+  tells it otherwise — which for the major MCP clients is every scope the resource advertises, writes included.
+
+  `agent:resource:read` is here because `resources/read` is how a client reaches the fields catalog, which the
+  `fields` argument documentation points every agent at. It carries no privilege: `agent:resource:*` is
+  always-granted regardless of the user's Metabase permissions, and the catalog is response-shape path names
+  generated from code, identical on every instance."
   [metabot.scope/agent-content-read
-   metabot.scope/agent-query-run])
+   metabot.scope/agent-query-run
+   metabot.scope/agent-resource-read])
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

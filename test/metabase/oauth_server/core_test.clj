@@ -43,7 +43,10 @@
   (testing "GHY-4226: the v2 401 challenge asks an uninstructed client for read scopes only. Those
             must still be in the ceiling, or the narrower ask would itself be rejected — the point
             is to ask for less than we accept, not to advertise something unrequestable."
-    (is (= #{"agent:content:read" "agent:query:run"} (set v2.api/default-ask-scopes)))
+    ;; `agent:resource:read` rides along: `resources/read` is how a client reaches the fields
+    ;; catalog the `fields` documentation sends it to, and it grants nothing on its own.
+    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+           (set v2.api/default-ask-scopes)))
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [scope v2.api/default-ask-scopes]
         (testing scope
