@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { canDownloadResults } from "metabase/common/utils/dataset";
@@ -46,7 +46,6 @@ const CopyResultsButton = ({
   isPivotResult,
   staleReason,
 }: CopyResultsButtonProps) => {
-  const [copying, setCopying] = useState(false);
   const pivotedCopyEnabled = useSetting("enable-pivoted-exports") ?? true;
   const ineligibleReason = useMemo(
     () =>
@@ -64,7 +63,6 @@ const CopyResultsButton = ({
     result,
     isPivotResult,
     pivotedCopyEnabled,
-    ineligibleReason,
   });
 
   const label =
@@ -72,30 +70,14 @@ const CopyResultsButton = ({
       ? t`Copy these results to clipboard`
       : t`Copy this chart to clipboard`;
 
-  const handleCopy = async () => {
-    setCopying(true);
-
-    try {
-      await copyResults();
-    } finally {
-      setCopying(false);
-    }
-  };
-
-  // Not the native disabled attribute: that swallows pointer events, and the
-  // tooltip carrying the reason must keep showing
-  const isDisabled = ineligibleReason != null;
-
   return (
     <Flex visibleFrom="sm">
       <Tooltip label={ineligibleReason ?? label}>
         <ActionIcon
           data-testid="question-results-copy-button"
-          onClick={handleCopy}
+          onClick={copyResults}
           aria-label={label}
-          loading={copying}
-          aria-disabled={isDisabled || undefined}
-          data-disabled={isDisabled || undefined}
+          disabled={ineligibleReason !== null}
           variant="viewFooter"
         >
           <Icon name="clipboard" />

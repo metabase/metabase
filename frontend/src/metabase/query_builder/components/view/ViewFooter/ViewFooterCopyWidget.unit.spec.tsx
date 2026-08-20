@@ -70,28 +70,6 @@ const mockClipboardWrite = () => {
   return write;
 };
 
-// Reads the item's parts the way the Clipboard spec does: a rejected part
-// rejects the write with the browser's own DOMException, not the original error
-const mockClipboardWriteReadingParts = () => {
-  Object.assign(window, { ClipboardItem: FakeClipboardItem });
-  const write = jest
-    .fn()
-    .mockImplementation(async (items: FakeClipboardItem[]) => {
-      for (const part of Object.values(items[0].parts)) {
-        try {
-          await part;
-        } catch {
-          throw new DOMException(
-            "Cannot write to clipboard",
-            "NotAllowedError",
-          );
-        }
-      }
-    });
-  Object.assign(navigator, { clipboard: { write } });
-  return write;
-};
-
 const mockClipboardWriteText = () => {
   Reflect.deleteProperty(window, "ClipboardItem");
   const writeText = jest.fn().mockResolvedValue(undefined);
@@ -382,6 +360,32 @@ describe("ViewFooterCopyWidget", () => {
     },
   );
 
+  it("keeps copy enabled for an ordinary table with a column named pivot-grouping", async () => {
+    const writeText = mockClipboardWriteText();
+    const result = createMockDataset({
+      data: {
+        cols: [
+          createMockColumn({
+            name: "pivot-grouping",
+            display_name: "pivot-grouping",
+            base_type: "type/Integer",
+          }),
+        ],
+        rows: [[1], [2]],
+      },
+    });
+
+    setup({ card: TABLE_CARD, result });
+
+    const button = screen.getByLabelText("Copy these results to clipboard");
+    expect(button).not.toHaveAttribute("data-disabled");
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith("pivot-grouping\n1\n2"),
+    );
+  });
+
   it("keeps copy enabled for a high-cardinality aggregate that renders flat", async () => {
     const writeText = mockClipboardWriteText();
 
@@ -445,31 +449,6 @@ describe("ViewFooterCopyWidget", () => {
       );
     });
     expect(writeText).not.toHaveBeenCalled();
-  });
-
-  it("says the results are too large when the rich clipboard write fails on size", async () => {
-    const write = mockClipboardWriteReadingParts();
-    const huge = createMockDataset({
-      data: {
-        ...TABLE_RESULT.data,
-        rows: [["x".repeat(21_000_000), 1]],
-      },
-    });
-
-    const { store } = setup({ card: TABLE_CARD, result: huge });
-
-    await userEvent.click(
-      screen.getByLabelText("Copy these results to clipboard"),
-    );
-
-    await waitFor(() => {
-      expect(store.getState().undo).toContainEqual(
-        expect.objectContaining({
-          message: "These results are too large to copy",
-        }),
-      );
-    });
-    expect(write).toHaveBeenCalledTimes(1);
   });
 
   it("disables chart copy when there are no results to render", async () => {
@@ -626,27 +605,11 @@ describe("ViewFooterCopyWidget", () => {
     });
   });
 
-  it("starts the results clipboard write inside the click, before serializing", async () => {
+  it("starts the chart clipboard write before the image is rendered", async () => {
     const write = mockClipboardWrite();
-    const raf = jest
-      .spyOn(window, "requestAnimationFrame")
-      .mockImplementation(() => 0);
-
-    setup({ card: TABLE_CARD, result: TABLE_RESULT });
-
-    await userEvent.click(
-      screen.getByLabelText("Copy these results to clipboard"),
-    );
-
-    expect(write).toHaveBeenCalledTimes(1);
-    raf.mockRestore();
-  });
-
-  it("starts the chart clipboard write inside the click, before any frame is painted", async () => {
-    const write = mockClipboardWrite();
-    const raf = jest
-      .spyOn(window, "requestAnimationFrame")
-      .mockImplementation(() => 0);
+    jest
+      .mocked(SaveChartImage.getChartImageBlob)
+      .mockReturnValue(new Promise(() => {}));
 
     setup({ card: LINE_CARD, result: TABLE_RESULT });
 
@@ -655,7 +618,6 @@ describe("ViewFooterCopyWidget", () => {
     );
 
     expect(write).toHaveBeenCalledTimes(1);
-    raf.mockRestore();
   });
 
   it("shows an error toast when the clipboard write fails", async () => {

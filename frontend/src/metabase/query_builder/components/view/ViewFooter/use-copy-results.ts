@@ -6,7 +6,6 @@ import {
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
 import { formatRowCount } from "metabase/common/utils/format-row-count";
-import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -101,8 +100,8 @@ export const getCopyIneligibleReason = (
   isPivotResult: boolean,
   pivotedCopyEnabled: boolean,
 ): string | null => {
-  // A pivot result keeps its grand-total rows even when nothing matched, so
-  // the plain row-count check misses it
+  // hasNoResults spots a pivot by column name alone, so an ordinary table with
+  // a real column named pivot-grouping would read as an empty pivot
   const noResults = isPivotResult
     ? hasNoResults(result.data)
     : datasetContainsNoResults(result.data);
@@ -178,7 +177,6 @@ interface UseCopyResultsParams {
   result: Dataset;
   isPivotResult: boolean;
   pivotedCopyEnabled: boolean;
-  ineligibleReason: string | null;
 }
 
 export const useCopyResults = ({
@@ -186,7 +184,6 @@ export const useCopyResults = ({
   result,
   isPivotResult,
   pivotedCopyEnabled,
-  ineligibleReason,
 }: UseCopyResultsParams) => {
   const dispatch = useDispatch();
   const translate = useTranslateContent();
@@ -196,12 +193,6 @@ export const useCopyResults = ({
   );
 
   return useCallback(async (): Promise<void> => {
-    if (ineligibleReason) {
-      dispatch(addUndo({ icon: "warning", message: ineligibleReason }));
-      return;
-    }
-
-    let serializationError: unknown;
     try {
       if (getCopyMode(question) === "chart") {
         await copyChartImage(question, !isWhitelabeled);
@@ -216,28 +207,16 @@ export const useCopyResults = ({
           ? question.card()
           : question.setDisplay("table").card();
 
-      // Safari only accepts a clipboard write started inside the click, so the spinner
-      // paints first and the serialized content goes in as a promise
-      const content = waitUntilNextFramePainted()
-        .then(() =>
-          getResultsClipboardContent({
-            card,
-            data: result.data,
-            pivoted: copiesPivotGrid,
-            isPivotResult,
-            isShowingDetailsOnlyColumns: question.display() === "object",
-            translate,
-          }),
-        )
-        // clipboard.write() reports a rejected content promise as its own
-        // DOMException, so the typed error is kept aside for the toast
-        .catch((error) => {
-          serializationError = error;
-          throw error;
-        });
-      await writeResultsToClipboard(content);
+      const { text, html, rowCount, isPivotGrid } = getResultsClipboardContent({
+        card,
+        data: result.data,
+        pivoted: copiesPivotGrid,
+        isPivotResult,
+        isShowingDetailsOnlyColumns: question.display() === "object",
+        translate,
+      });
+      await writeResultsToClipboard(text, html);
 
-      const { rowCount, isPivotGrid } = await content;
       const message = getRowsCopiedMessage({
         rowCount,
         truncatedRowCount:
@@ -247,12 +226,11 @@ export const useCopyResults = ({
       });
       dispatch(addUndo({ message }));
     } catch (error) {
-      const cause = serializationError ?? error;
       dispatch(
         addUndo({
           icon: "warning",
           message:
-            cause instanceof ResultsTooLargeError
+            error instanceof ResultsTooLargeError
               ? getTooLargeReason()
               : t`Couldn't copy to clipboard`,
         }),
@@ -266,7 +244,6 @@ export const useCopyResults = ({
     isWhitelabeled,
     isPivotResult,
     pivotedCopyEnabled,
-    ineligibleReason,
     formatNumber,
   ]);
 };
@@ -300,44 +277,32 @@ function copyChartImage(question: Question, includeBranding: boolean) {
     );
   }
 
-  const blob = waitUntilNextFramePainted()
-    .then(() =>
-      getChartImageBlob({
-        selector: getChartSelector({ cardId: question.id() }),
-        includeBranding,
-      }),
-    )
-    .then((blob) => {
-      if (!blob) {
-        throw new Error("No chart to copy");
-      }
-      return blob;
-    });
+  // Safari only accepts a clipboard write started inside the click, so the
+  // image goes in as a promise
+  const blob = getChartImageBlob({
+    selector: getChartSelector({ cardId: question.id() }),
+    includeBranding,
+  }).then((blob) => {
+    if (!blob) {
+      throw new Error("No chart to copy");
+    }
+    return blob;
+  });
   void blob.catch(() => {});
 
   return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
 
 // Spreadsheets paste the html flavor as a grid
-async function writeResultsToClipboard(
-  content: Promise<{ text: string; html: string }>,
-) {
+async function writeResultsToClipboard(text: string, html: string) {
   if (canWriteRichClipboard()) {
-    const textBlob = content.then(
-      ({ text }) => new Blob([text], { type: "text/plain" }),
-    );
-    const htmlBlob = content.then(
-      ({ html }) => new Blob([html], { type: "text/html" }),
-    );
-    // The browser stops reading at the first rejected flavor; the other one
-    // would surface as an unhandled rejection without a handler of its own
-    void textBlob.catch(() => {});
-    void htmlBlob.catch(() => {});
     await navigator.clipboard.write([
-      new ClipboardItem({ "text/plain": textBlob, "text/html": htmlBlob }),
+      new ClipboardItem({
+        "text/plain": new Blob([text], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" }),
+      }),
     ]);
   } else {
-    const { text } = await content;
     await navigator.clipboard.writeText(text);
   }
 }

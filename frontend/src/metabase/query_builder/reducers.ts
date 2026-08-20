@@ -451,7 +451,8 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
       QUERY_COMPLETED,
       (_state, action) => action.payload.card,
     )
-    // keep the card if there's no error
+    // A null payload means the run was cancelled and the rendered result is
+    // still valid, so keep the card; a real error clears it
     .addCase<string, { type: string; payload: unknown }>(
       QUERY_ERRORED,
       (_state, action) => (action.payload ? null : undefined),
