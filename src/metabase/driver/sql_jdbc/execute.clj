@@ -337,7 +337,7 @@
   "True if `data-source` already has at least
   [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]] queries waiting for a free connection.
   Used to shed load: rather than letting the checkout queue grow without bound when the pool is saturated, additional
-  queries are rejected immediately. A limit of `0` (the default) disables the check. Only c3p0 `PooledDataSource`s
+  queries are rejected immediately. A limit of `0` disables the check. Only c3p0 `PooledDataSource`s
   expose the waiting-thread count; any other data source is never considered full."
   [data-source]
   (let [max-pending (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)]

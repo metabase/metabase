@@ -393,6 +393,34 @@
     (is (=? {"checkoutTimeout" integer?}
             (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
 
+;; not ^:parallel: max-pending-checkouts is derived from the pool size, so a concurrent test that resizes the pool
+;; changes what this one reads
+(deftest checkout-queueing-defaults-test
+  (testing "out of the box, a saturated pool sheds load rather than queueing without bound"
+    (testing "each query waits at most 30 seconds for a connection"
+      (is (= 30000
+             (driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms)))
+      (testing "-- comfortably above db-connection-timeout-ms, since c3p0 counts acquiring a new physical connection
+                against checkoutTimeout too"
+        (is (> (driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms)
+               (driver.settings/db-connection-timeout-ms)))))
+    (testing "at most twice the pool size may be waiting at once"
+      (is (= 30
+             (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)))
+      (is (= (* 2 (driver.settings/jdbc-data-warehouse-max-connection-pool-size))
+             (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts))))))
+
+(deftest max-pending-checkouts-tracks-pool-size-test
+  (testing "the pending-checkout limit is derived from the pool size, so it follows a resized pool"
+    (mt/with-temporary-setting-values [jdbc-data-warehouse-max-connection-pool-size 50]
+      (is (= 100
+             (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts)))))
+  (testing "unless it is set explicitly"
+    (mt/with-temporary-setting-values [jdbc-data-warehouse-max-connection-pool-size 50
+                                       jdbc-data-warehouse-connection-pool-max-pending-checkouts 7]
+      (is (= 7
+             (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts))))))
+
 (deftest checkout-timeout-env-var-test
   (testing "We should be able to set jdbc-data-warehouse-connection-pool-checkout-timeout-ms via env var"
     (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-connection-pool-checkout-timeout-ms "5000"]

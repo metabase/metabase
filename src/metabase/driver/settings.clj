@@ -155,36 +155,35 @@
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
 (defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
-  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
-  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
-  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
-  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit."
+  "Number of milliseconds a query will wait for a free data-warehouse connection before timing out. A value of `0` means
+  that queries will wait indefinitely for a connection."
   :visibility :internal
   :export?    false
   :type       :integer
-  :default    0
+  :default    30000
   :audit      :getter
-  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
-  maximum time (in milliseconds) a query will wait before failing with a \"service unavailable\" (HTTP 503) error
-  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
-  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+  :doc "Increase this value if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE, and you cannot increase the pool size or make the data-warehouse
+  respond faster. This setting bounds only the wait time for a connection, not query execution. Once a query has a
+  connection, it runs for up to MB_DB_QUERY_TIMEOUT_MINUTES.")
+
+(defn- -jdbc-data-warehouse-connection-pool-max-pending-checkouts []
+  (or (setting/get-value-of-type :integer :jdbc-data-warehouse-connection-pool-max-pending-checkouts)
+      (* 2 (jdbc-data-warehouse-max-connection-pool-size))))
 
 (defsetting jdbc-data-warehouse-connection-pool-max-pending-checkouts
-  "Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
-  hit [[jdbc-data-warehouse-max-connection-pool-size]]. When this many queries are already queued waiting for a
-  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
-  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
-  behavior). Complements [[jdbc-data-warehouse-connection-pool-checkout-timeout-ms]], which bounds how long each query
-  waits; this bounds how many can wait at the same time."
+  "Maximum number of queries that may be waiting for a free data-warehouse connection at once. Defaults to twice
+  [[jdbc-data-warehouse-max-connection-pool-size]], so it tracks the pool size unless set explicitly. A value of `0`
+  means that any number of queries may wait. Defaults to twice [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE)"
   :visibility :internal
   :export?    false
   :type       :integer
-  :default    0
+  :getter     #'-jdbc-data-warehouse-connection-pool-max-pending-checkouts
   :audit      :getter
-  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
-  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
-  \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
-  `0` to allow an unbounded queue.")
+  :doc "Increase this value if you routinely run bursts of more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE, and you would rather queue them than fail them. Queries beyond this
+  limit fail immediately instead of joining the queue. The limit applies per database, since each database has its own
+  connection pool.")
 
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."

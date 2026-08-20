@@ -256,7 +256,7 @@
 
 (deftest checkout-queue-full?-test
   (let [full? #'sql-jdbc.execute/checkout-queue-full?]
-    (testing "a limit of 0 (the default) disables the check even when many queries are waiting"
+    (testing "a limit of 0 disables the check even when many queries are waiting"
       (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 0]
         (is (false? (full? (reify com.mchange.v2.c3p0.PooledDataSource
                              (getNumThreadsAwaitingCheckoutDefaultUser [_] 100)))))))

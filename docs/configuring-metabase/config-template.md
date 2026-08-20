@@ -168,8 +168,8 @@ config:
     http-channel-host-strategy: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
-    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
-    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
+    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 30000
+    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 30
     jdbc-data-warehouse-max-connection-pool-size: 15
     jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
