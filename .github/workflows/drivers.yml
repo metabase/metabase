@@ -173,7 +173,7 @@ jobs:
         echo "::error::Athena driver is quarantined but you changed files in modules/drivers/athena/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Athena tests, add the label: break-quarantine-athena"
+        echo "To run Athena tests, add the label: ci:run-athena"
         echo ""
         echo "If you merge without testing, you risk breaking the Athena driver!"
         exit 1
@@ -242,7 +242,7 @@ jobs:
         echo "::error::BigQuery driver is quarantined but you changed files in modules/drivers/bigquery-cloud-sdk/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run BigQuery tests, add the label: break-quarantine-bigquery"
+        echo "To run BigQuery tests, add the label: ci:run-bigquery"
         echo ""
         echo "If you merge without testing, you risk breaking the BigQuery driver!"
         exit 1
@@ -308,7 +308,7 @@ jobs:
         echo "::error::ClickHouse driver is quarantined but you changed files in modules/drivers/clickhouse/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run ClickHouse tests, add the label: break-quarantine-clickhouse"
+        echo "To run ClickHouse tests, add the label: ci:run-clickhouse"
         echo ""
         echo "If you merge without testing, you risk breaking the ClickHouse driver!"
         exit 1
@@ -381,7 +381,7 @@ jobs:
         echo "::error::Druid JDBC driver is quarantined but you changed files in modules/drivers/druid-jdbc/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Druid JDBC tests, add the label: break-quarantine-druid-jdbc"
+        echo "To run Druid JDBC tests, add the label: ci:run-druid-jdbc"
         echo ""
         echo "If you merge without testing, you risk breaking the Druid JDBC driver!"
         exit 1
@@ -453,7 +453,7 @@ jobs:
         echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Databricks tests, add the label: break-quarantine-databricks"
+        echo "To run Databricks tests, add the label: ci:run-databricks"
         echo ""
         echo "If you merge without testing, you risk breaking the Databricks driver!"
         exit 1
@@ -525,7 +525,7 @@ jobs:
         echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Databricks tests, add the label: break-quarantine-databricks"
+        echo "To run Databricks tests, add the label: ci:run-databricks"
         echo ""
         echo "If you merge without testing, you risk breaking the Databricks driver!"
         exit 1
@@ -798,7 +798,7 @@ jobs:
         echo "::error::MongoDB driver is quarantined but you changed files in modules/drivers/mongo/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run MongoDB tests, add the label: break-quarantine-mongo"
+        echo "To run MongoDB tests, add the label: ci:run-mongo"
         echo ""
         echo "If you merge without testing, you risk breaking the MongoDB driver!"
         exit 1
@@ -858,7 +858,7 @@ jobs:
           echo "::error::MongoDB SSL driver is quarantined but you changed files in modules/drivers/mongo/"
           echo ""
           echo "Your changes will NOT be tested because the driver is currently quarantined."
-          echo "To run MongoDB SSL tests, add the label: break-quarantine-mongo-ssl"
+          echo "To run MongoDB SSL tests, add the label: ci:run-mongo-ssl"
           echo ""
           echo "If you merge without testing, you risk breaking the MongoDB SSL driver!"
           exit 1
@@ -928,7 +928,7 @@ jobs:
         echo "::error::MongoDB Sharded Cluster driver is quarantined but you changed files in modules/drivers/mongo/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run MongoDB Sharded Cluster tests, add the label: break-quarantine-mongo-sharded-cluster"
+        echo "To run MongoDB Sharded Cluster tests, add the label: ci:run-mongo-sharded-cluster"
         echo ""
         echo "If you merge without testing, you risk breaking the MongoDB Sharded Cluster driver!"
         exit 1
@@ -1010,7 +1010,7 @@ jobs:
         echo "::error::Oracle driver is quarantined but you changed files in modules/drivers/oracle/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Oracle tests, add the label: break-quarantine-oracle"
+        echo "To run Oracle tests, add the label: ci:run-oracle"
         echo ""
         echo "If you merge without testing, you risk breaking the Oracle driver!"
         exit 1
@@ -1175,7 +1175,7 @@ jobs:
         echo "::error::Presto JDBC driver is quarantined but you changed files in modules/drivers/presto-jdbc/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Presto JDBC tests, add the label: break-quarantine-presto-jdbc"
+        echo "To run Presto JDBC tests, add the label: ci:run-presto-jdbc"
         echo ""
         echo "If you merge without testing, you risk breaking the Presto JDBC driver!"
         exit 1
@@ -1277,7 +1277,7 @@ jobs:
         echo "::error::Redshift driver is quarantined but you changed files in modules/drivers/redshift/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Redshift tests, add the label: break-quarantine-redshift"
+        echo "To run Redshift tests, add the label: ci:run-redshift"
         echo ""
         echo "If you merge without testing, you risk breaking the Redshift driver!"
         exit 1
@@ -1361,7 +1361,7 @@ jobs:
         echo "::error::Snowflake driver is quarantined but you changed files in modules/drivers/snowflake/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Snowflake tests, add the label: break-quarantine-snowflake"
+        echo "To run Snowflake tests, add the label: ci:run-snowflake"
         echo ""
         echo "If you merge without testing, you risk breaking the Snowflake driver!"
         exit 1
@@ -1416,7 +1416,7 @@ jobs:
         echo "::error::SparkSQL driver is quarantined but you changed files in modules/drivers/sparksql/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SparkSQL tests, add the label: break-quarantine-sparksql"
+        echo "To run SparkSQL tests, add the label: ci:run-sparksql"
         echo ""
         echo "If you merge without testing, you risk breaking the SparkSQL driver!"
         exit 1
@@ -1456,7 +1456,7 @@ jobs:
         echo "::error::SQLite driver is quarantined but you changed files that affect it"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SQLite tests, add the label: break-quarantine-sqlite"
+        echo "To run SQLite tests, add the label: ci:run-sqlite"
         echo ""
         echo "If you merge without testing, you risk breaking the SQLite driver!"
         exit 1
@@ -1527,7 +1527,7 @@ jobs:
         echo "::error::SQL Server driver is quarantined but you changed files in modules/drivers/sqlserver/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SQL Server tests, add the label: break-quarantine-sqlserver"
+        echo "To run SQL Server tests, add the label: ci:run-sqlserver"
         echo ""
         echo "If you merge without testing, you risk breaking the SQL Server driver!"
         exit 1
@@ -1652,7 +1652,7 @@ jobs:
         echo "::error::Vertica driver is quarantined but you changed files in modules/drivers/vertica/"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Vertica tests, add the label: break-quarantine-vertica"
+        echo "To run Vertica tests, add the label: ci:run-vertica"
         echo ""
         echo "If you merge without testing, you risk breaking the Vertica driver!"
         exit 1

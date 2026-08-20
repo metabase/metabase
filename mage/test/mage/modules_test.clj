@@ -14,8 +14,7 @@
   (merge {:is-master-or-release false
           :pr-labels #{}
           :skip false
-          :particular-driver-changed? #{}
-          :verbose? false}
+          :particular-driver-changed? #{}}
          opts))
 
 ;;; =============================================================================
@@ -72,16 +71,6 @@
                                                #{})] ; updated
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
-
-(deftest quarantined-driver-with-break-label-runs
-  (testing "Quarantined driver runs when break-quarantine label is present"
-    (let [result (mage.modules/driver-decision :mysql
-                                               (make-ctx {:pr-labels #{"break-quarantine-mysql"}})
-                                               false
-                                               #{:mysql}
-                                               #{})]
-      (is (true? (:should-run result)))
-      (is (re-find #"break-quarantine-mysql" (:reason result))))))
 
 (deftest effective-quarantine-ignored-on-master-and-release
   (testing "the remote quarantine list is dropped on master/release, but honored on PR branches"
@@ -271,16 +260,16 @@
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
-  (testing "Cloud driver runs with ci:all-cloud-drivers label"
+  (testing "Cloud driver runs with ci:run-all-cloud-drivers label"
     (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
       (let [result (mage.modules/driver-decision driver
-                                                 (make-ctx {:pr-labels #{"ci:all-cloud-drivers"}})
+                                                 (make-ctx {:pr-labels #{"ci:run-all-cloud-drivers"}})
                                                  false ; not affected
                                                  #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run with label"))
-        (is (= "ci:all-cloud-drivers label" (:reason result)))))))
+        (is (= "ci:run-all-cloud-drivers label" (:reason result)))))))
 
 (deftest cloud-driver-with-file-changes-runs
   (testing "Cloud driver runs when its files changed"

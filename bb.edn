@@ -366,7 +366,7 @@
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
    :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
               ["./bin/mage -driver-decisions --only-driver=bigquery" "Run only the BigQuery job, whatever the other rules say"]
@@ -386,9 +386,8 @@
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
                         ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
-                        ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
                         ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
-                        ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
+                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
                         ["7"
                          "Cloud driver + its files changed"
                          "RUN"
@@ -409,11 +408,10 @@
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
         "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
-        "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
-        "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
+        "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
         "\n## Driver Status (from the CI driver config)\n\n"
         "  skip   Listed with status \"skip\" in ci-test-config.json: not run at all (quarantined;\n"
-        "         break-quarantine-DRIVER overrides). Every other driver runs and gates as usual.\n"
+        "         ci:run-DRIVER overrides). Every other driver runs and gates as usual.\n"
         "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
