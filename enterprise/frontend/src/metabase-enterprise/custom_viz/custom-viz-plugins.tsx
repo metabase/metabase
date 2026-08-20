@@ -105,10 +105,6 @@ export function useCustomVizPlugins({
 
 /**
  * Dev mode: listen for Server-Sent Events straight from the dev server's `/__sse` endpoint.
- *
- * The dev server runs on the developer's own machine, so the browser is what can reach it. A superuser's
- * app document carries the dev origin in its CSP `connect-src` (see
- * `metabase-enterprise.custom-viz-plugin.csp`), which is what lets this connect cross-origin.
  */
 function useCustomVizDevReload(
   display: string | undefined,
@@ -170,7 +166,6 @@ export type UseAutoLoadCustomVizPluginOptions = {
  * can show a spinner instead of rendering the (not-yet-registered) viz.
  *
  * Plugins with `dev_bundle_url` set are reloaded when the dev server announces a rebuild over its `__sse`
- * stream — see [[useCustomVizDevReload]].
  */
 export function useAutoLoadCustomVizPlugin(
   display: string | undefined,
@@ -365,8 +360,6 @@ async function fetchAndRegisterCustomVizPlugin(
     const devBundleUrl = plugin.dev_bundle_url;
 
     const fetchBundle = async () => {
-      // A dev bundle comes straight from the developer's dev server; only an uploaded bundle is served by
-      // Metabase. `api.fetch` cannot do the former — it resolves every URL against `location.origin`.
       if (devBundleUrl) {
         return fetchDevServerBundle(devBundleUrl);
       }
