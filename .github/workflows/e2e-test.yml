@@ -64,6 +64,11 @@ jobs:
       # workspace where the gate step runs; an absolute path anchored to the
       # workspace makes both agree regardless of cwd.
       QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
+      # Cypress records video for every spec but the passing specs' videos are
+      # deleted in after:spec so recording is ~5-10% slowdown per shard and almost
+      # never yields an artifact. Failure screenshots are unaffected, and the
+      # stress-test workflows have their own config and keep video.
+      CYPRESS_VIDEO: "false"
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
