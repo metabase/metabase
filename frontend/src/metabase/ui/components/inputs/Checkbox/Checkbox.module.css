@@ -70,7 +70,7 @@
   }
 
   &:disabled {
-    border-color: transparent;
+    border-color: var(--mb-color-background_surface-disabled);
     background-color: var(--mb-color-background_surface-disabled);
   }
 }
@@ -132,7 +132,7 @@
   &[data-disabled] {
     --checkbox-icon-color: var(--mb-color-text-disabled);
 
-    border-color: transparent;
+    border-color: var(--mb-color-background_surface-disabled);
     background-color: var(--mb-color-background_surface-disabled);
 
     /* Mantine pins the disabled+checked icon color per scheme with (0,5,0) specificity */
