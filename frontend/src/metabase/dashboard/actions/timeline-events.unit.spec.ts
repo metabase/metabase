@@ -1,10 +1,12 @@
 import { getMainStore } from "__support__/entities-store";
-import { timelineApi } from "metabase/api";
+import { getDashCardById } from "metabase/dashboard/selectors";
 import { getDashCardVisibleTimelineEvents } from "metabase/dashboard/timeline-events/selectors";
 import {
+  createMockApiState,
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
+  seedApiQueryCache,
 } from "metabase/redux/store/mocks";
 import {
   hideTimelineEvents,
@@ -39,14 +41,14 @@ const timeline = createMockTimeline({
   events: [eventA, eventB],
 });
 
-async function setup({
+function setup({
   isEditing = false,
   savedVisibility,
 }: {
   isEditing?: boolean;
   savedVisibility?: TimelineEventsVisibility;
 } = {}) {
-  const store = getMainStore(
+  return getMainStore(
     createMockState({
       dashboard: createMockDashboardState({
         dashboardId: 1,
@@ -60,36 +62,39 @@ async function setup({
         dashcards: {
           [DASHCARD_ID]: createMockDashboardCard({
             id: DASHCARD_ID,
-            visualization_settings: savedVisibility
-              ? { "timeline_events.visibility": savedVisibility }
-              : {},
+            visualization_settings: {
+              "timeline_events.visibility": savedVisibility,
+            },
           }),
         },
         editingDashboard: isEditing ? createMockDashboard({ id: 1 }) : null,
       }),
+      "metabase-api": seedApiQueryCache(createMockApiState(), [
+        {
+          endpointName: "listTimelines",
+          arg: { include: "events" },
+          value: [timeline],
+        },
+      ]),
     }),
   );
-  await store.dispatch(
-    timelineApi.util.upsertQueryData("listTimelines", { include: "events" }, [
-      timeline,
-    ]),
-  );
-  return store;
 }
 
-const getVisibleEventIds = (store: Awaited<ReturnType<typeof setup>>) =>
+type Store = ReturnType<typeof setup>;
+
+const getVisibleEventIds = (store: Store) =>
   getDashCardVisibleTimelineEvents(store.getState(), DASHCARD_ID).map(
     (event) => event.id,
   );
 
-const getSavedVisibility = (store: Awaited<ReturnType<typeof setup>>) =>
-  store.getState().dashboard.dashcards[DASHCARD_ID].visualization_settings?.[
+const getSavedVisibility = (store: Store) =>
+  getDashCardById(store.getState(), DASHCARD_ID).visualization_settings?.[
     "timeline_events.visibility"
   ];
 
 describe("updateDashCardsTimelineEventsVisibility", () => {
-  it("hides an event without touching the dashcard settings when viewing", async () => {
-    const store = await setup();
+  it("hides an event without touching the dashcard settings when viewing", () => {
+    const store = setup();
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
@@ -101,13 +106,11 @@ describe("updateDashCardsTimelineEventsVisibility", () => {
 
     expect(getVisibleEventIds(store)).toEqual([eventB.id]);
     expect(getSavedVisibility(store)).toBeUndefined();
-    expect(
-      store.getState().dashboard.dashcards[DASHCARD_ID].isDirty,
-    ).toBeFalsy();
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBeFalsy();
   });
 
-  it("saves the hidden event into the dashcard settings when editing", async () => {
-    const store = await setup({ isEditing: true });
+  it("saves the hidden event into the dashcard settings when editing", () => {
+    const store = setup({ isEditing: true });
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
@@ -121,21 +124,19 @@ describe("updateDashCardsTimelineEventsVisibility", () => {
     expect(getSavedVisibility(store)).toEqual({
       hidden_event_ids: [eventA.id],
     });
-    expect(store.getState().dashboard.dashcards[DASHCARD_ID].isDirty).toBe(
-      true,
-    );
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
   });
 
-  it("applies the visibility saved in the dashcard settings", async () => {
-    const store = await setup({
+  it("applies the visibility saved in the dashcard settings", () => {
+    const store = setup({
       savedVisibility: { hidden_timeline_ids: [10] },
     });
 
     expect(getVisibleEventIds(store)).toEqual([]);
   });
 
-  it("clears the saved setting when events return to the default when editing", async () => {
-    const store = await setup({
+  it("clears the saved setting when events return to the default when editing", () => {
+    const store = setup({
       isEditing: true,
       savedVisibility: { hidden_event_ids: [eventA.id] },
     });

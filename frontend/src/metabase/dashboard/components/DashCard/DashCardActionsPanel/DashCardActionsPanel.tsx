@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { isActionDashCard } from "metabase/actions/utils";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
-import { useDashboardContext } from "metabase/dashboard/context";
 import { isTimelineEventsDashCard } from "metabase/dashboard/timeline-events";
 import {
   isHeadingDashCard,
@@ -70,6 +69,7 @@ interface Props {
   className?: string;
   onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
+  withTimelineEvents: boolean;
 }
 
 function DashCardActionsPanelInner({
@@ -92,12 +92,12 @@ function DashCardActionsPanelInner({
   className,
   onAddParameter,
   onEditVisualization,
+  withTimelineEvents,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
     getVisualizationRaw(series) ?? {};
 
   const dispatch = useDispatch();
-  const { withTimelineEvents } = useDashboardContext();
 
   const buttons = [];
 
