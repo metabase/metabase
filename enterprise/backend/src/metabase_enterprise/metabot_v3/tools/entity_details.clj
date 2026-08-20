@@ -228,6 +228,9 @@
                with-measures?       false
                with-segments?       false}
         :as   options}]
+   (when-not (int? id)
+     (throw (ex-info "Invalid table id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
@@ -317,6 +320,9 @@
   "Get details for a card."
   ([id] (card-details id nil))
   ([id options]
+   (when-not (int? id)
+     (throw (ex-info "Invalid card id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
