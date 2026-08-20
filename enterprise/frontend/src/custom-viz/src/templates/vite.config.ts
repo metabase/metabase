@@ -96,12 +96,14 @@ function metabaseDevServer() {
 
         // Serve static files from dist/
         const { readFile, stat } = require("fs");
-        const { join, extname } = require("path");
+        const { join, extname, sep } = require("path");
 
-        const filePath =
-          url === "/" ? join(distDir, "index.html") : join(distDir, url);
+        const filePath = join(distDir, url);
 
-        if (!filePath.startsWith(distDir) || filePath.includes("\0")) {
+        const insideDist =
+          filePath === distDir || filePath.startsWith(distDir + sep);
+
+        if (!insideDist || filePath.includes("\0")) {
           res.writeHead(403);
           res.end("Forbidden");
           return;
