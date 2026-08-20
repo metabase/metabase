@@ -79,10 +79,6 @@ export interface CreateCustomVizPluginRequest {
 export interface CreateDevCustomVizPluginRequest {
   dev_bundle_url: string;
   identifier?: string;
-  /**
-   * The `metabase-plugin.json` read from the dev server by the browser. Metabase never requests the dev
-   * URL itself, so the manifest travels in the request body rather than being fetched server-side.
-   */
   manifest?: CustomVizPluginManifest;
 }
 

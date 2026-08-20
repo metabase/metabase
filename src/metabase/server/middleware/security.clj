@@ -236,10 +236,7 @@
   [])
 
 (defenterprise custom-viz-dev-connect-src-hosts
-  "Origins of the configured custom-viz dev servers, added to a superuser's app document CSP `connect-src`
-   so the browser can fetch the plugin bundle and hot-reload stream directly from the developer's dev
-   server instead of Metabase proxying them. Returns `[]` in OSS, without the `:custom-viz` feature, or
-   when dev mode is off. EE implementation: [[metabase-enterprise.custom-viz-plugin.csp]]."
+  "Origins of the configured custom-viz dev servers, has value only for superusers with custom-viz dev mode enabled."
   metabase-enterprise.custom-viz-plugin.csp
   []
   [])
@@ -314,10 +311,6 @@
                   :img-src      (let [restricted (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
                                                                (map-tile-server->hosts))
                                                    config/is-dev? (conj frontend-address)
-                                                   ;; A dev plugin has no uploaded bundle for Metabase to
-                                                   ;; serve its icon from, so the `<img>` points at the dev
-                                                   ;; server too. Same loopback origin already in
-                                                   ;; `connect-src`, so this opens no new destination.
                                                    :always        (into custom-viz-dev-hosts))]
                                   (cond-> (cond
                                             ;; A sandboxed data-app document NEVER gets `*`: an ungated
@@ -356,13 +349,6 @@
                                  ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
                                  ;; separately from `'self'` (which stays for the host-side SDK calls).
                                  (when data-app-iframe? data-app-connect-hosts)
-                                 ;; Loopback origin of a custom-viz dev server, for superusers on a dev-mode
-                                 ;; instance. Lets the browser fetch the plugin bundle, icon and `__sse`
-                                 ;; hot-reload stream straight from the developer's machine, which is what
-                                 ;; removes the need for Metabase to fetch that URL server-side at all.
-                                 ;; Only Metabase's own code can use it: the plugin runs behind a membrane
-                                 ;; that blocks `fetch`/`EventSource`/`WebSocket` outright (see
-                                 ;; `scripts-sandbox/distortions-blocked-apis.ts`).
                                  custom-viz-dev-hosts)
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
@@ -606,11 +592,6 @@
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request))
-                 ;; Superusers only. Gated on `:is-superuser?` from the request map rather than
-                 ;; `api/*is-superuser?*`: `wrap-current-user-info` populates it before this middleware sees
-                 ;; the request, and unlike the dynamic binding it is still readable when a streaming
-                 ;; response's callback fires on another thread. The EE side short-circuits on the cached
-                 ;; dev-mode setting, so a prod instance never reaches the DB for this.
                  :custom-viz-dev-hosts        (when (:is-superuser? request)
                                                 (custom-viz-dev-connect-src-hosts)))
         cors-headers (when (always-allow-cors? request response)

@@ -17,10 +17,6 @@ export function formatValue(value: unknown, options?: ColumnSettings): string {
 
 /**
  * Build a URL for a plugin's static asset.
- *
- * A dev plugin has no uploaded bundle for Metabase to serve from, so its icon comes straight from the dev
- * server. That origin is in the superuser document's CSP `img-src` alongside `connect-src` — see
- * `metabase-enterprise.custom-viz-plugin.csp`.
  */
 export function getPluginAssetUrl(
   pluginId: CustomVizPluginId,
