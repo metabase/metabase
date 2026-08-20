@@ -4,6 +4,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
+  setupLlmProvidersEndpoint,
+  setupLlmProviderTypesEndpoint,
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -67,6 +69,10 @@ function setup({
   setupDatabaseListEndpoint([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupTokenStatusEndpoint({ valid: true });
+
+  // The AI card opens AIProviderConfigurationModal, which loads both.
+  setupLlmProvidersEndpoint([]);
+  setupLlmProviderTypesEndpoint([]);
 
   // Settings before plugins: the shared checklist drops the tenants step when
   // PLUGIN_TENANTS.isEnabled is false, and that registration reads the mock.
