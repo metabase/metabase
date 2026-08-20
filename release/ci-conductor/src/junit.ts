@@ -87,7 +87,7 @@ export function parseJunit(xml: string, ignorePassingTests: boolean = true): Nor
     );
     for (const match of xml.matchAll(testcaseRe)) {
       const attrs = match[1];
-      const inner = match[2];
+      const inner = match[2] ?? "";
       if (!inner && ignorePassingTests) {
         continue; // self-closing => passed
       }

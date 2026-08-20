@@ -148,6 +148,31 @@ const JEST_WITH_FILE = `<?xml version="1.0" encoding="UTF-8"?>
 </testsuite>
 </testsuites>`;
 
+// A jest-junit document as it looks on a *rerun*: mostly passes (self-closing
+// testcases) with one failure. This is the shape `ignorePassingTests: false`
+// exists for — ci-conductor needs the passes to tell a flake (failed, then
+// passed on rerun) from a genuine failure.
+const JEST_MOSTLY_PASSING = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="3" failures="1">
+<testsuite name="Button" failures="1" tests="3">
+<testcase classname="Button renders" name="Button renders" time="0.01" file="frontend/src/metabase/components/Button/Button.unit.spec.tsx"/>
+<testcase classname="Button is disabled" name="Button is disabled" time="0.02" file="frontend/src/metabase/components/Button/Button.unit.spec.tsx"/>
+<testcase classname="Button explodes" name="Button explodes" time="0.03" file="frontend/src/metabase/components/Button/Button.unit.spec.tsx">
+<failure message="expect(received).toBe(expected)">Error: expect(received).toBe(expected)</failure>
+</testcase>
+</testsuite>
+</testsuites>`;
+
+// A testcase that has a body but no <failure>/<error> — jest-junit emits this
+// shape when a passing test wrote to stdout. It passed, same as a self-closing
+// one.
+const PASSING_WITH_BODY = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="metabase.foo-test" tests="1" failures="0">
+<testcase classname="metabase.foo-test" name="chatty-test" time="0.01">
+<system-out>some log output</system-out>
+</testcase>
+</testsuite>`;
+
 describe("parseJunit", () => {
   it("prefers the failure `message` attribute over the body", () => {
     const [test] = parseJunit(FAILURE_WITH_MESSAGE);
@@ -247,5 +272,72 @@ describe("parseJunit", () => {
 <testcase classname="metabase.ok-test" name="ok" time="0.01"/>
 </testsuite>`;
     expect(parseJunit(xml)).toEqual([]);
+  });
+});
+
+describe("parseJunit with ignorePassingTests: false", () => {
+  it("emits self-closing (passing) testcases with status `passed`", () => {
+    const tests = parseJunit(PASS_AND_ERROR, false);
+    expect(tests).toHaveLength(2);
+    const passed = tests.find((t) => t.name === "passing-test");
+    expect(passed).toBeDefined();
+    expect(passed!.status).toBe("passed");
+    expect(passed!.path).toBe("metabase.foo-test");
+    // Nothing went wrong, so there's no message or stack to carry.
+    expect(passed!.message).toBeNull();
+    expect(passed!.stack).toBeUndefined();
+  });
+
+  it("still reports failures as failures alongside the passes", () => {
+    const tests = parseJunit(PASS_AND_ERROR, false);
+    const errored = tests.find((t) => t.name === "erroring-test");
+    expect(errored).toBeDefined();
+    expect(errored!.status).toBe("failure");
+    expect(errored!.stack).toContain("java.lang.RuntimeException: boom");
+  });
+
+  it("reports every test in a mostly-passing jest rerun, keeping `file`", () => {
+    const tests = parseJunit(JEST_MOSTLY_PASSING, false);
+    expect(
+      tests.map((t) => [t.name, t.status]).sort((a, b) => a[0]!.localeCompare(b[0]!)),
+    ).toEqual([
+      ["Button explodes", "failure"],
+      ["Button is disabled", "passed"],
+      ["Button renders", "passed"],
+    ]);
+    expect(
+      tests.every(
+        (t) =>
+          t.file ===
+          "frontend/src/metabase/components/Button/Button.unit.spec.tsx",
+      ),
+    ).toBe(true);
+  });
+
+  it("treats a testcase with a body but no <failure>/<error> as passed", () => {
+    const tests = parseJunit(PASSING_WITH_BODY, false);
+    expect(tests).toHaveLength(1);
+    expect(tests[0].status).toBe("passed");
+    expect(parseJunit(PASSING_WITH_BODY)).toEqual([]);
+  });
+
+  it("reports a suite of only passing tests instead of []", () => {
+    const xml = `<testsuite name="metabase.ok-test" tests="1" failures="0">
+<testcase classname="metabase.ok-test" name="ok" time="0.01"/>
+</testsuite>`;
+    expect(parseJunit(xml, false)).toEqual([
+      {
+        name: "ok",
+        path: "metabase.ok-test",
+        file: null,
+        message: null,
+        stack: undefined,
+        status: "passed",
+      },
+    ]);
+  });
+
+  it("still returns [] for malformed XML without throwing", () => {
+    expect(parseJunit("<not-valid", false)).toEqual([]);
   });
 });
