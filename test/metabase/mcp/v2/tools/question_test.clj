@@ -11,6 +11,7 @@
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -494,6 +495,53 @@
           (is (:isError result))
           (testing "the card is untouched"
             (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
+
+;;; ---------------------------------------------- Card-type guard -------------------------------------------------
+
+(defn- count-metric-query
+  "A single-aggregation query over ORDERS — a valid `:dataset_query` for a `:metric` fixture."
+  []
+  (lib/aggregate (orders-query) (lib/count)))
+
+(deftest ^:parallel update-rejects-metric-card-test
+  (testing "GHY-4327: question_write refuses a card that isn't a question or model, so it can neither
+            retype a metric nor store a native query on one"
+    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
+                                              :name          "question-test not a question"
+                                              :dataset_query (count-metric-query)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a field update is refused, naming the card's type and the tool that owns it"
+          (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                           {:method "update" :id card-id :name "nope"})
+                msg    (-> result :content first :text)]
+            (is (:isError result))
+            (is (str/includes? msg "metric_write"))
+            (is (str/includes? msg "metric"))))
+        (testing "a card_type that would retype the metric is refused, not honored"
+          (is (:isError (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                            {:method "update" :id card-id :card_type "question"}))))
+        (testing "storing a native query on the metric is refused rather than corrupting it"
+          (is (:isError (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                            {:method "update" :id card-id
+                                             :native {:database_id (mt/id) :sql "SELECT 1"}}))))
+        (testing "the card is untouched"
+          (is (=? {:type :metric :name "question-test not a question"}
+                  (t2/select-one [:model/Card :type :name] :id card-id))))))))
+
+;; not ^:parallel: with-redefs
+(deftest update-save-check-uses-the-stored-card-type-test
+  (testing "GHY-4327: the save check sees the stored card's type, not the caller's omitted card_type"
+    (mt/with-temp [:model/Card {card-id :id} {:type :model :dataset_query (orders-query)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [seen     (atom ::unset)
+              original queries/check-card-can-be-saved!]
+          (with-redefs [queries/check-card-can-be-saved! (fn [query card-type]
+                                                           (reset! seen card-type)
+                                                           (original query card-type))]
+            (let [result (registry/call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                                             {:method "update" :id card-id :name "renamed"})]
+              (is (not (:isError result)) (-> result :content first :text))))
+          (is (= :model @seen)))))))
 
 (deftest native-source-requires-the-sql-scope-test
   (testing "an inline `native` source stores raw SQL that run_saved_question then executes, so it is

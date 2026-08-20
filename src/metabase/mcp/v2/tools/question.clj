@@ -293,6 +293,16 @@
   [card]
   (assoc (card-response card) :archived (boolean (:archived card))))
 
+(defn- check-is-question!
+  "Refuse to write a question's contract onto a metric, so a caller can't retype a card by
+   addressing it with the wrong tool. Questions and models both pass — this tool owns both, and
+   converting between them stays a legitimate update."
+  [card]
+  (when-not (contains? #{:question :model} (:type card))
+    (common/throw-teaching-error
+     (format "Card %d is a %s, not a question — use metric_write to update it."
+             (:id card) (name (:type card))))))
+
 (defn- update!
   "Write-check the existing card, patch only the caller-supplied fields (archiving/restoring via
    `archived`; moving into a dashboard via `dashboard_id`, which forces the card's collection to
@@ -309,6 +319,7 @@
   (let [card-before  (common/resolve-and-read-with
                       :model/Card id
                       (fn [cid] (api/write-check :model/Card cid)))
+        _            (check-is-question! card-before)
         dashboard-id (some->> dashboard_id (common/resolve-id-or-404 :model/Dashboard))
         new-query    (when (or (:query_handle args) (:query args) (:native args))
                        (resolve-query-source args session-id token-scopes))
@@ -331,7 +342,10 @@
                                                                         column_metadata))
                        new-query                                (assoc :dataset_query new-query))
         card-updates (api/updates-with-archived-directly card-before raw-updates)]
-    (queries/check-card-can-be-saved! (:dataset_query card-updates) (some-> card_type keyword))
+    ;; the type the card will have once written: the patch's when the caller is converting, else the
+    ;; stored one. Never the raw request, which is nil whenever `card_type` is omitted.
+    (queries/check-card-can-be-saved! (:dataset_query card-updates)
+                                      (or (:type card-updates) (:type card-before)))
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! id query))
     (queries/check-allowed-to-update-card! card-before card-updates)
@@ -402,7 +416,7 @@
               [:visibility_type {:optional true} [:maybe :string]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet)."
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
   {:name         "question_write"
    :scope        metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
