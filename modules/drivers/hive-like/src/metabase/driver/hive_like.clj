@@ -39,6 +39,25 @@
   [_driver exprs]
   (sql.pivot/synthesise-grouping-bitmask exprs))
 
+;; Spark's analyzer rejects join-qualified column refs in ORDER BY after `GROUP BY GROUPING SETS`, even
+;; when the same refs are valid in the SELECT list — Postgres/Oracle/SQL Server tolerate this via lenient
+;; re-resolution through the SELECT, Spark doesn't. Delegate to the `:sql` implementation and then rewrite
+;; the ORDER BY as 1-based positional references, which Spark accepts and which is standard SQL.
+(defmethod sql.qp/apply-top-level-clause [:hive-like :pivot]
+  [driver clause honeysql-form {:keys [breakout] :as pivot-ctx}]
+  (let [result             ((get-method sql.qp/apply-top-level-clause [:sql :pivot])
+                            driver clause honeysql-form pivot-ctx)
+        ;; SELECT layout after the parent runs: [breakout-1..n, pivot-grouping, aggs...].
+        pivot-grouping-pos (inc (count breakout))
+        breakout-positions (range 1 pivot-grouping-pos)
+        ;; The parent installs `GROUP BY [[::sql.pivot/grouping-sets set1 set2 ...]]`; more than one set
+        ;; means the pivot-grouping bitmask varies per row and needs to lead the ORDER BY.
+        multi-set?         (some? (nnext (first (:group-by result))))]
+    (assoc result :order-by
+           (into (if multi-set? [[[:inline pivot-grouping-pos] :asc]] [])
+                 (map (fn [p] [[:inline p] :asc]))
+                 breakout-positions))))
+
 (defmethod driver/escape-alias :hive-like
   [driver s]
   ;; replace question marks inside aliases with `_QMARK_`, otherwise Spark SQL will interpret them as JDBC parameter
