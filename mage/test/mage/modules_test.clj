@@ -19,6 +19,47 @@
          opts))
 
 ;;; =============================================================================
+;;; Priority 0: --only-driver (workflow_dispatch asking for one job by name)
+;;; =============================================================================
+
+(deftest only-driver-runs-just-that-driver
+  (testing "--only-driver runs the named driver and skips every other one"
+    (doseq [driver [:h2 :postgres :mysql-mariadb :bigquery]]
+      (let [result (mage.modules/driver-decision driver
+                                                 (make-ctx {:only-driver :bigquery})
+                                                 false     ; driver-deps-affected?
+                                                 #{}       ; skipped
+                                                 #{})]     ; updated
+        (is (= (= :bigquery driver) (:should-run result))
+            (str driver " should run only when it is the requested driver"))))))
+
+(deftest only-driver-beats-every-other-rule
+  (testing "the requested driver runs even when the CI config skips it and the workflow says skip"
+    (let [result (mage.modules/driver-decision :snowflake
+                                               (make-ctx {:only-driver :snowflake, :skip true})
+                                               false
+                                               #{:snowflake} ; skipped by CI config
+                                               #{})]
+      (is (true? (:should-run result)))
+      (is (= "requested via --only-driver=snowflake" (:reason result)))))
+  (testing "and H2/Postgres lose their always-run privilege, so the run is one job wide"
+    (let [result (mage.modules/driver-decision :h2
+                                               (make-ctx {:only-driver :snowflake})
+                                               false
+                                               #{}
+                                               #{})]
+      (is (false? (:should-run result)))
+      (is (= "--only-driver=snowflake requested instead" (:reason result))))))
+
+(deftest unknown-only-driver-is-rejected
+  (testing "a typo throws instead of silently falling back to the normal decisions"
+    (is (thrown-with-msg? Exception #"Unknown driver: bigquerry"
+                          (#'mage.modules/parse-only-driver "bigquerry"))))
+  (testing "blank means no request"
+    (doseq [blank [nil "" "  "]]
+      (is (nil? (#'mage.modules/parse-only-driver blank))))))
+
+;;; =============================================================================
 ;;; Priority 4: Quarantine (respected on PR branches, ignored on master/release)
 ;;; =============================================================================
 
