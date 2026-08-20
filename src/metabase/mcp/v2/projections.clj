@@ -111,7 +111,8 @@
   (get-in @registry [type :catalog]))
 
 (defn all-catalogs
-  "Map of registered type -> dot-path catalog, for publishing as an MCP resource."
+  "Map of registered type -> dot-path catalog, published as the `metabase://catalogs/fields`
+   MCP resource (see [[metabase.mcp.v2.resources]])."
   []
   (into (sorted-map) (map (fn [[type entry]] [type (:catalog entry)])) @registry))
 

@@ -1,18 +1,20 @@
 (ns metabase.mcp.v2.resources
-  "The v2 MCP UI resource registry.
+  "The v2 MCP resource registry.
 
-  Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`).
+  Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`)
+  and the fields-catalog data resource. Documentation/skill resources land with the skills work.
 
   Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]], the same
   all-or-nothing gate v2 tools use. There are deliberately no public resources, so there is no looser gate to
-  accidentally ship one through. Documentation/skill resources land with the skills work and will need their own
-  registration path here.
+  accidentally ship one through.
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.v2.projections :as projections]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -22,6 +24,20 @@
 ;; Keyed by URI, which is unique per resource. Overwrites on re-registration so REPL reload is idempotent.
 (defonce ^:private resources*
   (atom (sorted-map)))
+
+(mu/defn register-resource!
+  "Register a v2 MCP data resource, returning its URI. Overwrites any existing entry with the
+   same `:uri`. `:render-fn` produces the resource text at read time, so the content is always
+   current rather than a snapshot from registration."
+  [resource :- [:map
+                [:uri :string]
+                [:name :string]
+                [:description :string]
+                [:mimeType :string]
+                [:scope :string]
+                [:render-fn fn?]]]
+  (swap! resources* assoc (:uri resource) resource)
+  (:uri resource))
 
 (mu/defn register-ui-resource!
   "Register a v2 MCP Apps UI resource, returning its URI. Overwrites any existing entry with the
@@ -53,8 +69,8 @@
   {:resources (into []
                     (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                           (map (fn [resource]
-                                 (-> (select-keys resource [:uri :name :description :mimeType])
-                                     (assoc :_meta (mcp.ui-resource/ui-meta resource))))))
+                                 (cond-> (select-keys resource [:uri :name :description :mimeType])
+                                   (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource))))))
                     (vals @resources*))})
 
 (defn read-resource
@@ -68,9 +84,9 @@
   (if-let [{:keys [render-fn scope] :as resource} (get @resources* uri)]
     (if (mcp.scope/matches? token-scopes scope)
       {:status   :ok
-       :contents [(-> (select-keys resource [:uri :mimeType])
-                      (assoc :text (render-fn opts)
-                             :_meta (mcp.ui-resource/ui-meta resource)))]}
+       :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
+                              (assoc :text (render-fn opts)))
+                    (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
       {:status :scope-denied})
     {:status :not-found}))
 
@@ -99,3 +115,14 @@
     :scope         metabot.scope/agent-query-run
     :prefersBorder true
     :render-fn     (mcp.ui-resource/embed-render-fn "render-drill-through")}))
+
+(def fields-catalog-uri
+  "URI of the fields catalog: content type -> the dot-paths its `fields` argument accepts.
+   Rendered at read time because tool namespaces register their projections at load time."
+  (register-resource!
+   {:uri         "metabase://catalogs/fields"
+    :name        "Fields Catalog"
+    :description "The dot-paths each content type supports in `fields` arguments (e.g. get_content), keyed by type."
+    :mimeType    "application/json"
+    :scope       metabot.scope/agent-resource-read
+    :render-fn   (fn [_opts] (json/encode (projections/all-catalogs)))}))
