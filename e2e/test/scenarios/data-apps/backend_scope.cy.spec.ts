@@ -77,7 +77,14 @@ describe("scenarios > data apps > backend scope", () => {
 
       cy.log("Filter picker — loads table metadata and field values");
       cy.findByTestId("filter-dropdown-button").click();
-      cy.findByText("Total").click();
+      // This `within` is the whole iframe, so a column name also matches the table
+      // rendered behind the picker. Pick from the popover the button just opened.
+      cy.get('[data-element-id="mantine-popover"]')
+        .should("have.length.above", 0)
+        .last()
+        .within(() => {
+          cy.findByText("Total").click();
+        });
       cy.findByText("Add filter").click();
 
       cy.log("Summarize picker — loads the aggregation/column pickers");
@@ -103,7 +110,12 @@ describe("scenarios > data apps > backend scope", () => {
 
       cy.log("Add a notebook filter step");
       cy.findByTestId("action-buttons").findByText("Filter").click();
-      cy.findByText("Quantity").click();
+      cy.get('[data-element-id="mantine-popover"]')
+        .should("have.length.above", 0)
+        .last()
+        .within(() => {
+          cy.findByText("Quantity").click();
+        });
       cy.findByPlaceholderText("Min").type("2");
       cy.findByText("Add filter").click();
 
