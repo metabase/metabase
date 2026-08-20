@@ -19,6 +19,19 @@
 (defn- lint-modules [form config]
   (lint-ns form (assoc-in config [:linters :metabase/modules :level] :warning)))
 
+(deftest ^:parallel explicit-nonparallel-namespace-metadata-test
+  (let [config {:linters {:metabase/validate-deftest {:level :warning}}}]
+    (testing "Hawk's supported namespace marker passes"
+      (is (empty? (lint-ns '(ns ^:synchronized example.test) config))))
+    (testing "the verbose Hawk spelling is not accepted as Metabase style"
+      (is (=? [{:type    :metabase/validate-deftest
+                :message #(re-find #"Use `\^:synchronized` instead" %)}]
+              (lint-ns '(ns ^{:parallel false} example.test) config))))
+    (testing "the legacy marker explains that Hawk ignores it"
+      (is (=? [{:type    :metabase/validate-deftest
+                :message #(re-find #"`\^:synchronous` is ignored by Hawk" %)}]
+              (lint-ns '(ns ^:synchronous example.test) config))))))
+
 (deftest ^:parallel module-checker-allowed-modules-test
   (are [task-namespace] (=? [{:message "Module task should not be used in the api module. [:metabase/modules api :uses]"
                               :type :metabase/modules}]

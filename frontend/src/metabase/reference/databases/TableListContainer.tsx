@@ -1,16 +1,16 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
+import { useGetDatabaseMetadataQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableList from "metabase/reference/databases/TableList";
 import * as actions from "metabase/reference/reference";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -21,13 +21,10 @@ import {
 import DatabaseSidebar from "./DatabaseSidebar";
 
 const mapDispatchToProps = {
-  fetchDatabaseMetadata,
   ...actions,
 };
 
-interface TableListContainerProps extends FetchProps, ClearStateProps {
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
-}
+type TableListContainerProps = ClearStateProps;
 
 function TableListContainer(props: TableListContainerProps) {
   const { pathname } = useLocation();
@@ -38,16 +35,10 @@ function TableListContainer(props: TableListContainerProps) {
   const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchDatabaseMetadata(props, databaseId);
-  }
+  const { isFetching, error } = useGetDatabaseMetadataQuery({
+    id: databaseId,
+    skip_fields: true,
+  });
 
   useEffect(() => {
     const pathnameChanged =
@@ -63,7 +54,7 @@ function TableListContainer(props: TableListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<DatabaseSidebar database={database} />}
     >
-      <TableList params={params} />
+      <TableList params={params} loading={isFetching} loadingError={error} />
     </SidebarLayout>
   );
 }
