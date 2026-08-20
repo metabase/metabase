@@ -11,7 +11,7 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
-import { hasRequiredFeature } from "metabase/common/utils/database";
+import { hasRequiredFeature } from "metabase/databases";
 import {
   type HelpText,
   expressionModeSupportsClause,

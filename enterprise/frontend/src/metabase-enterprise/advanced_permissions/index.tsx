@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,

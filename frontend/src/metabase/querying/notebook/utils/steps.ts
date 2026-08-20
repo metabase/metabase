@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { hasFeature, supportsJoins } from "metabase/common/utils/database";
+import { hasFeature, supportsJoins } from "metabase/databases";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

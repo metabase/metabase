@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { hasRequiredFeature } from "metabase/common/utils/database";
+import { hasRequiredFeature } from "metabase/databases";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import {

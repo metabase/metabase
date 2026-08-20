@@ -20,8 +20,8 @@ import {
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { hasFeature } from "metabase/common/utils/database";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
