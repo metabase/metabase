@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
+   [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util.log :as log])
   (:import
@@ -58,9 +59,16 @@
 ;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers
+                             uri                                              :uri
+                             superuser?                                       :is-superuser?}]
   (when (and (mdb/db-is-set-up?)
              (not (system/site-url))
+             ;; Only derive from headers when the request can't be forged by an attacker: before setup, or from an
+             ;; admin. `has-user-setup` alone would never let a headlessly-provisioned instance (config-from-file
+             ;; `users:`) derive it at all, since those have users from their first request.
+             (or (not (setup/has-user-setup))
+                 superuser?)
              (not (#{"/api/health" "/livez" "/readyz"} uri))
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
     (when-let [site-url (or origin x-forwarded-host host)]
@@ -71,7 +79,7 @@
           (log/warn e "Failed to set site-url"))))))
 
 (defn maybe-set-site-url
-  "Middleware to set the `site-url` setting on the initial setup request"
+  "Middleware to set the `site-url` setting from request headers while it is still unset."
   [handler]
   (fn [request respond raise]
     (maybe-set-site-url* request)

@@ -39,7 +39,8 @@ concurrency:
 
 jobs:
   get-cache-keys:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Get cache keys

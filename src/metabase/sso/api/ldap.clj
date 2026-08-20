@@ -7,6 +7,7 @@
    [metabase.settings.core :as setting]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.settings :as sso.settings]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,15 +29,26 @@
   [_route-params
    _query-params
    settings :- [:map
-                [:ldap-port    {:optional true} [:maybe
-                                                 ;; treat empty string as nil
-                                                 {:decode/api (fn [x]
-                                                                (when-not (= x "")
-                                                                  x))}
-                                                 pos-int?]]
-                [:ldap-password {:optional true} [:maybe :string]]
-                [:ldap-host {:optional true} [:maybe :string]]
-                [:ldap-enabled {:optional true} [:maybe :boolean]]]]
+                [:ldap-port                    {:optional true} [:maybe
+                                                                 ;; treat empty string as nil
+                                                                 {:decode/api (fn [x]
+                                                                                (when-not (= x "")
+                                                                                  x))}
+                                                                 pos-int?]]
+                [:ldap-password                {:optional true} [:maybe :string]]
+                [:ldap-host                    {:optional true} [:maybe :string]]
+                [:ldap-enabled                 {:optional true} [:maybe :boolean]]
+                [:ldap-security                {:optional true} [:maybe [:enum "none" "ssl" "starttls"]]]
+                [:ldap-bind-dn                 {:optional true} [:maybe :string]]
+                [:ldap-user-base               {:optional true} [:maybe :string]]
+                [:ldap-user-filter             {:optional true} [:maybe :string]]
+                [:ldap-attribute-email         {:optional true} [:maybe :string]]
+                [:ldap-attribute-firstname     {:optional true} [:maybe :string]]
+                [:ldap-attribute-lastname      {:optional true} [:maybe :string]]
+                [:ldap-group-sync              {:optional true} [:maybe :boolean]]
+                [:ldap-group-base              {:optional true} [:maybe :string]]
+                [:ldap-group-membership-filter {:optional true} [:maybe :string]]
+                [:ldap-group-mappings          {:optional true} [:maybe [:map-of :keyword [:sequential ms/PositiveInt]]]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (update :ldap-password update-password-if-needed)

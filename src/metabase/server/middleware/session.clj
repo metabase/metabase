@@ -111,22 +111,22 @@
                               [:or [:= :tenant.id nil] :tenant.is_active]
                               [:= :tenant.id nil])
                             [:= :user.is_active true]
-                            [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
+                            [:or [:= :session.id ^:allow-raw-sql [:raw "?"]] [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]]
                             (let [oldest-allowed (case db-type
                                                    :postgres [:-
-                                                              [:raw "current_timestamp"]
-                                                              [:raw (format "INTERVAL '%d minute'" max-age-minutes)]]
+                                                              ^:allow-raw-sql [:raw "current_timestamp"]
+                                                              ^:allow-raw-sql [:raw (format "INTERVAL '%d minute'" max-age-minutes)]]
                                                    :h2       [:dateadd
                                                               (h2x/literal "minute")
                                                               [:inline (- max-age-minutes)]
                                                               :%now]
                                                    :mysql    [:date_add
                                                               :%now
-                                                              [:raw (format "INTERVAL -%d minute" max-age-minutes)]])]
+                                                              ^:allow-raw-sql [:raw (format "INTERVAL -%d minute" max-age-minutes)]])]
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type
                                                            :normal         nil
-                                                           :full-app-embed [:raw "?"])]]
+                                                           :full-app-embed ^:allow-raw-sql [:raw "?"])]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -152,7 +152,7 @@
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :api_key.key_prefix [:raw "?"]]]
+                            [:= :api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->

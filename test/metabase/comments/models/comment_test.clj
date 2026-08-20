@@ -16,3 +16,19 @@
            (comment/mentions
             (at/tiptap
              [:smartLink {:entityId 6 :model "user"}]))))))
+
+(deftest mentions-wrong-entity-id-test
+  (testing "content is stored as the client sent it, so `mentions` must not pass non-IDs on to its callers"
+    (doseq [entity-id [{:data "string"}
+                       ["nested" "vector"]
+                       "6"
+                       -6
+                       0
+                       nil]]
+      (testing (pr-str entity-id)
+        (is (= [6]
+               (comment/mentions
+                (at/tiptap
+                 [:p
+                  [:smartLink {:entityId entity-id :model "user"}]
+                  [:smartLink {:entityId 6 :model "user"}]]))))))))

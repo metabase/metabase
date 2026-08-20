@@ -303,8 +303,8 @@
               (let [top-level-removed-prefixes (->> (t2/query {:select [:c.entity_id]
                                                                :from [[:collection :c]]
                                                                :join [[:remote_sync_object :rso]
-                                                                      [:and [:= :rso.model_type [:inline "Collection"]]
-                                                                       [:= :rso.status [:inline "removed"]]
+                                                                      [:and [:= :rso.model_type "Collection"]
+                                                                       [:= :rso.status "removed"]
                                                                        [:= :rso.model_id :c.id]]]
                                                                :where [:= :location "/"]})
                                                     (map #(str "collections/" (:entity_id %))))

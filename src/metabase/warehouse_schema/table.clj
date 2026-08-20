@@ -199,7 +199,8 @@
                                         :c.source_card_id :c.created_at :c.entity_id :c.card_schema
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
+                            :left-join [[^:allow-subquery
+                                         {:select   [:moderated_item_id :status]
                                           :from     [:moderation_review]
                                           :where    [:and
                                                      [:= :moderated_item_type "card"]

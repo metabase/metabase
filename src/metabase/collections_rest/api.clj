@@ -13,7 +13,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
@@ -31,7 +30,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -581,29 +579,18 @@
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
 (defn- post-process-card-like
-  [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
-        card-count             (count rows)
-        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
-                                             (pos? threshold)
-                                             (> card-count threshold))
-                                 (when <>
-                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
-                                              card-count threshold)))
-        hydration              (cond-> [:can_write
-                                        :can_restore
-                                        :can_delete
-                                        :dashboard_count
-                                        :is_remote_synced
-                                        :collection_namespace
-                                        [:dashboard :moderation_status]]
-                                 (and include-can-run-adhoc-query
-                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
+  [{:keys [hydrate-based-on-upload]} rows]
+  (let [hydration [:can_write
+                   :can_restore
+                   :can_delete
+                   :dashboard_count
+                   :is_remote_synced
+                   :collection_namespace
+                   [:dashboard :moderation_status]]]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload
-        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -677,11 +664,12 @@
                                                       :where [:and
                                                               [:= :archived false]
                                                               [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+                                                              [:exists ^:allow-subquery
+                                                               {:select 1
+                                                                :from :report_dashboardcard
+                                                                :where [:and
+                                                                        [:= :report_dashboardcard.card_id :report_card.id]
+                                                                        [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
                                          (map :dashboard_id)
                                          (into #{}))]
     (for [dashboard dashboards]
@@ -1051,14 +1039,15 @@
                                                      [:select :select-distinct])]]
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
-                          (update select-clause-type add-model-ranking model)))
+                          (update select-clause-type add-model-ranking model)
+                          (vary-meta assoc :allow-subquery true)))
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
                      :include-trash-collection? archived?}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
-                     :from     [[{:union-all queries} :dummy_alias]]
+                     :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                     :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                      :order-by sql-order}
         limit       (request/limit)
         offset      (request/offset)
@@ -1299,11 +1288,10 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query include_library collection_type
+           include_library collection_type
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:collection_type             {:optional true} CollectionType]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
                                           [:include_library             {:default false} [:maybe ms/BooleanValue]]
@@ -1320,7 +1308,6 @@
     (collection-children
      root-collection
      {:archived?                   (boolean archived)
-      :include-can-run-adhoc-query include_can_run_adhoc_query
       :show-dashboard-questions?   (boolean show_dashboard_questions)
       :collection-type             collection_type
       :include-library?            include_library
@@ -1564,7 +1551,7 @@
    {:keys [namespace revision groups]} :- [:map
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
-                                           [:groups    :map]]]
+                                           [:groups    ms/Map]]]
   (api/check-superuser)
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
@@ -1598,7 +1585,6 @@
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type             {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
@@ -1612,7 +1598,7 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
@@ -1668,18 +1654,15 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
-  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
                                           [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
                                           [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
@@ -1694,7 +1677,6 @@
                                    :include-library?             true
                                    :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state                (keyword pinned_state)
-                                   :include-can-run-adhoc-query include_can_run_adhoc_query
                                    :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
                                                                  :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
                                                                  ;; default to sorting official collections first, except for the trash.

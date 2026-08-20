@@ -32,10 +32,17 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map
+                     [:jwt              {:optional true} [:maybe :string]]
+                     [:preferred_method {:optional true} [:maybe :string]]
+                     [:redirect         {:optional true} [:maybe :string]]
+                     [:return_to        {:optional true} [:maybe :string]]]
+   _body request]
   (try
     (sso.i/sso-get request)
     (catch Throwable e
@@ -62,7 +69,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]
+   _body :- [:maybe [:map
+                     [:jwt          {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
+   request]
   (try
     (sso.i/sso-post request)
     (catch Throwable e
@@ -121,7 +136,8 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
+   {:keys [jwt]} :- [:map
+                     [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled)
     (throw (ex-info "JWT authentication is not enabled"
@@ -139,7 +155,16 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map
+                     [:SAMLRequest  {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]
+   _body :- [:maybe [:map
+                     [:SAMLRequest  {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
+   request]
   (try
     (if (sso-settings/saml-slo-enabled)
       (sso.i/sso-handle-slo request)

@@ -1,6 +1,7 @@
 (ns metabase.queries.schema
   (:require
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -22,6 +23,9 @@
   "An empty map, allowed for Card.dataset_query for historic purposes."
   [:= {} {}])
 
+;;; NOTE (backport): upstream removed `::query` in favor of `metabase.lib-be.schema`; on this branch other
+;;; namespaces (e.g. metabase-enterprise.transforms.schema, metabase-enterprise.dependencies.api) still refer
+;;; to it, so it is kept.
 (mr/def ::query
   "Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not
   `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save
@@ -61,7 +65,7 @@
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   [:dataset_query      {:optional true} [:maybe ::query]]
+   [:dataset_query      {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]

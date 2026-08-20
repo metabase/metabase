@@ -179,11 +179,11 @@
                 [(t2/table-name :model/Dimension) :dimension]
                 [:and
                  [:= :dimension/field_id :field/id]
-                 [:inline [:in :dimension/type ["external" "internal"]]]]
+                 [:in :dimension/type ["external" "internal"]]]
                 [(t2/table-name :model/FieldValues) :values]
                 [:and
                  [:= :values/field_id :field/id]
-                 [:= :values/type [:inline "full"]]]]}))
+                 [:= :values/type "full"]]]}))
 
 (t2/define-after-select :metadata/column
   [field]
@@ -435,7 +435,7 @@
      [:= :active true]
      [:or
       [:= :visibility_type nil]
-      [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
+      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]
 
     :metadata/column
     (let [excluded-visibility-types (cond-> ["retired"]
@@ -444,7 +444,7 @@
        [:= :field/active true]
        [:or
         [:= :field/visibility_type nil]
-        [:not-in :field/visibility_type [:inline excluded-visibility-types]]]])
+        [:not-in :field/visibility_type excluded-visibility-types]]])
 
     :metadata/card
     [:= :card/archived false]
@@ -474,7 +474,7 @@
                           table-id               (conj [:= (table-id-key metadata-type) table-id])
                           card-id                (conj [:= (card-id-key metadata-type) card-id])
                           active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
-                          metric?                (conj [:= :type [:inline "metric"]])
+                          metric?                (conj [:= :type "metric"])
                           (and metric? table-id) (conj [:= :source_card_id nil]))]
     (reduce
      sql.helpers/where

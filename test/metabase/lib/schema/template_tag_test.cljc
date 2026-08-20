@@ -3,7 +3,8 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -60,3 +61,12 @@
                                         {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
                                         1]
                          :widget-type  :string/contains}))))
+
+(deftest ^:parallel raw-value-default-test
+  (let [tag (fn [default] {:name "x", :display-name "X", :type :text, :default default})]
+    (testing "a raw-value template tag :default holds a parameter value"
+      (are [default] (mr/validate ::lib.schema.template-tag/raw-value (tag default))
+        "abc" 42 true nil ["a" "b"] [1 2 3]))
+    (testing "a raw-value template tag :default is not a map"
+      (are [default] (not (mr/validate ::lib.schema.template-tag/raw-value (tag default)))
+        {:a 1} {}))))

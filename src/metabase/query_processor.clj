@@ -98,7 +98,7 @@
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
-       (update :info merge info))))
+       (cond-> info (update :info merge info)))))
 
 (mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same

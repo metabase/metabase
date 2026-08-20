@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.serialization :as serdes]
@@ -324,3 +325,26 @@
             transformed  (dashboard-card/from-parsed-json deserialized)]
         (is (= dashcard
                transformed))))))
+
+(deftest ^:parallel link-card-info-query-for-model-requires-integer-id-test
+  (testing "a link-card entity id is spliced into the :where clause, so a non-integer"
+    (testing "must be rejected before it reaches the app DB"
+      (doseq [[label bad-id] {"a {:raw ...} map"      {:raw "1); DROP TABLE t; --"}
+                              "a raw SQL string"      "1 OR 1=1"
+                              "a honeysql op vector"  [:raw "1=1"]
+                              "a set with a bad id"   #{1 {:raw "x"}}
+                              "nil"                    nil}]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Link card entity id must be an integer"
+               (dashboard-card/link-card-info-query-for-model "card" bad-id)))))))
+  (testing "legitimate integer ids still build a parameterized query (no literal splicing)"
+    (testing "a single id"
+      (let [[sql & params] (sql/format (dashboard-card/link-card-info-query-for-model "card" 42))]
+        (is (re-find #"WHERE id = \?" sql))
+        (is (= [42] params))))
+    (testing "a set of ids (the batched hydration path)"
+      (let [[sql & params] (sql/format (dashboard-card/link-card-info-query-for-model "card" #{1 2 3}))]
+        (is (re-find #"WHERE id IN \(\?, \?, \?\)" sql))
+        (is (= #{1 2 3} (set params)))))))
