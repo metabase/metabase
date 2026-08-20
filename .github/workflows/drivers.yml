@@ -132,16 +132,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -207,16 +197,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -289,16 +269,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -343,16 +313,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
@@ -391,16 +351,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -439,16 +389,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -488,16 +428,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -518,16 +448,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -549,16 +469,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -688,16 +598,6 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -768,16 +668,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -850,16 +740,6 @@ jobs:
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -895,16 +775,6 @@ jobs:
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -980,16 +850,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1084,16 +944,6 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1171,16 +1021,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1255,16 +1095,6 @@ jobs:
           ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: ${{ !matrix.job.skip && !cancelled() }}
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1337,16 +1167,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1389,16 +1209,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1430,16 +1240,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1506,16 +1306,6 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.version.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1550,21 +1340,11 @@ jobs:
   #       junit-name: 'be-tests-starburst-ee'
   #       test-args: >-
   #         :only-tags [:mb/driver-tests]
-  #   - name: Upload Test Results
-  #     uses: ./.github/actions/upload-test-results
-  #     if: always()
-  #     with:
-  #       input-path: ./target/junit/
-  #       output-name: ${{ github.job }}
-  #       bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-  #       aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-  #       aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-  #       aws-region: ${{ vars.AWS_REGION }}
 
   login-to-ecr:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
       id-token: write
@@ -1631,16 +1411,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
 
   drivers-tests-result:
     needs:
@@ -1667,7 +1437,7 @@ jobs:
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()

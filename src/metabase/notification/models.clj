@@ -546,6 +546,20 @@
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
 
+(defmethod mi/can-write? :model/Notification
+  ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
+  ([notification]
+   (or
+    (mi/superuser?)
+    (and
+     (current-user-is-creator? notification)
+     (or
+      (not (premium-features/has-feature? :advanced-permissions))
+      (perms/current-user-has-application-permissions? :subscription))
+     (current-user-can-read-payload? notification))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Notification pk))))
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
