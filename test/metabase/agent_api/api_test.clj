@@ -1855,3 +1855,17 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
+                                                 :type     "query"
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :a            1
+                                                            :a/b          2}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :a)))
+      (is (not (contains? q :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
+          "undeclared properties are stripped from every stage"))))

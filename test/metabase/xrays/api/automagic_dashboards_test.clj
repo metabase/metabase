@@ -12,9 +12,11 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
@@ -604,3 +606,29 @@
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
           (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
+
+(deftest ^:parallel cell-query-decode-strips-extra-properties-test
+  (testing "cell queries are decoded, validated, and stripped of undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode [">" {:a 1 :a/b 2} ["field" {} 1] 10]))
+          result  (#'api.magic/decode-and-validate-cell-query encoded)]
+      (is (mr/validate ::ads/root.cell-query result)
+          "decoded cell query is a valid filter clause")
+      (is (= :> (first result)))
+      (let [opts (second result)]
+        (is (map? opts))
+        (is (not (contains? opts :a)))
+        (is (not (contains? opts :a/b)))))))
+
+(deftest adhoc-query-decode-strips-extra-keys-test
+  (testing "adhoc queries are validated and stripped of undeclared properties"
+    (mt/with-test-user :rasta
+      (let [q      {:database (mt/id)
+                    :type     "query"
+                    :query    {:source-table (mt/id :venues)
+                               :a            1
+                               :a/b          2}}
+            dq     (:dataset_query (#'api.magic/adhoc-query-instance q))]
+        (is (mr/validate ::ads/query dq)
+            "decoded adhoc query is a valid MBQL query")
+        (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages dq))
+            "undeclared properties are stripped from every stage")))))

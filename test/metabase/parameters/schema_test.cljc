@@ -1,5 +1,7 @@
 (ns metabase.parameters.schema-test
   (:require
+   #?@(:clj [[metabase.api.macros :as api.macros]
+             [metabase.util.json :as json]])
    [clojure.test :refer [deftest is testing]]
    [metabase.parameters.schema :as parameters.schema]))
 
@@ -21,3 +23,16 @@
 (deftest ^:parallel normalize-parameters-without-adding-default-type-test
   (is (= [{:id "x", :target [:dimension [:template-tag "y"]]}]
          (parameters.schema/normalize-parameters-without-adding-default-types [{"id" "x", "target" ["dimension" ["template-tag" "y"]]}]))))
+
+#?(:clj
+   (deftest api-parameter-values-decode-strips-extra-keys-test
+     (testing "::api.parameter-values decodes a JSON string, normalizes keys, and strips undeclared properties"
+       (is (= [{:id "_STATE_" :type :text :target [:variable [:template-tag "state"]] :value "CA"}]
+              (api.macros/decode-and-validate-params
+               :query ::parameters.schema/api.parameter-values
+               (json/encode [{:id     "_STATE_"
+                              :type   "text"
+                              :target [:variable [:template-tag "state"]]
+                              :value  "CA"
+                              :a      1
+                              :a/b    2}])))))))
