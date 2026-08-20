@@ -164,12 +164,9 @@
 (defonce ^:private has-done-before-run (atom #{}))
 
 (def ^:dynamic *skip-before-run?*
-  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook.
-
-  Bound by the nightly orphan sweep ([[metabase.test.data.gc]]), which needs test extensions loaded in order to
-  dispatch [[gc-orphans!]] but must not run the hooks that come with them. Redshift's [[before-run]] drops schemas and
-  then creates a fresh session schema, so without this a `:dry-run? true` sweep would still delete things, and the job
-  whose whole purpose is removing leaked schemas would leak a new one on every run."
+  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook. Bound by the nightly sweep
+  ([[metabase.test.data.gc]]), which needs the extensions to dispatch [[gc-orphans!]] but not the hooks: Redshift's
+  creates a session schema, which the sweep would then leak nightly."
   false)
 
 ;; this gets called below by [[load-test-extensions-namespace-if-needed]]
@@ -397,17 +394,14 @@
   (log/infof "%s has no after-run hooks." driver))
 
 (defmulti gc-orphans!
-  "Collect orphaned test data a previous run left behind in a shared cloud warehouse, returning the names collected
-  (or, with `:dry-run? true`, the names that would be). Runs nightly out of band -- see
-  `.github/workflows/test.cleanup-dwh-data.yml` -- because [[after-run]] never fires when a CI job is cancelled or
-  killed, and in-process cleanup has repeatedly been disabled for making CI flaky.
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Returns the names actually
+  deleted, not those found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never
+  fires when a CI job is cancelled.
 
-  `options` are `:older-than-hours` (per-run garbage), `:fixture-hours` (reusable content-addressed datasets, which
-  runs share and so must not be collected eagerly), and `:dry-run?`.
+  `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
 
-  Implement only for drivers whose tests create objects in a shared cloud account. Athena and Databricks must NOT
-  implement it -- their datasets are preloaded, so nothing there is safe to delete. Match only name patterns the
-  driver's own test extensions generate, never a bare wildcard, and never tracking or fixture objects."
+  Implement only for drivers whose tests create objects in a shared cloud account -- not Athena or Databricks, whose
+  datasets are preloaded. Match only names the driver's own test extensions generate, never a bare wildcard."
   {:arglists '([driver options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)

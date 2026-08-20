@@ -71,14 +71,12 @@
 (defn old-dataset-name?
   "Is this dataset name old enough to be deleted?
 
-  For new-format names (with hour): checks if more than `hours-threshold` hours old, defaulting to
-  [[old-dataset-hours-threshold]]. The nightly orphan GC passes a smaller threshold than the in-process cleanup does;
-  see [[metabase.test.data.interface/gc-orphans!]]. Hour-only precision is resolved conservatively, so a dataset is
-  collected somewhere between N and N+1 hours after creation, never before N.
+  For new-format names (with hour): more than `hours-threshold` hours old, defaulting to
+  [[old-dataset-hours-threshold]]. Hour precision resolves conservatively, so a dataset goes between N and N+1 hours
+  after creation, never before N.
 
-  For old-format names (date only): checks if more than 1 day old for backwards compatibility. This is deliberately
-  NOT parameterized -- those names truncate to midnight rather than to the hour, so an hours-based threshold would
-  read a name created at 23:00 as nearly a day old and could delete it out from under a running test.
+  For old-format names (date only): more than 1 day old. Not parameterized -- those truncate to midnight, so an
+  hours-based threshold could delete one stamped 23:00 out from under a running test.
 
   If the date/time is invalid, we return false (not old) to be safe - we only want to delete
   datasets that match our known format."
@@ -92,9 +90,8 @@
                                (catch Throwable _ nil))]
        (if-not dataset-date-time
          false
-         ;; the name records only the hour, so a dataset stamped 10 was created somewhere in [10:00, 11:00). Age it
-         ;; from the END of that hour, otherwise a name stamped 10:59 reads as an hour older than it is and an N hour
-         ;; threshold deletes things that are only N-1 hours old -- which at N=2 is inside a driver job's runtime.
+         ;; a name stamped 10 was created in [10:00, 11:00), so age from the end of the hour -- otherwise an N hour
+         ;; threshold collects things only N-1 hours old
          (t/before? (u.date/add dataset-date-time :hour 1)
                     (u.date/add (utc-date-time)
                                 :hour (- (or hours-threshold old-dataset-hours-threshold))))))

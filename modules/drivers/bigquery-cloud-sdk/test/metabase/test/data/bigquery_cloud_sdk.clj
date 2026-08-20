@@ -350,19 +350,18 @@
 
 (defn- old-dataset-names
   "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
-  created that long ago. Pure -- returns names and deletes nothing, so it doubles as the dry-run preview.
-
-  Split out of [[delete-old-datasets!]], with its fixed 14 days made a parameter, so the nightly sweep
-  ([[tx/gc-orphans!]]) runs the same enumeration on its own threshold. Excludes the current `test-data`, which
-  [[destroy-dataset!]] refuses to delete anyway."
+  created that long ago. `_` is a wildcard in BigQuery LIKE, so the SQL prefix only prefilters and `starts-with?`
+  below is what enforces it."
   [hours]
   (let [current-test-data (test-dataset-id (tx/get-dataset-definition
                                             (data.impl/resolve-dataset-definition *ns* 'test-data)))]
     (into []
           (comp (map first)
+                (filter #(str/starts-with? % "sha_"))
                 (remove #(= % current-test-data)))
           (execute! (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                         " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
+                         " WHERE `name` LIKE 'sha_%%'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
                          " UNION ALL "
                          "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                            where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
@@ -374,8 +373,22 @@
                     (project-id)
                     hours))))
 
+(defn- drop-datasets!
+  "Delete each named dataset, returning the ones actually deleted. Catches per dataset -- usually a concurrent run
+  got there first, which must not abandon the rest of the sweep."
+  [dataset-ids]
+  (into []
+        (keep (fn [dataset-id]
+                (try
+                  (destroy-dataset! dataset-id)
+                  dataset-id
+                  (catch Throwable e
+                    (log/warnf "Failed to delete %s, skipping: %s" dataset-id (ex-message e))
+                    nil))))
+        dataset-ids))
+
 (defn delete-old-datasets! []
-  (run! destroy-dataset! (old-dataset-names (* 14 24))))
+  (drop-datasets! (old-dataset-names (* 14 24))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -386,22 +399,10 @@
   (when (compare-and-set! deleted-old-datasets? false true)
     (delete-old-datasets!)))
 
-;;; --------------------------------- Orphan GC ----------------------------------
-;;;
-;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). Same enumeration and deletion as
-;;; [[delete-old-datasets!]], only on a different threshold -- that in-process caller is currently disabled (see
-;;; [[tx/create-db!]]) for being unreliable mid-test-run, whereas a sweep in its own job can't fail anyone's tests.
-;;;
-;;; Every dataset here is content-addressed by [[test-dataset-id]] and reused across runs, so there is no per-run
-;;; garbage and `:older-than-hours` does not apply -- datasets are stranded only when a definition changes, which is
-;;; slow and bounded. Known gap: only the default test project is swept, not `tx/*use-routing-details*`.
-
+;; Nightly garbage collection of orphaned test datasets.
 (defmethod tx/gc-orphans! :bigquery-cloud-sdk
-  [_driver {:keys [fixture-hours dry-run?]}]
-  (let [found (old-dataset-names fixture-hours)]
-    (when-not dry-run?
-      (run! destroy-dataset! found))
-    found))
+  [_driver {:keys [fixture-hours]}]
+  (drop-datasets! (old-dataset-names fixture-hours)))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

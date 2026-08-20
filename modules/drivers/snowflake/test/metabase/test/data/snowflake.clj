@@ -115,33 +115,30 @@
       (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
 
 (defn- old-dataset-names
-  "Names of test databases old enough to delete, oldest first, given `:older-than-hours` and `:fixture-hours`.
+  "Names of test databases old enough to delete, oldest first.
 
-  Age is `accessed_at` from the tracking table wherever there is a row for the database -- so a fixture that runs are
-  actively reusing stays young -- falling back to the catalog's `created` for databases whose bookkeeping never
-  happened, which is precisely the case the nightly sweep exists for. Snowflake test database names carry no
-  timestamp of their own; [[qualified-db-name]] builds them from a random int or a dataset hash.
+  `isolate_` names are per-run and age from `created`. `sha_` names are shared and age from `accessed_at`, which is
+  only trustworthy for them: the tracking table is keyed on dataset hash and its MERGE never updates `name`, so an
+  `isolate_` row keeps the first run's name while later runs keep refreshing its `accessed_at` -- ageing on that
+  would make the first leaked database per dataset immortal.
 
-  Those two shapes need different thresholds. `isolate_` names are per-run garbage that nothing ever reuses, while
-  `sha_` names are content-addressed and deliberately shared, so collecting those as eagerly would make every run
-  rebuild its datasets and reintroduce the half-created-dataset races hashing exists to prevent. A database matching
-  neither prefix is never returned -- notably `metabase_test_tracking`, which holds the bookkeeping this reads.
-
-  Pure: reads and returns names, drops nothing, so it doubles as the dry-run preview."
-  [{:keys [older-than-hours fixture-hours]}]
+  Compares timestamps directly; `timestampdiff` counts boundary crossings, so an hour bucket calls a 10:59 database
+  two hours old at 12:01."
+  [{:keys [temp-data-hours fixture-hours]}]
   (into []
-        (keep (fn [{:keys [database_name age_hours]}]
-                (when (and age_hours
-                           (cond
-                             (str/starts-with? database_name "isolate_") (>= age_hours older-than-hours)
-                             (str/starts-with? database_name "sha_")     (>= age_hours fixture-hours)))
-                  database_name)))
+        (map :database_name)
         (jdbc/query (no-db-connection-spec)
-                    ["select d.database_name,
-                             timestampdiff('hour', coalesce(t.accessed_at, d.created), current_timestamp()) as age_hours
-                      from metabase_test_tracking.information_schema.databases d
-                      left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
-                      order by age_hours desc"])))
+                    [(format
+                      "select d.database_name
+                       from metabase_test_tracking.information_schema.databases d
+                       left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
+                       where (startswith(d.database_name, 'isolate_')
+                              and d.created < dateadd(hour, -%d, current_timestamp()))
+                          or (startswith(d.database_name, 'sha_')
+                              and coalesce(t.accessed_at, d.created) < dateadd(hour, -%d, current_timestamp()))
+                       order by d.created"
+                      temp-data-hours
+                      fixture-hours)])))
 
 ;;; --------------------------------- Destruction ----------------------------------
 ;;;
@@ -162,30 +159,35 @@
        (apply f stmt args)))))
 
 (defn- drop-datasets!
-  "Drop each named test database and un-track it. The dropping half of [[drop-old-datasets!]], split out so the
-  nightly sweep ([[tx/gc-orphans!]]) reuses it rather than carrying a second copy."
+  "Drop each named test database and un-track it, returning the names actually dropped -- reporting attempts instead
+  would let a sweep that failed throughout still claim a full haul. Shared with [[tx/gc-orphans!]]."
   [dataset-names]
-  (when (seq dataset-names)
+  (if (empty? dataset-names)
+    []
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
-        (doseq [dataset-name dataset-names]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old dataset:" dataset-name)
-          (try
-            (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-            (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                   dataset-name))
-            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
+        (into []
+              (keep (fn [dataset-name]
+                      #_{:clj-kondo/ignore [:discouraged-var]}
+                      (println "[Snowflake] Deleting old dataset:" dataset-name)
+                      (try
+                        (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+                        (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                               dataset-name))
+                        dataset-name
+                        ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+                        ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+                        ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+                        (catch Throwable e
+                          #_{:clj-kondo/ignore [:discouraged-var]}
+                          (println "[Snowflake] Error deleting old dataset:" (ex-message e))
+                          nil))))
+              dataset-names)))))
 
 (defn- drop-old-datasets!
   "Drop test datasets (databases) that are too old."
   []
-  (drop-datasets! (old-dataset-names {:older-than-hours (* 5 24), :fixture-hours (* 5 24)})))
+  (drop-datasets! (old-dataset-names {:temp-data-hours (* 5 24), :fixture-hours (* 5 24)})))
 
 (defn- delete-old-test-data!
   "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
@@ -217,16 +219,12 @@
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
-;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). Same enumeration and dropping as
-;;; [[drop-old-datasets!]], only on a shorter threshold: that in-process caller is disabled today for having run on
-;;; every job, whereas a sweep in its own job can be as aggressive as we like without failing anyone's tests.
+;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`); same enumeration and dropping as
+;;; [[drop-old-datasets!]], shorter thresholds.
 
 (defmethod tx/gc-orphans! :snowflake
-  [_driver {:keys [dry-run?] :as options}]
-  (let [found (old-dataset-names options)]
-    (when-not dry-run?
-      (drop-datasets! found))
-    found))
+  [_driver options]
+  (drop-datasets! (old-dataset-names options)))
 
 (defn- set-current-user-timezone!
   [timezone]
@@ -444,7 +442,7 @@
                                         WHERE query_text LIKE 'DROP DATABASE %'
                                         ORDER BY end_time DESC limit 64"])
   ;; preview what the nightly sweep would collect, at its own thresholds
-  (old-dataset-names {:older-than-hours 2, :fixture-hours 72})
+  (old-dataset-names {:temp-data-hours 2, :fixture-hours 72})
   (drop-old-datasets!)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
   ;; Tracked databases ordered by age
