@@ -84,3 +84,32 @@
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters false {})))))))
+
+(deftest route-preload-tags-test
+  (let [manifest [{:patterns ["/question/ask"] :files ["app/dist/metabot-query-builder.js"]}
+                  {:patterns ["/question" "/question/*"] :files ["app/dist/query-builder.js"]}
+                  {:patterns ["/dashboard/*"] :files ["app/dist/dashboard.js" "app/dist/dashboard.css"]}
+                  {:patterns ["/metric/*"] :files ["app/dist/metrics.js"]}
+                  {:patterns ["/"] :files ["app/dist/home.js"]}]
+        tags-for (fn [uri]
+                   (with-redefs-fn {#'index/load-route-preloads
+                                    (constantly (mapv #'index/compile-entry manifest))}
+                     (fn [] (#'index/route-preload-tags uri))))]
+    (testing "a wildcard covers the section below it"
+      (is (= (str "<link rel=\"preload\" href=\"app/dist/dashboard.js\" as=\"script\">"
+                  "<link rel=\"preload\" href=\"app/dist/dashboard.css\" as=\"style\">")
+             (tags-for "/dashboard/42"))))
+    (testing "the first matching row wins"
+      (is (= "<link rel=\"preload\" href=\"app/dist/metabot-query-builder.js\" as=\"script\">"
+             (tags-for "/question/ask")))
+      (is (= "<link rel=\"preload\" href=\"app/dist/query-builder.js\" as=\"script\">"
+             (tags-for "/question/12-orders"))))
+    (testing "the home page matches only the whole path"
+      (is (= "<link rel=\"preload\" href=\"app/dist/home.js\" as=\"script\">"
+             (tags-for "/")))
+      (is (nil? (tags-for "/xyzzy"))))
+    (testing "a section does not claim a URL that merely starts with its name"
+      (is (nil? (tags-for "/metrics/1")))))
+  (testing "no manifest, no hints"
+    (is (nil? (with-redefs-fn {#'index/load-route-preloads (constantly nil)}
+                (fn [] (#'index/route-preload-tags "/")))))))
