@@ -11,7 +11,11 @@ import {
   getDashboard,
   getDashcards,
 } from "metabase/dashboard/selectors";
-import type { State, StoreDashcard } from "metabase/redux/store";
+import type {
+  DashboardState,
+  DashboardTimelineEventsState,
+  State,
+} from "metabase/redux/store";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
@@ -42,8 +46,8 @@ const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
 const resolveDashCardVisibility = (
-  overrides: Record<DashCardId, TimelineEventsVisibility>,
-  dashcards: Record<DashCardId, StoreDashcard>,
+  overrides: DashboardTimelineEventsState["overrides"],
+  dashcards: DashboardState["dashcards"],
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
   overrides[dashcardId] ??
