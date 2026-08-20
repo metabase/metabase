@@ -748,13 +748,11 @@
                     :model/Card
                     :model/Collection
                     :model/DashboardBookmark
-                    :model/Field
                     :model/ModerationReview
                     :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   dashboards-rest

@@ -189,7 +189,7 @@
                                                   {:request-options {:headers {}}}
                                                   (jsonrpc-request "initialize"))]
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                           ", scope=\"agent:content:read agent:query:run\""))))
+                           ", scope=\"agent:content:read agent:query:run agent:resource:read\""))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
               uses and the only one a strict parser accepts"
       (let [response (client/client-full-response :post 401 endpoint
@@ -198,7 +198,7 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:query:run\"")
+                    "scope=\"agent:content:read agent:query:run agent:resource:read\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 (deftest protected-resource-metadata-test
