@@ -21,7 +21,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
+   [metabase.driver.sql-jdbc.quoting :as quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
@@ -353,24 +353,17 @@
   [_]
   :sunday)
 
-(defn- quote-table-name
-  "Quote a `:schema/table` (or bare `:table`) keyword for use in raw SQL."
-  [driver table]
-  (let [table (keyword table)]
-    (apply sql.u/quote-name driver :table
-           (if-let [schema (namespace table)]
-             [schema (name table)]
-             [(name table)]))))
-
 (defmethod driver/rename-tables!* :mysql
   [driver db-id sorted-rename-map]
-  ;; not `sql/format-entity`: called outside `sql/format` its dialect is unbound, so it emits
-  ;; identifiers unquoted, munging dashes and breaking on backticks
-  (let [rename-clauses (map (fn [[from-table to-table]]
-                              (str (quote-table-name driver from-table)
-                                   " TO "
-                                   (quote-table-name driver to-table)))
-                            sorted-rename-map)
+  ;; `with-quoting` is what binds the dialect: a bare `sql/format-entity` leaves it nil, and
+  ;; then HoneySQL's quote fn is `identity` and every identifier goes out raw
+  (let [rename-clauses (quoting/with-quoting driver
+                         (doall
+                          (map (fn [[from-table to-table]]
+                                 (str (sql/format-entity (quoting/dot-qualified from-table))
+                                      " TO "
+                                      (sql/format-entity (quoting/dot-qualified to-table))))
+                               sorted-rename-map)))
         sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
     (sql-jdbc.execute/do-with-connection-with-options
      :mysql
