@@ -128,11 +128,16 @@
 
 (defn- combine-adjacent [frags]
   (cond
-    (and (<= 2 (count frags)) (instance? Literal (first frags)) (instance? Literal (nth frags 1))) (let [a (:value (first frags)) b (:value (nth frags 1)) rest' (nthrest frags 2)]
-                                                                                                     (recur (list* (->Literal (str a b)) rest')))
-    (seq frags) (let [f (first frags) rest' (rest frags)]
-                  (list* f (combine-adjacent rest')))
-    (empty? frags) (list)))
+    (and (<= 2 (count frags)) (instance? Literal (first frags)) (instance? Literal (nth frags 1)))
+    (let [a (:value (first frags)) b (:value (nth frags 1)) rest' (nthrest frags 2)]
+      (recur (list* (->Literal (str a b)) rest')))
+
+    (seq frags)
+    (let [f (first frags) rest' (rest frags)]
+      (list* f (combine-adjacent rest')))
+
+    (empty? frags)
+    (list)))
 
 (defn- invalid [strict error]
   (if strict (p/->Error error) (p/->Ok (list))))
@@ -231,85 +236,107 @@
   the current scope plus the unconsumed tokens."
   [strict tokens optional-level param-level in-string mode acc]
   (cond
-    (empty? tokens) (let [subject (or (> optional-level 0) (> param-level 0))]
-                      (if subject
-                        (p/->Error (->Unterminated))
-                        (p/->Ok [(list/reverse acc) (list)])))
-    (and (seq tokens) (instance? Str (first tokens))) (let [more (rest tokens) s (:value (first tokens))]
-                                                        (recur strict more optional-level param-level in-string mode (list* (->Literal s) acc)))
-    (and (seq tokens) (instance? Tok (first tokens))) (let [token (:f0 (first tokens)) text (:f1 (first tokens)) more (rest tokens)]
-                                                        (cond
-                                                          (instance? OptionalBegin token) (if (instance? NoComment mode)
-                                                                                            (enter-clause strict
-                                                                                                          (parse-tokens strict
-                                                                                                                        more
-                                                                                                                        (+' optional-level 1)
-                                                                                                                        param-level
-                                                                                                                        in-string
-                                                                                                                        mode
-                                                                                                                        (list))
-                                                                                                          make-optional
-                                                                                                          text
-                                                                                                          more
-                                                                                                          strict
-                                                                                                          (tokens-state optional-level
-                                                                                                                        param-level
-                                                                                                                        in-string
-                                                                                                                        mode)
-                                                                                                          acc)
-                                                                                            (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
-                                                          (instance? ParamBegin token) (if (instance? NoComment mode)
-                                                                                         (enter-clause strict
-                                                                                                       (parse-tokens strict
-                                                                                                                     more
-                                                                                                                     optional-level
-                                                                                                                     (+' param-level 1)
-                                                                                                                     in-string
-                                                                                                                     mode
-                                                                                                                     (list))
-                                                                                                       make-param
-                                                                                                       text
-                                                                                                       more
-                                                                                                       strict
-                                                                                                       (tokens-state optional-level
-                                                                                                                     param-level
-                                                                                                                     in-string
-                                                                                                                     mode)
-                                                                                                       acc)
-                                                                                         (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
-                                                          (instance? LineCommentBegin token) (enter-comment strict
-                                                                                                            (->LineMode)
-                                                                                                            text
-                                                                                                            more
-                                                                                                            optional-level
-                                                                                                            param-level
-                                                                                                            in-string
-                                                                                                            mode
-                                                                                                            acc)
-                                                          (instance? BlockCommentBegin token) (enter-comment strict
-                                                                                                             (->BlockMode)
-                                                                                                             text
-                                                                                                             more
-                                                                                                             optional-level
-                                                                                                             param-level
-                                                                                                             in-string
-                                                                                                             mode
-                                                                                                             acc)
-                                                          (instance? BlockCommentEnd token) (if (instance? BlockMode mode)
-                                                                                              (p/->Ok [(list/reverse (list* (->Literal text) acc)) more])
-                                                                                              (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
-                                                          (instance? Newline token) (if (instance? LineMode mode)
-                                                                                      (p/->Ok [(list/reverse (list* (->Literal text) acc)) more])
-                                                                                      (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
-                                                          (instance? OptionalEnd token) (let [subject (> optional-level 0)]
-                                                                                          (if subject
-                                                                                            (p/->Ok [(list/reverse acc) more])
-                                                                                            (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc))))
-                                                          (instance? ParamEnd token) (let [subject (> param-level 0)]
-                                                                                       (if subject
-                                                                                         (p/->Ok [(list/reverse acc) more])
-                                                                                         (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc))))
-                                                          (instance? SingleQuote token) (recur strict more optional-level param-level (not in-string) mode (list* (->Literal text) acc))))))
+    (empty? tokens)
+    (let [subject (or (> optional-level 0) (> param-level 0))]
+      (if subject
+        (p/->Error (->Unterminated))
+        (p/->Ok [(list/reverse acc) (list)])))
+
+    (and (seq tokens) (instance? Str (first tokens)))
+    (let [more (rest tokens) s (:value (first tokens))]
+      (recur strict more optional-level param-level in-string mode (list* (->Literal s) acc)))
+
+    (and (seq tokens) (instance? Tok (first tokens)))
+    (let [token (:f0 (first tokens)) text (:f1 (first tokens)) more (rest tokens)]
+      (cond
+        (instance? OptionalBegin token)
+        (if (instance? NoComment mode)
+          (enter-clause strict
+                        (parse-tokens strict
+                                      more
+                                      (+' optional-level 1)
+                                      param-level
+                                      in-string
+                                      mode
+                                      (list))
+                        make-optional
+                        text
+                        more
+                        strict
+                        (tokens-state optional-level
+                                      param-level
+                                      in-string
+                                      mode)
+                        acc)
+          (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
+
+        (instance? ParamBegin token)
+        (if (instance? NoComment mode)
+          (enter-clause strict
+                        (parse-tokens strict
+                                      more
+                                      optional-level
+                                      (+' param-level 1)
+                                      in-string
+                                      mode
+                                      (list))
+                        make-param
+                        text
+                        more
+                        strict
+                        (tokens-state optional-level
+                                      param-level
+                                      in-string
+                                      mode)
+                        acc)
+          (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
+
+        (instance? LineCommentBegin token)
+        (enter-comment strict
+                       (->LineMode)
+                       text
+                       more
+                       optional-level
+                       param-level
+                       in-string
+                       mode
+                       acc)
+
+        (instance? BlockCommentBegin token)
+        (enter-comment strict
+                       (->BlockMode)
+                       text
+                       more
+                       optional-level
+                       param-level
+                       in-string
+                       mode
+                       acc)
+
+        (instance? BlockCommentEnd token)
+        (if (instance? BlockMode mode)
+          (p/->Ok [(list/reverse (list* (->Literal text) acc)) more])
+          (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
+
+        (instance? Newline token)
+        (if (instance? LineMode mode)
+          (p/->Ok [(list/reverse (list* (->Literal text) acc)) more])
+          (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc)))
+
+        (instance? OptionalEnd token)
+        (let [subject (> optional-level 0)]
+          (if subject
+            (p/->Ok [(list/reverse acc) more])
+            (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc))))
+
+        (instance? ParamEnd token)
+        (let [subject (> param-level 0)]
+          (if subject
+            (p/->Ok [(list/reverse acc) more])
+            (recur strict more optional-level param-level in-string mode (list* (->Literal text) acc))))
+
+        (instance? SingleQuote token)
+        (recur strict more optional-level param-level (not in-string) mode (list* (->Literal text) acc))))))
 
 (defn parse
   "Parse parameters in `s`, returning literal fragments interleaved with
@@ -319,14 +346,19 @@
   [s handle-sql-comments strict]
   (let [subject (tokenize s handle-sql-comments)]
     (cond
-      (empty? subject) (p/->Ok (list))
-      (and (= (count subject) 1) (instance? Str (first subject))) (p/->Ok (list (->Literal s)))
-      :else (let [pieces subject subject (parse-tokens strict pieces 0 0 false (->NoComment) (list))]
-              (if (instance? Ok subject)
-                (let [frags (nth (:value subject) 0)]
-                  (p/->Ok (combine-adjacent frags)))
-                (let [e (:value subject)]
-                  (p/->Error e)))))))
+      (empty? subject)
+      (p/->Ok (list))
+
+      (and (= (count subject) 1) (instance? Str (first subject)))
+      (p/->Ok (list (->Literal s)))
+
+      :else
+      (let [pieces subject subject (parse-tokens strict pieces 0 0 false (->NoComment) (list))]
+        (if (instance? Ok subject)
+          (let [frags (nth (:value subject) 0)]
+            (p/->Ok (combine-adjacent frags)))
+          (let [e (:value subject)]
+            (p/->Error e)))))))
 
 (defn main
   {:malli/schema [:=> [:cat] [:or [:fn p/Ok?] [:fn p/Error?]]]}
