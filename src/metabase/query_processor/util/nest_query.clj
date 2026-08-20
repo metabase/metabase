@@ -17,7 +17,7 @@
    [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys some]]))
 
-;; Mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion
+;; Mark all Fields at the new top level with the `ignore-coercion` annotation so QP implementations know not to apply coercion
 ;; or whatever to them a second time.
 ;; In fact, we don't mark all Fields, only the ones we deem coercible. Marking all would make a bunch of tests
 ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.

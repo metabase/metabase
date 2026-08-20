@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -57,7 +58,7 @@
                       ;; by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] (via [[metabase.lib.stage/fields-columns]])
                       ;; so it knows to force Field ID `:field_ref`s in the QP results metadata to preserve historic
                       ;; behavior
-                      (assoc :qp/added-implicit-fields? true)))]
+                      (assoc lib.schema.annotation/added-implicit-fields? true)))]
           (lib.walk/apply-f-for-stage-at-path updated-stage (assoc-in query path stage) path))))))
 
 (defn- has-window-function-aggregations? [stage]

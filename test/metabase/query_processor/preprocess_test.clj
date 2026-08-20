@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -449,7 +450,7 @@
                                                       [:field (meta/id :checkins :id)
                                                        {:base-type :type/BigInteger, :join-alias "CH"}]]}
                                       {:source-query        {:source-table (meta/id :venues)}
-                                       :qp/is-implicit-join true
+                                       lib.schema.annotation/is-implicit-join true
                                        :fk-join-alias       "CH"
                                        :alias               "VENUES__via__VENUE_ID__via__CH"
                                        :strategy            :left-join

@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.request.core :as request]
@@ -277,8 +278,8 @@
                        (fn [query [metric-id {metric-query :query}]]
                          (if (and (= (lib/primary-source-table-id query) (lib/primary-source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
-                                      (= (:qp/stage-had-source-card (last (:stages metric-query)))
-                                         (:qp/stage-had-source-card (lib/query-stage query agg-stage-index)))))
+                                      (= (lib.schema.annotation/stage-had-source-card (last (:stages metric-query)))
+                                         (lib.schema.annotation/stage-had-source-card (lib/query-stage query agg-stage-index)))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
                                  lookup (-> lookup
                                             (assoc-in [metric-id :query] metric-query)
@@ -299,11 +300,11 @@
   "Finds an unadjusted transition between a metric source-card and the next stage."
   [query expanded-stages]
   (some (fn [[[idx-a stage-a] [_idx-b stage-b]]]
-          (let [stage-a-source (:qp/stage-is-from-source-card stage-a)
+          (let [stage-a-source (lib.schema.annotation/stage-is-from-source-card stage-a)
                 metric-metadata (some->> stage-a-source (lib.metadata/card query))]
             (when (and
                    stage-a-source
-                   (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
+                   (not= stage-a-source (lib.schema.annotation/stage-is-from-source-card stage-b))
                    (= (:type metric-metadata) :metric)
                    ;; This indicates this stage has not been processed
                    ;; because metrics must have aggregations
@@ -372,7 +373,7 @@
 
       (or (= (:lib/type first-stage) :mbql.stage/mbql)
           (and (= (:lib/type first-stage) :mbql.stage/native)
-               (:qp/stage-is-from-source-card first-stage)))
+               (lib.schema.annotation/stage-is-from-source-card first-stage)))
       (splice-compatible-metrics query path expanded-stages)
 
       :else

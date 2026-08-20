@@ -811,8 +811,8 @@
             (is (= 2 (count (mt/rows (qp/process-query query)))))))))))
 
 (deftest e2e-ignore-user-supplied-source-card-key-test
-  (testing "Make sure that you can't bypass native query permissions by including :qp/stage-is-from-source-card in a
-           join"
+  (testing "Make sure that you can't bypass native query permissions by including a forged :qp/stage-is-from-source-card
+           key in a join"
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type :native
@@ -824,7 +824,8 @@
                                 :alias "v"
                                 :source-query {:native "SELECT * from orders"}
                                 :condition [:= true true]
-                                ;; Make sure we can't just pass in this key and join to arbitrary SQL!
+                                ;; a client can only supply this as a keyword; the QP reads the un-forgeable
+                                ;; annotation key instead, so this forged keyword must be ignored
                                 :qp/stage-is-from-source-card card-id}]
                        :order-by [[:asc $id]]
                        :limit 2})]

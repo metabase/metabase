@@ -4,17 +4,12 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
-
-(defenterprise remove-impersonation-keys
-  "Pre-processing middleware. Removes the internal `:impersonation/*` keys from the top-level query."
-  :feature :none
-  [query]
-  (dissoc query :impersonation/role :impersonation/admin? :impersonation/allow-write?))
 
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
@@ -35,10 +30,10 @@
               (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
                   (driver/validate-impersonated-query
                    driver/*driver*
-                   (cond-> q api/*is-superuser?* (assoc :impersonation/admin? true)))))
+                   (cond-> q api/*is-superuser?* (assoc lib.schema.annotation/impersonation-admin? true)))))
         ;; Only assign the role for non-admin impersonated users
         role
-        (assoc :impersonation/role role)))))
+        (assoc lib.schema.annotation/impersonation-role role)))))
 
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the impersonation role dynamic var for driver use."
@@ -47,7 +42,7 @@
   :feature :none
   [qp]
   (fn [query rff]
-    (if-let [role (:impersonation/role query)]
+    (if-let [role (lib.schema.annotation/impersonation-role query)]
       (do
         (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
         (binding [impersonation.driver/*impersonation-role* role]

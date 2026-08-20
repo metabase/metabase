@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -21,10 +22,10 @@
          lib/->legacy-MBQL))))
 
 (deftest ^:parallel joins->fields-test
-  (is (=? [[:field {:join-alias "B", :qp/ignore-coercion true} 1]
-           [:field {:join-alias "B", :qp/ignore-coercion true} 2]
-           [:field {:join-alias "C", :qp/ignore-coercion true} 3]
-           [:field {:join-alias "C", :qp/ignore-coercion true} 4]]
+  (is (=? [[:field {:join-alias "B", lib.schema.annotation/ignore-coercion true} 1]
+           [:field {:join-alias "B", lib.schema.annotation/ignore-coercion true} 2]
+           [:field {:join-alias "C", lib.schema.annotation/ignore-coercion true} 3]
+           [:field {:join-alias "C", lib.schema.annotation/ignore-coercion true} 4]]
           (#'resolve-joins/joins->fields [{:alias  "A"
                                            :fields :all}
                                           {:alias  "B"
@@ -70,9 +71,9 @@
                :fields [$venues.id
                         $venues.name
                         [:field %categories.id {:join-alias         "c"
-                                                :qp/ignore-coercion true}]
+                                                lib.schema.annotation/ignore-coercion true}]
                         [:field %categories.name {:join-alias         "c"
-                                                  :qp/ignore-coercion true}]]})
+                                                  lib.schema.annotation/ignore-coercion true}]]})
             (resolve-joins
              (lib.tu.macros/mbql-query venues
                {:fields [$venues.id $venues.name]
@@ -93,7 +94,7 @@
               :fields [$venues.id
                        $venues.name
                        [:field %categories.name {:join-alias         "c"
-                                                 :qp/ignore-coercion true}]]})
+                                                 lib.schema.annotation/ignore-coercion true}]]})
            (resolve-joins
             (lib.tu.macros/mbql-query venues
               {:fields [$venues.id $venues.name]
@@ -195,8 +196,8 @@
                               :order-by [[:asc $name]]
                               :limit    3}))]
       (is (=? (lib.tu.macros/mbql-query venues
-                {:fields   [[:field (meta/id :categories :id)   {:join-alias "cat", :qp/ignore-coercion true}]
-                            [:field (meta/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
+                {:fields   [[:field (meta/id :categories :id)   {:join-alias "cat", lib.schema.annotation/ignore-coercion true}]
+                            [:field (meta/id :categories :name) {:join-alias "cat", lib.schema.annotation/ignore-coercion true}]]
                  :joins    [{:alias           "cat"
                              :source-table    $$categories
                              :source-metadata source-metadata
@@ -270,7 +271,7 @@
                {:fields [$id
                          [:field "_USER_ID" {:base-type          :type/Integer
                                              :join-alias         "alias"
-                                             :qp/ignore-coercion true}]]
+                                             lib.schema.annotation/ignore-coercion true}]]
                 :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
                           :alias        "alias"
                           :strategy     :left-join

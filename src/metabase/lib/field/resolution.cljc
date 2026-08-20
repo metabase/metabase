@@ -17,6 +17,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -256,8 +257,8 @@
    col          :- ::lib.metadata.calculation/visible-column]
   (let [stage (lib.util/query-stage query stage-number)]
     (cond
-      (:qp/stage-had-source-card stage)
-      (let [card-id (:qp/stage-had-source-card stage)]
+      (lib.schema.annotation/stage-had-source-card stage)
+      (let [card-id (lib.schema.annotation/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
           (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
                                              ;; if we have `id` then filter out anything that is definitely not a
@@ -276,8 +277,8 @@
                                       regular-card-propagated-keys)]
                 (select-keys col propagated-keys))))))
 
-      (:qp/stage-is-from-source-card stage)
-      (let [card-id (:qp/stage-is-from-source-card stage)]
+      (lib.schema.annotation/stage-is-from-source-card stage)
+      (let [card-id (lib.schema.annotation/stage-is-from-source-card stage)]
         {:lib/card-id card-id}))))
 
 (mu/defn- resolve-in-previous-stage-returned-columns-and-update-keys :- [:maybe ::lib.metadata.calculation/visible-column]

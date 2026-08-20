@@ -516,8 +516,8 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
     ;;
-    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
-    ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
+    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds the
+    ;; [[metabase.lib.schema.annotation/added-implicit-fields?]] annotation to stages where it adds implicit fields,
     ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
     ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
     ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz

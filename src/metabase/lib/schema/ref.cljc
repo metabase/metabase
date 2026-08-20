@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.binning :as binning]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -88,6 +89,9 @@
      [:binning                                    {:optional true} [:ref ::binning/binning]]
      [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
      [:lib/original-effective-type {:optional true} [:ref ::common/base-type]]
+     ;; internal QP annotations added to a `:field` ref's options (see [[metabase.lib.schema.annotation]]).
+     [lib.schema.annotation/ignore-coercion {:optional true} :boolean]
+     [lib.schema.annotation/allow-coercion-for-columns-without-integer-source-table {:optional true} :boolean]
      ;; marks a `:base-type` that lib added itself, so converting this ref back to legacy knows to drop it again --
      ;; see `metabase.lib.field/lib-metadata-key->ref-option-key`
      [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]

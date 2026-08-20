@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
+   [metabase.util.annotation :as u.annotation]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [run! every? mapv reduce empty? first second]]))
@@ -72,6 +73,7 @@
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
   (reduce-kv (fn [acc k v]
                (if (or (qualified-keyword? k)
+                       (u.annotation/annotation? k)
                        (#{:base-type :effective-type} k)
                        (and (#{:temporal-unit :inherited-temporal-unit} k)
                             (= v :default)))

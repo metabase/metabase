@@ -12,6 +12,7 @@
    [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -94,7 +95,7 @@
                                                  pk-id])])
               (lib/with-join-strategy :left-join)
               (lib/with-join-fields :none)
-              (assoc :qp/is-implicit-join true
+              (assoc lib.schema.annotation/is-implicit-join true
                      :fk-field-id         fk-field-id)
               (m/assoc-some :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)))))))

@@ -18,6 +18,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -209,7 +210,7 @@
                                                                :semantic_type :type/FK
                                                                :database_type "INTEGER"}]]]
                                           ::sandboxing/sandbox? true
-                                          :query-permissions/sandboxed-table $$checkins}
+                                          lib.schema.annotation/sandboxed-table $$checkins}
                            :joins [{:source-query
                                     {:source-table $$venues
                                      :fields [[:field %venues.id {}]
@@ -224,7 +225,7 @@
                                                          :semantic_type :type/Category
                                                          :database_type "INTEGER"}]]
                                      ::sandboxing/sandbox? true
-                                     :query-permissions/sandboxed-table $$venues}
+                                     lib.schema.annotation/sandboxed-table $$venues}
                                     :alias "v"
                                     :strategy :left-join
                                     :condition [:= $venue_id &v.venues.id]}]
@@ -256,7 +257,7 @@
                            :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                        "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                        "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
-                                          :query-permissions/sandboxed-table $$venues
+                                          lib.schema.annotation/sandboxed-table $$venues
                                           :params []}}
 
                    ::sandboxing/original-metadata [{:base_type :type/Integer

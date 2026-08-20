@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -49,7 +50,7 @@
   stages at the beginning of the query, so to get the actual stage number a parameter should affect we have to offset it
   by the number of stages added by preprocessing."
   [{:keys [stages], :as _query} :- ::lib.schema/query]
-  (count (take-while :qp/stage-is-from-source-card stages)))
+  (count (take-while lib.schema.annotation/stage-is-from-source-card stages)))
 
 (mu/defn- parameter->stage-number :- :int
   "The stage number that this parameter should be applied to. This is derived from the `:stage-number` specified in the
@@ -117,14 +118,14 @@
         (some non-default-param? params)))))
 
 (defn- maybe-skip-result-metadata-persistence
-  "Sets :qp/skip-result-metadata-persistence to true/false."
+  "Sets the `skip-result-metadata-persistence` annotation to true/false."
   [query]
   (->> (:stages query)
        (some stage-has-non-default-params?)
        boolean
-       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
-       ;; to decide whether to record metadata.
-       (assoc query :qp/skip-result-metadata-persistence)))
+       ;; used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to decide whether to record
+       ;; metadata.
+       (assoc query lib.schema.annotation/skip-result-metadata-persistence)))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."

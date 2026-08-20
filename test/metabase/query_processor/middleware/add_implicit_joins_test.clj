@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -998,7 +999,7 @@
                     :expressions  {"CC" [:+ 1 1]}
                     :order-by     [[:asc &Products.products.id]]
                     :limit        2}))]
-      (is (=? {:stages [{:joins       [{:qp/is-implicit-join true
+      (is (=? {:stages [{:joins       [{lib.schema.annotation/is-implicit-join true
                                         :stages              [{:source-table (meta/id :products)}]
                                         :fields              :none
                                         :alias               "PRODUCTS__via__PRODUCT_ID"

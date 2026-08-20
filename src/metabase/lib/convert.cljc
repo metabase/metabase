@@ -14,6 +14,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
@@ -687,7 +688,7 @@
                         (:alias join)
                         (str/starts-with? (:alias join) legacy-default-join-alias)
                         ;; added by [[metabase.query-processor.middleware.resolve-joins]]
-                        (not (:qp/keep-default-join-alias join)))
+                        (not (lib.schema.annotation/keep-default-join-alias join)))
                    (dissoc :alias))
         metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base

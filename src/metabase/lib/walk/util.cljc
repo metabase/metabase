@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -175,7 +176,7 @@
      query
      (fn [_query _path stage]
        (when (and (not @has-native-stage?)
-                  (not (:query-permissions/sandboxed-table stage))
+                  (not (lib.schema.annotation/sandboxed-table stage))
                   (= (:lib/type stage) :mbql.stage/native))
          (vreset! has-native-stage? true))
        nil))

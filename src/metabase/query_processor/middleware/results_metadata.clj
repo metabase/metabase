@@ -11,6 +11,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -73,11 +74,11 @@
                  ;; MBQL queries with any parameters are skipped because filters change fingerprints.
                  ;; Native queries are only skipped when parameter values differ from template tag defaults.
                  ;; See QUE2-502 for details.
-                 (not (:qp/skip-result-metadata-persistence query))
+                 (not (lib.schema.annotation/skip-result-metadata-persistence query))
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
-                 (not (:qp/source-card-id query))
+                 (not (lib.schema.annotation/source-card-id query))
                  ;; Only update changed metadata
                  (not= (comparable-metadata actual-metadata)
                        (comparable-metadata
@@ -151,7 +152,7 @@
     rff
     (let [query   (cond-> query
                     skip-result-metadata-persistence?
-                    (assoc :qp/skip-result-metadata-persistence true))
+                    (assoc lib.schema.annotation/skip-result-metadata-persistence true))
           record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
         (insights-xform metadata record! (rff metadata))))))

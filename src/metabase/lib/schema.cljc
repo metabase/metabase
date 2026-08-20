@@ -13,6 +13,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression :as expression]
@@ -65,7 +66,16 @@
   [:map
    {:decode/normalize normalize-stage-common}
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
-   [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
+   [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]
+   ;; internal QP/permission annotations added to a stage (see [[metabase.lib.schema.annotation]]).
+   [lib.schema.annotation/skip-persisted-cache       {:optional true} :boolean]
+   [lib.schema.annotation/added-implicit-fields?     {:optional true} :boolean]
+   [lib.schema.annotation/stage-is-from-source-card  {:optional true} [:ref ::id/card]]
+   [lib.schema.annotation/stage-had-source-card      {:optional true} [:ref ::id/card]]
+   [lib.schema.annotation/source-query-model?        {:optional true} :boolean]
+   [lib.schema.annotation/source-query-native-model? {:optional true} :boolean]
+   [lib.schema.annotation/persisted-info-native      {:optional true} :string]
+   [lib.schema.annotation/sandboxed-table            {:optional true} [:ref ::id/table]]])
 
 (mr/def ::stage.native
   [:and
@@ -107,7 +117,7 @@
      ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
-     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]
+     [lib.schema.annotation/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]]]
    (common/disallowed-keys
     {:query        ":query is not allowed in a native query stage, you probably meant to use :native instead."
      :source-table "MBQL stage keys like :source-table are not allowed in a native query stage."
@@ -288,7 +298,7 @@
       ;; preserve these keys because we want to hash two identical queries from different source cards
       ;; differently (see [[metabase.query-processor.middleware.cache-test/multiple-models-e2e-test]]) and this is a
       ;; reliable way to differentiate them since it gets populated by the QP.
-      (merge (select-keys stage [:qp/stage-is-from-source-card :qp/stage-had-source-card]))))
+      (merge (select-keys stage [lib.schema.annotation/stage-is-from-source-card lib.schema.annotation/stage-had-source-card]))))
 
 (mr/def ::stage.page-and-limit-are-mutually-exclusive
   "If an MBQL query stage specifies `:page`, it should not also specify `:limit`"
@@ -504,15 +514,16 @@
                      (and (not (contains? keys-to-remove k))
                           (or (simple-keyword? k)
                               ;; remove all random namespaced keys like
-                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
-                              (= (namespace k) "lib"))))
+                              ;; `:metabase.query-permissions.impl/perms`, and non-keyword annotation keys (see
+                              ;; [[metabase.lib.schema.annotation]]). Keep `:lib` keys like `:lib/type`.
+                              (and (qualified-keyword? k) (= (namespace k) "lib")))))
                    query)))
 
 (defn- encode-query-for-hashing [query]
   (let [keys-for-hashing #{:constraints
                            :database
                            :destination-database/id
-                           :impersonation/role
+                           lib.schema.annotation/impersonation-role
                            :lib/type
                            :parameters
                            :stages}]
@@ -549,6 +560,11 @@
     [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
     [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
     [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
+    ;; internal QP/permission annotations added to the top-level query (see [[metabase.lib.schema.annotation]]).
+    [lib.schema.annotation/source-card-id                   {:optional true} [:ref ::id/card]]
+    [lib.schema.annotation/skip-result-metadata-persistence {:optional true} :boolean]
+    [lib.schema.annotation/impersonation-role               {:optional true} :string]
+    [lib.schema.annotation/impersonation-admin?             {:optional true} :boolean]
     [:was-pivot
      {:optional true
       :description

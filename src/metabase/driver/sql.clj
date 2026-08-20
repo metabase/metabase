@@ -15,6 +15,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.parameters.values :as params.values]
@@ -97,7 +98,7 @@
                       :native native-query
                       :params params)
          (seq referenced-card-ids)
-         (update :query-permissions/referenced-card-ids set/union referenced-card-ids))))))
+         (update lib.schema.annotation/referenced-card-ids set/union referenced-card-ids))))))
 
 (defmulti json-field-length
   "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.
@@ -342,7 +343,7 @@
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
-   Reads `:impersonation/allow-write?` on the query to decide what to require: when truthy (set by
+   Reads [[metabase.driver.settings/*impersonation-allow-write?*]] to decide what to require: when truthy (bound by
    [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions) require a single
    write statement (insert, update, delete); otherwise require a single select statement.
 
@@ -367,7 +368,7 @@
                                                  :sql  (:native stage)})))
 
                               (and is-single-stmt?
-                                   (or allowed-stmt-type? (:impersonation/admin? query)))
+                                   (or allowed-stmt-type? (lib.schema.annotation/impersonation-admin? query)))
                               (assoc stage :native sql)
 
                               :else

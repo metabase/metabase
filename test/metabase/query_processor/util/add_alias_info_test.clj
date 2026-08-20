@@ -10,6 +10,7 @@
    [metabase.lib.field-test]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -18,8 +19,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.test :as mt]
-   [metabase.util.match :as match]))
+   [metabase.test :as mt]))
 
 (comment h2/keep-me)
 
@@ -924,7 +924,7 @@
                       (-> expected :query :source-query :source-query (dissoc :joins)))))
             (testing ":source-query"
               ;; we should be using `Reviews__` here for names
-              (is (=? {:source-query/model? true
+              (is (=? {lib.schema.annotation/source-query-model? true
                        :breakout            [[:field
                                               "Reviews__CREATED_AT"
                                               {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
@@ -1078,31 +1078,6 @@
 
 ;;; in the future when we remove all the roundtripping that happens inside of the QP then we can remove this test
 ;;; entirely.
-(deftest ^:parallel additional-keys-do-not-survive-preprocessing-test
-  (driver/with-driver :h2
-    (let [query (lib/query
-                 meta/metadata-provider
-                 (lib.tu.macros/mbql-query orders
-                   {:aggregation [[:aggregation-options [:count] {:name "count"}]]
-                    :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
-                                  !year.created-at
-                                  [:expression "pivot-grouping"]]
-                    :expressions {"pivot-grouping" [:abs 0]}
-                    :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
-                                  [:asc !year.created-at]
-                                  [:asc [:expression "pivot-grouping"]]]
-                    :joins       [{:source-table $$products
-                                   :strategy     :left-join
-                                   :alias        "PRODUCTS__via__PRODUCT_ID"
-                                   :fk-field-id  %product-id
-                                   :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
-      (is (= [nil nil]
-             (map (fn [[_tag opts]] (not-empty (select-keys opts [::add/source-table ::add/desired-alias])))
-                  (match/match-many (-> query
-                                        add/add-alias-info
-                                        qp.preprocess/preprocess)
-                    [:expression & _] &match)))))))
-
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Make sure remapped columns are given correct aliases and escaped correctly for drivers like Oracle"
     (let [mp                    (-> meta/metadata-provider

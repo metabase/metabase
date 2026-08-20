@@ -15,6 +15,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -985,9 +986,9 @@
           allow-casting?         (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
                                           (and field-metadata
                                                (or (pos-int? (driver-api/qp.add.source-table options))
-                                                   (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table
+                                                   (lib.schema.annotation/allow-coercion-for-columns-without-integer-source-table
                                                     options))))
-                                      (not (:qp/ignore-coercion options)))
+                                      (not (lib.schema.annotation/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier             (-> (apply h2x/identifier :field
                                             (concat source-table-aliases
@@ -1600,7 +1601,7 @@
                  driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
                  driver-api/qp.add.source-table        driver-api/qp.add.none
                  ;; this key will tell the SQL QP not to apply casting here either.
-                 :qp/ignore-coercion       true
+                 lib.schema.annotation/ignore-coercion   true
                  ;; used to indicate that this is a forced alias
                  ::forced-alias            true)
     ;; don't want to do temporal bucketing or binning inside the order by only.
@@ -2063,7 +2064,9 @@
   [inner-query]
   ;; sort first by any known top-level clauses according to the `top-level-application-clause-order` defined above,
   ;; then sort any unknown clauses by name.
-  (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
+  ;; secondary sort by `(str clause)` rather than `clause` so unknown keys of mixed types (e.g. keywords and
+  ;; `metabase.lib.schema.annotation` annotation keys) can be ordered without `compare` throwing.
+  (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) (str clause)])
            (keys inner-query)))
 
 (defn- format-honeysql-2 [driver dialect honeysql-form]
@@ -2168,8 +2171,8 @@
   this query (e.g. due to sandboxing or connection impersonation — see
   [[metabase.query-processor.middleware.persistence/substitute-persisted-query]])."
   [source-query]
-  (when-not (:qp/skip-persisted-cache source-query)
-    (when-let [card-id (:qp/stage-is-from-source-card source-query)]
+  (when-not (lib.schema.annotation/skip-persisted-cache source-query)
+    (when-let [card-id (lib.schema.annotation/stage-is-from-source-card source-query)]
       (let [mp   (driver-api/metadata-provider)
             card (lib.metadata.protocols/card mp card-id)]
         (when-let [persisted-info (:lib/persisted-info card)]
@@ -2259,8 +2262,8 @@
 
 (defn- stage->honeysql [driver prev-from stage]
   (cond
-    (:persisted-info/native stage)
-    (sql-source-query (:persisted-info/native stage) nil)
+    (lib.schema.annotation/persisted-info-native stage)
+    (sql-source-query (lib.schema.annotation/persisted-info-native stage) nil)
 
     (= (:lib/type stage) :mbql.stage/native)
     (sql-source-query (:native stage) (:params stage))

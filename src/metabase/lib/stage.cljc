@@ -17,6 +17,7 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.stage.util]
@@ -98,7 +99,7 @@
         ;; forward it as `:qp/implicit-field?`
         ;; so [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] will know to force Field ID
         ;; `:field_ref`s in the QP results metadata to preserve historic behavior
-        added-implicitly? (:qp/added-implicit-fields? stage)]
+        added-implicitly? (lib.schema.annotation/added-implicit-fields? stage)]
     (when-let [{fields :fields} stage]
       (-> (for [[tag :as ref-clause] fields
                 :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]

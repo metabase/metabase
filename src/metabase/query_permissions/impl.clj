@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -94,12 +95,12 @@
 
   The process for assembling this resources matches stages in a legacy-MBQL query:
 
-  1. Does the stage have a :qp/stage-is-from-source-card key?
+  1. Does the stage have a `stage-is-from-source-card` annotation key?
 
      If there's no parent-source-card-id, add the source-card id to the card-ids set and
      continue the match setting parent-source-card-id.
 
-  2. Does the stage have a :query-permissions/sandboxed-table key?
+  2. Does the stage have a `sandboxed-table` annotation key?
 
      This means the stage came from a Sandbox query, so we add the table to the table-ids set.
      If there's no parent-source-card-id, also add it to the table-query-ids set.
@@ -128,17 +129,17 @@
      ;; already legacy MBQL
      (apply merge-with merge-source-ids
             (match/match-many query
-              (:and m {:qp/stage-is-from-source-card (id :guard identity)})
+              (:and m {lib.schema.annotation/stage-is-from-source-card (id :guard identity)})
               (merge-with merge-source-ids
                           {:card-ids #{id}}
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
+                          (query->source-ids (dissoc m lib.schema.annotation/stage-is-from-source-card) id in-sandbox?))
 
-              (:and m {:query-permissions/sandboxed-table (id :guard identity)})
+              (:and m {lib.schema.annotation/sandboxed-table (id :guard identity)})
               (merge-with merge-source-ids
                           {:table-ids #{id}}
                           (when-not (or parent-source-card-id in-sandbox?)
                             {:table-query-ids #{id}})
-                          (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
+                          (query->source-ids (dissoc m lib.schema.annotation/sandboxed-table :native) parent-source-card-id true))
 
               {:native &truthy}
               (when-not parent-source-card-id
@@ -210,7 +211,7 @@
   card-sourced joins, nested card-on-card chains) first, by preprocessing the query.
 
   The whole projection, not just its tables: preprocessing is also what surfaces `:card-ids` (via the
-  `:qp/stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
+  `stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
   each card's collection in [[required-perms-for-query]] — a requirement no projection of the *raw*
   query can express. Callers keying a permission verdict on this must keep the whole map, or two
   queries reading the same tables through different cards will look identical.
@@ -229,13 +230,13 @@
   (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
-  "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
+  "Return the union of all the `referenced-card-ids` sets anywhere in the query."
   [query]
   (let [all-ids (atom #{})]
     (walk/postwalk
      (fn [form]
        (when (map? form)
-         (when-let [ids (not-empty (:query-permissions/referenced-card-ids form))]
+         (when-let [ids (not-empty (lib.schema.annotation/referenced-card-ids form))]
            (swap! all-ids set/union ids)))
        form)
      query)

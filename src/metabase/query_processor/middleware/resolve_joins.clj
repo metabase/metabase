@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
@@ -17,7 +18,7 @@
   [join]
   (merge {:strategy lib.schema.join/default-strategy}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
-           {:qp/keep-default-join-alias true})
+           {lib.schema.annotation/keep-default-join-alias true})
          join))
 
 (defn- join-field-refs [cols]
@@ -89,7 +90,7 @@
                           ;; Any coercion or temporal bucketing will already have been done in the
                           ;; subquery for the join itself. Mark the parent ref to make sure it is
                           ;; not double-coerced, which leads to SQL errors.
-                          (lib/update-options assoc :qp/ignore-coercion true))))))
+                          (lib/update-options assoc lib.schema.annotation/ignore-coercion true))))))
         joins))
 
 (defn- should-add-join-fields?

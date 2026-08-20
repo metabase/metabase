@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -43,13 +44,6 @@
                                    :query       x})))))]
     (update (vec stages) 0 update-first-stage)))
 
-(def ^:private qp-owned-stage-keys
-  [:persisted-info/native
-   :qp/stage-is-from-source-card
-   :qp/stage-had-source-card
-   :source-query/model?
-   :source-query/native-model?])
-
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
   "Convert Card's query (`:dataset-query`) to MBQL 5 as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
@@ -61,16 +55,12 @@
                  card-id
                  (ddl.i/schema-name {:id (:database-id card)} (system/site-uuid))
                  (:table-name persisted-info)))
-    (letfn [(clear-qp-owned-keys [query]
-              (lib.walk/walk query
-                             (fn [_query _path-type _path stage-or-join]
-                               (apply dissoc stage-or-join qp-owned-stage-keys))))
-            (update-stages [stages]
+    (letfn [(update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
                                     ;; This is for detecting circular refs below, and is later used as part of
                                     ;; permissions enforcement
-                                    (assoc stage :qp/stage-is-from-source-card card-id))
+                                    (assoc stage lib.schema.annotation/stage-is-from-source-card card-id))
                     ;; TODO (Cam 2026-02-25) Check if attaching the metadata is even necessary anymore
                     card-metadata (into []
                                         (remove :remapped-from)
@@ -81,7 +71,7 @@
                                     ;; the [[metabase.query-processor.middleware.persistence]] middleware
                                     ;;
                                     ;; TODO -- not 100% sure I did this right, there are almost no tests for this
-                                    persisted? (assoc :persisted-info/native
+                                    persisted? (assoc lib.schema.annotation/persisted-info-native
                                                       (qp.persisted/persisted-info-native-query
                                                        (:database-id card)
                                                        persisted-info)))]
@@ -92,7 +82,6 @@
                   ;; a card getting joined twice creates duplicate UUID errors!
                   ;; This safely re-rolls all the `:lib/uuid`s on the card's query so they won't collide.
                   lib.util/fresh-uuids-preserving-aggregation-refs
-                  clear-qp-owned-keys
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 
@@ -128,10 +117,10 @@
     ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the
     ;; dependency of the previously-resolved source card on the one we're about to resolve. We can check for circular
     ;; dependencies this way.
-    (when (:qp/stage-is-from-source-card stage)
+    (when (lib.schema.annotation/stage-is-from-source-card stage)
       (u/prog1 (vswap! dep-graph
                        dep/depend
-                       (tru "Card {0}" (:qp/stage-is-from-source-card stage))
+                       (tru "Card {0}" (lib.schema.annotation/stage-is-from-source-card stage))
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
@@ -148,9 +137,9 @@
                             ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
-                            (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model? model?)
-                            (cond-> model? (assoc :source-query/native-model? native-model?))
+                            (assoc lib.schema.annotation/stage-had-source-card (:id card)
+                                   lib.schema.annotation/source-query-model? model?)
+                            (cond-> model? (assoc lib.schema.annotation/source-query-native-model? native-model?))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 
@@ -165,13 +154,13 @@
                                                     original-query
                                                     (fn [query _path stage]
                                                       (resolve-source-cards-in-stage query stage dep-graph)))
-        card-id                                    (some :qp/stage-had-source-card
+        card-id                                    (some lib.schema.annotation/stage-had-source-card
                                                          (reverse (:stages updated-query)))
-        ;; `:qp/source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
+        ;; `source-card-id` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]] to
         ;; decide whether to record metadata as well as by the [[add-dataset-info]] post-processing middleware, and
         ;; by [[metabase.query-processor.middleware.permissions/check-query-permissions*]]
         updated-query                              (cond-> updated-query
-                                                     card-id  (-> (update :qp/source-card-id #(or % card-id))
+                                                     card-id  (-> (update lib.schema.annotation/source-card-id #(or % card-id))
                                                                   (update-in [:info :card-id] #(or % card-id))))]
     (if (= updated-query original-query)
       original-query
@@ -181,7 +170,7 @@
 (mu/defn resolve-source-cards :- ::lib.schema/query
   "If a stage has a `:source-card`, fetch the Card and prepend its underlying stages to the pipeline."
   [query :- ::lib.schema/query]
-  (let [query (dissoc query :source-card-id :qp/source-card-id)] ; `:source-card-id` was the old key
+  (let [query (dissoc query :source-card-id lib.schema.annotation/source-card-id)] ; `:source-card-id` was the old key
     (resolve-source-cards* query 0 (volatile! (dep/graph)))))
 
 (defn add-dataset-info
@@ -190,9 +179,9 @@
 
   TODO -- we should remove remove the `:dataset` key and make sure nothing breaks, and make sure everything is looking
   at `:model` instead."
-  [{:qp/keys [source-card-id], :as preprocessed-query} rff]
-  (if-not source-card-id
-    rff
+  [preprocessed-query rff]
+  (if-let [source-card-id (lib.schema.annotation/source-card-id preprocessed-query)]
     (let [model? (= (:type (lib.metadata/card preprocessed-query source-card-id)) :model)]
       (fn rff' [metadata]
-        (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))))
+        (rff (cond-> metadata model? (assoc :dataset model?, :model model?)))))
+    rff))

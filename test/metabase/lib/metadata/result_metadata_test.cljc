@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -1059,7 +1060,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table (meta/id :orders)
                             :joins        [{:lib/type            :mbql/join
-                                            :qp/is-implicit-join true
+                                            lib.schema.annotation/is-implicit-join true
                                             :stages              [{:lib/type     :mbql.stage/mbql
                                                                    :source-table (meta/id :products)}]
                                             :alias               "PRODUCTS__via__PRODUCT_ID"

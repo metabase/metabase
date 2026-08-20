@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -169,7 +170,7 @@
     (cond-> query
       ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
-      (assoc :persisted-info/native
+      (assoc lib.schema.annotation/persisted-info-native
              (qp.persisted/persisted-info-native-query
               (u/the-id (lib.metadata/database metadata-providerable))
               persisted-info)))))
@@ -349,7 +350,7 @@
         sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
         new-source-stages  (mapv (fn [stage]
                                    (-> stage
-                                       (assoc :query-permissions/sandboxed-table source-table)
+                                       (assoc lib.schema.annotation/sandboxed-table source-table)
                                        lib/fresh-uuids))
                                  (:stages sandbox-query))
         ;; merge stage metadata in the last source stage if needed
@@ -461,7 +462,7 @@
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
     (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
-                                                            {:query-permissions/sandboxed-table &truthy} true)))
+                                                            {lib.schema.annotation/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

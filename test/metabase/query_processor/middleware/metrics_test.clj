@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -393,8 +394,8 @@
     (is (=? {:stages [{:joins [{:stages [{:aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
-                                                      :qp/stage-had-source-card (:id question)
-                                                      :source-query/model?      false})]}]}]}
+                                                      lib.schema.annotation/stage-had-source-card (:id question)
+                                                      lib.schema.annotation/source-query-model?      false})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question

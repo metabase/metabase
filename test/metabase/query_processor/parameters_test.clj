@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib-native]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -698,7 +699,7 @@
                                              :type     :native
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
                                                                :lib/type
-                                                               :query-permissions/referenced-card-ids)}))))))
+                                                               lib.schema.annotation/referenced-card-ids)}))))))
               (let [query (mt/native-query
                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
                             :template-tags {"card" {:name         "card"

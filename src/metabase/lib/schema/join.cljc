@@ -2,6 +2,7 @@
   "Schemas for things related to joins."
   (:refer-clojure :exclude [mapv every? empty? not-empty])
   (:require
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -125,7 +126,10 @@
     [:conditions  ::conditions]
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]
-    [:strategy {:optional true} ::strategy]]
+    [:strategy {:optional true} ::strategy]
+    ;; internal QP annotations added to a join (see [[metabase.lib.schema.annotation]]).
+    [lib.schema.annotation/is-implicit-join        {:optional true} :boolean]
+    [lib.schema.annotation/keep-default-join-alias {:optional true} :boolean]]
    (common/disallowed-keys
     {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
      :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"

@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -332,7 +333,7 @@
                                                      [:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID"}])
                                  created-at        (lib.tu.macros/$ids orders
                                                      [:field %created-at {:temporal-unit      :year
-                                                                          :qp/ignore-coercion true}])
+                                                                          lib.schema.annotation/ignore-coercion true}])
                                  pivot-grouping    [:field "pivot-grouping" {:base-type :type/Float}]]
                              (lib.tu.macros/mbql-query orders
                                {:breakout    [products-category
@@ -424,7 +425,7 @@
                                                          $subtotal
                                                          [:expression "DISCOUNT"]]
                                           :source-table $$orders}
-                    :source-query/model? true
+                    lib.schema.annotation/source-query-model? true
                     :breakout            [[:field "ID"       {:base-type :type/Integer}]
                                           [:field "SUBTOTAL" {:base-type :type/Float}]
                                           [:field "DISCOUNT" {:base-type :type/Float}]]}))

@@ -27,11 +27,13 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.types.core]
    [metabase.util :as u]
+   [metabase.util.annotation :as u.annotation]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -61,8 +63,9 @@
     {:error/message "column with all kebab-cased keys"}
     (fn [m]
       (every? (fn [k]
-                (and (keyword? k)
-                     (not (str/includes? k "_"))))
+                (or (u.annotation/annotation? k)
+                    (and (keyword? k)
+                         (not (str/includes? k "_")))))
               (keys m)))]])
 
 (mr/def ::cols
@@ -192,7 +195,7 @@
 (defn- implicit-join-aliases [query stage-number]
   (let [aliases (into #{}
                       (keep (fn [join]
-                              (when (:qp/is-implicit-join join)
+                              (when (lib.schema.annotation/is-implicit-join join)
                                 (:alias join))))
                       (:joins (lib.util/query-stage query stage-number)))]
     (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
@@ -279,7 +282,7 @@
   [query :- ::lib.schema/query
    col   :- ::kebab-cased-map]
   (let [stage                     (lib.util/query-stage query -1)
-        stage-has-source-card?    (:qp/stage-had-source-card stage)
+        stage-has-source-card?    (lib.schema.annotation/stage-had-source-card stage)
         join-is-in-current-stage? (when-let [join-alias (lib.join.util/current-join-alias col)]
                                     (some #(= (lib.join.util/current-join-alias %) join-alias)
                                           (lib.join/joins query -1)))]
@@ -386,8 +389,8 @@
             ;; Fallback: for direct model queries (e.g. viewing a native model), fetch-source-query
             ;; doesn't run because there's no :source-card to resolve. In that case, check if the
             ;; query stage itself is native.
-            native-model? (if (contains? last-stage :source-query/native-model?)
-                            (:source-query/native-model? last-stage)
+            native-model? (if (contains? last-stage lib.schema.annotation/source-query-native-model?)
+                            (lib.schema.annotation/source-query-native-model? last-stage)
                             (lib.util/native-stage? last-stage))
             ;; Set explicitly by [[metabase.query-processor.card]] when the card is run
             ;; directly. When true, aggregation columns are merged and temporal/binning

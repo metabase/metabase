@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -42,7 +43,7 @@
 (deftest ^:parallel native-query-with-card-template-tag-include-referenced-card-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
     (testing (str "Expanding a Card template tag should add the card ID(s) to"
-                  " `:query-permissions/referenced-card-ids`")
+                  " `referenced-card-ids`")
       (let [mp    (lib.tu/mock-metadata-provider
                    (mt/metadata-provider)
                    {:cards [{:id            1
@@ -63,9 +64,9 @@
                                                                                      :display-name "card"
                                                                                      :type         :card
                                                                                      :card-id      2}}
-                                     :query-permissions/referenced-card-ids #{Integer/MAX_VALUE}}))]
+                                     lib.schema.annotation/referenced-card-ids #{Integer/MAX_VALUE}}))]
         ;; this SHOULD NOT include `1`, because Card 1 is only referenced indirectly; if you have permissions to run
         ;; Card 2 that should be sufficient to run it even if it references Card 1 (see #15131)
-        (is (=? {:query-permissions/referenced-card-ids #{Integer/MAX_VALUE 2}}
+        (is (=? {lib.schema.annotation/referenced-card-ids #{Integer/MAX_VALUE 2}}
                 (-> (qp.native/expand-stage query 0)
                     (lib/query-stage 0))))))))

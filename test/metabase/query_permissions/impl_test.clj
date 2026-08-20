@@ -5,6 +5,7 @@
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.path :as permissions.path]
@@ -308,7 +309,7 @@
 
 (deftest ^:parallel native-query-referenced-card-permissions-test
   (testing (str "Check permissions for native query card reference parameters"
-                " (the `:query-permissions/referenced-card-ids` key(s))")
+                " (the `referenced-card-ids` key(s))")
     (mt/with-temp [:model/Collection {collection-1-id :id} {}
                    :model/Collection {collection-2-id :id} {}
                    :model/Card       {card-1-id :id}       {:collection_id collection-1-id}
@@ -323,15 +324,15 @@
                 {:database                              (mt/id)
                  :type                                  :native
                  :native                                "SELECT * FROM (SELECT * FROM whatever);"
-                 :query-permissions/referenced-card-ids #{card-1-id card-2-id}}))))
+                 lib.schema.annotation/referenced-card-ids #{card-1-id card-2-id}}))))
       (testing "MBQL query with native source queries"
         (let [native-query {:database (mt/id)
                             :type     :query
                             :query    {:source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
-                                                      :query-permissions/referenced-card-ids #{card-1-id}}
+                                                      lib.schema.annotation/referenced-card-ids #{card-1-id}}
                                        :joins        [{:alias        "J"
                                                        :source-query {:native "SELECT * FROM (SELECT * FROM whatever);"
-                                                                      :query-permissions/referenced-card-ids #{card-2-id}}
+                                                                      lib.schema.annotation/referenced-card-ids #{card-2-id}}
                                                        :condition    [:= true false]}]}}]
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
@@ -360,7 +361,7 @@
                               :joins        [{:alias "Join Alias"
                                               :condition [:= true false]
                                               :source-query
-                                              {:qp/stage-is-from-source-card card-id
+                                              {lib.schema.annotation/stage-is-from-source-card card-id
                                                :native "SELECT * FROM orders"}}]}}]
         ;; The source card of the joined native query is detected, and we don't require full native perms
         (is (= {:card-ids             #{card-id}

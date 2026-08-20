@@ -9,6 +9,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -468,9 +469,9 @@
                :database     (meta/id)
                :stages       [{:lib/type                     :mbql.stage/mbql
                                :source-table                 (meta/id :venues)
-                               :qp/stage-is-from-source-card 1}
+                               lib.schema.annotation/stage-is-from-source-card 1}
                               {:lib/type                 :mbql.stage/mbql
-                               :qp/stage-had-source-card 1}]
+                               lib.schema.annotation/stage-had-source-card 1}]
                ;; dangling `template-tag` parameters can happen if you replace a source card that had a native query
                ;; with an MBQL one... we should just ignore these.
                :parameters   [{:id     "13ebc3b6"

@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -681,7 +682,7 @@
                                [:field 393 nil]
                                [:field 389 nil]]}}
              {:database 7
-              :qp/source-card-id 1
+              lib.schema.annotation/source-card-id 1
               :info {:card-id 1}
               :type :query
               :query {:limit 2
@@ -705,23 +706,23 @@
                                                   :base_type :type/Text}]
                                :alias "Card 2 - Category"
                                :strategy :left-join
-                               :source-query/model? false
-                               :qp/stage-had-source-card 2
+                               lib.schema.annotation/source-query-model? false
+                               lib.schema.annotation/stage-had-source-card 2
                                :condition [:=
                                            [:field "Products__CATEGORY" {:base-type :type/Text}]
                                            [:field 350 {:base-type :type/Text, :join-alias "Card 2 - Category"}]]
                                :source-query {:source-table 45
                                               :breakout [[:field 350 {:base-type :type/Text}]]
-                                              :qp/stage-is-from-source-card 2
+                                              lib.schema.annotation/stage-is-from-source-card 2
                                               :order-by [[:asc [:field 350 {:base-type :type/Text}]]]}}]
-                      :source-query {:qp/stage-had-source-card 1
-                                     :source-query/model? false
+                      :source-query {lib.schema.annotation/stage-had-source-card 1
+                                     lib.schema.annotation/source-query-model? false
                                      :fields [[:field 350 {:base-type :type/Text, :join-alias "Products"}]
                                               [:field "count" {:base-type :type/Integer}]]
                                      :source-query {:source-table 42
                                                     :breakout [[:field 350 {:base-type :type/Text, :join-alias "Products"}]]
                                                     :aggregation [[:count]]
-                                                    :qp/stage-is-from-source-card 1
+                                                    lib.schema.annotation/stage-is-from-source-card 1
                                                     :order-by [[:asc [:field 350 {:base-type :type/Text, :join-alias "Products"}]]]
                                                     :joins [{:alias "Products"
                                                              :strategy :left-join

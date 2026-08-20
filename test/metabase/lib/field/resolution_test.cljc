@@ -14,6 +14,7 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.lib.schema.id :as id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -256,7 +257,7 @@
                                                                       :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 1))}
                                        :native                       "SELECT * FROM some_table;"
                                        ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
-                                       :qp/stage-is-from-source-card 1}
+                                       lib.schema.annotation/stage-is-from-source-card 1}
                                       {:lib/type                     :mbql.stage/mbql
                                        :lib/stage-metadata           {:lib/type :metadata/results
                                                                       :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 2))}
@@ -264,18 +265,18 @@
                                                                        "EXAMPLE_TIMESTAMP"]
                                                                       [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
                                                                        "EXAMPLE_WEEK"]]
-                                       :qp/stage-had-source-card     1
-                                       :qp/stage-is-from-source-card 2
-                                       :source-query/model?          false}
+                                       lib.schema.annotation/stage-had-source-card     1
+                                       lib.schema.annotation/stage-is-from-source-card 2
+                                       lib.schema.annotation/source-query-model?          false}
                                       {:lib/type                 :mbql.stage/mbql
                                        :fields                   [[:field {:base-type :type/DateTime, :lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                                                                    "EXAMPLE_TIMESTAMP"]
                                                                   [:field {:base-type :type/DateTime, :inherited-temporal-unit :week, :lib/uuid "2b33e40b-3537-4126-aef0-96a7792d339b"}
                                                                    "EXAMPLE_WEEK"]]
-                                       :qp/stage-had-source-card 2
+                                       lib.schema.annotation/stage-had-source-card 2
                                        ;; i.e., the previous stage was from a model. Added
                                        ;; by [[metabase.query-processor.middleware.fetch-source-query/resolve-source-cards-in-stage]]]
-                                       :source-query/model?      true}]}]
+                                       lib.schema.annotation/source-query-model?      true}]}]
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
@@ -484,10 +485,10 @@
           (let [model-query (lib/query mp (:dataset-query (lib.metadata/card mp 1)))
                 query'      (update query :stages (fn [[original-stage]]
                                                     [(-> (first (:stages model-query))
-                                                         (assoc :qp/stage-is-from-source-card 1))
+                                                         (assoc lib.schema.annotation/stage-is-from-source-card 1))
                                                      (-> original-stage
                                                          (dissoc :source-card)
-                                                         (assoc :qp/stage-had-source-card 1))]))]
+                                                         (assoc lib.schema.annotation/stage-had-source-card 1))]))]
             (is (=? [(assoc expected
                             :lib/source-column-alias "C__NAME"
                             :lib/source              :source/previous-stage)]
@@ -628,13 +629,13 @@
                           card-stages (:stages card-query)]
                       (conj (vec (butlast card-stages))
                             (-> (last card-stages)
-                                (assoc :qp/stage-is-from-source-card source-card
-                                       :source-query/model? (= (:type source-card) :model))
+                                (assoc lib.schema.annotation/stage-is-from-source-card source-card
+                                       lib.schema.annotation/source-query-model? (= (:type source-card) :model))
                                 (cond-> (:result-metadata card) (assoc :lib/stage-metadata {:lib/type :metadata/results
                                                                                             :columns  (:result-metadata card)})))
                             (-> stage
                                 (dissoc :source-card)
-                                (assoc :qp/stage-had-source-card source-card)))))))]
+                                (assoc lib.schema.annotation/stage-had-source-card source-card)))))))]
     (if (= query' query)
       query
       (recur query'))))
@@ -690,10 +691,10 @@
                     {:source-table "card__2"
                      :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
                      :breakout     [[:field "RATING" {:base-type :type/Float}]]})))]
-      (is (=? {:stages [{:qp/stage-is-from-source-card 1
+      (is (=? {:stages [{lib.schema.annotation/stage-is-from-source-card 1
                          :lib/stage-metadata           map?
                          :joins                        [{:stages [{:lib/stage-metadata map?}]}]}
-                        {:qp/stage-is-from-source-card 2
+                        {lib.schema.annotation/stage-is-from-source-card 2
                          :lib/stage-metadata           map?}
                         {}]}
               query))
@@ -740,9 +741,9 @@
                        edited-mp
                        {:database (meta/id)
                         :type     :query
-                        :query    {:qp/stage-had-source-card 3
-                                   :source-query/model?      true
-                                   :source-query             {:qp/stage-is-from-source-card 3
+                        :query    {lib.schema.annotation/stage-had-source-card 3
+                                   lib.schema.annotation/source-query-model?      true
+                                   :source-query             {lib.schema.annotation/stage-is-from-source-card 3
                                                               :native                       "select * from venues"}
                                    :source-metadata          (:result-metadata (lib.metadata/card edited-mp 3))
                                    :fields                   [[:field (meta/id :venues :id) nil]
@@ -1223,8 +1224,8 @@
           ;; simulate a preprocessed query where the card source is inlined.
           query      (-> (lib/query mp card-query)
                          lib/append-stage
-                         (lib/update-query-stage 0 assoc :qp/stage-is-from-source-card 1)
-                         (lib/update-query-stage 1 assoc :qp/stage-had-source-card 1))]
+                         (lib/update-query-stage 0 assoc lib.schema.annotation/stage-is-from-source-card 1)
+                         (lib/update-query-stage 1 assoc lib.schema.annotation/stage-had-source-card 1))]
       (is (=? {:name         "avg"
                :display-name "Average of Subtotal"
                :lib/source   :source/previous-stage
@@ -1365,7 +1366,7 @@
                                 :fields       [[:field {} (meta/id :orders :user-id)]
                                                [:field {:join-alias "PEOPLE__via__USER_ID"} (meta/id :people :email)]]
                                 :joins        [{:lib/type            :mbql/join
-                                                :qp/is-implicit-join true
+                                                lib.schema.annotation/is-implicit-join true
                                                 :stages              [{:lib/type     :mbql.stage/mbql
                                                                        :source-table (meta/id :people)}]
                                                 :alias               "PEOPLE__via__USER_ID"

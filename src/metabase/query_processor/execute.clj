@@ -1,6 +1,7 @@
 (ns metabase.query-processor.execute
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -23,7 +24,7 @@
               {:pre [(map? metadata)]}
               (rff (cond-> metadata
                      (not (:native_form metadata))
-                     (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled) query)))))]
+                     (assoc :native_form ((some-fn lib.schema.annotation/compiled-inline lib.schema.annotation/compiled) query)))))]
       (qp query rff*))))
 
 (def ^:private middleware
@@ -52,14 +53,14 @@
 
 (mu/defn- run [query :- ::qp.schema/any-query
                rff   :- ::qp.schema/rff]
-  ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
+  ;; if the query has a `compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
   ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
   ;; checks in the middleware
   (let [query (cond-> query
                 ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
                 (:lib/type query) lib/->legacy-MBQL)
         query (cond-> query
-                (not (:native query)) (assoc :native (:qp/compiled query)))]
+                (not (:native query)) (assoc :native (lib.schema.annotation/compiled query)))]
     (qp.pipeline/*run* query rff)))
 
 (mu/defn- execute-fn :- ::qp.schema/qp

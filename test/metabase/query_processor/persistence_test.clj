@@ -15,6 +15,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
@@ -257,7 +258,7 @@
                                             :dataset_query (mt/mbql-query products)}]
             (persist-models!)
             (mt/with-metadata-provider (mt/id)
-              (let [source-query     {:qp/stage-is-from-source-card (:id model)
+              (let [source-query     {lib.schema.annotation/stage-is-from-source-card (:id model)
                                       :source-table                 (mt/id :products)}
                     result           (#'sql.qp/resolve-persisted-source-sql source-query)
                     persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]

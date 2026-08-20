@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
+   [metabase.util.annotation :as u.annotation]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
@@ -30,11 +31,21 @@
   (cond-> x
     (string? x) (-> u/lower-case-en keyword)))
 
+(defn- normalize-key
+  "Keywordize a JSON/string map key, leaving keywords and [[metabase.lib.schema.annotation/Annotation]] sentinels
+  untouched."
+  [k]
+  (cond
+    (keyword? k)                             k
+    (string? k)                              (keyword k)
+    (u.annotation/annotation? k)   k
+    :else                                    (keyword k)))
+
 (defn normalize-map-no-kebab-case
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
   (when (map? m)
-    (let [m (update-keys m keyword)]
+    (let [m (update-keys m normalize-key)]
       (cond-> m
         (string? (:lib/type m)) (update :lib/type keyword)))))
 
@@ -60,7 +71,9 @@
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
   (when (map? m)
-    (update-keys m memoized-kebab-key)))
+    (update-keys m (fn [k]
+                     (cond-> k
+                       (not (u.annotation/annotation? k)) memoized-kebab-key)))))
 
 (defn normalize-map
   "Base normalization behavior for a MBQL 5 map: keywordize keys and keywordize `:lib/type`; convert map to
@@ -336,8 +349,9 @@
      (memoize instance-of-class*)))
 
 (defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (not (str/includes? (str k) "_"))))
+  (or (u.annotation/annotation? k)
+      (and (keyword? k)
+           (not (str/includes? (str k) "_")))))
 
 (defn- kebab-cased-map? [m]
   (and (map? m)

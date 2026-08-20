@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.annotation :as lib.schema.annotation]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -34,14 +35,14 @@
   [:merge
    [:ref ::lib.schema/query]
    [:map
-    [:qp/compiled        ::compiled]
+    [lib.schema.annotation/compiled        ::compiled]
     ;; If the query was already native, then don't include this because we're not about to go splice the parameters
     ;; into the existing query. Otherwise we should include this.
-    [:qp/compiled-inline {:optional true} ::compiled-with-inlined-parameters]]])
+    [lib.schema.annotation/compiled-inline {:optional true} ::compiled-with-inlined-parameters]]])
 
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]
-  (assert (not (:qp/compiled query)) "This query has already been compiled!")
+  (assert (not (lib.schema.annotation/compiled query)) "This query has already been compiled!")
   (if (lib/native-only-query? query)
     (set/rename-keys (lib/query-stage query -1) {:native :query})
     (driver/mbql->native driver/*driver* query)))
@@ -66,22 +67,22 @@
     (compile-preprocessed (qp.preprocess/preprocess query))))
 
 (mu/defn attach-compiled-query :- ::query-with-compiled-query
-  "If this is an MBQL query, compile it and attach it to the query under the `:qp/compiled` key. Previously, we attached
+  "If this is an MBQL query, compile it and attach it to the query under the `compiled` key. Previously, we attached
   this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
   query outright and remove the MBQL `:query`, because that would break perms checks."
   [preprocessed :- ::lib.schema/query]
-  (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)
+  (let [preprocessed (dissoc preprocessed lib.schema.annotation/compiled lib.schema.annotation/compiled-inline)
         compiled (compile-preprocessed preprocessed)]
     (-> preprocessed
-        (assoc :qp/compiled compiled)
+        (assoc lib.schema.annotation/compiled compiled)
         ;; if this query is pure-MBQL then we can reliably (re)compile it with inline parameters. If it has any native
         ;; stage then it might already have parameters, and we're not about to try to splice them back in.
         ;; If the normally compiled query didn't have any parameters, reuse it as it's already effectively "inline".
         (cond-> (not (lib/any-native-stage? preprocessed))
-          (assoc :qp/compiled-inline (if (empty? (:params compiled))
-                                       compiled
-                                       (binding [driver/*compile-with-inline-parameters* true]
-                                         (compile-preprocessed preprocessed))))))))
+          (assoc lib.schema.annotation/compiled-inline (if (empty? (:params compiled))
+                                                         compiled
+                                                         (binding [driver/*compile-with-inline-parameters* true]
+                                                           (compile-preprocessed preprocessed))))))))
 
 (mu/defn compile-with-inline-parameters :- ::compiled-with-inlined-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
@@ -91,6 +92,6 @@
   REPL; [[metabase.query-processor.middleware.splice-params-in-response/splice-params-in-response]] middleware handles
   similar functionality for queries that are actually executed.)"
   [query :- ::qp.schema/any-query]
-  (or (:qp/compiled-inline query)
+  (or (lib.schema.annotation/compiled-inline query)
       (binding [driver/*compile-with-inline-parameters* true]
-        (compile (dissoc query :qp/compiled)))))
+        (compile (dissoc query lib.schema.annotation/compiled)))))
