@@ -216,7 +216,7 @@ jobs:
       - be-check
       - be-tests
     if: always() && !cancelled()
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}
