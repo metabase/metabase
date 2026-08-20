@@ -1,14 +1,23 @@
 import Color from "color";
 import type { HTMLAttributes, Ref } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { Suspense, forwardRef, lazy, useCallback, useMemo } from "react";
 import type { ColorState } from "react-color";
 import { t } from "ttag";
 
 import { ColorInput } from "metabase/common/components/ColorInput";
 import { Group, NumberInput } from "metabase/ui";
 
-import { ContentContainer } from "./ColorPicker.styled";
-import { ColorPickerControls } from "./ColorPickerControls";
+import { ContentContainer, ControlsPlaceholder } from "./ColorPicker.styled";
+
+/**
+ * The saturation and hue controls carry `react-color`, which nothing else in the
+ * app uses. They only render once a picker is open, so they load then.
+ */
+const ColorPickerControls = lazy(() =>
+  import(
+    /* webpackChunkName: "color-picker-controls" */ "./ColorPickerControls"
+  ).then(({ ColorPickerControls }) => ({ default: ColorPickerControls })),
+);
 
 export type ColorPickerContentAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -65,7 +74,9 @@ export const ColorPickerContent = forwardRef(function ColorPickerContent(
 
   return (
     <ContentContainer {...props} ref={ref}>
-      <ColorPickerControls color={value} onChange={handlePickerChange} />
+      <Suspense fallback={<ControlsPlaceholder />}>
+        <ColorPickerControls color={value} onChange={handlePickerChange} />
+      </Suspense>
       {showAlpha ? (
         <Group gap="sm" wrap="nowrap" align="flex-start">
           <ColorInput value={value} fullWidth onChange={handleHexChange} />

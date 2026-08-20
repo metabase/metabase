@@ -37,6 +37,12 @@ export const ControlsRoot = styled.div`
   }
 `;
 
+// Holds the height of SaturationContainer plus its margin and HueContainer, so
+// the popover does not resize when the controls arrive.
+export const ControlsPlaceholder = styled.div`
+  height: 11.5rem;
+`;
+
 export const SaturationContainer = styled.div`
   position: relative;
   height: 10rem;
