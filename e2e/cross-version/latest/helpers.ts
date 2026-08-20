@@ -9,9 +9,7 @@ export function saveQuestion(name: string) {
   cy.findByTestId("save-question-modal").within(() => {
     cy.findByLabelText("Name").clear().type(name);
     cy.button("Save").click();
-    cy.wait("@saveQuestion").then(({ response }) => {
-      cy.wrap(response?.body.id).as("savedQuestionId");
-    });
+    cy.wait("@saveQuestion");
   });
   cy.findByTestId("save-question-modal").should("not.exist");
 }

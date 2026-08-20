@@ -40,7 +40,7 @@ jobs:
         with:
           script: |
             const { buildCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
-            const { config } = buildCrossVersionMatrix(${{ vars.CURRENT_VERSION }});
+            const { config } = buildCrossVersionMatrix(${{ vars.CURRENT_VERSION }}, 1);
             const matrix = JSON.stringify({ include: config });
             core.setOutput("matrix", matrix);
             console.log("matrix:", matrix);
