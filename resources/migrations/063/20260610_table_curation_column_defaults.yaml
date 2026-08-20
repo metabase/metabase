@@ -23,10 +23,3 @@ databaseChangeLog:
             columnName: data_authority
             columnDataType: varchar(20)
             defaultValue: unconfigured
-      ## The default this reasserts is not ours to drop: v57 created data_authority NOT NULL with the same
-      ## "unconfigured" default. Liquibase's automatic rollback for addDefaultValue is dropDefaultValue, which
-      ## would take v57's default with it and leave a NOT NULL column with no default — every pre-v63 insert
-      ## that omits data_authority (the model only started supplying it in v63) then fails the constraint.
-      ## That is what breaks a downgrade to v62 or older: the audit DB sync dies inserting metabase_table rows
-      ## and the instance never finishes booting. Rolling this back is a no-op.
-      rollback: # nothing to do; see above
