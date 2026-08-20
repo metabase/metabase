@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.collections-rest.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
@@ -17,6 +18,7 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
+   [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -1073,7 +1075,12 @@
         (testing "ignores search text"
           (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
                   :total_items      5}
-                 (mt/user-http-request :crowberto :get 200 url :q "zzz"))))))
+                 (mt/user-http-request :crowberto :get 200 url :q "zzz"))))
+        (testing "accepts an entity id"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric" "timeline"]
+                  :total_items      5}
+                 (mt/user-http-request :crowberto :get 200
+                                       (str "collection/" (:entity_id collection) "/items/metadata")))))))
     (testing "requires read access to the collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {}]
@@ -1081,15 +1088,110 @@
                  (mt/user-http-request :rasta :get 403
                                        (str "collection/" (u/the-id collection) "/items/metadata")))))))))
 
+(defn- kebab->snake-params
+  "The items endpoints still take snake_case query params; the metadata endpoints take kebab-case. Translate a
+  metadata param list so the same scope can be requested from both."
+  [params]
+  (mapv #(if (keyword? %) (keyword (str/replace (name %) #"-" "_")) %) params))
+
+(deftest collection-items-metadata-matches-items-list-test
+  (testing "GET /api/collection/:id/items/metadata describes the same list as GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       _ {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Card       _ {:name                "Pinned metric"
+                                        :type                :metric
+                                        :collection_id       (u/the-id collection)
+                                        :collection_position 1}
+                   :model/Timeline   _ {:name "Timeline" :collection_id (u/the-id collection)}
+                   :model/Dashboard  _ {:name              "Trashed dashboard"
+                                        :collection_id     (u/the-id collection)
+                                        :archived          true
+                                        :archived_directly true}]
+      (doseq [params [[]
+                      [:archived true]
+                      [:pinned-state "is_pinned"]
+                      [:pinned-state "is_not_pinned"]
+                      [:archived true :pinned-state "is_not_pinned"]]]
+        (testing (pr-str params)
+          (let [metadata (apply mt/user-http-request :crowberto :get 200
+                                (str "collection/" (u/the-id collection) "/items/metadata")
+                                params)
+                listed   (apply mt/user-http-request :crowberto :get 200
+                                (str "collection/" (u/the-id collection) "/items")
+                                :include_available_models true
+                                (kebab->snake-params params))]
+            (is (= (:total listed) (:total_items metadata)))
+            (is (= (:available_models listed) (:available_models metadata)))))))))
+
+(deftest collection-items-metadata-trash-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (testing "describes the trash when asked about the trash collection"
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       _ {:name              "Trashed question"
+                                          :collection_id     (u/the-id collection)
+                                          :archived          true
+                                          :archived_directly true}]
+        (let [url      (str "collection/" (collection/trash-collection-id) "/items/metadata")
+              metadata (mt/user-http-request :crowberto :get 200 url :models "card")
+              listed   (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (collection/trash-collection-id) "/items")
+                                             :models "card")]
+          (is (= ["card"] (:available_models metadata)))
+          ;; Other trashed cards may exist in a shared app DB; what matters is that the count
+          ;; matches the items list for the same scope.
+          (is (pos? (:total_items metadata)))
+          (is (= (:total listed) (:total_items metadata))))))))
+
+(deftest collection-items-metadata-dashboard-questions-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard  dashboard {:name "Dashboard" :collection_id (u/the-id collection)}
+                   :model/Card       _         {:name          "Dashboard question"
+                                                :collection_id (u/the-id collection)
+                                                :dashboard_id  (u/the-id dashboard)}]
+      (let [url (str "collection/" (u/the-id collection) "/items/metadata")]
+        (testing "hides dashboard questions by default"
+          (is (= {:available_models ["dashboard"] :total_items 1}
+                 (mt/user-http-request :crowberto :get 200 url))))
+        (testing "counts dashboard questions when show-dashboard-questions is set"
+          (is (= {:available_models ["card" "dashboard"] :total_items 2}
+                 (mt/user-http-request :crowberto :get 200 url :show-dashboard-questions true))))))))
+
 (deftest root-collection-items-metadata-test
   (testing "GET /api/collection/root/items/metadata"
-    (testing "returns the metadata shape for the root collection"
-      (let [{:keys [available_models] :as response}
-            (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")]
-        (is (=? {:available_models sequential?
-                 :total_items      nat-int?}
-                response))
-        (is (every? string? available_models))))
+    (testing "describes the same list as GET /api/collection/root/items"
+      (mt/with-temp [:model/Card      _ {:name "UXW5016 root question" :collection_id nil}
+                     :model/Dashboard _ {:name "UXW5016 root dashboard" :collection_id nil}]
+        (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")
+              listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                             :include_available_models true)]
+          (is (set/subset? #{"card" "dashboard"} (set (:available_models metadata))))
+          (is (= (:available_models listed) (:available_models metadata)))
+          (is (= (:total listed) (:total_items metadata))))))
+    (testing "restricts to the models valid for the requested namespace"
+      (mt/with-temp [:model/Collection _ {:name "UXW5016 currency child" :namespace "currency" :location "/"}]
+        (is (= ["collection"]
+               (:available_models (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                                        :namespace "currency"))))))
+    (testing "never counts snippets, which are not a filterable type"
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
+        (let [metadata (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                             :namespace "snippets")
+              listed   (mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                             :namespace "snippets")]
+          (is (some #(= (:model %) "snippet") (:data listed))
+              "sanity check: the items list itself does return snippets")
+          (is (not (contains? (set (:available_models metadata)) "snippet")))
+          (is (= (count (remove #(= (:model %) "snippet") (:data listed)))
+                 (:total_items metadata))))))
+    (testing "excludes library collections unless include-library is set"
+      (mt/with-premium-features #{:library}
+        (mt/with-temp [:model/Collection _ {:name "UXW5016 library" :type "library-data" :location "/"}]
+          (let [without (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                              :models "collection")
+                with    (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
+                                              :models "collection" :include-library true)]
+            (is (= (inc (:total_items without)) (:total_items with)))))))
     (testing "restricts a user without root read permission to collections, like the items list"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Card       _                  {:name "Root question"}
@@ -1761,6 +1863,28 @@
                              (into #{}
                                    (map #(select-keys % [:id :name]))
                                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
+
+(deftest snippet-collection-items-count-only-test
+  (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
+    (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
+      (mt/with-test-user :crowberto
+        (let [queries     (atom [])
+              real-query  mdb/query
+              this-thread (Thread/currentThread)]
+          ;; `with-redefs` is global, so only record what this thread asks for.
+          (with-redefs [mdb/query (fn [query & args]
+                                    (when (identical? this-thread (Thread/currentThread))
+                                      (swap! queries conj query))
+                                    (apply real-query query args))]
+            (request/with-limit-and-offset 0 0
+              (is (pos? (:total (#'api.collection/collection-children
+                                 (assoc collection/root-collection :namespace "snippets")
+                                 {:archived?                 false
+                                  :show-dashboard-questions? false
+                                  :models                    #{:snippet}
+                                  :sort-info                 {:sort-column :name :sort-direction :asc}}))))))
+          (is (= [1] (mapv :limit @queries))
+              "the row query is bounded instead of fetching every snippet just to read the count"))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 

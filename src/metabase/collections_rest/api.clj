@@ -1192,22 +1192,25 @@
                         (sql.helpers/where search-clause))
         limit         (request/limit)
         offset        (request/offset)
+        ;; A limit of 0 asks for the count alone rather than for a page.
+        count-only?   (= limit 0)
         ;; We didn't implement collection pagination for snippets namespace for root/items
-        ;; Rip out the limit for now and put it back in when we want it
+        ;; Rip out the limit for now and put it back in when we want it.
         limit-query   (if (or
                            (nil? limit)
                            (nil? offset)
-                           (= (:collection-namespace options) "snippets"))
+                           (and (= (:collection-namespace options) "snippets")
+                                (not count-only?)))
                         rows-query
                         (assoc rows-query
                                ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
                                ;; :total_count
-                               :limit  (if (zero? limit) 1 limit)
+                               :limit  (if count-only? 1 limit)
                                :offset offset))
         rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                         (mdb/query limit-query))
         res           {:total  (total-count rows rows-query offset)
-                       :data   (if (= limit 0)
+                       :data   (if count-only?
                                  []
                                  (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
                                    (post-process-rows options collection rows)))
@@ -1245,6 +1248,13 @@
        :offset (request/offset)
        :models valid-models})))
 
+(defn- filterable-models
+  "The models that can appear as a filterable item of `collection`. Snippets are never included: they are not a
+  filterable type. When present, `restrict-models` limits the set."
+  [collection restrict-models]
+  (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+    (seq restrict-models) (filter restrict-models)))
+
 (mu/defn- collection-filter-metadata :- [:map
                                          [:available_models [:sequential :string]]]
   "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
@@ -1253,8 +1263,7 @@
   [collection                      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models                 :- [:maybe [:set :keyword]]
    {:keys [archived?] :as options} :- CollectionChildrenOptions]
-  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
-                     (seq restrict-models) (filter restrict-models))
+  (let [candidates (filterable-models collection restrict-models)
         options    (-> options
                        (dissoc :models :search-text)
                        (assoc :collection-namespace (:namespace collection)))]
@@ -1288,16 +1297,21 @@
 
 (mu/defn- collection-items-metadata :- ::ItemsMetadata
   "Metadata about the items list of `collection`, independent of the search filter that the items endpoints accept:
-  the models with at least one visible item and the number of items in the whole list, pinned included. When present,
-  `restrict-models` limits both to those models, so the metadata describes the list a client actually shows."
+  the models with at least one visible item and the number of items in the whole list. `restrict-models`, when
+  present, limits both to those models, and `options` carries the rest of the scope (archived, pinned state, ...),
+  so the metadata describes the list a client actually shows. Both halves count the same models, so a type that is
+  never reported -- a snippet -- is never counted either."
   [collection      :- collection/CollectionWithLocationAndIDOrRoot
    restrict-models :- [:maybe [:set :keyword]]
    options         :- CollectionChildrenOptions]
-  (let [count-options (cond-> (dissoc options :models :search-text)
-                        (seq restrict-models) (assoc :models restrict-models))]
+  (let [options (dissoc options :models :search-text)
+        models  (set (filterable-models collection restrict-models))]
     (assoc (collection-filter-metadata collection restrict-models options)
-           :total_items (request/with-limit-and-offset 0 0
-                          (:total (collection-children collection count-options))))))
+           ;; An empty model set means "nothing to count"; `collection-children` would read it as "no restriction".
+           :total_items (if (empty? models)
+                          0
+                          (request/with-limit-and-offset 0 0
+                            (:total (collection-children collection (assoc options :models models))))))))
 
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -1542,21 +1556,33 @@
 
 (api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata
   "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
-  Pass the same `models` as `GET /api/collection/root/items` so the metadata describes the list being shown; unlike
-  that endpoint, the result does not depend on search text."
+  Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other
+  scope params so the metadata describes the list being shown.
+
+  Query params are kebab-case, as the REST API standard requires. Translate them when copying from
+  `/api/collection/root/items`, which predates that standard and still spells them `pinned_state`,
+  `collection_type`, `include_library` and `show_dashboard_questions`. A param this endpoint does not declare is
+  ignored rather than rejected, so a snake_case spelling returns a 200 describing a different scope than the one
+  asked for."
   [_route-params
-   {:keys [models namespace show-dashboard-questions include-library]} :- [:map
-                                                                           [:models                   {:optional true} [:maybe Models]]
-                                                                           [:namespace                {:optional true} [:maybe ms/NonBlankString]]
-                                                                           [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]
-                                                                           [:include-library          {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models archived namespace pinned-state collection-type include-library
+           show-dashboard-questions]} :- [:map
+                                          [:models                   {:optional true} [:maybe Models]]
+                                          [:archived                 {:default false} [:maybe ms/BooleanValue]]
+                                          [:namespace                {:optional true} [:maybe ms/NonBlankString]]
+                                          [:pinned-state             {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:collection-type          {:optional true} CollectionType]
+                                          [:include-library          {:default false} [:maybe ms/BooleanValue]]
+                                          [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         restrict-models (visible-model-kwds root-collection model-set)]
     (collection-items-metadata root-collection restrict-models
-                               {:archived?                 false
+                               {:archived?                 (boolean archived)
                                 :show-dashboard-questions? (boolean show-dashboard-questions)
+                                :collection-type           collection-type
                                 :include-library?          include-library
+                                :pinned-state              (keyword pinned-state)
                                 :sort-info                 {:sort-column                 :name
                                                             :sort-direction              :asc
                                                             :official-collections-first? false}})))
@@ -1864,19 +1890,30 @@
     children))
 
 (api.macros/defendpoint :get "/:id/items/metadata" :- ::ItemsMetadata
-  "Metadata about the collection's items list: the models with at least one visible item plus the item count. Pass
-  the same `models` as `GET /api/collection/:id/items` so the metadata describes the list being shown; unlike that
-  endpoint, the result does not depend on search text."
+  "Metadata about the collection's items list: the models with at least one visible item plus the item count. Unlike
+  `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope
+  params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions` -- so the metadata describes the list
+  being shown.
+
+  Query params are kebab-case, as the REST API standard requires. Translate them when copying from
+  `/api/collection/:id/items`, which predates that standard and still spells them `pinned_state` and
+  `show_dashboard_questions`. A param this endpoint does not declare is ignored rather than rejected, so a
+  snake_case spelling returns a 200 describing a different scope than the one asked for."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [models show-dashboard-questions]} :- [:map
-                                                 [:models                   {:optional true} [:maybe Models]]
-                                                 [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models archived pinned-state show-dashboard-questions]} :- [:map
+                                                                       [:models                   {:optional true} [:maybe Models]]
+                                                                       [:archived                 {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:pinned-state             {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                       [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         collection  (api/read-check :model/Collection resolved-id)]
     (collection-items-metadata collection (set (map keyword (u/one-or-many models)))
-                               {:archived?                 (or (:archived collection) (collection/is-trash? collection))
-                                :show-dashboard-questions? show-dashboard-questions
+                               {:archived?                 (boolean (or archived
+                                                                        (:archived collection)
+                                                                        (collection/is-trash? collection)))
+                                :show-dashboard-questions? (boolean show-dashboard-questions)
+                                :pinned-state              (keyword pinned-state)
                                 :include-library?          true
                                 :sort-info                 {:sort-column                 :name
                                                             :sort-direction              :asc
