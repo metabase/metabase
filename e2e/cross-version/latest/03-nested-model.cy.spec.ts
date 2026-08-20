@@ -51,6 +51,9 @@ describe("Cross-version questions - nested model", () => {
       cy.location("pathname").should("not.include", "columns");
 
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
+
+      cy.log("-- Pin the model so the verify step can find it --");
+      cy.get<number>("@savedQuestionId").then(X.pinQuestion);
     },
   );
 

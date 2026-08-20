@@ -7,9 +7,16 @@ export function saveQuestion(name: string) {
   cy.findByTestId("save-question-modal").within(() => {
     cy.findByLabelText("Name").clear().type(name);
     cy.button("Save").click();
-    cy.wait("@saveQuestion");
+    cy.wait("@saveQuestion").then(({ response }) => {
+      cy.wrap(response?.body.id).as("savedQuestionId");
+    });
   });
   cy.findByTestId("save-question-modal").should("not.exist");
+}
+
+export function pinQuestion(id: number) {
+  cy.log(`-- Pin question: ${id}`);
+  cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
 }
 
 export function assertRowCount(count: string) {
