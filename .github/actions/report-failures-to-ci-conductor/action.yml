@@ -11,10 +11,6 @@ inputs:
   adapter:
     description: Which reporter to run; resolves to report-<adapter>.ts. backend or frontend.
     required: true
-  is-rerun:
-    description: Set if the workflow calling this action is rerunning as an attempt to resolve flaky tests.
-    required: false
-    default: "false"
 
 runs:
   using: composite
@@ -29,7 +25,7 @@ runs:
         TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
         ADAPTER: ${{ inputs.adapter }}
-        IS_RERUN: ${{ inputs.is-rerun }}
+        IS_RERUN: ${{ github.run_attempt != '1' }}
       # Keep the path constrained to known entrypoints.
       run: |
         case "$ADAPTER" in
