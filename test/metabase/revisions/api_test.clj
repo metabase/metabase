@@ -1,14 +1,18 @@
 (ns metabase.revisions.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
@@ -36,6 +40,14 @@
    {:object       (t2/select-one :model/Dashboard :id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
+    :user-id      (mt/user->id user)
+    :is-creation? is-creation?}))
+
+(defn- create-transform-revision! [transform-id is-creation? user]
+  (revision/push-revision!
+   {:object       (t2/select-one :model/Transform :id transform-id)
+    :entity       :model/Transform
+    :id           transform-id
     :user-id      (mt/user->id user)
     :is-creation? is-creation?}))
 
@@ -133,6 +145,57 @@
                 :description          "created this."
                 :has_multiple_changes false}]
               (get-revisions :card id))))))
+
+(deftest transform-revisions-guard-prior-source-per-entitlement-test
+  (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers
+            entitled to the database it read from"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Database {x-db-id :id} {}
+                     :model/Database {y-db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:name   "Repointed Transform"
+                      :source {:type  "query"
+                               :query {:database x-db-id
+                                       :type     "native"
+                                       :native   {:query "SELECT 2 --comment"}}}}]
+        (create-transform-revision! transform-id true :crowberto)
+        (t2/update! :model/Transform transform-id
+                    {:source {:type  "query"
+                              :query {:database y-db-id
+                                      :type     "native"
+                                      :native   {:query "SELECT 1"}}}})
+        (create-transform-revision! transform-id false :crowberto)
+        (letfn [(contains-x? [revisions]
+                  (letfn [(x-source? [m]
+                            (or (= x-db-id (:source_database_id m))
+                                (= x-db-id (get-in m [:source :query :database]))))]
+                    (or (str/includes? (json/encode revisions) "--comment")
+                        (some (fn [{:keys [diff]}] (some x-source? [(:before diff) (:after diff)]))
+                              revisions))))]
+          (doseq [[label list-fn]
+                  [["GET /api/revision"
+                    #(mt/user-http-request %1 :get %2 "revision" :entity "transform" :id transform-id)]
+                   ["GET /api/revision/transform/:id"
+                    #(mt/user-http-request %1 :get %2 (format "revision/transform/%d" transform-id))]]]
+            (testing label
+              (testing "an admin, entitled to every source, sees the full history including the prior source"
+                (let [revisions (list-fn :crowberto 200)]
+                  (is (contains-x? revisions))
+                  (is (some #(= "changed the source." (:description %)) revisions))))
+              (mt/with-data-analyst-role! (mt/user->id :rasta)
+                (mt/with-restored-data-perms!
+                  ;; rasta may query the transform's current source database but not its previous one
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder)
+                  (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
+                  (testing "an analyst entitled only to the current source can still read the transform"
+                    (let [revisions (list-fn :rasta 200)]
+                      (is (seq revisions))
+                      (testing "but the prior source read from a database they cannot query is withheld"
+                        (is (not (contains-x? revisions))))))
+                  (testing "an analyst entitled to neither source cannot read the revision history at all"
+                    (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :no)
+                    (list-fn :rasta 403)))))))))))
 
 ;;; # POST /revision/revert
 
@@ -277,7 +340,7 @@
       (t2/update! :model/Dashboard :id dashboard-id {:collection_id coll-id})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 7. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -347,7 +410,7 @@
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 6. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -391,7 +454,7 @@
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 5. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -431,7 +494,7 @@
                                                :name        "New name"})
           (create-card-revision! card-id false :crowberto)
           ;; 2. revert to an earlier revision
-          (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+          (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
             (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
           (is (= [{:description          "est revenu à une version antérieure."
                    :has_multiple_changes false}
@@ -461,7 +524,7 @@
                                                        :col          1
                                                        :row          1}])
       (create-dashboard-revision! dashboard-id false :crowberto)
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -487,7 +550,7 @@
         ;; Update the card to a new version
         (t2/update! :model/Card {:name "A card with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
           (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A card" (t2/select-one-fn :name :model/Card :id card-id))))
       (testing "Reverting a dashboard..."
@@ -501,7 +564,7 @@
         ;; Update the dashboard to a new version
         (t2/update! :model/Dashboard {:name "A dashboard with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A dashboard" (t2/select-one-fn :name :model/Dashboard :id dashboard-id)))))))
 

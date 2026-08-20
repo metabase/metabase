@@ -3,9 +3,8 @@ import { useEffectOnce, useLatest } from "react-use";
 import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useDispatch } from "metabase/redux";
 import type { Location } from "metabase/router";
-import { push, queryToSearch, replace } from "metabase/router";
+import { queryToSearch, useNavigate } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import type { UrlStateQuery } from "./types";
@@ -41,7 +40,7 @@ export function useUrlState<State extends BaseState>(
   location: Location,
   { parse, serialize }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [state, setState] = useState(() =>
     parse(parseSearchQuery(location.search)),
   );
@@ -75,9 +74,9 @@ export function useUrlState<State extends BaseState>(
         ...location,
         search: queryToSearch(serialize(state)),
       };
-      dispatch(push(newLocation));
+      navigate(newLocation);
     },
-    [dispatch, location, serialize],
+    [location, serialize, navigate],
   );
 
   const updateUrlRef = useLatest(updateUrl);
@@ -87,7 +86,10 @@ export function useUrlState<State extends BaseState>(
     // Replacing to the identical URL notifies the router, which re-renders every
     // location consumer on the page for nothing.
     if (!_.isEqual(query, parseSearchQuery(location.search))) {
-      dispatch(replace({ ...location, search: queryToSearch(query) }));
+      navigate(
+        { ...location, search: queryToSearch(query) },
+        { replace: true, state: location.state },
+      );
     }
   });
 

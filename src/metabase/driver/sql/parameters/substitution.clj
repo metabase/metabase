@@ -58,7 +58,7 @@
 
 (defmethod ->honeysql :default
   [driver mbql-5-clause]
-  (sql.qp/->honeysql driver (lib/->legacy-MBQL mbql-5-clause)))
+  (sql.qp/->honeysql driver mbql-5-clause))
 
 (defn- honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."

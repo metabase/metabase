@@ -164,30 +164,32 @@ const selectEntityPickerItem = (path: string | string[]) => {
 
 const addMetricInputSequence = (
   sequence: InputToken[],
-  {
-    runExpression = true,
-    clearInput = false,
-    skipRunCompletionWait = false,
-  } = {},
+  { runExpression = true, clearInput = false } = {},
 ) => {
-  H.MetricsViewer.searchInput().then(($input) => {
-    if (clearInput) {
-      cy.wrap($input).clear({ waitForAnimations: true });
-      return;
-    }
+  H.MetricsViewer.searchInput()
+    .should(($input) => {
+      expect(
+        $input.text().trim(),
+        "editor session is initialized",
+      ).not.to.equal("");
+    })
+    .then(($input) => {
+      if (clearInput) {
+        cy.wrap($input).clear({ waitForAnimations: true });
+        return;
+      }
 
-    const currentText = $input.text().trim();
+      const currentText = $input.text().trim();
 
-    if (
-      currentText !== INPUT_PLACEHOLDER_TEXT &&
-      currentText !== "" &&
-      typeof sequence[0] !== "string"
-    ) {
-      cy.wrap($input).type("{end}, ", {
-        waitForAnimations: true,
-      });
-    }
-  });
+      if (
+        currentText !== INPUT_PLACEHOLDER_TEXT &&
+        typeof sequence[0] !== "string"
+      ) {
+        cy.wrap($input).type("{end}, ", {
+          waitForAnimations: true,
+        });
+      }
+    });
 
   for (let i = 0; i < sequence.length; i++) {
     const item = sequence[i];
@@ -203,12 +205,10 @@ const addMetricInputSequence = (
 
   if (runExpression) {
     runFormula();
-    if (!skipRunCompletionWait) {
-      // It is expected that the elements below do not exist after the expression ran successfully
-      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
-      cy.findByTestId("run-expression-button").should("not.exist");
-      cy.findByTestId("loading-indicator").should("not.exist");
-    }
+    // It is expected that the elements below do not exist after the expression ran successfully
+    cy.findByTestId("metrics-viewer-search-input").should("not.exist");
+    cy.findByTestId("run-expression-button").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
   }
 };
 
@@ -217,29 +217,15 @@ const addMetricInputSequence = (
  */
 const addMetric = (
   nameOrPath: string | string[],
-  {
-    runExpression = true,
-    clearInput = false,
-    skipRunCompletionWait = false,
-  } = {},
+  { runExpression = true, clearInput = false } = {},
 ) => {
   addMetricInputSequence([{ nameOrPath }], {
     runExpression,
     clearInput,
-    skipRunCompletionWait,
   });
 };
 
 const runFormula = () => {
-  cy.log("Make sure mini picker is closed before clicking Run");
-  H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
-
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
 
@@ -2055,8 +2041,12 @@ describe("scenarios > metrics > explorer", () => {
         name: SEGMENT_NAME,
         description: "Orders with a total over $100",
         definition: {
-          "source-table": ORDERS_ID,
-          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       });
 
@@ -2105,12 +2095,18 @@ describe("scenarios > metrics > explorer", () => {
     beforeEach(() => {
       H.MetricsViewer.goToViewer();
       addMetricInputSequence([{ nameOrPath: "Count of orders" }]);
+      cy.wait("@dataset");
       addMetricInputSequence([
         ",",
         { nameOrPath: "Count of orders" },
         "+",
         { nameOrPath: testMeasurePath },
       ]);
+      // The second run re-renders the chart once the measure's dataset
+      // arrives; brushing during that re-render is swallowed because ECharts
+      // resets the brush cursor on setOption. Wait for the data first —
+      // ensureChartIsActive alone passes on the still-single-series chart.
+      cy.wait("@dataset");
     });
 
     it("should drill into more granular time dimensions on timeseries chart", () => {

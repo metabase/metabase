@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { hasRequiredFeature } from "metabase/databases";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -35,7 +36,10 @@ export function checkSupportedFunctions({
     if (!clause) {
       return;
     }
-    if (!database?.hasFeature(clause.requiresFeature)) {
+    if (
+      database == null ||
+      !hasRequiredFeature(database, clause.requiresFeature)
+    ) {
       error(node, t`Unsupported function ${clause.displayName}`);
     }
   });

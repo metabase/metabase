@@ -35,7 +35,7 @@ runs:
       run: |
         BUN_CACHE_DIR=$(bun pm cache)
         echo "Bun cache directory: $BUN_CACHE_DIR"
-        echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+        echo "dir=$BUN_CACHE_DIR" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Restore node_modules cache
@@ -53,7 +53,13 @@ runs:
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
     - name: Clean install
-      run: bun install --frozen-lockfile
+      # Remove the restored node_modules before installing. The os-week cache can
+      # carry a stale tree (for example a different React major), and
+      # `--frozen-lockfile` alone does not prune it. Rebuilding from the cached bun
+      # store gives an exact, lockfile-correct node_modules with no extra download.
+      run: |
+        rm -rf node_modules
+        bun install --frozen-lockfile
       shell: bash
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'

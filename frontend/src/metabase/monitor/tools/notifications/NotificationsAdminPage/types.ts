@@ -12,6 +12,11 @@ export type RouteParams = {
 
 export type NotificationsTab = "all" | "failing" | "ownerless";
 
+export type TabCountState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "loaded"; value: number };
+
 export type NotificationsUrlState = {
   page: number;
   active: boolean | null;

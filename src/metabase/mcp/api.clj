@@ -4,6 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
@@ -99,9 +100,8 @@
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
       (let [user-id     api/*current-user-id*
-            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
-            options     {:session-key session-key
-                         :session-id  session-id}
+            options     {:ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
+                         :session-id    session-id}
             result      (mcp.resources/read-resource uri token-scopes options)]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
@@ -265,7 +265,7 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [user-id request]
-  (let [body            (:body request)
+  (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
         batch?          (sequential? body)]
@@ -433,7 +433,8 @@
    (fn [request respond raise]
      (let [origin-error (validate-origin request)
            bearer-token (oauth-server/extract-bearer-token request)
-           session-auth api/*current-user-id*]
+           session-auth api/*current-user-id*
+           token-scopes (:token-scopes request)]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    (if-let [throttle-err (check-throttle user-id)]
@@ -458,9 +459,10 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; Session auth (browser/cookie) — unrestricted scopes
+           ;; Respect the scope set attached to an authenticated request. Sessions without one
+           ;; retain unrestricted access.
            session-auth
-           (dispatch session-auth #{::scope/unrestricted})
+           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
 
            ;; Bearer token auth — validate and extract scopes
            bearer-token

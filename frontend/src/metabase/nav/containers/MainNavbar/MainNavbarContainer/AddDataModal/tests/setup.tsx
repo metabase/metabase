@@ -124,7 +124,6 @@ export const setup = ({
     currentUser: createMockUser(user),
     entities: createMockEntitiesState({
       databases,
-      collections,
     }),
     settings: mockSettings(settingValues),
   });

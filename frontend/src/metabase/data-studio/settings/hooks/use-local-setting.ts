@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingMutation } from "metabase/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,

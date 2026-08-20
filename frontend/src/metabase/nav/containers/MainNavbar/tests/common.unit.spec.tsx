@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import {
   createMockCard,

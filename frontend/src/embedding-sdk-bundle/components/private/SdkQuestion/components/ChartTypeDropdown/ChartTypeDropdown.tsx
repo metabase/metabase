@@ -4,8 +4,9 @@ import { t } from "ttag";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import visualizations, {
+import {
   getIconForVisualizationType,
+  visualizations,
 } from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";

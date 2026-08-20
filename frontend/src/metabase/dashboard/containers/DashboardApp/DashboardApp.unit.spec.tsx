@@ -58,9 +58,10 @@ const TestHome = () => <div />;
 
 interface Options {
   dashboard?: Partial<Dashboard>;
+  slug?: string;
 }
 
-async function setup({ dashboard }: Options = {}) {
+async function setup({ dashboard, slug }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
@@ -97,13 +98,13 @@ async function setup({ dashboard }: Options = {}) {
     );
   };
 
-  const { history } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     <>
       <Route path="/" element={<TestHome />} />
       <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
-      initialRoute: `/dashboard/${dashboardId}`,
+      initialRoute: `/dashboard/${slug ?? dashboardId}`,
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
@@ -119,7 +120,8 @@ async function setup({ dashboard }: Options = {}) {
 
   return {
     dashboardId,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
+    store,
     mockEventListener,
   };
 }
@@ -160,11 +162,11 @@ describe("DashboardApp", () => {
     });
 
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
       await waitForLoaderToBeRemoved();
@@ -172,7 +174,7 @@ describe("DashboardApp", () => {
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(
@@ -181,11 +183,11 @@ describe("DashboardApp", () => {
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
       await waitForLoaderToBeRemoved();
@@ -196,7 +198,7 @@ describe("DashboardApp", () => {
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(
@@ -274,6 +276,13 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {
+    const { store } = await setup({ slug: "thisisinvalid" });
+
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    expect(store.getState().app.errorPage).toMatchObject({ status: 404 });
   });
 
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {

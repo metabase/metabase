@@ -6,15 +6,9 @@ import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
-import {
-  useGetSlackAppInfoQuery,
-  useGetSlackManifestQuery,
-} from "metabase/api/slack";
-import { useAdminSetting, useAdminSettings } from "metabase/api/utils/settings";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -22,9 +16,20 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/metabot";
+import {
+  useAdminSetting,
+  useAdminSettings,
+  useSetting,
+} from "metabase/settings";
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SlackAppInfo } from "metabase-types/api/slack";
+
+import {
+  useGetSlackAppInfoQuery,
+  useGetSlackManifestQuery,
+} from "../settings/api/slack";
 
 import {
   EncryptionRequiredAlert,

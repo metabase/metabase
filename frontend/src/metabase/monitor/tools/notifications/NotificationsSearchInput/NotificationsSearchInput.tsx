@@ -3,20 +3,15 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Icon, Input, Loader, TextInput } from "metabase/ui";
+import { Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 type Props = {
   value: string;
-  isLoading?: boolean;
   onChange: (value: string) => void;
 };
 
-export const NotificationsSearchInput = ({
-  value,
-  isLoading = false,
-  onChange,
-}: Props) => {
+export const NotificationsSearchInput = ({ value, onChange }: Props) => {
   const [query, setQuery] = useState(value);
   const debounced = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
   const onChangeRef = useLatest(onChange);
@@ -36,8 +31,6 @@ export const NotificationsSearchInput = ({
     }
   }, [value]);
 
-  const showLoader = isLoading || query !== debounced;
-
   const handleClear = () => {
     setQuery("");
     lastPushedRef.current = "";
@@ -45,9 +38,6 @@ export const NotificationsSearchInput = ({
   };
 
   const renderRightSection = () => {
-    if (showLoader) {
-      return <Loader size="xs" />;
-    }
     if (query === "") {
       return null;
     }

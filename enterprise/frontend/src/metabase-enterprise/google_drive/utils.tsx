@@ -4,9 +4,10 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   useDeleteGsheetsFolderLinkMutation,
   useGetServiceAccountQuery,

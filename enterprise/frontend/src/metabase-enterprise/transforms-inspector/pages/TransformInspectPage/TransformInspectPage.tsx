@@ -25,7 +25,7 @@ export const TransformInspectPage = () => {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useTransformWithPolling(transformId);
-  const { readOnly, isLoadingDatabases, databasesError } =
+  const { readOnly, permissionsReadOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
 
   const isLoading = isLoadingTransform || isLoadingDatabases;
@@ -41,7 +41,7 @@ export const TransformInspectPage = () => {
 
   return (
     <PageContainer data-testid="transform-inspect-content">
-      <TransformHeader transform={transform} />
+      <TransformHeader transform={transform} readOnly={readOnly} />
       {match({
         hasSucceeded: transform.last_run?.status === "succeeded",
         isMissingSourceDatabase: isMissingSourceDatabase(transform),
@@ -62,6 +62,7 @@ export const TransformInspectPage = () => {
               transform={transform}
               noTitle={true}
               readOnly={readOnly}
+              permissionsReadOnly={permissionsReadOnly}
             />
           </>
         ))

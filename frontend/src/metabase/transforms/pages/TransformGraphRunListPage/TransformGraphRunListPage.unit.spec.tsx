@@ -62,7 +62,7 @@ function setup({
   setupListDatabaseSchemasEndpoint(DATABASE_ID, []);
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/data-studio/transforms/runs"
       element={<TransformGraphRunListPage />}
@@ -70,7 +70,7 @@ function setup({
     { withRouter: true, initialRoute },
   );
 
-  return { history };
+  return { router };
 }
 
 const JOB_RUN = createMockTransformGraphRun({
@@ -118,7 +118,7 @@ describe("TransformGraphRunListPage", () => {
   });
 
   it("preserves shared filters (and drops view-specific params) when toggling to the detailed view", async () => {
-    const { history } = setup({
+    const { router } = setup({
       runs: [],
       initialRoute:
         "/data-studio/transforms/runs?statuses=failed&transform-ids=7&start-time=2024-01-01&run-methods=cron&sort-column=start_time&sort-direction=desc&page=2",
@@ -126,7 +126,7 @@ describe("TransformGraphRunListPage", () => {
 
     await userEvent.click(await screen.findByLabelText("Detailed view"));
 
-    const location = history?.getCurrentLocation();
+    const location = router?.location;
     expect(location?.pathname).toBe("/data-studio/transforms/runs/individual");
 
     const search = new URLSearchParams(location?.search);

@@ -19,7 +19,7 @@ describe("useHandleMcpDrillThrough", () => {
     // Unjustified type cast. FIXME
     (window as any).metabaseConfig = {
       instanceUrl: "https://metabase.example",
-      sessionToken: "session-token",
+      uiCredential: "ui-credential",
       mcpSessionId: "mcp-session-id",
     };
 

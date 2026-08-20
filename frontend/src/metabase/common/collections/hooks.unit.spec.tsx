@@ -67,9 +67,7 @@ const setup = ({
   ];
   setupCollectionByIdEndpoint({ collections: allCollections });
 
-  const entitiesState = createMockEntitiesState({
-    collections: allCollections,
-  });
+  const entitiesState = createMockEntitiesState({});
   const state = createMockState({ currentUser: user, entities: entitiesState });
 
   renderWithProviders(

@@ -106,4 +106,5 @@ If you're using the [modular embedding SDK](./sdk/introduction.md), you can prov
 ## Further reading
 
 - [Appearance](./appearance.md)
+- [Custom visualizations in embeds](./custom-visualizations.md)
 - [Modular embedding SDK](./sdk/introduction.md).

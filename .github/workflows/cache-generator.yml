@@ -40,7 +40,8 @@ concurrency:
 jobs:
   get-cache-keys:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
       - name: Get cache keys
@@ -53,6 +54,10 @@ jobs:
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-caches:
+    # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default
+    # cache keys but the cache would be innacessible to other branches since Github prevents cross-branch
+    # cache hits (except for the default branch), breaking the cache entirely.
+    if: ${{ github.ref_name == 'master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     needs: get-cache-keys
@@ -93,16 +98,17 @@ jobs:
             ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood + eastwood/test)
             ":dev:ci:ee:ee-dev:drivers:drivers-dev:test"        # test-driver.yml (ee) -> covers data.json:2.4.0
             ":dev:ci:oss:oss-dev:drivers:drivers-dev:test"      # test-driver.yml (oss)
-            ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee) + generative-query-test.yml
+            ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee)
             ":dev:ci:test:oss:oss-dev"                          # backend.yml matrix (oss)
             ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
-            ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml + presto script
+            ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml
             ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
-            ":ee:drivers:check"                                 # backend.yml (check; git dep athos/clj-check)
+            ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
             ":ee:doc"                                           # docs-generate-base.yml
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test
+            ":whitespace-linter"                                # whitespace linter
           )
           for combo in "${combos[@]}"; do
             echo "::group::clojure -P -A${combo}"
@@ -110,12 +116,18 @@ jobs:
             echo "::endgroup::"
           done
 
+          echo "::group::./bin/mage"
+          ./bin/mage
+          echo "::endgroup::"
+
       - name: Update M2 cache
         uses: ./.github/actions/update-cache
         with:
           path: |
             ~/.m2
             ~/.gitlibs
+            ~/.deps.clj
+            bin/bb
           key: ${{ env.M2_CACHE_KEY }}
 
       # Frontend preparation and caches
@@ -135,7 +147,7 @@ jobs:
         run: |
           BUN_CACHE_DIR=$(bun pm cache)
           echo "Bun cache directory: $BUN_CACHE_DIR"
-          echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+          echo "dir=$BUN_CACHE_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Ensure that Cypress executable is ready
         run: |

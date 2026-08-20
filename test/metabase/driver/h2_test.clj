@@ -27,6 +27,16 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel connection-hosts-test
+  (testing "local H2 databases have no network host"
+    (is (= [] (driver/connection-hosts :h2 {:db "file:./sample.db"})))
+    (is (= [] (driver/connection-hosts :h2 {:db "mem:test"}))))
+  (testing "remote H2 TCP and SSL connection strings expose their hosts"
+    (are [db expected] (= expected (driver/connection-hosts :h2 {:db db}))
+      "tcp://10.0.0.5:9092/sample"          ["10.0.0.5"]
+      "jdbc:h2:tcp://db.example.com/sample" ["db.example.com"]
+      "ssl://[::1]:9092/sample"             ["::1"])))
+
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]

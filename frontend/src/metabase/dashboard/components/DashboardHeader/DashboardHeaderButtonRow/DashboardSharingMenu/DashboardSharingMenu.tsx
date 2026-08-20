@@ -2,11 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
-import { useSetting } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   getIsDashCardsRunning,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { isDashboardOrTabEmpty } from "metabase/dashboard/utils";
 import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
 import { EmbedButton } from "metabase/embedding/components/SharingMenu/ActionButtons/EmbedButton";
 import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
@@ -20,7 +21,7 @@ import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Box, Flex } from "metabase/ui";
 import {
   dashboard as getDashboardUrl,
@@ -68,6 +69,8 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const [isInviteOpen, { open: openInvite, close: closeInvite }] =
     useDisclosure();
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
+  const selectedTabId = useSelector(getSelectedTabId);
+  const isEmpty = isDashboardOrTabEmpty(dashboard, selectedTabId);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const siteUrl = useSetting("site-url");
   const isAnalytics =
@@ -100,7 +103,12 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         }
       >
         <InviteToViewMenuItem onClick={openInvite} />
-        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+        {!isEmpty && (
+          <ExportPdfMenuItem
+            dashboard={dashboard}
+            loading={isDashCardsRunning}
+          />
+        )}
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
@@ -133,11 +141,15 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
 // the PDF export, and a public link copy when one already exists.
 function NonAdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
+  const selectedTabId = useSelector(getSelectedTabId);
+  const isEmpty = isDashboardOrTabEmpty(dashboard, selectedTabId);
   const publicUuid = dashboard.public_uuid;
 
   return (
     <SharingMenu actions={<CopyDashboardLinkButton dashboard={dashboard} />}>
-      <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+      {!isEmpty && (
+        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+      )}
       {publicUuid && (
         <CopyPublicLinkMenuItem
           url={getPublicDashboardUrl(publicUuid)}

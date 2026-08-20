@@ -25,15 +25,15 @@ Companies with large number of users can talk to sales about our [Enterprise pla
 
 Though we bill you monthly, we calculate how much you owe each day. So, say you're on the [Starter plan](https://www.metabase.com/pricing/). Your monthly bill would include:
 
-- $100 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $100 that month.
+- \$100 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be \$100 that month.
 - Each additional person costs \$6, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account before the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
 
 ## How annual billing works
 
 Paying up front for a year will save you 10%. So, again let's use the [Starter plan](https://www.metabase.com/pricing/) as an example. With annual billing, you will:
 
-- Have an annual payment of $918. That payment additionally covers five user accounts. This flat payment is made up front; it's not billed monthly. If you have fewer than five accounts, you still pay $918 for the year.
-- For each additional user account above those first five user accounts, you'll be billed at $54, prorated for the year. So, for example, if you start out with just the first five accounts that are included in the initial $918 annual payment, then decide to add another user account six months into your annual billing cycle, you'll only be charged $27 dollars for that account, as you'll only need to pay for the remaining six months. When the annual billing cycle repeats, you'll be charged $918 for the first five users, plus \$54 for that additional user (and any other additional users you've added in the interim).
+- Have an annual payment of \$1,080. That payment additionally covers five user accounts. This flat payment is made up front; it's not billed monthly. If you have fewer than five accounts, you still pay \$1,080 for the year.
+- For each additional user account above those first five user accounts, you'll be billed at \$65, prorated for the year. So, for example, if you start out with just the first five accounts that are included in the initial \$1,080 annual payment, then decide to add another user account six months into your annual billing cycle, you'll only be charged \$32.50 for that account, as you'll only need to pay for the remaining six months. When the annual billing cycle repeats, you'll be charged \$1,080 for the first five users, plus \$65 for that additional user (and any other additional users you've added in the interim).
 - If your user account number dips below the amount you've already paid for, you won't be refunded. But you'll also only be charged for additional users when the number goes above the previously paid amount.
 - Pro-rated true-ups are billed either monthly or quarterly, depending on [how you're paying](#for-annual-plans-payment-type-affects-how-often-youre-charged-for-pro-rated-true-ups). In this case, since we're on a Starter plan paying by credit card, you'll be billed for pro-rated true-ups each month.
 

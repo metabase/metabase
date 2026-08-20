@@ -77,7 +77,7 @@ describe("Document Page", () => {
   });
 
   it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {
-    const { history } = setupNewDocument();
+    const { router } = setupNewDocument();
 
     await userEvent.type(await getDocumentTitle(), "Draft");
 
@@ -86,7 +86,7 @@ describe("Document Page", () => {
     // The "New document" menu item links to the URL we are already on, which v7
     // resolves as a replace. The page stays mounted, so the fresh location is
     // what tells it the user asked to start over.
-    act(() => history?.replace("/document/new"));
+    act(() => router?.navigate("/document/new", { replace: true }));
 
     expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });

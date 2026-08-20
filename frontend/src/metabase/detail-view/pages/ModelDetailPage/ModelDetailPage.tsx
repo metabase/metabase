@@ -43,9 +43,12 @@ export function ModelDetailPage() {
     isLoading: isMetadataLoading,
   } = useGetCardQueryMetadataQuery(cardId == null ? skipToken : cardId);
 
-  const table = queryMetadata?.tables?.find(
-    (table) => table.id === getQuestionVirtualTableId(cardId),
-  );
+  const virtualTableId =
+    cardId == null ? undefined : getQuestionVirtualTableId(cardId);
+  const table =
+    virtualTableId != null
+      ? queryMetadata?.tables?.find((table) => table.id === virtualTableId)
+      : undefined;
   const metadata = useSelector(getMetadata);
   const tableQuery = useMemo(
     () => getTableQuery(metadata, table),

@@ -68,17 +68,17 @@ describe("collection permissions", () => {
                   cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard");
-                  cy.findByTestId("collection-table")
+                  cy.findByTestId("pinned-items")
                     .findByText("Orders in a dashboard")
-                    .should("not.exist");
+                    .should("be.visible");
 
                   pinItem("Orders, Count");
-                  cy.findByTestId("collection-table")
+                  cy.findByTestId("pinned-items")
                     .findByText("Orders, Count")
-                    .should("not.exist");
+                    .should("be.visible");
 
-                  // Should see "pinned items" and items should be in that section
-                  cy.findByTestId("pinned-items").within(() => {
+                  // Pinned items also stay in the contents list
+                  cy.findByTestId("collection-table").within(() => {
                     cy.findByText("Orders in a dashboard");
                     cy.findByText("Orders, Count");
                   });
