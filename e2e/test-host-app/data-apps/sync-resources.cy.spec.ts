@@ -133,6 +133,40 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
     });
   });
 
+  // Removing a declaration deletes the copy and its lockfile entry, but the ID the
+  // sync wrote into the source stays in source control. Bringing the declaration
+  // back has to make a fresh copy: there is no card left to adopt.
+  it("re-creates the copy when a removed declaration comes back naming the deleted card", () => {
+    syncOneQuery().then((card) => {
+      cy.readFile(QUERIES_FILE()).then((authored: string) => {
+        expect(
+          authored,
+          "the sync wrote the copy's ID into the source",
+        ).to.contain(`savedQuestionSourceId: ${card.id}`);
+
+        removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+        sync();
+        savedQuestions().should("have.length", 0);
+
+        // Exactly what restoring the file from source control brings back.
+        cy.writeFile(QUERIES_FILE(), authored);
+        sync();
+
+        savedQuestions().then((recreated) => {
+          expect(recreated).to.have.length(1);
+          expect(
+            recreated[0].id,
+            "the deleted card is not resurrected",
+          ).not.to.eq(card.id);
+          cy.readFile(QUERIES_FILE()).should(
+            "contain",
+            `savedQuestionSourceId: ${recreated[0].id}`,
+          );
+        });
+      });
+    });
+  });
+
   it("restores a hand-edited card's name instead of replacing the card", () => {
     syncOneQuery().then((card) => {
       cy.request("PUT", `/api/card/${card.id}`, { name: "Renamed by hand" });
