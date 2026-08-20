@@ -228,13 +228,20 @@ jobs:
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:
-      bundle-size-check: ${{ github.event_name == 'pull_request' && needs.uberjar.result == 'success' && needs.create-test-plan.outputs.frontend_sources == 'true' }}
       cli-snippets-type-check: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
       docs-snippets-type-check: ${{ needs.create-test-plan.outputs.embedding_documentation == 'true' }}
       documentation-validation: ${{ needs.create-test-plan.outputs.frontend_sources == 'true' }}
       component-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_components == 'true' }}
       host-sample-apps-tests: ${{ needs.create-test-plan.outputs.embedding_sdk_host_sample_apps == 'true' }}
       skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}
+
+  bundle-size:
+    needs: [uberjar, create-test-plan]
+    if: always() && !cancelled()
+    uses: ./.github/workflows/bundle-size.yml
+    secrets: inherit
+    with:
+      skip: ${{ github.event_name != 'pull_request' || needs.uberjar.result != 'success' || needs.create-test-plan.outputs.frontend_sources != 'true' }}
 
   pr-env:
     needs: [uberjar]
