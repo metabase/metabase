@@ -21,6 +21,7 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
@@ -173,9 +174,8 @@ export function AggregationPicker({
     const measures = Lib.availableMeasures(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
-    const supportsCustomExpressions = database?.hasFeature(
-      "expression-aggregations",
-    );
+    const supportsCustomExpressions =
+      database != null && hasFeature(database, "expression-aggregations");
 
     if (operators.length > 0) {
       const operatorItems = operators.map((operator) =>

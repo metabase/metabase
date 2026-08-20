@@ -4,8 +4,8 @@ import { t } from "ttag";
 import {
   hasActionsEnabled,
   hasDbRoutingEnabled,
-  hasFeature,
 } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { Flex } from "metabase/ui";
 import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 
