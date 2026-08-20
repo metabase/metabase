@@ -35,15 +35,6 @@
     (t2.model/resolve-model model)
     [model (t2/select-one model :id id)]))
 
-(defn- visible-revisions
-  "The revisions of `instance` the current user may see. A Transform's revision carries the source body it had at the
-  time, which may read from a database they have no permission on, so each one is held to the same rule reverting to
-  it would be."
-  [model instance revisions]
-  (if (= model :model/Transform)
-    (filter #(mi/can-read? (merge instance (:object %))) revisions)
-    revisions))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -56,7 +47,7 @@
                            [:entity Entity]]]
   (let [[model instance] (model-and-instance entity id)]
     (when (api/read-check instance)
-      (visible-revisions model instance (revision/revisions+details model id)))))
+      (revision/revisions+details model id))))
 
 (defn- dashcard-card-ids
   "The Card ids a stored dashcard references, as its own Card and as series."
@@ -177,5 +168,5 @@
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it
     (t2.model/resolve-model model)
-    (let [instance (api/read-check model id)]
-      (visible-revisions model instance (revision/revisions+details model id)))))
+    (api/read-check model id)
+    (revision/revisions+details model id)))
