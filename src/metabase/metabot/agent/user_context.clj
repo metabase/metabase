@@ -8,12 +8,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -262,22 +262,6 @@
      {:table #{} :card #{} :field #{}}
      (tree-seq coll? seq normalized))))
 
-(defn- native-stage?
-  [normalized]
-  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
-                 (tree-seq coll? seq normalized))))
-
-(defn- native-sql-table-ids
-  "Return the table IDs referenced by a native query. Throws if the analyzer can't read them
-  (always for non-SQL)."
-  [normalized]
-  (let [analysis (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)]
-    (when-not (and (map? analysis) (contains? analysis :tables))
-      (throw (ex-info "Cannot analyze a native query for permission gating" {:analysis analysis})))
-    (into #{}
-          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
-          (:tables analysis))))
-
 (defn- sandbox-visible-fields?
   [field-id->table-id]
   (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
@@ -295,11 +279,10 @@
         (let [normalized  (lib-be/normalize-query query)
               database-id (:database normalized)]
           (when (and (pos-int? database-id)
-                     (mi/can-query? :model/Database database-id))
+                     (query-perms/can-run-query? normalized))
             (let [{:keys [table card field]} (exported-entity-ids normalized)
                   field-table (metabot.perms/field-id->table-id field)
-                  table-ids   (cond-> (into (set table) (vals field-table))
-                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
+                  table-ids   (into (set table) (vals field-table))]
               (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
                          (sandbox-visible-fields? field-table)
                          (every? #(mi/can-read? :model/Card %) card))
@@ -309,11 +292,17 @@
                       (ex-message e))
           nil)))))
 
+(defn exportable-query?
+  "May the current user run `query`? Queries with no :database only ever pprint
+  (no name resolution), so they pass."
+  [query]
+  (or (not (and (map? query) (:database query)))
+      (some? (queryable-normalized-query query))))
+
 (defn- exported-query-text
   "Render a query for the LLM when the user may query it."
   [query]
-  (when (or (not (and (map? query) (:database query)))
-            (queryable-normalized-query query))
+  (when (exportable-query? query)
     (llm-shape/export-query-for-llm query)))
 
 ;; Format adhoc query (notebook editor) viewing context.

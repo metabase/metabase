@@ -69,6 +69,7 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -753,13 +754,14 @@
 
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
-  as a chart mention). Read-checks the query's database before exporting it with resolved
-  table/field names."
+  as a chart mention). Exporting resolves table/field names, so it requires the user to be
+  able to run the query, the same check the viewing-context formatter applies."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
     (do
       (when-let [database-id (and (map? query) (:database query))]
         (api/read-check :model/Database database-id))
+      (api/check-403 (user-context/exportable-query? query))
       (entity-result
        {:type        "conversation-query"
         :id          query-id
@@ -777,6 +779,7 @@
                     (get (shared/current-queries-state) (:query_id chart)))]
       (when-let [database-id (and (map? query) (:database query))]
         (api/read-check :model/Database database-id))
+      (api/check-403 (user-context/exportable-query? query))
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
