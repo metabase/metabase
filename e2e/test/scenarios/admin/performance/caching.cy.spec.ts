@@ -72,6 +72,10 @@ describe("scenarios > admin > performance > caching", () => {
     it("saves the default-policy strategy and reflects the saved state", () => {
       cy.visit("/admin/performance");
       H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
       H.cacheStrategySelect().should("have.value", "Adaptive");
     });
@@ -95,6 +99,7 @@ describe("scenarios > admin > performance > caching", () => {
 
       cy.log("Set Sample Database to Duration and save");
       H.selectCacheStrategy(/Duration/);
+      H.fillCacheDuration(24);
       saveCacheStrategyForm();
       cy.findByTestId("admin-layout-content").findByLabelText(
         /Edit.*Sample Database.*currently.*Duration/,
@@ -122,6 +127,8 @@ describe("scenarios > admin > performance > caching", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Duration/);
+      // 24 keeps the "Duration: 24h" admin-tab assertion below true
+      H.fillCacheDuration(24);
       preemptiveCachingSwitch().within(() => {
         cy.findByRole("switch").should("not.be.checked");
         cy.findByRole("switch").parent("label").click();
@@ -216,6 +223,10 @@ describe("scenarios > admin > performance > caching", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
 
       cy.log("Both entries are visible on the admin tab");

@@ -13,3 +13,8 @@ export const selectCacheStrategy = (name: RegExp) => {
   cacheStrategySelect().click();
   cy.findByRole("option", { name }).click();
 };
+
+/** Selecting the Duration strategy leaves the duration field empty, and the
+ * form cannot be saved until it is filled. */
+export const fillCacheDuration = (value: number) =>
+  cy.findByRole("spinbutton", { name: /Cache duration/ }).type(String(value));
