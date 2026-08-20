@@ -114,13 +114,14 @@ runs:
       continue-on-error: true
 
     - name: Report failed tests to ci-conductor
-      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      if: ${{ !cancelled() && ( steps.run-test.outcome == 'failure' || github.run_attempt != '1' ) }}
       # This step should NEVER fail the job!
       continue-on-error: true
       uses: ./.github/actions/report-failures-to-ci-conductor
       with:
         test-suite: ${{ inputs.junit-name }}
         adapter: backend
+        is-rerun: ${{ github.run_attempt != '1' }}
 
     # Granular rerun: record which tests failed so a re-run of this
     # job targets only those (restored above). Reuses the backend JUnit adapter

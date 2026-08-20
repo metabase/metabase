@@ -173,6 +173,23 @@ const PASSING_WITH_BODY = `<?xml version="1.0" encoding="UTF-8"?>
 </testcase>
 </testsuite>`;
 
+// jest marks a skipped test (`it.skip`/`xit`, or a suite it never ran) with a
+// <skipped/> child; a producer may also write it with a `message` attribute or a
+// body. A real run mixes skips in among the passes and failures.
+const SKIPPED = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Button" tests="4" failures="1" skipped="2">
+<testcase classname="Button is todo" name="Button is todo" time="0">
+<skipped/>
+</testcase>
+<testcase classname="Button is deferred" name="Button is deferred" time="0">
+<skipped message="pending"/>
+</testcase>
+<testcase classname="Button renders" name="Button renders" time="0.01"/>
+<testcase classname="Button explodes" name="Button explodes" time="0.02">
+<failure message="boom">Error: boom</failure>
+</testcase>
+</testsuite>`;
+
 describe("parseJunit", () => {
   it("prefers the failure `message` attribute over the body", () => {
     const [test] = parseJunit(FAILURE_WITH_MESSAGE);
@@ -267,6 +284,11 @@ describe("parseJunit", () => {
     expect(parseJunit("<not-valid")).toEqual([]);
   });
 
+  it("drops skipped tests, keeping only the failure", () => {
+    const tests = parseJunit(SKIPPED);
+    expect(tests.map((t) => t.name)).toEqual(["Button explodes"]);
+  });
+
   it("returns [] for a suite with only passing tests", () => {
     const xml = `<testsuite name="metabase.ok-test" tests="1" failures="0">
 <testcase classname="metabase.ok-test" name="ok" time="0.01"/>
@@ -339,5 +361,17 @@ describe("parseJunit with ignorePassingTests: false", () => {
 
   it("still returns [] for malformed XML without throwing", () => {
     expect(parseJunit("<not-valid", false)).toEqual([]);
+  });
+
+  it("drops skipped tests while keeping the passes and failures around them", () => {
+    const tests = parseJunit(SKIPPED, false);
+    expect(
+      tests
+        .map((t) => [t.name, t.status])
+        .sort((a, b) => a[0]!.localeCompare(b[0]!)),
+    ).toEqual([
+      ["Button explodes", "failure"],
+      ["Button renders", "passed"],
+    ]);
   });
 });
