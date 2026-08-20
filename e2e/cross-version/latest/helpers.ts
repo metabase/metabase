@@ -1,3 +1,5 @@
+import { XV_DATABASE_NAME } from "../constants";
+
 const { H } = cy;
 
 export function saveQuestion(name: string) {
@@ -42,11 +44,11 @@ export function visitRootCollectionAndWait() {
 }
 
 export function joinTables(baseTable: string, joinTable: string) {
-  selectFromPopover("Sample Database");
+  selectFromPopover(XV_DATABASE_NAME);
   selectFromPopover(baseTable);
 
   H.join();
 
-  selectFromPopover("Sample Database");
+  selectFromPopover(XV_DATABASE_NAME);
   selectFromPopover(joinTable);
 }

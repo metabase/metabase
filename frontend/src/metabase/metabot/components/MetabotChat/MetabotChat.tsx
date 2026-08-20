@@ -175,11 +175,7 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
-                onContinueMessage={() =>
-                  metabot.submitInput(
-                    t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
-                  )
-                }
+                onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
                   metabot.loadConversation(metabot.conversationId);

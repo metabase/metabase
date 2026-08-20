@@ -47,6 +47,27 @@ export function modalRoute(
 }
 
 /**
+ * `modalRoute` for a modal that lives in a code-split chunk, for a route tree
+ * still authored as `<Route>` elements. `createRoutesFromElements` reads `lazy`
+ * off the element, so this defers the modal without the tree having to convert.
+ */
+export function lazyModalRouteElement(
+  path: string,
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+) {
+  return (
+    <Route
+      key={path}
+      path={path}
+      lazy={async () => ({
+        Component: createModalRouteComponent(await loadModal(), options),
+      })}
+    />
+  );
+}
+
+/**
  * `modalRoute` for a modal that lives in a code-split chunk.
  *
  * `route.lazy` cannot supply `children`, so a lazy page's modal children have to

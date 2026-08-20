@@ -1,6 +1,6 @@
-import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
+import type { Dayjs } from "metabase/dayjs";
 import type {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -215,7 +215,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
   type: "combo";
   seriesDataKeysWithLabels: DataKey[];
   stackedDisplayWithLabels: StackDisplay[];
-  totalNumberOfDots: number;
+  numberOfDotsBySeriesKey: Record<DataKey, number>;
 };
 
 export type BaseCartesianChartModel = {

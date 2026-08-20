@@ -96,9 +96,12 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          cd cross-version
-          docker compose logs metabase || true
-          docker compose logs postgres || true
+          for f in cross-version/logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done
 
   # Notify Slack on nightly failures
   notify-on-failure:
@@ -220,6 +223,9 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          cd cross-version
-          docker compose logs metabase || true
-          docker compose logs postgres || true
+          for f in cross-version/logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done

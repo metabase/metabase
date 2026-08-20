@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import {
   pluralize,
   singularize,

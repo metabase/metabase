@@ -1,8 +1,8 @@
-import dayjs, { type Dayjs, type OpUnitType } from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
 import TimelinePanel from "metabase/query_builder/components/timelines/containers/TimelinePanel";
 import {
   getTimeseriesDataInterval,

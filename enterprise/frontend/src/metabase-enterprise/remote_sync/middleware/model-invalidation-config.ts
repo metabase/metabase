@@ -1,15 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
-import type {
-  Card,
-  CardId,
-  Collection,
-  CollectionId,
-  Dashboard,
-  DashboardId,
-  Document,
-} from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 /**
  * Invalidation strategies for remote sync model mutations.
@@ -17,21 +9,12 @@ import type {
 export enum InvalidationType {
   /** Always invalidate on create/update/delete (for table children like fields, segments, measures) */
   Always = "always",
-  /** Only invalidate if is_remote_synced changed or was already true */
-  RemoteSyncedChange = "remote_synced_change",
   /** Check collection's is_remote_synced status */
   CollectionBased = "collection_based",
 }
 
 export type InvalidationStrategy =
   | { type: InvalidationType.Always }
-  | {
-      type: InvalidationType.RemoteSyncedChange;
-      getOriginal: (
-        state: State,
-        id: number,
-      ) => Card | Dashboard | Document | undefined;
-    }
   | {
       type: InvalidationType.CollectionBased;
       getOriginalCollection: (
@@ -55,9 +38,4 @@ export type ModelMutationConfig = {
   deleteEndpoints?: EndpointMatcher[];
   invalidation: InvalidationStrategy;
   getDeleteId?: (action: UnknownAction) => number | { id: number } | undefined;
-};
-
-export type ModelWithRemoteSynced = {
-  id: number | CardId | DashboardId;
-  is_remote_synced?: boolean;
 };

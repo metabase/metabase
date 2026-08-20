@@ -523,6 +523,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
   "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
   "graph.split_panels"?: SeriesSettingDefinition<Value, Props>;
+  "graph.stack_value_format"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
