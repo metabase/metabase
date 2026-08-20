@@ -259,15 +259,19 @@
   []
   nil)
 
+(defn- repoint!
+  "Write `model-ref` as `setting-key` — unless an env var pins that setting, in which case the write would land in
+  the app DB and lose to the env var on every read, leaving the UI claiming a selection the instance is not
+  actually using."
+  [setting-key model-ref]
+  (if (setting/env-var-value setting-key)
+    (log/warnf "Leaving %s alone: %s is set by the environment"
+               (name setting-key) (setting/env-var-name setting-key))
+    (setting/set! setting-key model-ref)))
+
 (defn- repoint-metabot!
-  "Write `model-ref` as the Metabot selection — unless `MB_LLM_METABOT_PROVIDER` pins it, in which case the write
-  would land in the app DB and lose to the env var on every read, leaving the UI claiming a selection the instance
-  is not actually using."
   [model-ref]
-  (if (setting/env-var-value :llm-metabot-provider)
-    (log/warnf "Leaving llm-metabot-provider alone: %s is set by the environment"
-               (setting/env-var-name :llm-metabot-provider))
-    (setting/set! :llm-metabot-provider model-ref)))
+  (repoint! :llm-metabot-provider model-ref))
 
 (defn- metabot-has-a-usable-model?
   "Whether `llm-metabot-provider` currently names a connection that can serve requests. Callers must read this
@@ -288,23 +292,32 @@
     (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!
-  "Keep `llm-metabot-provider` on the model an edited connection actually serves.
+  "Keep the model-reference settings on the model an edited connection actually serves.
 
   A model reference stores the model as a string rather than as a live lookup, so for a type whose model comes from
   its own config — Azure, whose reference bakes in `{family}/{deployment-name}` — editing the connection can leave
-  the selection naming a deployment that no longer exists. The connection still reports usable, and the next
+  a selection naming a deployment that no longer exists. The connection still reports usable, and the next
   request fails at the provider. For a type with a fixed catalog the model in the edit form is a pick, not a
-  probe input: when the selection points at this connection, the pick follows through to it."
-  [{conn-key :key :keys [type config] :as conn} requested-model]
-  (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
-    (when-let [model-ref (cond
-                           (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                           (connection-model-ref conn)
+  probe input: when the selection points at this connection, the pick follows through to it.
 
-                           (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
-                           (str conn-key "/" requested-model))]
-      (when-not (= model-ref (metabot.settings/llm-metabot-provider))
-        (repoint-metabot! model-ref)))))
+  An explicitly pinned mini model moves with a composed model the same way — its reference goes just as stale —
+  but not with a pick, which changes what the admin prefers rather than what the connection can serve. A derived
+  mini model needs no help, since it follows the Metabot selection on its own."
+  [{conn-key :key :keys [type config] :as conn} requested-model]
+  (let [composed-ref (when (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+                       (connection-model-ref conn))
+        picked-ref   (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
+                       (str conn-key "/" requested-model))
+        metabot-ref  (metabot.settings/llm-metabot-provider)
+        mini-ref     (metabot.settings/explicit-mini-model)]
+    (when-let [model-ref (or composed-ref picked-ref)]
+      (when (and (= conn-key (llm.provider/model-ref->connection-key metabot-ref))
+                 (not= model-ref metabot-ref))
+        (repoint-metabot! model-ref)))
+    (when (and composed-ref
+               (= conn-key (llm.provider/model-ref->connection-key mini-ref))
+               (not= composed-ref mini-ref))
+      (repoint! :llm-mini-model composed-ref))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -427,6 +440,8 @@
       (cancel-managed-ai-subscription!))
     (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
       (llm.provider/set-connections! remaining)
+      (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/explicit-mini-model)))
+        (setting/set! :llm-mini-model nil))
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
         (repoint-metabot! (fallback-model-ref)))))
   nil)

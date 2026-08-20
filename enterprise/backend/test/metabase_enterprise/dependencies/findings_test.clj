@@ -22,7 +22,7 @@
   (doseq [model [:card :transform :segment]]
     (while (pos? (deps.findings/analyze-batch! model 100)))))
 
-(deftest ^:sequential can-analyze-entity-batches-test
+(deftest ^:synchronized can-analyze-entity-batches-test
   (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)
@@ -39,7 +39,7 @@
                                  :analyzed_entity_id [:in [card-id other-card-id]]
                                  :analyzed_entity_type :card)))))))
 
-(deftest ^:sequential does-not-repeatedly-analyze-entities-test
+(deftest ^:synchronized does-not-repeatedly-analyze-entities-test
   (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products-id (mt/id :products)
@@ -52,7 +52,7 @@
         (is (= 2 (deps.findings/analyze-batch! :card 2)))
         (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
 
-(deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
+(deftest ^:synchronized re-analyze-entities-when-analysis-version-bumped-test
   (backfill-all-entity-analyses!)
   (let [mp (mt/metadata-provider)
         products (lib.metadata/table mp (mt/id :products))
@@ -65,7 +65,7 @@
         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
           (is (= 2 (deps.findings/analyze-batch! :card 2))))))))
 
-(deftest ^:sequential does-analyze-native-entities-test
+(deftest ^:synchronized does-analyze-native-entities-test
   (testing "failed analysis result is appropriately stored in the appdb"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)]
@@ -78,7 +78,7 @@
                                    :analyzed_entity_id card-id
                                    :analyzed_entity_type :card))))))))
 
-(deftest ^:sequential does-report-errors-for-missing-refs-in-fields-test
+(deftest ^:synchronized does-report-errors-for-missing-refs-in-fields-test
   (testing "missing (not inactive) field refs in :fields are reported as findings (GHY-3157)"
     (backfill-all-entity-analyses!)
     (let [mp      (mt/metadata-provider)
@@ -137,7 +137,7 @@
                     :analyzed_entity_type entity-type
                     :analyzed_entity_id entity-id))
 
-(deftest ^:sequential analyze-batch-picks-up-missing-analyses-test
+(deftest ^:synchronized analyze-batch-picks-up-missing-analyses-test
   (testing "analyze-batch! picks up entities with no pre-existing AnalysisFinding"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
@@ -207,7 +207,7 @@
                        (stale-map [grandparent-id parent-id child-id]))
                     "grandparent should NOT be stale, parent and child should be stale (transitive)")))))))))
 
-(deftest ^:sequential mark-subtree-stale-then-drain-test
+(deftest ^:synchronized mark-subtree-stale-then-drain-test
   (testing "marking an entity stale also marks its whole transitive subtree up front, and check-entities! drains it"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
@@ -238,7 +238,7 @@
                      (stale-map [gp-id p-id c-id]))
                   "after check-entities!, the whole subtree should be re-analyzed (not stale)"))))))))
 
-(deftest ^:sequential transitive-marking-through-non-analyzable-entity-test
+(deftest ^:synchronized transitive-marking-through-non-analyzable-entity-test
   (testing "marking dependents stale reaches analyzable entities beyond non-analyzable intermediaries (e.g., tables)"
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
@@ -275,7 +275,7 @@
               (is (false? (finding-stale? :card card-id))
                   "card should be re-analyzed after entity-check"))))))))
 
-(deftest ^:sequential cyclic-dependency-drain-terminates-test
+(deftest ^:synchronized cyclic-dependency-drain-terminates-test
   (testing "check-entities! terminates on a cyclic dependency graph — staleness is fixed up front and never re-marked
             during the drain"
     (backfill-all-entity-analyses!)
@@ -304,7 +304,7 @@
                        (stale-map [a-id b-id]))
                     "both cycle members should be drained (re-analyzed, not stale)")))))))))
 
-(deftest ^:sequential unanalyzable-entity-records-terminal-error-test
+(deftest ^:synchronized unanalyzable-entity-records-terminal-error-test
   (testing "A stale entity whose database can't be resolved records a terminal error finding instead of no-oping forever."
     ;; Without the fix, instance-db-id -> nil makes upsert-analysis! no-op: the stale flag is never
     ;; cleared, so the entity is re-selected and re-attempted on every run. The fix records a terminal
@@ -327,7 +327,7 @@
             (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
                 "an error finding is recorded explaining why the entity couldn't be analyzed")))))))
 
-(deftest ^:sequential unanalyzable-entity-rechecks-when-database-resolvable-again-test
+(deftest ^:synchronized unanalyzable-entity-rechecks-when-database-resolvable-again-test
   (testing "After a no-DB terminal error, the entity is analyzed normally once its database resolves again."
     ;; The terminal error finding is not sticky: it clears the stale flag but does not block future
     ;; analysis. When the entity is next marked stale and its database now resolves, upsert-analysis!
@@ -358,7 +358,7 @@
                                             :analyzed_entity_type :card :analyzed_entity_id cid))
                   "phase 2: re-analysis cleared stale again"))))))))
 
-(deftest ^:sequential analyze-batch-shares-one-metadata-provider-test
+(deftest ^:synchronized analyze-batch-shares-one-metadata-provider-test
   (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches
            a provider to its query, so selecting the batch outside the cache gives each entity a private one. Nothing
            reads through those providers today -- upsert-analysis! builds its own from the database id and passes it

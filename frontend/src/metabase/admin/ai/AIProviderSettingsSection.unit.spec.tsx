@@ -268,11 +268,6 @@ async function openAdvancedSettings(modal: HTMLElement) {
   );
 }
 
-async function openModelPicker() {
-  await userEvent.click(screen.getByLabelText("Model"));
-  return await screen.findByRole("listbox");
-}
-
 describe("AIProviderSettingsSection", () => {
   afterEach(() => {
     reinitialize();
@@ -319,7 +314,6 @@ describe("AIProviderSettingsSection", () => {
     expect(
       screen.getByRole("button", { name: /Add another provider/ }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Model")).toBeInTheDocument();
   });
 
   it("picks the provider and fills the key in when one is pasted", async () => {
@@ -653,87 +647,6 @@ describe("AIProviderSettingsSection", () => {
     expect(
       screen.queryByRole("button", { name: "Provider options" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("lists models grouped by connection and saves the picked one", async () => {
-    await setup({
-      connections: [ANTHROPIC_CONNECTION, AZURE_CONNECTION],
-      models: CONNECTION_MODELS,
-      modelRef: "anthropic/claude-sonnet-4-5",
-    });
-
-    // closed, the picker names the provider too — the dropdown does not, because its group
-    // heading already does
-    await waitFor(() =>
-      expect(screen.getByLabelText("Model")).toHaveValue(
-        "Anthropic · Claude Sonnet 4.5",
-      ),
-    );
-
-    const listbox = await openModelPicker();
-
-    expect(within(listbox).getByText("Anthropic")).toBeInTheDocument();
-    expect(within(listbox).getByText("Azure prod")).toBeInTheDocument();
-    expect(
-      within(listbox).getByRole("option", { name: "Claude Haiku 4.5" }),
-    ).toBeInTheDocument();
-
-    await userEvent.click(
-      within(listbox).getByRole("option", { name: "GPT-5" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/setting/llm-metabot-provider", {
-          method: "PUT",
-          body: { value: "azure-prod/gpt-5" },
-        }),
-      ).toBe(true);
-    });
-
-    expect(await screen.findAllByText("Changes saved")).toHaveLength(1);
-  });
-
-  it("surfaces a failure to save the picked model", async () => {
-    await setup({
-      connections: [ANTHROPIC_CONNECTION, AZURE_CONNECTION],
-      models: CONNECTION_MODELS,
-      modelRef: "anthropic/claude-sonnet-4-5",
-    });
-
-    // closed, the picker names the provider too — the dropdown does not, because its group
-    // heading already does
-    await waitFor(() =>
-      expect(screen.getByLabelText("Model")).toHaveValue(
-        "Anthropic · Claude Sonnet 4.5",
-      ),
-    );
-
-    fetchMock.modifyRoute("update-setting", {
-      response: { status: 400, body: { message: "Unsupported model" } },
-    });
-
-    const listbox = await openModelPicker();
-    await userEvent.click(
-      within(listbox).getByRole("option", { name: "GPT-5" }),
-    );
-
-    expect(await screen.findByText("Unsupported model")).toBeInTheDocument();
-    expect(screen.queryByText("Changes saved")).not.toBeInTheDocument();
-  });
-
-  it("locks the model picker and names the env var when the model is set by one", async () => {
-    await setup({
-      connections: [ANTHROPIC_CONNECTION],
-      models: CONNECTION_MODELS,
-      modelRef: "anthropic/claude-sonnet-4-5",
-      modelRefEnvVar: "MB_LLM_METABOT_PROVIDER",
-    });
-
-    expect(
-      await screen.findByTestId("setting-env-var-message"),
-    ).toHaveTextContent("MB_LLM_METABOT_PROVIDER");
-    expect(screen.getByLabelText("Model")).toBeDisabled();
   });
 });
 

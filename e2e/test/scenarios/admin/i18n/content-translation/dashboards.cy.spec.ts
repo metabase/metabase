@@ -22,7 +22,7 @@ import {
   frenchNames,
   germanFieldNames,
   germanFieldValues,
-} from "./constants";
+} from "./helpers/constants";
 
 const { H } = cy;
 

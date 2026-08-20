@@ -1,16 +1,17 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect, useSelector } from "metabase/redux";
-import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
+import { fetchTableData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getDatabase,
@@ -22,17 +23,15 @@ import {
 import TableSidebar from "./TableSidebar";
 
 const mapDispatchToProps = {
-  fetchTableMetadataAndForeignKeys,
   ...actions,
 };
 
-interface FieldListContainerProps extends FetchProps, ClearStateProps {
-  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
-}
+type FieldListContainerProps = ClearStateProps;
 
 function FieldListContainer(props: FieldListContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
+  const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
   const database = useSelector((state) => getDatabase(state, { params }));
@@ -40,16 +39,9 @@ function FieldListContainer(props: FieldListContainerProps) {
   const tableId = useSelector((state) => getTableId(state, { params }));
   const isEditing = useSelector(getIsEditing);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchTableMetadata(props, tableId);
-  }
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchTableData(dispatch, tableId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -65,7 +57,11 @@ function FieldListContainer(props: FieldListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<TableSidebar database={database} table={table} />}
     >
-      <FieldList params={params} />
+      <FieldList
+        params={params}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }

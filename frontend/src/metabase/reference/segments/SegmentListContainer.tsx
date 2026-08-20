@@ -1,44 +1,36 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect, useSelector } from "metabase/redux";
-import { fetchSegments } from "metabase/redux/metadata";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
+import { fetchSegmentListData } from "metabase/reference/fetch-data";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import { getIsEditing } from "../selectors";
 
 const mapDispatchToProps = {
-  fetchSegments,
   ...actions,
 };
 
-interface SegmentListContainerProps extends FetchProps, ClearStateProps {
-  fetchSegments: (id?: number) => Promise<unknown>;
-}
+type SegmentListContainerProps = ClearStateProps;
 
 function SegmentListContainer(props: SegmentListContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
 
+  const dispatch = useDispatch();
   const isEditing = useSelector(getIsEditing);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchSegments(props);
-  }
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentListData(dispatch),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -54,7 +46,7 @@ function SegmentListContainer(props: SegmentListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<BaseSidebar />}
     >
-      <SegmentList />
+      <SegmentList loading={loading} loadingError={loadingError} />
     </SidebarLayout>
   );
 }
