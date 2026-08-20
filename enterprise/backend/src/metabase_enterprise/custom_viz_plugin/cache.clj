@@ -339,28 +339,22 @@
    :redirect-strategy  :none
    :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
 
+;; Content-type
 ;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
-;; at an internal service. Requiring the content-type the dev server would have answered with narrows what
-;; such a service can hand back: an admin console answers text/html, not application/javascript.
+;; at an internal service. Requiring the content-type specific content-type narrows the possibilities
 
 (def ^:private bundle-content-types
-  "What a dev server serves `index.js` as. The CLI's own server says `application/javascript`
-   (`custom-viz/src/templates/vite.config.ts`); `text/javascript` is the equally standard spelling that
-   another dev server may use."
   #{"application/javascript" "text/javascript"})
 
 (def ^:private manifest-content-types
   #{"application/json" "text/json"})
 
 (defn response-content-type
-  "The response's content-type, lower-cased and stripped of any `; charset=...`. Nil when the header is absent."
   [resp]
   (some-> (get-in resp [:headers :content-type])
           (str/split #";") first str/trim u/lower-case-en))
 
 (defn- check-content-type!
-  "Throw a 400 unless the response's content-type is one of `allowed`. A missing header is refused too -- every
-   path the dev server serves sets one, so its absence means whatever answered is not a dev server."
   [resp allowed ^String url]
   (let [ctype (response-content-type resp)]
     (when-not (contains? allowed ctype)
@@ -373,8 +367,6 @@
    Returns {:content str :hash str}, or nil when the dev server is transiently
    unavailable (e.g. mid-rebuild)."
   [^String base-url]
-  ;; the try covers only the request: a refusal from the checks below is a 400 for the caller, not a dev
-  ;; server that happens to be down, and must not be swallowed into nil here.
   (when-let [resp (try
                     (http/get (dev-url base-url bundle-rel-path)
                               (assoc dev-http-opts :as :string))
@@ -416,7 +408,6 @@
                (catch Exception e
                  (rethrow-if-refused! e base-url)
                  (throw e)))]
-    ;; the manifest already fixes the image type this asset must be, so there is no separate allowlist
     (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
     (:body resp)))
 
