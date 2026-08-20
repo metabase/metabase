@@ -88,8 +88,11 @@ describe("scenarios > data apps > backend scope", () => {
       cy.findByText("Add filter").click();
 
       cy.log("Summarize picker — loads the aggregation/column pickers");
+      // The button is labelled by how many summaries the question has, and with
+      // none it opens the aggregation picker directly — the badge list, with its
+      // "Add another summary", is what a question that already aggregates opens.
       cy.findByText("Summarize").click();
-      cy.findByText("Add another summary").should("be.visible");
+      cy.findByTestId("aggregation-picker").should("be.visible");
       cy.findByText("Summarize").click();
 
       cy.log("Group-by picker");
