@@ -427,7 +427,7 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [force-run pr-labels skip particular-driver-changed?]}
+   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
    skipped-drivers
    updated]
