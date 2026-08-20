@@ -900,6 +900,16 @@
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
 
+  ;; Run tests under clj-async-profiler; writes a flamegraph to target/clj-async-profiler/results.
+  ;; Must come after `:test`, whose `:exec-fn` it overrides:
+  ;; clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test:profile-tests :only '[metabase.some-test]'
+  :profile-tests
+  {:exec-fn  dev.profile-tests/run
+   :jvm-opts ["-Dclj-async-profiler.output-dir=target"
+              ;; without these, inlined frames are attributed to the wrong method
+              "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints"]}
+
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
