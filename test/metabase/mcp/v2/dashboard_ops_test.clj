@@ -312,6 +312,25 @@
         (is (neg? (:id clone)))
         (is (= 9 (:card_id clone)))))))
 
+(deftest duplicate-tab-minted-ids-stay-distinct-test
+  (testing "GHY-4147: the negative ids duplicate_tab mints for its clones stay distinct from each
+            other and from every id the caller uses elsewhere in the batch"
+    (let [current {:id 1
+                   :tabs [{:id 5 :name "A"}]
+                   :parameters []
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :dashboard_tab_id 5 :visualization_settings {}}
+                               {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4
+                                :dashboard_tab_id 5 :visualization_settings {}}]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               current
+                               [{:op "duplicate_tab" :id -1 :tab_id 5}
+                                {:op "add_card" :id -10 :card_id 9 :tab -1}]
+                               {})
+          ids (mapv :id dashcards)]
+      (is (= 5 (count dashcards)))
+      (is (apply distinct? ids)))))
+
 (deftest remove-tab-deletes-its-cards-test
   (testing "GHY-4147: remove_tab drops the tab and every dashcard on it"
     (let [current {:id 1
@@ -439,6 +458,18 @@
                                current [{:op "move_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
       (is (= ["p1"] (:inline_parameters (first dashcards)))))))
 
+(deftest move-parameter-moves-between-cards-test
+  (testing "GHY-4147: move_parameter onto a card removes the inline placement from every other card —
+            a parameter lives in one place — and re-running the op does not duplicate the entry"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :inline_parameters ["p1"]}
+                               {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4}]}
+          op {:op "move_parameter" :parameter_id "p1" :dashcard_id 8}
+          {:keys [dashcards]} (dashboard-ops/compile-ops current [op op] {})]
+      (is (= [] (:inline_parameters (first dashcards))))
+      (is (= ["p1"] (:inline_parameters (second dashcards)))))))
+
 (deftest wire-parameter-by-field-test
   (testing "GHY-4147: wire_parameter writes a parameter mapping using the card's target for the field"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
@@ -452,6 +483,23 @@
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
                                  {9 a-card}))]
       (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 55 nil]]}]
+             (:parameter_mappings (first dashcards)))))))
+
+(deftest wire-parameter-rewire-replaces-mapping-test
+  (testing "GHY-4147: wiring a parameter that is already wired on the dashcard replaces its mapping —
+            a re-wire must never accumulate a second mapping for the same parameter"
+    (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :parameter_mappings []}]}
+          {:keys [dashcards]} (with-redefs [metabase.parameters.mapping-targets/target-for-field
+                                            (fn [_card _param field-id]
+                                              [:dimension [:field field-id nil]])]
+                                (dashboard-ops/compile-ops
+                                 current
+                                 [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                  {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 66}]
+                                 {9 a-card}))]
+      (is (= [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 66 nil]]}]
              (:parameter_mappings (first dashcards)))))))
 
 (deftest wire-parameter-rejects-an-unavailable-field-test
@@ -621,3 +669,104 @@
             native-current
             [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "region"]}]
             {9 native-card}))))))
+
+;;; ---------------------------------------------- State algebra ----------------------------------------------------
+
+(def ^:private rows-state
+  "A plain working state for driving the row primitives directly — all three collections are
+   vectors of :id-keyed maps in save order."
+  {:dashcards  [{:id 1 :a 1} {:id 2 :a 2} {:id 3 :a 3}]
+   :tabs       [{:id 10 :name "A"} {:id 11 :name "B"} {:id 12 :name "C"}]
+   :parameters [{:id "p1"} {:id "p2"} {:id "p3"}]})
+
+(deftest update-row-test
+  (testing "GHY-4147 refactor: update-row rewrites only the target row, order preserved, in every collection"
+    (doseq [[coll id f expected]
+            [[:dashcards 2 #(assoc % :a 99) [{:id 1 :a 1} {:id 2 :a 99} {:id 3 :a 3}]]
+             [:tabs 10 #(assoc % :name "Z") [{:id 10 :name "Z"} {:id 11 :name "B"} {:id 12 :name "C"}]]
+             [:parameters "p3" #(assoc % :x 1) [{:id "p1"} {:id "p2"} {:id "p3" :x 1}]]]]
+      (testing coll
+        (is (= expected (get (#'dashboard-ops/update-row rows-state coll id f) coll)))))))
+
+(deftest remove-row-test
+  (testing "GHY-4147 refactor: remove-row drops only the target row, preserving the order of the rest"
+    (doseq [[coll id expected]
+            [[:dashcards 2 [{:id 1 :a 1} {:id 3 :a 3}]]
+             [:tabs 12 [{:id 10 :name "A"} {:id 11 :name "B"}]]
+             [:parameters "p1" [{:id "p2"} {:id "p3"}]]]]
+      (testing coll
+        (is (= expected (get (#'dashboard-ops/remove-row rows-state coll id) coll)))))))
+
+(deftest map-rows-test
+  (testing "GHY-4147 refactor: map-rows transforms every row in place, order preserved"
+    (is (= [{:id 1 :a 1 :m true} {:id 2 :a 2 :m true} {:id 3 :a 3 :m true}]
+           (:dashcards (#'dashboard-ops/map-rows rows-state :dashcards #(assoc % :m true)))))))
+
+(deftest move-row-test
+  (testing "GHY-4147 refactor: move-row lands the target at the index, relative order of the rest preserved"
+    (doseq [[id index expected] [[12 0 [12 10 11]]
+                                 [10 2 [11 12 10]]
+                                 [11 1 [10 11 12]]]]
+      (testing [id index]
+        (is (= expected (mapv :id (:tabs (#'dashboard-ops/move-row rows-state :tabs id index))))))))
+  (testing "the same rows come back, just reordered"
+    (is (= (frequencies (:tabs rows-state))
+           (frequencies (:tabs (#'dashboard-ops/move-row rows-state :tabs 11 0))))))
+  (testing "nil when the index falls outside [0, count-after-removal], so the op owns its error"
+    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 -1)))
+    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 3)))))
+
+(deftest upsert-mapping-test
+  (let [dc {:id 7 :card_id 9
+            :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+                                 {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]
+    (testing "GHY-4147 refactor: wiring twice leaves one mapping for the parameter, carrying the latest
+              target; other parameters' mappings and their order survive"
+      (is (= [{:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}
+              {:parameter_id "p1" :card_id 9 :target [:dimension [:field 6 nil]]}]
+             (:parameter_mappings
+              (-> dc
+                  (#'dashboard-ops/upsert-mapping "p1" [:dimension [:field 5 nil]])
+                  (#'dashboard-ops/upsert-mapping "p1" [:dimension [:field 6 nil]]))))))
+    (testing "card_id comes from the dashcard, including nil for a virtual card"
+      (is (= [{:parameter_id "p1" :card_id nil :target [:text-tag "region"]}]
+             (:parameter_mappings
+              (#'dashboard-ops/upsert-mapping {:id 7} "p1" [:text-tag "region"])))))))
+
+(deftest inline-parameter-round-trip-test
+  (let [dc {:id 7 :inline_parameters ["p1"]}]
+    (testing "GHY-4147 refactor: adding an inline parameter twice is the same as adding it once"
+      (is (= ["p1" "p2"]
+             (:inline_parameters (-> dc
+                                     (#'dashboard-ops/add-inline-parameter "p2")
+                                     (#'dashboard-ops/add-inline-parameter "p2"))))))
+    (testing "dropping after adding restores the original dashcard for a fresh id"
+      (is (= dc (-> dc
+                    (#'dashboard-ops/add-inline-parameter "p2")
+                    (#'dashboard-ops/drop-inline-parameter "p2")))))))
+
+(deftest remove-parameter-cascade-composes-from-primitives-test
+  (testing "GHY-4147 refactor: remove_parameter's cascade is exactly this primitive composition — if the
+            op's wiring drifts from the algebra, this fails"
+    (let [current {:id 1 :tabs []
+                   :parameters [{:id "p1"}
+                                {:id "p2" :filteringParameters ["p1"]}]
+                   :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                :inline_parameters ["p1" "p2"]
+                                :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+                                                     {:parameter_id "p2" :card_id 9 :target [:dimension [:field 2 nil]]}]}]}
+          state (select-keys current [:dashcards :tabs :parameters])
+          s     (#'dashboard-ops/remove-row state :parameters "p1")
+          s     (#'dashboard-ops/map-rows s :parameters
+                                          (fn [p]
+                                            (cond-> p
+                                              (contains? p :filteringParameters)
+                                              (update :filteringParameters (partial filterv #(not= "p1" %))))))
+          via-primitives
+          (#'dashboard-ops/map-rows s :dashcards
+                                    (fn [dc]
+                                      (-> dc
+                                          (#'dashboard-ops/drop-inline-parameter "p1")
+                                          (#'dashboard-ops/drop-mapping "p1"))))]
+      (is (= via-primitives
+             (dashboard-ops/compile-ops current [{:op "remove_parameter" :parameter_id "p1"}] {}))))))

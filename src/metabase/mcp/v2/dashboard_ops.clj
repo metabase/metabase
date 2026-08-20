@@ -9,7 +9,10 @@
 
    New dashcards and tabs carry caller-supplied negative ids, the same temp-id convention the
    frontend editor sends to `PUT /api/dashboard/:id`: `u/row-diff` treats them as creates, and
-   `do-update-tabs!` rewrites each dashcard's `dashboard_tab_id` once the real tab rows exist."
+   `do-update-tabs!` rewrites each dashcard's `dashboard_tab_id` once the real tab rows exist.
+
+   Op methods validate, then compose the row primitives in the State algebra section; those
+   primitives are the only code that touches the `:dashcards`/`:tabs`/`:parameters` vectors."
   (:require
    [clojure.string :as str]
    [metabase.dashboards.autoplace :as autoplace]
@@ -51,14 +54,45 @@
   [state card-id]
   (keyword (or (:display (get (::cards state) card-id)) "table")))
 
-(defn- find-dashcard
-  [state id]
-  (first (filter #(= id (:id %)) (:dashcards state))))
+;;; --------------------------------------------- State algebra ----------------------------------------------------
 
-(defn- update-dashcard
-  "Replace the dashcard with `id` by `(f dashcard)`, preserving order."
-  [state id f]
-  (update state :dashcards (partial mapv #(if (= id (:id %)) (f %) %))))
+;;; `coll` is one of the three collection keys — :dashcards, :tabs, :parameters — each a vector of
+;;; :id-keyed maps in save order. These primitives are the only functions that write those keys;
+;;; op methods validate, then compose them.
+
+(defn- find-row
+  "The row in `(get state coll)` whose `:id` is `id`, or nil."
+  [state coll id]
+  (first (filter #(= id (:id %)) (get state coll))))
+
+(defn- insert-row
+  "Append `row` to `(get state coll)`, preserving save order."
+  [state coll row]
+  (update state coll conj row))
+
+(defn- update-row
+  "Replace the row with `id` by `(f row)`; every other row and the order are untouched."
+  [state coll id f]
+  (update state coll (partial mapv #(if (= id (:id %)) (f %) %))))
+
+(defn- remove-row
+  "Drop the row with `id`, preserving the order of the rest."
+  [state coll id]
+  (update state coll (partial filterv #(not= id (:id %)))))
+
+(defn- move-row
+  "Move the row with `id` so it sits at `index` among the remaining rows; nil when `index` falls
+   outside `[0, count-after-removal]`."
+  [state coll id index]
+  (let [row   (find-row state coll id)
+        rest* (filterv #(not= id (:id %)) (get state coll))]
+    (when (<= 0 index (count rest*))
+      (assoc state coll (vec (concat (subvec rest* 0 index) [row] (subvec rest* index)))))))
+
+(defn- map-rows
+  "Replace every row by `(f row)`, order preserved."
+  [state coll f]
+  (update state coll (partial mapv f)))
 
 (defn- check-new-id!
   "A new dashcard or tab id must be negative and unused in this batch."
@@ -73,7 +107,7 @@
 (defn- resolve-dashcard!
   "The existing dashcard `id` names, or a teaching error."
   [state idx id]
-  (or (find-dashcard state id)
+  (or (find-row state :dashcards id)
       (op-error! idx (format "%s): no dashcard with id %s on this dashboard."
                              "dashcard_id" id))))
 
@@ -102,6 +136,46 @@
            "No free space on this tab for another card — remove or resize something first."))
         {:row (:row placed) :col (:col placed) :size_x size_x :size_y size_y}))))
 
+;;; ---------------------------------------------- Domain helpers --------------------------------------------------
+
+(defn- upsert-mapping
+  "Add or replace `dc`'s parameter mapping for `parameter-id`, pointing at `target`. `:card_id`
+   comes from the dashcard — nil for a virtual card, which is what a `[:text-tag …]` mapping stores."
+  [dc parameter-id target]
+  (update dc :parameter_mappings
+          (fn [ms]
+            (conj (filterv #(not= parameter-id (:parameter_id %)) (vec ms))
+                  {:parameter_id parameter-id
+                   :card_id      (:card_id dc)
+                   :target       target}))))
+
+(defn- drop-mapping
+  "Remove `dc`'s parameter mapping for `parameter-id`; the result always carries a
+   `:parameter_mappings` vector."
+  [dc parameter-id]
+  (update dc :parameter_mappings
+          (fn [ms] (filterv #(not= parameter-id (:parameter_id %)) (vec ms)))))
+
+(defn- add-inline-parameter
+  "Place `parameter-id` inline on `dc`; adding an id already present is a no-op."
+  [dc parameter-id]
+  (update dc :inline_parameters
+          (fn [ps] (vec (distinct (conj (vec ps) parameter-id))))))
+
+(defn- drop-inline-parameter
+  "Remove `parameter-id` from `dc`'s existing `:inline_parameters`."
+  [dc parameter-id]
+  (update dc :inline_parameters (partial filterv #(not= parameter-id %))))
+
+(defn- insert-dashcard
+  "Insert a new dashcard: check `(:id op)` is a fresh negative id, place it on
+   `(:dashboard_tab_id base)` honoring `op`'s position/size with `display`'s default size, and
+   append `base` merged with the placement."
+  [state idx op base display]
+  (check-new-id! state idx (:id op) (:op op))
+  (insert-row state :dashcards
+              (merge base (placement state op (:dashboard_tab_id base) display))))
+
 ;;; ------------------------------------------------- Ops ----------------------------------------------------------
 
 (defmulti ^:private apply-op
@@ -116,15 +190,14 @@
 
 (defmethod apply-op "add_card"
   [state idx {:keys [id card_id tab series inline_parameters] :as op}]
-  (check-new-id! state idx id "add_card")
-  (update state :dashcards conj
-          (merge {:id                 id
-                  :card_id            card_id
-                  :dashboard_tab_id   tab
-                  :parameter_mappings []}
-                 (placement state op tab (card-display state card_id))
-                 (when (seq series) {:series (mapv (fn [cid] {:id cid}) series)})
-                 (when (seq inline_parameters) {:inline_parameters (vec inline_parameters)}))))
+  (insert-dashcard state idx op
+                   (merge {:id                 id
+                           :card_id            card_id
+                           :dashboard_tab_id   tab
+                           :parameter_mappings []}
+                          (when (seq series) {:series (mapv (fn [cid] {:id cid}) series)})
+                          (when (seq inline_parameters) {:inline_parameters (vec inline_parameters)}))
+                   (card-display state card_id)))
 
 ;;; ---------------------------------------------- Virtual dashcards -------------------------------------------------
 
@@ -133,15 +206,14 @@
    display-specific settings, both handed to [[dashboard-card/virtual-card-settings]] so this
    compiler and the frontend agree on the shape."
   [state idx op display extras]
-  (check-new-id! state idx (:id op) (:op op))
-  (update state :dashcards conj
-          (merge {:id                     (:id op)
-                  :dashboard_tab_id       (:tab op)
-                  :parameter_mappings     []
-                  :visualization_settings (dashboard-card/virtual-card-settings display extras)}
-                 (placement state op (:tab op) (keyword display))
-                 (when (seq (:inline_parameters op))
-                   {:inline_parameters (vec (:inline_parameters op))}))))
+  (insert-dashcard state idx op
+                   (merge {:id                     (:id op)
+                           :dashboard_tab_id       (:tab op)
+                           :parameter_mappings     []
+                           :visualization_settings (dashboard-card/virtual-card-settings display extras)}
+                          (when (seq (:inline_parameters op))
+                            {:inline_parameters (vec (:inline_parameters op))}))
+                   (keyword display)))
 
 (defmethod apply-op "add_text"
   [state idx {:keys [markdown] :as op}]
@@ -166,30 +238,29 @@
 
 (defmethod apply-op "add_action"
   [state idx {:keys [id action_id label display] :as op}]
-  (check-new-id! state idx id "add_action")
-  (update state :dashcards conj
-          (merge {:id                 id
-                  :action_id          action_id
-                  :dashboard_tab_id   (:tab op)
-                  :parameter_mappings []
-                  :visualization_settings
-                  (cond-> {:actionDisplayType (or display "button")}
-                    label (assoc "button.label" label))}
-                 (placement state op (:tab op) :action))))
+  (insert-dashcard state idx op
+                   {:id                 id
+                    :action_id          action_id
+                    :dashboard_tab_id   (:tab op)
+                    :parameter_mappings []
+                    :visualization_settings
+                    (cond-> {:actionDisplayType (or display "button")}
+                      label (assoc "button.label" label))}
+                   :action))
 
 (defmethod apply-op "duplicate_card"
   [state idx {:keys [id dashcard_id tab] :as op}]
+  ;; also checked inside insert-dashcard; the explicit call keeps a bad new id reported ahead of a
+  ;; bad source dashcard
   (check-new-id! state idx id "duplicate_card")
   (let [source (resolve-dashcard! state idx dashcard_id)
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id source))]
-    (update state :dashcards conj
-            (merge (dissoc source :id :row :col :size_x :size_y :dashboard_tab_id
-                           :created_at :updated_at :card :entity_id)
-                   {:id id :dashboard_tab_id tab-id}
-                   (placement state
-                              (assoc op :size {:size_x (:size_x source) :size_y (:size_y source)})
-                              tab-id
-                              (card-display state (:card_id source)))))))
+    (insert-dashcard state idx
+                     (assoc op :size {:size_x (:size_x source) :size_y (:size_y source)})
+                     (merge (dissoc source :id :row :col :size_x :size_y :dashboard_tab_id
+                                    :created_at :updated_at :card :entity_id)
+                            {:id id :dashboard_tab_id tab-id})
+                     (card-display state (:card_id source)))))
 
 ;;; ------------------------------------------------- Edit ops ------------------------------------------------------
 
@@ -215,44 +286,44 @@
 (defmethod apply-op "replace_card"
   [state idx {:keys [dashcard_id card_id]}]
   (resolve-dashcard! state idx dashcard_id)
-  (update-dashcard state dashcard_id
-                   #(assoc % :card_id card_id
-                           :series []
-                           :parameter_mappings []
-                           :visualization_settings {})))
+  (update-row state :dashcards dashcard_id
+              #(assoc % :card_id card_id
+                      :series []
+                      :parameter_mappings []
+                      :visualization_settings {})))
 
 (defmethod apply-op "move"
   [state idx {:keys [dashcard_id tab position] :as op}]
   (let [dc     (resolve-dashcard! state idx dashcard_id)
         tab-id (if (contains? op :tab) tab (:dashboard_tab_id dc))]
-    (when (and (contains? op :tab) (some? tab) (not-any? #(= tab (:id %)) (:tabs state)))
+    (when (and (contains? op :tab) (some? tab) (not (find-row state :tabs tab)))
       (op-error! idx (format "move): no tab with id %s on this dashboard." tab)))
-    (update-dashcard state dashcard_id
-                     (fn [dc]
-                       (merge dc
-                              {:dashboard_tab_id tab-id}
-                              (if position
-                                {:row (:row position) :col (:col position)}
-                                (select-keys (placement state
-                                                        {:size (select-keys dc [:size_x :size_y])}
-                                                        tab-id
-                                                        :table)
-                                             [:row :col])))))))
+    (update-row state :dashcards dashcard_id
+                (fn [dc]
+                  (merge dc
+                         {:dashboard_tab_id tab-id}
+                         (if position
+                           {:row (:row position) :col (:col position)}
+                           (select-keys (placement state
+                                                   {:size (select-keys dc [:size_x :size_y])}
+                                                   tab-id
+                                                   :table)
+                                        [:row :col])))))))
 
 (defmethod apply-op "resize"
   [state idx {:keys [dashcard_id size]}]
   (resolve-dashcard! state idx dashcard_id)
-  (update-dashcard state dashcard_id #(merge % (select-keys size [:size_x :size_y]))))
+  (update-row state :dashcards dashcard_id #(merge % (select-keys size [:size_x :size_y]))))
 
 (defmethod apply-op "remove"
   [state idx {:keys [dashcard_id]}]
   (resolve-dashcard! state idx dashcard_id)
-  (update state :dashcards (partial filterv #(not= dashcard_id (:id %)))))
+  (remove-row state :dashcards dashcard_id))
 
 (defmethod apply-op "set_series"
   [state idx {:keys [dashcard_id card_ids]}]
   (resolve-dashcard! state idx dashcard_id)
-  (update-dashcard state dashcard_id #(assoc % :series (mapv (fn [cid] {:id cid}) card_ids))))
+  (update-row state :dashcards dashcard_id #(assoc % :series (mapv (fn [cid] {:id cid}) card_ids))))
 
 (defmethod apply-op "patch_dashcard"
   [state idx {:keys [dashcard_id patch]}]
@@ -265,17 +336,17 @@
 
       (not (contains? patchable-keys k))
       (op-error! idx (format "patch_dashcard): `%s` is not a patchable property." (name k)))))
-  (update-dashcard state dashcard_id
-                   (fn [dc]
-                     (cond-> (merge dc (dissoc patch :visualization_settings))
-                       (contains? patch :visualization_settings)
-                       (update :visualization_settings merge (:visualization_settings patch))))))
+  (update-row state :dashcards dashcard_id
+              (fn [dc]
+                (cond-> (merge dc (dissoc patch :visualization_settings))
+                  (contains? patch :visualization_settings)
+                  (update :visualization_settings merge (:visualization_settings patch))))))
 
 ;;; -------------------------------------------------- Tab ops ------------------------------------------------------
 
 (defn- resolve-tab!
   [state idx id]
-  (or (first (filter #(= id (:id %)) (:tabs state)))
+  (or (find-row state :tabs id)
       (op-error! idx (format "tab_id): no tab with id %s on this dashboard." id))))
 
 (defn- next-temp-id
@@ -287,42 +358,41 @@
 (defmethod apply-op "add_tab"
   [state idx {:keys [id name]}]
   (check-new-id! state idx id "add_tab")
-  (update state :tabs conj {:id id :name name}))
+  (insert-row state :tabs {:id id :name name}))
 
 (defmethod apply-op "rename_tab"
   [state idx {:keys [tab_id name]}]
   (resolve-tab! state idx tab_id)
-  (update state :tabs (partial mapv #(if (= tab_id (:id %)) (assoc % :name name) %))))
+  (update-row state :tabs tab_id #(assoc % :name name)))
 
 (defmethod apply-op "move_tab"
   [state idx {:keys [tab_id index]}]
-  (let [tab   (resolve-tab! state idx tab_id)
-        rest* (filterv #(not= tab_id (:id %)) (:tabs state))]
-    (when-not (<= 0 index (count rest*))
+  (resolve-tab! state idx tab_id)
+  (or (move-row state :tabs tab_id index)
       (op-error! idx (format "move_tab): index %d is out of range — this dashboard has %d tabs."
-                             index (count (:tabs state)))))
-    (assoc state :tabs (vec (concat (subvec rest* 0 index) [tab] (subvec rest* index))))))
+                             index (count (:tabs state))))))
 
 (defmethod apply-op "duplicate_tab"
   [state idx {:keys [id tab_id]}]
   (check-new-id! state idx id "duplicate_tab")
   (let [source (resolve-tab! state idx tab_id)
         cards  (filterv #(= tab_id (:dashboard_tab_id %)) (:dashcards state))
-        state  (update state :tabs conj {:id id :name (:name source)})]
+        state  (insert-row state :tabs {:id id :name (:name source)})]
     (reduce (fn [st card]
-              (update st :dashcards conj
-                      (assoc (dissoc card :created_at :updated_at :card)
-                             :id (next-temp-id st)
-                             :dashboard_tab_id id)))
+              (insert-row st :dashcards
+                          (assoc (dissoc card :created_at :updated_at :card)
+                                 :id (next-temp-id st)
+                                 :dashboard_tab_id id)))
             state
             cards)))
 
 (defmethod apply-op "remove_tab"
   [state idx {:keys [tab_id]}]
   (resolve-tab! state idx tab_id)
-  (-> state
-      (update :tabs (partial filterv #(not= tab_id (:id %))))
-      (update :dashcards (partial filterv #(not= tab_id (:dashboard_tab_id %))))))
+  (let [doomed (map :id (filter #(= tab_id (:dashboard_tab_id %)) (:dashcards state)))]
+    (reduce (fn [st dc-id] (remove-row st :dashcards dc-id))
+            (remove-row state :tabs tab_id)
+            doomed)))
 
 (defn- check-tab-coverage!
   "`update-dashboard!` requires every dashcard to name a tab once a dashboard has more than one —
@@ -341,7 +411,7 @@
 
 (defn- resolve-parameter!
   [state idx id]
-  (or (first (filter #(= id (:id %)) (:parameters state)))
+  (or (find-row state :parameters id)
       (op-error! idx (format "parameter_id): no parameter with id %s on this dashboard." (pr-str id)))))
 
 (defn- card-for-dashcard
@@ -358,13 +428,13 @@
 
 (defmethod apply-op "add_parameter"
   [state idx {:keys [parameter_id] :as op}]
-  (when (some #(= parameter_id (:id %)) (:parameters state))
+  (when (find-row state :parameters parameter_id)
     (op-error! idx (format "add_parameter): parameter %s already exists — use `update_parameter`."
                            (pr-str parameter_id))))
-  (update state :parameters conj
-          (-> (dissoc op :op :parameter_id)
-              (assoc :id parameter_id)
-              assoc-slug)))
+  (insert-row state :parameters
+              (-> (dissoc op :op :parameter_id)
+                  (assoc :id parameter_id)
+                  assoc-slug)))
 
 (defmethod apply-op "update_parameter"
   [state idx {:keys [parameter_id clear] :as op}]
@@ -374,68 +444,56 @@
             :when (contains? op field)]
       (op-error! idx (format "update_parameter): `%s` is both set and cleared — pass one or the other."
                              (name field))))
-    (update state :parameters
-            (partial mapv #(if (= parameter_id (:id %))
-                             ;; A parameter is a map, so clearing removes the key rather than
-                             ;; setting it to nil — `merge` can only add, and a stored explicit
-                             ;; null is not the same as an absent property to the REST shape.
-                             (cond-> (apply dissoc
-                                            (merge % (dissoc op :op :parameter_id :clear))
-                                            cleared)
-                               ;; only re-slug on a rename, so an unrelated edit can't rewrite the
-                               ;; slug of a parameter created in the editor and break its existing URLs
-                               (contains? op :name) assoc-slug)
-                             %)))))
+    (update-row state :parameters parameter_id
+                (fn [param]
+                  ;; A parameter is a map, so clearing removes the key rather than setting it to
+                  ;; nil — `merge` can only add, and a stored explicit null is not the same as an
+                  ;; absent property to the REST shape.
+                  (cond-> (apply dissoc
+                                 (merge param (dissoc op :op :parameter_id :clear))
+                                 cleared)
+                    ;; only re-slug on a rename, so an unrelated edit can't rewrite the slug of a
+                    ;; parameter created in the editor and break its existing URLs
+                    (contains? op :name) assoc-slug)))))
 
 (defmethod apply-op "remove_parameter"
   [state idx {:keys [parameter_id]}]
   (resolve-parameter! state idx parameter_id)
   (-> state
-      (update :parameters
-              (fn [params]
-                (->> params
-                     (filterv #(not= parameter_id (:id %)))
-                     (mapv (fn [p]
-                             (cond-> p
-                               (contains? p :filteringParameters)
-                               (update :filteringParameters
-                                       (partial filterv #(not= parameter_id %)))))))))
-      (update :dashcards
-              (partial mapv
-                       (fn [dc]
-                         (cond-> dc
-                           (contains? dc :inline_parameters)
-                           (update :inline_parameters (partial filterv #(not= parameter_id %)))
-
-                           (contains? dc :parameter_mappings)
-                           (update :parameter_mappings
-                                   (partial filterv #(not= parameter_id (:parameter_id %))))))))))
+      (remove-row :parameters parameter_id)
+      (map-rows :parameters
+                (fn [p]
+                  (cond-> p
+                    (contains? p :filteringParameters)
+                    (update :filteringParameters (partial filterv #(not= parameter_id %))))))
+      (map-rows :dashcards
+                (fn [dc]
+                  (cond-> dc
+                    (contains? dc :inline_parameters)  (drop-inline-parameter parameter_id)
+                    (contains? dc :parameter_mappings) (drop-mapping parameter_id))))))
 
 (defmethod apply-op "move_parameter"
   [state idx {:keys [parameter_id index dashcard_id] :as op}]
-  (let [param (resolve-parameter! state idx parameter_id)]
-    (cond
-      (contains? op :dashcard_id)
-      (do (resolve-dashcard! state idx dashcard_id)
-          (update state :dashcards
-                  (partial mapv
-                           (fn [dc]
-                             (if (= dashcard_id (:id dc))
-                               (update dc :inline_parameters
-                                       (fn [ps] (vec (distinct (conj (vec ps) parameter_id)))))
-                               (update dc :inline_parameters
-                                       (fn [ps] (when ps (filterv #(not= parameter_id %) ps)))))))))
+  (resolve-parameter! state idx parameter_id)
+  (cond
+    (contains? op :dashcard_id)
+    (do (resolve-dashcard! state idx dashcard_id)
+        (map-rows state :dashcards
+                  (fn [dc]
+                    (cond
+                      (= dashcard_id (:id dc)) (add-inline-parameter dc parameter_id)
+                      (:inline_parameters dc)  (drop-inline-parameter dc parameter_id)
+                      ;; a card that never carried inline_parameters gets the key written as nil,
+                      ;; the shape this op has always saved
+                      :else                    (assoc dc :inline_parameters nil)))))
 
-      (contains? op :index)
-      (let [rest* (filterv #(not= parameter_id (:id %)) (:parameters state))]
-        (when-not (<= 0 index (count rest*))
-          (op-error! idx (format "move_parameter): index %d is out of range — this dashboard has %d parameters."
-                                 index (count (:parameters state)))))
-        (assoc state :parameters
-               (vec (concat (subvec rest* 0 index) [param] (subvec rest* index)))))
+    (contains? op :index)
+    (or (move-row state :parameters parameter_id index)
+        (op-error! idx (format "move_parameter): index %d is out of range — this dashboard has %d parameters."
+                               index (count (:parameters state)))))
 
-      :else
-      (op-error! idx "move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card."))))
+    :else
+    (op-error! idx "move_parameter): pass `index` to reorder the header, or `dashcard_id` to place it on a card.")))
 
 (defn- wire-one
   "Add or replace `parameter`'s mapping on `dashcard`. Returns the dashcard unchanged when its card
@@ -445,12 +503,7 @@
         target (when card (mapping-targets/target-for-field card parameter field-id))]
     (cond
       target
-      (update dashcard :parameter_mappings
-              (fn [ms]
-                (conj (filterv #(not= (:id parameter) (:parameter_id %)) (vec ms))
-                      {:parameter_id (:id parameter)
-                       :card_id      (:card_id dashcard)
-                       :target       target})))
+      (upsert-mapping dashcard (:id parameter) target)
 
       explicit?
       (op-error! idx (format (str "wire_parameter): dashcard %s does not expose field %s for parameter %s. "
@@ -564,14 +617,7 @@
 (defn- wire-target
   "Replace `parameter`'s mapping on the dashcard `dashcard-id` with `target`."
   [state dashcard-id parameter-id target]
-  (update-dashcard state dashcard-id
-                   (fn [dc]
-                     (update dc :parameter_mappings
-                             (fn [ms]
-                               (conj (filterv #(not= parameter-id (:parameter_id %)) (vec ms))
-                                     {:parameter_id parameter-id
-                                      :card_id      (:card_id dc)
-                                      :target       target}))))))
+  (update-row state :dashcards dashcard-id #(upsert-mapping % parameter-id target)))
 
 (defmethod apply-op "wire_parameter"
   [state idx {:keys [parameter_id dashcard_id target_field target_tag target autowire]}]
@@ -587,15 +633,13 @@
                    (tag-target! state idx dashcard target_tag))
 
       target_field
-      (let [state (update state :dashcards
-                          (partial mapv #(if (= dashcard_id (:id %))
-                                           (wire-one state idx parameter % target_field true)
-                                           %)))]
+      (let [state (update-row state :dashcards dashcard_id
+                              #(wire-one state idx parameter % target_field true))]
         (if autowire
-          (update state :dashcards
-                  (partial mapv #(if (= dashcard_id (:id %))
-                                   %
-                                   (wire-one state idx parameter % target_field false))))
+          (map-rows state :dashcards
+                    #(if (= dashcard_id (:id %))
+                       %
+                       (wire-one state idx parameter % target_field false)))
           state))
 
       :else
@@ -607,13 +651,11 @@
   (resolve-parameter! state idx parameter_id)
   (when (contains? op :dashcard_id)
     (resolve-dashcard! state idx dashcard_id))
-  (update state :dashcards
-          (partial mapv
-                   (fn [dc]
-                     (if (or (not (contains? op :dashcard_id)) (= dashcard_id (:id dc)))
-                       (update dc :parameter_mappings
-                               (fn [ms] (filterv #(not= parameter_id (:parameter_id %)) (vec ms))))
-                       dc)))))
+  (map-rows state :dashcards
+            (fn [dc]
+              (if (or (not (contains? op :dashcard_id)) (= dashcard_id (:id dc)))
+                (drop-mapping dc parameter_id)
+                dc))))
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
