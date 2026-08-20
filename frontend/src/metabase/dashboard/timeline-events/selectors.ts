@@ -90,13 +90,13 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-// metabase/dashboard/selectors is wrapped lazily in the input arrays below:
-// it can still be evaluating when this module is loaded through
-// metabase/dashboard/actions.
 export const getTimelineEventsDashCardIds = createSelector(
   [(state: State) => getCurrentDashcards(state)],
-  (dashcards) =>
-    dashcards.filter(isTimelineEventsDashCard).map((dashcard) => dashcard.id),
+  (dashcards) => {
+    return dashcards
+      .filter(isTimelineEventsDashCard)
+      .map((dashcard) => dashcard.id);
+  },
 );
 
 export const getDashboardTimelineEventsAggregate = createSelector(

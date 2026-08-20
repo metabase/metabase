@@ -269,9 +269,9 @@ function DashCardActionsPanelInner({
           key="events"
           aria-label={t`Events`}
           tooltip={t`Events`}
-          onClick={() =>
-            dispatch(openEventsSidebar({ dashcardId: dashcard.id }))
-          }
+          onClick={() => {
+            dispatch(openEventsSidebar({ dashcardId: dashcard.id }));
+          }}
         >
           <Icon name="calendar" />
         </DashCardActionButton>,
