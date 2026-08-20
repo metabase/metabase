@@ -10,7 +10,6 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.encryption :as mdb.encryption]
-   [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
@@ -23,6 +22,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private batch-size
+  "Rows per page. Bounded by memory rather than throughput: a page of `metabase_fieldvalues` can be ~50MB."
+  500)
+
+(def ^:private run-seconds
+  "How long one run works for. A budget rather than a page count, because a fingerprint page takes ~45ms and a field
+  values page ~2s."
+  10)
+
+(def ^:private startup-delay-seconds 30)
+(def ^:private continuation-delay-seconds 20)
+
 ;; Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
 ;; module can't depend on the settings module without a cycle.
 (def ^:private cursor-key "encryption-backfill-cursor")
@@ -30,15 +41,6 @@
 
 (def ^:private job-key (jobs/key "metabase.task.encryption-backfill.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.encryption-backfill.trigger"))
-
-(defn- batch-size []
-  (or (config/config-int :mb-encryption-backfill-batch-size) 500))
-
-(defn- run-seconds []
-  (or (config/config-int :mb-encryption-backfill-run-seconds) 10))
-
-(defn- delay-seconds []
-  (or (config/config-int :mb-encryption-backfill-delay-seconds) 20))
 
 (defn- read-cursor []
   (let [raw (t2/select-one-fn :value :setting :key cursor-key)]
@@ -52,25 +54,39 @@
     (when (zero? (t2/update! :setting {:key cursor-key} {:value value}))
       (t2/insert! :setting {:key cursor-key :value value}))))
 
+(defn- readiness []
+  (cond
+    (not (encryption/default-encryption-enabled?)) :no-key
+    (= done (read-cursor))                         :already-complete
+    :else                                          :ready))
+
+(defn- log-skip [reason]
+  (case reason
+    :no-key           (log/debug "Skipping encryption backfill because MB_ENCRYPTION_SECRET_KEY is not set.")
+    :already-complete (log/debug "Encryption backfill already complete.")
+    nil))
+
 (declare schedule-run!)
 
 (defn- run-batch!
-  "Convert for at most `run-seconds`. Returns true when there is more to do."
+  "Convert for at most [[run-seconds]]. Returns a result map whose `:status` drives rescheduling."
   []
-  (let [cursor (read-cursor)]
-    (if (= cursor done)
-      false
-      (let [deadline (+ (System/currentTimeMillis) (* 1000 (long (run-seconds))))
-            next     (mdb.encryption/rewrite-dwh-derived-columns!
-                      mdb.encryption/encrypt-value cursor deadline (batch-size))]
-        (save-cursor! (or next done))
-        (some? next)))))
+  (let [reason (readiness)]
+    (if (not= reason :ready)
+      {:status :skipped :reason reason}
+      (let [deadline        (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
+            {:keys [cursor pages]} (mdb.encryption/rewrite-dwh-derived-columns!
+                                    mdb.encryption/encrypt-value (read-cursor) deadline batch-size)]
+        (save-cursor! (or cursor done))
+        {:status (if cursor :more :complete) :pages pages :cursor cursor}))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Encrypt warehouse-derived columns left over from before the upgrade."}
   EncryptionBackfill [ctx]
-  (when (run-batch!)
-    (schedule-run! (.getScheduler ^JobExecutionContext ctx) (delay-seconds))))
+  (let [{:keys [status] :as result} (run-batch!)]
+    (log/info "Encryption backfill batch complete" result)
+    (when (= status :more)
+      (schedule-run! (.getScheduler ^JobExecutionContext ctx) continuation-delay-seconds))))
 
 (defn- build-job []
   (jobs/build
@@ -91,12 +107,7 @@
 
 (defmethod task/init! ::EncryptionBackfill
   [_]
-  (cond
-    (not (encryption/default-encryption-enabled?))
-    (log/debug "Skipping encryption backfill because MB_ENCRYPTION_SECRET_KEY is not set.")
-
-    (= done (read-cursor))
-    (log/debug "Encryption backfill already complete.")
-
-    :else
-    (schedule-run! (task/scheduler) (delay-seconds))))
+  (let [reason (readiness)]
+    (if (= reason :ready)
+      (schedule-run! (task/scheduler) startup-delay-seconds)
+      (log-skip reason))))

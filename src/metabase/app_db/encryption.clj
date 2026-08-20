@@ -113,17 +113,20 @@
 
 (defn rewrite-dwh-derived-columns!
   "Convert [[dwh-derived-columns]] with `f`, resuming from `cursor` and stopping once `deadline-ms` has passed (nil
-  runs to completion). Returns the cursor to resume from, or nil when every column is done."
+  runs to completion). Returns `{:cursor <resume-from-or-nil> :pages <n>}`; a nil `:cursor` means every column is
+  done."
   [f cursor deadline-ms batch-size]
-  (loop [{:keys [index after-id] :or {index 0 after-id 0}} (or cursor {})]
+  (loop [{:keys [index after-id] :or {index 0 after-id 0}} (or cursor {})
+         pages 0]
     (if-let [[table column] (get dwh-derived-columns index)]
       (if-let [last-id (rewrite-page! table column f after-id batch-size)]
-        (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
-          {:index index :after-id last-id}
-          (recur {:index index :after-id last-id}))
+        (let [pages (inc pages)]
+          (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
+            {:cursor {:index index :after-id last-id} :pages pages}
+            (recur {:index index :after-id last-id} pages)))
         ;; this column is done, move to the next one
-        (recur {:index (inc index) :after-id 0}))
-      nil)))
+        (recur {:index (inc index) :after-id 0} pages))
+      {:cursor nil :pages pages})))
 
 (defn encrypt-value
   "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op."

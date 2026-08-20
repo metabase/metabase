@@ -27,6 +27,7 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
@@ -2238,57 +2239,12 @@
                                       [:= :provider "totp"]
                                       [:= :confirmed_at nil]]})))
 
-;;; Columns that started being encrypted at rest in v64. Raw table names so this keeps working as the models move.
-(def ^:private dwh-derived-columns
-  [[:report_card :result_metadata]
-   [:metabase_field :fingerprint]
-   [:metabase_fieldvalues :values]
-   [:metabase_fieldvalues :human_readable_values]
-   [:user_parameter_value :value]])
-
-;; small: `metabase_fieldvalues.values` rows can reach ~100KB, and a page is held in memory
-(def ^:dynamic *encryption-batch-size*
-  "Rows per page when re-encrypting. Bound smaller in tests."
-  500)
-
-(defn- rewrite-column!
-  "Apply `f` to every non-nil `column` in `table`, striding through the id range a page at a time. Each page is its
-  own statement, so no single transaction spans the whole table. Rows `f` leaves unchanged are not written."
-  [table column f]
-  (let [{:keys [min-id max-id]} (t2/query-one {:select [[[:min :id] :min-id] [[:max :id] :max-id]]
-                                               :from   [table]})]
-    (when (and min-id max-id)
-      (loop [start (long min-id)]
-        (when (<= start (long max-id))
-          (let [rewritten (into {}
-                                (keep (fn [{:keys [id value]}]
-                                        (when (some? value)
-                                          (let [v (f value)]
-                                            (when (not= v value)
-                                              [id v])))))
-                                (t2/query {:select [:id [column :value]]
-                                           :from   [table]
-                                           :where  [:and
-                                                    [:>= :id start]
-                                                    [:< :id (+ start *encryption-batch-size*)]
-                                                    ;; most rows have nothing to convert: every PK, retired,
-                                                    ;; sensitive and inactive field has a null fingerprint, and
-                                                    ;; most FieldValues have no human-readable remapping
-                                                    [:not= column nil]]}))]
-            (when (seq rewritten)
-              ;; one UPDATE per page rather than per row: on a table with millions of fields that is the difference
-              ;; between thousands of round trips and millions
-              (t2.execute/query-one
-               {:update table
-                :set    {column (into [:case]
-                                      (concat (mapcat (fn [[id v]] [[:= :id id] v]) rewritten)
-                                              [:else column]))}
-                :where  [:in :id (keys rewritten)]})))
-          (recur (+ start *encryption-batch-size*)))))))
-
 ;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, because
 ;; `metabase_field` can hold millions of rows and a migration that long blocks startup. Rollback has to stay here
 ;; though, since a downgraded version needs to find plaintext the moment it starts.
+;;
+;; Sharing the sweep with `app-db.encryption` rather than freezing a copy here: decrypting is idempotent, and rolling
+;; back past this point should decrypt every column encrypted since, not just the ones known when it was written.
 ;;
 ;; Intentionally not using define-reversible-migration, to avoid wrapping that rollback in one transaction. Partial
 ;; completion is safe either way: `maybe-decrypt` reads plaintext and ciphertext alike.
@@ -2306,5 +2262,4 @@
   ;; hand these back to the older version as plaintext it can read
   (rollback [_ _database]
     (when (should-execute-change?)
-      (doseq [[table column] dwh-derived-columns]
-        (rewrite-column! table column encryption/maybe-decrypt)))))
+      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt nil nil 500))))

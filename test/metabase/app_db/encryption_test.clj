@@ -45,9 +45,9 @@
     (mt/with-empty-h2-app-db!
       (encryption-test/with-secret-key secret-key
         (let [ids (plaintext-fields! 5)]
-          (is (nil? (mdb.encryption/rewrite-dwh-derived-columns!
-                     mdb.encryption/encrypt-value nil nil 2))
-              "returns nil once every column is done")
+          (is (nil? (:cursor (mdb.encryption/rewrite-dwh-derived-columns!
+                              mdb.encryption/encrypt-value nil nil 2)))
+              "a nil cursor means every column is done")
           (doseq [[i id] (map-indexed vector ids)]
             (let [stored (stored-fingerprint id)]
               (is (not= (fingerprint-json i) stored))
@@ -64,12 +64,13 @@
       (encryption-test/with-secret-key secret-key
         (let [ids (plaintext-fields! 6)]
           ;; a deadline already in the past stops after a single page
-          (let [cursor (mdb.encryption/rewrite-dwh-derived-columns!
-                        mdb.encryption/encrypt-value nil (System/currentTimeMillis) 2)]
+          (let [{:keys [cursor]} (mdb.encryption/rewrite-dwh-derived-columns!
+                                  mdb.encryption/encrypt-value nil (System/currentTimeMillis) 2)]
             (is (some? cursor) "stopped early, so there is somewhere to resume from")
             (loop [cursor cursor]
-              (when-let [next-cursor (mdb.encryption/rewrite-dwh-derived-columns!
-                                      mdb.encryption/encrypt-value cursor (System/currentTimeMillis) 2)]
+              (when-let [next-cursor (:cursor (mdb.encryption/rewrite-dwh-derived-columns!
+                                               mdb.encryption/encrypt-value cursor
+                                               (System/currentTimeMillis) 2))]
                 (recur next-cursor))))
           (testing "resuming eventually converts every row"
             (doseq [[i id] (map-indexed vector ids)]
