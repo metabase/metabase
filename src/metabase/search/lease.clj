@@ -58,13 +58,13 @@
   [engine]
   {:engine      (name engine)
    :version     (search.spec/index-version-hash)
-   :lang-code   (i18n/site-locale-string)
+   :lang_code   (i18n/site-locale-string)
    ;; Keep the configured locale separately so an intentional outer locale override is not mistaken for a setting
    ;; change while the rebuild is running.
    :site-locale (configured-site-locale)})
 
-(defn- where-coordinate [{:keys [engine version lang-code lang_code]}]
-  {:engine engine, :version version, :lang_code (or lang-code lang_code)})
+(defn- where-coordinate [coordinate]
+  (select-keys coordinate [:engine :version :lang_code]))
 
 (defn- coordination-data-source
   "Return the isolated one-slot pool for the currently bound application database."
