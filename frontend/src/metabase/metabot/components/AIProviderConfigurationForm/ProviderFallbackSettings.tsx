@@ -2,10 +2,14 @@ import { jt, t } from "ttag";
 
 import { skipToken, useGetLlmActiveModelQuery } from "metabase/api";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
 import { Group, Stack, Switch, Text } from "metabase/ui";
 
 export function ProviderFallbackSettings() {
+  // The fallback ships with AI Controls: without the feature the setting always reads false on the
+  // backend, so there is nothing here to toggle.
+  const hasAiControls = useHasTokenFeature("ai_controls");
   const {
     value: isFallbackEnabled,
     updateSetting,
@@ -13,11 +17,15 @@ export function ProviderFallbackSettings() {
     isLoading,
   } = useAdminSetting("llm-provider-fallback-enabled?");
   const { data: activeModel } = useGetLlmActiveModelQuery(
-    isFallbackEnabled ? undefined : skipToken,
+    hasAiControls && isFallbackEnabled ? undefined : skipToken,
   );
 
   const isEnvSetting = !!settingDetails?.is_env_setting;
   const envVarName = isEnvSetting ? settingDetails?.env_name : undefined;
+
+  if (!hasAiControls) {
+    return null;
+  }
 
   const handleChange = async (checked: boolean) => {
     await updateSetting({
