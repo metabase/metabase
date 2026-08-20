@@ -116,12 +116,12 @@
     [:maybe [:boolean {:description "Dashboards only: also copy the dashboard's questions into the destination collection, instead of pointing the copy at the originals."}]]]])
 
 (registry/deftool duplicate-content
-  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection."
+  "Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; \"root\" for the root collection) and new_name (defaults to \"Copy of <source name>\"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. A deep copy reports any cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them. Duplicating is creating: besides this tool's own scope, each type requires its own create scope, and you need curate permission on the destination collection. The copy's name and collection come back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement."
   {:name            "duplicate_content"
    :scope           metabot.scope/agent-content-write
    :annotations     {:readOnlyHint false :destructiveHint false}
    :args            duplicate-content-args-schema}
-  [{:keys [type id new_name is_deep_copy] :as args} _]
+  [{:keys [type id new_name is_deep_copy] :as args} {:keys [token-scopes]}]
   (let [{:keys [fetch copy!]} (type->spec type)]
     (when (and (some? is_deep_copy) (not= type "dashboard"))
       (common/throw-teaching-error
@@ -131,9 +131,12 @@
           copy          (copy! source collection-id (or new_name (tru "Copy of {0}" (:name source)))
                                (boolean is_deep_copy))]
       (common/success-content
-       (cond-> {:type          type
-                :id            (:id copy)
-                :name          (:name copy)
-                :collection_id (:collection_id copy)}
-         (seq (:uncopied copy))
-         (assoc :uncopied (mapv #(select-keys % [:id :name]) (:uncopied copy))))))))
+       ;; `new_name` defaults to "Copy of <source name>", so echoing the copy's name hands back the
+       ;; source's — the same read the read tools would refuse this token.
+       (common/readback token-scopes [metabot.scope/agent-content-read]
+                        (cond-> {:type          type
+                                 :id            (:id copy)
+                                 :name          (:name copy)
+                                 :collection_id (:collection_id copy)}
+                          (seq (:uncopied copy))
+                          (assoc :uncopied (mapv #(select-keys % [:id :name]) (:uncopied copy)))))))))

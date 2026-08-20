@@ -137,6 +137,31 @@
       (is (= "Insufficient scope to call tool: bookmark_content"
              (tool-error (call-tool! :rasta #{metabot.scope/agent-content-read}
                                      {:type "question" :id card-id :bookmarked true}))))
-      (is (=? {:bookmarked true}
+      ;; Reachability is the point here — without agent:content:read the echo degrades to the
+      ;; GHY-4227 ack, so the bookmark itself is what proves the call landed.
+      (is (=? {:id card-id}
               (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write}
-                                       {:type "question" :id card-id :bookmarked true})))))))
+                                       {:type "question" :id card-id :bookmarked true}))))
+      (is (t2/exists? :model/CardBookmark :card_id card-id :user_id (mt/user->id :rasta))))))
+
+(deftest readback-requires-read-scope-test
+  (testing "GHY-4227: bookmarking echoes the item's name, so a write-only token would learn the name
+            of anything it can bookmark — the echo degrades to an ack without agent:content:read"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Salaries by employee" :type :question}]
+      (let [result (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write}
+                                            {:type "question" :id card-id :bookmarked true}))]
+        (is (= #{:id :note} (set (keys result))))
+        (is (= card-id (:id result)))
+        (is (re-find #"agent:content:read" (:note result)))
+        (testing "and the bookmark still happened"
+          (is (t2/exists? :model/CardBookmark :card_id card-id :user_id (mt/user->id :rasta)))))
+      (testing "un-bookmarking degrades the same way"
+        (let [result (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write}
+                                              {:type "question" :id card-id :bookmarked false}))]
+          (is (= #{:id :note} (set (keys result))))
+          (is (not (t2/exists? :model/CardBookmark :card_id card-id :user_id (mt/user->id :rasta))))))
+      (testing "a token that could read the item back keeps the full echo"
+        (is (=? {:type "question" :id card-id :name "Salaries by employee" :bookmarked true}
+                (tool-result (call-tool! :rasta #{metabot.scope/agent-content-write
+                                                  metabot.scope/agent-content-read}
+                                         {:type "question" :id card-id :bookmarked true}))))))))

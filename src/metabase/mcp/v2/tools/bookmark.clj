@@ -15,7 +15,10 @@
    Both directions read-check the item, where REST only read-checks the create. Un-bookmarking
    something the caller can no longer read is thus a not-found here — the tool resolves entity_ids
    and echoes the item's name, and neither can happen across the permission boundary without
-   turning the response into an existence oracle."
+   turning the response into an existence oracle.
+
+   The name echo is gated a second time, on the read scope: permission is not the only boundary a
+   token has, and a write scope that echoes a name is a read scope for names."
   (:require
    [metabase.api.common :as api]
    [metabase.bookmarks.api :as bookmarks.api]
@@ -65,16 +68,18 @@
    [:bookmarked [:boolean {:description "true bookmarks the item, false removes the bookmark."}]]])
 
 (registry/deftool bookmark-content
-  "Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller."
+  "Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller. The item's name comes back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement."
   {:name        "bookmark_content"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false :idempotentHint true}
    :args        bookmark-content-args-schema}
-  [{:keys [type id bookmarked]} _context]
+  [{:keys [type id bookmarked]} {:keys [token-scopes]}]
   (let [row            (fetch-item type id)
         bookmark-model (get-in type->spec [type :bookmark-model])
         user-id        api/*current-user-id*]
     (if bookmarked
       (bookmarks.api/bookmark! bookmark-model (:id row) user-id)
       (bookmarks.api/un-bookmark! bookmark-model (:id row) user-id))
-    (common/success-content {:type type :id (:id row) :name (:name row) :bookmarked bookmarked})))
+    (common/success-content
+     (common/readback token-scopes [metabot.scope/agent-content-read]
+                      {:type type :id (:id row) :name (:name row) :bookmarked bookmarked}))))

@@ -339,6 +339,40 @@
   (testing "the tool's own write scope is all a copy needs"
     (mt/with-model-cleanup [:model/Dashboard]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
-        (is (=? {:name "Copy of Sales"}
-                (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
-                                         {:type "dashboard" :id dash-id}))))))))
+        ;; Without agent:content:read the echo degrades to the GHY-4227 ack, so the copy row is
+        ;; what proves the write landed.
+        (let [result (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
+                                              {:type "dashboard" :id dash-id}))]
+          (is (not= dash-id (:id result)))
+          (is (= "Copy of Sales" (t2/select-one-fn :name :model/Dashboard :id (:id result)))))))))
+
+(deftest readback-requires-read-scope-test
+  (testing "GHY-4227: new_name defaults to \"Copy of <source name>\", so echoing the copy's name hands
+            a write-only token the source's name — the echo degrades to an ack without agent:content:read"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Board deck Q3"}]
+        (let [result (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
+                                              {:type "dashboard" :id dash-id}))]
+          (is (= #{:id :note} (set (keys result))))
+          (is (re-find #"agent:content:read" (:note result)))
+          (testing "and the copy still happened"
+            (is (= "Copy of Board deck Q3"
+                   (t2/select-one-fn :name :model/Dashboard :id (:id result)))))))
+      (testing "a token that could read the copy back keeps the full echo"
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Board deck Q4"}]
+          (is (=? {:type "dashboard" :name "Copy of Board deck Q4"}
+                  (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write
+                                                        metabot.scope/agent-content-read}
+                                           {:type "dashboard" :id dash-id}))))))))
+  (testing "GHY-4227: the leak is the source's name, so a caller-supplied new_name degrades too —
+            the copy's own row fields are no more readable than the source"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:name          "Revenue by region"
+                                                :type          :question
+                                                :collection_id coll-id
+                                                :dataset_query (venues-query)}]
+        (let [result (tool-result (call-tool! :crowberto #{metabot.scope/agent-content-write}
+                                              {:type "question" :id card-id :new_name "Mine"}))]
+          (is (= #{:id :note} (set (keys result))))
+          (is (= "Mine" (t2/select-one-fn :name :model/Card :id (:id result)))))))))
