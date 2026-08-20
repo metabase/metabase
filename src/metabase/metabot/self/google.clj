@@ -2,11 +2,13 @@
   "Google Gemini Enterprise Agent Platform (formerly Vertex AI) provider.
 
   This namespace handles credentials, endpoint URLs, HTTP calls, error translation, and connect-time model validation.
-  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]].
+  Wire-format translation is in [[metabase.metabot.self.google.stream-generate-content]]
+  and [[metabase.metabot.self.google.raw-predict]].
 
   Like openrouter and azure, models for this provider must specify the sub-provider in the `llm-metabot-provider`
-  setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Currently only google/gemini models
-  are supported, but this may expand in the future to anthropic or other third-party models.
+  setting. For example `MB_LLM_METABOT_PROVIDER=google/google/gemini-3.6-flash`. Gemini models are served by
+  `streamGenerateContent`; Anthropic partner models (e.g. `google/anthropic/claude-sonnet-4-6`) are served by
+  `streamRawPredict`, whose payload is Anthropic's Messages API.
 
   Credentials can be supplied via either a service account key JSON or an OAuth access token.
 
@@ -29,8 +31,8 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.google.raw-predict :as raw-predict]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -241,6 +243,29 @@
                 (<= (count segment) max-model-segment-length)
                 (re-matches pattern segment))))
 
+(defn- model-publisher
+  "The publisher segment of a publisher-qualified model ID, e.g. `google` or `anthropic`."
+  [model]
+  (llm.provider/model-ref->connection-key model))
+
+(defn- model-id
+  "The model segment of a publisher-qualified model ID, or nil when there is none."
+  [model]
+  (llm.provider/model-ref->model model))
+
+(defn- anthropic-model?
+  "Whether `model` names an Anthropic partner model.
+  Anthropic models speak the Messages API through `streamRawPredict` rather than Gemini's `streamGenerateContent`."
+  [model]
+  (= "anthropic" (model-publisher model)))
+
+(defn reasoning-model?
+  "Whether a publisher-qualified `model` streams its reasoning back to us."
+  [model]
+  (if (anthropic-model? model)
+    (raw-predict/reasoning-model? (model-id model))
+    (stream-generate-content/reasoning-model? (model-id model))))
+
 (defn- model-resource-path
   "Returns the URL path to a publisher model resource, without the `:method` verb at the end.
   The `model` must include its `{publisher}/{model}` qualifier, e.g. `google/gemini-3.5-flash`.
@@ -249,7 +274,8 @@
   The `llm-metabot-provider` setting takes the Google model as free text — unlike a whitelisted provider, nothing
   upstream of this constrains it."
   [credentials model]
-  (let [[publisher model-id] (str/split (str model) #"/" 2)]
+  (let [publisher (model-publisher model)
+        model-id  (model-id model)]
     (when (str/blank? model-id)
       (throw (ex-info (tru "Invalid Google model {0} — expected a publisher-qualified ID like \"google/gemini-3.5-flash\""
                            (pr-str model))
@@ -329,26 +355,28 @@
   {:contents [{:role "user" :parts [{:text "hi"}]}]})
 
 (defn- count-tokens!
-  "Makes a free `countTokens` call for `model` and discards the response — the connect-time probe.
+  "Makes a free token-count call for `model` and discards the response — the connect-time probe.
 
   https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/countTokens
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/count-tokens
 
   This one call shows that the credential, the project ID, the endpoint, and the model are correct, and it uses no
   inference tokens. It agrees with real inference about model availability."
   [auth credentials model]
-  (core/request auth
-                {:method  :post
-                 :url     (str (model-resource-path credentials model) ":countTokens")
-                 :headers {"Content-Type" "application/json"}
-                 :body    (json/encode count-tokens-probe-body)})
+  ;; Anthropic's count-tokens URL does not carry the model. The path built from it here serves only to reject a
+  ;; model whose segments could not be path segments, the same check inference applies
+  (let [resource   (model-resource-path credentials model)
+        [url body] (if (anthropic-model? model)
+                     [(str (model-resource-path credentials "anthropic/count-tokens") ":rawPredict")
+                      (raw-predict/count-tokens-body (model-id model))]
+                     [(str resource ":countTokens")
+                      count-tokens-probe-body])]
+    (core/request auth
+                  {:method  :post
+                   :url     url
+                   :headers {"Content-Type" "application/json"}
+                   :body    (json/encode body)}))
   nil)
-
-(defn- configured-google-model
-  "The publisher-qualified model of the connection Metabot is pointed at, when that connection is a Google one."
-  []
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
-    (when (= type "google")
-      model)))
 
 (defn list-models
   "Validates the Google credentials and the candidate model with a free `countTokens` call.
@@ -362,7 +390,7 @@
   by sending a `countTokens` probe, but always return an empty model list."
   ([] (list-models {}))
   ([{:keys [credentials model ai-proxy?]}]
-   (when-let [model (or (not-empty model) (configured-google-model))]
+   (when-let [model (not-empty model)]
      (try
        (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
          (count-tokens! auth credentials model))
@@ -371,18 +399,25 @@
    {:models []}))
 
 (mu/defn google-raw
-  "Makes a streaming `streamGenerateContent` request to the Gemini Enterprise Agent Platform.
+  "Makes a streaming request to the Gemini Enterprise Agent Platform.
+  Gemini models stream through `streamGenerateContent`; Anthropic partner models through `streamRawPredict`.
   `:ai-proxy?` is not supported and throws when it is true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [req (stream-generate-content/request-body opts)]
+  (let [anthropic? (anthropic-model? model)
+        req        (if anthropic?
+                     (raw-predict/request-body (model-id model) opts)
+                     (stream-generate-content/request-body opts))
+        method     (if anthropic?
+                     ":streamRawPredict"
+                     ":streamGenerateContent?alt=sse")]
     (with-span :info {:name       :metabot.google/request
                       :model      model
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)
-              url      (str (model-resource-path credentials model) ":streamGenerateContent?alt=sse")
+              url      (str (model-resource-path credentials model) method)
               response (core/request auth
                                      {:method  :post
                                       :url     url
@@ -400,5 +435,9 @@
 (defn google
   "Call the Gemini Enterprise Agent Platform, return AISDK stream."
   [& args]
-  (let [raw (apply google-raw args)]
-    (eduction (stream-generate-content/->aisdk-chunks-xf) raw)))
+  (let [{:keys [model] :or {model default-model}} (first args)
+        raw (apply google-raw args)]
+    (eduction (if (anthropic-model? model)
+                (raw-predict/->aisdk-chunks-xf)
+                (stream-generate-content/->aisdk-chunks-xf))
+              raw)))

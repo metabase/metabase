@@ -154,9 +154,15 @@
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
     ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
     ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
-    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+    :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
+                    {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
+                    {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
+                    {:id "anthropic/claude-opus-5"             :display_name "Claude Opus 5"}
+                    {:id "anthropic/claude-opus-4-6"           :display_name "Claude Opus 4.6"}
+                    {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
+                    {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
+                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]

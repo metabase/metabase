@@ -4,6 +4,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.openai :as openai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -227,6 +228,7 @@
     (case type
       "anthropic" (claude/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
+      "google"    (google/reasoning-model? model)
       false)))
 
 (defsetting llm-metabot-supports-reasoning?

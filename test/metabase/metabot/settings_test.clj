@@ -184,13 +184,18 @@
   (testing "only anthropic and openai models that stream reasoning report support"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "openai" "openai")
-                       (connection "bedrock" "bedrock")]
+                       (connection "bedrock" "bedrock")
+                       (connection "google" "google")]
       (doseq [[model-ref expected]
-              {"anthropic/claude-sonnet-4-6"       true
-               "anthropic/claude-haiku-4-5"        false
-               "openai/gpt-5.4"                    true
-               "openai/gpt-4o"                     false
-               "bedrock/anthropic.claude-opus-4-8" false}]
+              {"anthropic/claude-sonnet-4-6"                true
+               "anthropic/claude-haiku-4-5"                 false
+               "openai/gpt-5.4"                             true
+               "openai/gpt-4o"                              false
+               "bedrock/anthropic.claude-opus-4-8"          false
+               ;; google serves both wire families; only its Claude models stream reasoning back
+               "google/anthropic/claude-sonnet-4-6"         true
+               "google/anthropic/claude-haiku-4-5@20251001" false
+               "google/google/gemini-3.5-flash"             false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
