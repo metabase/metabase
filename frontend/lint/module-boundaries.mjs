@@ -103,6 +103,12 @@ const elements = [
     "frontend/src/metabase/visualizations/lib/map.ts",
     // Imports SmartScalar's option-name formatter from the per-viz folder.
     "frontend/src/metabase/visualizations/lib/trend-helpers.ts",
+    // Imports PivotTable's header and body item types from the per-viz folder.
+    "frontend/src/metabase/visualizations/lib/data_grid.ts",
+    "frontend/src/metabase/visualizations/lib/data_grid.unit.spec.ts",
+    // Chained pins: no-results imports data_grid, and its spec imports no-results.
+    "frontend/src/metabase/visualizations/lib/no-results.ts",
+    "frontend/src/metabase/visualizations/lib/no-results.unit.spec.ts",
     // Specs that import UI-side widgets and charts, or register the full
     // chart set through metabase/visualizations/register.
     "frontend/src/metabase/visualizations/lib/table_format.unit.spec.ts",
@@ -116,11 +122,6 @@ const elements = [
     // Hover-tooltip option builders import the per-viz chart event handlers.
     "frontend/src/metabase/visualizations/echarts/cartesian/option/tooltip.tsx",
     "frontend/src/metabase/visualizations/echarts/pie/tooltip.tsx",
-    // Specs using the default static theme, which lives in static-viz.
-    "frontend/src/metabase/visualizations/echarts/cartesian/layout/index.unit.spec.ts",
-    "frontend/src/metabase/visualizations/echarts/cartesian/option/index.unit.spec.ts",
-    "frontend/src/metabase/visualizations/echarts/cartesian/timeline-events/option.unit.spec.ts",
-    "frontend/src/metabase/visualizations/echarts/graph/treemap/option/option.unit.spec.ts",
     // Stories mounting per-viz or SDK wrappers.
     "frontend/src/metabase/visualizations/shared/components/RowChart/RowChart.stories.tsx",
     "frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.stories.tsx",
