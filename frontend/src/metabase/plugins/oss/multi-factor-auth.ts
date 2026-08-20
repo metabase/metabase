@@ -1,4 +1,7 @@
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
 import type { MfaMethod } from "metabase-types/api";
 
 export type AuthChallengeFormProps = {
@@ -12,8 +15,8 @@ const getDefaultPluginMultiFactorAuth = () => ({
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
   AccountSecurityPanel: PluginPlaceholder,
   AdminAuthCard: PluginPlaceholder,
-  EnrolledUsersPage: PluginPlaceholder,
-  UnenrolledUsersPage: PluginPlaceholder,
+  enrolledUsersPage: pluginPlaceholderRoute,
+  unenrolledUsersPage: pluginPlaceholderRoute,
 });
 
 export const PLUGIN_MULTI_FACTOR_AUTH = getDefaultPluginMultiFactorAuth();
