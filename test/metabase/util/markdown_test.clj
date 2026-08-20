@@ -1,12 +1,13 @@
 (ns metabase.util.markdown-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test.util :as tu]
    [metabase.util.markdown :as markdown]))
 
 (defn- slack
-  [markdown]
-  (markdown/process-markdown markdown :slack))
+  ([markdown]
+   (slack markdown nil))
+  ([markdown site-url]
+   (markdown/process-markdown markdown :slack site-url)))
 
 (defn- escape
   [text]
@@ -86,10 +87,9 @@
     (is (= "<https://metabase.com|*Metabase*>" (slack "[__Metabase__](https://metabase.com)")))
     (is (= "<https://metabase.com|`Metabase`>" (slack "[`Metabase`](https://metabase.com)")))))
 
-(deftest process-markdown-slack-test-9
-  (testing "Relative links are resolved to the current site URL"
-    (tu/with-temporary-setting-values [site-url "https://example.com"]
-      (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)"))))))
+(deftest ^:parallel process-markdown-slack-test-9
+  (testing "Relative links are resolved to the provided site URL"
+    (is (= "<https://example.com/foo|Metabase>" (slack "[Metabase](/foo)" "https://example.com")))))
 
 (deftest ^:parallel process-markdown-slack-test-10
   (testing "Auto-links are preserved"
@@ -203,10 +203,12 @@
     (is (= "[test]" (slack "[test]")))))
 
 (defn- html
-  [markdown]
-  (markdown/process-markdown markdown :html))
+  ([markdown]
+   (html markdown nil))
+  ([markdown site-url]
+   (markdown/process-markdown markdown :html site-url)))
 
-(deftest process-markdown-email-test
+(deftest ^:parallel process-markdown-email-test
   (testing "HTML is generated correctly from Markdown input for emails. Not an exhaustive test suite since parsing and
            rendering is fully handled by flexmark."
     (is (= "<h1>header</h1>\n"
@@ -219,14 +221,13 @@
            (html "1. foo\n   1. bar")))
     (is (= "<p>/</p>\n"
            (html "\\/")))
-    (doseq [temp-setting ["https://example.com" "https://example.com/"]]
-      (tu/with-temporary-setting-values [site-url temp-setting]
-        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
-               (html "![alt-text](/image.png)")))
-        (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
-               (html "![alt-text](image.png)")))
-        (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
-               (html "[dashboard 1](/dashboard/1)")))))))
+    (doseq [site-url ["https://example.com" "https://example.com/"]]
+      (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+             (html "![alt-text](/image.png)" site-url)))
+      (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
+             (html "![alt-text](image.png)" site-url)))
+      (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
+             (html "[dashboard 1](/dashboard/1)" site-url))))))
 
 (deftest ^:parallel process-markdown-email-test-2
   (testing "Bare URLs and email addresses are converted to links"

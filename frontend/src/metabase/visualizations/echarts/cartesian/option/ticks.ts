@@ -1,6 +1,4 @@
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
-
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 import type { ChartLayout } from "../layout/types";

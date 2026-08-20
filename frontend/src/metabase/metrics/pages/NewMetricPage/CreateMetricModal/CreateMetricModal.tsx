@@ -141,7 +141,6 @@ function getCreateRequest(
     name,
     description,
     collection_id,
-    collection_position: 1,
     result_metadata,
     type: "metric",
     dataset_query: Lib.toJsQuery(query),

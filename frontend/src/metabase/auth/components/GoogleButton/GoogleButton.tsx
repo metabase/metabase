@@ -6,13 +6,12 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { loginGoogle } from "metabase/redux/auth";
+import { useSetting } from "metabase/settings";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
-
-import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
 import S from "./GoogleButton.module.css";
 
@@ -27,8 +26,8 @@ interface CredentialResponse {
 
 export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   const [remember, setRemember] = useState(false);
-  const clientId = useSelector(getGoogleClientId);
-  const locale = useSelector(getSiteLocale);
+  const clientId = useSetting("google-auth-client-id");
+  const locale = useSetting("site-locale");
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
 

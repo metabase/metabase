@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { Button, Center, Stack, Text, Title } from "metabase/ui";
 
 export const LegaleseStep = ({

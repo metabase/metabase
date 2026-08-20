@@ -31,7 +31,9 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       H.openNavigationSidebar();
       cy.findByRole("link", { name: /Usage analytics/i }).click();
-      cy.findByRole("link", { name: /Metabase metrics/i }).click();
+      H.getPinnedSection()
+        .findByRole("link", { name: /Metabase metrics/i })
+        .click();
       cy.findByRole("link", { name: /Question views last week/i }).click();
 
       cy.findByRole("button", { name: /Editor/ }).click();

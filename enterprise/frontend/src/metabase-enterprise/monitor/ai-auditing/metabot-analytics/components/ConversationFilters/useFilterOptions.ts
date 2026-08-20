@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+import { useSetting } from "metabase/settings";
 import { getUserName } from "metabase/utils/user";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

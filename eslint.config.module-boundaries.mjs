@@ -51,8 +51,8 @@ export default defineConfig([
       reportUnusedDisableDirectives: "off",
     },
     files: [
-      "frontend/src/**/*.{js,jsx,ts,tsx}",
-      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+      "frontend/src/**/*.{ts,tsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx}",
     ],
     languageOptions: {
       parser: tseslint.parser,
@@ -78,6 +78,7 @@ export default defineConfig([
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
       "import-x/resolver": {
         node: true,
         webpack: {

@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -173,6 +174,41 @@
                   :pk-table-name "people"
                   :pk-column-name "id"}}
                (set fks)))))))
+
+(deftest ^:parallel multi-level-schema-filter-sql-test
+  (testing "multi-catalog sync filters on catalog and schema with equalities, not a row-constructor IN (GHY-4263)"
+    (testing "Databricks' planner is ~200x slower on `(catalog, schema) IN ((?, ?))` than on AND-ed equalities"
+      (doseq [[label sql+params] {"describe-fields"
+                                  (sql-jdbc.sync/describe-fields-sql
+                                   :databricks
+                                   :schema-names ["mycatalog.myschema"]
+                                   :details {:catalog "mycatalog" :multi-level-schema true})
+
+                                  "describe-fks"
+                                  (sql-jdbc.sync/describe-fks-sql
+                                   :databricks
+                                   :schema-names ["mycatalog.myschema"]
+                                   :details {:catalog "mycatalog" :multi-level-schema true})}]
+        (testing label
+          (let [[sql & params] sql+params]
+            (is (not (str/includes? sql "IN ((?, ?)")))
+            (is (str/includes? sql "`table_catalog` = ?"))
+            (is (str/includes? sql "`table_schema` = ?"))
+            (is (= ["mycatalog" "myschema"] (vec (take-last 2 params)))))))))
+  (testing "several catalog.schema pairs are OR-ed pairwise"
+    (let [[sql & params] (sql-jdbc.sync/describe-fields-sql
+                          :databricks
+                          :schema-names ["c1.s1" "c2.s2"]
+                          :details {:catalog "c1" :multi-level-schema true})]
+      (is (not (str/includes? sql "IN ((?, ?)")))
+      (is (= ["c1" "s1" "c2" "s2"] params))))
+  (testing "single-catalog connections keep the plain schema IN"
+    (let [[sql & params] (sql-jdbc.sync/describe-fields-sql
+                          :databricks
+                          :schema-names ["s1" "s2"]
+                          :details {:catalog "c1" :multi-level-schema false})]
+      (is (str/includes? sql "`table_schema` IN (?, ?)"))
+      (is (= ["c1" "s1" "s2"] params)))))
 
 (mt/defdataset dataset-with-ntz
   [["table_with_ntz" [{:field-name "timestamp"

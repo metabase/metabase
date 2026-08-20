@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 

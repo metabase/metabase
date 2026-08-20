@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { Outlet, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
-import { Outlet } from "./Outlet";
-import { Route } from "./route";
-import { useRoutePathname } from "./use-route-leave-hook";
+import { useRoutePathname } from "./use-route-leave-blocker";
 
 const Parent = () => (
   <div>
@@ -123,7 +122,7 @@ describe("router/useRoutePathname", () => {
 });
 
 describe("router/Route element={null}", () => {
-  it("renders nothing for an explicit null, matching v7 (not v3's render-children)", async () => {
+  it("falls back to an <Outlet/>, so a child of a null-element route renders", async () => {
     renderWithProviders(
       <Route path="/" element={<ParentPage />}>
         <Route path="empty" element={null}>
@@ -133,9 +132,23 @@ describe("router/Route element={null}", () => {
       { withRouter: true, initialRoute: "/empty" },
     );
 
-    // The `empty` route matches, so the parent chrome renders. But `element={null}`
-    // renders nothing and provides no <Outlet/>, so its own index child stays
-    // hidden. With v3's render-children default the child would show instead.
+    // v7 reads a nullish `element` as "this route supplies none" and renders an
+    // <Outlet/> in its place, so the index child below it shows. A route that
+    // means to render nothing has to say so with an empty fragment.
+    expect(await screen.findByText("parent chrome")).toBeInTheDocument();
+    expect(await screen.findByText("leaf content")).toBeInTheDocument();
+  });
+
+  it("renders nothing for an empty fragment, and provides no outlet", async () => {
+    renderWithProviders(
+      <Route path="/" element={<ParentPage />}>
+        <Route path="empty" element={<></>}>
+          <Route index element={<LeafPage />} />
+        </Route>
+      </Route>,
+      { withRouter: true, initialRoute: "/empty" },
+    );
+
     expect(await screen.findByText("parent chrome")).toBeInTheDocument();
     expect(screen.queryByText("leaf content")).not.toBeInTheDocument();
   });
@@ -158,7 +171,7 @@ describe("router/Route element memoization", () => {
     const PageA = () => <div>page-a</div>;
     const PageB = () => <div>page-b</div>;
 
-    const { history } = renderWithProviders(
+    const { router } = renderWithProviders(
       <Route path="shared">
         <Route path=":a" element={<Shared />}>
           <Route index element={<PageA />} />
@@ -174,7 +187,7 @@ describe("router/Route element memoization", () => {
     expect(mounts).toBe(1);
 
     act(() => {
-      checkNotNull(history).push("/shared/1/2");
+      checkNotNull(router).navigate("/shared/1/2");
     });
 
     // The sibling route renders the same `Shared` component, so it reconciles

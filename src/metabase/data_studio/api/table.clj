@@ -89,6 +89,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
+  ^:allow-subquery
   {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
@@ -277,9 +278,10 @@
    body :- ::table-selectors]
   (api/check-data-analyst)
   (let [tables (t2/select :model/Table {:where (table-selectors->filter body), :order-by [[:id]]})]
-    (let [field-ids-to-delete-q {:select [:id]
-                                 :from   [(t2/table-name :model/Field)]
-                                 :where  [:in :table_id (map :id tables)]}]
+    (let [field-ids-to-delete-q ^:allow-subquery
+          {:select [:id]
+           :from   [(t2/table-name :model/Field)]
+           :where  [:in :table_id (map :id tables)]}]
       (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids-to-delete-q]))
     nil))
 

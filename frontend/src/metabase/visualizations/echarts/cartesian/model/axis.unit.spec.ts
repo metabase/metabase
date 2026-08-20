@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RowValue } from "metabase-types/api";
 import {

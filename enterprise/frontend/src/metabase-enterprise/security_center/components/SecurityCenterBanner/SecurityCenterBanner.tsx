@@ -6,8 +6,8 @@ import {
 } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
-import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
+import { useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";

@@ -11,8 +11,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
-import { useDispatch } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";
@@ -58,18 +57,18 @@ function WritableConnectionInfoPageBody({
   const initialValues = useMemo(() => getInitialValues(database), [database]);
   const [isDirty, setIsDirty] = useState(false);
   const [updateDatabase, { isLoading: isSaving }] = useUpdateDatabaseMutation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleSubmit = async (newValues: DatabaseData) => {
     await updateDatabase({
       id: database.id,
       write_data_details: getSubmitDetails(newValues),
     }).unwrap();
-    dispatch(push(Urls.viewDatabase(database.id)));
+    navigate(Urls.viewDatabase(database.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.viewDatabase(database.id)));
+    navigate(Urls.viewDatabase(database.id));
   };
 
   return (

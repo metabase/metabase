@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -37,10 +39,8 @@
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
-  Required:
-    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
-
   Optional:
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
@@ -49,6 +49,9 @@
     :max-tokens       - Maximum tokens in the response
     :schema           - JSON Schema map for structured output; each provider forces a
                         tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :credentials      - Credentials of the provider connection serving this request, in that provider
+                        type's `:config` shape (e.g. `{:api-key ...}`), with the type's field defaults
+                        filled in. An adapter serves a request from these alone and throws without them.
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
@@ -63,6 +66,7 @@
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
    [:schema           {:optional true} :any]
+   [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
@@ -126,6 +130,17 @@
 
 ;;; AISDK5
 
+(def finish-reasons
+  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
+  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+
+(defn stop-reason->finish-reason
+  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
+  Unmapped reasons → \"other\"; nil → nil."
+  [stop-reasons raw]
+  (when raw
+    (get stop-reasons raw "other")))
+
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
   Falls back to returning the raw string wrapped in a map when parsing fails,
@@ -166,10 +181,12 @@
                                       :text (->> (map :delta chunks)
                                                  (str/join ""))}
                                pm (assoc :provider-metadata pm)))
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    :tool-input-start      (let [pm (:providerMetadata chunk)]
+                             (cond-> {:type      :tool-input
+                                      :id        (:toolCallId chunk)
+                                      :function  (:toolName chunk)
+                                      :arguments (parse-tool-arguments chunks)}
+                               pm (assoc :provider-metadata pm)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
@@ -361,13 +378,15 @@
     :data             -> data-<data-type>
     :error            -> [start + start-step]? error
     :usage            -> (accumulated; emitted as finish.message_metadata)
-    :finish           -> (ignored — the completion arity emits the finish)
+    :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
   ([{:keys [message-id message-metadata]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           finish-reason     (volatile! nil)
+           loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -411,7 +430,12 @@
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
-                              :finishReason (if @error? "error" "stop")}
+                              :finishReason (cond
+                                              (= @finish-reason "length")              "length"
+                                              @error?                                  "error"
+                                              (= @finish-reason "content-filter")      "content-filter"
+                                              (= @loop-finish-reason :max-iterations)  "tool-calls"
+                                              :else                                    "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -495,12 +519,17 @@
                 (rf (ensure-started result) (format-error-line part)))
 
               :finish
-              result
+              (do
+                (when-let [fr (:finish-reason part)]
+                  (vreset! loop-finish-reason fr))
+                result)
 
               :usage
               ;; cumulative per-model snapshot; last-wins, emitted on finish
               (do
                 (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+                (when-let [fr (:finish-reason part)]
+                  (vreset! finish-reason fr))
                 result)
 
               ;; Unknown types: emit as data parts
@@ -574,6 +603,32 @@
                args)
     args))
 
+(def ^:private stringified-scalar-transformer
+  "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
+  Restricted to the types models get wrong — strings, keywords and enums are left alone."
+  (mtx/transformer
+   {:name     :llm-stringified-scalars
+    :decoders (select-keys (mtx/-string-decoders)
+                           [:int :double :float :boolean 'int? 'double? 'float? 'boolean?
+                            'integer? 'nat-int? 'neg-int? 'pos-int? 'number? 'decimal?])}))
+
+(defn- tool-args-schema
+  "The schema for a tool's argument map, from its `[:=> [:cat args] out]` schema."
+  [tool]
+  (let [[_:=> [_:cat args] _out] (:schema tool)]
+    args))
+
+(defn- coerce-stringified-scalars
+  "Coerce string tool `arguments` to the scalar types the tool's schema declares.
+  Some models send numbers as JSON strings, e.g. `{\"limit\": \"15\"}`.
+  Values that can't be parsed and tools without a usable schema are left alone."
+  [tool arguments]
+  (or (try
+        (some-> (tool-args-schema tool)
+                (mc/decode arguments stringified-scalar-transformer))
+        (catch Exception _ nil))
+      arguments))
+
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
@@ -608,6 +663,7 @@
             results  (try
                        (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
                              arguments (or (coerce-stringified-json arguments) {})
+                             arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
                              arguments (cond-> arguments decode decode)]
                          (log/debug "Executing tool" {:tool-name tool-name})
@@ -855,6 +911,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
@@ -880,8 +954,17 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (llm/assert-llm-host-allowed! url)
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

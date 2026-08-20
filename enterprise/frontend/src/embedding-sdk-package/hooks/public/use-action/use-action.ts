@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import type { ExecuteActionResult } from "embedding-sdk-bundle/lib/execute-action";
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 import { toActionExecuteError } from "./lib/to-action-execute-error";

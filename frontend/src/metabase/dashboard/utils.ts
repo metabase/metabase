@@ -218,6 +218,13 @@ export function getCurrentTabDashboardCards(
   );
 }
 
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
+}
+
 export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }

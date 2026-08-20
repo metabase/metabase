@@ -150,3 +150,10 @@
             (mc/children schema))
       :and (some map-schema-keys (mc/children schema))
       nil)))
+
+(core/defn refuse
+  "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
+  an `[:or ...]`."
+  [message-fn]
+  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
+   (constantly false)])

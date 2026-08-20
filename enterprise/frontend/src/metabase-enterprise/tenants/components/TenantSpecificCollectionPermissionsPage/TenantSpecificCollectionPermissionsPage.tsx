@@ -19,7 +19,7 @@ import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
@@ -35,6 +35,7 @@ function TenantSpecificCollectionPermissionsPageView() {
   useListCollectionsTreeQuery(tenantSpecificCollectionsQuery);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const props = useMemo(() => ({ params: { collectionId } }), [collectionId]);
   const sidebar = useSelector((state) =>
@@ -62,9 +63,9 @@ function TenantSpecificCollectionPermissionsPageView() {
 
   const navigateToItem = useCallback(
     ({ id }: { id: CollectionId }) => {
-      dispatch(push(`/admin/permissions/tenant-specific-collections/${id}`));
+      navigate(`/admin/permissions/tenant-specific-collections/${id}`);
     },
-    [dispatch],
+    [navigate],
   );
 
   const updateCollectionPermission = useCallback(

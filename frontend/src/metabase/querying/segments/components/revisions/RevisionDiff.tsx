@@ -2,11 +2,11 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import type { FieldDiff, RevisionDiffKey, TableId } from "metabase-types/api";
-import { isQueryDiff } from "metabase-types/guards";
 
 import { QueryDiff } from "./QueryDiff";
 import { RevisionDiffIcon } from "./RevisionDiffIcon";
 import { TextDiff } from "./TextDiff";
+import { isQueryDiff } from "./guards";
 
 interface Props {
   diff: FieldDiff;

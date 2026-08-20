@@ -7,6 +7,7 @@ import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import { loadCurrentUser } from "metabase/current-user";
 
 type SdkStore = ReturnType<typeof getSdkStore>;
 
@@ -67,6 +68,7 @@ export function useHostSdkStore(
 
     store.dispatch({ type: initAuth.fulfilled.type });
     store.dispatch(setPluginsReady(true));
+    store.dispatch(loadCurrentUser());
   }, [store]);
 
   return store;

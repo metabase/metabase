@@ -433,7 +433,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
   describe("<metabase-metabot>", () => {
     beforeEach(() => {
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
     });
 
     it("should handle scrolling gracefully (metabase#67399)", () => {
