@@ -1,5 +1,4 @@
 (ns metabase.query-permissions.impl-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-permissions.impl-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
@@ -81,7 +80,9 @@
 (deftest ^:parallel mbql-query-test
   (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
           :perms/create-queries {(mt/id :venues) :query-builder}}
-         (query-perms/required-perms-for-query (mt/mbql-query venues))))
+         (query-perms/required-perms-for-query
+          (let [mp (mt/metadata-provider)]
+            (lib/query mp (lib.metadata/table mp (mt/id :venues)))))))
   (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
           :perms/create-queries {(mt/id :venues) :query-builder}}
          (query-perms/required-perms-for-query
@@ -122,8 +123,13 @@
             :perms/create-queries {(mt/id :venues) :query-builder
                                    (mt/id :checkins) :query-builder}}
            (query-perms/required-perms-for-query
-            (mt/mbql-query checkins
-              {:order-by [[:asc $checkins.venue_id->venues.name]]}))))))
+            (let [mp (mt/metadata-provider)]
+              (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                  (lib/join (lib/join-clause
+                             (lib.metadata/table mp (mt/id :venues))
+                             [(lib/= (lib.metadata/field mp (mt/id :checkins :venue_id))
+                                     (lib.metadata/field mp (mt/id :venues :id)))]))
+                  (lib/order-by (lib.metadata/field mp (mt/id :venues :name))))))))))
 
 (defn- query-with-source-card [card]
   {:database lib.schema.id/saved-questions-virtual-database-id, :type "query", :query {:source-table (str "card__" (u/the-id card))}})
@@ -185,50 +191,66 @@
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
     (is (= {:perms/create-queries {0 :query-builder}}
            (query-perms/required-perms-for-query
-            (mt/mbql-query venues
-              {:filter [:WOW 100 200]}))))))
+            (let [mp (mt/metadata-provider)]
+              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/filter (lib/= 100 200))
+                  ;; break it deliberately
+                  (assoc-in [:stages 0 :filters 0 0] :WAT))))))))
 
 (deftest ^:parallel joins-test
   (testing "Are permissions calculated correctly for JOINs?"
-    (mt/with-temp [:model/Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                              (mt/mbql-query checkins
-                                                {:aggregation [[:sum $id]]
-                                                 :breakout    [$user_id]}))]
+    (mt/with-temp [:model/Card {card-id :id}
+                   (qp.test-util/card-with-source-metadata-for-query
+                    (let [mp (mt/metadata-provider)]
+                      (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :checkins :id))))
+                          (lib/breakout (lib.metadata/field mp (mt/id :checkins :user_id))))))]
       (is (= {:card-ids             #{card-id}
               :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder}}
              (query-perms/required-perms-for-query
-              (mt/mbql-query users
-                {:joins [{:fields       :all
-                          :alias        "__alias__"
-                          :source-table (str "card__" card-id)
-                          :condition    [:=
-                                         $id
-                                         [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
-                 :limit 10})
+              (let [mp (mt/metadata-provider)]
+                (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                    (lib/join (-> (lib/join-clause
+                                   (lib.metadata/card mp card-id)
+                                   [(lib/= (lib.metadata/field mp (mt/id :users :id))
+                                           (lib/with-join-alias
+                                            (lib.metadata/field mp (mt/id :orders :user_id))
+                                            "__alias__"))])
+                                  (lib/with-join-alias "__alias__")
+                                  (lib/with-join-fields :all)))
+                    (lib/limit 10)))
               :throw-exceptions? true)))
       (is (= {:perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
              (query-perms/required-perms-for-query
-              (mt/mbql-query users
-                {:joins [{:alias        "c"
-                          :source-table $$checkins
-                          :condition    [:= $id &c.*USER_ID/Integer]}]})
+              (let [mp (mt/metadata-provider)]
+                (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                    (lib/join (lib/join-clause
+                               (lib.metadata/table mp (mt/id :checkins))
+                               [(lib/= (lib.metadata/field mp (mt/id :users :id))
+                                       (lib/with-join-alias
+                                        (lib.metadata/field mp (mt/id :orders :user_id))
+                                        "c"))]))))
               :throw-exceptions? true))))))
 
 (deftest ^:parallel query->source-ids-join-cards-test
   (testing "query->source-ids should return both card IDs when joining one card to another"
-    (mt/with-temp [:model/Card {card-1-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                (mt/mbql-query venues
-                                                  {:aggregation [[:count]]
-                                                   :breakout    [$id]}))
-                   :model/Card {card-2-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                (mt/mbql-query checkins
-                                                  {:aggregation [[:sum $id]]
-                                                   :breakout    [$venue_id]}))]
+    (mt/with-temp [:model/Card {card-1-id :id}
+                   (qp.test-util/card-with-source-metadata-for-query
+                    (let [mp (mt/metadata-provider)]
+                      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib.metadata/field mp (mt/id :venues :id))))))
+                   :model/Card {card-2-id :id}
+                   (qp.test-util/card-with-source-metadata-for-query
+                    (let [mp (mt/metadata-provider)]
+                      (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :checkins :id))))
+                          (lib/breakout (lib.metadata/field mp (mt/id :checkins :venue_id))))))]
       (let [query {:database (mt/id)
                    :type     :query
                    :query    {:source-table (str "card__" card-1-id)
@@ -247,7 +269,9 @@
 (deftest ^:parallel query->resolved-source-table-ids-test
   (testing "table-sourced queries behave like query->source-table-ids"
     (is (= #{(mt/id :venues)}
-           (query-perms/query->resolved-source-table-ids (mt/mbql-query venues)))))
+           (query-perms/query->resolved-source-table-ids
+            (let [mp (mt/metadata-provider)]
+              (lib/query mp (lib.metadata/table mp (mt/id :venues))))))))
   (testing "card-sourced queries resolve to the card's underlying source table"
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :query
@@ -269,16 +293,22 @@
 (deftest ^:parallel query->resolved-source-table-ids-join-test
   (testing "a card-sourced JOIN contributes the card's underlying table too"
     (mt/with-temp [:model/Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:count]]
-                                                 :breakout    [$id]}))]
+                                              (let [mp (mt/metadata-provider)]
+                                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                    (lib/aggregate (lib/count))
+                                                    (lib/breakout (lib.metadata/field mp (mt/id :venues :id))))))]
       (is (= #{(mt/id :checkins) (mt/id :venues)}
              (query-perms/query->resolved-source-table-ids
-              (mt/mbql-query checkins
-                {:joins [{:fields       :all
-                          :alias        "v"
-                          :source-table (str "card__" card-id)
-                          :condition    [:= $venue_id [:field "ID" {:base-type :type/Integer, :join-alias "v"}]]}]})))))))
+              (let [mp (mt/metadata-provider)]
+                (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                    (lib/join (-> (lib/join-clause
+                                   (lib.metadata/card mp card-id)
+                                   [(lib/= (lib.metadata/field mp (mt/id :checkins :venue_id))
+                                           (lib/with-join-alias
+                                            (lib.metadata/field mp (mt/id :venues :id))
+                                            "v"))])
+                                  (lib/with-join-alias "v")
+                                  (lib/with-join-fields :all)))))))))))
 
 (deftest ^:parallel query->resolved-source-table-ids-missing-card-test
   (testing "an unresolvable source-card chain THROWS (fail closed) rather than yielding no tables"

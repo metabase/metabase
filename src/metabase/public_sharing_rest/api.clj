@@ -706,8 +706,8 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::api.tiles/legacy-ref]
-       [:lonField ::api.tiles/legacy-ref]]]
+       [:latField ::api.tiles/encoded-ref]
+       [:lonField ::api.tiles/encoded-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))]
     (request/as-admin
@@ -731,8 +731,8 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::api.tiles/legacy-ref]
-       [:lonField ::api.tiles/legacy-ref]]]
+       [:latField ::api.tiles/encoded-ref]
+       [:lonField ::api.tiles/encoded-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))

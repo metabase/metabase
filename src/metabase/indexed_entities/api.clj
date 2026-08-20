@@ -1,24 +1,29 @@
 (ns metabase.indexed-entities.api
   (:require
+   [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; this should be found using lib.equality/find-matching-column instead, but
+;; it requires constructing a query; it doesn't work on metadata
+
+(defn- find-field [ref metadata]
+  (m/find-first #(lib.equality/= (lib/normalize ::lib.schema.ref/ref (:field_ref %))
+                                 ref) metadata))
+
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
-                                            :field_ref)
-                                      f)
-                                 f))
-                       metadata)]
+  (if-let [field (find-field ref metadata)]
     (let [type-slot (case t
                       :type/PK                   :semantic_type
                       (:type/Integer :type/Text) :effective_type)]
@@ -43,10 +48,12 @@
    _query-params
    {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
                                                             [:model_id  ms/PositiveInt]
-                                                            [:pk_ref    any?]
-                                                            [:value_ref any?]]]
+                                                            [:pk_ref    ::lib.schema.ref/ref]
+                                                            [:value_ref ::lib.schema.ref/ref]]]
   (let [model    (api/write-check :model/Card model_id)
-        metadata (:result_metadata model)]
+        metadata (:result_metadata model)
+        pk_ref (lib/normalize ::lib.schema.ref/ref pk_ref)
+        value_ref (lib/normalize ::lib.schema.ref/ref value_ref)]
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
                       {:model-id model_id})))

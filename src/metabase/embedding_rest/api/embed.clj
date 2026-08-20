@@ -403,8 +403,8 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::api.tiles/legacy-ref]
-       [:lonField ::api.tiles/legacy-ref]]]
+       [:latField ::api.tiles/encoded-ref]
+       [:lonField ::api.tiles/encoded-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
         card (api/check-404 (t2/select-one :model/Card card-id))]
@@ -433,8 +433,8 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField ::api.tiles/legacy-ref]
-       [:lonField ::api.tiles/legacy-ref]]]
+       [:latField ::api.tiles/encoded-ref]
+       [:lonField ::api.tiles/encoded-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
         dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))

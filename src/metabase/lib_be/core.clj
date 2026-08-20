@@ -29,6 +29,7 @@
   with-metadata-provider-cache]
  [metabase.lib-be.models.transforms
   normalize-query
+  transform-field-ref
   transform-query]
  [metabase.lib-be.settings
   breakout-bin-width
