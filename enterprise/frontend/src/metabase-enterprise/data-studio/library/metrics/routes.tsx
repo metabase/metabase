@@ -75,7 +75,7 @@ export function getDataStudioMetricRoutes() {
       <Route path=":cardId/query" lazy={metricQueryPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":cardId/dependencies" lazy={metricDependenciesPage}>
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       <Route path=":cardId/history" lazy={metricHistoryPage} />

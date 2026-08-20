@@ -107,7 +107,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
           path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
           lazy={segmentDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       <Route
@@ -129,7 +129,7 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
           path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
           lazy={measureDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       <Route

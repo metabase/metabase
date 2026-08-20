@@ -38,7 +38,7 @@ export function getDataStudioSnippetRoutes() {
           path="snippets/:snippetId/dependencies"
           lazy={snippetDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
     </>

@@ -160,7 +160,7 @@ export function getDataStudioTransformRoutes() {
           path=":transformId/dependencies"
           lazy={transformDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}

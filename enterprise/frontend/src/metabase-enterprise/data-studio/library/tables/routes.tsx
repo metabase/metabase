@@ -116,7 +116,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           path=":tableId/segments/:segmentId/dependencies"
           lazy={segmentDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       <Route path=":tableId/measures" lazy={tableMeasuresPage} />
@@ -133,12 +133,12 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           path=":tableId/measures/:measureId/dependencies"
           lazy={measureDependenciesPage}
         >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":tableId/dependencies" lazy={tableDependenciesPage}>
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+          <Route index lazy={PLUGIN_DEPENDENCIES.dependencyGraphPage} />
         </Route>
       )}
     </Route>

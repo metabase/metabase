@@ -1,7 +1,8 @@
-import type { ComponentType, Context, ReactNode } from "react";
+import type { Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import { pluginPlaceholderRoute } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
 // Types
@@ -13,7 +14,7 @@ export type DependencyGraphPageContextType = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  DependencyGraphPage: ComponentType;
+  dependencyGraphPage: PluginRoute;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
     dependenciesCount: number;
@@ -24,7 +25,7 @@ type DependenciesPlugin = {
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  DependencyGraphPage: PluginPlaceholder,
+  dependencyGraphPage: pluginPlaceholderRoute,
   DependencyGraphPageContext: createContext({}),
   useGetDependenciesCount: () => ({
     dependenciesCount: 0,
