@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.subscription-test
   "Contract tests for the `subscription_write` v2 MCP tool, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
-   gating, `drop-nil-args`, Malli validation, and teaching-error conversion are exercised for
+   gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free."
   (:require
    [clojure.test :refer :all]

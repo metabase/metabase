@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.metric-test
   "Contract tests for the `metric_write` v2 MCP tool, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
-   gating, `drop-nil-args`, Malli validation, and teaching-error conversion are exercised for
+   gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free. A metric is a Card of type `metric`, so the card write/permission stack itself is owned
    by `metabase.queries.*` and the metric shape rule by `metabase.lib.query`; this suite pins the
    tool's own contract on top of them: the `definition` query sources, the shape gate's teaching

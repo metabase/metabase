@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.collection-test
   "Contract tests for the `collection_write` v2 MCP tool (GHY-4148), driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
-   gating, `drop-nil-args`, Malli validation, and teaching-error conversion are exercised for
+   gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free. Collection domain semantics (parent inheritance, descendant path rewriting, trash
    mechanics, the permission predicates themselves) are owned by
    `metabase.collections-rest.api-test` and the model tests; this suite pins the tool's contract
@@ -320,7 +320,7 @@
 (deftest clear-unsets-description-and-authority-level-test
   (testing "GHY-4191: `clear` unsets the properties `collection-write-entry` lists as `:clearable`.
             A null cannot say \"clear this\" — strict clients fill every unset property with null and
-            `drop-nil-args` strips them at the boundary — so the explicit array is the only way to
+            the registry boundary strips them — so the explicit array is the only way to
             erase one. Pinned because the tool description long claimed the opposite."
     (mt/with-temp [:model/Collection {coll-id :id} {:name        "Q3 Planning"
                                                     :description "Planning docs"}]

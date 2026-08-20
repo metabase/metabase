@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.dashboard-test
   "Contract tests for the `dashboard_write` v2 MCP tool, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
-   gating, `drop-nil-args`, Malli validation, and teaching-error conversion are exercised for
+   gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free. The op grammar itself is covered by `metabase.mcp.v2.dashboard-ops-test`; this suite
    pins the tool's contract, permission inheritance, and dry-run behavior on top of it."
   (:require
@@ -251,7 +251,7 @@
 
 (deftest null-attributes-are-dropped-at-the-boundary-test
   (testing "GHY-4147: strict clients fill every declared property with null, and
-            `registry/drop-nil-args` strips those before the handler — so a null attribute leaves
+            the registry strips those before the handler — so a null attribute leaves
             the stored value alone rather than reaching a NOT NULL column like `width`."
     (mt/with-temp [:model/Dashboard dash {:name "Sales" :width "full" :auto_apply_filters false}]
       (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"

@@ -1,7 +1,7 @@
 (ns metabase.mcp.v2.tools.definitions-test
   "Contract tests for the `segment_write` and `measure_write` v2 MCP tools, driven through
    [[metabase.mcp.v2.registry/call-tool]] — the same seam the JSON-RPC route uses — so scope
-   gating, `drop-nil-args`, Malli validation, and teaching-error conversion are exercised for
+   gating, nil-arg stripping, Malli validation, and teaching-error conversion are exercised for
    free. Segment/measure domain semantics (definition normalization, revision diffs, the
    permission predicates themselves) are owned by `metabase.segments.api-test`,
    `metabase.measures.api-test`, and the model tests; this suite pins the tools' contract on

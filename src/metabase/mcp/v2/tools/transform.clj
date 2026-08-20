@@ -111,8 +111,8 @@
    refused only when they disagree with what this tool would write. `source-db-id` is the database
    the query runs on, which the target always follows.
 
-   Nils are stripped first: [[metabase.mcp.v2.common/drop-nil-args]] only reaches the top level, so
-   a strict client's nulls arrive inside `target` and would otherwise read as \"set this to nil\"."
+   Nils are stripped first: the registry boundary only strips top-level nils, so a strict
+   client's nulls arrive inside `target` and would otherwise read as \"set this to nil\"."
   [existing target source-db-id]
   (let [{target-name :name, :keys [schema database] :as target} (u/remove-nils target)
         existing-type (some-> (:type existing) name)

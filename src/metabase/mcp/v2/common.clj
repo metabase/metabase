@@ -248,8 +248,8 @@
 (defn resolve-collection-id-or-personal
   "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
    instead of the root collection. Explicit `\"root\"` still resolves to the root collection, so
-   callers keep a way to ask for it. Arguments arrive nil-stripped ([[drop-nil-args]]), so a nil
-   here is always an omitted argument rather than an explicit null.
+   callers keep a way to ask for it. Arguments arrive with top-level nils stripped at the
+   registry boundary, so a nil here is always an omitted argument rather than an explicit null.
 
    For create paths only. On update an absent collection argument must leave content where it is,
    so update paths guard [[resolve-collection-id]] with `contains?` instead.
@@ -561,13 +561,3 @@
     (query-guards/validate-serialized-query! query)
     (query-guards/check-token-query-permissions! query)
     {:query query :prompt prompt}))
-
-;;; ------------------------------------------------ Argument plumbing ---------------------------------------------
-
-(defn drop-nil-args
-  "Strip nil-valued top-level keys from MCP tool arguments. Strict MCP clients (ChatGPT) send
-   every declared property with `null` for the ones they don't populate; stripping at the
-   boundary lets handlers treat missing and null identically. Nested values are left alone."
-  [arguments]
-  (when arguments
-    (into {} (remove (comp nil? val)) arguments)))

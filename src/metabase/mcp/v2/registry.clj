@@ -20,6 +20,7 @@
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as common]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
@@ -241,7 +242,10 @@
                             common/error-code-invalid-params)
 
       :else
-      (let [arguments (common/drop-nil-args (or arguments {}))]
+      ;; Strict MCP clients (ChatGPT) send every declared property with `null` for the ones they
+      ;; don't populate; stripping top-level nils at the boundary lets handlers treat missing and
+      ;; null identically. Nested values are left alone.
+      (let [arguments (u/remove-nils (or arguments {}))]
         (if-let [message (validation-error-message (:args tool) arguments)]
           (common/error-content message common/error-code-invalid-params)
           (try
