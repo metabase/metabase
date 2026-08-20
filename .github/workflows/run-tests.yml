@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   create-test-plan:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     name: Create test plan
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -95,7 +95,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
