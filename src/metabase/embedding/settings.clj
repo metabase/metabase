@@ -192,9 +192,8 @@
                     (when (not= new-value old-value)
                       (when (and new-value (str/blank? (embedding-secret-key)))
                         (embedding-secret-key! (u.random/secure-hex 32)))
-                      ;; The same `embed_share` event the other embedding toggles track. `modular-embedding` is not
-                      ;; in its enum, so Snowplow bad-rows it -- fine, Snowplow is being retired for Metaplow, which
-                      ;; takes the event name free-form.
+                      ;; The same `embed_share` event the other embedding toggles track; `modular-embedding` was
+                      ;; added to its enum in schema 1-0-3.
                       (analytics/track-event!
                        :snowplow/embed_share
                        {:event                      (keyword (str "modular-embedding" (if new-value "-enabled" "-disabled")))
