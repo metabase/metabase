@@ -22,6 +22,8 @@ jobs:
       i18n: ${{ steps.changes.outputs.i18n }}
       openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
+      workflows: ${{ steps.changes.outputs.workflows }}
+      workflows_files: ${{ steps.changes.outputs.workflows_files }}
       yaml: ${{ steps.changes.outputs.yaml }}
     steps:
       - uses: actions/checkout@v6
@@ -83,6 +85,10 @@ jobs:
         - name: Run actionlint
           if: needs.files-changed.outputs.actionlint == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
+
+        - name: Check every workflow job sets a timeout
+          if: needs.files-changed.outputs.workflows == 'true'
+          run: .github/scripts/check-job-timeouts.sh ${{ needs.files-changed.outputs.workflows_files }}
 
         # Generate and Lint OpenAPI spec
         - name: Generate OpenAPI spec
