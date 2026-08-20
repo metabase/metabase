@@ -117,7 +117,10 @@ describe("scenarios > data apps > backend scope", () => {
         .should("have.length.above", 0)
         .last()
         .within(() => {
-          cy.findByText("Quantity").click();
+          // A sparse float has no cached field values, so the picker defaults to
+          // Between and offers Min/Max. A low-cardinality column like Quantity
+          // defaults to `=` and offers a value list instead.
+          cy.findByText("Discount").click();
         });
       cy.findByPlaceholderText("Min").type("2");
       cy.findByText("Add filter").click();
