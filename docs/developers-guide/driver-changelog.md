@@ -31,7 +31,8 @@ title: Driver interface changelog
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
 
 - `:native-pivot-tables` is now enabled for `:hive-like` drivers.
-  Hive-family dialects compile the pivot-grouping bitmask via `GROUPING_ID(a, b, ...)`.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls, because
+  Spark's `GROUPING_ID` requires arg order to match the `GROUP BY` (which the default emitter reverses).
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:

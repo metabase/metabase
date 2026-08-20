@@ -30,11 +30,14 @@
                               :native-pivot-tables true}]
   (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
 
-;; Hive supports both `GROUPING SETS` and `GROUPING_ID(a, b, ...)` (multi-arg bitmask), but
-;; `GROUPING(x)` is single-arg only — so we override the default `[:sql]` emitter (which uses `GROUPING(a, b, ...)`).
+;; Hive-family dialects support `GROUPING SETS` and single-arg `GROUPING(x)`, but their `GROUPING_ID(a, b, ...)`
+;; requires the arg order to exactly match the `GROUP BY` column order — and `[[metabase.driver.sql.pivot]]`
+;; reverses the args so `bit 0 = first breakout` (the Postgres/Oracle/SQL Server convention). To keep
+;; that convention without tripping Spark's `GROUPING_ID_COLUMN_MISMATCH` check, synthesize the bitmask from
+;; single-arg `GROUPING(x)` calls instead.
 (defmethod sql.pivot/pivot-grouping-hsql :hive-like
   [_driver exprs]
-  (into [::sql.pivot/grouping-id-fn] exprs))
+  (sql.pivot/synthesise-grouping-bitmask exprs))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
