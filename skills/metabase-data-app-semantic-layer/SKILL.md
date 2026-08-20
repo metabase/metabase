@@ -18,7 +18,7 @@ Keep the semantic layer and presentation layer separate.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
-- Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
+- Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows. Both belong to the static query only — the dynamic second argument cannot take them, see *Static and dynamic query parts*.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
 - Do not hardcode categorical filter option values. A generated schema field only proves the field exists, not which values exist; query options from Metabase at runtime using the same generated schema field that the filter applies.
 - Dashboard-level filters should visibly affect every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI; do not show duplicate or no-op date controls.
@@ -210,6 +210,26 @@ const { data } = useMetabaseQuery(RevenueQuery, {
 Split them this way even when nothing appears to depend on it: the first argument must be identical on every render, and only the second may vary with runtime state.
 
 The dynamic clauses run as their own stage, so they see the **result columns** of the static query, not its source table. That is why `plan` is a breakout above: a control that filters on a source column only works if that column survives into the result. If it does not, add it as a breakout, or leave the static query unaggregated. Likewise, filter an aggregated static query on `count`/`sum`, not on the fields behind them.
+
+**Segments and measures belong to the static part only.** They are defined against a table, and the dynamic stage has no table — so `filters: [orders.segments.completed]` and `aggregations: [orders.measures.revenue]` are rejected, at compile time and again at runtime. This is the one place the usual "prefer the curated definition" rule does not apply.
+
+Put the curated definition in the static query where it resolves, and let the dynamic clause work on what came out:
+
+```ts
+export const CompletedOrders = defineQuery({
+  source: orders,
+  filters: [orders.segments.completed], // the segment resolves here
+  aggregations: [orders.measures.revenue],
+  breakouts: [breakout(orders.fields.plan)],
+});
+
+const { data } = useMetabaseQuery(CompletedOrders, {
+  // a result column, not a segment or measure
+  filters: plan === null ? [] : [filter({ type: "column", name: "PLAN" }, "=", plan)],
+});
+```
+
+If a control must switch a segment on and off, that is a choice between static queries, not a dynamic clause: define one query per state and pick the query, or express the same condition as a filter on a result column.
 
 Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object, or `copiedActionId` on an action definition. Both are generated synchronization state — see *Synchronize every query and action*.
 
@@ -676,6 +696,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Adding lookup helpers instead of using keyed generated schema objects.
 - Inventing SDK component prop names instead of using `query` for generated table queries.
 - Mixing fields, segments, or measures from unrelated tables.
+- Passing a segment or measure to the dynamic second argument, where only result columns resolve.
 - Adding a filter UI that sends empty values instead of omitting the filter.
 - Hardcoding categorical filter values instead of querying the runtime values from Metabase.
 - Displaying entity names but filtering by those names when a stable ID is available.
