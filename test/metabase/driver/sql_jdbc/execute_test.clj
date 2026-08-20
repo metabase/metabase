@@ -7,6 +7,9 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
@@ -291,11 +294,20 @@
                   response (mt/user-http-request :crowberto :post 503 "dataset" query)]
               (is (= "connection-pool-checkout-queue-full" (:error_type response))))))))))
 
+(defn- venues-rows
+  "Run an unaggregated venues query limited to `n` rows."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/limit n)
+        qp/process-query
+        mt/rows)))
+
 (deftest cancel-statement-only-when-rows-remain-test
   (testing "the statement is canceled only when reduction stopped before the ResultSet ran out of rows"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       ;; take the dataset creation and sync queries before anything is counted
-      (mt/run-mbql-query venues {:limit 1})
+      (venues-rows 1)
       (let [cancels (atom 0)]
         ;; returning false keeps the cancelation from discarding the pooled connection, which is asserted separately
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/cancel-statement! (fn [_driver _stmt]
@@ -303,11 +315,11 @@
                                                                          false)]
           (testing "rows ran out, so there is nothing left to cancel"
             (reset! cancels 0)
-            (is (= 100 (count (mt/rows (mt/run-mbql-query venues {:limit 1000})))))
+            (is (= 100 (count (venues-rows 1000))))
             (is (zero? @cancels)))
           (testing "reduction stopped at the row limit while the statement was still producing (#39018)"
             (reset! cancels 0)
-            (is (= 4 (count (mt/rows (mt/run-mbql-query venues {:limit 4})))))
+            (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
 
 (def ^:private raw-connection-to-string-method
@@ -349,6 +361,6 @@
   (testing "the ResultSet and Statement still close cleanly after their Connection has been discarded"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
-      (is (= 4 (count (mt/rows (mt/run-mbql-query venues {:limit 4})))))
+      (is (= 4 (count (venues-rows 4))))
       (testing "and the pool replaces it, so the next query still runs"
-        (is (= 4 (count (mt/rows (mt/run-mbql-query venues {:limit 4})))))))))
+        (is (= 4 (count (venues-rows 4))))))))
