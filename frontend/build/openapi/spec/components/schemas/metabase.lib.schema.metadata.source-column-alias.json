@@ -1,0 +1,4 @@
+{
+  "description": "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+  "type": "string"
+}

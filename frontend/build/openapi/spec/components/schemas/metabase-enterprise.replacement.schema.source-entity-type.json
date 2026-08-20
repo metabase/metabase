@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "card",
+    "table",
+    "transform"
+  ],
+  "type": "string"
+}

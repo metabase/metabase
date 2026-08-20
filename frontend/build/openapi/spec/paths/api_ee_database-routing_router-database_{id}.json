@@ -1,0 +1,55 @@
+{
+  "put": {
+    "description": "Updates an existing Database with the `user_attribute` to route on. Will either:\n  - turn an existing Database into a Router database\n  - change the `user_attribute` used to route for an existing Router database, or\n  - turn a Router database into a regular Database\n  depending on the value of `user_attribute`",
+    "operationId": "put-api-ee-database-routing-router-database-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "user_attribute": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/database-routing/router-database/{id}",
+    "tags": [
+      "/api/ee/database-routing"
+    ]
+  }
+}

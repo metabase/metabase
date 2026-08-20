@@ -1,0 +1,9 @@
+{
+  "description": "Estimated complexity/cost of generating a lens.",
+  "enum": [
+    "fast",
+    "slow",
+    "very-slow"
+  ],
+  "type": "string"
+}

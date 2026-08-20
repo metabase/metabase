@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Gets information about selected tables",
+    "operationId": "post-api-data-studio-table-selection",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.data-studio.api.table.table-selectors.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.data-studio.api.table.bulk-table-selection-info.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/data-studio/table/selection",
+    "tags": [
+      "/api/data-studio/table"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.common.positive-number.json"
+    }
+  ],
+  "description": "Bin width (size of each bin)."
+}

@@ -1,0 +1,7 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.metadata..card.type.json"
+    }
+  ]
+}

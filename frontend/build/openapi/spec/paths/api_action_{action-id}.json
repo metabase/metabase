@@ -1,0 +1,71 @@
+{
+  "delete": {
+    "description": "Delete an Action.",
+    "operationId": "delete-api-action-action-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "action-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/action/{action-id}",
+    "tags": [
+      "/api/action"
+    ]
+  },
+  "get": {
+    "description": "Fetch an Action.",
+    "operationId": "get-api-action-action-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "action-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.actions.schema.action.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/action/{action-id}",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

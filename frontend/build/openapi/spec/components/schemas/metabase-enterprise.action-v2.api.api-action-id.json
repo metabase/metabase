@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    {
+      "type": "string"
+    }
+  ],
+  "description": "Primitive actions, saved actions, and packed encodings from the picker."
+}

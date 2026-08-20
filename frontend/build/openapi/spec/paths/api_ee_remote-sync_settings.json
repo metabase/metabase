@@ -1,0 +1,129 @@
+{
+  "put": {
+    "description": "Update Remote Sync related settings. You must be a superuser to do this.",
+    "operationId": "put-api-ee-remote-sync-settings",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "collections": {
+                "oneOf": [
+                  {
+                    "additionalProperties": {
+                      "type": "boolean"
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-auto-import": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-branch": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-token": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-transforms": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-type": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "read-only",
+                      "read-write"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "remote-sync-url": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "task_id": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "success"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/remote-sync/settings",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

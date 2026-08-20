@@ -1,0 +1,64 @@
+{
+  "delete": {
+    "description": "Delete ModelIndex.",
+    "operationId": "delete-api-model-index-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/model-index/{id}",
+    "tags": [
+      "/api/model-index"
+    ]
+  },
+  "get": {
+    "description": "Retrieve ModelIndex.",
+    "operationId": "get-api-model-index-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/model-index/{id}",
+    "tags": [
+      "/api/model-index"
+    ]
+  }
+}

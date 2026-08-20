@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "bin-width",
+    "default",
+    "num-bins"
+  ],
+  "type": "string"
+}

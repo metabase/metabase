@@ -1,0 +1,20 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.expression.arithmetic.plus-minus-temporal-interval-schema.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema.json"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.expression.arithmetic.temporal-difference-schema.json"
+        }
+      ]
+    }
+  ]
+}

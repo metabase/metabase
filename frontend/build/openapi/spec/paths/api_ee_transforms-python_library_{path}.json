@@ -1,0 +1,80 @@
+{
+  "get": {
+    "description": "Get the Python library for user modules.",
+    "operationId": "get-api-ee-transforms-python-library-path",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "path",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/transforms-python/library/{path}",
+    "tags": [
+      "/api/ee/transforms-python"
+    ]
+  },
+  "put": {
+    "description": "Update the Python library source code for user modules.",
+    "operationId": "put-api-ee-transforms-python-library-path",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "path",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/transforms-python/library/{path}",
+    "tags": [
+      "/api/ee/transforms-python"
+    ]
+  }
+}

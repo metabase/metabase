@@ -1,0 +1,12 @@
+{
+  "description": "Unsupported implicit action kind",
+  "enum": [
+    "row/create",
+    "row/update",
+    "row/delete",
+    "bulk/create",
+    "bulk/update",
+    "bulk/delete"
+  ],
+  "type": "string"
+}

@@ -1,0 +1,17 @@
+{
+  "description": "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule",
+  "oneOf": [
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.nocache.json"
+    },
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.ttl.json"
+    },
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.ee.duration.json"
+    },
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.ee.schedule.json"
+    }
+  ]
+}

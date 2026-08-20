@@ -1,0 +1,6 @@
+{
+  "enum": [
+    "field"
+  ],
+  "type": "string"
+}

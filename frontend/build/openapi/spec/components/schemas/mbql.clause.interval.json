@@ -1,0 +1,17 @@
+{
+  "prefixItems": [
+    {
+      "const": "interval"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "type": "integer"
+    },
+    {
+      "$ref": "./metabase.lib.schema.temporal-bucketing..unit.date-time.interval.json"
+    }
+  ],
+  "type": "array"
+}

@@ -1,0 +1,64 @@
+{
+  "post": {
+    "description": "Return info about pg-replication connection that is about to be created.",
+    "operationId": "post-api-ee-database-replication-connection-database-id-preview",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "database-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "replicationSchemaFilters": {
+                "properties": {
+                  "schema-filters-patterns": {
+                    "type": "string"
+                  },
+                  "schema-filters-type": {
+                    "enum": [
+                      "inclusion",
+                      "exclusion",
+                      "all"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "schema-filters-type",
+                  "schema-filters-patterns"
+                ],
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/database-replication/connection/{database-id}/preview",
+    "tags": [
+      "/api/ee/database-replication"
+    ]
+  }
+}

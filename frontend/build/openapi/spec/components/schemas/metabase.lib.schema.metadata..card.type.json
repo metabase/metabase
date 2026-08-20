@@ -1,0 +1,9 @@
+{
+  "description": "All acceptable card types.\n\n  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean\n  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column\n  to differentiate between all types. So we've added a new `type` column for this purpose.\n\n  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it\n  gradually.",
+  "enum": [
+    "question",
+    "metric",
+    "model"
+  ],
+  "type": "string"
+}

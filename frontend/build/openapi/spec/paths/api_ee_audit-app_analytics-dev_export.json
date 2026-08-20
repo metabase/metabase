@@ -1,0 +1,35 @@
+{
+  "post": {
+    "description": "Export analytics content as a .tar.gz file for local development.\n\n  Only available when MB_ANALYTICS_DEV_MODE=true. Returns a tarball containing\n  the analytics YAMLs in canonical format, ready to commit to source control.\n\n  Requires superuser permissions.",
+    "operationId": "post-api-ee-audit-app-analytics-dev-export",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "body": {}
+              },
+              "required": [
+                "body"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/audit-app/analytics-dev/export",
+    "tags": [
+      "/api/ee/audit-app/analytics-dev"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "post": {
+    "description": "Set the cron schedule to refresh persisted models.\n   Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}.",
+    "operationId": "post-api-persist-set-refresh-schedule",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cron": {
+                "description": "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "cron"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/persist/set-refresh-schedule",
+    "tags": [
+      "/api/persist"
+    ]
+  }
+}

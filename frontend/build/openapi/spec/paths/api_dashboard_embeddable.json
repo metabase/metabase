@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding\n  endpoints and a signed JWT.",
+    "operationId": "get-api-dashboard-embeddable",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/embeddable",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

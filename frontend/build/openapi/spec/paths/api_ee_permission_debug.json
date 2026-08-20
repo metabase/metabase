@@ -1,0 +1,60 @@
+{
+  "get": {
+    "description": "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.\n  The type of model we are debugging against is inferred by the `action_type`.\n\n  It will return:\n  - `decision`: The overall permission decision (\"allow\", \"denied\", or \"limited\")\n  - `model-type`: The type of model being checked (e.g., \"question\")\n  - `model-id`: The ID of the model being checked\n  - `segment`: A set of segmentation types applied (e.g., \"sandboxed\", \"impersonated\", \"routed\")\n  - `message`: A sequence of strings explaining the decision\n  - `data`: A map containing details about permissions (table or collection names to group names)\n  - `suggestions`: A map of group IDs to group names that could provide access\n\n  Example requests:\n  - Check if user can read a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/read`\n  - Check if user can query a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/query`\n  - Check if user can download data: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/download-data`\n\n  Example responses:\n  - Allowed access:\n    ```json\n    {\n      \"decision\": \"allow\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User has permission to read this card\"],\n      \"data\": {},\n      \"suggestions\": {}\n    }\n    ```\n  - Denied access with blocked table:\n    ```json\n    {\n      \"decision\": \"denied\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User does not have permission to query this card\"],\n      \"data\": {\"sample-db.PUBLIC.ORDERS\": [\"All Users\"]},\n      \"suggestions\": {}\n    }\n    ```\n  - Limited access:\n    ```json\n    {\n      \"decision\": \"limited\",\n      \"model-type\": \"question\",\n      \"model-id\": \"456\",\n      \"segment\": [],\n      \"message\": [\"User has permission to download some data from this card\"],\n      \"data\": {},\n      \"suggestions\": {}\n    }\n    ```",
+    "operationId": "get-api-ee-permission_debug",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "user_id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "model_id",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "action_type",
+        "required": true,
+        "schema": {
+          "enum": [
+            "card/read",
+            "card/query",
+            "card/download-data"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.permission-debug.impl.perm-debug-info.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/permission_debug",
+    "tags": [
+      "/api/ee/permission_debug"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "description": "A drill-down lens available from the current lens.",
+  "properties": {
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "display_name"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,18 @@
+{
+  "description": "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
+  "properties": {
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "is_group_manager": {
+      "description": "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "type": "object"
+}

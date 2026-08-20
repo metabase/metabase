@@ -1,0 +1,52 @@
+{
+  "get": {
+    "description": "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.\n  For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint.",
+    "operationId": "get-api-setting",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/setting",
+    "tags": [
+      "/api/setting"
+    ]
+  },
+  "put": {
+    "description": "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated.",
+    "operationId": "put-api-setting",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/setting",
+    "tags": [
+      "/api/setting"
+    ]
+  }
+}

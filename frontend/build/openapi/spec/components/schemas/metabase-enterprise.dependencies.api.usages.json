@@ -1,0 +1,6 @@
+{
+  "additionalProperties": {
+    "$ref": "./metabase-enterprise.dependencies.dependency-types.entity-id.json"
+  },
+  "type": "object"
+}

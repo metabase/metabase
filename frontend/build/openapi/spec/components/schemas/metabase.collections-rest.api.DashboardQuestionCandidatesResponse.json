@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "./metabase.collections-rest.api.DashboardQuestionCandidate.json"
+      },
+      "type": "array"
+    },
+    "total": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "data",
+    "total"
+  ],
+  "type": "object"
+}

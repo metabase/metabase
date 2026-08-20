@@ -1,0 +1,31 @@
+{
+  "get": {
+    "description": "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:dashboard <dashboard-id>}}",
+    "operationId": "get-api-embed-dashboard-token",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/embed/dashboard/{token}",
+    "tags": [
+      "/api/embed"
+    ]
+  }
+}

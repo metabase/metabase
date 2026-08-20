@@ -1,0 +1,20 @@
+{
+  "prefixItems": [
+    {
+      "const": "replace"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.string.json"
+    },
+    {
+      "type": "string"
+    },
+    {
+      "type": "string"
+    }
+  ],
+  "type": "array"
+}

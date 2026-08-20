@@ -1,0 +1,39 @@
+{
+  "get": {
+    "description": "Return an automagic dashboard for an entity detail specified by `entity`\n  with id `id` and a primary key of `indexed-value`.",
+    "operationId": "get-api-automagic-dashboards-model_index-model-index-id-primary_key-pk-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "model-index-id",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "pk-id",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/automagic-dashboards/model_index/{model-index-id}/primary_key/{pk-id}",
+    "tags": [
+      "/api/automagic-dashboards"
+    ]
+  }
+}

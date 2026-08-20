@@ -1,0 +1,52 @@
+{
+  "get": {
+    "description": "Search for values of a Field with `search-id` that start with `value`. See docstring for\n  [[metabase.parameters.field/search-values]] for a more detailed explanation.",
+    "operationId": "get-api-field-id-search-search-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "search-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "value",
+        "required": false,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/field/{id}/search/{search-id}",
+    "tags": [
+      "/api/field"
+    ]
+  }
+}

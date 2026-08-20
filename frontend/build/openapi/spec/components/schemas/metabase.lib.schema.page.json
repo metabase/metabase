@@ -1,0 +1,18 @@
+{
+  "description": "`page` = page num, starting with 1. `items` = number of items per page.\n  e.g.\n\n    {:page 1, :items 10} = items 1-10\n    {:page 2, :items 10} = items 11-20",
+  "properties": {
+    "items": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "page": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "page",
+    "items"
+  ],
+  "type": "object"
+}

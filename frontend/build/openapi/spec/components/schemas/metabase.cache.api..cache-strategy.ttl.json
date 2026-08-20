@@ -1,0 +1,24 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "min_duration_ms": {
+      "description": "value must be an integer greater or equal to than zero.",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "multiplier": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "type": {
+      "const": "ttl"
+    }
+  },
+  "required": [
+    "type",
+    "multiplier",
+    "min_duration_ms"
+  ],
+  "type": "object"
+}

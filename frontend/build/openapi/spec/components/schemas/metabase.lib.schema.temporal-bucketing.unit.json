@@ -1,0 +1,25 @@
+{
+  "enum": [
+    "day",
+    "day-of-month",
+    "day-of-week",
+    "day-of-year",
+    "default",
+    "hour",
+    "hour-of-day",
+    "millisecond",
+    "minute",
+    "minute-of-hour",
+    "month",
+    "month-of-year",
+    "quarter",
+    "quarter-of-year",
+    "second",
+    "second-of-minute",
+    "week",
+    "week-of-year",
+    "year",
+    "year-of-era"
+  ],
+  "type": "string"
+}

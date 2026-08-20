@@ -1,0 +1,17 @@
+{
+  "properties": {
+    "col": {
+      "properties": {},
+      "type": "object"
+    },
+    "values": {
+      "items": {},
+      "type": "array"
+    }
+  },
+  "required": [
+    "values",
+    "col"
+  ],
+  "type": "object"
+}

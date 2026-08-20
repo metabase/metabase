@@ -1,0 +1,38 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "duration": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "refresh_automatically": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "const": "duration"
+    },
+    "unit": {
+      "enum": [
+        "hours",
+        "minutes",
+        "seconds",
+        "days"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "duration",
+    "unit"
+  ],
+  "type": "object"
+}

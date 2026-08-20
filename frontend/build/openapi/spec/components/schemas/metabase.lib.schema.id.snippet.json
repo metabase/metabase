@@ -1,0 +1,5 @@
+{
+  "description": "Valid Snippet ID",
+  "minimum": 1,
+  "type": "integer"
+}

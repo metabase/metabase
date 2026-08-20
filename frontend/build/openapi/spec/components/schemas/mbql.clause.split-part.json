@@ -1,0 +1,21 @@
+{
+  "prefixItems": [
+    {
+      "const": "split-part"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.string.json"
+    },
+    {
+      "minLength": 1,
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.positive-integer-or-numeric-expression.json"
+    }
+  ],
+  "type": "array"
+}

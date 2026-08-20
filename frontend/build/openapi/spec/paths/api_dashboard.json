@@ -1,0 +1,138 @@
+{
+  "get": {
+    "deprecated": true,
+    "description": "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.\n  It only exists for backwards compatibility and may be removed in the future.\n\n  Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:\n  *  `all`      - Return all Dashboards.\n  *  `mine`     - Return Dashboards created by the current user.\n  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)",
+    "operationId": "get-api-dashboard",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "f",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "all",
+                "mine",
+                "archived"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard",
+    "tags": [
+      "/api/dashboard"
+    ]
+  },
+  "post": {
+    "description": "Create a new Dashboard.",
+    "operationId": "post-api-dashboard",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cache_ttl": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.parameters.schema.parameters.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/dashboard",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "get": {
+    "description": "Get list of branches from the configured source.\n\n  Returns a JSON object with branch names under the :items key.\n\n  Requires superuser permissions.",
+    "operationId": "get-api-ee-remote-sync-branches",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "items"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/remote-sync/branches",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

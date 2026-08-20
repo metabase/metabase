@@ -1,0 +1,6 @@
+{
+  "enum": [
+    "events"
+  ],
+  "type": "string"
+}

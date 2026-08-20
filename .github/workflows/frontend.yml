@@ -73,13 +73,24 @@ jobs:
   fe-type-check:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Restore OpenAPI spec cache
+        id: openapi-cache
+        uses: actions/cache@v5
+        with:
+          path: .tmp/openapi/openapi.json
+          key: openapi-spec-${{ hashFiles('src/**/*.clj', 'src/**/*.cljc', 'enterprise/backend/src/**/*.clj', 'enterprise/backend/src/**/*.cljc', 'deps.edn') }}
+      - name: Generate OpenAPI spec
+        if: steps.openapi-cache.outputs.cache-hit != 'true'
+        run: bun run openapi:generate
+      - name: Generate API types from OpenAPI spec
+        run: bun run types:generate
       - run: bun run build-pure:cljs
         name: Compile CLJS
       - run: bun run type-check-pure

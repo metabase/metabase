@@ -1,0 +1,41 @@
+{
+  "get": {
+    "description": "Reports whether the database can currently connect",
+    "operationId": "get-api-database-id-healthcheck",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "connection-type",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase.driver.connection.connection-type.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}/healthcheck",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

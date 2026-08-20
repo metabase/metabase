@@ -1,0 +1,49 @@
+{
+  "get": {
+    "description": "Get revisions of an object.",
+    "operationId": "get-api-revision",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "entity",
+        "required": true,
+        "schema": {
+          "enum": [
+            "card",
+            "dashboard",
+            "document",
+            "measure",
+            "segment",
+            "transform"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/revision",
+    "tags": [
+      "/api/revision"
+    ]
+  }
+}

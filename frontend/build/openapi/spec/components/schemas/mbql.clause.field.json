@@ -1,0 +1,35 @@
+{
+  "allOf": [
+    {
+      "prefixItems": [
+        {
+          "const": "field"
+        },
+        {
+          "$ref": "./metabase.lib.schema.ref..field.options.json"
+        },
+        {
+          "anyOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.field.json"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "type": "array"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.ref..field.id.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.ref..field.literal.json"
+        }
+      ]
+    }
+  ]
+}

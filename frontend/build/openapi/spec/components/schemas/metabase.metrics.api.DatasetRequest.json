@@ -1,0 +1,12 @@
+{
+  "description": "Schema for POST /dataset request body.",
+  "properties": {
+    "definition": {
+      "$ref": "./metabase.metrics.api.Definition.json"
+    }
+  },
+  "required": [
+    "definition"
+  ],
+  "type": "object"
+}

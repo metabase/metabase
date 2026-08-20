@@ -1,0 +1,200 @@
+{
+  "get": {
+    "description": "Fetch a list of users.",
+    "operationId": "get-api-ee-scim-v2-Users",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "startIndex",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "count",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "filter",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/scim/v2/Users",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  },
+  "post": {
+    "description": "Create a single user.",
+    "operationId": "post-api-ee-scim-v2-Users",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "emails": {
+                "items": {
+                  "properties": {
+                    "primary": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "groups": {
+                "items": {
+                  "properties": {
+                    "$ref": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "display": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "display"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "locale": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "properties": {
+                  "familyName": {
+                    "type": "string"
+                  },
+                  "givenName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "givenName",
+                  "familyName"
+                ],
+                "type": "object"
+              },
+              "schemas": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "userName": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schemas",
+              "userName",
+              "name",
+              "emails"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/scim/v2/Users",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  }
+}

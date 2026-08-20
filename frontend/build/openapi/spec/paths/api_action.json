@@ -1,0 +1,84 @@
+{
+  "get": {
+    "description": "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional\n  `?model-id=<model-id>` to limit to actions on a particular model.",
+    "operationId": "get-api-action",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "model-id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "$ref": "../components/schemas/metabase.lib.schema.id.card.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase.actions.schema.action.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/action",
+    "tags": [
+      "/api/action"
+    ]
+  },
+  "post": {
+    "description": "Create a new action.",
+    "operationId": "post-api-action",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.actions.schema..action.for-insert.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.actions.schema.action.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/action",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

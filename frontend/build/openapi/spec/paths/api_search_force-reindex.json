@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "This will trigger an immediate reindexing, if we are using search index.",
+    "operationId": "post-api-search-force-reindex",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/search/force-reindex",
+    "tags": [
+      "/api/search"
+    ]
+  }
+}

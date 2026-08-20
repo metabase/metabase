@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "type": {
+      "const": "merge"
+    },
+    "unique-key": {
+      "items": {
+        "$ref": "./metabase.transforms.schema.merge-key-column.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "type",
+    "unique-key"
+  ],
+  "type": "object"
+}

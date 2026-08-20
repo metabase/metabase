@@ -1,0 +1,14 @@
+{
+  "description": "Options that tweak the behavior of the query processor.",
+  "properties": {
+    "include-sensitive-fields": {
+      "description": "Whether to include fields with visibility_type :sensitive when fetching query metadata.",
+      "type": "boolean"
+    },
+    "report-timezone": {
+      "$ref": "./metabase.lib.schema.expression.temporal.timezone-id.json",
+      "description": "The timezone the query should be ran in, overriding the default report timezone for the instance."
+    }
+  },
+  "type": "object"
+}

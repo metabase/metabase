@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "expression"
+    },
+    {
+      "$ref": "./metabase.lib.schema.ref..expression.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  ],
+  "type": "array"
+}

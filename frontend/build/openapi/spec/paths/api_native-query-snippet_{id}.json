@@ -1,0 +1,127 @@
+{
+  "get": {
+    "description": "Fetch native query snippet with ID.",
+    "operationId": "get-api-native-query-snippet-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/native-query-snippet/{id}",
+    "tags": [
+      "/api/native-query-snippet"
+    ]
+  },
+  "put": {
+    "description": "Update an existing `NativeQuerySnippet`.",
+    "operationId": "put-api-native-query-snippet-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "archived": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "content": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "oneOf": [
+                  {
+                    "description": "snippet names cannot include '}' or start with spaces"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/native-query-snippet/{id}",
+    "tags": [
+      "/api/native-query-snippet"
+    ]
+  }
+}

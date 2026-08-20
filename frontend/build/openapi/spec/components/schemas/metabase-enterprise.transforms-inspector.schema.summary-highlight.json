@@ -1,0 +1,23 @@
+{
+  "description": "A highlight in the lens summary.",
+  "properties": {
+    "card_id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "value": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "label"
+  ],
+  "type": "object"
+}

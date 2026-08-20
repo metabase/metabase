@@ -1,0 +1,12 @@
+{
+  "enum": [
+    "missing-column",
+    "missing-table-alias",
+    "missing-table",
+    "missing-card",
+    "duplicate-column",
+    "syntax-error",
+    "validation-exception-error"
+  ],
+  "type": "string"
+}

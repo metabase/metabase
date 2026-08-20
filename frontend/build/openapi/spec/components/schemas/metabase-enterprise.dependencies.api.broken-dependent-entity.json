@@ -1,0 +1,22 @@
+{
+  "description": "Entity returned by /graph/broken endpoint - includes errors but no dependents_count.",
+  "properties": {
+    "data": {
+      "properties": {},
+      "type": "object"
+    },
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "data"
+  ],
+  "type": "object"
+}

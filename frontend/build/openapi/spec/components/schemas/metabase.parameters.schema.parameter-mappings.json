@@ -1,0 +1,6 @@
+{
+  "items": {
+    "$ref": "./metabase.parameters.schema.parameter-mapping.json"
+  },
+  "type": "array"
+}

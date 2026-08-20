@@ -1,0 +1,8 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.query.json"
+    }
+  ],
+  "description": "Form-encoded JSON-encoded MBQL query."
+}

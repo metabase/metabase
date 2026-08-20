@@ -1,0 +1,27 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "query": {
+          "enum": [
+            "all",
+            "none",
+            "segmented"
+          ],
+          "type": "string"
+        },
+        "read": {
+          "enum": [
+            "all",
+            "none"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.permissions-rest.schema.perms.json"
+    }
+  ]
+}

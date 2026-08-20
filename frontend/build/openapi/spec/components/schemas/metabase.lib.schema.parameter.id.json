@@ -1,0 +1,7 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  ]
+}

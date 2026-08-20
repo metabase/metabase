@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch all bookmarks for the user",
+    "operationId": "get-api-bookmark",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/bookmark",
+    "tags": [
+      "/api/bookmark"
+    ]
+  }
+}

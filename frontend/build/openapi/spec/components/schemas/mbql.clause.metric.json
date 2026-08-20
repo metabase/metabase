@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "metric"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.id.card.json"
+    }
+  ],
+  "type": "array"
+}

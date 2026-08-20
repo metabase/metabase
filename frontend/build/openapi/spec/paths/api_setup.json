@@ -1,0 +1,106 @@
+{
+  "post": {
+    "description": "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and\n  returns a session ID. This endpoint can also be used to set specific settings from the setup flow.",
+    "operationId": "post-api-setup",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "prefs": {
+                "properties": {
+                  "site_locale": {
+                    "oneOf": [
+                      {
+                        "description": "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.",
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "site_name": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "site_name"
+                ],
+                "type": "object"
+              },
+              "token": {
+                "description": "Token does not match the setup token.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "user": {
+                "properties": {
+                  "email": {
+                    "description": "value must be a valid email address.",
+                    "type": "string"
+                  },
+                  "first_name": {
+                    "oneOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "last_name": {
+                    "oneOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "password": {
+                    "description": "password is too common.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "token",
+              "user",
+              "prefs"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/setup",
+    "tags": [
+      "/api/setup"
+    ]
+  }
+}

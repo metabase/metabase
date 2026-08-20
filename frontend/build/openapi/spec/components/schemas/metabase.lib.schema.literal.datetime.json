@@ -1,0 +1,10 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.literal..string.datetime.json"
+    },
+    {},
+    {},
+    {}
+  ]
+}

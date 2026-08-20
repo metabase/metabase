@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "field"
+    },
+    {
+      "$ref": "./metabase.lib.schema.ref..field.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.id.field.json"
+    }
+  ],
+  "type": "array"
+}

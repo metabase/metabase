@@ -1,0 +1,10 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.id.card.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.id.table.json"
+    }
+  ]
+}

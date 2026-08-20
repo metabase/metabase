@@ -1,0 +1,12 @@
+{
+  "allOf": [
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :field clause"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.require-base-type-for-field-name.json"
+    }
+  ],
+  "description": "Schema for a valid MBQL 4 :field clause."
+}

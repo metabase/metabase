@@ -1,0 +1,49 @@
+{
+  "get": {
+    "description": "Fetch `Revisions` for an object with ID.",
+    "operationId": "get-api-revision-entity-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "entity",
+        "required": true,
+        "schema": {
+          "enum": [
+            "card",
+            "dashboard",
+            "document",
+            "measure",
+            "segment",
+            "transform"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/revision/{entity}/{id}",
+    "tags": [
+      "/api/revision"
+    ]
+  }
+}

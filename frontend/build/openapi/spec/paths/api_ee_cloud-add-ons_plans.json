@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get plans information from the Metabase Store API.",
+    "operationId": "get-api-ee-cloud-add-ons-plans",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/cloud-add-ons/plans",
+    "tags": [
+      "/api/ee/cloud-add-ons"
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "get": {
+    "description": "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided.",
+    "operationId": "get-api-mt-gtap",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "group_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "table_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/mt/gtap",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  },
+  "post": {
+    "description": "Create a new GTAP.",
+    "operationId": "post-api-mt-gtap",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "attribute_remappings": {
+                "$ref": "../components/schemas/metabase-enterprise.sandbox.schema.attribute-remappings.json"
+              },
+              "card_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "group_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "table_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "table_id",
+              "group_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/mt/gtap",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  }
+}

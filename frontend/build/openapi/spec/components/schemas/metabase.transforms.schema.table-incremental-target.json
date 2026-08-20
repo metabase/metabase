@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "database": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "target-incremental-strategy": {
+      "$ref": "./metabase.transforms.schema.target-incremental-strategy.json"
+    },
+    "type": {
+      "const": "table-incremental"
+    }
+  },
+  "required": [
+    "type",
+    "name",
+    "target-incremental-strategy"
+  ],
+  "type": "object"
+}

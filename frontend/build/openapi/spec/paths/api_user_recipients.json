@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.\n\n   - If user-visibility is :all or the user is an admin, include all users.\n   - If user-visibility is :group, include only users in the same group (excluding the all users group).\n   - If user-visibility is :none or the user is sandboxed, include only themselves.",
+    "operationId": "get-api-user-recipients",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/user/recipients",
+    "tags": [
+      "/api/user"
+    ]
+  }
+}

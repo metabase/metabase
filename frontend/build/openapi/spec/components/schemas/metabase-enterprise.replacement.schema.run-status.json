@@ -1,0 +1,11 @@
+{
+  "enum": [
+    "pending",
+    "started",
+    "succeeded",
+    "failed",
+    "canceled",
+    "timeout"
+  ],
+  "type": "string"
+}

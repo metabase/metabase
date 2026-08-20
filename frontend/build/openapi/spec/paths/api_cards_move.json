@@ -1,0 +1,68 @@
+{
+  "post": {
+    "description": "Moves a number of Cards to a single collection or dashboard.\n\n  For now, just either succeed or fail as a batch - we can think more about error handling later down the road.",
+    "operationId": "post-api-cards-move",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "card_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashboard_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "card_ids"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/cards/move",
+    "tags": [
+      "/api/cards"
+    ]
+  }
+}

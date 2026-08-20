@@ -1,0 +1,55 @@
+{
+  "properties": {
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "sole_dashboard_info": {
+      "properties": {
+        "description": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "sole_dashboard_info"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,32 @@
+{
+  "get": {
+    "description": "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
+    "operationId": "get-api-ee-content-translation-dictionary-token",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/content-translation/dictionary/{token}",
+    "tags": [
+      "/api/ee/content-translation"
+    ]
+  }
+}

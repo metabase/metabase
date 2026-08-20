@@ -1,0 +1,80 @@
+{
+  "post": {
+    "description": "Create a new `ModerationReview`.",
+    "operationId": "post-api-moderation-review",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "moderated_item_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "moderated_item_type": {
+                "enum": [
+                  "card",
+                  "card",
+                  "dashboard",
+                  "dashboard"
+                ]
+              },
+              "status": {
+                "oneOf": [
+                  {
+                    "oneOf": [
+                      {
+                        "enum": [
+                          "verified"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "text": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "moderated_item_id",
+              "moderated_item_type"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/moderation-review",
+    "tags": [
+      "/api/moderation-review"
+    ]
+  }
+}

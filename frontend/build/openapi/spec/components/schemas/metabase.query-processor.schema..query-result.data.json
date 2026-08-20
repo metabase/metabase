@@ -1,0 +1,60 @@
+{
+  "description": "Schema for the :data key of query results.",
+  "properties": {
+    "cols": {
+      "items": {
+        "$ref": "./metabase.query-processor.schema..result-metadata.column.json"
+      },
+      "type": "array"
+    },
+    "download_perms": {
+      "type": "string"
+    },
+    "format-rows?": {
+      "type": "boolean"
+    },
+    "insights": {
+      "items": {
+        "properties": {},
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "is_sandboxed": {
+      "type": "boolean"
+    },
+    "native_form": {
+      "properties": {},
+      "type": "object"
+    },
+    "results_metadata": {
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "./metabase.query-processor.schema..result-metadata.column.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "columns"
+      ],
+      "type": "object"
+    },
+    "results_timezone": {
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "items": {},
+        "type": "array"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "cols",
+    "rows"
+  ],
+  "type": "object"
+}

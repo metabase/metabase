@@ -1,0 +1,63 @@
+{
+  "description": "Schema for query execution results returned by the Query Processor.",
+  "properties": {
+    "average_execution_time": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cached": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context": {},
+    "data": {
+      "$ref": "./metabase.query-processor.schema..query-result.data.json"
+    },
+    "database_id": {
+      "$ref": "./metabase.lib.schema.id.database.json"
+    },
+    "error": {
+      "type": "string"
+    },
+    "error_type": {
+      "type": "string"
+    },
+    "json_query": {
+      "properties": {},
+      "type": "object"
+    },
+    "row_count": {
+      "type": "integer"
+    },
+    "running_time": {
+      "type": "integer"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "row_count"
+  ],
+  "type": "object"
+}

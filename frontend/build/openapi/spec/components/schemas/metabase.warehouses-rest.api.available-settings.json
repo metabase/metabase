@@ -1,0 +1,45 @@
+{
+  "additionalProperties": {
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "reasons": {
+        "items": {
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {}
+              ]
+            },
+            "type": {
+              "enum": [
+                "error",
+                "warning"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "type",
+            "message"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "enabled"
+    ],
+    "type": "object"
+  },
+  "type": "object"
+}

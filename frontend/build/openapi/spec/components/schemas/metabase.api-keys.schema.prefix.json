@@ -1,0 +1,6 @@
+{
+  "description": "Prefix string of an API Key, suitable for passing around unmasked. This must be unique.",
+  "maxLength": 7,
+  "minLength": 7,
+  "type": "string"
+}

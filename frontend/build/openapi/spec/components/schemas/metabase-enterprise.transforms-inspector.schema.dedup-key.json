@@ -1,0 +1,5 @@
+{
+  "description": "Key for deduplicating identical queries across lenses.\n   Typically a vector like [:table_count table-id].",
+  "items": {},
+  "type": "array"
+}

@@ -1,0 +1,33 @@
+{
+  "put": {
+    "description": "Reactivate user at `:id`",
+    "operationId": "put-api-user-id-reactivate",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/user/{id}/reactivate",
+    "tags": [
+      "/api/user"
+    ]
+  }
+}

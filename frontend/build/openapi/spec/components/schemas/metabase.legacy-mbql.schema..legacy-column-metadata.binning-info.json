@@ -1,0 +1,20 @@
+{
+  "properties": {
+    "bin_width": {
+      "$ref": "./metabase.lib.schema.binning.bin-width.json"
+    },
+    "binning_strategy": {
+      "$ref": "./metabase.lib.schema.binning.strategy.json"
+    },
+    "num_bins": {
+      "$ref": "./metabase.lib.schema.binning.num-bins.json"
+    },
+    "strategy": {
+      "$ref": "./metabase.lib.schema.binning.strategy.json"
+    }
+  },
+  "required": [
+    "strategy"
+  ],
+  "type": "object"
+}

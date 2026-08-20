@@ -1,0 +1,17 @@
+{
+  "allOf": [
+    {
+      "items": {
+        "$ref": "./metabase.lib.schema.ref.ref.json"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    {
+      "$ref": "./metabase.lib.schema.util.distinct-mbql-clauses.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.deduplicate-refs-ignoring-source-field-name-when-possible.json"
+    }
+  ]
+}

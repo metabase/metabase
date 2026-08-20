@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend\n   and allowing it to treat the Saved Questions virtual DB just like any other database.",
+    "operationId": "get-api-database-virtual-db-metadata",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{virtual-db}/metadata",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

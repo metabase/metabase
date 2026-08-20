@@ -1,0 +1,11 @@
+{
+  "enum": [
+    "source-data",
+    "transform",
+    "unknown",
+    "ingested",
+    "metabase-transform",
+    "upload"
+  ],
+  "type": "string"
+}

@@ -1,0 +1,7 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.lib.schema.expression.number.json"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "oneOf": [
+    {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "./metabase.permissions-rest.schema.table-perms.json"
+          },
+          {}
+        ]
+      },
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.permissions-rest.schema.perms.json"
+    }
+  ]
+}

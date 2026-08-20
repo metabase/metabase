@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "type": {
+      "const": "append"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

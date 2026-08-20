@@ -16,8 +16,8 @@
 (set! *warn-on-reflection* true)
 
 (def openapi-file-path
-  "Path to the local OpenAPI specification file."
-  "resources/openapi/openapi.json")
+  "Path to the generated OpenAPI specification."
+  ".tmp/openapi/openapi.json")
 
 (defn- sort-keys
   "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
@@ -30,23 +30,78 @@
        :else    x))
    data))
 
+(def ^:private non-public-path-prefixes
+  ["/api/testing" "/api/dev"])
+
+(defn- public-path?
+  [path]
+  (not-any? #(str/starts-with? path %) non-public-path-prefixes))
+
+(defn- schema-refs
+  "Set of `#/components/schemas/*` names referenced anywhere inside `x`."
+  [x]
+  (let [names (volatile! #{})]
+    (walk/postwalk
+     (fn [node]
+       (when-let [ref (when (map? node) (:$ref node))]
+         (when-let [[_ schema-name] (re-matches #"#/components/schemas/(.+)" ref)]
+           (vswap! names conj schema-name)))
+       node)
+     x)
+    @names))
+
+(defn- reachable-schemas
+  "Transitive closure of the schema names reachable from `roots`."
+  [schemas roots]
+  (loop [seen #{}, queue (vec roots)]
+    (if-let [schema-name (peek queue)]
+      (if (or (contains? seen schema-name) (not (contains? schemas schema-name)))
+        (recur seen (pop queue))
+        (recur (conj seen schema-name)
+               (into (pop queue) (schema-refs (get schemas schema-name)))))
+      seen)))
+
+(defn- unalias-schema
+  "Rewrite a `$ref`-rooted schema into the equivalent `allOf` composition.
+
+  A bare `{:$ref ..., :description ...}` is an indirection that tooling may resolve away — pre-3.1 rules
+  say siblings of `$ref` are ignored — which loses the schema's name and description when a split tree is
+  bundled back. `allOf` states the same thing as a composition, so there is nothing to collapse."
+  [schema]
+  (if-let [ref (and (map? schema) (:$ref schema))]
+    (-> schema (dissoc :$ref) (assoc :allOf [{:$ref ref}]))
+    schema))
+
+(defn open-api-object
+  "The OpenAPI document describing the public API of `root-handler`.
+
+  Normalizes [[metabase.api.open-api/root-open-api-object]]: environment-dependent routes are dropped and unreachable schemas pruned.
+  Callers add `:info`/`:servers`."
+  [root-handler]
+  (let [spec    (open-api/root-open-api-object root-handler)
+        paths   (into {} (filter (comp public-path? key)) (:paths spec))
+        schemas (get-in spec [:components :schemas])]
+    (-> spec
+        (assoc :paths paths)
+        (assoc-in [:components :schemas]
+                  (-> schemas
+                      (select-keys (reachable-schemas schemas (schema-refs paths)))
+                      (update-vals unalias-schema))))))
+
 (defn write-openapi-spec-to-file!
   "Generate and write the OpenAPI specification to a local file.
   Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
   [root-handler]
-  (try
-    (let [spec (merge
-                (open-api/root-open-api-object root-handler)
-                {:servers [{:url         ""
-                            :description "Metabase API"}]})
-          file (io/file openapi-file-path)]
-      ;; Create parent directory if it doesn't exist
-      (when-let [parent-dir (.getParentFile file)]
-        (.mkdirs parent-dir))
-      (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
-      (log/info "OpenAPI specification written to" openapi-file-path))
-    (catch Throwable e
-      (log/errorf "Failed to write OpenAPI specification to file: %s" (ex-message e)))))
+  (let [spec (merge
+              (open-api-object root-handler)
+              {:servers [{:url         ""
+                          :description "Metabase API"}]})
+        file (io/file openapi-file-path)]
+    ;; Create parent directory if it doesn't exist
+    (when-let [parent-dir (.getParentFile file)]
+      (.mkdirs parent-dir))
+    (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
+    (log/info "OpenAPI specification written to" openapi-file-path)))
 
 (defonce ^:private openapi-regen-state
   (atom {:executing? false
@@ -125,7 +180,7 @@
                     (do
                       (log/warn "OpenAPI spec file not found, generating on-the-fly")
                       (merge
-                       (open-api/root-open-api-object root-handler)
+                       (open-api-object root-handler)
                        {:servers [{:url         ""
                                    :description "Metabase API"}]})))]
        {:status 200

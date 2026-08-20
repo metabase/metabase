@@ -120,6 +120,21 @@ jobs:
         if: steps.backport.outputs.has_conflicts == 'true'
         run: ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
 
+      - name: Detect OpenAPI type generation support
+        if: steps.backport.outputs.has_conflicts == 'true'
+        id: openapi-types
+        run: |
+          if node -e 'const scripts = require("./package.json").scripts ?? {}; process.exit(scripts["types:ensure"] ? 0 : 1)'; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::types:ensure is not available on this release branch; skipping OpenAPI type generation"
+          fi
+
+      - name: Generate OpenAPI types for type checking
+        if: steps.backport.outputs.has_conflicts == 'true' && steps.openapi-types.outputs.supported == 'true'
+        run: ${{ steps.pkg.outputs.mgr }} run types:ensure
+
       - name: Generate GitHub App Token for Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         uses: actions/create-github-app-token@v1

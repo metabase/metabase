@@ -1,0 +1,11 @@
+{
+  "description": "value must be a valid MBQL query, or an internal audit query.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib-be.schema.internal-query.json"
+    },
+    {
+      "$ref": "./metabase.lib-be.schema.maybe-legacy-query.json"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "put": {
+    "description": "Update the `login_attributes` for a User.",
+    "operationId": "put-api-mt-user-id-attributes",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "login_attributes": {
+                "oneOf": [
+                  {
+                    "additionalProperties": {},
+                    "description": "value must be a valid user attributes map (name -> value)",
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/mt/user/{id}/attributes",
+    "tags": [
+      "/api/mt/user"
+    ]
+  }
+}

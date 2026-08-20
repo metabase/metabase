@@ -1,0 +1,10 @@
+{
+  "description": "Schema for valid export formats for downloading query results.",
+  "enum": [
+    "csv",
+    "api",
+    "xlsx",
+    "json"
+  ],
+  "type": "string"
+}

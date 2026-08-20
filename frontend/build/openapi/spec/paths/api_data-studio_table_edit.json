@@ -1,0 +1,125 @@
+{
+  "post": {
+    "description": "Bulk updating tables.",
+    "operationId": "post-api-data-studio-table-edit",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "data_authority": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.data-studio.api.table.data-authorities.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "data_layer": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.data-studio.api.table.data-layers.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "data_source": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.data-studio.api.table.data-sources.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "database_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "entity_type": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner_email": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner_user_id": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schema_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "table_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {},
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/data-studio/table/edit",
+    "tags": [
+      "/api/data-studio/table"
+    ]
+  }
+}

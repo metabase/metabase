@@ -1,0 +1,50 @@
+{
+  "get": {
+    "description": "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.\n\n  This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}.",
+    "operationId": "get-api-database-id-card_autocomplete_suggestions",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_dashboard_questions",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}/card_autocomplete_suggestions",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "prefixItems": [
+    {
+      "const": "date"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.expression.string.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.expression.temporal.json"
+        }
+      ]
+    }
+  ],
+  "type": "array"
+}

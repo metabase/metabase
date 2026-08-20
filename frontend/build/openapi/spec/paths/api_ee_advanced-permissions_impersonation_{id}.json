@@ -1,0 +1,33 @@
+{
+  "delete": {
+    "description": "Delete a Connection Impersonation entry.",
+    "operationId": "delete-api-ee-advanced-permissions-impersonation-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/advanced-permissions/impersonation/{id}",
+    "tags": [
+      "/api/ee/advanced-permissions/impersonation"
+    ]
+  }
+}

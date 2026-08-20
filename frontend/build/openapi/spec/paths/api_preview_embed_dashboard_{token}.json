@@ -1,0 +1,31 @@
+{
+  "get": {
+    "description": "Fetch a Dashboard you're considering embedding by passing a JWT `token`. ",
+    "operationId": "get-api-preview_embed-dashboard-token",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/preview_embed/dashboard/{token}",
+    "tags": [
+      "/api/preview_embed"
+    ]
+  }
+}

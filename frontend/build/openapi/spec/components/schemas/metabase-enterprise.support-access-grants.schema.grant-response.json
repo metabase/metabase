@@ -1,0 +1,114 @@
+{
+  "description": "Schema for a support access grant object in API responses.",
+  "properties": {
+    "created_at": {
+      "$ref": "./metabase-enterprise.support-access-grants.schema.timestamp.json"
+    },
+    "grant_end_timestamp": {
+      "$ref": "./metabase-enterprise.support-access-grants.schema.timestamp.json"
+    },
+    "grant_start_timestamp": {
+      "$ref": "./metabase-enterprise.support-access-grants.schema.timestamp.json"
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "notes": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "revoked_at": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.support-access-grants.schema.timestamp.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "revoked_by_user_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ticket_number": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "token": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "updated_at": {
+      "$ref": "./metabase-enterprise.support-access-grants.schema.timestamp.json"
+    },
+    "user_email": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "user_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "user_name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "user_id",
+    "user_name",
+    "user_email",
+    "ticket_number",
+    "notes",
+    "grant_start_timestamp",
+    "grant_end_timestamp",
+    "revoked_at",
+    "revoked_by_user_id",
+    "created_at",
+    "updated_at"
+  ],
+  "type": "object"
+}

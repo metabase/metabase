@@ -1,0 +1,52 @@
+{
+  "post": {
+    "description": "Toggle a reaction on a comment",
+    "operationId": "post-api-comment-comment-id-reaction",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "comment-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "emoji": {
+                "maxLength": 10,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "emoji"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/comment/{comment-id}/reaction",
+    "tags": [
+      "/api/comment"
+    ]
+  }
+}

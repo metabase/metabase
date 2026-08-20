@@ -14,10 +14,9 @@
  * from last night's SHA while a consumer compares against its own checkout's
  * endpoints, so baking one table's spelling in would break on any route
  * whose shape changed in between. A consumer matches structurally with
- * matchRoute() below against whichever spec version fits its checkout
- * (resources/openapi/openapi.json, generated from the backend's defendpoint
- * definitions by `bun run generate-openapi`; the nightly also ships its
- * freshly generated copy alongside the manifests).
+ * matchRoute() below against whichever spec version fits its checkout. The
+ * nightly generates one from the backend's defendpoint definitions with
+ * `bun run openapi:generate` and ships it alongside the manifests.
  *
  * The nightly build still loads the table for one thing: logging captured
  * API routes that correspond to no endpoint definition — an endpoint defined

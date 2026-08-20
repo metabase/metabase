@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "auto-list",
+    "list",
+    "none",
+    "search"
+  ],
+  "type": "string"
+}

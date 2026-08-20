@@ -1,0 +1,94 @@
+{
+  "delete": {
+    "description": "Disconnect the google service account. There is only one (or zero) at the time of writing.",
+    "operationId": "delete-api-ee-gsheets-connection",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/gsheets/connection",
+    "tags": [
+      "/api/ee/gsheets"
+    ]
+  },
+  "get": {
+    "description": "Check the status of a connection. This endpoint gets polled by FE to determine when to\n  stop showing the setup widget.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
+    "operationId": "get-api-ee-gsheets-connection",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/gsheets.response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/gsheets/connection",
+    "tags": [
+      "/api/ee/gsheets"
+    ]
+  },
+  "post": {
+    "description": "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase.",
+    "operationId": "post-api-ee-gsheets-connection",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "url": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/gsheets.response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/gsheets/connection",
+    "tags": [
+      "/api/ee/gsheets"
+    ]
+  }
+}

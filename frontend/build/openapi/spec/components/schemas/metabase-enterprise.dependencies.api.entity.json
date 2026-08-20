@@ -1,0 +1,31 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.table-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.card-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.snippet-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.transform-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.dashboard-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.document-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.sandbox-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.segment-entity.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.dependencies.api.measure-entity.json"
+    }
+  ]
+}

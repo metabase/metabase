@@ -1,0 +1,64 @@
+{
+  "delete": {
+    "description": "Delete the publicly-accessible link to this Card.",
+    "operationId": "delete-api-card-card-id-public_link",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/card/{card-id}/public_link",
+    "tags": [
+      "/api/card"
+    ]
+  },
+  "post": {
+    "description": "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has\n  already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must\n  be enabled.",
+    "operationId": "post-api-card-card-id-public_link",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/card/{card-id}/public_link",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

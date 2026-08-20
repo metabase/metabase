@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "entity_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "entity_name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_type": {
+      "enum": [
+        "dashboard",
+        "card",
+        "database"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "entity_type",
+    "entity_id"
+  ],
+  "type": "object"
+}

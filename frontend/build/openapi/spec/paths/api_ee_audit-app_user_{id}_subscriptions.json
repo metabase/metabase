@@ -1,0 +1,33 @@
+{
+  "delete": {
+    "description": "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).\n  Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user.",
+    "operationId": "delete-api-ee-audit-app-user-id-subscriptions",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/audit-app/user/{id}/subscriptions",
+    "tags": [
+      "/api/ee/audit-app/user"
+    ]
+  }
+}

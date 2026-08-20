@@ -1,0 +1,48 @@
+{
+  "get": {
+    "description": "Get all database-local settings and their availability for the given database.",
+    "operationId": "get-api-database-id-settings-available",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "settings": {
+                  "$ref": "../components/schemas/metabase.warehouses-rest.api.available-settings.json"
+                }
+              },
+              "required": [
+                "settings"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}/settings-available",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

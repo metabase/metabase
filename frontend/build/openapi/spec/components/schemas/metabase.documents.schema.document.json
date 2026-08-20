@@ -1,0 +1,12 @@
+{
+  "description": "Schema for an instance of a `:model/Document`.",
+  "properties": {
+    "id": {
+      "$ref": "./metabase.documents.schema..document.id.json"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "type": "object"
+}

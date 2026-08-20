@@ -1,0 +1,14 @@
+{
+  "enum": [
+    "transform",
+    "table",
+    "snippet",
+    "dashboard",
+    "sandbox",
+    "measure",
+    "card",
+    "document",
+    "segment"
+  ],
+  "type": "string"
+}

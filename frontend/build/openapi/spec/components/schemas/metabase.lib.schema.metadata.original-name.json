@@ -1,0 +1,11 @@
+{
+  "description": "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
+  "oneOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "get": {
+    "description": "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.\n  This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first.",
+    "operationId": "get-api-geojson",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "url",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/geojson",
+    "tags": [
+      "/api/geojson"
+    ]
+  }
+}

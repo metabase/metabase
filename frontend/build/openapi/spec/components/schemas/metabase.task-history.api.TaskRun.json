@@ -1,0 +1,78 @@
+{
+  "properties": {
+    "ended_at": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "entity_name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_type": {
+      "enum": [
+        "dashboard",
+        "card",
+        "database"
+      ],
+      "type": "string"
+    },
+    "failed_count": {
+      "type": "integer"
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "run_type": {
+      "enum": [
+        "alert",
+        "sync",
+        "fingerprint",
+        "subscription"
+      ],
+      "type": "string"
+    },
+    "started_at": {},
+    "status": {
+      "enum": [
+        "started",
+        "success",
+        "failed",
+        "abandoned"
+      ],
+      "type": "string"
+    },
+    "success_count": {
+      "type": "integer"
+    },
+    "task_count": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "run_type",
+    "entity_type",
+    "entity_id",
+    "started_at",
+    "ended_at",
+    "status"
+  ],
+  "type": "object"
+}

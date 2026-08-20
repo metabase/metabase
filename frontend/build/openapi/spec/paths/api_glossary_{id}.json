@@ -1,0 +1,87 @@
+{
+  "delete": {
+    "description": "Delete a glossary entry.",
+    "operationId": "delete-api-glossary-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/glossary/{id}",
+    "tags": [
+      "/api/glossary"
+    ]
+  },
+  "put": {
+    "description": "Update an existing glossary entry.",
+    "operationId": "put-api-glossary-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "definition": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "term": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "term",
+              "definition"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/glossary/{id}",
+    "tags": [
+      "/api/glossary"
+    ]
+  }
+}

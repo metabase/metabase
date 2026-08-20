@@ -1,0 +1,33 @@
+{
+  "post": {
+    "description": "Trigger a manual update of the schema metadata for this `Table`.",
+    "operationId": "post-api-table-id-sync_schema",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/table/{id}/sync_schema",
+    "tags": [
+      "/api/table"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "enum": [
+    "days",
+    "hours",
+    "minutes",
+    "seconds",
+    "milliseconds",
+    "microseconds",
+    "nanoseconds"
+  ],
+  "type": "string"
+}

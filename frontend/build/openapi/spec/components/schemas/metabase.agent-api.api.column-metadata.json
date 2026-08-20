@@ -1,0 +1,30 @@
+{
+  "description": "Metadata for a single result column.",
+  "properties": {
+    "base_type": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "effective_type": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "base_type",
+    "display_name"
+  ],
+  "type": "object"
+}

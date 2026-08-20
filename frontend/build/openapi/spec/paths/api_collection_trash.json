@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch the trash collection, as in `/api/collection/:trash-id`",
+    "operationId": "get-api-collection-trash",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/trash",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}
