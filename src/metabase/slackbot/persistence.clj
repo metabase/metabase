@@ -42,6 +42,20 @@
                       :deleted_at [:not= nil]
                       :slack_msg_id [:in slack-msg-ids])))
 
+(defn state-messages
+  "The assistant rows of a Slack thread in reader order, for feeding
+  [[metabase.metabot.persistence/conversation-state]].
+
+  Carries only the columns that function filters and merges on, so a long thread's
+  `data` blobs aren't loaded just to get at `state`. Not usable for history replay —
+  see [[message-history]] for that."
+  [conversation-id]
+  (t2/select [:model/MetabotMessage :id :role :state :error :finished]
+             :conversation_id conversation-id
+             :role "assistant"
+             :deleted_at nil
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.
    Returns nil when the message is not tracked."
