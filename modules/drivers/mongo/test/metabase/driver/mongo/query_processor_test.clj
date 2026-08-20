@@ -796,3 +796,24 @@
                     :effective_type           :type/Integer}]
                   :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
                 (qp.pivot/run-pivot-query pivot-query)))))))
+
+(deftest ^:parallel escape-regex-literal-test
+  (are [in out] (= out (#'mongo.qp/escape-regex-literal in))
+    "abc"    "abc"
+    "a.b"    "a\\.b"
+    ".*"     "\\.\\*"
+    "a[bc]"  "a\\[bc\\]"
+    "(a|b)"  "\\(a\\|b\\)"
+    "a\\b"   "a\\\\b"))
+
+(deftest ^:parallel value-rvalue-rejects-collections-test
+  (testing "a scalar :value passes through"
+    (is (= "abc" (#'mongo.qp/->rvalue [:value "abc" {:base_type :type/Text}])))
+    (is (= 5 (#'mongo.qp/->rvalue [:value 5 {:base_type :type/Integer}])))
+    (is (nil? (#'mongo.qp/->rvalue [:value nil {:base_type :type/Text}]))))
+  (testing "a collection :value is rejected rather than spliced into a BSON operator position"
+    (are [v] (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid filter value"
+                               (#'mongo.qp/->rvalue [:value v {:base_type :type/Text}]))
+      {:$function {:body "function(){return true;}" :args [] :lang "js"}}
+      {:$where "sleep(1000)"}
+      [1 2 3])))

@@ -136,7 +136,8 @@
       (do-login)
       (http-401-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   username]
+                                   ;; normalized so case-permuting the username can't dodge the throttle
+                                   (login-throttlers :username)   (u/lower-case-en username)]
           (do-login))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -161,7 +162,9 @@
 ;; There's also no need to salt the token because it's already random <3
 
 (def ^:private forgot-password-throttlers
-  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
+  ;; :attempt-ttl-ms was 1000ms (1 second) instead of 1 hour, letting one email get bombed with
+  ;; reset emails indefinitely at ~3/second
+  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- password-reset-disabled?
@@ -230,16 +233,19 @@
   "Reset password with a reset token."
   [_route-params
    _query-params
-   request-body :- [:map
+   ;; This body has exactly two fields. Request decoding drops every other key before the handler
+   ;; runs, so only these two reach it.
+   request-body :- [:map {:closed true}
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
+  ;; Forward only what the reset providers consume -- belt and braces alongside the decoding above.
   (let [auth-result (auth-identity/with-fallback auth-identity/login!
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
-                      request-body)]
+                      (select-keys request-body [:token :password]))]
     (if (:success? auth-result)
       (request/set-session-cookies request
                                    {:success true :session_id (get-in auth-result [:session :key])}

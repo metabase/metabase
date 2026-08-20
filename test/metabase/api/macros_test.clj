@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel parse-args-test
@@ -134,3 +135,24 @@
         :metadata {:deprecated "0.50.0", :multipart true}
         :params {:route {:binding _route-params}, :query {:binding _query-params}}
         :body [(test)]})))
+
+(deftest ^:parallel decode-strips-undeclared-keys-test
+  (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
+    (are [schema value expected] (= expected
+                                    ((#'api.macros/decoder schema) value))
+      [:map [:a {:optional true} :int]]
+      {:a 1, :b 2}
+      {:a 1}
+
+      ;; `{:closed false}` opts out, for the values we deliberately pass through as they arrived -- a query, viz
+      ;; settings, database details, a settings bag
+      [:map {:closed false} [:a {:optional true} :int]]
+      {:a 1, :b 2}
+      {:a 1, :b 2}
+
+      ;; stripping recurses. A parameter's `:options` are spliced into the filter clause the parameter becomes, so an
+      ;; option the schema does not name must not survive decoding. The schema stays open -- an unknown option is not
+      ;; a 400 -- so this is what keeps such a key from reaching the clause.
+      ::lib.schema.parameter/parameter
+      {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
+      {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))

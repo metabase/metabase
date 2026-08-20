@@ -896,13 +896,28 @@
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
   [table database]
-  (when-not (:is_attached_dwh database) ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+  (if (:is_attached_dwh database)
+    ;; gsheets uploads on the attached DWH are deletable, but we cannot write + they aren't is_upload, so the
+    ;; is_upload/can-write? gates below don't apply. Managing them is a superuser-only operation (see the gsheets
+    ;; API, which is +check-superuser gated), so require superuser here rather than skipping access control entirely.
+    (when-not api/*is-superuser?*
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))
     (cond
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (mi/can-write? table))
+      ;; Deleting needs *both* halves, unlike `can-update-error` which needs only the data-access one.
+      ;;
+      ;; `mi/can-write?` alone was the hole: on EE it resolves to `manage-table-metadata`, whose whole point is
+      ;; metadata access *without* data access, so a curator who cannot read a row could drop the table. But data
+      ;; access alone is not enough either -- on OSS `can-write?` means superuser, and dropping a table is a
+      ;; stronger act than appending to one, which is why `delete-csv-test` pins the asymmetry.
+      ;;
+      ;; On this branch `mi/can-read?` for a Table *is* the data-access predicate (v63 later split it out
+      ;; as `mi/can-query?`).
+      (not (and (mi/can-read? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 

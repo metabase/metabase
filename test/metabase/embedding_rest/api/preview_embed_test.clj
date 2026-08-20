@@ -542,7 +542,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
      (with-new-secret-key!
        ~@body)))
 
@@ -583,11 +583,40 @@
                                                                               "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
-          (testing "Should work if the param we're fetching values for is enabled"
-            (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
+          (testing "...but if the user is not an admin this endpoint should fail"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 url))))
+          (testing "Should work for an admin if the param we're fetching values for is enabled"
+            (testing "\nGET /api/preview_embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
-                     (mt/user-http-request :rasta :get 200 url))))))))))
+                     (mt/user-http-request :crowberto :get 200 url))))))))))
+
+(deftest preview-locked-linked-chain-filter-values-test
+  (testing "GET /api/preview_embed/dashboard/:token/params/:key/values constrains a linked enabled param by a locked param (#41635)"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (let [signed-token (dash-token dashboard {:_embedding_params {:category_id "enabled"
+                                                                      :category_name "enabled"
+                                                                      :price         "locked"}
+                                                  :params            {:price 4}})
+              url           (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_CATEGORY_ID_")]
+          (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
+                  :has_more_values false}
+                 (mt/user-http-request :crowberto :get 200 url))))))))
+
+(deftest dashboard-params-remapping-test
+  (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/remapping"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (let [signed-token (dash-token dashboard {:_embedding_params {:category_id "enabled"}})
+              url          (format "preview_embed/dashboard/%s/params/%s/remapping?value=%s" signed-token "_CATEGORY_ID_" 4)]
+          (testing "...but if the user is not an admin this endpoint should fail"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 url))))
+          (testing "Should work for an admin"
+            (is (= [4 "Asian"]
+                   (mt/user-http-request :crowberto :get 200 url)))))))))
 
 (deftest dashboard-params-search-test
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
@@ -597,7 +626,10 @@
                                                            :embedding_params {"static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
               search-url   (format "preview_embed/dashboard/%s/params/%s/search/%s" signed-token "_STATIC_CATEGORY_LABEL_" "AF")]
-          (testing "Should work if the param we're fetching values for is enabled"
+          (testing "...but if the user is not an admin this endpoint should fail"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 search-url))))
+          (testing "Should work for an admin if the param we're fetching values for is enabled"
             (is (= {:values          [["African" "Af"]]
                     :has_more_values false}
                    (mt/user-http-request :crowberto :get 200 search-url)))))))))

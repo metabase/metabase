@@ -15,12 +15,12 @@
 //
 // FILE / IDENTITY NOTE: `jest.config.js` sets jest-junit's `addFileAttribute`,
 // so each <testcase> carries the source path as a `file` attribute, which the
-// shared parser surfaces as `file_path`. We deliberately leave jest-junit's
-// `classname`/`name` on their defaults (the same `{ancestors} {title}` blob in
-// both) rather than re-template them: that artifact is also what Trunk ingests,
-// and changing those fields would re-baseline its test identity. So `test_path`
-// and `test_name` carry that blob (redundant but a stable, unique key) and
-// identity is (test_suite, test_path, test_name, file_path).
+// shared parser surfaces as `file_path`. `classname`/`name` stay on jest-junit's
+// defaults — the same `{ancestors} {title}` blob in both — so `test_path` and
+// `test_name` carry that blob (redundant but a stable, unique key) and identity
+// is (test_suite, test_path, test_name, file_path). ci-conductor matches that
+// tuple exactly, so re-templating either field orphans a test's quarantine
+// entry and occurrence history.
 
 import { readFileSync } from "node:fs";
 

@@ -20,7 +20,11 @@
   run."
   [thunk]
   (mt/with-additional-premium-features #{:scim}
-    (mt/with-temporary-setting-values [scim-enabled true]
+    ;; `site-url` must be non-nil: SCIM requests authenticate via a Bearer token, and the session middleware first
+    ;; tries to resolve it as an OAuth token, which builds an OIDC provider whose `:issuer` is `site-url`. Test app
+    ;; DBs have no stored `site-url` and header-derivation is gated to pre-setup instances, so seed one.
+    (mt/with-temporary-setting-values [scim-enabled true
+                                       site-url     "http://localhost:3000"]
       (let [current-masked-key (-> (t2/select-one :model/ApiKey :scope :scim)
                                    (dissoc :masked_key))
             temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
@@ -287,7 +291,16 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
+        (testing "Error, rather than a silent deactivation, when `active` is not a boolean"
+          (doseq [value ["" "yes please" "1"]]
+            (testing (pr-str value)
+              (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                                :Operations [{:op "replace"
+                                              :path "active"
+                                              :value value}]}]
+                (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)
+                (is (true? (t2/select-one-fn :is_active :model/User :id (:id user)))
+                    "the user is still active")))))
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -351,7 +364,15 @@
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported path: name.displayName" (get response :detail)))))
-
+        (testing "Error, rather than a silent deactivation, when `active` is not a boolean"
+          (doseq [value ["" "yes please" "1"]]
+            (testing (pr-str value)
+              (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                                :Operations [{:op "replace"
+                                              :value {"active" value}}]}]
+                (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)
+                (is (true? (t2/select-one-fn :is_active :model/User :id (:id user)))
+                    "the user is still active")))))
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"

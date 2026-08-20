@@ -319,9 +319,7 @@
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
-    (let [query-json        (json/encode query)
-          viz-settings-json (some-> viz-settings json/encode)
-          public-uuid       (str (random-uuid))
+    (let [public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
@@ -342,9 +340,9 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format_rows            true
-                                                       :query                  query-json
-                                                       :visualization_settings viz-settings-json})]
+                                                      (cond-> {:format_rows true
+                                                               :query       query}
+                                                        viz-settings (assoc :visualization_settings viz-settings)))]
                     ((-> assertions export-format) results))
 
                   :card

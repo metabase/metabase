@@ -99,6 +99,20 @@
     "  "          ["non-blank string" "invalid timezone ID: \"  \"" "timezone offset string literal"]
     nil           ["should be a string" "non-blank string" "invalid timezone ID: nil" "timezone offset string literal"]))
 
+(deftest ^:parallel timezone-id-rejects-strings-that-merely-contain-a-zone-offset-substring-test
+  (testing "a string only CONTAINING zone-offset-shaped text (e.g. a `Z` or `±HH:MM` substring
+            anywhere in it) must be rejected -- only a string that IS entirely a valid zone-offset (or
+            a real ZoneId) may pass."
+    (are [hostile-tz] (some? (mr/explain ::temporal/timezone-id hostile-tz))
+      "Z' UNION SELECT 1"                         ; Z substring, then unrelated text
+      "Z\\' AT TIME ZONE 'UTC"                    ; Z substring, then unrelated text
+      "garbage-before-Z"                          ; Z substring, not at either end
+      "prefix Z suffix"                           ; Z substring surrounded by unrelated text
+      "garbage-before-+05:30-garbage-after"       ; offset substring embedded in garbage
+      "'; DROP TABLE users; --Z"                  ; Z substring surrounded by unrelated text
+      "+05:30 OR 1=1"                             ; offset substring followed by unrelated text
+      "not-a-real-zone-but-has-a-Z-in-it")))      ; the minimal, most general case: any bare non-zone string with a Z
+
 (deftest ^:parallel convert-timezone-test
   (are [clause error] (= error
                          (me/humanize (mr/explain :mbql.clause/convert-timezone clause)))

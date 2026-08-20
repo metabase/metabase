@@ -43,9 +43,9 @@
   ;; blocked has a higher 'prioirty' than legacy-no-self-service when determining what permission level the user has
   (let [minimum-perm-value [:min
                             [:case
-                             [:= column [:inline "unrestricted"]] [:inline 0]
-                             [:= column [:inline "blocked"]] [:inline 1]
-                             [:= column [:inline "legacy-no-self-service"]] [:inline 2]]]]
+                             [:= column "unrestricted"] [:inline 0]
+                             [:= column "blocked"] [:inline 1]
+                             [:= column "legacy-no-self-service"] [:inline 2]]]]
     ;; but when we compare it against the required level it should still be compared by its index value
     [:case
      [:= minimum-perm-value [:inline 0]] [:inline 0]
@@ -79,9 +79,10 @@
   "Returns a simple IN clause to check if dp.group_id is in the user's groups.
    This is more efficient than nested EXISTS subqueries."
   [user-id :- pos-int?]
-  [:in :dp.group_id {:select [:group_id]
-                     :from   [:permissions_group_membership]
-                     :where  [:= :user_id [:inline user-id]]}])
+  [:in :dp.group_id ^:allow-subquery
+   {:select [:group_id]
+    :from   [:permissions_group_membership]
+    :where  [:= :user_id [:inline user-id]]}])
 
 (mu/defn- has-perms-for-table-as-honey-sql?
   "Builds an EXIST (SELECT ...) half-join to filter tables that a user has the required permissions for. It builds the subselect by as a
@@ -91,17 +92,18 @@
    perm-type        :- :keyword
    required-level   :- :keyword
    & [most-or-least :- [:maybe [:enum :most :least]]]]
-  [:exists {:select [1]
-            :from   [[:data_permissions :dp]]
-            :where  [:and
-                     [:= :dp.perm_type (h2x/literal perm-type)]
-                     [:or
-                      [:and [:= :mt.db_id :dp.db_id]
-                       [:= :dp.table_id nil]]
-                      [:= :mt.id :dp.table_id]]
-                     (user-in-group-clause user-id)]
-            :group-by [:mt.id]
-            :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
+  [:exists ^:allow-subquery
+   {:select [1]
+    :from   [[:data_permissions :dp]]
+    :where  [:and
+             [:= :dp.perm_type (h2x/literal perm-type)]
+             [:or
+              [:and [:= :mt.db_id :dp.db_id]
+               [:= :dp.table_id nil]]
+              [:= :mt.id :dp.table_id]]
+             (user-in-group-clause user-id)]
+    :group-by [:mt.id]
+    :having   [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (def UserInfo
   "The user-id to use in the visibility query and their superuser status."
@@ -123,6 +125,7 @@
   [select-column                   :- [:enum :id :db_id]
    {:keys [user-id is-superuser?]} :- UserInfo
    permission-mapping              :- PermissionMapping]
+  ^:allow-subquery
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
@@ -156,9 +159,9 @@
                                  [:case
                                   [:= :dp.perm_type (h2x/literal perm-type)]
                                   [:case
-                                   [:= :dp.perm_value [:inline "unrestricted"]] [:inline 0]
-                                   [:= :dp.perm_value [:inline "blocked"]] [:inline 1]
-                                   [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 2]]]]]
+                                   [:= :dp.perm_value "unrestricted"] [:inline 0]
+                                   [:= :dp.perm_value "blocked"] [:inline 1]
+                                   [:= :dp.perm_value "legacy-no-self-service"] [:inline 2]]]]]
          [:case
           [:= minimum-perm-value [:inline 0]] [:inline 0]
           [:= minimum-perm-value [:inline 1]] [:inline 2]
@@ -195,8 +198,10 @@
           user-groups-clause (user-in-group-clause user-id)]
       {:with [;; First CTE: collect all permission grants that apply to each table
               [:table_permissions
+               ^:allow-subquery
                {:union-all
                 [;; Table-level permissions (direct grant to table)
+                 ^:allow-subquery
                  {:select [:mt.id :dp.perm_type :dp.perm_value]
                   :from   [[:data_permissions :dp]]
                   :join   [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
@@ -205,6 +210,7 @@
                            user-groups-clause
                            perm-type-filter]}
                  ;; Database-level permissions (applies to all tables in db)
+                 ^:allow-subquery
                  {:select [:mt.id :dp.perm_type :dp.perm_value]
                   :from   [[:data_permissions :dp]]
                   :join   [[:metabase_table :mt] [:= :mt.db_id :dp.db_id]]
@@ -214,17 +220,19 @@
                            perm-type-filter]}]}]
               ;; Second CTE: aggregate and filter by permission requirements
               [:permitted_tables
+               ^:allow-subquery
                {:select   [:dp.id]
                 :from     [[:table_permissions :dp]]
                 :group-by [:dp.id]
                 :having   having-conditions}]]
-       :clause [:in column-or-exp {:select [:id] :from [:permitted_tables]}]})))
+       :clause [:in column-or-exp ^:allow-subquery {:select [:id] :from [:permitted_tables]}]})))
 
 (mu/defn select-tables-and-groups-granting-perm
   "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
   permission level either more or less restrictive than the supplied level."
   [{:keys [user-id is-superuser?]} :- UserInfo
    permission-mapping              :- PermissionMapping]
+  ^:allow-subquery
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
    :from   [[:metabase_table :mt]]
    :join   [[:data_permissions :dp] [:or
@@ -258,20 +266,22 @@
    perm-type :- :keyword
    required-level :- :keyword
    & [most-or-least :- [:maybe [:enum :most :least]]]]
-  [:exists {:select [1]
-            :from [[:data_permissions :dp]]
-            :where [:and
-                    [:= :dp.perm_type (h2x/literal perm-type)]
-                    [:= :md.id :dp.db_id]
-                    (user-in-group-clause user-id)]
-            :group-by [:md.id]
-            :having [(perm-condition perm-type required-level (or most-or-least :least))]}])
+  [:exists ^:allow-subquery
+   {:select [1]
+    :from [[:data_permissions :dp]]
+    :where [:and
+            [:= :dp.perm_type (h2x/literal perm-type)]
+            [:= :md.id :dp.db_id]
+            (user-in-group-clause user-id)]
+    :group-by [:md.id]
+    :having [(perm-condition perm-type required-level (or most-or-least :least))]}])
 
 (mu/defn visible-database-filter-select
   "Selects database IDs that are visible to the provided user given a mapping of permission types to the required value.
    Similar to visible-table-filter-select but for databases."
   [{:keys [user-id is-superuser?]} :- UserInfo
    permission-mapping :- PermissionMapping]
+  ^:allow-subquery
   {:select [:md.id]
    :from [[:metabase_database :md]]
    :where (if is-superuser?

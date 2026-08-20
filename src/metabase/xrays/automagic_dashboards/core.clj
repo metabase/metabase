@@ -153,6 +153,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -405,13 +406,19 @@
    If there are multiple FKs pointing to the same table, multiple entries will
    be returned."
   [table]
-  (for [{:keys [id target]} (field/with-targets
-                              (t2/select :model/Field
-                                         :table_id           (u/the-id table)
-                                         :fk_target_field_id [:not= nil]
-                                         :active             true))
-        :when (some-> target mi/can-read?)]
-    (-> target field/table (assoc :link id))))
+  (let [fields    (field/with-targets
+                    (t2/select :model/Field
+                               :table_id           (u/the-id table)
+                               :fk_target_field_id [:not= nil]
+                               :active             true))
+        table-ids (into #{} (keep (comp :table_id :target)) fields)]
+    ;; 58 has database-granular perms caching only; prime the databases the target Fields' Tables belong to.
+    ;; Upstream 63 primes a table-granular cache via prime-table-perms-cache, which is absent on this branch.
+    (when (seq table-ids)
+      (perms/prime-db-cache (t2/select-fn-set :db_id :model/Table :id [:in table-ids])))
+    (for [{:keys [id target]} fields
+          :when (some-> target mi/can-read?)]
+      (-> target field/table (assoc :link id)))))
 
 (defn- source->db [source]
   (let [db-id (or ((some-fn :db_id :database_id) source)
@@ -937,7 +944,8 @@
                [[:and
                  [:>= :ts.count 2]
                  [:= :ts.count_non_pks 1]] :list-like?]]
-              {:inner-join [[{:select   [:f.table_id
+              {:inner-join [[^:allow-subquery
+                             {:select   [:f.table_id
                                          [:%count.* "count"]
                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
                                                           [:= :f.semantic_type nil]]
