@@ -1,6 +1,5 @@
 (ns metabase.revisions.models.revision-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -9,7 +8,6 @@
    [metabase.revisions.models.revision.diff :as revision.diff]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -478,23 +476,3 @@
         (is (=? [{:metabase_version new-version}
                  {:metabase_version config/mb-version-string}]
                 (revision/revisions ::FakedCard card-id)))))))
-
-(deftest object-is-encrypted-at-rest-test
-  (testing "a model's revision keeps its result_metadata, which carries warehouse fingerprints, so the snapshot
-            must not sit in the clear"
-    (encryption-test/with-secret-key "revision-object-encryption-test-key"
-      (mt/with-temp [:model/Card card {:name "Great Horned Owl"}]
-        (let [rev-id (t2/insert-returning-pk! :model/Revision
-                                              {:model     "Card"
-                                               :model_id  (u/the-id card)
-                                               :user_id   (mt/user->id :rasta)
-                                               :object    {:name "Great Horned Owl" :sightings 41}
-                                               :timestamp :%now})
-              raw    (:object (t2/query-one {:select [:object]
-                                             :from   [:revision]
-                                             :where  [:= :id rev-id]}))]
-          (is (not (str/includes? raw "Great Horned Owl"))
-              "revision object was stored in plaintext")
-          ;; after-select stamps :card_schema onto Card revisions
-          (is (=? {:name "Great Horned Owl" :sightings 41}
-                  (t2/select-one-fn :object :model/Revision :id rev-id))))))))

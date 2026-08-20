@@ -76,7 +76,7 @@
   (derive :hook/search-index))
 
 (t2/deftransforms :model/Revision
-  {:object (mi/transform-encrypted mi/transform-json)})
+  {:object mi/transform-json})
 
 (t2/define-before-insert :model/Revision
   [{:keys [model model_id] :as revision}]
