@@ -127,18 +127,21 @@
        "Teaching errors embed the relevant contract, so a failed call always names its fix."))
 
 (def default-ask-scopes
-  "What an uninstructed client is asked to request for this surface: read only.
+  "What an uninstructed client is asked to request for this surface: everything the surface accepts.
 
-  The surface still *accepts* the write scopes, and its resource metadata still advertises them, so a client that
-  wants to write can request them and the user can consent. This only decides what a client asks for when nothing
-  tells it otherwise — which for the major MCP clients is every scope the resource advertises, writes included.
+  A client asks once, at connect time, using this challenge — and `list-tools` filters by the scopes the resulting
+  token carries. Asking for less therefore does not degrade gracefully: it hides the write tools from `tools/list`
+  entirely, so the user sees a read-only Metabase with nothing telling them the rest exists or how to ask for it.
+  There is no in-product path from \"connected\" to \"can write\".
 
-  `agent:resource:read` is here because `resources/read` is how a client reaches the fields catalog, which the
-  `fields` argument documentation points every agent at. It carries no privilege: `agent:resource:*` is
-  always-granted regardless of the user's Metabase permissions, and the catalog is response-shape path names
-  generated from code, identical on every instance."
+  So the consent screen names the full surface and the user decides there, rather than the server deciding for them
+  by omission. This is not a widening of what the surface accepts — that set is unchanged, and `mb:full` and the
+  rest of the agent-API scopes remain refused (GHY-4226)."
   [metabot.scope/agent-content-read
+   metabot.scope/agent-content-write
    metabot.scope/agent-query-run
+   metabot.scope/agent-sql-run
+   metabot.scope/agent-delivery-write
    metabot.scope/agent-resource-read])
 
 (def ^{:arglists '([request respond raise])} handler

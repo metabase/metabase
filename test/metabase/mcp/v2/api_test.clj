@@ -182,14 +182,14 @@
         (is (= 401 (:status response)))
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
                            "/.well-known/oauth-protected-resource/api/metabase-mcp"))))
-    (testing "GHY-4226: the challenge names the read-only scopes, which a client that reads it
-              prefers over the resource metadata's wider `scopes_supported`. This is what makes an
-              uninstructed client ask for read access rather than for every scope the surface accepts."
+    (testing "the challenge names every scope the surface accepts, which a client that reads it prefers
+              over the resource metadata's `scopes_supported`. Asking for less would hide the write
+              tools from `tools/list` with no in-product way for the user to ask for them."
       (let [response (client/client-full-response :post 401 endpoint
                                                   {:request-options {:headers {}}}
                                                   (jsonrpc-request "initialize"))]
         (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                           ", scope=\"agent:content:read agent:query:run agent:resource:read\""))))
+                           ", scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\""))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
               uses and the only one a strict parser accepts"
       (let [response (client/client-full-response :post 401 endpoint
@@ -198,7 +198,7 @@
         (is (= (str "Bearer realm=\"mcp\", "
                     "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                     "/api/metabase-mcp\", "
-                    "scope=\"agent:content:read agent:query:run agent:resource:read\"")
+                    "scope=\"agent:content:read agent:content:write agent:query:run agent:sql:run agent:delivery:write agent:resource:read\"")
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 (deftest protected-resource-metadata-test

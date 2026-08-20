@@ -39,24 +39,23 @@
         (testing metadata
           (is (empty? (remove ceiling scopes))))))))
 
-(deftest v2-default-ask-is-read-only-and-requestable-test
-  (testing "GHY-4226: the v2 401 challenge asks an uninstructed client for read scopes only. Those
-            must still be in the ceiling, or the narrower ask would itself be rejected — the point
-            is to ask for less than we accept, not to advertise something unrequestable."
-    ;; `agent:resource:read` rides along: `resources/read` is how a client reaches the fields
-    ;; catalog the `fields` documentation sends it to, and it grants nothing on its own.
-    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
-           (set v2.api/default-ask-scopes)))
-    (let [ceiling (set (oauth-server/default-grant-scopes))]
-      (doseq [scope v2.api/default-ask-scopes]
-        (testing scope
-          (is (contains? ceiling scope)))))
-    (testing "and the write scopes stay advertised, so a client that wants them can still ask"
-      (let [advertised (set (oauth-server/mcp-resource-scopes))]
-        (doseq [scope ["agent:content:write" "agent:sql:run" "agent:delivery:write"]]
+(deftest v2-default-ask-covers-the-surface-and-is-requestable-test
+  (testing "the v2 401 challenge asks an uninstructed client for every scope the surface accepts, and
+            nothing else. Asking for less does not degrade gracefully: `list-tools` filters by token
+            scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
+            no in-product way for the user to request them afterwards."
+    (is (= (set (oauth-server/mcp-resource-scopes))
+           (set v2.api/default-ask-scopes))
+        "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
+    (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
+      (let [ceiling (set (oauth-server/default-grant-scopes))]
+        (doseq [scope v2.api/default-ask-scopes]
           (testing scope
-            (is (contains? advertised scope))
-            (is (not (contains? (set v2.api/default-ask-scopes) scope)))))))))
+            (is (contains? ceiling scope))))))
+    (testing "GHY-4226: the wider agent-API scopes stay out — asking for the surface is not asking for the REST API"
+      (doseq [scope ["mb:full" "agent:question:create" "agent:timelines:write"]]
+        (testing scope
+          (is (not (contains? (set v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
   (testing "GHY-4151: scopes_supported is a set of scope strings (RFC 8414) — it unions the default
