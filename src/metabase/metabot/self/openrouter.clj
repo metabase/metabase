@@ -58,8 +58,9 @@
    "anthropic/claude-sonnet-4.6"     "Claude Sonnet 4.6"
    "anthropic/claude-sonnet-4.5"     "Claude Sonnet 4.5"
    "anthropic/claude-haiku-4.5"      "Claude Haiku 4.5"
-   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro"
-   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash"
+   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro 0423"
+   "deepseek/deepseek-v4-pro-0813"   "DeepSeek V4 Pro 0813"
+   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash 0731"
    "mistralai/mistral-medium-3-5"    "Mistral Medium 3.5"
    "moonshotai/kimi-k3"              "Kimi K3"
    "openai/gpt-5.6-sol"              "GPT-5.6 Sol"
@@ -70,6 +71,7 @@
    "openai/gpt-5.4"                  "GPT-5.4"
    "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
    "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
+   "qwen/qwen3.8-max"                "Qwen3.8 Max"
    "z-ai/glm-5.2"                    "GLM-5.2"})
 
 (defn- supported-model?
@@ -155,6 +157,21 @@
              (re-find #"^openai/o\d" model)
              (anthropic-current-gen? model)))))
 
+(def ^:private required-tool-choice-unsupported-models
+  "Models that don't support `:tool_choice \"required\"`"
+  #{"qwen/qwen3.8-max"})
+
+(defn- supports-required-tool-choice?
+  "Whether `model` accepts `:tool_choice \"required\"`."
+  [model]
+  (not (contains? required-tool-choice-unsupported-models model)))
+
+(defn- required-tool-choice->auto
+  "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
+  [req]
+  (cond-> req
+    (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
+
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
 
@@ -175,7 +192,10 @@
     (update-in [:messages 0 :content] claude/system->cached-content-blocks)
 
     (not (model-supports-temperature? model))
-    (dissoc :temperature)))
+    (dissoc :temperature)
+
+    (not (supports-required-tool-choice? model))
+    required-tool-choice->auto))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.

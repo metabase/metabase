@@ -633,6 +633,52 @@
                                 {:config {:deployment-name "gpt-4.1"}})
           (is (= "anthropic/claude-opus-4-1" (metabot.settings/llm-metabot-provider))))))))
 
+(deftest update-follows-the-deployment-on-a-pinned-mini-model-test
+  (testing "a mini model pinned to the edited connection moves to the deployment it now serves"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                        (connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-1"
+                                               llm-mini-model "azure/openai/gpt-4.1-mini"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                {:config {:deployment-name "gpt-4.1"}})
+          (is (= "azure/openai/gpt-4.1" (metabot.settings/explicit-mini-model))))))))
+
+(deftest update-leaves-a-derived-mini-model-derived-test
+  (testing "a mini model that was never pinned stays derived rather than being materialized by the edit"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"
+                                               llm-mini-model nil]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                {:config {:deployment-name "gpt-4.1"}})
+          (is (nil? (metabot.settings/explicit-mini-model)))
+          (testing "and resolves through the followed Metabot selection"
+            (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-mini-model)))))))))
+
+(deftest update-leaves-a-mini-model-on-another-connection-alone-test
+  (testing "editing an Azure connection the mini model is not pinned to leaves the pin alone"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                        (connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-1"
+                                               llm-mini-model "anthropic/claude-haiku-4-5-20251001"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                {:config {:deployment-name "gpt-4.1"}})
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/explicit-mini-model))))))))
+
 (deftest delete-removes-the-connection-test
   (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-4.1-mini"]
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
@@ -700,6 +746,24 @@
                                                                      :deployment-name "gpt-4.1-mini"})]]
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
         (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest delete-clears-a-mini-model-on-the-deleted-connection-test
+  (testing "an explicit mini model pointing at the deleted connection goes back to being derived"
+    (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
+                                           llm-mini-model "anthropic/claude-haiku-4-5"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                        (connection "openai" "openai" {:api-key "sk-stored"})]]
+        (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
+        (is (nil? (setting/db-stored-value :llm-mini-model)))
+        (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))
+
+(deftest delete-leaves-an-unrelated-mini-model-alone-test
+  (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
+                                         llm-mini-model "openai/gpt-5.4-mini"]
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                      (connection "openai" "openai" {:api-key "sk-stored"})]]
+      (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
+      (is (= "openai/gpt-5.4-mini" (setting/db-stored-value :llm-mini-model))))))
 
 (deftest delete-unknown-connection-is-a-404-test
   (mt/with-temporary-setting-values [llm-providers []]

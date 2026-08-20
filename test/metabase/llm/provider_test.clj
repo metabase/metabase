@@ -497,6 +497,23 @@
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
+  (testing (str "every type's mini model, which short utility calls like conversation titles fall back to. A type "
+                "that grows a mini model, or loses one, has to be spelled out here — a missing `:mini-model` reads "
+                "as nil and quietly sends titles to the full-size model instead.")
+    (is (= {"anthropic"  "claude-haiku-4-5-20251001"
+            "openai"     "gpt-5.4-mini"
+            "openrouter" "anthropic/claude-haiku-4.5"
+            "mistral"    "mistral-medium-3-5"
+            "zai"        "glm-5.2"
+            "moonshot"   "kimi-k3"
+            "google"     nil
+            "azure"      nil
+            "bedrock"    "anthropic.claude-haiku-4-5"
+            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            "vllm"       nil
+            "metabase"   nil}
+           (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
+    (is (nil? (llm.provider/mini-model "evilai"))))
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))

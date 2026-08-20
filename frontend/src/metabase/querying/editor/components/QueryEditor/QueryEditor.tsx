@@ -19,7 +19,7 @@ import { NativeQuerySidebar } from "./NativeQuerySidebar";
 import { QueryEditorBody } from "./QueryEditorBody";
 import { QueryEditorVisualization } from "./QueryEditorVisualization";
 
-type QueryEditorProps = {
+export type QueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
