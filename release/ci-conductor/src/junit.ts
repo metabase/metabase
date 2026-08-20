@@ -94,7 +94,7 @@ export function parseJunit(xml: string, ignorePassingTests: boolean = true): Nor
 
       const problems = [...inner.matchAll(problemRe)];
       if (problems.length === 0 && ignorePassingTests) {
-        continue;      
+        continue;
       }
 
       const name = (attr(attrs, "name") || "").trim();
