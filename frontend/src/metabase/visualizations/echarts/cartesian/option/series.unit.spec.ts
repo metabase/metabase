@@ -1,14 +1,17 @@
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { Datum } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { SeriesSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import type { ComboChartDataDensity, DataKey, Datum } from "../model/types";
+
 import {
   formatStackTotalLabel,
   formatStackValuePercentage,
+  getShowSymbol,
   getStackValuePercentage,
 } from "./series";
 
@@ -135,4 +138,111 @@ describe("formatStackTotalLabel", () => {
       ).toBe("raw:42");
     },
   );
+});
+
+const createDataDensity = (
+  numberOfDotsBySeriesKey: Record<DataKey, number>,
+): ComboChartDataDensity => ({
+  type: "combo",
+  seriesDataKeysWithLabels: [],
+  stackedDisplayWithLabels: [],
+  numberOfDotsBySeriesKey,
+  averageLabelWidth: 0,
+  totalNumberOfLabels: 0,
+});
+
+// With chartWidth 800 and symbolSize 6, Auto mode hides dots once the densest
+// series holds more than maxNumberOfDots = 800 / (2 * 6) ≈ 66 points.
+const CHART_WIDTH = 800;
+
+const DENSE_SERIES = "dense";
+const SPARSE_SERIES = "sparse";
+const SINGLE_POINT_SERIES = "single-point";
+
+const AUTO: SeriesSettings = {};
+const MARKERS_ON: SeriesSettings = { "line.marker_enabled": true };
+const MARKERS_OFF: SeriesSettings = { "line.marker_enabled": false };
+const MISSING_AS_ZERO: SeriesSettings = { "line.missing": "zero" };
+
+// The chart reported in metabase#76723
+const reportedChartDensity = () =>
+  createDataDensity({
+    [DENSE_SERIES]: 48,
+    [SPARSE_SERIES]: 48,
+    [SINGLE_POINT_SERIES]: 1,
+  });
+
+const crowdedChartDensity = () =>
+  createDataDensity({
+    [DENSE_SERIES]: 200,
+    [SPARSE_SERIES]: 12,
+    [SINGLE_POINT_SERIES]: 1,
+  });
+
+describe("getShowSymbol", () => {
+  describe("Auto mode (line.marker_enabled unset)", () => {
+    it("shows dots when no single series crosses the threshold, even if the chart as a whole does (metabase#76723)", () => {
+      expect(
+        getShowSymbol(reportedChartDensity(), CHART_WIDTH, AUTO, DENSE_SERIES),
+      ).toBe(true);
+    });
+
+    it("hides dots for a sparse series when another series in the chart is over the threshold", () => {
+      expect(
+        getShowSymbol(crowdedChartDensity(), CHART_WIDTH, AUTO, SPARSE_SERIES),
+      ).toBe(false);
+    });
+
+    it("shows the dot for a single-point series even when another series is over the threshold", () => {
+      expect(
+        getShowSymbol(
+          crowdedChartDensity(),
+          CHART_WIDTH,
+          AUTO,
+          SINGLE_POINT_SERIES,
+        ),
+      ).toBe(true);
+    });
+
+    it("does not exempt a single-point series whose missing values are drawn as zeros, since it has a line", () => {
+      expect(
+        getShowSymbol(
+          crowdedChartDensity(),
+          CHART_WIDTH,
+          MISSING_AS_ZERO,
+          SINGLE_POINT_SERIES,
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe("precedence", () => {
+    it("shows dots when markers are On, overriding the density threshold", () => {
+      expect(
+        getShowSymbol(
+          crowdedChartDensity(),
+          CHART_WIDTH,
+          MARKERS_ON,
+          DENSE_SERIES,
+        ),
+      ).toBe(true);
+    });
+
+    it("hides dots when markers are Off, overriding the single-point exemption", () => {
+      expect(
+        getShowSymbol(
+          crowdedChartDensity(),
+          CHART_WIDTH,
+          MARKERS_OFF,
+          SINGLE_POINT_SERIES,
+        ),
+      ).toBe(false);
+    });
+
+    it("hides dots when the chart has no width, overriding the single-point exemption", () => {
+      expect(
+        getShowSymbol(crowdedChartDensity(), 0, AUTO, SINGLE_POINT_SERIES),
+      ).toBe(false);
+    });
+  });
 });

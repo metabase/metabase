@@ -1,11 +1,4 @@
-import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
-
-// Enable timezone and UTC plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
+import { dayjs } from "metabase/dayjs";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   CartesianChartDateTimeAbsoluteUnit,

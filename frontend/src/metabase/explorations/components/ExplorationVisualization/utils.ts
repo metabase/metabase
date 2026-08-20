@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
+import { dayjs } from "metabase/dayjs";
 import {
   CARTESIAN_SERIES_COL_NAME,
   HEAT_MAP_SEGMENT_COL_NAME,

@@ -1,8 +1,8 @@
-import dayjs, { type Dayjs, type OpUnitType } from "dayjs";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";

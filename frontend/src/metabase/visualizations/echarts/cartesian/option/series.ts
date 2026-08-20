@@ -732,6 +732,7 @@ const buildEChartsLineAreaSeries = (
     chartDataDensity,
     chartWidth,
     seriesSettings,
+    seriesModel.dataKey,
   );
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
@@ -812,12 +813,13 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
-function getShowSymbol(
+export function getShowSymbol(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   seriesSettings: SeriesSettings,
+  seriesDataKey: DataKey,
 ): boolean {
-  const { totalNumberOfDots } = chartDataDensity;
+  const { numberOfDotsBySeriesKey } = chartDataDensity;
   const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
 
   if (chartWidth <= 0) {
@@ -832,7 +834,14 @@ function getShowSymbol(
     return true;
   }
 
-  return totalNumberOfDots <= maxNumberOfDots;
+  const hasSinglePoint = numberOfDotsBySeriesKey[seriesDataKey] === 1;
+  const drawsNullsAsZeros = seriesSettings["line.missing"] === "zero";
+
+  if (hasSinglePoint && !drawsNullsAsZeros) {
+    return true;
+  }
+
+  return Math.max(...Object.values(numberOfDotsBySeriesKey)) <= maxNumberOfDots;
 }
 
 function getStackedDataLabelFormatter(

@@ -1,32 +1,39 @@
 import { Route, registerPagePrefetch } from "metabase/router";
 
 /**
- * The exploration pages, in their own chunk. They render visualizations, which
- * is most of their weight.
+ * The exploration pages, in one chunk. Every loader names it, so opening a
+ * draft does not fetch the provider and the page separately. They render
+ * visualizations, which is most of their weight.
  */
 const newExplorationDraftProvider = () =>
-  import("./pages/NewExplorationDraftProvider").then(
-    ({ NewExplorationDraftProvider }) => ({
-      Component: NewExplorationDraftProvider,
-    }),
-  );
+  import(
+    /* webpackChunkName: "explorations" */ "./pages/NewExplorationDraftProvider"
+  ).then(({ NewExplorationDraftProvider }) => ({
+    Component: NewExplorationDraftProvider,
+  }));
 
 const newExplorationPage = () =>
-  import("./pages/NewExplorationPage").then(({ NewExplorationPage }) => ({
+  import(
+    /* webpackChunkName: "explorations" */ "./pages/NewExplorationPage"
+  ).then(({ NewExplorationPage }) => ({
     Component: NewExplorationPage,
   }));
 
 const newExplorationPlanPage = () =>
-  import("./pages/NewExplorationPlanPage").then(
-    ({ NewExplorationPlanPage }) => ({ Component: NewExplorationPlanPage }),
-  );
+  import(
+    /* webpackChunkName: "explorations" */ "./pages/NewExplorationPlanPage"
+  ).then(({ NewExplorationPlanPage }) => ({
+    Component: NewExplorationPlanPage,
+  }));
 
 const explorationPage = (view?: "summary") => () =>
-  import("./pages/ExplorationPage").then(({ ExplorationPage }) => ({
-    Component: function ExplorationPageRoute() {
-      return <ExplorationPage view={view} />;
-    },
-  }));
+  import(/* webpackChunkName: "explorations" */ "./pages/ExplorationPage").then(
+    ({ ExplorationPage }) => ({
+      Component: function ExplorationPageRoute() {
+        return <ExplorationPage view={view} />;
+      },
+    }),
+  );
 
 registerPagePrefetch("/research", newExplorationPage);
 

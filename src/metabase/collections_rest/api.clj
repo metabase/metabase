@@ -499,13 +499,15 @@
             [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
                                                      :order-by     [[:timestamp :desc]]}]] :rn]]
    :from   [[^:allow-subquery {:union-all
-                               [{:select [[:r.model_id :exploration_id]
+                               [^:allow-subquery
+                                {:select [[:r.model_id :exploration_id]
                                           [:r.timestamp :timestamp]
                                           [:r.user_id   :user_id]]
                                  :from   [[:revision :r]]
                                  :where  [:and
                                           [:= :r.model (h2x/literal "Exploration")]
                                           [:= :r.most_recent true]]}
+                                ^:allow-subquery
                                 {:select [[:d.exploration_id :exploration_id]
                                           [:r.timestamp      :timestamp]
                                           [:r.user_id        :user_id]]

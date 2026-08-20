@@ -1,6 +1,6 @@
-import type { Dayjs } from "dayjs";
 import { match } from "ts-pattern";
 
+import type { Dayjs } from "metabase/dayjs";
 import { AIQuestionAnalysisSidebar } from "metabase/query_builder/components/AIQuestionAnalysisSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
