@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Anchor, Button, Center, Stack, Text } from "metabase/ui";
 
 interface EnableEmbeddingPromptProps {

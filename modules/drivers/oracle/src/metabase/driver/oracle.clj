@@ -17,7 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.driver.sql-mbql5.pivot :as sql-mbql5.pivot]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
@@ -48,8 +48,21 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-mbql5 :sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/host-carrying-parameters :oracle
+  [_driver]
+  ["oracle.net.httpsProxyHost" "oracle.net.socksProxyHost" "oracle.jdbc.ociIamUrl"])
+
+(defmethod driver/non-host-parameters :oracle
+  [_driver]
+  ["oracle.jdbc.DRCPConnectionPurity" "oracle.jdbc.TcpNoDelay" "oracle.jdbc.azureDatabaseApplicationIdUri"
+   "oracle.jdbc.enableErrorUrl" "oracle.jdbc.localhostName" "oracle.jdbc.proxyClientName"
+   "oracle.jdbc.readOnlyInstanceAllowed" "oracle.jdbc.redirectUri" "oracle.jdbc.tokenLocation"
+   "oracle.net.DOWN_HOSTS_TIMEOUT" "oracle.net.httpsProxyPort" "oracle.net.ldap.security.authentication"
+   "oracle.net.ldap.security.credentials" "oracle.net.ldap.security.principal" "oracle.net.ldap.ssl.walletLocation"
+   "oracle.net.proxyRemoteDNS" "oracle.net.socksProxyPort" "oracle.net.ssl_server_cert_dn"
+   "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
@@ -254,9 +267,9 @@
     (h2x/->integer [:floor [::h2x/extract :second t]])))
 
 ;; Oracle's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
-(defmethod sql-mbql5.pivot/pivot-grouping-hsql :oracle
+(defmethod sql.pivot/pivot-grouping-hsql :oracle
   [_driver exprs]
-  (into [::sql-mbql5.pivot/grouping-id-fn] exprs))
+  (into [::sql.pivot/grouping-id-fn] exprs))
 
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
@@ -315,7 +328,7 @@
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
-          [:from_tz expr (or source-timezone (driver-api/results-timezone-id))])
+          [:from_tz expr (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
@@ -553,18 +566,18 @@
 
 ;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
 ;; drop these boolean->comparison conversions.
-(defn- boolean->comparison [driver clause]
-  (sql.qp.boolean-to-comparison/boolean->comparison driver clause boolean-field-types))
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form query]
-  (->> (update query :filter (partial boolean->comparison driver))
-       ((get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filter]) driver :filter honeysql-form)))
+  (->> (update query :filter boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql :filter]) driver :filter honeysql-form)))
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filters]
   [driver _ honeysql-form query]
-  (->> (update query :filters #(mapv (partial boolean->comparison driver) %))
-       ((get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filters]) driver :filters honeysql-form)))
+  (->> (update query :filters #(mapv boolean->comparison %))
+       ((get-method sql.qp/apply-top-level-clause [:sql :filters]) driver :filters honeysql-form)))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
@@ -573,27 +586,27 @@
 
 (defmethod sql.qp/->honeysql [:oracle :and]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :and]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :or]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :or]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :not]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :not]) driver)))
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :case]
   [driver clause]
-  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison driver clause boolean-field-types)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :case]) driver)))
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
+       ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar2(256)")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ messages]
@@ -829,9 +842,3 @@
 (defmethod sql.qp/transform-literal-like-pattern-honeysql :oracle
   [_driver like-rhs-honeysql]
   [:escape like-rhs-honeysql [:raw "CHR(92)"]])
-
-(defmethod sql.qp/->honeysql [:oracle :value]
-  [driver [_ {:keys [base-type effective-type]} value]]
-  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
-   driver
-   [:value value {:base_type base-type :effective_type effective-type}]))

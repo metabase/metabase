@@ -9,6 +9,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
@@ -165,9 +166,9 @@
            :from [:metabase_field]
            :where [:and
                    [:= :fk_target_field_id (:id field)]
-                   [:not [:exists {:select [1]
-                                   :from   [:metabase_field_user_settings]
-                                   :where  [:= :metabase_field_user_settings.field_id :metabase_field.id]}]]]}
+                   [:not [:exists ^:allow-subquery {:select [1]
+                                                    :from   [:metabase_field_user_settings]
+                                                    :where  [:= :metabase_field_user_settings.field_id :metabase_field.id]}]]]}
         sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
@@ -377,11 +378,19 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields"
+  "Efficiently checks if each field is readable and returns only readable fields.
+
+  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
+  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
+  out across tables, such as hydrating `:target` over a dashboard's FK columns."
   [fields]
-  (for [field (t2/hydrate fields :table)
-        :when (mi/can-read? field)]
-    (dissoc field :table)))
+  (let [fields (t2/hydrate fields :table)
+        tables (into #{} (keep :table) fields)]
+    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
+                                    :table-ids (into #{} (keep :id) tables)})
+    (for [field fields
+          :when (mi/can-read? field)]
+      (dissoc field :table))))
 
 (mi/define-batched-hydration-method with-targets
   :target

@@ -30,7 +30,7 @@ export const TaskListPage = () => {
 
   const {
     data: tasksData,
-    isFetching,
+    isFetching: isFetchingTasks,
     isLoading: isLoadingTasks,
     error: tasksError,
   } = useAbortableQuery(
@@ -57,6 +57,7 @@ export const TaskListPage = () => {
   const tasks = tasksData?.data ?? [];
   const total = tasksData?.total ?? 0;
   const databases = databasesData?.data ?? [];
+  const isFetching = isFetchingTasks || isLoadingDatabases;
   const isLoading = isLoadingTasks || isLoadingDatabases;
   const error = tasksError || databasesError;
 

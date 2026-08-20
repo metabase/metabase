@@ -9,13 +9,14 @@ import { useScrollToTop } from "metabase/common/hooks";
 import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { useNavigate } from "metabase/router";
 import {
   Badge,
   Card,
   Center,
   Ellipsified,
+  LoadingOverlay,
   type RenderRowLink,
   SortableHeaderPill,
   Tooltip,
@@ -68,7 +69,7 @@ export function ConversationsTable({
   sortingOptions,
   onSortingOptionsChange,
 }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const rows: ConversationRow[] = useMemo(
     () =>
@@ -98,9 +99,9 @@ export function ConversationsTable({
   // This only covers keyboard activation (Enter on a keyboard-focused row).
   const handleRowActivate = useCallback(
     (row: Row<ConversationRow>) => {
-      dispatch(push(getRowHref(row)));
+      navigate(getRowHref(row));
     },
-    [dispatch, getRowHref],
+    [getRowHref, navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<ConversationRow>({
@@ -136,26 +137,23 @@ export function ConversationsTable({
   }
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
-      data-testid="conversations-table"
-    >
+    <MonitorTableCard aria-busy={isFetching} data-testid="conversations-table">
       {isLoading ? (
         <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          ariaLabel={t`Conversations`}
-          emptyState={<MonitorEmptyState label={t`No conversations found`} />}
-          getRowProps={() => ({ "data-testid": "conversation" })}
-          renderRowLink={renderRowLink}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Conversations`}
+            emptyState={<MonitorEmptyState label={t`No conversations found`} />}
+            getRowProps={() => ({ "data-testid": "conversation" })}
+            renderRowLink={renderRowLink}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 }
 

@@ -1,15 +1,17 @@
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import type { SettingsState, State } from "metabase/redux/store";
+import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { createMockAdminState } from "./admin";
-import { createMockApiState } from "./api";
+import { createMockApiState, seedCurrentUserApiState } from "./api";
 import { createMockAppState } from "./app";
 import { createMockAuthState } from "./auth";
 import { createMockDashboardState } from "./dashboard";
 import { createMockEmbedState } from "./embed";
 import { createMockEmbeddingDataPickerState } from "./embedding-data-picker";
 import { createMockNormalizedEntitiesState } from "./entities";
+import { createMockExplorationsState } from "./explorations";
 import { createMockModalState } from "./modal";
 import { createMockParametersState } from "./parameters";
 import { createMockQueryBuilderState } from "./qb";
@@ -21,11 +23,13 @@ import { createMockVisualizerState } from "./visualizer";
 /**
  * The shape accepted (and returned) by mock-state builders and test render
  * harnesses: `State` plus seed-only fields with no reducer behind them.
- * `settings` is mirrored into `window.MetabaseBootstrap` below; the render
- * harnesses strip it before it reaches `preloadedState`.
+ * `settings` is mirrored into `window.MetabaseBootstrap`,
+ * and `currentUser` into the `getCurrentUser` RTK Query cache entry below.
+ * The render harnesses strip both before they reach `preloadedState`.
  */
 export type StoreSeedState = State & {
   settings: SettingsState;
+  currentUser: User | null;
 };
 
 export function createMockState<S extends Pick<SdkSharedStoreState, "sdk">>(
@@ -54,6 +58,7 @@ export function createMockState(opts: any) {
       future: [],
     },
     modal: createMockModalState(),
+    explorations: createMockExplorationsState(),
     ...opts,
   };
 
@@ -71,6 +76,16 @@ export function createMockState(opts: any) {
     (hasExplicitSettings || window.MetabaseBootstrap === undefined)
   ) {
     window.MetabaseBootstrap = state.settings.values;
+  }
+
+  // There's no `currentUser` reducer either — the current user is read from
+  // the `getCurrentUser` RTK Query cache — so mirror the field into the cache
+  // entry for selectors like `getUser` to find.
+  if (state.currentUser) {
+    state["metabase-api"] = seedCurrentUserApiState(
+      state["metabase-api"],
+      state.currentUser,
+    );
   }
 
   return state;

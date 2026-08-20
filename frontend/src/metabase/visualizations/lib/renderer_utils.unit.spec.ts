@@ -1,5 +1,4 @@
-import dayjs, { type Dayjs } from "dayjs";
-
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import {
   getXValues,
   parseXValue,

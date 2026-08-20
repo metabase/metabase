@@ -19,7 +19,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   GroupId,
@@ -79,7 +79,7 @@ const getEditSegmentedAccessPostAction = (
   entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
-) => push(getEditSegementedAccessUrl(entityId, groupId, view));
+) => navigate(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
@@ -99,8 +99,8 @@ export function initializePlugin() {
       label: t`Edit row and column security`,
       iconColor: "brand",
       icon: "pencil",
-      actionCreator: (entityId, groupId, view) =>
-        push(getEditSegementedAccessUrl(entityId, groupId, view)),
+      onSelect: (entityId, groupId, view) =>
+        navigate(getEditSegementedAccessUrl(entityId, groupId, view)),
     });
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
       (permissions, groupId, entityId, newValue) =>

@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.custom-viz-plugin.api-test
+(ns ^:synchronized metabase-enterprise.custom-viz-plugin.api-test
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -262,7 +262,8 @@
                       [["metabase-plugin.json" (json/encode
                                                 {:name     "new-register-viz"
                                                  :icon     "icon.svg"
-                                                 :metabase {:version ">=1.59.0"}})]
+                                                 :metabase {:version ">=1.59.0"}
+                                                 :sdk      {:version "2.0.0"}})]
                        ["dist/index.js" "console.log('hi')"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
                 row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
@@ -272,8 +273,36 @@
             (is (= "new-register-viz" (:display_name row)))
             (is (= "icon.svg" (:icon row)))
             (is (= ">=1.59.0" (:metabase_version row)))
+            (is (= "2.0.0" (get-in row [:manifest :sdk :version])))
             (is (= :active (:status row)))
             (is (some? (:bundle_hash row)) "bundle_hash is populated")))))))
+
+(deftest register-plugin-incompatible-version-warns-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "uploading a plugin with an unsatisfied metabase.version succeeds with a soft warning"
+        (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                      config/is-dev?         false]
+          (let [zip  (cvp.tu/valid-bundle-bytes "warned-viz" {:metabase-version ">=1.99"
+                                                              :sdk-version      "2.0.0"})
+                resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)]
+            (is (= ["metabase-version-mismatch"]
+                   (map :type (:warnings resp)))))))
+      (testing "uploading an unstamped plugin succeeds with an sdk-version-mismatch warning"
+        (let [zip  (cvp.tu/valid-bundle-bytes "unstamped-viz")
+              resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)]
+          (is (= ["sdk-version-mismatch"]
+                 (map :type (:warnings resp)))))))))
+
+(deftest register-plugin-malformed-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when a manifest field has the wrong JSON type"
+        (let [zip  (cvp.tu/valid-bundle-bytes "malformed-viz" {:sdk-version 2})
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"metabase-plugin\.json is invalid" (or (:message resp) (str resp))))
+          (is (not (t2/exists? :model/CustomVizPlugin :identifier "malformed-viz"))
+              "nothing is persisted"))))))
 
 (deftest register-plugin-missing-manifest-test
   (mt/with-premium-features #{:custom-viz}
@@ -324,7 +353,9 @@
     (with-dev-mode-enabled
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "dev plugin registration with manifest name"
-          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart" :icon "icon.svg"})
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart"
+                                                                            :icon "icon.svg"
+                                                                            :sdk  {:version "2.0.0"}})
                                       cache/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
@@ -334,7 +365,9 @@
               (is (true? (:dev_only resp))
                   "dev-registered plugins are dev-only")
               (is (= "active" (:status resp))
-                  "dev plugins are immediately active"))))
+                  "dev plugins are immediately active")
+              (is (= "2.0.0" (get-in resp [:manifest :sdk :version]))
+                  "the dev manifest, including any sdk.version stamp, is persisted"))))
         (testing "dev plugin registration with explicit identifier overrides manifest"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
                                       cache/set-or-clear-dev-bundle! (constantly nil)]
@@ -342,7 +375,9 @@
                                              {:dev_bundle_url "http://localhost:5174"
                                               :identifier     "my-override"})]
               (is (= "my-override" (:identifier resp))
-                  "explicit identifier takes precedence over manifest name"))))
+                  "explicit identifier takes precedence over manifest name")
+              (is (= [] (:warnings resp))
+                  "dev-only plugins are exempt from version warnings, even unstamped"))))
         (testing "dev plugin registration fails with helpful message when no identifier and no manifest"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
@@ -415,15 +450,21 @@
                                                         :status         :active
                                                         :dev_bundle_url "http://localhost:5174"}]
           (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5174")
-                                      cache/fetch-dev-manifest (constantly {:name "Updated Name" :icon "new-icon.svg"})]
+                                      cache/fetch-dev-manifest (constantly {:name "Updated Name"
+                                                                            :icon "new-icon.svg"
+                                                                            :sdk  {:version "2.0.1"}})]
             (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
-              (is (= "Updated Name" (:display_name resp))))))))))
+              (is (= "Updated Name" (:display_name resp)))
+              (is (= "2.0.1" (get-in resp [:manifest :sdk :version]))
+                  "the refreshed dev manifest, including any sdk.version stamp, is persisted")
+              (is (= [] (:warnings resp))
+                  "dev-only plugins get no warnings even for an untested SDK version"))))))))
 
-;;; ------------------------------------------------ /list compatibility filtering ------------------------------------------------
+;;; ------------------------------------------------ /list version warnings ------------------------------------------------
 
-(deftest list-filters-incompatible-versions-test
+(deftest list-annotates-incompatible-versions-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "/list excludes plugins with incompatible metabase_version"
+    (testing "/list includes plugins with version incompatibilities, annotated with soft warnings"
       (with-redefs [config/mb-version-info {:tag "v1.60.0"}
                     config/is-dev?         false]
         (mt/with-temp [:model/CustomVizPlugin _ {:identifier        "compat-viz"
@@ -431,17 +472,28 @@
                                                  :status            :active
                                                  :enabled           true
                                                  :bundle_hash       "compat-hash"
-                                                 :metabase_version  ">=1.59"}
+                                                 :metabase_version  ">=1.59"
+                                                 :manifest          {:sdk {:version "2.0.0"}}}
                        :model/CustomVizPlugin _ {:identifier        "incompat-viz"
                                                  :display_name      "Incompatible"
                                                  :status            :active
                                                  :enabled           true
                                                  :bundle_hash       "incompat-hash"
-                                                 :metabase_version  ">=1.99"}]
-          (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
-                identifiers (set (map :identifier result))]
-            (is (contains? identifiers "compat-viz"))
-            (is (not (contains? identifiers "incompat-viz")))))))))
+                                                 :metabase_version  ">=1.99"
+                                                 :manifest          {:sdk {:version "2.0.0"}}}
+                       :model/CustomVizPlugin _ {:identifier        "unstamped-viz"
+                                                 :display_name      "Unstamped"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :bundle_hash       "unstamped-hash"}]
+          (let [result    (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                by-id     (into {} (map (juxt :identifier identity)) result)
+                warnings  #(map :type (get-in by-id [% :warnings]))]
+            (is (= #{"compat-viz" "incompat-viz" "unstamped-viz"}
+                   (into #{} (filter #{"compat-viz" "incompat-viz" "unstamped-viz"}) (keys by-id))))
+            (is (= [] (warnings "compat-viz")))
+            (is (= ["metabase-version-mismatch"] (warnings "incompat-viz")))
+            (is (= ["sdk-version-mismatch"] (warnings "unstamped-viz")))))))))
 
 ;;; ------------------------------------------------ Sandbox-host Endpoint ------------------------------------------------
 

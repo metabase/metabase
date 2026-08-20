@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
-import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
-import { Box, Repeat, Text } from "metabase/ui";
+import {
+  CompactPinnedItemCard,
+  CompactPinnedItemCardSkeleton,
+} from "metabase/common/collections/components/CompactPinnedItemCard";
+import { Box, Repeat, SimpleGrid, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
-import S from "./RecentModels.module.css";
 import { trackModelClick } from "./analytics";
 
 export function RecentModels({
@@ -35,21 +37,21 @@ export function RecentModels({
         mb="lg"
         style={{ visibility: skeleton ? "hidden" : undefined }}
       >{t`Recents`}</Text>
-      <div className={S.recentModelsGrid}>
+      <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} mb="sm" spacing="md">
         {skeleton ? (
           <Repeat times={2}>
-            <PinnedItemCard skeleton iconForSkeleton="model" />
+            <CompactPinnedItemCardSkeleton icon="model" />
           </Repeat>
         ) : (
           models.map((model) => (
-            <PinnedItemCard
+            <CompactPinnedItemCard
               key={`model-${model.id}`}
               item={model}
               onClick={() => trackModelClick(model.id)}
             />
           ))
         )}
-      </div>
+      </SimpleGrid>
     </Box>
   );
 }

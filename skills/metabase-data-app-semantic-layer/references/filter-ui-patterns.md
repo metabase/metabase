@@ -133,7 +133,6 @@ For custom date pickers:
 - First check whether the repo already has a date picker component or component library. If it does, use the existing component.
 - If the repo has no existing date picker, install `react-datepicker`. The default data-app template only includes React, React DOM, and the Metabase SDK.
 - Do not install a large UI suite just for one data-app date filter.
-- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
 - Type strict `react-datepicker` callbacks explicitly, for example `onChange={(date: Date | null) => ...}` for single-date pickers.
 - For custom date ranges, use `selectsRange` with local `Date | null` start/end state, but only commit the query range when both dates are selected.
 - If the custom range control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.

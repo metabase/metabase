@@ -17,6 +17,7 @@ let tmpDir: string;
 
 describe("build output validation", () => {
   let projectDir: string;
+  let buildStdout: string;
 
   beforeAll(async () => {
     const { mkdtemp } = await import("node:fs/promises");
@@ -31,7 +32,7 @@ describe("build output validation", () => {
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     await npmInstall(projectDir);
-    await npmRun("build", projectDir);
+    ({ stdout: buildStdout } = await npmRun("build", projectDir));
   }, 120_000);
 
   afterAll(async () => {
@@ -60,6 +61,15 @@ describe("build output validation", () => {
   it("build produces an upload-ready .tgz", () => {
     const tgzPath = join(projectDir, "test-viz-build-0.0.1.tgz");
     expect(existsSync(tgzPath)).toBe(true);
+    expect(buildStdout).toContain("Packed ");
+  });
+});
+
+describe("cli bin", () => {
+  it("keeps the node shebang so npm can link it", () => {
+    expect(
+      readFileSync(CLI_PATH, "utf-8").startsWith("#!/usr/bin/env node"),
+    ).toBe(true);
   });
 });
 

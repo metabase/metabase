@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -31,6 +31,7 @@ import { assertNumericId } from "../../types";
 
 export function CollectionPermissionsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   useListCollectionsTreeQuery(collectionsQuery);
 
   // These selectors resolve the selected collection from the route, so they
@@ -58,7 +59,7 @@ export function CollectionPermissionsPage() {
   }, [dispatch]);
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
-    dispatch(push(`/admin/permissions/collections/${id}`));
+    navigate(`/admin/permissions/collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (

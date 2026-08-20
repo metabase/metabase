@@ -4,9 +4,10 @@ import { t } from "ttag";
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSearchParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,

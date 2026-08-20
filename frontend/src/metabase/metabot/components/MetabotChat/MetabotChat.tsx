@@ -4,18 +4,14 @@ import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
-import {
-  useMetabotAgent,
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "../../hooks";
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -52,7 +48,7 @@ export const MetabotChat = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
   const supportsReasoning =
@@ -60,7 +56,10 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -176,6 +175,7 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
+                onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
                   metabot.loadConversation(metabot.conversationId);

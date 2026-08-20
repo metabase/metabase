@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { memo } from "react";
 
 import { Link } from "metabase/common/components/Link";
@@ -24,8 +25,7 @@ const SidebarItemInner = ({
   <li>
     <Link
       to={href}
-      className={S.item}
-      activeClassName={S.selected}
+      className={({ isActive }) => cx(S.item, { [S.selected]: isActive })}
       onClick={onClick}
     >
       <LabelIcon className={S.icon} icon={icon} />

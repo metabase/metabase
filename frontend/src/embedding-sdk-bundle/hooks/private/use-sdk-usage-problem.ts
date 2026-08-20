@@ -10,10 +10,9 @@ import {
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
-import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { getSetting, getTokenFeature } from "metabase/selectors/settings";
+import { getSetting, getTokenFeature, useSetting } from "metabase/settings";
 
 export function useSdkUsageProblem({
   authConfig,

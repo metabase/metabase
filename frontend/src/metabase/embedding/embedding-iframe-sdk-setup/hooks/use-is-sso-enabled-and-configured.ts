@@ -1,4 +1,4 @@
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export const useIsSsoEnabledAndConfigured = () => {
   const isJwtEnabledAndConfigured = useSetting("jwt-enabled-and-configured");

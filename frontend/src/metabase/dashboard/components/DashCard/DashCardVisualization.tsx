@@ -6,6 +6,7 @@ import _ from "underscore";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -20,9 +21,9 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import type { Path } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
@@ -37,9 +38,13 @@ import {
 } from "metabase/visualizations/components/legend/LegendCaption";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { CardSlownessStatus } from "metabase/visualizations/types";
+import type {
+  CardSlownessStatus,
+  ClickObject,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
+  formatVisualizerClickObject,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -176,17 +181,18 @@ export function DashCardVisualization({
   } = useDashboardContext();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onSameOriginNavigation = useCallback(
-    (location: LocationDescriptorObject) => {
-      dispatch(push(location));
+    (location: Partial<Path>) => {
+      navigate(location);
       dispatch(
         setParameterValuesFromQueryParams(
           parseSearchQuery(location.search ?? ""),
         ),
       );
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -527,6 +533,18 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  // Visualizer cards render remapped columns,
+  // so click objects must be mapped back to the columns of the underlying questions before computing actions.
+  const transformClickObject = useMemo(() => {
+    if (!isVisualizerDashboardCard(dashcard) || !rawSeries) {
+      return undefined;
+    }
+    const { columnValuesMapping } =
+      dashcard.visualization_settings.visualization;
+    return (clicked: ClickObject) =>
+      formatVisualizerClickObject(clicked, rawSeries, columnValuesMapping);
+  }, [dashcard, rawSeries]);
+
   const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
@@ -551,7 +569,7 @@ export function DashCardVisualization({
             isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
           }
           metadata={metadata}
-          mode={getClickActionMode}
+          mode={getClickActionMode ?? getDashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
@@ -572,6 +590,7 @@ export function DashCardVisualization({
           actionButtons={actionButtons}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
+          transformClickObject={transformClickObject}
           onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
           onTogglePreviewing={onTogglePreviewing}
           onChangeCardAndRun={onChangeCardAndRun}

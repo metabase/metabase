@@ -26,6 +26,7 @@ import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
+import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
@@ -35,6 +36,7 @@ import {
   getClosestDatumIndex,
   getDashboardAdjustedSettings,
   getDataSeriesEChartsIndices,
+  getHoveredFromHighlighted,
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
@@ -64,7 +66,6 @@ function CartesianChartInner(props: VisualizationProps) {
     isQueryBuilder,
     isVisualizerCard,
     isFullscreen,
-    hovered,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
@@ -72,6 +73,7 @@ function CartesianChartInner(props: VisualizationProps) {
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
+    onSeeAllEvents,
     selectedTimelineEventIds,
   } = props;
 
@@ -116,9 +118,10 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const chartRef = useRef<EChartsType>();
   // Mirror the ECharts instance into state so that effects depending on it
-  // (e.g. brush setup) re-run once it becomes available. With the lazily loaded
-  // EChartsRenderer, `onInit` fires after the surrounding effects have already
-  // run, and a ref assignment alone would not re-trigger them.
+  // (e.g. brush setup) re-run once it becomes available. The renderer renders
+  // nothing until ExplicitSize has measured it, which it does a tick after
+  // mount, so `onInit` fires after the surrounding effects have already run and
+  // a ref assignment alone would not re-trigger them.
   const [chartInstance, setChartInstance] = useState<EChartsType>();
 
   const description = settings["card.description"];
@@ -158,12 +161,27 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
+  const hovered: CartesianHoveredObject | null = useMemo(() => {
+    if (props.hovered) {
+      return props.hovered;
+    }
+    if (props.highlighted) {
+      return getHoveredFromHighlighted(
+        props.highlighted,
+        rawSeries,
+        chartModel,
+      );
+    }
+    return null;
+  }, [props.hovered, props.highlighted, rawSeries, chartModel]);
+
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
     containerRef,
     chartModel,
     option,
     renderingContext,
+    hovered,
     props,
     chartInstance,
   );
@@ -265,7 +283,6 @@ function CartesianChartInner(props: VisualizationProps) {
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
-          display={card.display}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}
@@ -288,6 +305,7 @@ function CartesianChartInner(props: VisualizationProps) {
             onOpenTimelines={onOpenTimelines}
             onSelectTimelineEvents={onSelectTimelineEvents}
             onDeselectTimelineEvents={onDeselectTimelineEvents}
+            onSeeAllEvents={onSeeAllEvents}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>

@@ -1,11 +1,11 @@
-import { useDispatch, useSelector } from "metabase/redux";
-import { push, useLocation } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate } from "metabase/router";
 
 import AccountLayout from "../../components/AccountLayout";
 
 export function AccountApp() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector(getUser);
   const { pathname } = useLocation();
 
@@ -13,7 +13,7 @@ export function AccountApp() {
     <AccountLayout
       user={user}
       path={pathname}
-      onChangeLocation={(nextLocation) => dispatch(push(nextLocation))}
+      onChangeLocation={(nextLocation) => navigate(nextLocation)}
     />
   );
 }

@@ -99,8 +99,8 @@
           (when-not (:ok res)
             (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
                         (:error res)
-                        (count (or final-blocks []))
-                        (pr-str (when final-blocks (mapv :type final-blocks)))
+                        (count final-blocks)
+                        (pr-str (mapv :type final-blocks))
                         (pr-str (get-in res [:response_metadata :messages]))))
           (doseq [e errors]
             (post-viz-error! client channel thread-ts e))))

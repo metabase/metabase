@@ -5,7 +5,6 @@ import { useSetArchive } from "metabase/archive/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
-  BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import {
   CollectionPickerModal,
@@ -161,9 +160,9 @@ export function LibraryBulkActions({
           </BulkActionButton>
         )}
         {isAllTables && (
-          <BulkActionDangerButton onClick={() => setAction("unpublish")}>
+          <BulkActionButton danger onClick={() => setAction("unpublish")}>
             {t`Unpublish`}
-          </BulkActionDangerButton>
+          </BulkActionButton>
         )}
         <BulkActionButton onClick={onClear}>{t`Clear`}</BulkActionButton>
       </BulkActionBar>

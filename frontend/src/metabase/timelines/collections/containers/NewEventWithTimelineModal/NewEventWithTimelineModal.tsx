@@ -5,8 +5,7 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {
@@ -27,7 +26,7 @@ interface NewEventWithTimelineModalContainerProps {
 function NewEventWithTimelineModalContainer(
   props: NewEventWithTimelineModalContainerProps,
 ) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const collectionId = Urls.extractCollectionId(props.params.slug);
@@ -55,7 +54,7 @@ function NewEventWithTimelineModalContainer(
       ...values,
       timeline_id: timeline.id,
     } as CreateTimelineEventRequest).unwrap();
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    navigate(Urls.timelinesInCollection(collection));
   };
 
   if (isLoading || error || !collection) {

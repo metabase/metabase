@@ -2,7 +2,7 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 
-import { hasModifierKeys } from "metabase/common/utils/keyboard";
+import { hasModifierKeys } from "metabase/utils/keyboard";
 
 import type {
   DataGridColumnType,

@@ -113,9 +113,9 @@ runs:
 
         # Set the JAR_PATH environment variable
         if [ "$EXTRACT_PATH" == "." ]; then
-          echo "JAR_PATH=$OUTPUT_NAME" >> $GITHUB_ENV
+          echo "JAR_PATH=$OUTPUT_NAME" >> "$GITHUB_ENV"
         else
-          echo "JAR_PATH=$EXTRACT_PATH/$OUTPUT_NAME" >> $GITHUB_ENV
+          echo "JAR_PATH=$EXTRACT_PATH/$OUTPUT_NAME" >> "$GITHUB_ENV"
         fi
 
     - name: Verify that this is a valid JAR file

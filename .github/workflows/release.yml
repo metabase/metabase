@@ -281,7 +281,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
-      release: ${{ 'true' }}
+      release: true
 
   containerize-ee:
     needs: check-version
@@ -292,7 +292,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
-      release: ${{ 'true' }}
+      release: true
 
   push-tags:
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
@@ -381,7 +381,8 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.
+    if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
     needs: [push-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -456,7 +457,8 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    # Only create release notes if this release happens in https://github.com/metabase/metabase.
+    if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
     needs: [add-extra-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15

@@ -9,23 +9,33 @@ import type { CollectionId } from "metabase-types/api";
 
 interface NewMenuItemAIExplorationProps {
   collectionId?: CollectionId;
+  hasNlqAccess?: boolean;
 }
 
 export function NewMenuItemAIExploration({
   collectionId,
+  hasNlqAccess,
 }: NewMenuItemAIExplorationProps) {
   const dispatch = useDispatch();
+
+  const url = hasNlqAccess
+    ? Urls.newQuestion({
+        mode: "ask",
+        collectionId,
+        cardType: "question",
+      })
+    : Urls.newExploration();
 
   return (
     <Menu.Item
       component={ForwardRefLink}
-      to={Urls.newQuestion({
-        mode: "ask",
-        collectionId,
-        cardType: "question",
-      })}
+      to={url}
       leftSection={<Icon name="comment" />}
-      onClick={() => dispatch(resetConversation({ agentId: "ask" }))}
+      onClick={() => {
+        if (hasNlqAccess) {
+          dispatch(resetConversation({ agentId: "ask" }));
+        }
+      }}
     >
       {t`AI exploration`}
     </Menu.Item>

@@ -60,6 +60,7 @@ export const createMockCartesianChartModel = (
       formatter: String,
       valuesCount: 0,
     },
+    cardsColumns: [],
     columnByDataKey: {},
     seriesLabelsFormatters: {},
     ...opts,
