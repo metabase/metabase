@@ -470,6 +470,39 @@
       (is (= [] (:inline_parameters (first dashcards))))
       (is (= ["p1"] (:inline_parameters (second dashcards)))))))
 
+(deftest move-parameter-leaves-bystanders-verbatim-test
+  (testing "GHY-4147: move_parameter onto a card leaves every card that carried no inline placements
+            exactly as it was — stamping :inline_parameters onto them, or rewriting a legacy nil as
+            [], would register untouched rows as changed in update-dashboard!'s row diff"
+    (let [bystander {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4}
+          legacy    {:id 9 :card_id 9 :row 8 :col 0 :size_x 4 :size_y 4 :inline_parameters nil}
+          current   {:id 1 :tabs [] :parameters [{:id "p1"}]
+                     :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}
+                                 bystander legacy]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               current
+                               [{:op "move_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
+      (is (= bystander (nth dashcards 1)))
+      (is (= legacy (nth dashcards 2))))))
+
+(deftest unwire-parameter-leaves-unwired-cards-verbatim-test
+  (testing "GHY-4147: blanket unwire_parameter leaves cards with no mappings exactly as they were —
+            rewriting an absent or legacy-nil :parameter_mappings as [] would register untouched
+            rows as changed in update-dashboard!'s row diff"
+    (let [bystander {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4}
+          legacy    {:id 9 :card_id 9 :row 8 :col 0 :size_x 4 :size_y 4 :parameter_mappings nil}
+          current   {:id 1 :tabs [] :parameters [{:id "p1"}]
+                     :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
+                                  :parameter_mappings [{:parameter_id "p1" :card_id 9
+                                                        :target [:dimension [:field 1 nil]]}]}
+                                 bystander legacy]}
+          {:keys [dashcards]} (dashboard-ops/compile-ops
+                               current
+                               [{:op "unwire_parameter" :parameter_id "p1"}] {})]
+      (is (= [] (:parameter_mappings (first dashcards))))
+      (is (= bystander (nth dashcards 1)))
+      (is (= legacy (nth dashcards 2))))))
+
 (deftest wire-parameter-by-field-test
   (testing "GHY-4147: wire_parameter writes a parameter mapping using the card's target for the field"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
@@ -744,6 +777,19 @@
       (is (= dc (-> dc
                     (#'dashboard-ops/add-inline-parameter "p2")
                     (#'dashboard-ops/drop-inline-parameter "p2")))))))
+
+(deftest drop-helpers-leave-empty-collections-untouched-test
+  (testing "an absent, nil, or empty collection is left exactly as it was — writing the key, or
+            rewriting nil as [], would make an untouched dashcard register as changed in
+            update-dashboard!'s row diff"
+    (doseq [dc [{:id 7}
+                {:id 7 :inline_parameters nil}
+                {:id 7 :inline_parameters []}]]
+      (is (= dc (#'dashboard-ops/drop-inline-parameter dc "p1"))))
+    (doseq [dc [{:id 7}
+                {:id 7 :parameter_mappings nil}
+                {:id 7 :parameter_mappings []}]]
+      (is (= dc (#'dashboard-ops/drop-mapping dc "p1"))))))
 
 (deftest remove-parameter-cascade-composes-from-primitives-test
   (testing "GHY-4147 refactor: remove_parameter's cascade is exactly this primitive composition — if the

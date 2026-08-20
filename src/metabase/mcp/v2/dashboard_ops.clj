@@ -150,11 +150,14 @@
                    :target       target}))))
 
 (defn- drop-mapping
-  "Remove `dc`'s parameter mapping for `parameter-id`; the result always carries a
-   `:parameter_mappings` vector."
+  "Remove `dc`'s parameter mapping for `parameter-id`. An absent, nil, or empty
+   `:parameter_mappings` is left exactly as it was — writing the key, or rewriting a legacy
+   nil as [], would make an untouched dashcard register as changed in `update-dashboard!`'s
+   row diff."
   [dc parameter-id]
-  (update dc :parameter_mappings
-          (fn [ms] (filterv #(not= parameter-id (:parameter_id %)) (vec ms)))))
+  (cond-> dc
+    (seq (:parameter_mappings dc))
+    (update :parameter_mappings (partial filterv #(not= parameter-id (:parameter_id %))))))
 
 (defn- add-inline-parameter
   "Place `parameter-id` inline on `dc`; adding an id already present is a no-op."
@@ -163,9 +166,13 @@
           (fn [ps] (vec (distinct (conj (vec ps) parameter-id))))))
 
 (defn- drop-inline-parameter
-  "Remove `parameter-id` from `dc`'s existing `:inline_parameters`."
+  "Remove `parameter-id` from `dc`'s inline placements. An absent, nil, or empty
+   `:inline_parameters` is left exactly as it was, for the same row-diff reason as
+   [[drop-mapping]]."
   [dc parameter-id]
-  (update dc :inline_parameters (partial filterv #(not= parameter-id %))))
+  (cond-> dc
+    (seq (:inline_parameters dc))
+    (update :inline_parameters (partial filterv #(not= parameter-id %)))))
 
 (defn- insert-dashcard
   "Insert a new dashcard: check `(:id op)` is a fresh negative id, place it on
@@ -468,9 +475,9 @@
                     (update :filteringParameters (partial filterv #(not= parameter_id %))))))
       (map-rows :dashcards
                 (fn [dc]
-                  (cond-> dc
-                    (contains? dc :inline_parameters)  (drop-inline-parameter parameter_id)
-                    (contains? dc :parameter_mappings) (drop-mapping parameter_id))))))
+                  (-> dc
+                      (drop-inline-parameter parameter_id)
+                      (drop-mapping parameter_id))))))
 
 (defmethod apply-op "move_parameter"
   [state idx {:keys [parameter_id index dashcard_id] :as op}]
@@ -480,12 +487,9 @@
     (do (resolve-dashcard! state idx dashcard_id)
         (map-rows state :dashcards
                   (fn [dc]
-                    (cond
-                      (= dashcard_id (:id dc)) (add-inline-parameter dc parameter_id)
-                      (:inline_parameters dc)  (drop-inline-parameter dc parameter_id)
-                      ;; a card that never carried inline_parameters gets the key written as nil,
-                      ;; the shape this op has always saved
-                      :else                    (assoc dc :inline_parameters nil)))))
+                    (if (= dashcard_id (:id dc))
+                      (add-inline-parameter dc parameter_id)
+                      (drop-inline-parameter dc parameter_id)))))
 
     (contains? op :index)
     (or (move-row state :parameters parameter_id index)
