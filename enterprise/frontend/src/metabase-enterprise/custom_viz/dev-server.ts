@@ -1,31 +1,20 @@
 import type { CustomVizPluginManifest } from "metabase-types/api";
 
 /**
- * Direct access to a custom-viz dev server.
+ * Direct browser access to a custom-viz dev server running on the developer's own machine — Metabase
+ * proxies none of it. `dev_bundle_url` is validated to a loopback origin on the backend and added to the
+ * app document's CSP `connect-src` for superusers, see `metabase-enterprise.custom-viz-plugin.csp`.
  *
- * Metabase does not proxy any of this: the dev server runs on the developer's own machine, so the browser
- * is the only thing that can reach it, and it fetches the bundle, manifest, icon and hot-reload stream
- * itself. That is why `dev_bundle_url` is validated to a loopback origin on the backend and added to the
- * app document's CSP `connect-src` for superusers — see
- * `metabase-enterprise.custom-viz-plugin.csp`.
- *
- * These requests deliberately use plain `fetch` rather than `api.fetch`: the API client resolves every URL
- * against `location.origin`, so it cannot issue a cross-origin request at all. No session credentials are
- * sent, which is correct — the dev server is not Metabase, and it already answers
- * `Access-Control-Allow-Origin: *`.
+ * Uses plain `fetch` rather than `api.fetch`, which resolves URLs against `location.origin` and so cannot
+ * go cross-origin. No session credentials are sent; the dev server answers `Access-Control-Allow-Origin: *`.
  */
 
 const MANIFEST_PATH = "metabase-plugin.json";
 const BUNDLE_PATH = "index.js";
 const SSE_PATH = "__sse";
 
-/** Strips a trailing slash so callers can join paths without doubling it. */
-function devOrigin(devBundleUrl: string): string {
-  return devBundleUrl.replace(/\/+$/, "");
-}
-
 export function getDevServerUrl(devBundleUrl: string, path: string): string {
-  return `${devOrigin(devBundleUrl)}/${path}`;
+  return `${devBundleUrl.replace(/\/+$/, "")}/${path}`;
 }
 
 export function getDevServerSseUrl(devBundleUrl: string): string {
@@ -33,12 +22,8 @@ export function getDevServerSseUrl(devBundleUrl: string): string {
 }
 
 /**
- * Never append a cache-busting query string.
- *
- * The CLI's dev server resolves a request straight onto the filesystem with the raw `req.url`, query string
- * and all, so `index.js?t=1` looks for a file of that literal name and 404s. `cache: "no-store"` is what
- * keeps a rebuild from being served stale: it bypasses the HTTP cache on the way out and stores nothing on
- * the way back, which is the whole point of the cache-bust anyway.
+ * No cache-busting query string: the CLI dev server resolves the raw `req.url` onto the filesystem, so
+ * `index.js?t=1` 404s. `cache: "no-store"` is what keeps rebuilds from being served stale.
  */
 async function fetchFromDevServer(url: string): Promise<Response> {
   const res = await fetch(url, { cache: "no-store" });
@@ -58,10 +43,7 @@ export async function fetchDevServerBundle(
   return res.text();
 }
 
-/**
- * The plugin manifest. Sent on to the backend, which validates it the same way it validates an uploaded
- * bundle's manifest.
- */
+/** The manifest, sent on to the backend which validates it like an uploaded bundle's. */
 export async function fetchDevServerManifest(
   devBundleUrl: string,
 ): Promise<CustomVizPluginManifest> {
