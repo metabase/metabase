@@ -79,7 +79,9 @@
           text     (pr-str response)]
       (is (not (re-find #"unknown error" text))
           "the rule reaches the caller instead of a placeholder")
-      (is (re-find #"source table" text)))))
+      ;; matching the schema's :description ("...a valid MBQL query with a source table.") would pass
+      ;; even if the :error/fn message regressed, so match only what :error/fn produces
+      (is (re-find #"measure definition must have a source table" text)))))
 
 (deftest create-measure-test
   (testing "POST /api/measure"
