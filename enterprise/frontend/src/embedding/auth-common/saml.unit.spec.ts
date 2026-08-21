@@ -2,6 +2,7 @@ import { openSamlLoginPopup } from "./saml";
 
 const instanceUrl = "https://metabase.example.com";
 const idpUrl = "https://idp.example.com/login";
+const mismatchedPopupUrl = "https://saml.metabase.example.com/auth/sso";
 
 const authData = { id: "session-id", iat: 0, exp: 0 };
 
@@ -14,6 +15,9 @@ describe("openSamlLoginPopup", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+
+    popup.closed = false;
+
     jest.spyOn(window, "open").mockReturnValue(popupWindow);
   });
 
@@ -66,5 +70,34 @@ describe("openSamlLoginPopup", () => {
 
     await expect(login).resolves.toEqual(authData);
     expect(popup.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an unexpected popup origin", async () => {
+    const login = openSamlLoginPopup(idpUrl, instanceUrl);
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { type: "SAML_AUTH_COMPLETE", authData },
+        origin: "https://other.example.com",
+        source: popupWindow,
+      }),
+    );
+
+    popup.closed = true;
+    jest.advanceTimersByTime(1000);
+
+    await expect(login).rejects.toMatchObject({
+      code: "SAML_POPUP_ORIGIN_MISMATCH",
+    });
+  });
+
+  it("reports a Site URL origin mismatch before opening the popup", async () => {
+    await expect(
+      openSamlLoginPopup(idpUrl, instanceUrl, mismatchedPopupUrl),
+    ).rejects.toMatchObject({
+      code: "SAML_SITE_URL_MISMATCH",
+    });
+
+    expect(window.open).not.toHaveBeenCalled();
   });
 });
