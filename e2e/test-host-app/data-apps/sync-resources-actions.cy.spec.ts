@@ -395,12 +395,10 @@ describe(
         });
       });
 
-      it("grants view-data on a query action's own database as well as its model's", () => {
+      it("grants view-data only on a model's table, not a native action's database", () => {
         H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
         cy.get<number>("@modelId").then((modelId) => {
-          // A query action may run against a database other than its model's,
-          // and execution is blocked unless both are viewable.
           H.createAction({
             name: "Report",
             type: "query",
@@ -416,18 +414,23 @@ describe(
             declareDataAppActions(APP_ROOT(), [action.id]);
             sync();
 
-            dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-              getViewDataPermissionByGroup(groupId).should((permissions) => {
-                expect(permissions[String(WRITABLE_DB_ID)]).to.eq(
-                  "unrestricted",
-                );
-                expect(permissions[String(SAMPLE_DB_ID)]).to.eq("unrestricted");
-              });
+            cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+              H.getTableId({ name: TEST_TABLE }).then((tableId) => {
+                cy.request("/api/permissions/graph").then(({ body: graph }) => {
+                  const granted = graph.groups[app.permission_group_id];
+                  const modelViewData = granted[WRITABLE_DB_ID]["view-data"];
 
-              // That a granted copy then runs for a member of the group is the
-              // sibling test's job; this one cannot execute its own action,
-              // since a query action against the read-only sample database has
-              // nothing to write.
+                  expect(modelViewData).not.to.eq("unrestricted");
+                  expect(
+                    Object.values(modelViewData)
+                      .flatMap(Object.keys)
+                      .map(Number),
+                  ).to.deep.eq([tableId]);
+                  expect(granted[SAMPLE_DB_ID]?.["view-data"]).not.to.eq(
+                    "unrestricted",
+                  );
+                });
+              });
             });
           });
         });

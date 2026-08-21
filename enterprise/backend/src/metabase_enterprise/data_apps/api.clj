@@ -103,11 +103,12 @@
 (def ^:private QueryResolutionResponse
   [:map
    [:database_id ms/PositiveInt]
-   [:dataset_query ms/Map]])
+   [:dataset_query ms/Map]
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 (def ^:private ResourcePermissionsRequest
   [:map
-   [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -217,11 +218,14 @@
         _           (api/check-400 (= (keyword source-type) :table)
                                    "Data app query definitions must use a table source.")
         database-id (api/check-404 (data-apps.db/table-database-id table-id))
-        query        (-> (lib-be/application-database-metadata-provider database-id)
-                         (lib/test-query query-def)
-                         lib/prepare-for-serialization)]
+        query        (lib/test-query (lib-be/application-database-metadata-provider database-id) query-def)]
     {:database_id database-id
-     :dataset_query query}))
+     :dataset_query (lib/prepare-for-serialization query)
+     :table_ids     (->> (concat (lib/all-source-table-ids query)
+                                 (lib/all-implicitly-joined-table-ids query))
+                         set
+                         sort
+                         vec)}))
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
   "Create or reuse a data app draft before its first repository import."
@@ -234,14 +238,14 @@
     (merge app (data-app.resources/resource-entity-ids app))))
 
 (api.macros/defendpoint :put ["/:slug/resources/permissions" :slug slug-regex] :- DataAppResponse
-  "Reconcile the database view-data permissions required by a data app's synchronized
+  "Reconcile the table view-data permissions required by a data app's synchronized
    queries and actions."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   {database-ids :database_ids} :- ResourcePermissionsRequest]
+   {table-ids :table_ids} :- ResourcePermissionsRequest]
   (api/check-superuser)
   (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
-    (data-app.resources/reconcile-view-data! app (set database-ids)))
+    (data-app.resources/reconcile-view-data! app (set table-ids)))
   (data-apps.db/non-blob-data-app-by-slug slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]

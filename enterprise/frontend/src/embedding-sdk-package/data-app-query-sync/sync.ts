@@ -182,7 +182,7 @@ export async function syncResources({
     log,
   );
 
-  const queryDatabaseIds = await reconcileQueries({
+  const queryTableIds = await reconcileQueries({
     appRoot,
     slug,
     collectionId: app.resource_collection_id,
@@ -191,7 +191,7 @@ export async function syncResources({
     client,
     log,
   });
-  const modelDatabaseIds = await reconcileModels({
+  const modelTableIds = await reconcileModels({
     appRoot,
     collectionId: app.resource_collection_id,
     actions,
@@ -200,10 +200,9 @@ export async function syncResources({
     log,
   });
 
-  // Actions run against their model's database, so it has to be viewable too.
-  const databaseIds = [
-    ...new Set([...queryDatabaseIds, ...modelDatabaseIds]),
-  ].sort((a, b) => a - b);
+  const tableIds = [...new Set([...queryTableIds, ...modelTableIds])].sort(
+    (a, b) => a - b,
+  );
 
-  await client.reconcilePermissions(slug, databaseIds);
+  await client.reconcilePermissions(slug, tableIds);
 }

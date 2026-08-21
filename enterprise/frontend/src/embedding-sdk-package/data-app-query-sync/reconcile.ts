@@ -468,6 +468,6 @@ export async function reconcileQueries({
   }
 
   return [
-    ...new Set(resolvedQueries.map(({ resolved }) => resolved.database_id)),
+    ...new Set(resolvedQueries.flatMap(({ resolved }) => resolved.table_ids)),
   ].sort((a, b) => a - b);
 }

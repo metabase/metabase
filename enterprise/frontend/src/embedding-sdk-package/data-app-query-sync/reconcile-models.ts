@@ -5,6 +5,7 @@ import { writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
+import { collectTableIds } from "./table-ids";
 import type {
   ActionLockEntry,
   DiscoveredAction,
@@ -389,7 +390,7 @@ async function removeUnusedModels(
 /**
  * Makes the data app collection hold exactly the models its actions belong to,
  * copying a model when its first action appears and deleting it when its last
- * action goes away. Returns the databases those models read.
+ * action goes away. Returns the tables those models and actions read.
  */
 export async function reconcileModels({
   appRoot,
@@ -429,21 +430,13 @@ export async function reconcileModels({
 
   await removeUnusedModels(context, previousModels, new Set(desired.keys()));
 
-  const databaseIds = new Set<number>();
+  const modelQueries = [...sourceModels.values()].map(
+    (model) => model.dataset_query,
+  );
 
-  for (const model of sourceModels.values()) {
-    if (isPositiveInteger(model.database_id)) {
-      databaseIds.add(model.database_id);
-    }
-  }
+  const actionQueries = resolved.flatMap(({ source }) =>
+    source.dataset_query ? [source.dataset_query] : [],
+  );
 
-  for (const { source } of resolved) {
-    // A query action carries its own `database_id`, which the backend allows to
-    // differ from its model's; it must be viewable too or execution is blocked.
-    if (isPositiveInteger(source.database_id)) {
-      databaseIds.add(source.database_id);
-    }
-  }
-
-  return [...databaseIds].sort((a, b) => a - b);
+  return collectTableIds([...modelQueries, ...actionQueries]);
 }
