@@ -38,7 +38,12 @@
       (testing "appends the Segment col with :source :breakout (parity with FE getHeatMapSeries)"
         (is (= [{:name "dim"}
                 {:name "value"}
-                {:name "Segment" :display_name "Segment" :source :breakout}]
+                {:name           "Segment"
+                 :display_name   "Segment"
+                 :base_type      :type/Text
+                 :effective_type :type/Text
+                 :field_ref      [:field "Segment" {:base-type :type/Text}]
+                 :source         :breakout}]
                (get-in result [:data :cols]))))
       (testing "unions all rows, appending the EQ segment_name as the Segment value"
         (is (= [["A" 1 "All"]
@@ -58,7 +63,12 @@
           result (composite/combine [t1 t2] {:graph.split_panels true})]
       (is (= [{:name "ts"}
               {:name "count"}
-              {:name "Series" :display_name "Series" :source :breakout}]
+              {:name           "Series"
+               :display_name   "Series"
+               :base_type      :type/Text
+               :effective_type :type/Text
+               :field_ref      [:field "Series" {:base-type :type/Text}]
+               :source         :breakout}]
              (get-in result [:data :cols])))
       (is (= [["2026-01" 10 "US"]
               ["2026-02" 20 "US"]
@@ -88,3 +98,45 @@
           result (composite/combine [t1 t2] {})]
       (is (= :completed (:status result)))
       (is (= {:scaffolding :ok} (:json_query result))))))
+
+(deftest ^:parallel combine-gives-distinct-discriminators-to-unlabeled-queries
+  (testing "Two EQs with no `:segment_name` must not collapse into one series"
+    (let [t1     {:eq        {:segment_name nil}
+                  :qp-result {:status :completed :row_count 1
+                              :data {:cols [{:name "x"} {:name "y"}] :rows [["a" 1]]}}}
+          t2     {:eq        {:segment_name nil}
+                  :qp-result {:status :completed :row_count 1
+                              :data {:cols [{:name "x"} {:name "y"}] :rows [["a" 2]]}}}
+          rows   (get-in (composite/combine [t1 t2] {}) [:data :rows])
+          labels (map peek rows)]
+      (is (= 2 (count (distinct labels)))
+          "each source query gets its own discriminator value"))))
+
+(deftest ^:parallel combine-falls-back-to-query-name-before-all
+  (testing "An EQ with no `:segment_name` but a `:name` uses the name as its discriminator"
+    (let [t1     {:eq        {:segment_name nil :name "Orders over time"}
+                  :qp-result {:status :completed :row_count 1
+                              :data {:cols [{:name "x"} {:name "y"}] :rows [["a" 1]]}}}
+          t2     (eq-result "Enterprise" [{:name "x"} {:name "y"}] [["a" 2]])]
+      (is (= [["a" 1 "Orders over time"] ["a" 2 "Enterprise"]]
+             (get-in (composite/combine [t1 t2] {}) [:data :rows]))))))
+
+(deftest ^:parallel combine-disambiguates-duplicate-labels
+  (testing "Two EQs sharing a `:segment_name` still get distinct discriminator values"
+    (let [t1     (eq-result "SMB" [{:name "x"} {:name "y"}] [["a" 1]])
+          t2     (eq-result "SMB" [{:name "x"} {:name "y"}] [["a" 2]])
+          labels (map peek (get-in (composite/combine [t1 t2] {}) [:data :rows]))]
+      (is (= 2 (count (distinct labels)))))))
+
+(deftest ^:parallel discriminator-col-carries-type-information
+  (testing "The synthetic discriminator col has the type keys every other col carries, so the FE can format it and resolve it by column key"
+    (let [t1  (eq-result "US" [{:name "ts"} {:name "count"}] [["2026-01" 10]])
+          t2  (eq-result "EU" [{:name "ts"} {:name "count"}] [["2026-01" 30]])
+          col (peek (get-in (composite/combine [t1 t2] {}) [:data :cols]))]
+      (is (= {:name           "Series"
+              :display_name   "Series"
+              :base_type      :type/Text
+              :effective_type :type/Text
+              :field_ref      [:field "Series" {:base-type :type/Text}]
+              :source         :breakout}
+             col)))))

@@ -299,3 +299,71 @@
           large   (measure 25)]
       (is (< large (* 2 small))
           (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+
+;;; --------------------------------- Summary-document content gate ---------------------------------
+
+(defn- doc-content-visible? [document user-kw]
+  (request/with-current-user (mt/user->id user-kw)
+    (derived-perms/doc-content-visible-to-current-user? document)))
+
+(deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
+  (testing "a Summary document whose exploration the viewer may not see"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+      (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
+        (testing "is denied when the instance carries :exploration_id"
+          (is (false? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta)))))
+        (testing "is denied on a partial select too — the shape `collection-children-query` produces, which omits :exploration_id"
+          (is (false? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))
+        (testing "is denied for an instance carrying neither :exploration_id nor :id — nothing left to adjudicate on"
+          (is (false? (boolean (doc-content-visible? {:name "Summary"} :rasta)))))))))
+
+(deftest doc-content-gate-leaves-ordinary-documents-alone-test
+  (testing "a document with no owning exploration is visible, on a full or partial select"
+    (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
+      (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
+      (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+
+;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
+
+(defn- card-readable? [card-id user-kw]
+  (request/with-current-user (mt/user->id user-kw)
+    (boolean (mi/can-read? (t2/select-one :model/Card :id card-id)))))
+
+(deftest card-scoped-to-a-gated-document-is-not-readable-test
+  (testing "a Card scoped to an exploration Summary document"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl   (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document   {doc-id :id}  {:exploration_id expl
+                                                      :collection_id  coll-id
+                                                      :creator_id     (mt/user->id :lucky)}
+                     ;; The ephemeral Summary card: its name and dataset_query are copied from the
+                     ;; ExplorationQuery, which embeds dimension values discovered under the
+                     ;; creator's lens.
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :document_id   doc-id
+                                                      :name          "Orders for Customer = ACME Corp over time"}
+                     ;; A sibling card in the same collection, owned by no document.
+                     :model/Card       {plain-id :id} {:collection_id coll-id :name "Plain card"}]
+        ;; Collection read must PASS, so that anything denied below is denied by the content gate
+        ;; and not merely by collection permissions.
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (testing "sanity: the owning Summary document is itself gated for this viewer"
+          (is (false? (boolean (request/with-current-user (mt/user->id :rasta)
+                                 (mi/can-read? (t2/select-one :model/Document :id doc-id)))))))
+        (testing "is not readable by a viewer whose data-access lens is incompatible, even though they can read the collection"
+          (is (false? (card-readable? card-id :rasta))))
+        (testing "is still readable by a superuser, matching the gate's standing exemption"
+          (is (true? (card-readable? card-id :crowberto))))
+        (testing "leaves cards that belong to no document alone"
+          (is (true? (card-readable? plain-id :rasta))))))))
+
+(deftest card-scoped-to-an-ordinary-document-is-unaffected-test
+  (testing "a Card scoped to a Document with no owning exploration is readable on collection perms alone"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Document   {doc-id :id}  {:collection_id coll-id
+                                                    :creator_id    (mt/user->id :lucky)}
+                   :model/Card       {card-id :id} {:collection_id coll-id :document_id doc-id}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (is (true? (card-readable? card-id :rasta))))))

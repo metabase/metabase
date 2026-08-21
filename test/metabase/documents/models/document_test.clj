@@ -805,3 +805,41 @@
             (binding [mi/*deserializing?* true]
               (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
+
+(defn- export-document-ast
+  "Run a document row through the serdes `:document` export transform and return the exported AST."
+  [document]
+  ((get-in (serdes/make-spec "Document" {}) [:transform :document :export-with-context])
+   document :document nil))
+
+(deftest document-serdes-static-card-embed-test
+  (testing "A static (snapshot-backed) cardEmbed"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [node (-> {:content_type "application/json+vnd.prose-mirror"
+                      :document     {:type    "doc"
+                                     :content [{:type  "cardEmbed"
+                                                :attrs {:id               card-id
+                                                        :stored_result_id 987654321}}]}}
+                     export-document-ast
+                     :content
+                     first)]
+        (testing "still rewrites its Card :id to a portable serdes path — the ephemeral Card is a real serdes entity"
+          (is (vector? (-> node :attrs :id)))
+          (is (= "Card" (-> node :attrs :id first :model))))
+        (testing "drops :stored_result_id — a raw local id for a row that is not a serdes entity, which would resolve to an unrelated snapshot on import"
+          (is (not (contains? (:attrs node) :stored_result_id))))))))
+
+(deftest document-serdes-live-card-embed-keeps-attrs-test
+  (testing "A live cardEmbed exports its :id as a portable path and is otherwise untouched"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [node (-> {:content_type "application/json+vnd.prose-mirror"
+                      :document     {:type    "doc"
+                                     :content [{:type  "cardEmbed"
+                                                :attrs {:id card-id :_id "abc"}}]}}
+                     export-document-ast
+                     :content
+                     first)]
+        (is (= "Card" (-> node :attrs :id first :model)))
+        (is (= "abc" (-> node :attrs :_id)))))))

@@ -49,6 +49,24 @@
   doc-content-visibility-fn
   (atom (fn [_doc] true)))
 
+(def ^:private ^:dynamic *content-gate-pending*
+  "Document ids whose content gate is currently being evaluated on this thread.
+
+  The gate is re-entrant by construction: adjudicating a document's content runs query-permission
+  checks, and those read-check the source Cards of the queries involved — a Card scoped to a
+  Document delegates back to that Document's gate. A document whose visibility depends on itself
+  has no answer, so deny rather than recur into a stack overflow inside an authorization check."
+  #{})
+
+(defn- content-visible?
+  "Run the registered content-visibility gate for `document`, guarding against re-entry."
+  [document]
+  (let [id (:id document)]
+    (if (contains? *content-gate-pending* id)
+      false
+      (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
+        (boolean (@doc-content-visibility-fn document))))))
+
 (defn register-doc-content-visibility-fn!
   "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
   consuming module's init. `f` takes a document and returns whether the current user may see its
@@ -62,14 +80,14 @@
 (defmethod mi/can-read? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :read instance)
-        (boolean (@doc-content-visibility-fn instance))))
+        (content-visible? instance)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :write instance)
-        (boolean (@doc-content-visibility-fn instance))))
+        (content-visible? instance)))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
@@ -223,10 +241,22 @@
    "dashboard" "Dashboard"
    "table"     "Table"})
 
+(def ^:private non-portable-card-embed-attrs
+  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a portable
+  reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
+  ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
+  verbatim would, on import, either dangle or silently resolve to an unrelated instance's
+  snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
+  which is portable and renders the same query."
+  [:stored_result_id])
+
 (defn- id->entity-id
   [{{:keys [model] :or {model "card"} :as attrs} :attrs type :type :as node}]
   (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (id-key attrs)]
+        id (id-key attrs)
+        node (cond-> node
+               (= prose-mirror/card-embed-type type)
+               (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
     (if-let [db-model (t2/select-one (ast-model->db-model model) :id id)]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
@@ -241,20 +271,22 @@
       (u/prog1 node
         (log/warn "Model not found at path" (id-key attrs))))))
 
-(defn- live-card-embed?
-  "True for a `cardEmbed` node carrying a live-Card reference. Static-mode embeds (with
-  `:stored_result_id` and a nil `:id`) are skipped during serdes — `stored_result` rows
-  are not first-class serdes entities."
+(defn- card-embed-with-card?
+  "True for a `cardEmbed` node carrying a Card reference serdes can rewrite.
+
+  Static (snapshot-backed) embeds carry one too — the exploration Summary materializes a real
+  ephemeral Card alongside the snapshot — so this is *not* a live-vs-static test. What makes a
+  static embed non-portable is its `:stored_result_id`, which [[id->entity-id]] drops."
   [node]
   (and (= prose-mirror/card-embed-type (:type node))
        (pos-int? (-> node :attrs :id))))
 
 (defn- serdes-portable-node?
   "True for the AST nodes whose ids serdes rewrites between database ids and entity ids:
-  smartLinks and live (non-static) cardEmbeds."
+  smartLinks and cardEmbeds that reference a Card."
   [node]
   (or (= prose-mirror/smart-link-type (:type node))
-      (live-card-embed? node)))
+      (card-embed-with-card? node)))
 
 (defn- export-document-content
   "Transform live cardEmbed / smartLink nodes to use entity IDs instead of database IDs"

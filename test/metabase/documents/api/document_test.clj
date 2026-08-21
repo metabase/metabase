@@ -8,6 +8,8 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -474,7 +476,10 @@
                                                      :content [{:type "cardEmbed"
                                                                 :attrs {:id -10}}]}
                                           :cards {-10 {:name "Ad hoc Card"
-                                                       :dataset_query (mt/mbql-query venues)
+                                                       ;; Lib, not the deprecated `mt/mbql-query`
+                                                       :dataset_query (lib/->legacy-MBQL
+                                                                       (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
                                                        :display :table
                                                        :visualization_settings {}}}})
             new-card-id (-> result :document :content first :attrs :id)]

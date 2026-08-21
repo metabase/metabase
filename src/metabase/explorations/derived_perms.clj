@@ -182,14 +182,28 @@
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
                                                     (lens-stamped-threads thread-ids))))))))
 
+(defn- exploration-content-visible?
+  "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
+  [exploration-id]
+  (if (nil? exploration-id)
+    true
+    (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
+      (or (empty? thread-ids)
+          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))))
+
 (defn doc-content-visible-to-current-user?
   "Content-visibility gate installed via
   [[metabase.documents.core/register-doc-content-visibility-fn!]] at init: a document owned by
   an exploration (the Summary) embeds verbatim result values, so its content follows the
   exploration's threads' derived-data visibility. Documents outside explorations are unaffected."
   [document]
-  (if-let [exploration-id (:exploration_id document)]
-    (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
-      (or (empty? thread-ids)
-          (= thread-ids (thread-ids-with-visible-derived-data thread-ids))))
-    true))
+  (cond
+    (contains? document :exploration_id)
+    (exploration-content-visible? (:exploration_id document))
+
+    (:id document)
+    (exploration-content-visible?
+     (t2/select-one-fn :exploration_id :model/Document :id (:id document)))
+
+    :else
+    false))

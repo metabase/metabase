@@ -1,10 +1,13 @@
 (ns metabase.queries.models.stored-result-use
   "Tracks references to a `stored_result` snapshot. Each row records one referencing entity:
   exactly one of `card_id` (a document cardEmbed's materialized Card) or `exploration_id`
-  (the exploration that produced the snapshot) is set. Used for lifecycle/GC (not for read authorization), and by
+  (the exploration that produced the snapshot) is set. Used for lifecycle/GC, by
   the cached card-query endpoint to validate that a client-supplied `stored_result_id` is actually
-  paired with the card being read-checked. Lives in the queries module alongside `:model/StoredResult`."
+  paired with the card being read-checked, and by [[assert-can-view-card-snapshots!]] to enumerate
+  every snapshot a Card renders from. Lives in the queries module alongside `:model/StoredResult`."
   (:require
+   [metabase.queries.cached-result :as cached-result]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -48,3 +51,16 @@
         (t2/insert! :model/StoredResultUse
                     {:stored_result_id sr-id
                      :card_id          new-card-id})))))
+
+(mu/defn assert-can-view-card-snapshots!
+  "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
+  from."
+  [card-id :- ms/PositiveInt]
+  (let [snapshots (t2/select :model/StoredResult
+                             :id [:in ^:allow-subquery {:select [:stored_result_id]
+                                                        :from   [:stored_result_use]
+                                                        :where  [:= :card_id card-id]}])]
+    (when (empty? snapshots)
+      (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
+    (doseq [snapshot snapshots]
+      (cached-result/assert-can-view-cached-result! snapshot))))

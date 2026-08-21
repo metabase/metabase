@@ -111,6 +111,26 @@
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
 
+(defn- composite-data-access-token
+  "The lens stamp for a composite snapshot built from `eq-results`.
+
+  A `stored_result`'s `data_access_token` records the sandbox / impersonation / routing lens its
+  rows were computed under, and the read gate denies any non-superuser whose own lens differs.
+
+  Only one token can describe the row, so every source has to agree on it. A blend of two
+  different lenses has no single honest stamp: whichever one was picked, half the rows would be
+  served under a lens they were not computed under. Refuse instead of persisting a snapshot the
+  gate cannot adjudicate."
+  [eq-results]
+  (let [tokens (into #{} (map (comp :data_access_token :sr)) eq-results)]
+    (when (contains? tokens nil)
+      (throw (ex-info (tru "Cannot combine these results: a source result has no recorded data-access context.")
+                      {:status-code 400})))
+    (when (> (count tokens) 1)
+      (throw (ex-info (tru "Cannot combine these results: they were computed under different data-access contexts.")
+                      {:status-code 400})))
+    (first tokens)))
+
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialise an ephemeral `report_card` that represents a *composite chart* — possibly
   built from multiple `ExplorationQuery` snapshots combined into one — for a single document
@@ -131,8 +151,9 @@
                      `buildSeries` / `getDisplay`, baked onto the card verbatim.
 
   For a multi-id combine, inserts a `StoredResultUse` row for the new composite snapshot plus
-  one per source stored_result, so GC of any source cascades through. For a single id, inserts
-  the one row tying the card to the (reused) source snapshot.
+  one per source stored_result, so GC of any source cascades through and the read gate can
+  compare the viewer against every source.
+  For a single id, inserts the one row tying the card to the (reused) source snapshot.
 
   Returns a map `{:card-id … :stored-result-id … :primary-eq …}` — `stored-result-id` is the
   new composite row for a combine, or the source snapshot id for a single-query embed;
@@ -140,7 +161,8 @@
   callers can build the chart deep link without re-fetching it."
   [eq-ids document-id collection-id creator
    {:keys [display visualization-settings]}]
-  (let [eq-results    (load-eq-results eq-ids)
+  (let [eq-ids        (distinct eq-ids)
+        eq-results    (load-eq-results eq-ids)
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
@@ -149,7 +171,10 @@
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (doseq [dq (distinct (map (fn [{:keys [eq sr]}]
+                                (or (:dataset_query eq) (:dataset_query sr)))
+                              eq-results))]
+      (query-perms/check-run-permissions-for-query dq))
     ;; Single-query embeds reuse the source snapshot as-is — `composite/combine` returned it
     ;; unchanged, so copying its bytes into a fresh stored_result would just duplicate them.
     ;; Only a genuine multi-snapshot combine produces new cols/rows that need their own row.
@@ -167,7 +192,10 @@
                                           :dataset_query dataset-query
                                           ;; `composite/combine` refreshed :row_count to the
                                           ;; combined row set's size.
-                                          :row_count     (:row_count composite-qp)})))
+                                          :row_count     (:row_count composite-qp)
+                                          ;; Without this the read gate denies the composite to
+                                          ;; every non-superuser. See [[composite-data-access-token]].
+                                          :data_access_token (composite-data-access-token eq-results)})))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))

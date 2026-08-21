@@ -2904,3 +2904,135 @@
             (is (nil? (:completed_at thread)))
             (is (nil? (:canceled_at thread)))
             (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))))
+
+;;; ------------------------ composite (multi-query) Summary embeds ------------------------
+
+(defn- two-ready-queries!
+  "An exploration with (at least) two `done` ExplorationQueries, each backed by a fake snapshot and
+  given the metric Card's real `dataset_query`. Returns `{:exploration-id :document-id :query-ids}`."
+  [u metric]
+  (let [resp   (create-exploration! u
+                                    {:name "composite"
+                                     :metrics [{:card_id (:id metric)
+                                                :dimension_mappings [{:dimension_id (duid "d1")
+                                                                      :table_id (mt/id :venues)
+                                                                      :target ["field" {} (mt/id :venues :price)]}
+                                                                     {:dimension_id (duid "d2")
+                                                                      :table_id (mt/id :venues)
+                                                                      :target ["field" {} (mt/id :venues :name)]}]}]
+                                     :dimensions [{:dimension_id (duid "d1") :display_name "Price"
+                                                   :effective_type "type/Number"}
+                                                  {:dimension_id (duid "d2") :display_name "Name"
+                                                   :effective_type "type/Text"}]})
+        qids   (->> resp :threads first :queries
+                    (filter #(= "default" (:query_type %)))
+                    (map :id) (take 2) vec)
+        qp-out {:status :completed
+                :data   {:cols [{:name "x" :source :breakout}
+                                {:name "y" :source :aggregation}]
+                         :rows [["a" 3] ["b" 1]]}
+                :row_count 2}]
+    (assert (= 2 (count qids)) "fixture needs two exploration queries")
+    (doseq [qid qids]
+      (store-fake-result! qid qp-out)
+      (mark-done! qid)
+      (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)}))
+    {:exploration-id (:id resp) :document-id (-> resp :document :id) :query-ids qids}))
+
+(defn- combine-with-perms-stubbed!
+  "Run the composite build with the run-permissions check stubbed out. The temp users these tests
+  create hold no data perms, and `create-card!` runs the same check — the existing single-query
+  test stubs it for the same reason. Tests that are *about* the permission check don't use this."
+  [& args]
+  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+    (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
+
+(deftest composite-snapshot-carries-a-data-access-token-test
+  (testing "A multi-query composite snapshot is stamped with its sources' data-access lens — without one the
+            read gate denies the embed to every non-superuser, including the collaborators it was added for"
+    (mt/with-temp [:model/User u {:email "composite-token@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc      (t2/select-one :model/Document :id document-id)
+            result   (combine-with-perms-stubbed!
+                      query-ids document-id (:collection_id doc) u
+                      {:display "bar" :visualization-settings {}})
+            src-token (t2/select-one-fn :data_access_token :model/StoredResult
+                                        :id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                                              :exploration_query_id (first query-ids)))]
+        (is (not= (:stored-result-id result)
+                  (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                    :exploration_query_id (first query-ids)))
+            "a genuine multi-snapshot combine writes its own composite row")
+        (is (= src-token
+               (t2/select-one-fn :data_access_token :model/StoredResult :id (:stored-result-id result)))
+            "the composite carries the same lens its sources were computed under")))))
+
+(deftest composite-refuses-to-blend-different-data-access-lenses-test
+  (testing "Sources computed under different lenses have no single honest stamp, so the combine is refused
+            rather than persisted under one of them"
+    (mt/with-temp [:model/User u {:email "composite-mixed@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc    (t2/select-one :model/Document :id document-id)
+            sr-2   (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                     :exploration_query_id (second query-ids))]
+        (t2/update! :model/StoredResult sr-2 {:data_access_token {:sandbox {1 "deadbeef"}}})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"different data-access contexts"
+             (combine-with-perms-stubbed!
+              query-ids document-id (:collection_id doc) u
+              {:display "bar" :visualization-settings {}})))
+        (testing "and a source with no recorded lens at all is refused too"
+          (t2/update! :model/StoredResult sr-2 {:data_access_token nil})
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"no recorded data-access context"
+               (combine-with-perms-stubbed!
+                query-ids document-id (:collection_id doc) u
+                {:display "bar" :visualization-settings {}}))))))))
+
+(deftest composite-checks-run-permissions-for-every-source-query-test
+  (testing "`combine` copies the rows of every source into the composite, so the permission check has to cover
+            every source query — not just the first, which would let a caller materialise rows from a table
+            they cannot read"
+    (mt/with-temp [:model/User u {:email "composite-perms@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            doc     (t2/select-one :model/Document :id document-id)
+            ;; Lib rather than the deprecated `mt/mbql-query`; same idiom used elsewhere here.
+            other-q (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
+                                         (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                             (lib/aggregate (lib/count)))))]
+        ;; Give the second source a genuinely different query, so "checked the first one" and
+        ;; "checked them all" are distinguishable.
+        (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
+        (let [checked (atom [])]
+          (with-redefs [query-perms/check-run-permissions-for-query
+                        (fn [q] (swap! checked conj q) nil)]
+            (eqr/create-ephemeral-card-for-exploration-queries!
+             query-ids document-id (:collection_id doc) u
+             {:display "bar" :visualization-settings {}}))
+          (is (= 2 (count @checked))
+              "both source queries are permission-checked")
+          (is (= (set (map #(t2/select-one-fn :dataset_query :model/ExplorationQuery :id %) query-ids))
+                 (set @checked))
+              "and they are the two sources' own queries, not the first one twice"))))))
+
+(deftest composite-collapses-duplicate-exploration-query-ids-test
+  (testing "A repeated exploration_query_id is collapsed: it passes the caller's de-duped ownership check, and
+            left alone would duplicate every row into the composite and insert a duplicate pairing row"
+    (mt/with-temp [:model/User u {:email "composite-dupes@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [{:keys [document-id query-ids]} (two-ready-queries! u metric)
+            qid    (first query-ids)
+            doc    (t2/select-one :model/Document :id document-id)
+            src-sr (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
+                                     :exploration_query_id qid)
+            result (combine-with-perms-stubbed!
+                    [qid qid] document-id (:collection_id doc) u
+                    {:display "bar" :visualization-settings {}})]
+        (is (= src-sr (:stored-result-id result))
+            "collapses to the single-query path, reusing the source snapshot rather than combining it with itself")
+        (is (= [src-sr] (mapv :stored_result_id
+                              (t2/select :model/StoredResultUse :card_id (:card-id result))))
+            "exactly one pairing row, not one per repeat")))))

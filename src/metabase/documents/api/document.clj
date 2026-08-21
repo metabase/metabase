@@ -135,7 +135,7 @@
   - map of old-card-id -> cloned-card-id"
   [{:keys [id collection_id] :as document}]
   (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos? (-> % :attrs :id)))
+                                                                (pos-int? (-> % :attrs :id)))
                                                        (-> % :attrs :id)))
         to-clone (when (seq card-ids)
                    (t2/select :model/Card {:where [:and [:in :id card-ids]

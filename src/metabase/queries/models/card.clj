@@ -135,6 +135,58 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(defn- parent-document-id
+  "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
+  nor a primary key to resolve it from.
+
+  A narrowed `t2/select` that dropped the column must not read as \"belongs to no document\" — that
+  would let a caller widen access just by shortening its column list — so the column is resolved
+  from the primary key rather than assumed. The one shape that cannot be resolved is the synthetic
+  `{:collection_id …}` stub [[metabase.query-permissions.impl]] builds for source-card permission
+  checks: it carries no identity at all. Those decide whether a query may *run*, have never been
+  document-aware, and denying them would break every query with a source card — so they keep the
+  collection-perms answer they have always had."
+  [card]
+  (cond
+    (contains? card :document_id) (:document_id card)
+    (:id card)                    (t2/select-one-fn :document_id :model/Card :id (:id card))
+    :else                         ::not-adjudicable))
+
+(defn- parent-document-permits?
+  "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
+
+  A Card scoped to a Document is a child of it, and the Document — not the collection — is the
+  authority on who may see it. An exploration Summary materialises ephemeral Cards whose `name` and
+  `dataset_query` are copied from the `ExplorationQuery` they render, and those embed dimension
+  values discovered under the *creator's* data-access lens (see
+  [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
+  material — withholding it is the entire reason the Document's content gate exists — so a Card
+  that carries those values must be gated exactly as the document embedding it is."
+  [card read-or-write]
+  (let [document-id (parent-document-id card)]
+    (if (or (= ::not-adjudicable document-id) (nil? document-id))
+      true
+      (case read-or-write
+        :read  (mi/can-read? :model/Document document-id)
+        :write (mi/can-write? :model/Document document-id)))))
+
+;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
+;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped
+;; being true for Cards once a Card could be scoped to a Document (see [[parent-document-permits?]]).
+;; Its docstring prescribes exactly this: drop the macro call and write the richer method by hand.
+;; The collection half still delegates to the same helper the macro installed, so the audit-collection
+;; rule it carries is preserved verbatim.
+;;
+;; Cost: Cards leave semantic search's collection-id-only fast path and take its slow path instead —
+;; one batched `t2/select` per result page rather than none. The instances it selects are full rows,
+;; so the document check below adds no further queries.
+(defmethod mi/can-read? :model/Card
+  ([instance]
+   (and (perms/can-read-via-parent-collection? (:collection_id instance))
+        (parent-document-permits? instance :read)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Card :id pk))))
+
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
@@ -145,11 +197,10 @@
           (some? (:id (audit/default-audit-collection)))
           ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
-    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
+    (parent-document-permits? instance :write)))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
-
-(perms/define-collection-based-visibility! :model/Card)
 
 (defn model?
   "Returns true if `card` is a model."

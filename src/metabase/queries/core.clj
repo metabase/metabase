@@ -60,6 +60,7 @@
   viewer-can-view-cached-result?
   cached-dataset]
  [metabase.queries.models.stored-result-use
+  assert-can-view-card-snapshots!
   carry-pairings-for-document!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}

@@ -5,10 +5,11 @@
 
   Driver: the FE-sent `visualization_settings`.
 
-  Every multi-snapshot combine appends a discriminator column whose value is
-  the source `ExplorationQuery`'s hydrated `:segment_name` (the FE shows the
-  same value in its live-preview legend / pivot), falling back to `(All)` when
-  the EQ isn't segment-derived.
+  Every multi-snapshot combine appends a discriminator column whose value
+  identifies the source `ExplorationQuery` — its hydrated `:segment_name` (the
+  FE shows the same value in its live-preview legend / pivot), falling back to
+  the EQ's own `:name`, then to `(All)`. The values are then made unique: two
+  sources sharing a label would otherwise collapse into a single series.
 
   - `N = 1` — pass-through; the lone qp-result is the composite.
   - `:table.pivot` truthy — treat as a heat-map combine. Append a
@@ -30,23 +31,54 @@
   cols. `:name` is the untranslated protocol key; `:display_name` is
   localized. `:source :breakout` mirrors the FE's `getHeatMapSeries`
   shape so downstream column-resolution code treats it like a real
-  breakout."
+  breakout.
+
+  The composite result is handed to the FE verbatim, so this column has to carry
+  the same type keys every real col does — the FE formats by `:base_type` and
+  resolves a `graph.dimensions` entry to a column by `:field_ref`. The values
+  are always the discriminator strings [[combine-rows]] appends, hence
+  `:type/Text`; the `[:field \"name\" …]` ref is the shape a native query's cols
+  use for a column that has no Field behind it."
   [col-name display-name]
-  {:name         col-name
-   :display_name display-name
-   :source       :breakout})
+  {:name           col-name
+   :display_name   display-name
+   :base_type      :type/Text
+   :effective_type :type/Text
+   :field_ref      [:field col-name {:base-type :type/Text}]
+   :source         :breakout})
+
+(defn- discriminator-values
+  "One discriminator value per eq-result, positionally aligned with `eq-results`.
+
+  The label is the EQ's hydrated `:segment_name`, then its own `:name`, then
+  `(All)`. Whatever the source, the values must be *distinct*: they are the
+  series/pivot key, so two sources sharing one would render as a single series
+  carrying both sources' rows. Only labels that actually repeat are suffixed
+  with their 1-based position, which leaves the common shape — one unlabeled
+  \"(All)\" query alongside named segments — reading exactly as before."
+  [eq-results]
+  (let [labels (mapv (fn [{:keys [eq]}]
+                       (or (not-empty (:segment_name eq))
+                           (not-empty (:name eq))
+                           (tru "(All)")))
+                     eq-results)
+        dupes  (into #{} (keep (fn [[label n]] (when (> n 1) label)))
+                     (frequencies labels))]
+    (into []
+          (map-indexed (fn [i label]
+                         (if (contains? dupes label)
+                           (str label " " (inc i))
+                           label)))
+          labels)))
 
 (defn- combine-rows
-  "Union rows across the source qp-results, appending the source EQ's
-  hydrated `:segment_name` to each row as the discriminator value (falling
-  back to `(All)` for non-segment EQs)."
+  "Union rows across the source qp-results, appending each source's
+  discriminator value (see [[discriminator-values]]) to every one of its rows."
   [eq-results]
-  (->> eq-results
-       (mapcat (fn [{:keys [eq qp-result]}]
-                 (let [discriminator-value (or (:segment_name eq) (tru "(All)"))
-                       rows                (get-in qp-result [:data :rows])]
-                   (map #(conj (vec %) discriminator-value) rows))))
-       vec))
+  (vec (mapcat (fn [{:keys [qp-result]} discriminator-value]
+                 (map #(conj (vec %) discriminator-value) (get-in qp-result [:data :rows])))
+               eq-results
+               (discriminator-values eq-results))))
 
 (defn- combine-cols
   "Take the first eq-result's cols and append the discriminator column.

@@ -432,9 +432,11 @@
                                        :archived      false
                                        {:order-by [[:%lower.name :asc]]})
                             (filter mi/can-read?))
-        documents      (->> (t2/select [:model/Document :id :name :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
+        ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
+        documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
+                                       :collection_id  coll-id
+                                       :archived       false
+                                       :exploration_id nil
                                        {:order-by [[:%lower.name :asc]]})
                             (filter mi/can-read?))
         subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level

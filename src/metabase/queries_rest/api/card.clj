@@ -912,8 +912,7 @@
   [card-id stored-result-id sort]
   (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
   (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
-    (when-not (= api/*current-user-id* (:creator_id sr))
-      (queries/assert-can-view-cached-result! sr))
+    (queries/assert-can-view-card-snapshots! card-id)
     (api/check-404 (queries/cached-dataset sr sort))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}

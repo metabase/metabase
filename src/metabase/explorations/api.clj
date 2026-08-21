@@ -1116,9 +1116,9 @@
                  {:where [:and
                           [:in :id distinct-ids]
                           [:in :exploration_thread_id
-                           {:select [:id]
-                            :from   [:exploration_thread]
-                            :where  [:= :exploration_id exploration-id]}]]}))))
+                           ^:allow-subquery {:select [:id]
+                                             :from   [:exploration_thread]
+                                             :where  [:= :exploration_id exploration-id]}]]}))))
 
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
