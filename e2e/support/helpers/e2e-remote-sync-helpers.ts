@@ -253,7 +253,7 @@ const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
   // Mantine renders combobox options as divs, so `.should("not.be.disabled")` matches nothing and
-  // passes instantly even while the option is disabled — and a click on a disabled option is
+  // passes instantly even while the option is disabled, and a click on a disabled option is
   // silently swallowed (the menu stays open, no request fires). The Pull/Push options stay
   // disabled until the has-remote-changes / dirty-state queries resolve, and those are real git
   // round-trips that only start once the menu opens. Gate on the attribute Mantine actually sets
@@ -359,7 +359,7 @@ export const waitForTask = (
 // Poll for a task's terminal state by actively querying the endpoint.
 // Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit), or to confirm
 // server-side settling independently of the UI's own polling. `until` is the terminal status the
-// caller expects — reaching a different terminal status throws.
+// caller expects; reaching a different terminal status throws.
 export const pollForTask = (
   {
     taskName,
