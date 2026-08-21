@@ -1,7 +1,7 @@
 ```ts
-function useAvailableFonts(): {
+function useAvailableFonts(): null | {
   availableFonts: string[];
-} | null;
+};
 ```
 
 Returns available fonts.
@@ -11,9 +11,9 @@ Returns `null` until the SDK is fully loaded and initialized.
 
 <!-- [<snippet returns>] -->
 
+\| `null`
 \| \{
 `availableFonts`: `string`[];
 \}
-\| `null`
 
 <!-- [<endsnippet returns>] -->

@@ -10,8 +10,8 @@
 
 ```ts
 Breakout: () =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -25,8 +25,8 @@ Uses question context for breakout functionality.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -38,8 +38,8 @@ Uses question context for breakout functionality.
 
 ```ts
 BreakoutDropdown: (props: InteractiveQuestionBreakoutDropdownProps) =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -62,8 +62,8 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -74,8 +74,7 @@ Dropdown button for the Breakout component.
 <!-- [<snippet charttypedropdown()>] -->
 
 ```ts
-ChartTypeDropdown: (props: InteractiveQuestionChartTypeDropdownProps) =>
-  Element;
+ChartTypeDropdown: (props: MenuProps) => Element;
 ```
 
 **`Function`**
@@ -89,9 +88,9 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](./api/InteractiveQuestionChartTypeDropdownProps.md) |             |
+| Parameter | Type                                                     | Description |
+| :-------- | :------------------------------------------------------- | :---------- |
+| `props`   | [`MenuProps`](https://v7.mantine.dev/core/menu/?t=props) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -145,8 +144,8 @@ Detailed chart type selection interface with recommended visualization options.
 
 ```ts
 DownloadWidget: (props: StackProps) =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -169,8 +168,8 @@ Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -181,9 +180,7 @@ Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `
 <!-- [<snippet downloadwidgetdropdown()>] -->
 
 ```ts
-DownloadWidgetDropdown: (props: PopoverProps) =>
-  | Element
-  | null;
+DownloadWidgetDropdown: (props: PopoverProps) => Element;
 ```
 
 **`Function`**
@@ -206,8 +203,7 @@ Provides a button that contains a dropdown that shows the `DownloadWidget`.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -254,8 +250,8 @@ Displays current filters as badges with an "Add another filter" option.
 
 ```ts
 FilterDropdown: (props: InteractiveQuestionFilterDropdownProps) =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -278,8 +274,8 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -291,8 +287,8 @@ A dropdown button for the Filter component.
 
 ```ts
 QuestionSettings: (props: StackProps) =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -316,8 +312,8 @@ Uses question context for settings.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -407,8 +403,8 @@ The main visualization component that renders the question results as a chart, t
 
 ```ts
 ResetButton: (props?: ButtonProps) =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -431,8 +427,8 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -444,8 +440,8 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 ```ts
 SqlParametersList: () =>
-  | Element
-  | null;
+  | null
+  | Element;
 ```
 
 **`Function`**
@@ -458,8 +454,8 @@ Parameters list for SQL questions
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `null`
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -496,8 +492,7 @@ Uses question context for summarization functionality.
 
 ```ts
 SummarizeDropdown: (props: InteractiveQuestionSummarizeDropdownProps) =>
-  | Element
-  | null;
+  Element;
 ```
 
 **`Function`**
@@ -520,8 +515,7 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
@@ -536,8 +530,8 @@ Title: (props: {
   className?: string;
   style?: CSSProperties;
 }) =>
-  | Element
-  | undefined;
+  | undefined
+  | Element;
 ```
 
 **`Function`**
@@ -565,31 +559,7 @@ Displays a title based on the question's state. Shows:
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 \| `undefined`
-
-<!-- [<endsnippet returns>] -->
-
-## other
-
-<!-- [<snippet other>] -->
-
-<!-- [<endsnippet other>] -->
-
-### AlertsButton()
-
-<!-- [<snippet alertsbutton()>] -->
-
-```ts
-AlertsButton: () => Element;
-```
-
-<!-- [<endsnippet alertsbutton()>] -->
-
-#### Returns
-
-<!-- [<snippet returns>] -->
-
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 <!-- [<endsnippet returns>] -->
