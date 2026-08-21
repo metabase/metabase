@@ -32,7 +32,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { getDashboardUiParametersFromParamFields } from "metabase/parameters/utils/dashboards";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
@@ -856,7 +856,7 @@ export const fetchDashboard = createAsyncThunk(
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const metadata = getMetadata(getState());
-      const parameters = getDashboardUiParametersFromParamFields(
+      const parameters = getSavedDashboardUiParameters(
         result.dashcards,
         result.parameters,
         result.param_fields,

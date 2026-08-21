@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useLatest, usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { getDashboardUiParametersFromParamFields } from "metabase/parameters/utils/dashboards";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
@@ -41,7 +41,7 @@ export const useAvailableParameters = ({
     if (experience === "dashboard") {
       // Unjustified type cast. FIXME
       const dashboard = resource as Dashboard;
-      return getDashboardUiParametersFromParamFields(
+      return getSavedDashboardUiParameters(
         dashboard.dashcards,
         dashboard.parameters,
         dashboard.param_fields,

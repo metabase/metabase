@@ -7,8 +7,29 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/v1/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import type { Card } from "metabase-types/api";
+import type { Card, Parameter } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
+
+// Cards from the public and static-embed endpoints have their real query
+// stripped but carry `param_fields`, so parameter fields are resolved from
+// them; full cards fall back to resolving parameter targets against the query.
+export function getCardUiParameters(
+  card: Card,
+  metadata: Metadata,
+  parameterValues: { [key: string]: any } = {},
+  parameters?: Parameter[],
+): UiParameter[] {
+  if (!_.isEmpty(card.param_fields)) {
+    return getCardUiParametersFromParamFields(card, metadata, parameterValues);
+  }
+
+  return getCardUiParametersFromQuery(
+    card,
+    metadata,
+    parameterValues,
+    parameters,
+  );
+}
 
 export function getCardUiParametersFromQuery(
   card: Card,

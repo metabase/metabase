@@ -13,8 +13,8 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
   getDashboardQuestions,
-  getDashboardUiParametersFromParamFields,
-  getDashboardUiParametersFromQuery,
+  getSavedDashboardUiParameters,
+  getUnsavedDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -420,13 +420,13 @@ export const getParameters = createSelector(
     }
 
     return isEditing
-      ? getDashboardUiParametersFromQuery(
+      ? getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
           metadata,
           questions,
         )
-      : getDashboardUiParametersFromParamFields(
+      : getSavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
           dashboard.param_fields,
