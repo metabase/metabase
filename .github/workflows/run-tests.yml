@@ -7,7 +7,6 @@ on:
       - "release-**"
   pull_request:
     types: [opened, synchronize, reopened]
-  merge_group:
   workflow_dispatch:
 
 jobs:
