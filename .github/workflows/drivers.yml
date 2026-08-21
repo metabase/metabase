@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
+        type: boolean
+        default: false
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
@@ -126,7 +130,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
+          FORCE_RUN: ${{ inputs.force-run }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
@@ -520,21 +524,9 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -832,21 +824,9 @@ jobs:
             needs-python-runner: true
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres

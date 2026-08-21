@@ -68,6 +68,7 @@ jobs:
       # deleted in after:spec so recording is ~5-10% slowdown per shard and almost
       # never yields an artifact. Failure screenshots are unaffected, and the
       # stress-test workflows have their own config and keep video.
+      # Re-run attempts override this on the run steps below.
       CYPRESS_VIDEO: "false"
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
@@ -128,9 +129,20 @@ jobs:
 
       - name: Get failed specs
         if: github.run_attempt != '1'
-        run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
+        run: echo "specs=$(cat failed-specs)" >> "$GITHUB_ENV"
+
+      # run-tests.yml compiles this in parallel with the uberjar build. Downloading it is ~10x faster than compiling it here.
+      # Callers without that job (stress tests, coverage shards, cross-run re-runs) fall through to compiling as before.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
 
       - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
         run: bun run build-pure:cljs
 
       - name: Run Metabase
@@ -162,6 +174,8 @@ jobs:
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
@@ -178,6 +192,8 @@ jobs:
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          # Re-run attempts run only the previously-failed specs (env.specs), so record them.
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
