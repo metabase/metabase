@@ -278,7 +278,7 @@ export function canSavePng(display: VisualizationDisplay) {
   return visualization?.canSavePng ?? true;
 }
 
-export function getDefaultSize(display: VisualizationDisplay) {
+export function getRegisteredDefaultSize(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
 }

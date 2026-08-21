@@ -2,7 +2,7 @@ export {
   type RegisteredVisualization,
   type VisualizationComponentLoader,
   canSavePng,
-  getDefaultSize,
+  getRegisteredDefaultSize,
   getIconForVisualizationType,
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
