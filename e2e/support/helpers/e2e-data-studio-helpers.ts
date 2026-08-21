@@ -46,7 +46,12 @@ export const DataStudio = {
       DataStudio.Transforms.header().findByText("Dependencies"),
     visit: () => {
       cy.visit("/data-studio/transforms");
-      DataStudio.Transforms.list().should("be.visible");
+      // The transforms page is code-split; under CI's simulated 4g throttling, downloading the
+      // lazy chunk alone can outlast the default 4s command timeout while the shell shows only
+      // "Loading...". The testid renders (with a skeleton) as soon as the page component mounts.
+      cy.findByTestId("transforms-list", { timeout: 15000 }).should(
+        "be.visible",
+      );
     },
     visitTransform: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}`);

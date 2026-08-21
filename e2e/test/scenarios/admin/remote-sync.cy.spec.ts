@@ -1034,6 +1034,12 @@ describe("Remote Sync", () => {
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
+      // The conflict is reported asynchronously: the pull POSTs /import (returning only a task
+      // id), the task detects the conflict server-side, and the app only learns about it on a
+      // current-task poll. Anchor each step on those events instead of racing the modal render
+      // against the import's runtime.
+      cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
+
       H.DataStudio.Transforms.visit();
 
       cy.findByRole("treegrid").within(() => {
@@ -1041,6 +1047,10 @@ describe("Remote Sync", () => {
       });
 
       H.clickPullOption();
+
+      cy.log("wait for the pull to start and the conflict to be detected");
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import", until: "conflict" });
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
@@ -1060,13 +1070,20 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
 
+      cy.log("wait for the forced import to replace local state");
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import" });
+      // The transforms list only refetches when the app's own poll observes the finished task,
+      // which also opens the sync-result modal; dismiss it so it doesn't overlay the list.
+      H.closeSyncResultModal();
+
       cy.findByRole("treegrid").within(() => {
+        cy.log("check remote transform was pulled in");
+        cy.findByText("Imported Simple SQL transform").should("be.visible");
         cy.log(
           "check existing transform was removed after pulling from remote",
         );
         cy.findByText("Batman's Existing Transform").should("not.exist");
-        cy.log("check remote transform was pulled in");
-        cy.findByText("Imported Simple SQL transform").should("be.visible");
       });
     });
 

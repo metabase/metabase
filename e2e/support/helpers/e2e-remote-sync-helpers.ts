@@ -252,7 +252,15 @@ const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
-  getOption().should("not.be.disabled").realClick();
+  // Mantine renders combobox options as divs, so `.should("not.be.disabled")` matches nothing and
+  // passes instantly even while the option is disabled — and a click on a disabled option is
+  // silently swallowed (the menu stays open, no request fires). The Pull/Push options stay
+  // disabled until the has-remote-changes / dirty-state queries resolve, and those are real git
+  // round-trips that only start once the menu opens. Gate on the attribute Mantine actually sets
+  // so Cypress retries until the option is clickable. The assertion is a separate statement
+  // because `.should("not.have.attr", ...)` yields the attribute value, not the element.
+  getOption().should("not.have.attr", "data-combobox-disabled");
+  getOption().realClick();
   cy.get("body").then(($body) => {
     const mainMenuStillOpen =
       $body
@@ -348,10 +356,15 @@ export const waitForTask = (
   });
 };
 
-// Poll for task completion by actively querying the endpoint
-// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+// Poll for a task's terminal state by actively querying the endpoint.
+// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit), or to confirm
+// server-side settling independently of the UI's own polling. `until` is the terminal status the
+// caller expects — reaching a different terminal status throws.
 export const pollForTask = (
-  { taskName }: { taskName: "import" | "export" },
+  {
+    taskName,
+    until = "successful",
+  }: { taskName: "import" | "export"; until?: "successful" | "conflict" },
   retries = 0,
 ): Cypress.Chainable => {
   if (retries > 30) {
@@ -366,18 +379,17 @@ export const pollForTask = (
       // No task exists yet, keep waiting
       if (!body) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
       // Wrong task type, keep waiting
       if (body.sync_task_type !== taskName) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Task hasn't completed successfully yet
-      if (body.status !== "successful") {
-        // Check if it errored
+      // Task hasn't reached the expected terminal status yet
+      if (body.status !== until) {
         if (body.status === "errored") {
           throw Error(
             `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
@@ -390,11 +402,17 @@ export const pollForTask = (
           );
         }
 
+        if (body.status === "successful") {
+          throw Error(
+            `Task ${taskName} completed without the expected ${until}`,
+          );
+        }
+
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Success!
+      // Reached the expected terminal status!
       return cy.wrap(body);
     });
 };
