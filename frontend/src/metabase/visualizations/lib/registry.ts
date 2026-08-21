@@ -14,10 +14,8 @@ import type {
 
 import type { VisualizationDefinition } from "../types/definition";
 
-// A chart component carrying its definition as statics. The props are left
-// open here: typing them against VisualizationProps would tie the registry to
-// the React and redux side of the visualization types, which static-viz does
-// not load.
+// A chart component carrying its definition as statics.
+// The props stay open because static-viz loads the registry without the React and redux types.
 export type RegisteredVisualizationComponent = ComponentType<any> &
   VisualizationDefinition;
 
