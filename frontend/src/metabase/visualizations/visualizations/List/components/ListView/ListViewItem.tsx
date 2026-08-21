@@ -79,7 +79,7 @@ export function ListViewItem({
         />
       )}
 
-      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+      <Flex align="center" gap="lg" style={{ flexShrink: 0 }}>
         {titleColumn && (
           <ColumnValue
             rows={rows}

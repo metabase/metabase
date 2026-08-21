@@ -125,18 +125,18 @@ export const EditUserStrategyModal = ({
         onClose={onClose}
       >
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
-          <Stack gap="md" mt="sm">
+          <Stack gap="lg" mt="sm">
             <Radio.Group
               value={selectedStrategy}
               onChange={setSelectedStrategy}
             >
-              <Stack gap="md">
+              <Stack gap="lg">
                 {strategyOptions.map((option) => (
                   <Radio.Card
                     key={option.value}
                     value={option.value}
-                    radius="md"
-                    p="md"
+                    radius="sm"
+                    p="lg"
                     className={S.radioCard}
                   >
                     <Group wrap="nowrap">
@@ -145,7 +145,7 @@ export const EditUserStrategyModal = ({
                           fw={700}
                           fz="lg"
                           lh="xl"
-                          mb="xs"
+                          mb="xxs"
                           className={S.radioCardTitle}
                         >
                           {option.title}
@@ -161,7 +161,7 @@ export const EditUserStrategyModal = ({
               </Stack>
             </Radio.Group>
 
-            <Flex justify="flex-end" gap="md" mt="md">
+            <Flex justify="flex-end" gap="lg" mt="lg">
               <Button variant="outline" onClick={handleCancel}>
                 {t`Cancel`}
               </Button>

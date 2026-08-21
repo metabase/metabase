@@ -17,8 +17,8 @@ export const ChannelCard = ({
   return (
     <Paper
       withBorder
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       shadow="none"
       onClick={onClick}
       className={cx(CS.cursorPointer, CS.bgLightHover, CS.textBrandHover)}

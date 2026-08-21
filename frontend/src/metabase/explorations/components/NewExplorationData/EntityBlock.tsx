@@ -61,7 +61,7 @@ export function EntityBlock({
         <Ellipsified flex={1} fw="bold">
           {title}
         </Ellipsified>
-        <Group className={S.blockActions} wrap="nowrap" gap="xs">
+        <Group className={S.blockActions} wrap="nowrap" gap="xxs">
           <ActionIcon
             size="sm"
             variant="subtle"
@@ -132,7 +132,7 @@ export function MetricBlockItem({
       onRemoveBlock={onRemoveBlock}
     >
       {expanded ? (
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text size="sm" c="text-secondary">
             {t`Modify which dimensions to see this metric by`}
           </Text>
@@ -191,7 +191,7 @@ export function DimensionBlockItem({
       onRemoveBlock={onRemoveBlock}
     >
       {expanded ? (
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text size="sm" c="text-secondary">
             {t`Modify which metrics to look at for this dimension`}
           </Text>

@@ -70,7 +70,7 @@ export const CollectionHeader = ({
       justify="space-between"
       direction={{ base: "column", sm: "row" }}
       align={{ base: "stretch", sm: "center" }}
-      mb="xl"
+      mb="xxl"
       pt={{ base: "xs", sm: "sm" }}
     >
       <CollectionCaption

@@ -36,7 +36,7 @@ export const ModalHeader = ({
     <Flex
       gap="sm"
       align="center"
-      px="xl"
+      px="xxl"
       py={py}
       flex="0 0 auto"
       className={className}

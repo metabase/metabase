@@ -211,15 +211,15 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       gap="sm"
       bg="background-primary"
       flex={1}
-      px="xl"
-      pt="lg"
-      pb="md"
+      px="xxl"
+      pt="xl"
+      pb="lg"
       h="100%"
       w="100%"
     >
       <Group justify="space-between" align="center" flex="none">
         <Title order={3} fs="1rem" lh={1.4}>{t`Research plan`}</Title>
-        <Group gap="xs">
+        <Group gap="xxs">
           <Menu position="bottom-end">
             <Menu.Target>
               <Button
@@ -242,7 +242,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         </Group>
       </Group>
 
-      <Group gap="xs" data-testid="selected-timelines-container">
+      <Group gap="xxs" data-testid="selected-timelines-container">
         {timelines.length > 0 && (
           <SelectedTimelinePills
             timelines={timelines}
@@ -281,14 +281,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         data-testid="selected-data-blocks-container"
         flex={1}
         mih={0}
-        mt="md"
+        mt="lg"
       >
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />
           </Center>
         ) : (
-          <Stack gap="md" mb="lg">
+          <Stack gap="lg" mb="xl">
             {blocks.map((block) =>
               isMetricBlock(block) ? (
                 <MetricBlockItem

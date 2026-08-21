@@ -23,9 +23,9 @@ export function ChartTypePicker({
     <Flex
       h={32}
       align="center"
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      px="xs"
+      px="xxs"
       bdrs="md"
     >
       {chartTypes.map(({ type, icon }) => (

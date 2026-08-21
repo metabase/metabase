@@ -37,7 +37,7 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
     <Sidebar isOpen side="right" width="30rem">
       <Flex
         h="100%"
-        gap="md"
+        gap="lg"
         direction="column"
         align="center"
         justify="center"

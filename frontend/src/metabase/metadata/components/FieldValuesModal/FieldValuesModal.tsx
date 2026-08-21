@@ -29,7 +29,7 @@ export const FieldValuesModal = ({
       title={t`Field values`}
       onClose={onClose}
     >
-      <Stack gap="md" pt="sm">
+      <Stack gap="lg" pt="sm">
         <Text c="text-secondary" size="sm">
           {t`${applicationName} can scan the values in this table to enable checkbox filters in dashboards and questions.`}
         </Text>

@@ -25,7 +25,7 @@ export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
       data-testid="upgrade-banner"
       direction={isSmallScreen ? "column" : "row"}
     >
-      <Flex gap="md" align="center">
+      <Flex gap="lg" align="center">
         <Icon name="warning" className={S.icon} />
         <Text fw="bold" size="md" className={S.text}>
           {c("{0} is a version number like v0.59.4")

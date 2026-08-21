@@ -92,7 +92,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           {canRefreshCache && canManageDB && (
             <Button
               variant="subtle"
-              p="xs"
+              p="xxs"
               c="text-primary"
               size="xs"
               onClick={() => onRefresh(model.id())}

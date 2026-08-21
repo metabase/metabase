@@ -59,7 +59,7 @@ const DataBucketListItem = ({
         {name}
       </Box>
     </Flex>
-    <Box mt="xs">
+    <Box mt="xxs">
       <Box
         component="span"
         className={DataSelectorDataBucketPickerS.DataBucketListItemDescription}

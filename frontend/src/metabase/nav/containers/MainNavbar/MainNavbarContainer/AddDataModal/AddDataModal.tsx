@@ -128,7 +128,7 @@ const AddDataModalContent = ({
             <Box component="header" className={S.header}>
               <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
-            <Tabs.List px="md" pb="lg">
+            <Tabs.List px="lg" pb="xl">
               {tabs.map((tab) => (
                 <Tabs.Tab
                   key={tab.value}

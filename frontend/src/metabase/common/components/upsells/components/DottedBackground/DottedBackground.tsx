@@ -26,7 +26,7 @@ export interface DottedBackgroundProps extends Omit<
  *
  * @example
  * ```tsx
- * <DottedBackground p="xl">
+ * <DottedBackground p="xxl">
  *   <Card>Content with dotted background</Card>
  * </DottedBackground>
  * ```

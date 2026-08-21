@@ -19,7 +19,7 @@ export const UserListElement = ({
     onClick={() => onClick(value)}
     data-is-selected={isSelected}
     px="sm"
-    py="xs"
+    py="xxs"
     variant="subtle"
     bg={isSelected ? "core-brand" : undefined}
     justify="start"

@@ -29,7 +29,7 @@ export function InteractiveEmbeddingSettingsCard() {
       ]}
     >
       {isInteractiveEmbeddingEnabled && (
-        <Stack gap="xl" px="xl" pb="lg">
+        <Stack gap="xxl" px="xxl" pb="xl">
           <InteractiveEmbeddingAuthorizedOriginsWidget />
         </Stack>
       )}

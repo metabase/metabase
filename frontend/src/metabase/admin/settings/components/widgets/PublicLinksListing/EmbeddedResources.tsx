@@ -22,7 +22,7 @@ const DashboardEmbeddedResources = () => {
   const query = useListEmbeddableDashboardsQuery(undefined, refetchSettings);
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <SettingHeader id="embedded-dashboards" title={t`Embedded dashboards`} />
       <PublicLinksListing<GetEmbeddableDashboard>
         data-testid="-embedded-dashboards-setting"
@@ -38,7 +38,7 @@ export const QuestionEmbeddedResources = () => {
   const query = useListEmbeddableCardsQuery(undefined, refetchSettings);
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <SettingHeader id="embedded-questions" title={t`Embedded questions`} />
       <PublicLinksListing<GetEmbeddableCard>
         data-testid="-embedded-questions-setting"
@@ -52,7 +52,7 @@ export const QuestionEmbeddedResources = () => {
 
 export const EmbeddedResources = () => {
   return (
-    <Stack gap="lg" maw="50rem">
+    <Stack gap="xl" maw="50rem">
       <DashboardEmbeddedResources />
       <QuestionEmbeddedResources />
     </Stack>

@@ -38,8 +38,8 @@ export function Sidesheet({
         transitionProps={{ duration: 0 }}
         w={rem(720)}
       >
-        <Modal.Body className={S.body} p={0} pt="lg">
-          <Group gap="lg" justify="flex-end" px="xl">
+        <Modal.Body className={S.body} p={0} pt="xl">
+          <Group gap="xl" justify="flex-end" px="xxl">
             {actions}
 
             <Tooltip label={t`Close`}>

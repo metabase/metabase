@@ -161,10 +161,10 @@ export const PaletteResults = ({
                 <Group
                   fz="14px"
                   justify="space-between"
-                  px="lg"
-                  pt="md"
+                  px="xl"
+                  pt="lg"
                   pb="sm"
-                  mt={isFirst ? undefined : "md"}
+                  mt={isFirst ? undefined : "lg"}
                   w="100%"
                 >
                   {item}
@@ -206,10 +206,10 @@ function PaletteEmptyState() {
   return (
     <Stack align="center" justify="center" py="6rem" px="2rem" gap={0}>
       <Image src={NoResults} alt="no results" w={115} h={65} />
-      <Text c="text-secondary" fw={700} mt="xl">
+      <Text c="text-secondary" fw={700} mt="xxl">
         {t`No recent items`}
       </Text>
-      <Text c="text-disabled" size="sm" mt="xs" ta="center">
+      <Text c="text-disabled" size="sm" mt="xxs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

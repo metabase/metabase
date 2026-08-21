@@ -268,7 +268,7 @@ export function ConversationStatsPage() {
 
   return (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <MonitorHeaderTitle>
           {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
         </MonitorHeaderTitle>
@@ -302,13 +302,13 @@ export function ConversationStatsPage() {
         hasTenants={hasTenants}
       />
 
-      <Stack gap="lg">
+      <Stack gap="xl">
         <ConversationsByDayChart
           {...sharedChartProps}
           onDimensionClick={handleDayClick}
         />
 
-        <SimpleGrid cols={2} spacing="lg">
+        <SimpleGrid cols={2} spacing="xl">
           <BreakoutChart
             {...sharedChartProps}
             titles={sourceTitles}
@@ -323,7 +323,7 @@ export function ConversationStatsPage() {
           />
         </SimpleGrid>
 
-        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="xl">
           {hasTenants && (
             <BreakoutChart
               {...sharedChartProps}

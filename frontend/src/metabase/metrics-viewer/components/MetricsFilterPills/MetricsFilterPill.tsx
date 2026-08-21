@@ -45,7 +45,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
         c: "text-filter",
       }}
     >
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         <SourceColorIndicator
           colors={colors}
           fallbackIcon={fallbackIcon}

@@ -62,7 +62,7 @@ export const NativeQueryEditorActionButtons = (
     <Flex
       component="aside"
       data-testid="native-query-editor-action-buttons"
-      gap="lg"
+      gap="xl"
       align="center"
     >
       {PreviewQueryButton.shouldRender({ question }) && (

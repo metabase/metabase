@@ -80,7 +80,7 @@ function WritableConnectionInfoPageBody({
     >
       <Box h="100%" w="100%" component={ScrollArea}>
         <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
-          <Flex mb="lg" align="center">
+          <Flex mb="xl" align="center">
             <Title order={1} fz="h2">
               {title}
             </Title>

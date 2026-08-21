@@ -61,7 +61,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <Group align="center">
                 <CustomVizIcon plugin={plugin} />
 
@@ -72,7 +72,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
 
                   {match(plugin.status)
                     .with("active", () => (
-                      <Group align="center" flex="0 0 auto" gap="xs">
+                      <Group align="center" flex="0 0 auto" gap="xxs">
                         <Icon c="feedback-positive" name="check" />
                         <Text c="feedback-positive" fw={700}>{t`Enabled`}</Text>
                       </Group>

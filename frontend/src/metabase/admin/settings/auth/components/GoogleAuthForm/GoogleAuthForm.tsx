@@ -77,7 +77,7 @@ export const GoogleAuthForm = (): JSX.Element => {
         >
           {({ dirty }) => (
             <Form disabled={!dirty}>
-              <Stack gap="md">
+              <Stack gap="lg">
                 <Title order={2}>{t`Sign in with Google`}</Title>
                 <Text c="text-secondary">
                   {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}

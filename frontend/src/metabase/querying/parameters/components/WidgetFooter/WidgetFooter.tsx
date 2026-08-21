@@ -8,7 +8,7 @@ type WidgetFooterProps = {
 
 export function WidgetFooter({ submitButtonLabel }: WidgetFooterProps) {
   return (
-    <Flex className={S.footer} p="md" justify="flex-end">
+    <Flex className={S.footer} p="lg" justify="flex-end">
       <Button type="submit" variant="filled">
         {submitButtonLabel}
       </Button>

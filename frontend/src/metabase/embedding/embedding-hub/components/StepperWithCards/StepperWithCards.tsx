@@ -122,7 +122,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                             data-next-step={isNextCard}
                           >
                             <Stack justify="space-between" h="100%">
-                              <Stack gap="xs" h="100%">
+                              <Stack gap="xxs" h="100%">
                                 <Text
                                   size={card.optional ? "md" : "lg"}
                                   fw="bold"
@@ -144,7 +144,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                 <Flex justify="flex-end">
                                   {match(card)
                                     .with({ done: true }, () => (
-                                      <Group gap="xs">
+                                      <Group gap="xxs">
                                         <Icon
                                           name="check"
                                           c="feedback-positive-selected"
@@ -159,7 +159,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       </Group>
                                     ))
                                     .with({ locked: true }, () => (
-                                      <Group gap="xs">
+                                      <Group gap="xxs">
                                         <Icon
                                           name="lock"
                                           c="text-secondary"
@@ -239,7 +239,7 @@ const StepAlert = ({
   <Alert
     size="compact"
     icon={<Icon name={type === "success" ? "check" : "info"} />}
-    mt="xl"
+    mt="xxl"
     color={type === "info" ? "core-brand" : type}
     classNames={{ message: S.infoAlertMessage }}
   >

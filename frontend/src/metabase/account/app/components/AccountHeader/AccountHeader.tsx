@@ -59,7 +59,7 @@ export const AccountHeader = ({
           <UserAvatar user={user} className={S.avatar} />
         </Box>
         {userFullName && (
-          <Title order={2} fz="md" ta="center" mb="xs">
+          <Title order={2} fz="md" ta="center" mb="xxs">
             {userFullName}
           </Title>
         )}

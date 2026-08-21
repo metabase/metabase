@@ -20,7 +20,7 @@ export function ViewOnlyTag({ question }: { question: Question }) {
   return (
     <HoverCard position="bottom-start" disabled={!tableName}>
       <HoverCard.Target>
-        <Flex align="center" gap="xs" px={4} py={2} mt={4} className={S.badge}>
+        <Flex align="center" gap="xxs" px={4} py={2} mt={4} className={S.badge}>
           <Icon name="lock_filled" size={12} />
           <Text size="xs" fw="bold">
             {t`View-only`}
@@ -30,7 +30,7 @@ export function ViewOnlyTag({ question }: { question: Question }) {
       <HoverCard.Dropdown>
         <Text
           maw={rem(360)}
-          p="md"
+          p="lg"
         >{t`One of the administrators hid the source table “${tableName}”, making this question view-only.`}</Text>
       </HoverCard.Dropdown>
     </HoverCard>

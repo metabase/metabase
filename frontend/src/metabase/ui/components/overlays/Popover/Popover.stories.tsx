@@ -55,7 +55,7 @@ const DefaultTemplate = ({
         <Button variant="filled">Click to open</Button>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="md">{children}</Box>
+        <Box p="lg">{children}</Box>
       </Popover.Dropdown>
     </Popover>
   </Flex>

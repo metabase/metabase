@@ -50,15 +50,15 @@ export function SummarizeSidebar({
       onDone={handleDoneClick}
     >
       <SummarizeAggregationItemList
-        px="lg"
+        px="xl"
         query={query}
         onQueryChange={onAggregationChange}
         stageIndex={stageIndex}
       />
-      <Divider my="lg" />
+      <Divider my="xl" />
       {hasAggregations && (
         <SummarizeBreakoutColumnList
-          px="lg"
+          px="xl"
           query={query}
           onQueryChange={onDefaultQueryChange}
           stageIndex={stageIndex}

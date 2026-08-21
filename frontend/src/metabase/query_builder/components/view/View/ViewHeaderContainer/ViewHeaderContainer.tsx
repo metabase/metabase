@@ -67,7 +67,7 @@ export const ViewHeaderContainer = (props: ViewHeaderContainerProps) => {
               borderBottom: "1px solid var(--mb-color-border-neutral)",
             }}
           >
-            <Flex direction="column" gap="xs">
+            <Flex direction="column" gap="xxs">
               <ViewHeading>{t`Pick your starting data`}</ViewHeading>
             </Flex>
           </ViewSection>

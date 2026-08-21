@@ -5,8 +5,8 @@ import MenuStyles from "./Menu.module.css";
 export const menuOverrides = {
   Menu: Menu.extend({
     defaultProps: {
-      radius: "sm",
-      shadow: "md",
+      radius: "xs",
+      shadow: "sm",
       withinPortal: true,
       returnFocus: false,
     },

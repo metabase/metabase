@@ -174,7 +174,7 @@ export const QuestionDownloadWidget = ({
 
   return (
     <FocusTrap>
-      <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
+      <Stack {...stackProps} w={336} p="0.75rem" gap="xl">
         <Title order={5}>{t`Download data`}</Title>
         <ExportSettingsWidget
           selectedFormat={format}
@@ -189,7 +189,7 @@ export const QuestionDownloadWidget = ({
         />
         {showPivotXlsxExportHint && (
           <Flex
-            p="md"
+            p="lg"
             bg="background_page-secondary"
             align="center"
             justify="space-between"

@@ -171,7 +171,7 @@ export function AdminDataTable<Row, SortColumn extends string = string>({
       </Card>
 
       {pagination && (
-        <Flex justify="flex-end" mt="md">
+        <Flex justify="flex-end" mt="lg">
           <PaginationControls
             page={pagination.page}
             pageSize={pagination.pageSize}

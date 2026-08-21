@@ -196,7 +196,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
-      <Box pt="md">
+      <Box pt="lg">
         {variant === "setup" ? (
           <SetupConflictInfo />
         ) : conflicts && conflicts.length > 0 ? (
@@ -232,7 +232,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
         {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
         {variant === "push" && optionValue && optionValue !== "discard" && (
-          <Box mt="lg">
+          <Box mt="xl">
             <CommitMessageSection
               value={commitMessage}
               onChange={setCommitMessage}
@@ -240,7 +240,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           </Box>
         )}
 
-        <Group gap="sm" justify="end" mt="lg">
+        <Group gap="sm" justify="end" mt="xl">
           <Button onClick={onClose} variant="subtle">
             {t`Cancel`}
           </Button>

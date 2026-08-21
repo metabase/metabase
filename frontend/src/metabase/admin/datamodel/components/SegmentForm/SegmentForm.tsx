@@ -70,7 +70,7 @@ export const SegmentForm = ({
             size="compact"
             color="warning"
             display="inline-flex"
-            mb="md"
+            mb="lg"
             title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
             w="auto"
           />
@@ -165,7 +165,7 @@ const SegmentFormActions = ({
         variant="filled"
         size="sm"
         disabled={!isValid}
-        mr="md"
+        mr="lg"
       >
         {t`Save changes`}
       </Button>

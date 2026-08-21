@@ -98,7 +98,7 @@ export function PreviousValueComparison({
         tooltipComparisons.length === 0
       }
       label={
-        <Stack gap="xs" fz={14}>
+        <Stack gap="xxs" fz={14}>
           {tooltipComparisons.map((comparison, index) => {
             return (
               <PreviousValueComparisonTooltip
@@ -135,7 +135,7 @@ export function PreviousValueComparison({
 
         {showsOtherValuesInTooltip && (
           <Badge
-            px="xs"
+            px="xxs"
             size="xs"
             variant="light"
             w={ELLIPSIS_BADGE_WIDTH}

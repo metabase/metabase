@@ -17,7 +17,7 @@ type CopyableCodeBlockProps = {
 export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
   return (
     <Group
-      px="md"
+      px="lg"
       py="0.75rem"
       justify="space-between"
       align="flex-start"

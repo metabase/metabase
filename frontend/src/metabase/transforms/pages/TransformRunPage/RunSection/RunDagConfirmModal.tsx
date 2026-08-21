@@ -45,10 +45,10 @@ export function RunDagConfirmModal({
       padding="xl"
       onClose={onClose}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <Text>{t`These transforms will be run:`}</Text>
         {isFetching ? (
-          <Center py="lg">
+          <Center py="xl">
             <Loader />
           </Center>
         ) : (

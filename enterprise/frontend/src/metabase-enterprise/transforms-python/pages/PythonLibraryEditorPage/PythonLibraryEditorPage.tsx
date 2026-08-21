@@ -87,7 +87,7 @@ function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
 
   if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (
-      <Box p="md">
+      <Box p="lg">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Box>
     );

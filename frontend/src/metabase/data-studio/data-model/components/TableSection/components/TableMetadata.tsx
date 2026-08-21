@@ -26,7 +26,7 @@ export function TableMetadata({ table }: Props) {
     });
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <MetadataRow label={t`Name in the database`} value={table.name} />
       <MetadataRow
         label={t`Last updated at`}
@@ -97,7 +97,7 @@ function MetadataRow({
 }) {
   const id = useId();
   return (
-    <Group justify="space-between" gap="lg" wrap="nowrap">
+    <Group justify="space-between" gap="xl" wrap="nowrap">
       <Text size="md" c="text-primary" id={id} flex="1 0 auto">
         {label}
       </Text>

@@ -142,7 +142,7 @@ export function DetailsTableCell({
             alt={value}
             maw="100%"
             mah="18rem"
-            my="md"
+            my="lg"
             mx="auto"
           />
         </div>

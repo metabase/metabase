@@ -158,7 +158,7 @@ export function UploadSettingsFormView({
   );
 
   return (
-    <Box component="form" aria-label={t`Upload Settings Form`} px="md">
+    <Box component="form" aria-label={t`Upload Settings Form`} px="lg">
       <SettingHeader
         id="upload-settings"
         title={t`Allow people to upload data to collections`}
@@ -174,7 +174,7 @@ export function UploadSettingsFormView({
       <Group align="flex-start">
         <Select
           label={
-            <Group gap="xs" wrap="nowrap" align="center">
+            <Group gap="xxs" wrap="nowrap" align="center">
               {t`Database to use for uploads`}
               <Tooltip
                 label={t`PostgreSQL, MySQL, Redshift, ClickHouse, and Snowflake databases are supported for file storage.`}
@@ -244,7 +244,7 @@ export function UploadSettingsFormView({
           />
         )}
       </Group>
-      <Flex mt="lg">
+      <Flex mt="xl">
         {uploadsSettings.db_id ? (
           settingsChanged ? (
             <ActionButton
@@ -291,7 +291,7 @@ export function UploadSettingsFormView({
       </Flex>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && (
-        <Text c="feedback-negative" mt="md">
+        <Text c="feedback-negative" mt="lg">
           {errorMessage}
         </Text>
       )}
@@ -300,14 +300,14 @@ export function UploadSettingsFormView({
 }
 
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
-  <Alert my="md" maw={620} icon={<Icon name="warning" />} color="warning">
+  <Alert my="lg" maw={620} icon={<Icon name="warning" />} color="warning">
     <Stack gap="sm">
       {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift, ClickHouse, or Snowflake database.`}
       {isHosted && (
         <Tooltip
           label={
             <>
-              <Text mb="md" c="inherit">
+              <Text mb="lg" c="inherit">
                 {t`By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act).`}
               </Text>
               <Text c="inherit">

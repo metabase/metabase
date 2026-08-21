@@ -21,7 +21,7 @@ const ContainerLabel = ({ children, ...props }: ContainerLabelProps) => {
 
 const InputContainer = ({ children, ...props }: BoxPropsWithChildren) => {
   return (
-    <Box display="block" component="label" pb="xl" {...props}>
+    <Box display="block" component="label" pb="xxl" {...props}>
       {children}
     </Box>
   );

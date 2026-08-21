@@ -173,13 +173,13 @@ export const AgentSuggestionMessage = ({
   return (
     <Paper
       shadow="none"
-      radius="md"
+      radius="sm"
       bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
       <Group
-        p="md"
+        p="lg"
         align="center"
         justify="space-between"
         onClick={toggle}
@@ -207,7 +207,7 @@ export const AgentSuggestionMessage = ({
         {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -221,7 +221,7 @@ export const AgentSuggestionMessage = ({
           ))
           .with({ isLoading: true }, () => (
             <Flex
-              p="md"
+              p="lg"
               bg="background_page-secondary"
               justify="center"
               align="center"
@@ -240,7 +240,7 @@ export const AgentSuggestionMessage = ({
           .exhaustive()}
 
         <Group
-          py="xs"
+          py="xxs"
           px="sm"
           align="center"
           justify="space-between"

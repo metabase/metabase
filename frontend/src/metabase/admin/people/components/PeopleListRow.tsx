@@ -74,7 +74,7 @@ export const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <Flex component="td" align="center" gap="md" c="text-primary-inverse">
+      <Flex component="td" align="center" gap="lg" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>
@@ -130,7 +130,7 @@ export const PeopleListRow = ({
           </td>
           <Box component="td" ta="right">
             {isAdmin && (
-              <Menu shadow="md" position="bottom-end">
+              <Menu shadow="sm" position="bottom-end">
                 <Menu.Target>
                   <UnstyledButton>
                     <Icon name="ellipsis" />

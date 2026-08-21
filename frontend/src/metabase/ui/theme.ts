@@ -62,6 +62,32 @@ import {
 } from "./components";
 import { getMantineThemeColors } from "./utils/colors";
 
+// Elevation tokens from the design system (GDGT-2486).
+// The light and dark sets refer to the light and dark UI modes.
+/* eslint-disable metabase/no-color-literals */
+const LIGHT_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.15), 0 30px 60px 0 rgba(0, 0, 0, 0.20)",
+};
+
+const DARK_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 5px 15px 0 rgba(0, 0, 0, 0.20), 0 30px 60px 0 rgba(0, 0, 0, 0.40)",
+};
+/* eslint-enable metabase/no-color-literals */
+
 export const breakpoints = {
   xs: "23em",
   sm: "40em",
@@ -85,27 +111,30 @@ export const getThemeOverrides = (
     ...DEFAULT_METABASE_COMPONENT_THEME,
     colorScheme,
   },
-  shadows: {
-    // eslint-disable-next-line metabase/no-color-literals
-    xs: "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
-    // eslint-disable-next-line metabase/no-color-literals
-    sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
-    // eslint-disable-next-line metabase/no-color-literals
-    md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
-  },
+  shadows: colorScheme === "dark" ? DARK_SHADOWS : LIGHT_SHADOWS,
   spacing: {
-    xs: rem(4),
+    none: rem(0),
+    xxxs: rem(2),
+    xxs: rem(4),
+    xs: rem(6),
     sm: rem(8),
-    md: rem(16),
-    lg: rem(24),
-    xl: rem(32),
+    md: rem(12),
+    lg: rem(16),
+    xl: rem(24),
+    xxl: rem(32),
+    xxxl: rem(40),
   },
   radius: {
-    xs: "4px",
-    sm: "6px",
-    md: "8px",
-    xl: "40px",
+    none: "0px",
+    xxxs: "2px",
+    xxs: "4px",
+    xs: "6px",
+    sm: "8px",
+    md: "12px",
+    lg: "16px",
+    xl: "24px",
   },
+  defaultRadius: "xs",
   fontSizes: {
     xs: rem(11),
     sm: rem(12),

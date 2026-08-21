@@ -353,7 +353,7 @@ export function SettingsOIDCForm() {
 
   return (
     <SettingsPageWrapper title={t`OpenID Connect`}>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <SettingsSection>
           <AdminSettingInput
             name="oidc-user-provisioning-enabled?"
@@ -373,7 +373,7 @@ export function SettingsOIDCForm() {
             <Form>
               <SettingsSection>
                 <FormSection title={t`Server settings`}>
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <FormTextInput
                       name="key"
                       label={t`Key`}
@@ -418,10 +418,10 @@ export function SettingsOIDCForm() {
                   <FormSection
                     title={t`Synchronize group membership with your SSO`}
                   >
-                    <Text c="text-secondary" mb="lg">
+                    <Text c="text-secondary" mb="xl">
                       {t`To enable this, you'll need to create mappings to tell ${applicationName} which group(s) your users should be added to based on the SSO group they're in.`}
                     </Text>
-                    <Stack gap="md">
+                    <Stack gap="lg">
                       <GroupMappingsWidgetView
                         setting={{ key: "group-sync-enabled" }}
                         mappings={
@@ -448,7 +448,7 @@ export function SettingsOIDCForm() {
                 )}
 
                 <FormSection title={t`Optional settings`} collapsible>
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <FormTextInput
                       name="scopes"
                       label={t`Scopes`}
@@ -459,10 +459,10 @@ export function SettingsOIDCForm() {
                 </FormSection>
 
                 <FormSection title={t`Attribute mapping`} collapsible>
-                  <Text c="text-secondary" mb="md">
+                  <Text c="text-secondary" mb="lg">
                     {t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
                   </Text>
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <FormTextInput
                       name="attribute-email"
                       label={t`Email attribute`}
@@ -485,7 +485,7 @@ export function SettingsOIDCForm() {
                 <Flex justify="space-between">
                   {isExisting ? (
                     <>
-                      <Flex gap="md">
+                      <Flex gap="lg">
                         <Button variant="outline" onClick={handleToggleEnabled}>
                           {isEnabled ? t`Disable` : t`Enable`}
                         </Button>
@@ -508,7 +508,7 @@ export function SettingsOIDCForm() {
                   ) : (
                     <span />
                   )}
-                  <Flex gap="md">
+                  <Flex gap="lg">
                     <Button
                       variant="outline"
                       loading={isChecking}

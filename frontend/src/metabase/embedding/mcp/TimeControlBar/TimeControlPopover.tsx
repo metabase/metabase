@@ -20,7 +20,7 @@ export function TimeControlPopover({
           size="xs"
           h={32}
           fw="normal"
-          px="md"
+          px="lg"
           variant="subtle"
           color="text-primary"
           lh="1"

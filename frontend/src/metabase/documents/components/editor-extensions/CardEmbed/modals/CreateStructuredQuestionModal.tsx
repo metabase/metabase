@@ -125,7 +125,7 @@ export const CreateStructuredQuestionModal = ({
           updateQuestion={handleUpdateQuestion}
         />
       </Box>
-      <Flex mt="lg" justify="flex-end" gap="0.5rem">
+      <Flex mt="xl" justify="flex-end" gap="0.5rem">
         <Button variant="subtle" onClick={onClose}>
           {t`Cancel`}
         </Button>

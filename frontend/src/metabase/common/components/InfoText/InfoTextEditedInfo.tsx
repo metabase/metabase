@@ -24,7 +24,7 @@ const LoadingText = () => (
 );
 
 const InfoTextSeparator = (
-  <Text component="span" size="sm" mx="xs" c="text-secondary">
+  <Text component="span" size="sm" mx="xxs" c="text-secondary">
     •
   </Text>
 );

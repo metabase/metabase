@@ -56,5 +56,5 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-md);
-  margin-top: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-xxs);
 }

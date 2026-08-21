@@ -107,7 +107,7 @@ export const DatabaseEditConnectionForm = ({
             onEngineChange={onEngineChange}
           />
         ) : (
-          <Text my="md">{getDbNotModifiableMessage(database)}</Text>
+          <Text my="lg">{getDbNotModifiableMessage(database)}</Text>
         )}
       </LoadingAndErrorWrapper>
       <LeaveRouteConfirmModal isEnabled={isDirty && !isCallbackScheduled} />

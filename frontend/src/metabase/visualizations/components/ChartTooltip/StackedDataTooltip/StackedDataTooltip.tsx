@@ -56,14 +56,14 @@ const StackedDataTooltip = ({
   );
 
   return (
-    <Stack gap={0} pt="md">
+    <Stack gap={0} pt="lg">
       {headerTitle && (
         <Box
           component="header"
           tt="uppercase"
           fz="sm"
-          px="lg"
-          pb="xs"
+          px="xl"
+          pb="xxs"
           data-testid="tooltip-header"
         >
           {headerTitle}

@@ -34,7 +34,7 @@ export function DeleteConfirmModal({
       }
       content={t`This may impact the models and questions that use the table(s) as their data source. This can't be undone.`}
       message={
-        <Box mb="lg">
+        <Box mb="xl">
           <Switch
             size="sm"
             checked={sendToTrash}

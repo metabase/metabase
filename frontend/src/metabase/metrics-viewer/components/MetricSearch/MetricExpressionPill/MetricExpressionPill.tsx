@@ -101,7 +101,7 @@ export function MetricExpressionPill({
           c="text-primary"
           h="2rem"
           px="sm"
-          py="xs"
+          py="xxs"
           fw={600}
           withRemoveButton
           onRemove={onRemove}
@@ -112,7 +112,7 @@ export function MetricExpressionPill({
           }}
           data-testid="metrics-viewer-expression-pill"
         >
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             <SourceColorIndicator
               colors={isDisabled ? ["var(--mb-color-icon-secondary)"] : colors}
             />

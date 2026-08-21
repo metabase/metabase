@@ -174,11 +174,11 @@ export function ExplorationComments({
 
   return (
     <Stack gap={0} h="100%" data-testid="exploration-comments">
-      <Box px="lg" pt="1.25rem" pb="sm">
+      <Box px="xl" pt="1.25rem" pb="sm">
         <Title order={3}>{t`Comments`}</Title>
       </Box>
-      <Box ref={streamRef} flex={1} px="md" py="sm" className={S.stream}>
-        <Stack ref={streamContentRef} gap="md">
+      <Box ref={streamRef} flex={1} px="lg" py="sm" className={S.stream}>
+        <Stack ref={streamContentRef} gap="lg">
           {commentsStream.map((comment) => (
             <ExplorationComment
               key={comment.id}
@@ -189,7 +189,7 @@ export function ExplorationComments({
           ))}
         </Stack>
       </Box>
-      <Box px="lg" pb="lg" pt="xs" className={S.composer}>
+      <Box px="xl" pb="xl" pt="xxs" className={S.composer}>
         <CommentEditor
           autoFocus={commentsStream.length === 0 && !disableAutoFocus}
           data-testid="new-thread-editor"
@@ -324,7 +324,7 @@ function ExplorationComment({
           size="1.5rem"
           mt="0.125rem"
         />
-        <Stack gap="xs" flex={1} miw={0}>
+        <Stack gap="xxs" flex={1} miw={0}>
           <Group gap="sm" align="center" wrap="nowrap">
             <Text fw={700} lh={1.3} truncate>
               {comment.creator?.common_name}

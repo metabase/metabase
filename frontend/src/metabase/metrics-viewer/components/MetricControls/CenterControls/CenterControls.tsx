@@ -51,7 +51,7 @@ export function CenterControls(props: CenterControlsProps) {
           onChange={setIsXAxisPopoverOpen}
           opened={isXAxisPopoverOpen}
           position="top"
-          shadow="md"
+          shadow="sm"
           withinPortal
         >
           <Popover.Target>
@@ -69,7 +69,7 @@ export function CenterControls(props: CenterControlsProps) {
           </Popover.Target>
           <Popover.Dropdown
             className={S.centerControlsPopoverDropdown}
-            p="md"
+            p="lg"
             bg="background_page-primary"
           >
             <ControlsContent

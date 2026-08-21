@@ -350,7 +350,7 @@ export function SchemaViewer({
             <Stack
               align="center"
               justify="center"
-              mb="xl"
+              mb="xxl"
               data-testid="schema-viewer-error"
             >
               <Text c="text-secondary">
@@ -364,7 +364,7 @@ export function SchemaViewer({
             <Stack
               align="center"
               justify="center"
-              pt="xl"
+              pt="xxl"
               data-testid="schema-viewer-empty-state"
             >
               <Text c="text-disabled">{t`No schema selected`}</Text>

@@ -334,7 +334,7 @@ export const NotificationsAdminPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
-          <Flex gap="md" align="center">
+          <Flex gap="lg" align="center">
             <NotificationsSearchInput
               value={urlState.query}
               onChange={handleSearchChange}

@@ -35,7 +35,7 @@ export function GlossaryPage() {
         }
       />
       <Box w="100%" className={S.contentWrapper}>
-        <Card px="lg" pb="sm" withBorder shadow="none">
+        <Card px="xl" pb="sm" withBorder shadow="none">
           <GlossaryTable
             glossary={glossary}
             onCreate={async (term, definition) => {

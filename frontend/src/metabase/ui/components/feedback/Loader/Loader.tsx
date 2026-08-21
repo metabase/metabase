@@ -34,7 +34,7 @@ export const Loader = ({
   }
 
   return label ? (
-    <Stack justify="center" align="center" gap="sm" mt="xl">
+    <Stack justify="center" align="center" gap="sm" mt="xxl">
       <MantineLoader
         {...props}
         data-testid={dataTestId}

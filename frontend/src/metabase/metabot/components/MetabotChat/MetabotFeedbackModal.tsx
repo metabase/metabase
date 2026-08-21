@@ -104,9 +104,9 @@ export const MetabotFeedbackModal = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="md">
+          <Stack gap="lg">
             {!positive && (
-              <Stack gap="xs">
+              <Stack gap="xxs">
                 <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
                 <FormSelect
                   name="issue_type"
@@ -115,7 +115,7 @@ export const MetabotFeedbackModal = ({
                 />
               </Stack>
             )}
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
@@ -137,7 +137,7 @@ export const MetabotFeedbackModal = ({
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>
 
-            <Group justify="flex-end" gap="md" mt="md">
+            <Group justify="flex-end" gap="lg" mt="lg">
               <Button variant="subtle" onClick={onClose}>
                 {t`Cancel`}
               </Button>

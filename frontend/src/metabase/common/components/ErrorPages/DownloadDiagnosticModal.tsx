@@ -52,13 +52,13 @@ export const DownloadDiagnosticModal = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <Text py="md">{t`Could you provide us with a little context?`}</Text>
+        <Text py="lg">{t`Could you provide us with a little context?`}</Text>
         <FormTextarea
           name="description"
           data-autofocus
           placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
           minRows={5}
-          mb="md"
+          mb="lg"
         />
         <Text>
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
@@ -74,10 +74,10 @@ export const DownloadDiagnosticModal = ({
           variant="filled"
           label={c("This is a verb, not a noun").t`Download`}
           color="core-brand"
-          mt="lg"
+          mt="xl"
           mb="sm"
-          px="lg"
-          radius="md"
+          px="xl"
+          radius="sm"
         />
         <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
       </Form>

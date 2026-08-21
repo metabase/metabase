@@ -107,7 +107,7 @@ export function EditSnippetPage() {
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="md">
+      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="lg">
         <SnippetHeader
           snippet={snippet}
           actions={
@@ -133,7 +133,7 @@ export function EditSnippetPage() {
             w="auto"
           />
         )}
-        <Flex flex={1} w="100%" gap="sm" mt="md">
+        <Flex flex={1} w="100%" gap="sm" mt="lg">
           <Card
             withBorder
             p={0}
@@ -160,7 +160,7 @@ export function EditSnippetPage() {
               }}
             />
           </Card>
-          <Stack p="md" gap="lg" flex="0 0 20rem">
+          <Stack p="lg" gap="xl" flex="0 0 20rem">
             <SnippetDescriptionSection
               snippet={snippet}
               isDisabled={isReadOnly}

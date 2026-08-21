@@ -79,7 +79,7 @@ const TimelineDetailsModal = ({
         onGoBack={canGoBack ? handleGoBack : undefined}
       >
         {menuItems.length > 0 && (
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
                 <Icon name="ellipsis" />

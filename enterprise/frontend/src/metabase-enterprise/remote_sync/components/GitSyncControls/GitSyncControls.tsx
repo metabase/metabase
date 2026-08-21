@@ -254,7 +254,7 @@ export const GitSyncControls = () => {
             p="sm"
             size="compact-sm"
             bd="none"
-            mr="lg"
+            mr="xl"
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={
@@ -319,8 +319,8 @@ export const GitSyncControls = () => {
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}
         >
-          <Text mt="md">{branchMismatch.message}</Text>
-          <Group gap="sm" justify="end" mt="xl">
+          <Text mt="lg">{branchMismatch.message}</Text>
+          <Group gap="sm" justify="end" mt="xxl">
             <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
               {t`Cancel`}
             </Button>

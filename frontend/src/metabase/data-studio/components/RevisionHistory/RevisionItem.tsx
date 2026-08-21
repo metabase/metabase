@@ -41,8 +41,8 @@ export function RevisionItem({
 
   return (
     <Timeline.Item bullet={<UserAvatar user={revision.user} bg={userColor} />}>
-      <Stack gap="sm" ml="md">
-        <Flex justify="space-between" align="flex-start" gap="md">
+      <Stack gap="sm" ml="lg">
+        <Flex justify="space-between" align="flex-start" gap="lg">
           <Stack gap={2}>
             <Text fw={600} size="md">
               {userName}

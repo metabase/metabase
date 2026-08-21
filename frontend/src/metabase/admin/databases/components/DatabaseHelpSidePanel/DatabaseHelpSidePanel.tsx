@@ -58,8 +58,8 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
       h="100%"
       bg="background_page-primary"
     >
-      <Box p="xl" w="100%">
-        <Flex align="baseline" justify="space-between" mb="md">
+      <Box p="xxl" w="100%">
+        <Flex align="baseline" justify="space-between" mb="lg">
           <Title order={2} size="h4">
             {c("{0} is the database engine name").t`Add ${driverName}`}
           </Title>

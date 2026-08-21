@@ -44,7 +44,7 @@ export function DefaultRequiredValueControl({
         {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
-      <Flex gap="xs" direction="column">
+      <Flex gap="xxs" direction="column">
         <div aria-labelledby={`default-value-label-${tag.id}`}>
           <DefaultParameterValueWidget
             parameter={parameterWithoutDefault}

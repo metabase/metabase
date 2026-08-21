@@ -104,9 +104,9 @@ export const GenericSummarySection = ({
   const inputCount = inputData.length;
 
   return (
-    <Stack gap="xl">
-      <Stack gap="md" data-testid="generic-summary-tables">
-        <SimpleGrid cols={2} spacing="lg">
+    <Stack gap="xxl">
+      <Stack gap="lg" data-testid="generic-summary-tables">
+        <SimpleGrid cols={2} spacing="xl">
           <Title order={4}>
             {ngettext(
               msgid`${inputCount} input table`,
@@ -119,7 +119,7 @@ export const GenericSummarySection = ({
         </SimpleGrid>
 
         <Box>
-          <SimpleGrid cols={2} spacing="lg">
+          <SimpleGrid cols={2} spacing="xl">
             <Card p={0} shadow="none" withBorder>
               <TreeTable instance={inputInstance} styles={treeTableStyles} />
             </Card>

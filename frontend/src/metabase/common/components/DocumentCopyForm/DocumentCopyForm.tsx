@@ -53,7 +53,7 @@ export const DocumentCopyForm = ({
     >
       {() => (
         <Form>
-          <Stack gap="md" mb="md">
+          <Stack gap="lg" mb="lg">
             <FormTextInput
               name="name"
               label={t`Name`}

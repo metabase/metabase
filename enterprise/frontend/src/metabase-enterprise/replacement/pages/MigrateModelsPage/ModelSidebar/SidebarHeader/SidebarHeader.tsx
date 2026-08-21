@@ -36,7 +36,7 @@ export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
       >
         {card.name}
       </Anchor>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         <Tooltip label={t`Open in new tab`} openDelay={300}>
           <ActionIcon
             component={ForwardRefLink}

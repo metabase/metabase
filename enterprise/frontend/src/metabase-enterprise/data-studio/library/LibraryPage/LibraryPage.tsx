@@ -135,7 +135,7 @@ function LibraryPageContent() {
             <LibraryEmptyState />
           ) : (
             <>
-              <Flex gap="md">
+              <Flex gap="lg">
                 <TextInput
                   placeholder={t`Search...`}
                   leftSection={<Icon name="search" />}

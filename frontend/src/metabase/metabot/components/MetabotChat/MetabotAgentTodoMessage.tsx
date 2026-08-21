@@ -29,18 +29,18 @@ export const AgentTodoListMessage = ({
   const [opened, { toggle }] = useDisclosure(true);
 
   return (
-    <Paper shadow="none" radius="md" className={S.todoContainer}>
+    <Paper shadow="none" radius="sm" className={S.todoContainer}>
       <Group
         align="center"
         justify="space-between"
         onClick={toggle}
         className={S.todoHeader}
         py="sm"
-        px="md"
+        px="lg"
         data-testid="todo-list-header"
       >
         <Flex align="center" justify="center">
-          <Icon name="list" size=".75rem" mr="xs" c="core-brand" />
+          <Icon name="list" size=".75rem" mr="xxs" c="core-brand" />
           <Text size="sm" fw="bold" c="core-brand">{t`Todo List`}</Text>
         </Flex>
         <Flex align="center" justify="center" h="md">
@@ -56,9 +56,9 @@ export const AgentTodoListMessage = ({
         in={opened}
         transitionDuration={opened ? 200 : 0}
         pb="sm"
-        px="md"
+        px="lg"
       >
-        <Stack gap="sm" w="100%" pb="xs">
+        <Stack gap="sm" w="100%" pb="xxs">
           {todos.map((todo) => {
             const config = todoStatusConfig[todo.status];
 

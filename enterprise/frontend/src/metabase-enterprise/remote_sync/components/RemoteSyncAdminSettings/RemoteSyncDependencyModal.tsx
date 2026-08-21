@@ -63,7 +63,7 @@ export const RemoteSyncDependencyModal = ({
           : t`Couldn’t sync selected collection`
       }
     >
-      <Stack gap="lg" pt="md">
+      <Stack gap="xl" pt="lg">
         <Text>{getBlockedMessage(failures)}</Text>
 
         {requiredCollectionRows.length > 0 && (
@@ -75,7 +75,7 @@ export const RemoteSyncDependencyModal = ({
                   gap="sm"
                   className={S.collectionRow}
                   py="sm"
-                  px="md"
+                  px="lg"
                   justify="space-between"
                   bg={collection.syncable ? undefined : "background-secondary"}
                 >

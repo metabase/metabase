@@ -193,7 +193,7 @@ export const Comments = ({
     <Stack gap={0} h="100%">
       {(title || showCloseButton) && (
         <Flex
-          px="xl"
+          px="xxl"
           pt="1.25rem"
           pb="sm"
           justify="space-between"
@@ -238,12 +238,12 @@ export const Comments = ({
 
           {activeComments.length === 0 && childTargetId === "all" && (
             <Flex
-              p="xl"
+              p="xxl"
               pt="5rem"
               align="center"
               color="muted"
               direction="column"
-              gap="md"
+              gap="lg"
             >
               <Image
                 w={120}
@@ -257,7 +257,7 @@ export const Comments = ({
           )}
 
           {childTargetId !== "all" && (
-            <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
+            <Box px="xl" py={activeComments.length === 0 ? "xl" : "xxs"}>
               <CommentEditor
                 autoFocus={activeComments.length === 0 && !disableAutoFocus}
                 data-testid="new-thread-editor"

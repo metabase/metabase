@@ -169,7 +169,7 @@ const PartitionContainer = ({
   const droppableDisabled = partitionType !== sourcePartitionType;
 
   return (
-    <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
+    <Box py="lg" className={partitionIndex > 0 ? CS.borderTop : undefined}>
       <Text c="text-secondary">{title}</Text>
 
       <SortableContext

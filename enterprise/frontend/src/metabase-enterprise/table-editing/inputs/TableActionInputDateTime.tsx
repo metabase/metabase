@@ -83,7 +83,7 @@ export const TableActionInputDateTime = ({
         onDismiss: handleDismiss,
         styles: {
           dropdown: {
-            "--popover-padding": "var(--mantine-spacing-md)",
+            "--popover-padding": "var(--mantine-spacing-lg)",
           },
         },
       }}

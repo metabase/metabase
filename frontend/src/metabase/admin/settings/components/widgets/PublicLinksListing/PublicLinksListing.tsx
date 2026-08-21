@@ -41,8 +41,8 @@ export const PublicLinksListing = <
         bg="background_page-secondary"
         bd="1px solid var(--mb-color-border-neutral)"
         bdrs="xs"
-        px="md"
-        py="md"
+        px="lg"
+        py="lg"
       >
         <Text c="text-secondary">{noLinksMessage}</Text>
       </Box>

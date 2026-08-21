@@ -16,7 +16,7 @@ export const LockedTransformsBanner = () => {
   return (
     <Flex
       bg="background_page-tertiary"
-      p="lg"
+      p="xl"
       mb="sm"
       bdrs="md"
       lh="lg"
@@ -39,7 +39,7 @@ export const LockedTransformsBanner = () => {
         )}
       </Stack>
       {canPurchaseTransforms && (
-        <Box ml="md">
+        <Box ml="lg">
           <Button
             component={ExternalLink}
             href={storeUrl}

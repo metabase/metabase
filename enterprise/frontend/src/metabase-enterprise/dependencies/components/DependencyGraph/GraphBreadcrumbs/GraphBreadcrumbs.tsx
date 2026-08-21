@@ -16,7 +16,7 @@ type GraphBreadcrumbsProps = GroupProps & {
 export function GraphBreadcrumbs({ links, ...props }: GraphBreadcrumbsProps) {
   return (
     <Group c="text-secondary" gap="sm" wrap="nowrap" {...props}>
-      <Group fz="sm" gap="xs">
+      <Group fz="sm" gap="xxs">
         {links.map((link, linkIndex) => (
           <Fragment key={linkIndex}>
             {linkIndex > 0 && <Box>/</Box>}

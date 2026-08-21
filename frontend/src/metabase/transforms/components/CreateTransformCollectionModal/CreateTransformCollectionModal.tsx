@@ -77,7 +77,7 @@ export function CreateTransformCollectionModal({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="lg" mt="sm">
+          <Stack gap="xl" mt="sm">
             <FormTextInput
               name="name"
               label={t`Name`}

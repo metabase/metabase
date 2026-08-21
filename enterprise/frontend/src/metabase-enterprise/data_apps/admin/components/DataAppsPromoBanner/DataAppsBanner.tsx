@@ -11,7 +11,7 @@ export const DataAppsBanner = () => (
       hasSeen ? null : (
         <Box
           pos="relative"
-          p="lg"
+          p="xl"
           bg="background-brand"
           bd="1px solid var(--mb-color-border)"
           bdrs="md"
@@ -29,7 +29,7 @@ export const DataAppsBanner = () => (
           </ActionIcon>
 
           <Stack gap="sm">
-            <Group gap="sm" wrap="nowrap" pr="xl">
+            <Group gap="sm" wrap="nowrap" pr="xxl">
               <Icon name="app" c="brand" flex="0 0 auto" />
               <Text fw={700} c="brand">
                 {t`AI-generated React apps on top of your semantic layer`}

@@ -60,7 +60,7 @@ function ArchiveNotificationModal({
       ]}
       onClose={onClose}
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         {isCreator(item, user) && hasUnsubscribed && (
           <Box data-server-date>
             {getCreatorMessage(type, user)}

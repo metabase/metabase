@@ -131,7 +131,7 @@ export const AddEditSlackSidebar = ({
           />
         )}
         <Schedule
-          mt="md"
+          mt="lg"
           value={_.pick(
             channel,
             "schedule_day",
@@ -177,7 +177,7 @@ export const AddEditSlackSidebar = ({
             parameters={parameters}
           />
         )}
-        <Stack gap="md" py="lg" className={CS.borderTop}>
+        <Stack gap="lg" py="xl" className={CS.borderTop}>
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}

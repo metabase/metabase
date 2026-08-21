@@ -63,7 +63,7 @@ export function SecurityCenterBanner() {
       icon="warning_round_filled"
       bg="feedback-negative"
       body={<Text lh="inherit">{body}</Text>}
-      py="md"
+      py="lg"
     />
   );
 }

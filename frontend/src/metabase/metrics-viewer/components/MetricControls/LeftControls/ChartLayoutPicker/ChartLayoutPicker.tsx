@@ -17,9 +17,9 @@ export function ChartLayoutPicker({
   return (
     <Flex
       className={S.root}
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      p="xs"
+      p="xxs"
       bdrs="md"
       data-testid="chart-layout-picker"
     >

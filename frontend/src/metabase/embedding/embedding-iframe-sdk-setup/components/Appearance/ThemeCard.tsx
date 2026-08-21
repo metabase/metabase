@@ -38,7 +38,7 @@ export function ThemeCard({
       bdrs="md"
       h="42px"
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Group gap={4} justify="space-between" wrap="nowrap">
           <Text
             size="xs"

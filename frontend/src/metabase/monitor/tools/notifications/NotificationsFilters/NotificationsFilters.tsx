@@ -101,7 +101,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   return (
     <Popover
       position="bottom-end"
-      shadow="md"
+      shadow="sm"
       withinPortal
       opened={opened}
       onChange={setOpened}
@@ -118,8 +118,8 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
           </Button>
         </Indicator>
       </Popover.Target>
-      <Popover.Dropdown p="lg">
-        <Stack gap="xl" w={300}>
+      <Popover.Dropdown p="xl">
+        <Stack gap="xxl" w={300}>
           <FilterSection label={t`Channel`}>
             {CHANNEL_VALUES.map((channel) => (
               <FilterPill
@@ -181,7 +181,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
             />
           </FilterSection>
 
-          <Group gap="md" grow>
+          <Group gap="lg" grow>
             <Button variant="default" onClick={handleClear}>
               {t`Clear filters`}
             </Button>
