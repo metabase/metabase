@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -608,9 +609,9 @@
           (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
 
 (deftest ^:parallel cell-query-decode-strips-extra-properties-test
-  (testing "cell queries are decoded, validated, and stripped of undeclared properties"
+  (testing "the ::cell-query schema decodes a base64 JSON filter clause, validates it, and strips undeclared properties"
     (let [encoded (u/encode-base64 (json/encode [">" {:a 1 :a/b 2} ["field" {} 1] 10]))
-          result  (#'api.magic/decode-and-validate-cell-query encoded)]
+          result  (api.macros/decode-and-validate-params :query ::api.magic/cell-query encoded)]
       (is (mr/validate ::ads/root.cell-query result)
           "decoded cell query is a valid filter clause")
       (is (= :> (first result)))

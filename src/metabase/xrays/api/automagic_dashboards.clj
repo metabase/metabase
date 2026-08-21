@@ -60,10 +60,17 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
-(defn- decode-and-validate-cell-query
-  "Decode a base64-encoded JSON cell query into a validated filter clause."
-  [s]
-  (api.macros/decode-and-validate-params :body ::ads/root.cell-query (decode-base64-json s)))
+(mr/def ::cell-query
+  "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
+  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
+  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is
+  and fails validation, surfacing as a clean 400."
+  [:schema
+   {:decode/api (fn [s]
+                  (if (string? s)
+                    (try (decode-base64-json s) (catch Exception _ s))
+                    s))}
+   [:ref ::ads/root.cell-query]])
 
 (mr/def ::base-64-encoded-json
   "form-encoded base-64-encoded JSON"
@@ -394,12 +401,12 @@
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ::entity-id-or-query]
-                                                      [:cell-query         ::base-64-encoded-json]]
+                                                      [:cell-query         ::cell-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show       (coerce-show show)
-                                                     :cell-query (decode-and-validate-cell-query cell-query)})))
+                                                     :cell-query cell-query})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -413,13 +420,13 @@
                                                                                 [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
-                                                                                [:cell-query         ::base-64-encoded-json]]
+                                                                                [:cell-query         ::cell-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (automagic-dashboards.core/automagic-analysis {:show               (coerce-show show)
                                                      :dashboard-template ["table" prefix dashboard-template]
-                                                     :cell-query         (decode-and-validate-cell-query cell-query)})))
+                                                     :cell-query         cell-query})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -499,7 +506,7 @@
         dashboard (automagic-dashboards.core/automagic-analysis left {:show         (coerce-show show)
                                                                       :query-filter nil
                                                                       :comparison?  true})]
-    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-and-validate-cell-query cell-query)}})))
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -530,4 +537,4 @@
         dashboard (automagic-dashboards.core/automagic-analysis left {:show               (coerce-show show)
                                                                       :dashboard-template ["table" prefix dashboard-template]
                                                                       :query-filter       nil})]
-    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query (decode-and-validate-cell-query cell-query)}})))
+    (automagic-dashboards.comparison/comparison-dashboard dashboard left right {:left {:cell-query cell-query}})))

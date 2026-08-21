@@ -271,10 +271,11 @@
                    (json/encode [:field 1 {:base-type :type/Integer :a 1 :a/b 2}]))]
       (is (mr/validate ::api.tiles/legacy-ref decoded))
       (is (= [:field 1 {:base-type :type/Integer}] decoded)))
-    (testing "a value that isn't a field ref is rejected with a 400"
-      (is (thrown? Exception
-                   (api.macros/decode-and-validate-params
-                    :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"})))))))
+    (testing "a value that isn't a field ref is rejected with a clean 400 (not a 500 later)"
+      (is (= 400 (-> (try (api.macros/decode-and-validate-params
+                           :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"}))
+                          (catch clojure.lang.ExceptionInfo e (ex-data e)))
+                     :status-code))))))
 
 (deftest ^:parallel query-schema-strips-extra-keys-test
   (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips undeclared properties"
