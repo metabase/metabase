@@ -94,6 +94,44 @@ describe("parameters/utils/cards", () => {
       });
     });
 
+    it("should fall back to template tag parameters when the card has none saved", () => {
+      const metadata = createMockMetadata({
+        fields: [createMockField({ id: 1 })],
+      });
+      const card = createMockCard({
+        parameters: [],
+        param_fields: { "tag-id": [createMockField({ id: 1 })] },
+        dataset_query: {
+          type: "native",
+          database: 1,
+          native: {
+            query: "SELECT * FROM venues WHERE {{price}}",
+            "template-tags": {
+              price: {
+                id: "tag-id",
+                name: "price",
+                "display-name": "Price",
+                type: "dimension",
+                "widget-type": "number/=",
+                dimension: ["field", 1, null],
+              },
+            },
+          },
+        },
+      });
+
+      const [priceUiParameter] = getCardUiParametersFromParamFields(
+        card,
+        metadata,
+      );
+
+      expect(priceUiParameter).toMatchObject({
+        id: "tag-id",
+        fields: [metadata.field(1)],
+        hasVariableTemplateTagTarget: false,
+      });
+    });
+
     it("should handle cards without parameters or param_fields", () => {
       const metadata = createMockMetadata({});
       const card = createMockCard({ parameters: undefined });

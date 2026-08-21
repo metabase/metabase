@@ -75,7 +75,7 @@ export function getCardUiParametersFromParamFields(
   parameterValues: { [key: string]: any } = {},
 ): UiParameter[] {
   const valuePopulatedParameters = getValuePopulatedParameters({
-    parameters: card.parameters ?? [],
+    parameters: getParametersFromCard(card, metadata),
     values: parameterValues,
   });
 
