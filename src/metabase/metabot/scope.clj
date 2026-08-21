@@ -36,6 +36,30 @@
 (api-scope/defscope agent-query-execute "agent:query:execute"
   (deferred-tru "Execute queries"))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; Rationalized MCP v2 scopes (GHY-4225)
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; Five scopes a human can actually read on a consent screen, replacing the per-entity leaves below
+;; across the MCP surface. Those leaves stay declared: the agent API and Metabot's own tools still
+;; gate on them, and a token carrying one satisfies no other name, so they can never be renamed
+;; away. (They gated MCP v1 too, until GHY-4250 removed that surface; those two callers are what
+;; keep them alive now.)
+;;
+;; The `agent:` prefix is deliberate — these gate the agent API and Metabot too, not only MCP, so an
+;; `mcp:` prefix would both misdescribe them and strand two prefixes side by side forever.
+
+(api-scope/defscope agent-content-read "agent:content:read"
+  (deferred-tru "See your Metabase content and data structure"))
+(api-scope/defscope agent-content-write "agent:content:write"
+  (deferred-tru "Create, edit and trash Metabase content"))
+(api-scope/defscope agent-query-run "agent:query:run"
+  (deferred-tru "Run queries against your connected databases and see the results"))
+(api-scope/defscope agent-sql-run "agent:sql:run"
+  (deferred-tru "Write and run its own raw SQL on your connected databases"))
+(api-scope/defscope agent-delivery-write "agent:delivery:write"
+  (deferred-tru "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"))
+
 ;; Question (saved cards via Agent API)
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
@@ -79,6 +103,8 @@
   (deferred-tru "Subscribe to dashboard alerts"))
 
 ;; Collection
+;; `create` still gates the v1 `create_collection` endpoint; tokens carry the literal string, so it
+;; can never be renamed away. The v2 surface gates on `agent:content:write` instead.
 (api-scope/defscope agent-collection-create "agent:collection:create"
   (deferred-tru "Create collections"))
 
@@ -101,12 +127,15 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
-(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
-  (deferred-tru "Render query visualizations in the MCP UI"))
-(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
-  (deferred-tru "Render drill-through visualizations in the MCP UI"))
+;; The v2 UI resources gate on `agent:query:run`, not a viz scope of their own: rendering a chart
+;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
+;; viz-only grant would run a query the user thought they had declined. Client capability is gated
+;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
+;; separate scope was not a data boundary. The `agent:viz:mcp-ui:*` leaves that shipped in v0.62
+;; went out with the MCP v1 resources they gated.
 
 ;; Alert
+;; Gates the agent-API create-alert endpoint; v2's alert_write gates on `agent:delivery:write`.
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
 
@@ -187,14 +216,27 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+   ;; `agent:content:*` rides both buckets: the type-generic tools cover question (nlq) and
+   ;; dashboard/document (other-tools).
+   ;;
    ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
    ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
    ;; tools (and its prompt instructs their use), so NLQ-only users must not have
    ;; them silently scope-filtered away.
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:metric:*"
-                                        "agent:question:*" "agent:timelines:*" "agent:explorations:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:timelines:*" "agent:collection:*"}})
+   :permission/metabot-nlq            #{"agent:notebook:*"
+                                        "agent:query:*"
+                                        "agent:question:*"
+                                        "agent:metric:*"
+                                        "agent:timelines:*"
+                                        "agent:explorations:*"
+                                        "agent:content:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*"
+                                        "agent:dashboard:*"
+                                        "agent:document:*"
+                                        "agent:alert:*"
+                                        "agent:timelines:*"
+                                        "agent:collection:*"
+                                        "agent:content:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."

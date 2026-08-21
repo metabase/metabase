@@ -22,7 +22,7 @@
                  :model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query (mt/mbql-query users)}
-                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :notification      {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type          :notification-subscription/cron
                                           :cron_schedule "0 0 0 * * ?"
                                           :ui_display_type :cron/builder}
@@ -353,7 +353,7 @@
   (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query (mt/mbql-query users)}
-                     :notification_card {:creator_id (mt/user->id :crowberto)}
+                     :notification      {:creator_id (mt/user->id :crowberto)}
                      :subscriptions     [{:type          :notification-subscription/cron
                                           :cron_schedule "0 0 0 * * ?"
                                           :ui_display_type :cron/raw}]

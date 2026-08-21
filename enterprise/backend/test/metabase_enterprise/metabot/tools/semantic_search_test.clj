@@ -26,7 +26,8 @@
   `(do ~@body (with-semantic-search-if-available! ~mock-embeddings ~@body)))
 
 (deftest search-test
-  ;; Fully mocked: each sub-test redefs search-core/search, so no engine or index runs. active-engines is
+  ;; Fully mocked: each sub-test redefs search-core/ranked-results (and search-results passes through, set
+  ;; up below), so no engine or index runs. active-engines is
   ;; pinned to include semantic so search/search takes the two-engine fusion branch (term queries via the
   ;; fallback engine, semantic queries via semantic), regardless of whether this instance has pgvector.
   (mt/with-additional-premium-features #{:content-verification}
@@ -45,26 +46,30 @@
                        :verified true}]
         (with-redefs [perms/impersonated-user? (fn [] false)
                       perms/sandboxed-user? (fn [] false)
-                      search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])]
+                      search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])
+                      ;; The per-query search now runs through ranked-results (each sub-test mocks that).
+                      ;; search-results — the one-time hydrate step — is a passthrough so the mocked ranked
+                      ;; records reach postprocess-search-result unchanged.
+                      search-core/search-results (fn [_ctx _model-set ranked] {:data (vec ranked)})]
           (testing "search returns postprocessed results for term queries"
-            (with-redefs [search-core/search (fn [_] {:data [order-table]})]
+            (with-redefs [search-core/ranked-results (fn [_] [order-table])]
               (let [args {:term-queries ["orders"]
                           :entity-types ["table"]}
                     results (search/search args)
                     expected [(#'search/postprocess-search-result order-table)]]
                 (is (= expected results)))))
           (testing "search returns postprocessed results for semantic queries"
-            (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
+            (with-redefs [search-core/ranked-results (fn [_] [dashboard])]
               (let [args {:semantic-queries ["sales metrics"]
                           :entity-types ["dashboard"]}
                     results (search/search args)
                     expected [(#'search/postprocess-search-result dashboard)]]
                 (is (= expected results)))))
           (testing "search combines term and semantic queries using RRF"
-            (with-redefs [search-core/search (fn [context]
-                                               (if (= (:search-string context) "orders")
-                                                 {:data [order-table]}
-                                                 {:data [dashboard]}))]
+            (with-redefs [search-core/ranked-results (fn [context]
+                                                       (if (= (:search-string context) "orders")
+                                                         [order-table]
+                                                         [dashboard]))]
               (let [args {:term-queries ["orders"]
                           :semantic-queries ["sales"]
                           :entity-types ["table" "dashboard"]}
@@ -78,10 +83,10 @@
                           ;; Pass terms through uncombined: Postgres appdb would OR them into one string,
                           ;; which breaks the per-query mock keying below. Keeps this deterministic on any app-db.
                           search.engine/disjunction (fn [_ terms] terms)
-                          search-core/search (fn [context]
-                                               (if (= (:search-string context) "orders")
-                                                 {:data [order-table]}
-                                                 {:data [dashboard]}))]
+                          search-core/ranked-results (fn [context]
+                                                       (if (= (:search-string context) "orders")
+                                                         [order-table]
+                                                         [dashboard]))]
               (let [args {:term-queries ["orders"]
                           :semantic-queries ["sales"]
                           :entity-types ["table" "dashboard"]}
@@ -91,8 +96,8 @@
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
           (testing "search applies RRF to overlapping results"
-            (with-redefs [search-core/search (fn [_]
-                                               {:data [order-table dashboard]})]
+            (with-redefs [search-core/ranked-results (fn [_]
+                                                       [order-table dashboard])]
               (let [args {:term-queries ["orders" "sales"]
                           :entity-types ["table" "dashboard"]}
                     results (search/search args)]
@@ -101,7 +106,7 @@
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
           (testing "search handles empty results"
-            (with-redefs [search-core/search (fn [_] {:data []})]
+            (with-redefs [search-core/ranked-results (fn [_] [])]
               (let [args {:term-queries ["nonexistent"]
                           :entity-types ["table"]}
                     results (search/search args)]
@@ -112,10 +117,10 @@
               (with-redefs [t2/select-one (fn [model & _]
                                             (is (= :model/Metabot model) "Should query for Metabot model")
                                             metabot)
-                            search-core/search (fn [context]
-                                                 ;; use_verified_content now drives the curated filter, not :verified
-                                                 (is (true? (:curated? context)))
-                                                 {:data [dashboard]})]
+                            search-core/ranked-results (fn [context]
+                                                         ;; use_verified_content now drives the curated filter, not :verified
+                                                         (is (true? (:curated? context)))
+                                                         [dashboard])]
                 (let [results (search/search {:term-queries ["test"]
                                               :metabot-id "test-bot"
                                               :entity-types ["dashboard"]})]

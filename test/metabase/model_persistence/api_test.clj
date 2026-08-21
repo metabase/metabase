@@ -52,6 +52,16 @@
                (get-in (task.persist-refresh/job-info-by-db-id)
                        [(:id db) :schedule])))))))
 
+(deftest set-refresh-schedule-cron-rule-is-stated-test
+  (testing "POST /api/persist/set-refresh-schedule: a malformed cron is refused with the rule stated, not a placeholder"
+    (with-setup! _db
+      (let [response (mt/user-http-request :crowberto :post 400 "persist/set-refresh-schedule"
+                                           {:cron "0 0 0/12"})
+            text     (pr-str response)]
+        (is (not (re-find #"unknown error" text))
+            "the rule reaches the caller instead of a placeholder")
+        (is (re-find #"cron schedule" text))))))
+
 (deftest persisted-info-by-id-test
   (with-setup! db
     (mt/with-temp

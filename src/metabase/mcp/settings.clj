@@ -56,6 +56,34 @@
   :export?    true
   :doc        false)
 
+(defsetting mcp-v2-disabled-tools
+  (deferred-tru "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call.")
+  :type       :csv
+  :default    []
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :audit      :getter
+  :doc        false)
+
+(defsetting mcp-query-handle-ttl-hours
+  (deferred-tru "Hours a stored MCP query handle is kept before the scheduled GC task deletes it.")
+  ;; `:positive-integer` rather than `:integer`: the GC deletes handles created before `now - ttl`,
+  ;; so 0 puts the cutoff at *now* and clears the whole table on the next run, and a negative takes
+  ;; handles minted seconds ago. The type guards the read path too, which a `:setter` cannot —
+  ;; env vars are read straight through `get-raw-value` and never pass through one.
+  :type       :positive-integer
+  :default    24
+  :visibility :internal
+  :export?    false
+  :doc        false
+  ;; The read predicate yields nil for a stored non-positive rather than falling back to the
+  ;; default, and the GC would then `(long nil)`. Fall back here, as `attachment-table-row-limit`
+  ;; does for the same reason.
+  :getter     (fn []
+                (or (setting/get-value-of-type :positive-integer :mcp-query-handle-ttl-hours)
+                    24)))
+
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv

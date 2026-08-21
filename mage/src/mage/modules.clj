@@ -100,9 +100,11 @@
      auth-identity
      auth-provider
      batch-processing
+     bookmarks
      channel
      classloader
      collections
+     comments
      config
      content-verification
      contextual-interestingness

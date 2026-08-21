@@ -28,8 +28,10 @@ interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  display: McpAppState["display"];
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
+  queryError: McpAppState["queryError"];
   uiCredential: string;
 }
 
@@ -47,7 +49,7 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
+  const { app, display, hostContext, prompt, query, queryError } = useMcpApp();
 
   const { instanceUrl = "", uiCredential = "" } =
     // Unjustified type cast. FIXME
@@ -81,9 +83,11 @@ export function McpUiAppRoute() {
       <McpUiAppRouteContent
         app={app}
         hostContext={hostContext}
+        display={display}
         instanceUrl={instanceUrl}
         prompt={prompt}
         query={query}
+        queryError={queryError}
         uiCredential={uiCredential}
       />
     </ComponentProvider>
@@ -92,10 +96,12 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  display,
   hostContext,
   instanceUrl,
   prompt,
   query,
+  queryError,
   uiCredential,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
@@ -132,10 +138,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || userAndSettingsFetchError || queryError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [isReady, userAndSettingsFetchError, queryError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -192,6 +198,7 @@ function McpUiAppRouteContent({
       <>
         <McpQuestionView
           queryKey={query}
+          requestedDisplay={display}
           safeAreaPaddingTop={safeAreaPadding.top}
         />
 
@@ -225,6 +232,10 @@ function McpUiAppRouteContent({
   const renderContentView = () => {
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    if (queryError) {
+      return <SdkError message={queryError} />;
     }
 
     if (!isReady) {

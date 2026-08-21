@@ -27,7 +27,7 @@
                  :metabase/validate-defendpoint-has-response-schema                   441
                  :metabase/validate-defendpoint-query-params-use-kebab-case           47
                  :metabase/validate-defendpoint-route-uses-kebab-case                 44
-                 :metabase/validate-deftest                                           9
+                 :metabase/validate-deftest                                           8
                  :missing-docstring                                                   10
                  :missing-protocol-method                                             3
                  :non-arg-vec-return-type-hint                                        1
@@ -41,7 +41,7 @@
                  :unresolved-symbol                                                   4
                  :unsorted-required-namespaces                                        1
                  :unused-alias                                                        1
-                 :unused-binding                                                      9
+                 :unused-binding                                                      5
                  :unused-excluded-var                                                 2
                  :unused-namespace                                                    1
                  :unused-private-var                                                  9

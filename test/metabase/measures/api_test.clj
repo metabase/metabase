@@ -68,6 +68,21 @@
               (mt/user-http-request :crowberto :post 400 "measure" {:name       "abc"
                                                                     :definition {:aggregation [[:count]]}}))))))
 
+(deftest create-measure-source-table-rule-is-stated-test
+  (testing "POST /api/measure: a definition with no source table is refused with the rule stated, not a placeholder"
+    (let [response (mt/user-http-request :crowberto :post 400 "measure"
+                                         {:name       "abc"
+                                          :definition {:lib/type :mbql/query
+                                                       :database (mt/id)
+                                                       :stages   [{:lib/type :mbql.stage/mbql
+                                                                   :source-card 1}]}})
+          text     (pr-str response)]
+      (is (not (re-find #"unknown error" text))
+          "the rule reaches the caller instead of a placeholder")
+      ;; matching the schema's :description ("...a valid MBQL query with a source table.") would pass
+      ;; even if the :error/fn message regressed, so match only what :error/fn produces
+      (is (re-find #"measure definition must have a source table" text)))))
+
 (deftest create-measure-test
   (testing "POST /api/measure"
     (is (=? {:name        "A Measure"

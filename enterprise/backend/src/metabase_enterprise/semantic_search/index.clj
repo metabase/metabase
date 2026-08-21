@@ -1026,7 +1026,11 @@
                  (or (= doc-collection-id collection-id)
                      (when doc-collection-id
                        (when-let [collection (get collections-map doc-collection-id)]
-                         (str/starts-with? (:location collection) (str "/" collection-id "/")))))))
+                         ;; :location is the ancestor path (e.g. "/root/target/"), so the target may
+                         ;; appear mid-path when it is itself nested — match the "/id/" segment anywhere,
+                         ;; not just at the front. The surrounding slashes keep it from matching a
+                         ;; partial id (e.g. "/2/" never matches inside "/12/").
+                         (str/includes? (:location collection) (str "/" collection-id "/")))))))
              docs)))
 
 (defn- apply-collection-id-filter

@@ -251,7 +251,7 @@
   Session-id is minted eagerly here so callers can read [[*session-id*]] before the first span.
 
     (with-eval-session nil          (with-agent-turn {…} …))   ; agent loop — mint
-    (with-eval-session mcp-session  (eval-span \"mcp.tools/call\" {…} …))   ; MCP — supplied"
+    (with-eval-session mcp-session  (eval-span \"tools/call\" {…} …))   ; MCP — supplied"
   {:style/indent 1}
   [supplied-id & body]
   `(cond

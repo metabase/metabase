@@ -1,21 +1,13 @@
 (ns metabase.mcp.validation
   (:require
-   [metabase.api.common :as api]
    [metabase.api.routes.common :as routes.common]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.util.i18n :refer [tru]]))
 
-(defn check-mcp-enabled
-  "Check that the MCP server is enabled, or throw a 403."
-  []
-  (api/check (llm.settings/ai-features-enabled?)
-             [403 (tru "AI features are not enabled.")])
-  (api/check (mcp.settings/mcp-enabled?)
-             [403 (tru "MCP server is not enabled.")]))
-
 (defn enforce-mcp-enabled
-  "Ring middleware that blocks external MCP requests when the feature is disabled."
+  "Ring middleware that blocks external MCP requests when the feature is disabled. Gates the MCP
+   surface itself and the iframe callbacks under `/api/embed-mcp` that serve it."
   [handler]
   (fn [request respond raise]
     (cond

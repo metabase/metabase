@@ -144,7 +144,14 @@
   `(do-with-temp-notification ~props (fn [~bindings] ~@body)))
 
 (defn do-with-card-notification
-  [{:keys [card notification-card notification subscriptions handlers]} thunk]
+  [{:keys [card notification-card notification subscriptions handlers] :as props} thunk]
+  ;; Destructuring drops unknown keys silently, so a misspelled option — :notification_card for
+  ;; :notification-card, say — quietly falls back to the fixture's defaults and the test asserts
+  ;; against a notification it didn't set up.
+  (when-let [unknown (seq (remove #{:card :notification-card :notification :subscriptions :handlers}
+                                  (keys props)))]
+    (throw (ex-info (str "Unknown with-card-notification option(s): " (pr-str unknown))
+                    {:unknown unknown})))
   (mt/with-temp
     [:model/Card {card-id :id} (merge
                                 {:name          default-card-name

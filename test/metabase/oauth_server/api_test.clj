@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
@@ -36,9 +37,10 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+  (testing "each MCP path advertises *itself* as the OAuth protected resource (RFC 9728), so a strict
+            client connecting via an alias sees a resource value matching the URL it hit"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp" "/api/metabase-mcp/v2"]]
         (testing path
           (let [response (mt/user-http-request :crowberto :get 200
                                                (str ".well-known/oauth-protected-resource" path))]
@@ -1118,3 +1120,68 @@
               "Raw script tags must not appear in the consent page")
           (is (str/includes? body "&lt;script&gt;")
               "Script tags should be HTML-escaped"))))))
+
+;;; ----------------------------------- RFC 8707 resource narrowing -----------------------------------
+
+(defn- extract-hidden-field
+  "Extract an arbitrary hidden form field's value from the consent page HTML."
+  [field-name body]
+  (second (re-find (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([^\"]*)\"")) body)))
+
+(deftest authorize-narrows-scope-to-mcp-resource-test
+  (testing "an RFC 8707 `resource` indicator naming the MCP surface narrows the grant to the
+            scopes that surface accepts, so the consent screen asks for what the token can actually
+            be used for rather than everything the client registered"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [wide         "agent:content:read agent:question:create agent:sql:execute"
+              mcp-uri      (str "http://localhost:3000" (mcp/mcp-canonical-path))
+              client-id    (:client_id (create-test-client!
+                                        {:scopes ["agent:content:read" "agent:question:create"
+                                                  "agent:sql:execute"]}))
+              consent-resp (mt/user-http-request-full-response
+                            :crowberto :get 200 "oauth/authorize"
+                            :client_id     client-id
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         wide
+                            :resource      mcp-uri
+                            :state         "test-state")
+              body         (:body consent-resp)
+              shown-scope  (extract-hidden-field "scope" body)]
+          (testing "the v2 scope survives and the agent-API-only scopes are gone"
+            (is (= "agent:content:read" shown-scope))
+            (is (not (str/includes? body "agent:question:create")))
+            (is (not (str/includes? body "agent:sql:execute"))))
+          (testing "approving the narrowed request still verifies — narrowing happens before the
+                    params are signed, so the consent form round-trips intact"
+            (let [response (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    (extract-csrf-token-from-consent body)
+                             :params_sig    (extract-params-sig-from-consent body)
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         shown-scope
+                             :resource      mcp-uri
+                             :state         "test-state"}
+                            302
+                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+              (is (str/includes? (get-in response [:headers "Location"]) "code="))))
+          (testing "a client cannot re-widen the scope on the way back: the signature covers the
+                    narrowed params, so posting the original wide scope is rejected as tampering"
+            (let [response (form-post-decision!
+                            :crowberto
+                            {:approved      "true"
+                             :csrf_token    (extract-csrf-token-from-consent body)
+                             :params_sig    (extract-params-sig-from-consent body)
+                             :client_id     client-id
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"
+                             :scope         wide
+                             :resource      mcp-uri
+                             :state         "test-state"}
+                            403
+                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+              (is (= "params_tampered" (get-in response [:body :error]))))))))))

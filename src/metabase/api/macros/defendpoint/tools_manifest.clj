@@ -1,21 +1,14 @@
 (ns metabase.api.macros.defendpoint.tools-manifest
-  "Generate a tools manifest (JSON Schema 2020-12) from `defendpoint` endpoints annotated with `:tool` metadata.
+  "Malli -> JSON Schema (2020-12) conversion for MCP tool manifests.
 
-  Parallel to [[metabase.api.macros.defendpoint.open-api]] — same endpoint data, different output format.
-
-  The manifest describes MCP-compatible tools for LLM/agent consumers. Each tool has:
-  - `name`, `description` — tool identity
-  - `endpoint` — HTTP method + path
-  - `inputSchema` — merged route + query + body parameters
-  - `outputSchema` — derived from the endpoint's response schema
-  - `annotations` — MCP ToolAnnotations (readOnlyHint, destructiveHint, etc.)"
+  Parallel to [[metabase.api.macros.defendpoint.open-api]] — same schemas, different output format.
+  Produces the `inputSchema`/`outputSchema` an MCP tool publishes: all registered-schema refs are
+  inlined (no `$ref`/`$defs`), root-level composites are flattened to a single object, and the
+  strict transform marks every property required-and-nullable for OpenAI strict-tool clients."
   (:require
-   [clojure.string :as str]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
    [malli.util :as mut]
-   [metabase.api.macros :as api.macros]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -153,67 +146,6 @@
   (let [prepared (-> malli-schema inline-malli-refs flatten-root-schema prefer-tool-descriptions)]
     (mjs/transform prepared)))
 
-(def ^:private annotation-key-mapping
-  {:read-only?   :readOnlyHint
-   :destructive? :destructiveHint
-   :idempotent?  :idempotentHint
-   :open-world?  :openWorldHint})
-
-(defn- method-default-annotations
-  "Default MCP ToolAnnotations for an HTTP method."
-  [method]
-  ;; `readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present — some MCP clients
-  ;; (e.g. the ChatGPT Apps SDK) reject tools that omit them.
-  (merge {:readOnlyHint    false
-          :destructiveHint false
-          ;; `openWorldHint` signals whether a tool reaches arbitrary external entities (e.g. a
-          ;; web-search tool) — false because Metabase tools stay within the user's own instance.
-          :openWorldHint   false}
-         (case method
-           (:get :head) {:readOnlyHint   true
-                         :idempotentHint true}
-           :put         {:idempotentHint true}
-           :delete      {:destructiveHint true
-                         :idempotentHint  true}
-           {})))
-
-(defn infer-annotations
-  "Compute MCP ToolAnnotations from HTTP method defaults merged with explicit `:annotations`.
-   Returns `{:annotations <merged> :redundant <pairs> :contradictory? <bool>}`.
-   Callers should reject `:redundant` entries (explicit declarations must add information beyond
-   the HTTP-method default) and `:contradictory?` (a tool can't be both read-only and destructive)."
-  [method explicit-annotations]
-  (let [method-defaults (method-default-annotations method)
-        explicit        (into {}
-                              (keep (fn [[k v]]
-                                      (when-let [mcp-key (annotation-key-mapping k)]
-                                        [mcp-key v])))
-                              explicit-annotations)
-        merged          (merge method-defaults explicit)
-        read-only?      (true? (:readOnlyHint merged))
-        ;; Report redundancies with the developer's original key (e.g. :read-only?), not the
-        ;; translated MCP key, so the error points at what they actually wrote.
-        redundant       (into {}
-                              (keep (fn [[k v]]
-                                      (when-let [mcp-key (annotation-key-mapping k)]
-                                        (when (= v (get method-defaults mcp-key))
-                                          [k v]))))
-                              explicit-annotations)
-        annotations     merged]
-    (cond-> {:annotations annotations
-             :redundant   redundant}
-      (and read-only? (true? (:destructiveHint merged)))
-      (assoc :contradictory? true))))
-
-(defn- schema->properties-and-required
-  "Extract `:properties` and `:required` from a malli schema's JSON Schema.
-  Returns nil if the schema is nil or doesn't have `:properties` (e.g., `:or`/`:oneOf`)."
-  [malli-schema]
-  (when malli-schema
-    (let [jss (malli->json-schema malli-schema)]
-      (when (:properties jss)
-        (select-keys jss [:properties :required])))))
-
 (defn strict-tool-input-schema
   "Make an MCP inputSchema compatible with stricter LLM clients.
 
@@ -263,161 +195,3 @@
                                 "under the strict-tool transform.")
                            {:tool tool-name :field k}))))
        schema))))
-
-(defn- merge-input-schemas
-  "Merge route, query, and body param schemas into a single inputSchema object.
-  Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
-  the full JSON Schema is used directly. If route/query/body share a property name,
-  later sources (body > query > route) take precedence."
-  [form]
-  (let [route-parts (schema->properties-and-required (get-in form [:params :route :schema]))
-        query-parts (schema->properties-and-required (get-in form [:params :query :schema]))
-        body-schema (get-in form [:params :body :schema])
-        body-parts  (schema->properties-and-required body-schema)
-        ;; If the body schema doesn't yield properties (e.g. :or), use its full JSON Schema
-        body-full   (when (and body-schema (nil? body-parts))
-                      (malli->json-schema body-schema))
-        all-props   (merge (:properties route-parts)
-                           (:properties query-parts)
-                           (:properties body-parts))
-        all-req     (into [] (comp cat (distinct))
-                          [(:required route-parts)
-                           (:required query-parts)
-                           (:required body-parts)])]
-    (cond
-      (and body-full (empty? all-props)) body-full
-      (seq all-props)                    (cond-> {:type "object" :properties all-props}
-                                           (seq all-req) (assoc :required all-req)))))
-
-(defn- tool-input-schema
-  "Derive a tool's MCP `inputSchema` from the endpoint's route/query/body Malli.
-  Linted by [[assert-optional-fields-nullable!]]: every optional field must be `[:maybe ...]` so the
-  published JSON Schema is already nullable, letting the strict transform leave property types alone.
-  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP input shape differs from
-  the endpoint's wire shape."
-  [tool-name form]
-  (doseq [k [:route :query :body]]
-    (assert-optional-fields-nullable! (get-in form [:params k :schema]) tool-name))
-  (some-> (merge-input-schemas form) strict-tool-input-schema))
-
-(defn- response-schema->json-schema
-  "Convert an endpoint's response schema to JSON Schema for the tools manifest."
-  [response-schema]
-  (when response-schema
-    (let [resolved (mr/resolve-schema response-schema)
-          content  (or (-> resolved mc/properties :openapi/response-schema)
-                       response-schema)]
-      (malli->json-schema content))))
-
-(defn- tool-output-schema
-  "Derive a tool's MCP `outputSchema` from the endpoint's `:response-schema`.
-  No strict transform — outputs aren't constrained by OpenAI's strict-tool rules.
-  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP body transform
-  reshapes the endpoint response."
-  [form]
-  (response-schema->json-schema (:response-schema form)))
-
-(defn- route-path->endpoint-path
-  "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
-  [path]
-  (str/replace path #":([^/]+)" "{$1}"))
-
-(defn- name->title
-  "Default convention: convert a snake_case tool name to a Title Case title.
-   `get_table` → `Get Table`."
-  [tool-name]
-  (->> (str/split tool-name #"_")
-       (map str/capitalize)
-       (str/join " ")))
-
-(defn- assert-claude-connector-compliant!
-  "Throw if `annotations` lack the readOnlyHint or destructiveHint that the Claude
-   connector requires (every tool must declare one or the other)."
-  [tool-name annotations]
-  (let [{:keys [readOnlyHint destructiveHint]} annotations]
-    (when-not (or (true? readOnlyHint) (boolean? destructiveHint))
-      (throw (ex-info (str "Tool " tool-name
-                           " must declare :read-only? true or :destructive? <boolean> "
-                           "(Claude connector requirement).")
-                      {:tool tool-name :annotations annotations})))))
-
-(defn endpoint->tool-definition
-  "Convert a single endpoint info + prefix to a tool definition map."
-  [prefix {:keys [form]}]
-  (let [method         (:method form)
-        route-path     (get-in form [:route :path])
-        tool-md        (get-in form [:metadata :tool])
-        tool-name      (:name tool-md)
-        _              (assert (string? tool-name) "Tool :name must be a string")
-        explicit-title (:title tool-md)
-        inferred-title (name->title tool-name)
-        _              (when (= explicit-title inferred-title)
-                         (throw (ex-info (str "Tool " tool-name " has redundant :title "
-                                              (pr-str explicit-title)
-                                              " — matches the title we'd infer from the name.")
-                                         {:tool tool-name :title explicit-title})))
-        description    (or (:description tool-md)
-                           (:docstr form))
-        full-path      (str prefix (route-path->endpoint-path route-path))
-        input-schema   (tool-input-schema tool-name form)
-        output-schema  (tool-output-schema form)
-        inferred       (infer-annotations method (:annotations tool-md))
-        annotations    (:annotations inferred)
-        _              (when (:contradictory? inferred)
-                         (throw (ex-info (str "Tool " tool-name
-                                              " is marked both read-only and destructive — these can't both be true.")
-                                         {:tool tool-name :method method})))
-        _              (when (seq (:redundant inferred))
-                         (throw (ex-info (str "Tool " tool-name
-                                              " has redundant :annotations matching defaults: "
-                                              (pr-str (:redundant inferred)))
-                                         {:tool tool-name :method method :redundant (:redundant inferred)})))
-        _              (assert-claude-connector-compliant! tool-name annotations)
-        task-support   (:task-support tool-md)
-        scope          (get-in form [:metadata :scope])]
-    (cond-> {:name        tool-name
-             :title       (or explicit-title inferred-title)
-             :description description
-             :endpoint    {:method (u/upper-case-en (name method))
-                           :path   full-path}}
-      input-schema      (assoc :inputSchema input-schema)
-      output-schema     (assoc :outputSchema output-schema)
-      (seq annotations) (assoc :annotations annotations)
-      task-support      (assoc :execution {:taskSupport (name task-support)})
-      (string? scope)   (assoc :scope scope))))
-
-(defn check-tool-uniqueness
-  "Throws if `tools` contains duplicate `:name` values. The exception message lists each
-  conflicting name and the endpoints that share it."
-  [tools]
-  (let [dupes (into (sorted-map)
-                    (comp (filter (fn [[_ entries]] (< 1 (count entries))))
-                          (map (fn [[tool-name entries]] [tool-name (mapv :endpoint entries)])))
-                    (group-by :name tools))]
-    (when (seq dupes)
-      (throw (ex-info (str "Duplicate tool names detected: "
-                           (str/join ", " (map (fn [[tool-name endpoints]]
-                                                 (str tool-name " -> " (pr-str endpoints)))
-                                               dupes)))
-                      {:duplicates dupes})))))
-
-(defn generate-tools-manifest
-  "Generate a tools manifest from all `:tool`-annotated endpoints.
-
-  `namespace-prefixes` is a map of `{ns-symbol \"/api/agent\"}` — each namespace symbol maps
-  to the URL prefix its endpoints are served under.
-
-  All malli registered-schema refs are inlined before JSON Schema generation, so tool schemas
-  never contain `$ref` or `$defs`. Root-level `anyOf` (from malli `:or` body schemas) is
-  flattened into a single merged object for LLM client compatibility."
-  [namespace-prefixes]
-  (let [tools (into []
-                    (mapcat (fn [[ns-sym prefix]]
-                              (for [[_k endpoint] (api.macros/ns-routes ns-sym)
-                                    :when (get-in endpoint [:form :metadata :tool])]
-                                (endpoint->tool-definition prefix endpoint))))
-                    namespace-prefixes)]
-    (check-tool-uniqueness tools)
-    {:$schema "https://json-schema.org/draft/2020-12/schema"
-     :version "1.0.0"
-     :tools   (sort-by :name tools)}))

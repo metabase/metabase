@@ -28,6 +28,7 @@ const createQuestion = (display: CardDisplayType): Question =>
     lockDisplay: jest.fn(function (this: Question) {
       return this;
     }),
+    displayIsLocked: jest.fn(() => false),
   }) as unknown as Question;
 
 const createQueryResult = (rowCount: number) =>
@@ -197,5 +198,40 @@ describe("useMcpVisualizationSelector", () => {
     expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
       "scalar",
     ]);
+  });
+
+  it("honors a requested display that arrives after the query settled", () => {
+    // `requestedDisplay` is a prop: it can be null on the render where this
+    // query's results land, and arrive on a later one. Marking the query
+    // settled on that first pass means the request is never applied — the tool
+    // asked for a chart type and silently got none.
+    const updateQuestion = jest.fn();
+    const question = createQuestion("table");
+    const queryResults = [createQueryResult(3)];
+
+    interface Props {
+      requestedDisplay: CardDisplayType | null;
+    }
+
+    const initialProps: Props = { requestedDisplay: null };
+
+    const { rerender } = renderHook(
+      ({ requestedDisplay }: Props) =>
+        useMcpVisualizationSelector({
+          queryKey: "query-1",
+          question,
+          queryResults,
+          updateQuestion,
+          requestedDisplay,
+        }),
+      { initialProps },
+    );
+
+    expect(updateQuestion).not.toHaveBeenCalled();
+
+    rerender({ requestedDisplay: "bar" });
+
+    expect(updateQuestion).toHaveBeenCalledTimes(1);
+    expect(question.setDisplay).toHaveBeenCalledWith("bar");
   });
 });

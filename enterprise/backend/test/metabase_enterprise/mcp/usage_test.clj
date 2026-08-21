@@ -5,8 +5,10 @@
   :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.usage :as usage]
+   ;; load-bearing: registers the v2 tools the integration test calls
+   [metabase.mcp.v2.api]
+   [metabase.mcp.v2.registry :as v2.registry]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -14,6 +16,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.mcp.v2.api/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -271,10 +275,10 @@
       (let [sid  (str "throw-session-" (mt/random-name))
             tool (str "boom-" (mt/random-name))]
         (try
-          (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
+          (mt/with-dynamic-fn-redefs [v2.registry/dispatch-tool-call
                                       (fn [& _] (throw (ex-info "kaboom" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
-                                  (mcp.tools/call-tool #{} sid tool {}))))
+                                  (v2.registry/call-tool #{} sid tool {}))))
           (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))
@@ -323,16 +327,18 @@
   (cond-> {:jsonrpc "2.0" :method method :params params}
     id (assoc :id id)))
 
-(deftest ^:parallel three-write-points-integration-test
+(def ^:private mcp-endpoint "metabase-mcp")
+
+(deftest three-write-points-integration-test
   (testing "initialize -> tools/call -> DELETE records session, tool-call, and ended_at"
     ;; Collection runs on any EE instance (:feature :none), so no premium feature is needed here.
     (let [crowberto (mt/user->id :crowberto)
-          ;; Unique per run so parallel tests can't collide: the version rides onto the session and,
-          ;; via the denormalized identity, onto every tool-call row — a precise lookup/cleanup key.
+          ;; Unique per run so runs can't collide: the version rides onto the session and, via the
+          ;; denormalized identity, onto every tool-call row — a precise lookup/cleanup key.
           ver       (str (random-uuid))
           init-resp (client/client-full-response
                      (test.users/username->token :crowberto)
-                     :post "mcp"
+                     :post mcp-endpoint
                      (jsonrpc "initialize"
                               {:clientInfo {:name "claude-ai" :version ver} :capabilities {}}
                               1))
@@ -348,19 +354,18 @@
             (is (nil? (:ended_at row)))))
         ;; complete the handshake, then call a tool
         (client/client-full-response (test.users/username->token :crowberto)
-                                     :post "mcp"
+                                     :post mcp-endpoint
                                      {:request-options {:headers {"mcp-session-id" sid}}}
                                      (jsonrpc "notifications/initialized" {} nil))
         (let [call-resp (client/client-full-response
                          (test.users/username->token :crowberto)
-                         :post "mcp"
+                         :post mcp-endpoint
                          {:request-options {:headers {"mcp-session-id" sid}}}
-                         (jsonrpc "tools/call" {:name "read_resource"
-                                                :arguments {:uris ["metabase://databases"]}} 2))]
+                         (jsonrpc "tools/call" {:name "ping_v2" :arguments {}} 2))]
           (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :tool_name "read_resource" :client_version ver)]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "ping_v2" :client_version ver)]
               (is (some? row))
               (is (= "success" (:status row)))
               (is (= crowberto (:user_id row)))
@@ -371,7 +376,7 @@
         (testing "an unknown tool records a status=error row and the error propagates to the client"
           (let [err-resp (client/client-full-response
                           (test.users/username->token :crowberto)
-                          :post "mcp"
+                          :post mcp-endpoint
                           {:request-options {:headers {"mcp-session-id" sid}}}
                           (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
             (is (true? (boolean (get-in err-resp [:body :result :isError]))))
@@ -382,7 +387,7 @@
               (is (= -32601 (:error_code row))))))
         (testing "DELETE stamps ended_at on the session row"
           (client/client-full-response (test.users/username->token :crowberto)
-                                       :delete "mcp"
+                                       :delete mcp-endpoint
                                        {:request-options {:headers {"mcp-session-id" sid}}})
           (is (some? (:ended_at (t2/select-one :model/McpSessionLog :id sid)))))
         (finally
