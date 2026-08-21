@@ -263,6 +263,7 @@ export const DatabaseCachingEditor = () => {
           }
           aria-label={t`Data caching settings`}
           description={t`Speed up queries by caching results with a global policy or database-specific policies.`}
+          descriptionProps={{ maw: "100%" }}
           h="calc(100vh - 9rem)"
         >
           {confirmationModal}

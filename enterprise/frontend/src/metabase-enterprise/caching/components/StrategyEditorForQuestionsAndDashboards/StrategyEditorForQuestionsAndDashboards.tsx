@@ -238,6 +238,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
         <SettingsPageWrapper
           title={t`Dashboard and question caching`}
           description={t`These dashboards and questions have custom caching policies that override default or database-level policies.`}
+          descriptionProps={{ maw: "100%" }}
           h="calc(100vh - 9rem)"
         >
           {confirmationModal}

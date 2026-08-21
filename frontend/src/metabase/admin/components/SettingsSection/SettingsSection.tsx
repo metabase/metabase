@@ -7,6 +7,7 @@ import {
   Stack,
   type StackProps,
   Text,
+  type TextProps,
   Title,
   type TitleProps,
 } from "metabase/ui";
@@ -53,11 +54,13 @@ export function SettingsSection({
 export function SettingsPageWrapper({
   title,
   description,
+  descriptionProps,
   children,
   ...stackProps
 }: {
   title?: React.ReactNode;
   description?: React.ReactNode;
+  descriptionProps?: TextProps;
   children: React.ReactNode;
 } & Omit<StackProps, "title">) {
   return (
@@ -70,7 +73,7 @@ export function SettingsPageWrapper({
             </Title>
           )}
           {description && (
-            <Text c="text-secondary" lh={1.5} maw="40rem">
+            <Text c="text-secondary" lh={1.5} maw="40rem" {...descriptionProps}>
               {description}
             </Text>
           )}
