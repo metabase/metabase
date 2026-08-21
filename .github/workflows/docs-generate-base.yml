@@ -76,7 +76,7 @@ jobs:
         run: |
           set -e  # Exit on any error
           echo "Generating embedding SDK documentation..."
-          bun run embedding-sdk:docs:generate
+          yarn run embedding-sdk:docs:generate
         continue-on-error: false
 
       - name: Check for changes
@@ -148,7 +148,7 @@ jobs:
           - \`clojure -M:ee:doc environment-variables-documentation\`
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
-          - \`bun run embedding-sdk:docs:generate\`
+          - \`yarn run embedding-sdk:docs:generate\`
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \
