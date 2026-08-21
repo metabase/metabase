@@ -21,6 +21,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.llm-providers :as llm-providers]
@@ -2242,3 +2243,25 @@
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
+
+(define-migration BackfillAuthMaterialSignatures
+  ;; Stamp the keyed signature columns for rows that predate them, using the value already in each row.
+  ;; No-op when no signing secret is configured (the signature would be nil).
+  (when (encryption/hmac-signing-secret)
+    (run! (fn [{:keys [id is_superuser]}]
+            (t2/query {:update :core_user
+                       :set    {:is_superuser_sig (encryption/hmac-signature "core_user.is_superuser" id (boolean is_superuser))}
+                       :where  [:= :id id]}))
+          (t2/reducible-query {:select [:id :is_superuser] :from [:core_user]}))
+    ;; ts-part / tuple order must stay byte-identical to metabase.auth-identity.models.auth-identity's
+    ;; credentials-sig-parts so backfilled signatures verify at read time.
+    (let [ts-part (fn [ts] (some-> ts t/instant (.truncatedTo java.time.temporal.ChronoUnit/SECONDS) str))]
+      (run! (fn [{:keys [id user_id provider credentials]}]
+              (let [{:keys [password_hash token_hash expires_at consumed_at]} (encrypted-json-out credentials)]
+                (t2/query {:update :auth_identity
+                           :set    {:credentials_sig (encryption/hmac-signature "auth_identity.credentials"
+                                                                                user_id provider
+                                                                                password_hash token_hash
+                                                                                (ts-part expires_at) (ts-part consumed_at))}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :user_id :provider :credentials] :from [:auth_identity]})))))

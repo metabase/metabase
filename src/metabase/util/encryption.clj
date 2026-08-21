@@ -16,6 +16,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.crypto :as crypto]
    [buddy.core.kdf :as kdf]
+   [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
    [environ.core :as env]
@@ -58,6 +59,52 @@
 ;; it a memoized function or something
 (defonce ^:private ^{:tag 'bytes} default-secret-key
   (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
+
+;;; ---------------------------------------------------------------------------
+;;; Keyed HMAC signing of stored values
+;;; ---------------------------------------------------------------------------
+
+;; Same secret [[metabase.session.models.session]] uses to sign session keys, so one env var enables
+;; every keyed-hash protection. Validated eagerly at load so a misconfigured secret fails at startup.
+(defonce ^:private ^{:tag 'bytes} default-hmac-signing-secret
+  (validate-and-hash-secret-key (env/env :mb-session-secret-key) "MB_SESSION_SECRET_KEY"))
+
+(defn hmac-signing-secret
+  "Server-side secret used to keyed-hash stored values. Read from `MB_SESSION_SECRET_KEY`. Nil when it
+  is not set."
+  ^bytes []
+  default-hmac-signing-secret)
+
+;; Length-prefix each stringified part ("<byte-count>:<utf8-bytes>") so the encoding is unambiguous:
+;; distinct part lists always map to distinct bytes.
+(defn- sig-input-bytes ^bytes [parts]
+  (let [out (java.io.ByteArrayOutputStream.)]
+    (doseq [p parts]
+      (let [^bytes b      (.getBytes (str p) java.nio.charset.StandardCharsets/UTF_8)
+            ^bytes prefix (.getBytes (str (alength b) ":") java.nio.charset.StandardCharsets/UTF_8)]
+        (.write out prefix 0 (alength prefix))
+        (.write out b 0 (alength b))))
+    (.toByteArray out)))
+
+(defn hmac-signature
+  "Hex HMAC-SHA512 of `parts` (each stringified and length-prefixed) keyed by [[hmac-signing-secret]].
+  Nil when no secret is configured. Use on the write path and to backfill existing rows."
+  ^String [& parts]
+  (when-let [secret (hmac-signing-secret)]
+    (codecs/bytes->hex (mac/hash (sig-input-bytes parts) {:key secret :alg :hmac+sha512}))))
+
+(defn hmac-signature-valid?
+  "Constant-time check that hex `signature` matches an HMAC over `parts`. When no secret is configured
+  the check is a no-op that returns true, so instances without a key are not locked out."
+  [signature & parts]
+  (if-let [secret (hmac-signing-secret)]
+    (boolean
+     (when (seq signature)
+       (u/ignore-exceptions
+         (mac/verify (sig-input-bytes parts)
+                     (codecs/hex->bytes signature)
+                     {:key secret :alg :hmac+sha512}))))
+    true))
 
 (defn default-encryption-enabled?
   "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"

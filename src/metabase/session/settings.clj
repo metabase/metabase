@@ -29,6 +29,16 @@
   :setter     :none
   :getter     u.password/active-password-complexity)
 
+(defsetting auth-signing-key-fingerprint
+  "Internal marker recording which signing key the stored auth-material signatures were computed with.
+  Compared on startup to decide whether existing rows need re-signing after the key changed. Holds a
+  non-reversible fingerprint of the key, never the key itself."
+  :visibility :internal
+  :encryption :no
+  :type       :string
+  :export?    false
+  :doc        false)
+
 (defsetting session-cookies
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
   :type       :boolean

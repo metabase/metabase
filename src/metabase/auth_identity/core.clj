@@ -11,7 +11,8 @@
 ;; Import model query functions
 (p/import-vars
  [auth-identity
-  hash-password-credentials])
+  hash-password-credentials
+  resign-credentials-signatures!])
 
 ;; ==============================================================================
 ;; Provider Multimethod System

@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.providers.password
   "Password authentication provider implementation."
   (:require
+   [metabase.auth-identity.models.auth-identity :as auth-identity.models]
    [metabase.auth-identity.provider :as provider]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -77,7 +78,8 @@
     :else
     (if-let [auth-identity (find-auth-identity-by-email email)]
       (let [{:keys [password_hash password_salt]} (:credentials auth-identity)
-            password-matches? (u.password/verify-password password password_salt password_hash)]
+            password-matches? (and (auth-identity.models/credentials-signature-valid? auth-identity)
+                                   (u.password/verify-password password password_salt password_hash))]
         (if password-matches?
           {:success? true
            :user-id (:user_id auth-identity)

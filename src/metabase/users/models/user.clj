@@ -16,6 +16,7 @@
    [metabase.tenants.core :as tenants]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -236,6 +237,22 @@
         (binding [t2.default-fields/*skip-default-fields* false]
           (next-method query-type model))))
 
+(defn- superuser-signature
+  "Keyed signature bound to `(id, is_superuser)`. Recomputed on the model write path."
+  [id superuser?]
+  (encryption/hmac-signature "core_user.is_superuser" id (boolean superuser?)))
+
+(defn resign-superuser-signatures!
+  "Re-stamp `is_superuser_sig` for every user from the current row value. Run when the signing secret
+  changes so existing rows stay verifiable. No-op when no secret is configured."
+  []
+  (when (encryption/hmac-signing-secret)
+    (run! (fn [{:keys [id is_superuser]}]
+            (t2/query-one {:update :core_user
+                           :set    {:is_superuser_sig (superuser-signature id is_superuser)}
+                           :where  [:= :id id]}))
+          (t2/reducible-query {:select [:id :is_superuser] :from [:core_user]}))))
+
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)
@@ -245,6 +262,11 @@
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
+  ;; id is only known now, so stamp the keyed signatures with a hook-free write
+  (when (encryption/hmac-signing-secret)
+    (t2/query-one {:update :core_user
+                   :set    {:is_superuser_sig (superuser-signature user-id superuser?)}
+                   :where  [:= :id user-id]}))
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
       (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
@@ -283,6 +305,8 @@
     (merge user
            (normalize-user-fields (t2/changes user))
            hashed-pw
+           (when (contains? changes :is_superuser)
+             {:is_superuser_sig (superuser-signature id superuser?)})
            (when (or hashed-pw (and (contains? changes :password) (contains? changes :password_salt)))
              {:reset_token nil :reset_triggered nil})
            (prepare-archival-timestamp active?))))

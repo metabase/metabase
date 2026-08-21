@@ -7,6 +7,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config.core :as config]
@@ -28,13 +29,16 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
+   [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.users.core :as users]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [metabase.util.system-info :as u.system-info]
@@ -159,6 +163,20 @@
         (catch Exception e
           (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
+(defn- reconcile-auth-material-signatures!
+  "Keep the stored auth-material signatures valid when the signing key changes. The migration backfills
+  them once; if the key is introduced or rotated afterwards, existing rows are re-signed here. Runs on
+  every startup but re-signs only when the key's fingerprint differs from the last run, so an unchanged
+  key is a no-op."
+  []
+  (when-let [_secret (encryption/hmac-signing-secret)]
+    (let [fingerprint (encryption/hmac-signature "auth-signing-key-fingerprint")]
+      (when (not= fingerprint (session.settings/auth-signing-key-fingerprint))
+        (log/info "Auth-material signing key changed; re-signing existing rows")
+        (users/resign-superuser-signatures!)
+        (auth-identity/resign-credentials-signatures!)
+        (session.settings/auth-signing-key-fingerprint! fingerprint)))))
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -241,6 +259,7 @@
   (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
+  (reconcile-auth-material-signatures!)
   (database/check-health!)
   (startup/run-startup-logic!)
   (setting/log-deprecated-env-var-usage!)
