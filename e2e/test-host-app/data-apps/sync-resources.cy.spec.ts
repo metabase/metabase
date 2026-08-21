@@ -452,17 +452,17 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         return cy.wrap(groupId, { log: false });
       });
 
-    // View-data alone would let a viewer author their own questions against the
-    // whole database, so synchronization also pins create-queries to "no".
-    it("gives the group data to read but no right to write queries with it", () => {
+    it("grants view-data only on the query's table and no query authoring", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
           getPermissionByGroup(groupId).should((graph) => {
-            const database = graph[String(SAMPLE_DB_ID)];
+            const database = graph[SAMPLE_DB_ID];
 
-            expect(database?.["view-data"], "data is readable").to.eq(
-              "unrestricted",
-            );
+            expect(
+              database?.["view-data"],
+              "only orders is readable",
+            ).to.deep.eq({ public: { [ORDERS_ID]: "unrestricted" } });
+
             // The graph reports only what departs from a group's defaults, and
             // "no" is the default — so anything else here would mean the group
             // had been granted query authoring over the whole database.
@@ -606,22 +606,6 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
         cy.findByText("You don’t have access to this data app").should("exist");
         cy.get("iframe").should("not.exist");
-      });
-    });
-
-    it("grants the group view-data only on the tables its queries read", () => {
-      syncOneQuery().then(() => {
-        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-          cy.request("/api/permissions/graph").then(({ body: graph }) => {
-            const viewData =
-              graph.groups[app.permission_group_id][SAMPLE_DB_ID]["view-data"];
-
-            expect(viewData).not.to.eq("unrestricted");
-            expect(
-              Object.values(viewData).flatMap(Object.keys).map(Number),
-            ).to.deep.eq([ORDERS_ID]);
-          });
-        });
       });
     });
 
