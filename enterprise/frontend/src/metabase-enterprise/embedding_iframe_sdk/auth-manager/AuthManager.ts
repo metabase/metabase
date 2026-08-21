@@ -71,7 +71,7 @@ export class EmbedAuthManager {
     const { method, url: responseUrl, hash } = urlResponseJson || {};
 
     if (method === "saml") {
-      const sessionToken = await openSamlLoginPopup(responseUrl);
+      const sessionToken = await openSamlLoginPopup(responseUrl, instanceUrl);
 
       return { method, sessionToken };
     }

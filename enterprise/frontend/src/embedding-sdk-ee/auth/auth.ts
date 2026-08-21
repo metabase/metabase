@@ -279,7 +279,7 @@ const getRefreshToken = async ({
 
   const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    const token = await openSamlLoginPopup(responseUrl);
+    const token = await openSamlLoginPopup(responseUrl, metabaseInstanceUrl);
     samlTokenStorage.set(token);
 
     return token;
