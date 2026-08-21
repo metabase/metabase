@@ -1,9 +1,12 @@
 (ns ^:synchronized metabase.mcp.callback-api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api-keys.core :as api-keys]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -14,6 +17,15 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(def ^:private ask-scopes
+  "What an uninstructed MCP client is granted: `metabase.mcp.v2.api/default-ask-scopes` minus the raw-SQL grant."
+  #{metabot.scope/agent-content-read
+    metabot.scope/agent-query-run
+    metabot.scope/agent-resource-read})
+
+(def ^:private sql-scopes
+  (conj ask-scopes metabot.scope/agent-sql-run))
 
 (defn- post-drill
   "POST /api/embed-mcp/drills as `user` (default :crowberto), with optional headers
@@ -81,7 +93,7 @@
   (let [user-id          (mt/user->id :crowberto)
         credential-id    (mcp.session/create! user-id nil)
         other-session-id (mcp.session/create! user-id nil)
-        credential       (mcp.session/issue-ui-credential credential-id user-id)]
+        credential       (mcp.session/issue-ui-credential credential-id user-id ask-scopes)]
     (testing "a credential can use the callback surface for its own MCP session"
       (is (= 200 (:status (post-drill-with-ui-credential 200 credential credential-id)))))
     (testing "a credential cannot be reused with another MCP session"
@@ -91,7 +103,7 @@
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (= 401 (:status (post-drill-with-ui-credential
                              401
-                             (mcp.session/issue-ui-credential credential-id user-id)
+                             (mcp.session/issue-ui-credential credential-id user-id ask-scopes)
                              credential-id))))))))
 
 (deftest ui-credential-is-not-a-general-api-credential-test
@@ -100,7 +112,7 @@
             possession of one must not amount to a Metabase session"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
-          headers    {"x-metabase-mcp-ui-auth" (mcp.session/issue-ui-credential session-id user-id)}]
+          headers    {"x-metabase-mcp-ui-auth" (mcp.session/issue-ui-credential session-id user-id ask-scopes)}]
       (testing "an allowlisted route authenticates"
         (is (= 200 (:status (client/client-full-response :get 200 "user/current"
                                                          {:request-options {:headers headers}})))))
@@ -219,7 +231,7 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [user-id    (mt/user->id :crowberto)
             session-id (mcp.session/create! user-id nil)
-            credential (mcp.session/issue-ui-credential session-id user-id)
+            credential (mcp.session/issue-ui-credential session-id user-id ask-scopes)
             handle     (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==" "show me orders")]
         (is (=? {:status 200
                  :body   {:query "ZW5jb2RlZA==" :prompt "show me orders"}}
@@ -229,7 +241,7 @@
       (let [user-id          (mt/user->id :crowberto)
             credential-id    (mcp.session/create! user-id nil)
             other-session-id (mcp.session/create! user-id nil)
-            credential       (mcp.session/issue-ui-credential credential-id user-id)
+            credential       (mcp.session/issue-ui-credential credential-id user-id ask-scopes)
             handle           (mcp.session/store-handle! other-session-id user-id "ZW5jb2RlZA==")]
         (is (= 404 (:status (get-query-with-ui-credential 404 handle credential other-session-id)))))))
   (testing "an invalid UI credential does not authenticate the handle exchange"
@@ -318,3 +330,58 @@
         (mcp.session/get-or-create-session-key! owner-session (mt/user->id :crowberto))
         (is (=? {:status 404}
                 (post-mcp-feedback :rasta 404 body owner-session)))))))
+
+;;; ------------------------------------- UI credential vs. native SQL (GHY-4318) -------------------------------------
+
+(defn- post-dataset-with-ui-credential
+  [expected-status route credential query]
+  (client/client-full-response :post expected-status route
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
+                               query))
+
+(defn- legacy-native-query []
+  {:database (mt/id) :type "native" :native {:query "SELECT 1"}})
+
+(defn- credential-for! [scopes]
+  (let [user-id (mt/user->id :crowberto)]
+    (mcp.session/issue-ui-credential (mcp.session/create! user-id nil) user-id scopes)))
+
+(deftest ui-credential-native-query-requires-sql-scope-test
+  (testing "GHY-4318: the iframe credential is stamped unrestricted so the allowlisted routes stay reachable, which
+            left a client granted only the default ask scopes able to lift it out of the resource HTML and POST raw
+            SQL to /api/dataset — bypassing agent:sql:run. The credential now carries the minting session's scopes
+            and the QP path refuses native SQL that they do not cover."
+    (let [native (legacy-native-query)]
+      (testing "a credential minted without agent:sql:run is refused, and the message names the missing scope"
+        (let [response (post-dataset-with-ui-credential 403 "dataset" (credential-for! ask-scopes) native)]
+          (is (= 403 (:status response)))
+          (is (str/includes? (str (:body response)) "agent:sql:run"))))
+      (testing "the same refusal covers /api/dataset/pivot, the other allowlisted query route"
+        (is (= 403 (:status (post-dataset-with-ui-credential 403 "dataset/pivot"
+                                                             (credential-for! ask-scopes) native)))))
+      (testing "a credential minted WITH agent:sql:run still runs native SQL — this is the execute_sql handle that
+                visualize_query is designed to render"
+        (is (= 202 (:status (post-dataset-with-ui-credential 202 "dataset"
+                                                             (credential-for! sql-scopes) native))))))))
+
+(deftest ui-credential-native-query-honours-kill-switch-test
+  (testing "GHY-4318: mcp-execute-sql-enabled is an operator kill switch, so it outranks the granted scope on this
+            path just as it does on execute_sql itself"
+    (mt/with-temporary-setting-values [agent-api.settings/mcp-execute-sql-enabled false]
+      (let [response (post-dataset-with-ui-credential 403 "dataset" (credential-for! sql-scopes)
+                                                      (legacy-native-query))]
+        (is (= 403 (:status response)))
+        (is (str/includes? (str (:body response)) "mcp-execute-sql-enabled"))))))
+
+(deftest ui-credential-mbql-query-is-unaffected-test
+  (testing "GHY-4318: rendering an MBQL chart is the iframe's normal path and must not be gated on the SQL scope"
+    (let [query (mt/mbql-query venues {:limit 1})]
+      (is (= 202 (:status (post-dataset-with-ui-credential 202 "dataset" (credential-for! ask-scopes) query))))
+      (is (= 202 (:status (post-dataset-with-ui-credential 202 "dataset" (credential-for! sql-scopes) query)))))))
+
+(deftest native-query-without-ui-credential-is-unaffected-test
+  (testing "GHY-4318: the gate keys off the MCP UI credential, so an ordinary session request to /api/dataset is
+            untouched — the credential's scopes are not a general native-SQL policy"
+    (is (=? {:status 202}
+            (client/client-full-response (test.users/username->token :crowberto)
+                                         :post 202 "dataset" (legacy-native-query))))))

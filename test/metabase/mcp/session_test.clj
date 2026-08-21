@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.macros.scope :as scope]
    [metabase.events.core :as events]
    [metabase.mcp.session :as mcp.session]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -114,7 +116,8 @@
 (deftest ui-credential-validation-test
   (let [user-id    (mt/user->id :crowberto)
         session-id (mcp.session/create! user-id nil)
-        credential (mcp.session/issue-ui-credential session-id user-id)]
+        scopes     #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
+        credential (mcp.session/issue-ui-credential session-id user-id scopes)]
     (testing "a fresh credential resolves to its user and MCP session"
       (is (=? {:uid user-id :sid session-id}
               (mcp.session/resolve-ui-credential credential))))
@@ -123,7 +126,30 @@
     (testing "expired credentials are rejected"
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (nil? (mcp.session/resolve-ui-credential
-                   (mcp.session/issue-ui-credential session-id user-id))))))))
+                   (mcp.session/issue-ui-credential session-id user-id scopes))))))))
+
+(deftest ui-credential-carries-minting-session-scopes-test
+  (testing "GHY-4318: the credential is stamped unrestricted for the endpoint scope middleware, so the minting
+            session's real scopes have to travel on the signed claims for downstream gates to see them"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id nil)
+          scopes-of  (fn [token-scopes]
+                       (:token-scopes (mcp.session/resolve-ui-credential
+                                       (mcp.session/issue-ui-credential session-id user-id token-scopes))))]
+      (testing "named scopes round-trip"
+        (is (= #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
+               (scopes-of #{metabot.scope/agent-content-read metabot.scope/agent-query-run}))))
+      (testing "an empty grant round-trips as an empty set, not as nil"
+        (is (= #{} (scopes-of #{}))))
+      (testing "the unrestricted sentinel round-trips as the keyword, not as a string"
+        (is (= #{::scope/unrestricted} (scopes-of #{::scope/unrestricted}))))
+      (testing "a granted scope that spells the sentinel out cannot become it — the sentinel rides its own claim"
+        (is (= #{(str ::scope/unrestricted)}
+               (scopes-of #{(str ::scope/unrestricted)}))))
+      (testing "a credential minted before the claim existed fails closed rather than reading as unrestricted"
+        ;; A rolling deploy can hand this node a credential from an older one for the 300s it stays valid.
+        (with-redefs [mcp.session/encode-token-scopes (constantly {})]
+          (is (= #{} (scopes-of #{metabot.scope/agent-sql-run}))))))))
 
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"

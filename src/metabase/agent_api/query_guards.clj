@@ -3,9 +3,16 @@
    MBQL-scoped path — whether it arrives as a fresh query, a continuation token, or a stored
    query handle. Opaque payloads could otherwise smuggle native SQL past the MBQL-only scopes
    (bypassing the execute-sql kill switch) or retain access the caller has since lost, so the
-   three `!` guards run together at every such entry point."
+   three `!` guards run together at every such entry point.
+
+   [[check-mcp-ui-native-query!]] is the odd one out: it guards the ordinary QP endpoints, which the MCP Apps
+   iframe reaches with a credential that the endpoint scope middleware cannot narrow. It shares the native
+   detection but refuses raw SQL on scope rather than banning it outright."
   (:require
-   [metabase.api.common :as api]))
+   [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.api.common :as api]
+   [metabase.api.macros.scope :as scope]
+   [metabase.metabot.scope :as metabot.scope]))
 
 (defn native-marker?
   "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
@@ -58,6 +65,33 @@
         (when-not (and (int? limit) (pos? limit))
           (throw (ex-info "Invalid query: last-stage :limit must be a positive integer."
                           {:status-code 400 :query-map query-map})))))))
+
+(defn check-mcp-ui-native-query!
+  "Throw a 403 if `request` is authenticated by an MCP Apps UI credential that may not run `query` as raw SQL.
+
+  The iframe's credential is stamped `::scope/unrestricted` on purpose — none of the routes on its allowlist declare
+  a `:scope`, so a narrower stamp would 403 the iframe at bootstrap. That makes the endpoint scope middleware unable
+  to stop a credential lifted out of the resource HTML from POSTing native SQL to the query endpoints. The minting
+  session's real scopes ride along on the credential instead, and this is where they are spent: raw SQL needs
+  `agent:sql:run` and the `mcp-execute-sql-enabled` kill switch, the same two gates `execute_sql` itself consults.
+
+  Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
+  by design. Non-native queries, and requests authenticated any other way, pass straight through."
+  [request query]
+  ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
+  ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
+  (when-let [claims (:mcp-ui-credential request)]
+    (when (native-query? query)
+      (when-not (agent-api.settings/mcp-execute-sql-enabled)
+        (throw (ex-info (str "Running raw SQL is disabled on this instance — an admin can re-enable it "
+                             "with the mcp-execute-sql-enabled setting.")
+                        {:status-code 403})))
+      (let [token-scopes (:token-scopes claims)]
+        (when-not (or (contains? token-scopes ::scope/unrestricted)
+                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run))
+          (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
+                               " scope, which this client was not granted.")
+                          {:status-code 403})))))))
 
 (defn check-token-query-permissions!
   "Re-validate the current user's permissions on a stored or client-supplied query.

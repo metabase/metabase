@@ -2,6 +2,7 @@
   "/api/dataset endpoints."
   (:refer-clojure :exclude [get-in select-keys])
   (:require
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
@@ -95,7 +96,11 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-or-internal-query]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
+  ;; This route and `/pivot` are the two query routes on the MCP Apps iframe allowlist
+  ;; (`metabase.server.middleware.session/mcp-ui-request-surface`), so both consult the raw-SQL guard.
+  (query-guards/check-mcp-ui-native-query! request query)
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -216,7 +221,9 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (query-guards/check-mcp-ui-native-query! request query)
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

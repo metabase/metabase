@@ -82,7 +82,7 @@
       ;; Reading the shell is what mints the scoped credential the iframe authenticates with — it
       ;; is the only place the browser ever receives one.
       (let [user-id       api/*current-user-id*
-            ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
+            ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id token-scopes))
             result        (v2.resources/read-resource uri token-scopes {:ui-credential ui-credential
                                                                         :session-id    session-id})]
         (case (:status result)

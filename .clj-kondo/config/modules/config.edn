@@ -2001,7 +2001,8 @@
               metabase.query-processor.util
               metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
-   :uses #{analytics
+   :uses #{agent-api
+           analytics
            analytics-interface
            analyze
            api

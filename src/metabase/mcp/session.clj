@@ -12,6 +12,7 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
+   [metabase.api.macros.scope :as scope]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
@@ -94,17 +95,42 @@
 
 (declare valid-id?)
 
+(defn- encode-token-scopes
+  "Serialize `token-scopes` into credential claims.
+
+  Named scope strings go in `:scp`; the `::scope/unrestricted` sentinel gets its own boolean claim `:unr`. They are
+  kept in separate claims deliberately: JSON has no keywords, so folding the sentinel into `:scp` would turn it into
+  a string that a granted scope could be equal to. Nothing that can appear in `:scp` can appear in `:unr`."
+  [token-scopes]
+  (cond-> {:scp (vec (sort (filter string? token-scopes)))}
+    (contains? token-scopes ::scope/unrestricted) (assoc :unr true)))
+
+(defn- decode-token-scopes
+  "Rebuild the scope set from credential `claims`, reversing [[encode-token-scopes]].
+
+  Absent claims read as the empty set rather than as unrestricted, so a credential minted by a node that predates
+  the claim fails closed for the five minutes it stays valid."
+  [{:keys [scp unr]}]
+  (cond-> (into #{} (filter string?) scp)
+    (true? unr) (conj ::scope/unrestricted)))
+
 (defn issue-ui-credential
   "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
-  never as a core Metabase session."
-  [session-id user-id]
+  never as a core Metabase session.
+
+  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim so gates further down the
+  iframe's request surface can ask what the client was actually granted — the credential itself is stamped
+  unrestricted, since the allowlisted routes declare no `:scope` and would otherwise 403 the iframe at bootstrap."
+  [session-id user-id token-scopes]
   (let [payload (base64url-encode
-                 (json/encode {:v 1 :uid user-id :sid session-id
-                               :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}))]
+                 (json/encode (merge {:v 1 :uid user-id :sid session-id
+                                      :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}
+                                     (encode-token-scopes token-scopes))))]
     (str payload "." (ui-credential-signature payload))))
 
 (defn resolve-ui-credential
-  "Validate a rendered MCP Apps UI credential and return its claims, or nil.
+  "Validate a rendered MCP Apps UI credential and return its claims, or nil. The claims carry `:token-scopes`, the
+  scope set the minting MCP session held.
   Invalid and expired inputs intentionally have the same result and are never logged."
   [credential]
   (try
@@ -117,7 +143,7 @@
           (when (and (= v 1) (integer? uid) (string? sid) (integer? exp)
                      (valid-id? sid)
                      (> exp (.getEpochSecond (Instant/now))))
-            claims))))
+            (assoc claims :token-scopes (decode-token-scopes claims))))))
     (catch Exception _ nil)))
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
