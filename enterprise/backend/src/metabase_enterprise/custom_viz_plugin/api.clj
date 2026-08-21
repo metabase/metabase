@@ -365,18 +365,20 @@
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
         (try
-          (let [resp (http/get sse-url {:as               :stream
-                                        :socket-timeout   0
-                                        :connection-timeout 5000
-                                        :headers          {"Accept" "text/event-stream"}})]
+          (let [resp (http/get sse-url (merge cache/dev-http-opts
+                                              {:as             :stream
+                                               :socket-timeout 0
+                                               :headers        {"Accept" "text/event-stream"}}))]
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
-              (loop []
-                (when-not (a/poll! canceled-chan)
-                  (when-let [line (.readLine rdr)]
-                    (.write os (.getBytes (str line "\n") "UTF-8"))
-                    (.flush os)
-                    (recur))))))
+              (if-not (= "text/event-stream" (cache/response-content-type resp))
+                (sr/write-error! os {:message "Dev server did not return an event stream"} nil 400)
+                (loop []
+                  (when-not (a/poll! canceled-chan)
+                    (when-let [line (.readLine rdr)]
+                      (.write os (.getBytes (str line "\n") "UTF-8"))
+                      (.flush os)
+                      (recur)))))))
           (catch Exception e
             (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
 
