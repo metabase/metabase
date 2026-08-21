@@ -496,8 +496,7 @@ Uses question context for summarization functionality.
 
 ```ts
 SummarizeDropdown: (props: InteractiveQuestionSummarizeDropdownProps) =>
-  | Element
-  | null;
+  Element;
 ```
 
 **`Function`**
@@ -520,8 +519,7 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
