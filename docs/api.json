@@ -14160,10 +14160,24 @@
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
+      "metabase.xrays.api.automagic-dashboards.cell-query" : {
+        "description" : "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step\n  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler\n  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is\n  and fails validation, surfacing as a clean 400.",
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema..root.cell-query"
+      },
       "metabase.xrays.api.automagic-dashboards.entity-id-or-query" : {
         "description" : "One of these:\n\n  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)\n\n  * a form-encoded base-64-encoded JSON-encoded MBQL query\n\n  * The name of a transform\n\n  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded\n  string.)",
         "type" : "string",
         "minLength" : 1
+      },
+      "metabase.xrays.automagic-dashboards.schema..root.cell-query" : {
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema.filter-clause"
+      },
+      "metabase.xrays.automagic-dashboards.schema.filter-clause" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
       }
     },
     "securitySchemes" : {
@@ -15971,7 +15985,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -16118,7 +16132,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -34434,14 +34448,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -34524,14 +34538,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -41354,14 +41368,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -41444,14 +41458,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -42694,14 +42708,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -42786,14 +42800,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
