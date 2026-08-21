@@ -4,6 +4,7 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -50,6 +51,10 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
+;; Not tagged `data-apps:base`, though the two execute routes below are: the SDK's `useAction`
+;; runs an action by id and never fetches its definition, and a dashboard action button reads
+;; its own from the `:dashcard/action` hydration on the dashboard response. Fetching an action
+;; definition is the action-editor flow, which a data app does not render.
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
@@ -189,6 +194,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]
    _query-params
@@ -231,6 +237,7 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params

@@ -7,6 +7,7 @@
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -208,6 +209,7 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with version mismatches are included, with soft `warnings` attached.
    Dev-only plugins are excluded when dev mode is disabled."
+  {:scope api-scope/data-app}
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
         plugins   (custom-viz-plugin/select-non-blob :status :active
@@ -275,6 +277,7 @@
   "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from `dev_bundle_url` if set."
+  {:scope api-scope/data-app}
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
@@ -307,6 +310,7 @@
    and must match the manifest `icon`. Only the icon is served — plugins do not
    ship arbitrary assets.
    In dev mode, proxies from the dev base URL if set."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [path]} :- [:map [:path ms/NonBlankString]]
    _body
