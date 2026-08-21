@@ -1,0 +1,31 @@
+## Instances that switched metabot permissions to group-level mode before #80394 was fixed still carry the
+## seeded all-yes rows for the "All tenant users" magic group, which override every group-level "no" for
+## tenant users. Clear them wherever the instance is already in group-level mode; simple mode keeps them.
+##
+## Nothing to roll back to: the rows were grants the admin believed they had already removed.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-21T10:00:00
+      author: christruter
+      comment: Clear All tenant users metabot permissions on instances already in group-level mode
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              DELETE FROM metabot_permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users')
+                AND EXISTS (SELECT 1 FROM setting WHERE key = 'metabot-advanced-permissions' AND value = 'true')
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM metabot_permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users')
+                AND EXISTS (SELECT 1 FROM setting WHERE `key` = 'metabot-advanced-permissions' AND value = 'true')
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM metabot_permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'all-external-users')
+                AND EXISTS (SELECT 1 FROM setting WHERE "KEY" = 'metabot-advanced-permissions' AND "VALUE" = 'true')
+      rollback: []

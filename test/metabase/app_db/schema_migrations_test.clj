@@ -3312,3 +3312,24 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest clear-tenant-metabot-perms-in-advanced-mode-test
+  (let [magic-group-id  (fn [magic-type] (t2/select-one-fn :id :permissions_group :magic_group_type magic-type))
+        perm-count      (fn [group-id] (t2/count :metabot_permissions :group_id group-id))
+        migration-range ["v64.2026-08-21T10:00:00" "v64.2026-08-21T10:00:00"]]
+    (testing "v64.2026-08-21: in group-level mode the seeded All tenant users rows are cleared, All Users rows stay"
+      (impl/test-migrations migration-range [migrate!]
+        (let [tenant-id   (magic-group-id "all-external-users")
+              internal-id (magic-group-id "all-internal-users")]
+          (t2/insert! :setting {:key "metabot-advanced-permissions" :value "true"})
+          (is (pos? (perm-count tenant-id)))
+          (migrate!)
+          (is (zero? (perm-count tenant-id)))
+          (is (pos? (perm-count internal-id))))))
+    (testing "v64.2026-08-21: in simple mode the All tenant users rows are untouched"
+      (impl/test-migrations migration-range [migrate!]
+        (let [tenant-id (magic-group-id "all-external-users")
+              before    (perm-count tenant-id)]
+          (is (pos? before))
+          (migrate!)
+          (is (= before (perm-count tenant-id))))))))

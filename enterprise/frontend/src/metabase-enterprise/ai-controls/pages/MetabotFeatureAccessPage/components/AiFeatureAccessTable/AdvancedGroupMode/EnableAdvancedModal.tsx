@@ -31,7 +31,7 @@ export function EnableAdvancedModal({ onClose }: Props) {
       title={t`Switch to group-level permissions?`}
       message={
         isUsingTenants
-          ? t`This will remove all AI feature access from the "All Users" and "All tenant users" groups, so users won't have access to AI features unless they're added to a group that has access.`
+          ? t`This will remove all AI feature access from the "All internal users" and "All tenant users" groups, so users won't have access to AI features unless they're added to a group that has access.`
           : t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`
       }
       confirmButtonText={t`Switch`}
