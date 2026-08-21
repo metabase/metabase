@@ -1,8 +1,8 @@
 import { getIsSsoUser } from "metabase/account/selectors";
 import { useValidatePassword } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 

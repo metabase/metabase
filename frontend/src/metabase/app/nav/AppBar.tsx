@@ -12,6 +12,7 @@ import {
   getIsSearchVisible,
 } from "metabase/app/selectors";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import { getUser } from "metabase/current-user";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,
@@ -28,7 +29,6 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
-import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { SearchResult } from "metabase-types/api";

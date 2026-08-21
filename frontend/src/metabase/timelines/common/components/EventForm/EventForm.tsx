@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -7,6 +6,7 @@ import {
   getTimelineIcons,
   getTimelineName,
 } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import {
   Form,
   FormDateInput,

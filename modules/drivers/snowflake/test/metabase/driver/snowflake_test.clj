@@ -93,7 +93,7 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(deftest ^:sequential sanity-check-test
+(deftest ^:synchronized sanity-check-test
   (mt/test-driver
     :snowflake
     (mt/dataset
@@ -103,7 +103,7 @@
               (mt/run-mbql-query attempts
                 {:aggregation [[:count]]})))))))
 
-(deftest ^:sequential describe-fields-test
+(deftest ^:synchronized describe-fields-test
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
@@ -300,7 +300,7 @@
         (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
                (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
 
-(deftest ^:sequential have-select-privilege?-test
+(deftest ^:synchronized have-select-privilege?-test
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (sql-jdbc.execute/do-with-connection-with-options
@@ -310,7 +310,7 @@
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
 
-(deftest ^:sequential can-set-schema-in-additional-options
+(deftest ^:synchronized can-set-schema-in-additional-options
   (mt/test-driver :snowflake
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
@@ -325,7 +325,7 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
-(deftest ^:sequential additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :snowflake
     (let [existing-details (dissoc (:details (mt/db)) :password)]
@@ -529,7 +529,7 @@
       (testing "but still escapes for the JDBC metadata call, which treats them as patterns"
         (is (= ["MY_DB" "RAW\\_DATA" "MY\\_TABLE"] @fk-args))))))
 
-(deftest ^:sequential describe-table-fields-uuid-column-test
+(deftest ^:synchronized describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
       (let [db-name    (#'driver.snowflake/db-name (mt/db))
@@ -569,7 +569,7 @@
   ;; Five related repro phases (v1-v5) share Snowflake connection setup and table-name lifecycle.
   ;; Splitting would multiply CI Snowflake setup cost. Kondo's warning is acknowledged.
   ^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
-  (deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
+  (deftest ^:synchronized create-or-replace-table-updates-effective-type-test
     (mt/test-driver :snowflake
       (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
              (e.g. TEXT -> NUMBER via TRY_TO_NUMBER), sync should update effective_type to match
@@ -745,7 +745,7 @@
               (u/ignore-exceptions
                 (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])))))))))
 
-(deftest ^:sequential describe-table-test
+(deftest ^:synchronized describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (=? {:name   "categories"
@@ -770,7 +770,7 @@
               (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
-(deftest ^:sequential describe-fks-test
+(deftest ^:synchronized describe-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-fks uses the NAME FROM DETAILS too"
       (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
@@ -1165,7 +1165,7 @@
      #t "2024-04-25T14:44:00-07:00"
      "2024-04-25T14:44:00-07:00")))
 
-(deftest ^:sequential zoned-date-time-parameter-test
+(deftest ^:synchronized zoned-date-time-parameter-test
   (test-temporal-instance
    #t "2024-04-25T14:44:00-07:00[US/Pacific]"
    "2024-04-25T21:44:00Z"))
@@ -1370,7 +1370,7 @@
       (is (not (contains? params "ROLE")))
       (is (contains? params "ASDFROLE")))))
 
-(deftest ^:sequential filter-on-variant-column-test
+(deftest ^:synchronized filter-on-variant-column-test
   (testing "We should still let you do various filter types on VARIANT (anything) columns (#45206)"
     (mt/test-driver :snowflake
       (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)

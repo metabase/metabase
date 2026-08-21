@@ -542,6 +542,8 @@ interface SettingsManagerSettings {
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;
   "llm-bedrock-session-token"?: string | null;
+  "llm-vllm-api-base-url"?: string | null;
+  "llm-vllm-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -832,6 +834,7 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
+  "llm-mini-model"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;

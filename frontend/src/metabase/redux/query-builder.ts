@@ -9,10 +9,9 @@
  */
 import { createAction } from "redux-actions";
 
-import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { currentUserApi, getUser } from "metabase/current-user";
 import { createThunkAction } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
@@ -189,7 +188,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     await runRtkEndpoint(
       user.id,
       dispatch,
-      userApi.endpoints.updateUserModalQbnewb,
+      currentUserApi.endpoints.updateUserModalQbnewb,
     );
   };
 });

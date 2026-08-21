@@ -1,6 +1,6 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,

@@ -17,12 +17,13 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
+import {
+  canManageSubscriptions,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
-import {
-  getDatabasesList,
-  getSampleDatabaseId,
-} from "metabase/querying/selectors";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
@@ -58,11 +59,6 @@ import {
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  canManageSubscriptions,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
@@ -195,7 +191,6 @@ const mapStateToProps = (state: State) => {
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
 
     metadata: getMetadata(state),
 
@@ -225,7 +220,6 @@ const mapStateToProps = (state: State) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),

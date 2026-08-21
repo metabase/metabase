@@ -34,7 +34,6 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -953,17 +952,9 @@
     csv-include-bom? :csv_include_bom
     :as             _body}
    :- [:map
-       [:parameters    {:optional true} [:maybe
-                                         ;; support JSON-encoded parameters for backwards compatibility when with this
-                                         ;; was still submitted with a `<form>`... see
-                                         ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                         {:decode/api (fn [x]
-                                                        (cond-> x
-                                                          (string? x) json/decode+kw))}
-                                         ;; TODO -- figure out what the actual schema for parameters is supposed to be
-                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
-                                         ;; it breaks existing tests
-                                         [:sequential [:map-of :keyword :any]]]]
+       ;; JSON-encoded string form supported for backwards compatibility with `<form>` submission... see
+       ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]

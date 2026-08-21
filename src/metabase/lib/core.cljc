@@ -339,6 +339,12 @@
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
 
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
+
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
 ;; arguments and returns an expression clause.
@@ -1602,6 +1608,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage

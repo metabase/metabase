@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import {
   Button,

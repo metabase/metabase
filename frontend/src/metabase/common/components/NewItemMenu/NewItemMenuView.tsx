@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { getUserCanWriteToCollections } from "metabase/current-user";
 import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
-import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";

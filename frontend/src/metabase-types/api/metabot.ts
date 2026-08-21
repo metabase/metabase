@@ -191,57 +191,6 @@ export type ListMetabotConversationsResponse = PaginationResponse & {
   data: MetabotConversation[];
 };
 
-export type MetabotProvider =
-  | "metabase"
-  | "anthropic"
-  | "azure"
-  | "bedrock"
-  | "google"
-  | "mistral"
-  | "moonshot"
-  | "openai"
-  | "openrouter"
-  | "zai";
-
-export interface BedrockCredentials {
-  "access-key-id"?: string | null;
-  "secret-access-key"?: string | null;
-  region?: string | null;
-  "session-token"?: string | null;
-}
-
-export interface AzureCredentials {
-  "api-key"?: string | null;
-  "base-url"?: string | null;
-}
-
-export interface GoogleCredentials {
-  "service-account-key"?: string | null;
-  "oauth-access-token"?: string | null;
-  "project-id"?: string | null;
-  location?: string | null;
-}
-
-export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials, GoogleCredentials {}
-
-export interface MetabotSettingsResponse {
-  value: string | null;
-  "credentials-error"?: string | null;
-  models: {
-    id: string;
-    display_name: string;
-    group?: string | null;
-  }[];
-}
-
-export interface UpdateMetabotSettingsRequest {
-  provider: MetabotProvider;
-  model?: string;
-  "api-key"?: string | null;
-  credentials?: MetabotCredentials | null;
-}
-
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {

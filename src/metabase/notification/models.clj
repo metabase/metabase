@@ -419,17 +419,24 @@
   [_email-addresses]
   nil)
 
+(defn- validate-raw-value-email-domain!
+  "Enforce the `subscription-allowed-domains` allow-list on any write of a raw-value email recipient. Must run on both
+  insert and update so no write path (e.g. the unauthenticated unsubscribe-undo endpoint) can skip it."
+  [instance]
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])])))
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (validate-raw-value-email-domain! instance)
   instance)
 
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
-  (when (and (= :notification-recipient/raw-value (:type instance))
-             (u/email? (get-in instance [:details :value])))
-    (validate-email-domains! [(get-in instance [:details :value])]))
+  (validate-raw-value-email-domain! instance)
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -552,6 +559,20 @@
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
+
+(defmethod mi/can-write? :model/Notification
+  ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
+  ([notification]
+   (or
+    (mi/superuser?)
+    (and
+     (current-user-is-creator? notification)
+     (or
+      (not (premium-features/has-feature? :advanced-permissions))
+      (perms/current-user-has-application-permissions? :subscription))
+     (current-user-can-read-payload? notification))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Notification pk))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
