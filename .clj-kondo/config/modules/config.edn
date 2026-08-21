@@ -2112,6 +2112,7 @@
            metabase.search.index-health
            metabase.search.ingestion
            metabase.search.init
+           metabase.search.lease
            metabase.search.scoring
            metabase.search.spec
            metabase.search.task.search-index}
