@@ -152,6 +152,10 @@
   `with-temp` that commit never comes -- the scope rolls back, the row is gone again, and the next
   acquisition replays the race, on MariaDB until the lock-wait timeout expires.
 
+  This takes a second connection while the caller still holds theirs, which is worth knowing about -- but only
+  until the row exists: once it is committed the SELECT in [[acquire-lock-row!*]] finds it and this never runs
+  again for that name.
+
   TODO (Chris 2026-08-21) -- this is reasoning, not measurement. The failures it targets are cross-connection
   and only show up under MariaDB in CI, so it has not been reproduced locally. If the CI flakes it is aimed at
   do not go away, this is the first thing to take back out."
@@ -161,14 +165,20 @@
                                   :values      [[[:raw "?"]]]})]
     (with-open [conn (.getConnection ^javax.sql.DataSource mdb.connection/*application-db*)
                 stmt (.prepareStatement conn ^String sql)]
-      (u.connection/set-query-timeout! stmt timeout)
       (.setString stmt 1 lock-name-str)
-      (try
-        (.executeUpdate stmt)
-        (catch Exception e
-          ;; someone else got there first, which is the outcome we wanted anyway
-          (when-not (duplicate-lock-row? e)
-            (throw e)))))))
+      (let [insert! (fn []
+                      (try
+                        (.executeUpdate stmt)
+                        (catch Exception e
+                          ;; someone else got there first, which is the outcome we wanted anyway
+                          (when-not (duplicate-lock-row? e)
+                            (throw e)))))]
+        ;; the timeout has to be bounded on *this* connection: the caller's is a different session, and a
+        ;; rival's uncommitted row would otherwise hold us here for the server's default lock wait
+        (u.connection/set-query-timeout! stmt timeout)
+        (if (u.connection/server-rejects-query-timeout? conn)
+          (do-with-lock-wait-timeout conn timeout insert!)
+          (insert!))))))
 
 (defn- acquire-lock-row!*
   [^Connection conn lock-name-str timeout mode ambient-transaction?]
