@@ -132,6 +132,7 @@ async function moveCopiesToAppCollection(
     const copiedCardIds = [
       ...lockfile.queries.map((entry) => entry.savedQuestionSourceId),
       ...lockfile.models.map((entry) => entry.copiedModelId),
+      ...lockfile.metrics.map((entry) => entry.copiedMetricId),
     ];
 
     for (const cardId of copiedCardIds) {

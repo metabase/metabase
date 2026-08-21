@@ -1,5 +1,6 @@
 import type {
   DataAppMetadata,
+  DataAppMetric,
   DraftDataAppMetadata,
   MetabaseAction,
   MetabaseCard,
@@ -86,15 +87,17 @@ export class MetabaseClient {
     );
   }
 
-  resolveQuery(slug: string, query: Record<string, unknown>) {
-    return this.request<{
+  async resolveQuery(slug: string, query: Record<string, unknown>) {
+    const resolved = await this.request<{
       database_id: number;
       dataset_query: Record<string, unknown>;
       table_ids: number[];
+      metrics?: DataAppMetric[];
     }>(`apps/${encodeURIComponent(slug)}/query`, {
       method: "POST",
       body: JSON.stringify({ stages: [query] }),
     });
+    return { ...resolved, metrics: resolved.metrics ?? [] };
   }
 
   getCard(id: number) {
@@ -157,6 +160,20 @@ export class MetabaseClient {
     });
   }
 
+  createMetric(input: MetricInput) {
+    return this.request<MetabaseCard>("card", {
+      method: "POST",
+      body: JSON.stringify(metricBody(input)),
+    });
+  }
+
+  updateMetric(id: number, input: MetricInput) {
+    return this.request<MetabaseCard>(`card/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(metricBody(input)),
+    });
+  }
+
   updateModel(id: number, input: ModelInput) {
     return this.request<MetabaseCard>(`card/${id}`, {
       method: "PUT",
@@ -196,10 +213,29 @@ interface ModelInput {
   description: string | null;
 }
 
+interface MetricInput {
+  name: string;
+  collectionId: number;
+  datasetQuery: Record<string, unknown>;
+  display: string;
+  visualizationSettings: Record<string, unknown>;
+  description: string | null;
+}
+
 const modelBody = (input: ModelInput) => ({
   name: input.name,
   type: "model",
   archived: false,
+  dataset_query: input.datasetQuery,
+  display: input.display,
+  visualization_settings: input.visualizationSettings,
+  description: input.description,
+  collection_id: input.collectionId,
+});
+
+const metricBody = (input: MetricInput) => ({
+  name: input.name,
+  type: "metric",
   dataset_query: input.datasetQuery,
   display: input.display,
   visualization_settings: input.visualizationSettings,
