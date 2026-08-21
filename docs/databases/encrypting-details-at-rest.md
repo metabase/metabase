@@ -49,14 +49,6 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
 MB_ENCRYPTION_SECRET_KEY=your-current-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key new-key
 ```
 
-## Before downgrading Metabase, disable encryption
-
-Before you downgrade, you should disable encryption. If encryption has changed version to version, older versions may not be able to read every encrypted column, which will break questions that rely on columns your version can't read.
-
-After you've downgraded, set the encryption key again to re-encrypt your data.
-
-See the [Disabling an encryption key](#disabling-an-encryption-key) below.
-
 ## Disabling an encryption key
 
 To disable an encryption key, follow the steps to [rotate an encryption key](#rotating-an-encryption-key), but use an empty string (`""`) as the new key.
