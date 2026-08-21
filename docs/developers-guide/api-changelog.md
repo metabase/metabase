@@ -6,6 +6,10 @@ title: API changelog
 
 ## Metabase 0.64.0
 
+- `POST /api/slack/bug-report` now requires bug reporting to be enabled (`MB_BUG_REPORTING_ENABLED`) and attributes
+  the report to the authenticated user; pass `"anonymous": true` to submit it without a reporter. The request body is
+  validated against a fixed set of keys, so a `reporter` inside `diagnosticInfo` is no longer read.
+
 - Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
 
 - The endpoints that fetch prefill values for action forms have been converted from GET to POST so that parameter values are sent in the JSON request body instead of the URL query string. `parameters` is now a JSON object in the request body rather than a JSON-encoded query-string parameter:

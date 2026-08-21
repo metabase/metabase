@@ -98,9 +98,6 @@
 (def ^:private bug-report-diagnostic-info
   {:url "https://test.com"
    :description "Test description"
-   ;; not the session user; the endpoint substitutes the session user's name and email
-   :reporter {:name "John McLane"
-              :email "diehard@metabase.com"}
    :bugReportDetails
    {:metabase-info {:version {:date "2025-01-10"
                               :tag "vUNKNOWN"
@@ -147,10 +144,19 @@
         :text {:type "plain_text", :text "Download the report", :emoji true},
         :url url}]}]))
 
+(defn- anonymous-blocks
+  "`blocks` with the reporter link replaced by the anonymous placeholder."
+  [blocks]
+  (walk/postwalk (fn [m]
+                   (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))
+                     {:type "text" :text "anonymous user"}
+                     m))
+                 blocks))
+
 (defn- post-bug-report!
-  "POST `diagnostic-info` as `user` with Slack stubbed out. Returns the response plus the message and decoded file the
-  endpoint handed to Slack (`nil` when it didn't)."
-  [user expected-status diagnostic-info]
+  "POST `body` as `user` with Slack stubbed out. Returns the response plus the message and decoded file the endpoint
+  handed to Slack (`nil` when it didn't)."
+  [user expected-status body]
   (let [posted   (atom nil)
         uploaded (atom nil)]
     (mt/with-dynamic-fn-redefs [slack/upload-file!       (fn [content _filename]
@@ -159,16 +165,16 @@
                                 slack/post-chat-message! (fn [message] (reset! posted message))
                                 slack/channel-exists?    (constantly true)]
       (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
-        {:response (mt/user-http-request user :post expected-status "slack/bug-report"
-                                         {:diagnosticInfo diagnostic-info})
+        {:response (mt/user-http-request user :post expected-status "slack/bug-report" body)
          :posted   @posted
          :uploaded (some-> @uploaded json/decode+kw)}))))
 
 (deftest bug-report-test
   (testing "POST /api/slack/bug-report"
     (mt/with-temp-env-var-value! [mb-bug-reporting-enabled "true"]
-      (testing "posts the report to Slack, attributed to the session user rather than the reporter in the request body"
-        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 200 bug-report-diagnostic-info)
+      (testing "posts the report to Slack, attributed to the session user"
+        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 200
+                                                                   {:diagnosticInfo bug-report-diagnostic-info})
               {:keys [common_name email]}        (mt/fetch-user :crowberto)]
           (is (= {:success true
                   :file-url (:permalink_public bug-report-mock-file-info)}
@@ -176,27 +182,27 @@
           (is (= (bug-report-expected-blocks :crowberto) (:blocks posted)))
           (is (= {:name common_name :email email}
                  (:reporter uploaded)))))
-      (let [anonymous-blocks (walk/postwalk
-                              (fn [m] (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))
-                                        {:type "text" :text "anonymous user"}
-                                        m))
-                              (bug-report-expected-blocks :crowberto))]
-        (testing "a report without a reporter stays anonymous"
-          (let [{:keys [posted uploaded]} (post-bug-report! :crowberto 200
-                                                            (dissoc bug-report-diagnostic-info :reporter))]
-            (is (= anonymous-blocks (:blocks posted)))
-            (is (not (contains? uploaded :reporter)))))
-        (testing "a report with a null reporter stays anonymous"
-          (let [{:keys [posted uploaded]} (post-bug-report! :crowberto 200
-                                                            (assoc bug-report-diagnostic-info :reporter nil))]
-            (is (= anonymous-blocks (:blocks posted)))
-            (is (nil? (:reporter uploaded)))))))))
+      (testing "an anonymous report carries no reporter"
+        (let [{:keys [posted uploaded]} (post-bug-report! :crowberto 200
+                                                          {:diagnosticInfo bug-report-diagnostic-info
+                                                           :anonymous      true})]
+          (is (= (anonymous-blocks (bug-report-expected-blocks :crowberto)) (:blocks posted)))
+          (is (not (contains? uploaded :reporter)))))
+      (testing "a reporter in the request body is ignored"
+        (let [info-with-reporter          (assoc bug-report-diagnostic-info
+                                                 :reporter {:name "John McLane", :email "diehard@metabase.com"})
+              {:keys [posted uploaded]}   (post-bug-report! :crowberto 200 {:diagnosticInfo info-with-reporter})
+              {:keys [common_name email]} (mt/fetch-user :crowberto)]
+          (is (= (bug-report-expected-blocks :crowberto) (:blocks posted)))
+          (is (= {:name common_name :email email}
+                 (:reporter uploaded))))))))
 
 (deftest bug-report-disabled-test
   (testing "POST /api/slack/bug-report"
     (testing "is refused when bug reporting is not enabled, even with a Slack bug report channel configured"
       (mt/with-temp-env-var-value! [mb-bug-reporting-enabled "false"]
-        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 400 bug-report-diagnostic-info)]
+        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 400
+                                                                   {:diagnosticInfo bug-report-diagnostic-info})]
           (is (= "Bug reporting is not enabled." response))
           (is (nil? uploaded))
           (is (nil? posted)))))))
