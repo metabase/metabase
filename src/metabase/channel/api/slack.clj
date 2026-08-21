@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.bug-reporting.settings :as bug-reporting.settings]
@@ -243,6 +244,33 @@
   (perms/check-has-application-permission :setting)
   (app-info))
 
+(def ^:private LegacyReporter
+  "The `reporter` shape clients before 0.64 send; counted so we know when it can stop being accepted."
+  [:map {:closed true}
+   [:name  :string]
+   [:email :string]])
+
+(def ^:private DiagnosticInfo
+  "What the bug report modal collects. The nested blobs pass through as sent; they are only ever rendered as JSON for
+  a human to read."
+  ;; TODO FIXME -- this should not use `camelCase` keys
+  [:map {:closed true}
+   ;; whether to attribute the report to the current user. LegacyReporter comes before :boolean: with the scalar
+   ;; branch first, a value failing both branches 500s while its error map is built
+   [:reporter            {:optional true} [:maybe [:or LegacyReporter :boolean]]]
+   [:url                 {:optional true} [:maybe :string]]
+   [:description         {:optional true} [:maybe :string]]
+   [:frontendErrors      {:optional true} [:maybe [:sequential :string]]]
+   [:backendErrors       {:optional true} [:maybe [:sequential ms/Map]]]
+   [:userLogs            {:optional true} [:maybe [:sequential ms/Map]]]
+   [:logs                {:optional true} [:maybe [:sequential ms/Map]]]
+   [:entityName          {:optional true} [:maybe :string]]
+   [:localizedEntityName {:optional true} [:maybe :string]]
+   [:entityInfo          {:optional true} [:maybe ms/Map]]
+   [:queryResults        {:optional true} [:maybe ms/Map]]
+   [:bugReportDetails    {:optional true} [:maybe ms/Map]]
+   [:browserInfo         {:optional true} [:maybe ms/Map]]])
+
 (defn- current-user-reporter
   "Name and email of the user making the request, for attributing a bug report."
   []
@@ -256,19 +284,24 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/bug-report"
-  "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The reporter is
-  the current user; a report sent without one stays anonymous."
+  "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is
+  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`
+  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored."
   [_route-params
    _query-params
-   {diagnostic-info :diagnosticInfo} :- [:map
-                                         ;; TODO FIXME -- this should not use `camelCase` keys
-                                         [:diagnosticInfo map?]]]
+   {diagnostic-info :diagnosticInfo}
+   :- [:map {:closed true}
+       ;; TODO FIXME -- this should not use `camelCase` keys
+       [:diagnosticInfo DiagnosticInfo]]]
   (api/check (bug-reporting.settings/bug-reporting-enabled)
              400
              (tru "Bug reporting is not enabled."))
+  (when (map? (:reporter diagnostic-info))
+    (analytics/inc! :metabase-bug-report/legacy-reporter))
   (try
-    (let [diagnostic-info (cond-> diagnostic-info
-                            (:reporter diagnostic-info) (assoc :reporter (current-user-reporter)))
+    (let [diagnostic-info (if (:reporter diagnostic-info)
+                            (assoc diagnostic-info :reporter (current-user-reporter))
+                            (dissoc diagnostic-info :reporter))
           bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content "diagnostic-info.json")
