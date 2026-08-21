@@ -387,6 +387,34 @@
   :setter     (connection-field-setter :llm-azure-deployment-name)
   :doc        "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
+;;; --------------------------------------------------- vLLM ----------------------------------------------------
+
+(defsetting llm-vllm-api-base-url
+  (deferred-tru "The base URL of your vLLM server''s OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-base-url)
+  :setter     (connection-field-setter :llm-vllm-api-base-url)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-api-key
+  (deferred-tru "The API key for your vLLM server. Only needed when the server was started with `--api-key`.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-vllm-api-key)
+  :setter     (connection-field-setter :llm-vllm-api-key)
+  :doc        "Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-vllm-request-timeout-ms
+  (deferred-tru "Socket timeout in milliseconds for requests to your vLLM server.")
+  ;; Self-hosted TTFT is bounded by the operator's hardware; the shared 60s default is too short.
+  :type       :integer
+  :default    300000
+  :visibility :settings-manager
+  :export?    false)
+
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set

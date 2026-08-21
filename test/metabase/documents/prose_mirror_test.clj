@@ -388,3 +388,14 @@
          (prose-mirror/insert-card-embed {:document {:type "doc" :content []}
                                           :content_type "text/plain"}
                                          7 nil)))))
+
+(deftest ^:parallel node-entity-id-test
+  (testing "returns the id for a well-formed positive-integer reference"
+    (is (= 7 (prose-mirror/node-entity-id {:type prose-mirror/smart-link-type :attrs {:entityId 7}})))
+    (is (= 7 (prose-mirror/node-entity-id {:type prose-mirror/card-embed-type :attrs {:id 7}}))))
+  (testing "returns nil for any id that is not a positive integer"
+    (doseq [id [{:a 1} {:b [1]} [{:c "x"}] "7" 0 -1 nil]]
+      (is (nil? (prose-mirror/node-entity-id {:type prose-mirror/smart-link-type :attrs {:entityId id}}))
+          (str "smartLink entityId=" (pr-str id)))
+      (is (nil? (prose-mirror/node-entity-id {:type prose-mirror/card-embed-type :attrs {:id id}}))
+          (str "cardEmbed id=" (pr-str id))))))
