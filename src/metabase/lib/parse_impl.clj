@@ -1,7 +1,7 @@
 ;; GENERATED FILE — do not edit by hand.
 ;; Compiled from the sibling parse.gleam by gleam-clj
 ;; (github.com/escherize/gleam-clj). Regenerate:
-;;   gleam-to-clj build <project-with-src/metabase/lib/parse_impl.gleam> <out>
+;;   GLEAM_CLJ_NO_MAIN=1 gleam-to-clj build <project> <out>
 (ns metabase.lib.parse-impl
   (:require
    [gleam.list :as list]
@@ -11,65 +11,65 @@
 
 ;; type Token
 (defrecord OptionalBegin [])
-(defn OptionalBegin? [v] (instance? OptionalBegin v))
+(defn OptionalBegin? "True if `v` is a OptionalBegin value." [v] (instance? OptionalBegin v))
 (defrecord OptionalEnd [])
-(defn OptionalEnd? [v] (instance? OptionalEnd v))
+(defn OptionalEnd? "True if `v` is a OptionalEnd value." [v] (instance? OptionalEnd v))
 (defrecord ParamBegin [])
-(defn ParamBegin? [v] (instance? ParamBegin v))
+(defn ParamBegin? "True if `v` is a ParamBegin value." [v] (instance? ParamBegin v))
 (defrecord ParamEnd [])
-(defn ParamEnd? [v] (instance? ParamEnd v))
+(defn ParamEnd? "True if `v` is a ParamEnd value." [v] (instance? ParamEnd v))
 (defrecord SingleQuote [])
-(defn SingleQuote? [v] (instance? SingleQuote v))
+(defn SingleQuote? "True if `v` is a SingleQuote value." [v] (instance? SingleQuote v))
 (defrecord BlockCommentBegin [])
-(defn BlockCommentBegin? [v] (instance? BlockCommentBegin v))
+(defn BlockCommentBegin? "True if `v` is a BlockCommentBegin value." [v] (instance? BlockCommentBegin v))
 (defrecord BlockCommentEnd [])
-(defn BlockCommentEnd? [v] (instance? BlockCommentEnd v))
+(defn BlockCommentEnd? "True if `v` is a BlockCommentEnd value." [v] (instance? BlockCommentEnd v))
 (defrecord LineCommentBegin [])
-(defn LineCommentBegin? [v] (instance? LineCommentBegin v))
+(defn LineCommentBegin? "True if `v` is a LineCommentBegin value." [v] (instance? LineCommentBegin v))
 (defrecord Newline [])
-(defn Newline? [v] (instance? Newline v))
+(defn Newline? "True if `v` is a Newline value." [v] (instance? Newline v))
 
 ;; type Piece
 (defrecord Str [value])
-(defn Str? [v] (instance? Str v))
+(defn Str? "True if `v` is a Str value." [v] (instance? Str v))
 (defrecord Tok [f0 f1])
-(defn Tok? [v] (instance? Tok v))
+(defn Tok? "True if `v` is a Tok value." [v] (instance? Tok v))
 
 ;; type Fragment
 (defrecord Literal [value])
-(defn Literal? [v] (instance? Literal v))
+(defn Literal? "True if `v` is a Literal value." [v] (instance? Literal v))
 (defrecord Param [value])
-(defn Param? [v] (instance? Param v))
+(defn Param? "True if `v` is a Param value." [v] (instance? Param v))
 (defrecord Optional [value])
-(defn Optional? [v] (instance? Optional v))
+(defn Optional? "True if `v` is a Optional value." [v] (instance? Optional v))
 
 ;; type ParseError
 (defrecord Unterminated [])
-(defn Unterminated? [v] (instance? Unterminated v))
+(defn Unterminated? "True if `v` is a Unterminated value." [v] (instance? Unterminated v))
 (defrecord InvalidParamName [])
-(defn InvalidParamName? [v] (instance? InvalidParamName v))
+(defn InvalidParamName? "True if `v` is a InvalidParamName value." [v] (instance? InvalidParamName v))
 (defrecord EmptyParam [])
-(defn EmptyParam? [v] (instance? EmptyParam v))
+(defn EmptyParam? "True if `v` is a EmptyParam value." [v] (instance? EmptyParam v))
 (defrecord OptionalWithoutParam [])
-(defn OptionalWithoutParam? [v] (instance? OptionalWithoutParam v))
+(defn OptionalWithoutParam? "True if `v` is a OptionalWithoutParam value." [v] (instance? OptionalWithoutParam v))
 
 ;; type Pattern
 (defrecord Lit [f0 f1])
-(defn Lit? [v] (instance? Lit v))
+(defn Lit? "True if `v` is a Lit value." [v] (instance? Lit v))
 (defrecord ParamBeginPattern [])
-(defn ParamBeginPattern? [v] (instance? ParamBeginPattern v))
+(defn ParamBeginPattern? "True if `v` is a ParamBeginPattern value." [v] (instance? ParamBeginPattern v))
 
 ;; type Mode
 (defrecord NoComment [])
-(defn NoComment? [v] (instance? NoComment v))
+(defn NoComment? "True if `v` is a NoComment value." [v] (instance? NoComment v))
 (defrecord LineMode [])
-(defn LineMode? [v] (instance? LineMode v))
+(defn LineMode? "True if `v` is a LineMode value." [v] (instance? LineMode v))
 (defrecord BlockMode [])
-(defn BlockMode? [v] (instance? BlockMode v))
+(defn BlockMode? "True if `v` is a BlockMode value." [v] (instance? BlockMode v))
 
 ;; type State
 (defrecord State [optional-level param-level in-string mode])
-(defn State? [v] (instance? State v))
+(defn State? "True if `v` is a State value." [v] (instance? State v))
 
 (defn- base-patterns []
   (list (->Lit "[[" (->OptionalBegin)) (->Lit "]]" (->OptionalEnd)) (->ParamBeginPattern) (->Lit "}}" (->ParamEnd)) (->Lit "'" (->SingleQuote))))
@@ -120,6 +120,11 @@
                        true)))))
 
 (defn tokenize
+  "Split raw query text into an interleaved list of string fragments and
+  tokens. Patterns are applied in sequence (pass by pass), so an earlier
+  pattern's matches shadow later ones over the same span — this ordering,
+  not a single left-to-right scan, is what the original Clojure does. When
+  `handle_sql_comments` is False, comment tokens are not recognized."
   {:malli/schema [:=> [:cat :string :boolean]
                   [:sequential [:or [:fn Str?] [:fn Tok?]]]]}
   [s handle-sql-comments]
@@ -339,8 +344,11 @@
         (recur strict more optional-level param-level (not in-string) mode (list* (->Literal text) acc))))))
 
 (defn parse
-  "Parse parameters in `s`, returning literal fragments interleaved with
-  Param and Optional fragments."
+  "Parse parameters in `s`, returning literal text fragments interleaved
+  with `Param` and `Optional` fragments. `handle_sql_comments` skips params
+  inside `--` and `/* */` comments when True. `strict` mirrors the original
+  `:parse-error-type` option: when True an invalid clause is an `Error`;
+  when False a terminated-but-invalid clause dissolves to nothing instead."
   {:malli/schema [:=> [:cat :string :boolean :boolean]
                   [:or [:fn p/Ok?] [:fn p/Error?]]]}
   [s handle-sql-comments strict]
@@ -361,6 +369,8 @@
             (p/->Error e)))))))
 
 (defn main
+  "Self-check: asserts a representative set of parses on the BEAM, so
+  `gleam run` proves the same semantics the compiled Clojure claims."
   {:malli/schema [:=> [:cat] [:or [:fn p/Ok?] [:fn p/Error?]]]}
   []
   (p/let-assert (p/->Ok (list (->Literal "select 1")))
@@ -380,6 +390,3 @@
   (p/let-assert (p/->Error (->Unterminated)) (parse "select {{x" true true))
   (p/let-assert (p/->Error (->OptionalWithoutParam))
                 (parse "[[no params]]" true true)))
-
-(defn -main [& _]
-  (main))
