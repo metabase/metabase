@@ -328,4 +328,3 @@
           (str "smartLink entityId=" (pr-str id)))
       (is (nil? (prose-mirror/node-entity-id {:type prose-mirror/card-embed-type :attrs {:id id}}))
           (str "cardEmbed id=" (pr-str id))))))
-
