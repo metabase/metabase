@@ -351,7 +351,7 @@ describe(
           H.NativeEditor.get()
             .should("be.visible")
             .and("contain", "$project")
-            .and("not.contain", "$limit")
+            .and("contain", "$limit")
             .and("not.contain", "BsonString")
             .and("not.contain", "BsonInt32");
 
