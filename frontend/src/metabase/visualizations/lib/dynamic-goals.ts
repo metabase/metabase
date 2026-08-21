@@ -14,6 +14,7 @@ import type {
 } from "metabase-types/api";
 import {
   isGoalForeignColumnRef,
+  isGoalSegment,
   isGoalSelfColumnRef,
   isGoalStaticValue,
 } from "metabase-types/guards";
@@ -168,15 +169,15 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
+function validGoalSegments(segments: unknown): GoalSegment[] {
+  return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
+}
+
 export function resolveGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): ResolvedGoalSegment[] {
-  if (!Array.isArray(segments)) {
-    return [];
-  }
-
-  return segments.flatMap((segment) => {
+  return validGoalSegments(segments).flatMap((segment) => {
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
 
@@ -192,11 +193,7 @@ export function getGoalSegmentErrors(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
 ): GoalRefError[] {
-  if (!Array.isArray(segments)) {
-    return [];
-  }
-
-  return segments.flatMap((segment) => {
+  return validGoalSegments(segments).flatMap((segment) => {
     return [segment.min, segment.max].flatMap((bound) => {
       const { error } = resolveGoalValue(data, bound);
       return error ? [error] : [];
@@ -235,8 +232,16 @@ export function getReferencedEntitiesFromVizSettings(
 function getGoalForeignColumnRefs(
   settings: VisualizationSettings,
 ): GoalForeignColumnRef[] {
-  const segments: GoalSegment[] = settings["gauge.segments"] ?? [];
-  return segments
+  return validGoalSegments(settings["gauge.segments"])
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isGoalForeignColumnRef);
+}
+
+export function hasUnansweredGoalReferences(
+  settings: VisualizationSettings,
+  data: DatasetData | undefined,
+): boolean {
+  return getGoalForeignColumnRefs(settings).some(
+    (ref) => data == null || resolveGoalValue(data, ref).isResolving === true,
+  );
 }

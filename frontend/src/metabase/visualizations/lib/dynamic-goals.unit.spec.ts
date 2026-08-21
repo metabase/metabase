@@ -1,3 +1,4 @@
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -6,6 +7,7 @@ import {
 import {
   getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
+  hasUnansweredGoalReferences,
   resolveGoalSegments,
   resolveGoalValue,
 } from "./dynamic-goals";
@@ -417,5 +419,101 @@ describe("getReferencedEntitiesFromVizSettings", () => {
     });
 
     expect(referencedEntities).toEqual([]);
+  });
+});
+
+describe("malformed persisted segments", () => {
+  const data = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  const malformedSettings = [
+    { name: "a null segment", settings: { "gauge.segments": [null] } },
+    { name: "a non-object segment", settings: { "gauge.segments": [5] } },
+    { name: "a non-array value", settings: { "gauge.segments": 5 } },
+    {
+      name: "a segment with malformed bounds",
+      settings: { "gauge.segments": [{ min: {}, max: [1], color: "red" }] },
+    },
+  ].map(({ name, settings }) => ({
+    name,
+    // deliberately malformed input
+    settings: settings as unknown as VisualizationSettings,
+  }));
+
+  it.each(malformedSettings)("tolerates $name", ({ settings }) => {
+    const segments = settings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([]);
+    expect(getGoalSegmentErrors(data, segments)).toEqual([]);
+    expect(getReferencedEntitiesFromVizSettings(settings)).toEqual([]);
+  });
+
+  it("keeps the valid segments and drops the rest", () => {
+    // deliberately malformed input
+    const segments = [
+      null,
+      { min: 0, max: 100, color: "red" },
+    ] as unknown as VisualizationSettings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([
+      { min: 0, max: 100, color: "red", label: undefined },
+    ]);
+  });
+});
+
+describe("hasUnansweredGoalReferences", () => {
+  const settings: VisualizationSettings = {
+    "gauge.segments": [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ],
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("returns true without any result data", () => {
+    expect(hasUnansweredGoalReferences(settings, undefined)).toBe(true);
+  });
+
+  it("returns true when the result lacks the referenced entity", () => {
+    expect(hasUnansweredGoalReferences(settings, baseData)).toBe(true);
+  });
+
+  it("returns false when the reference resolved", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(settings, data)).toBe(false);
+  });
+
+  it("returns false for a failed reference: the result answered it", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(settings, data)).toBe(false);
+  });
+
+  it("returns false without foreign references", () => {
+    const settings: VisualizationSettings = {
+      "gauge.segments": [{ min: 0, max: 100, color: "red" }],
+    };
+
+    expect(hasUnansweredGoalReferences(settings, undefined)).toBe(false);
   });
 });

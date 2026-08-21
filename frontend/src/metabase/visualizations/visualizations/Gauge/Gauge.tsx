@@ -1,11 +1,11 @@
 import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { resolveGoalSegments } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { GaugeArc } from "./GaugeArc";
@@ -27,24 +27,21 @@ import {
   getSegmentLabelColor,
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
-import { isGaugeRange, isGaugeSegmentsArray } from "./types";
+import { isGaugeRange } from "./types";
 import { getValue, radians } from "./utils";
 
 function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
-  series: [
-    {
-      data: { rows, cols },
-    },
-  ],
+  series: [{ data }],
   settings,
   visualizationIsClickable,
   width,
   onVisualizationClick,
   onHoverChange,
 }: VisualizationProps) {
+  const { rows, cols } = data;
   const labelRef = useRef<SVGTextElement>(null);
   const isMounted = useMounted();
 
@@ -70,9 +67,10 @@ function GaugeComponent({
   const gaugeRange = settings["gauge.range"];
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
   const gaugeSegments = settings["gauge.segments"];
-  const segments = isGaugeSegmentsArray(gaugeSegments)
-    ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-    : [];
+  const segments = useMemo(
+    () => resolveGoalSegments(data, gaugeSegments),
+    [data, gaugeSegments],
+  );
 
   // value to angle in radians, clamped
   const angle = d3

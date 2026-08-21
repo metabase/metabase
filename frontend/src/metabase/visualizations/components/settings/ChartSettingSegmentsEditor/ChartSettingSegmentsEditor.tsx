@@ -3,117 +3,115 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { ScalarSegment } from "metabase-types/api";
+import type { DatasetData, GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
-import S from "./ChartSettingSegmentsEditor.module.css";
+import { SegmentBoundInput } from "./SegmentBoundInput";
+
+const REMOVE_BUTTON_SIZE = 24;
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
+  data?: DatasetData;
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
 };
 
 export const ChartSettingSegmentsEditor = ({
+  data,
   value: segments,
   onChange,
   canRemoveAll = false,
 }: ChartSettingSegmentsEditorProps) => {
-  const onChangeProperty = (
-    index: number,
-    property: keyof ScalarSegment,
-    value: number | string | null,
-  ) =>
+  const updateSegment = (index: number, changes: Partial<GoalSegment>) =>
     onChange([
       ...segments.slice(0, index),
-      { ...segments[index], [property]: value },
+      { ...segments[index], ...changes },
       ...segments.slice(index + 1),
     ]);
 
+  const canRemove = segments.length > 1 || canRemoveAll;
+
   return (
-    <Box px="1.5rem">
+    <Stack gap="lg">
       {segments.length > 0 ? (
-        <table className={S.Table}>
-          <thead>
-            <tr>
-              <th />
-              <th>{t`Label`}</th>
-              <th>{t`Min`}</th>
-              <th>{t`Max`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {segments.map((segment, index) => (
-              <tr key={index}>
-                <td>
+        <Stack gap="lg">
+          {segments.map((segment, index) => (
+            <Stack gap="sm" key={index}>
+              <ChartSettingInput
+                aria-label={t`Range ${index + 1} label`}
+                leftSection={
                   <ColorSelector
-                    pillSize="large"
-                    className={S.ColorPill}
+                    pillSize="small"
                     value={segment.color}
                     colors={getColorPalette()}
-                    onChange={(color) =>
-                      onChangeProperty(index, "color", color)
-                    }
-                  />
-                </td>
-                <td>
-                  <ChartSettingInput
-                    value={segment.label}
-                    placeholder={t`Label for this range (optional)`}
-                    onChange={(val) => onChangeProperty(index, "label", val)}
-                  />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.min ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.min) {
-                        onChangeProperty(index, "min", newValue);
-                      }
+                    onChange={(newColor) => {
+                      updateSegment(index, { color: newColor });
                     }}
-                    placeholder={t`Min`}
-                    w="4rem"
                   />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.max ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.max) {
-                        onChangeProperty(index, "max", newValue);
-                      }
-                    }}
-                    placeholder={t`Max`}
-                    w="4rem"
-                  />
-                </td>
-                <td>
-                  {(segments.length > 1 || canRemoveAll) && (
-                    <Button
-                      leftSection={<Icon name="trash" c="text-disabled" />}
-                      onClick={() =>
-                        onChange(segments.filter((v, i) => i !== index))
-                      }
-                    />
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                }
+                placeholder={t`Value ${index + 1}`}
+                rightSection={
+                  canRemove ? (
+                    <Tooltip label={t`Remove range`}>
+                      <ActionIcon
+                        aria-label={t`Remove range ${index + 1}`}
+                        size={REMOVE_BUTTON_SIZE}
+                        onClick={() => {
+                          const newSegments = segments.filter(
+                            (_v, segmentIndex) => segmentIndex !== index,
+                          );
+                          onChange(newSegments);
+                        }}
+                      >
+                        <Icon name="trash" />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : undefined
+                }
+                value={segment.label}
+                onChange={(label) => updateSegment(index, { label })}
+              />
+
+              <Group align="flex-start" gap="sm" wrap="nowrap">
+                <SegmentBoundInput
+                  aria-label={t`Range ${index + 1} minimum`}
+                  data={data}
+                  id={`segment-min-${index}`}
+                  placeholder={t`Min`}
+                  value={segment.min}
+                  onChange={(min) => updateSegment(index, { min })}
+                />
+
+                <Box pt={12}>
+                  <Icon name="arrow_right" size={12} c="text-secondary" />
+                </Box>
+
+                <SegmentBoundInput
+                  aria-label={t`Range ${index + 1} maximum`}
+                  data={data}
+                  id={`segment-max-${index}`}
+                  placeholder={t`Max`}
+                  value={segment.max}
+                  onChange={(max) => updateSegment(index, { max })}
+                />
+              </Group>
+            </Stack>
+          ))}
+        </Stack>
       ) : (
         <Text
           ta="center"
@@ -124,14 +122,16 @@ export const ChartSettingSegmentsEditor = ({
           px="1.5rem"
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
+
       <Button
         leftSection={<Icon name="add" />}
+        fullWidth
+        variant="subtle"
         onClick={() => onChange(segments.concat(newSegment(segments)))}
-        w="100%"
       >
         {t`Add a range`}
       </Button>
-    </Box>
+    </Stack>
   );
 };
 
@@ -145,7 +145,7 @@ function getColorPalette() {
   ];
 }
 
-function newSegment(segments: ScalarSegment[]) {
+function newSegment(segments: GoalSegment[]): GoalSegment {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastMax =

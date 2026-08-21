@@ -1,4 +1,5 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -38,10 +39,13 @@ export const onUpdateVisualizationSettings =
       return;
     }
 
+    const updatedQuestion = question.updateSettings(settings);
+
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
-      updateQuestion(question.updateSettings(settings), {
+      updateQuestion(updatedQuestion, {
+        run: referencesNewForeignColumn(question, updatedQuestion),
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -50,7 +54,8 @@ export const onUpdateVisualizationSettings =
 export const onReplaceAllVisualizationSettings =
   (settings: VisualizationSettings, newQuestion?: Question) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const question = newQuestion ?? getQuestion(getState());
+    const currentQuestion = getQuestion(getState());
+    const question = newQuestion ?? currentQuestion;
     if (question) {
       const updatedQuestion = question.setSettings(settings);
       const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
@@ -58,10 +63,36 @@ export const onReplaceAllVisualizationSettings =
 
       await dispatch(
         updateQuestion(updatedQuestion, {
-          // rerun the query when it is changed alongside settings
-          run: newQuestion != null && hasWritePermissions,
+          run:
+            hasWritePermissions &&
+            (newQuestion != null ||
+              (currentQuestion != null &&
+                referencesNewForeignColumn(currentQuestion, updatedQuestion))),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
+
+function referencesNewForeignColumn(
+  previousQuestion: Question,
+  nextQuestion: Question,
+): boolean {
+  const previousSettings = previousQuestion.settings();
+  const nextSettings = nextQuestion.settings();
+  const previousKeys = getReferencedColumnKeys(previousSettings);
+
+  return Array.from(getReferencedColumnKeys(nextSettings)).some(
+    (key) => !previousKeys.has(key),
+  );
+}
+
+function getReferencedColumnKeys(settings: VisualizationSettings): Set<string> {
+  return new Set(
+    getReferencedEntitiesFromVizSettings(settings).flatMap(
+      ({ type, id, columns = [] }) => {
+        return columns.map((column) => `${type}:${id}:${column}`);
+      },
+    ),
+  );
+}
