@@ -4,10 +4,12 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.tiles.api-test :as tiles.api-test]
@@ -555,6 +557,21 @@
                    (mt/user-http-request :crowberto :get 200
                                          (format "preview_embed/card/%s/params/%s/values"
                                                  signed-token "_STATIC_CATEGORY_"))))))))))
+
+(deftest card-params-values-field-filter-test
+  (testing "GET /api/preview_embed/card/:token/params/:param-key/values with a field filter parameter"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (api.card-test/with-card-param-values-fixtures [{:keys [field-filter-card param-keys]}]
+        (let [embedding-params (zipmap (map (comp keyword :slug) (:parameters field-filter-card))
+                                       (repeat "enabled"))
+              signed-token     (embed-test/card-token field-filter-card
+                                                      {:_embedding_params embedding-params})
+              response         (mt/user-http-request :crowberto :get 200
+                                                     (format "preview_embed/card/%s/params/%s/values"
+                                                             signed-token (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set))))))))
 
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
