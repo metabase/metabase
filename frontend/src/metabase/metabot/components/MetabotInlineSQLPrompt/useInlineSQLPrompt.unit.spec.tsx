@@ -11,8 +11,8 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { MetabotProvider } from "metabase/metabot/context";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
@@ -24,7 +24,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { NativeQueryEditor } from "../NativeQueryEditor";
+import { useInlineSQLPrompt } from "./useInlineSQLPrompt";
 
 jest.mock(
   "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size",
@@ -95,7 +95,7 @@ function setup({ isMetabotEnabled = true } = {}) {
   );
 }
 
-describe("MetabotPromptButton", () => {
+describe("useInlineSQLPrompt", () => {
   it("toggles the inline prompt open and closed", async () => {
     setup();
 

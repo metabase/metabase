@@ -159,18 +159,15 @@ export function useInlineSQLPrompt(
       resetInput();
     }
 
-    // open at top of editor and scroll to top after input has mounted + been focused
-    view.dispatch({
-      selection: { anchor: 0 },
-      effects: toggleEffect.of({ view }),
-    });
+    view.dispatch({ effects: toggleEffect.of({ view }) });
+    // wait until input has mounted before scrolling it into view so scroll calculations are correct
     view.scrollDOM.addEventListener(
       "focusin",
       () => {
-        requestAnimationFrame(() => {
-          view.scrollDOM.scrollTop = 0;
-          view.dom.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+        view.dispatch({
+          effects: EV.scrollIntoView(view.state.selection.main.head),
         });
+        view.dom.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
       },
       { once: true },
     );
