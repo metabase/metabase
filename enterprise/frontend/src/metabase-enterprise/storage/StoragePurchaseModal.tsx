@@ -56,7 +56,7 @@ export const StoragePurchaseModal = ({
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
       title={t`Add Metabase Storage`}
     >
-      <Stack gap="md" mt="md">
+      <Stack gap="lg" mt="lg">
         <Text>
           {t`Get secure, fully managed data storage where you can upload your CSVs and sync data from Google Sheets.`}
         </Text>

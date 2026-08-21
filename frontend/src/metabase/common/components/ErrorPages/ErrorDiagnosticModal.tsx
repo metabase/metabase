@@ -47,7 +47,7 @@ export const ErrorDiagnosticModal = ({
   if (loading || !errorInfo) {
     return (
       <Modal opened onClose={onClose}>
-        <Stack align="center" justify="center" mb="lg">
+        <Stack align="center" justify="center" mb="xl">
           <Text w="bold" color="text-secondary" mb="sm">
             {c(
               "loading message indicating that we are gathering debugging information to aid in providing technical support",
@@ -130,7 +130,7 @@ export const ErrorDiagnosticModal = ({
   if (isSubmissionComplete) {
     return (
       <Modal opened onClose={onClose} size={550}>
-        <Stack gap="sm" align="center" py="xl">
+        <Stack gap="sm" align="center" py="xxl">
           <MetabotLogo
             variant="bug"
             alt={c(
@@ -144,7 +144,7 @@ export const ErrorDiagnosticModal = ({
           <Text ta="center" c="text-secondary">
             {t`Bug report submitted successfully.`}
           </Text>
-          <Button mt="xl" onClick={onClose}>{t`Close`}</Button>
+          <Button mt="xxl" onClick={onClose}>{t`Close`}</Button>
         </Stack>
       </Modal>
     );
@@ -182,7 +182,7 @@ export const ErrorDiagnosticModalTrigger = () => {
 
   return (
     <ErrorBoundary>
-      <Stack justify="center" my="lg">
+      <Stack justify="center" my="xl">
         <Button
           leftSection={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
@@ -265,10 +265,10 @@ export const ErrorExplanationModal = ({
       opened={isModalOpen}
       onClose={onClose}
     >
-      <Text my="md">
+      <Text my="lg">
         {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
-      <Text my="md">
+      <Text my="lg">
         {t`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">

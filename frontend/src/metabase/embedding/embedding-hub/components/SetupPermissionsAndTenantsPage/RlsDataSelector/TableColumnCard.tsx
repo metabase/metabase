@@ -124,7 +124,7 @@ export const TableColumnCard = ({
   );
 
   return (
-    <Paper withBorder radius="md" pos="relative" data-can-remove={!!onRemove}>
+    <Paper withBorder radius="sm" pos="relative" data-can-remove={!!onRemove}>
       {onRemove && (
         <UnstyledButton
           className={S.RemoveButton}
@@ -135,7 +135,7 @@ export const TableColumnCard = ({
         </UnstyledButton>
       )}
 
-      <Stack gap="lg" p="lg">
+      <Stack gap="xl" p="xl">
         <Box>
           <Text fw="bold" size="md" mb={4}>
             {t`Table`}

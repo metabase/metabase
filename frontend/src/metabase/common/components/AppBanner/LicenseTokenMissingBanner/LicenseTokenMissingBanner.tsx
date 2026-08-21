@@ -21,7 +21,7 @@ export const LicenseTokenMissingBanner = ({
       aria-live="polite"
       role="status"
       body={
-        <Flex gap="xs" className={styles.BannerBody}>
+        <Flex gap="xxs" className={styles.BannerBody}>
           <Text
             lh="inherit"
             c="tooltip-text"
@@ -36,7 +36,7 @@ export const LicenseTokenMissingBanner = ({
       }
       closable
       onClose={onClose}
-      py="md"
+      py="lg"
     ></Banner>
   );
 };

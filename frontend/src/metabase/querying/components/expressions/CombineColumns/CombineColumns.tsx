@@ -163,11 +163,11 @@ export function CombineColumns({
         />
       )}
       <form onSubmit={handleSubmit}>
-        <Box maw="100vw" w={width} p="lg" pt={0}>
-          <Stack gap="lg" mt="lg">
-            <Stack gap="md">
+        <Box maw="100vw" w={width} p="xl" pt={0}>
+          <Stack gap="xl" mt="xl">
+            <Stack gap="lg">
               <Box>
-                <Stack gap="md">
+                <Stack gap="lg">
                   {columnsAndSeparators.map(
                     (item, index) =>
                       // Do not allow editing the first column when it is passed from
@@ -194,7 +194,7 @@ export function CombineColumns({
               </Box>
               <Flex
                 align="center"
-                gap="md"
+                gap="lg"
                 justify={isUsingDefaultSeparator ? "space-between" : "end"}
               >
                 {isUsingDefaultSeparator && (
@@ -224,7 +224,7 @@ export function CombineColumns({
 
             <Example columnsAndSeparators={columnsAndSeparators} />
 
-            <Flex align="center" gap="md" justify="end">
+            <Flex align="center" gap="lg" justify="end">
               <Button type="submit" variant="filled" disabled={!isValid}>
                 {t`Done`}
               </Button>

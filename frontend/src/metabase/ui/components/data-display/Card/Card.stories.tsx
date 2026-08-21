@@ -1,8 +1,8 @@
 import { Box, Card, type CardProps, Stack, Text } from "metabase/ui";
 
 const args = {
-  p: "md",
-  radius: "md",
+  p: "lg",
+  radius: "sm",
   withBorder: false,
 };
 
@@ -46,7 +46,7 @@ const CardSectionTemplate = ({
       <Card.Section withBorder={withSectionBorder}>
         <Box bg="background_page-primary" h="10rem" />
       </Card.Section>
-      <Stack mt="md" gap="sm">
+      <Stack mt="lg" gap="sm">
         <Text fw="bold">{sampleArgs.title}</Text>
         <Text>{sampleArgs.description}</Text>
       </Stack>

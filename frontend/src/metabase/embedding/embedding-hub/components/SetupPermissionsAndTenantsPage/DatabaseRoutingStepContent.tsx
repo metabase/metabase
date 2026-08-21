@@ -13,11 +13,11 @@ export const DatabaseRoutingStepContent = () => {
 
   return (
     <Stack>
-      <Text c="text-secondary" lh="xl" mt="xs">
+      <Text c="text-secondary" lh="xl" mt="xxs">
         {t`Follow the steps in the documentation to manage data permissions with database routing.`}
       </Text>
 
-      <Paper bg="background_surface-brand-subtle" p="lg" radius="md" withBorder>
+      <Paper bg="background_surface-brand-subtle" p="xl" radius="sm" withBorder>
         <Stack gap="sm">
           <Title order={4} c="text-primary">
             {t`Manage data permissions with database routing`}

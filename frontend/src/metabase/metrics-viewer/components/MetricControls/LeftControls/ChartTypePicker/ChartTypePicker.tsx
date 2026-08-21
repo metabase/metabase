@@ -18,9 +18,9 @@ export function ChartTypePicker({
   return (
     <Flex
       className={S.root}
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      p="xs"
+      p="xxs"
       bdrs="md"
     >
       {chartTypes.map(({ type, icon }) => (

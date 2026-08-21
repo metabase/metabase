@@ -169,7 +169,7 @@ function ModalBody({
             </>
           )}
           <FormCollectionPicker
-            mt="md"
+            mt="lg"
             name="collection_id"
             title={t`Publish to`}
             entityType="table"
@@ -186,7 +186,7 @@ function ModalBody({
             }}
           />
         </Stack>
-        <Group mt="xl" gap="sm" wrap="nowrap">
+        <Group mt="xxl" gap="sm" wrap="nowrap">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>

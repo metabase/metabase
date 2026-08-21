@@ -310,7 +310,7 @@ function ExplorationGroupVisualizationChart({
       }
 
       return (
-        <Group gap="xs" wrap="wrap">
+        <Group gap="xxs" wrap="wrap">
           <Icon
             name="corner_up_right"
             size={12}
@@ -389,7 +389,7 @@ function ExplorationGroupVisualizationChart({
 
   return (
     <Group flex={1} gap={0} h="100%">
-      <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
+      <Stack flex={1} p="xl" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
           exploreFilters={exploreFilters}
@@ -545,14 +545,14 @@ function ExplorationMap({
   highlighted,
 }: ExplorationMapProps) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {legendItems.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {legendItems.map(({ name, color }, i) => {
             return (
               <Group
                 key={i}
-                gap="xs"
+                gap="xxs"
                 align="center"
                 wrap="nowrap"
                 role="listitem"
@@ -644,7 +644,7 @@ interface MessageProps {
 
 function Message({ groupName, message, iconProps }: MessageProps) {
   return (
-    <Stack p="lg" h="100%">
+    <Stack p="xl" h="100%">
       <ExplorationVisualizationHeader name={groupName} />
       <Stack
         align="center"
@@ -671,7 +671,7 @@ function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
   return (
     <UnstyledButton
       bdrs="md"
-      py="xs"
+      py="xxs"
       px="sm"
       fz="sm"
       c="text-primary"

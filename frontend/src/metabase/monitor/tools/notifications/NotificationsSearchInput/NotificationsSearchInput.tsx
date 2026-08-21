@@ -49,7 +49,7 @@ export const NotificationsSearchInput = ({ value, onChange }: Props) => {
       flex={1}
       placeholder={t`Search by question or owner…`}
       value={query}
-      radius="md"
+      radius="sm"
       onChange={(event) => setQuery(event.currentTarget.value)}
       leftSection={<Icon c="text-secondary" name="search" size={16} />}
       rightSectionPointerEvents="all"

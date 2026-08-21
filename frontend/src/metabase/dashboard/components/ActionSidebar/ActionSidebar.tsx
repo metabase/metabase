@@ -57,11 +57,11 @@ export function ActionSidebar() {
 
   return (
     <Sidebar>
-      <Box px="xl" py="md">
+      <Box px="xxl" py="lg">
         <Title order={4} c="text-primary" fz="lg">{t`Button properties`}</Title>
       </Box>
       <Divider />
-      <Stack px="xl" py="md" flex={1} className={CS.overflowYAuto}>
+      <Stack px="xxl" py="lg" flex={1} className={CS.overflowYAuto}>
         <FormProvider
           initialValues={{
             button_text:
@@ -114,7 +114,7 @@ export function ActionSidebar() {
               onClick={openActionModal}
             >{t`Pick an action`}</Button>
           ) : (
-            <Flex justify="space-between" py="xs">
+            <Flex justify="space-between" py="xxs">
               <Ellipsified fw="bold">{dashcard.action.name}</Ellipsified>
               <Button
                 h="auto"
@@ -142,7 +142,7 @@ export function ActionSidebar() {
         </Modal.Root>
       </Stack>
       <Divider />
-      <Flex px="xl" py="md" justify="flex-end">
+      <Flex px="xxl" py="lg" justify="flex-end">
         <Button onClick={onClose} variant="filled">
           {t`Close`}
         </Button>

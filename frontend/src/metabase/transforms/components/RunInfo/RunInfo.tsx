@@ -98,8 +98,8 @@ type RunErrorModalContentProps = {
 
 function RunInfoModalContent({ message, onClose }: RunErrorModalContentProps) {
   return (
-    <Stack pt="md" gap="lg">
-      <Box className={S.codeContainer} pos="relative" pr="lg">
+    <Stack pt="lg" gap="xl">
+      <Box className={S.codeContainer} pos="relative" pr="xl">
         <CodeEditor value={message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={message} />

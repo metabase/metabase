@@ -65,7 +65,7 @@ export function TableSelector({
       <Group
         w="100%"
         bdrs="xs"
-        gap="xs"
+        gap="xxs"
         wrap="nowrap"
         className={S.tableSelector}
       >
@@ -76,10 +76,10 @@ export function TableSelector({
           disabled={disabled}
           classNames={{ inner: S.tableSelectorButtonInner }}
           px="sm"
-          py="lg"
+          py="xl"
           variant="subtle"
         >
-          <Stack gap="xs">
+          <Stack gap="xxs">
             {table ? (
               <>
                 <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="left">

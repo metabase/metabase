@@ -27,7 +27,7 @@ export function McpServerUrlSection() {
           input: S.input,
         }}
         readOnly
-        mt="md"
+        mt="lg"
         c="text-primary"
       />
     </Box>

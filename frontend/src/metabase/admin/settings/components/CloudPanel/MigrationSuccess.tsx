@@ -30,7 +30,7 @@ export const MigrationSuccess = ({
   return (
     <>
       <MigrationCard>
-        <Flex gap="md">
+        <Flex gap="lg">
           <LargeIconContainer color={color("feedback-positive")}>
             <Icon size="1.5rem" name="check" />
           </LargeIconContainer>

@@ -185,7 +185,7 @@ function ConnectionStringDescription({
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
+          <Group gap="xxs" component="span">
             <Icon name="warning_round_filled" c="feedback-negative" />
             {t`Couldn’t use this connection string.`}
           </Group>
@@ -211,7 +211,7 @@ function ConnectionStringDescription({
           fz="sm"
           component="span"
         >
-          <Group gap="xs" component="span">
+          <Group gap="xxs" component="span">
             <Icon
               name="check_filled"
               style={{ color: "var(--mb-color-feedback-positive)" }}

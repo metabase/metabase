@@ -43,7 +43,7 @@ export function SharingMenu({
       <Menu.Dropdown data-testid="sharing-menu">
         <SharingMenuCloseContext.Provider value={closeMenu}>
           {hasActions && (
-            <Group gap="md" p="sm" grow wrap="nowrap">
+            <Group gap="lg" p="sm" grow wrap="nowrap">
               {actions}
             </Group>
           )}

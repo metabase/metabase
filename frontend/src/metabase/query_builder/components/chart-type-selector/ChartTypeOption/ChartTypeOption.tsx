@@ -40,7 +40,7 @@ export const ChartTypeOption = ({
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
-        gap="xs"
+        gap="xxs"
         role="option"
         aria-selected={isSelected}
         data-testid={`${displayName}-container`}

@@ -46,7 +46,7 @@ export const AutoRefreshMenuOptions = ({
         fw="bold"
         fz="sm"
         tt="uppercase"
-        mb="md"
+        mb="lg"
         ml="sm"
         c="text-secondary"
       >{t`Auto Refresh`}</Box>

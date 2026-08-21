@@ -259,8 +259,8 @@ export const ParameterSidebar = (): JSX.Element | null => {
               <Tabs.Tab
                 pl={0}
                 pr={0}
-                pt="md"
-                pb="md"
+                pt="lg"
+                pb="lg"
                 value={tab.value}
                 key={tab.value}
               >
@@ -270,7 +270,7 @@ export const ParameterSidebar = (): JSX.Element | null => {
           </Tabs.List>
         )}
 
-        <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
+        <Tabs.Panel pr="lg" pl="lg" value="settings" key="settings">
           <ParameterSettings
             editingParameterInlineDashcard={editingParameterInlineDashcard}
             parameter={parameter}
@@ -289,7 +289,7 @@ export const ParameterSidebar = (): JSX.Element | null => {
           />
         </Tabs.Panel>
 
-        <Tabs.Panel pr="md" pl="md" value="filters" key="filters">
+        <Tabs.Panel pr="lg" pl="lg" value="filters" key="filters">
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}

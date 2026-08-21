@@ -11,7 +11,7 @@ const SearchEmptyState = ({
   isTimeline,
 }: SearchEmptyStateProps): JSX.Element => {
   return (
-    <Stack align="center" gap="md">
+    <Stack align="center" gap="lg">
       <Box maw="6rem">
         <img src={EmptyFolder} alt={t`Empty folder illustration`} />
       </Box>

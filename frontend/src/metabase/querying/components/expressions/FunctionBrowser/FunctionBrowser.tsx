@@ -76,7 +76,7 @@ export function FunctionBrowser({
       <Input
         size="sm"
         mb="sm"
-        mx="md"
+        mx="lg"
         placeholder={getSearchPlaceholder(expressionMode)}
         value={filter}
         onChange={handleFilterChange}
@@ -86,7 +86,7 @@ export function FunctionBrowser({
         component="dl"
         my={0}
         pt={0}
-        pb="md"
+        pb="lg"
         direction="column"
         justify={isEmpty ? "center" : "flex-start"}
         className={S.results}
@@ -96,7 +96,7 @@ export function FunctionBrowser({
         )}
         {filteredClauses.map((group) => (
           <>
-            <Text size="sm" p="md" pb="sm" c="text-secondary" fw="bold">
+            <Text size="sm" p="lg" pb="sm" c="text-secondary" fw="bold">
               {group.displayName}
             </Text>
             {group.clauses.map((clause) => (
@@ -134,12 +134,12 @@ function FunctionBrowserItem({
       role="button"
       key={clause.name}
       className={S.clause}
-      px="md"
+      px="lg"
       py="sm"
       onMouseDown={handleMouseDown}
     >
       <dt>
-        <Text size="md" pb="xs" fw="bold" className={S.name}>
+        <Text size="md" pb="xxs" fw="bold" className={S.name}>
           {clause.displayName}
         </Text>
       </dt>

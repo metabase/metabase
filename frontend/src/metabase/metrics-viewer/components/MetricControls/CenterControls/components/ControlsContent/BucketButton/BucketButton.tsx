@@ -61,7 +61,7 @@ export function BucketButton({
           h="2rem"
           fw={400}
           py={0}
-          px="md"
+          px="lg"
           bdrs="md"
           variant="subtle"
           color="text-primary"

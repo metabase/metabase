@@ -45,7 +45,7 @@ const stackedData: EChartsTooltipProps = {
 };
 
 const DefaultTemplate = () => (
-  <Flex align="center" justify="center" p="xl" h="400px">
+  <Flex align="center" justify="center" p="xxl" h="400px">
     <Box className={S.ChartTooltipRoot}>
       <EChartsTooltip {...data} />
     </Box>
@@ -53,7 +53,7 @@ const DefaultTemplate = () => (
 );
 
 const StackedTemplate = () => (
-  <Flex align="center" justify="center" p="xl" h="400px">
+  <Flex align="center" justify="center" p="xxl" h="400px">
     <Box className={S.ChartTooltipRoot}>
       <EChartsTooltip {...stackedData} />
     </Box>

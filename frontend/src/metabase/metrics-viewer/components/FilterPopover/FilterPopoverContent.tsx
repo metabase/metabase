@@ -145,13 +145,13 @@ export function FilterPopoverContent({
           onChange={(event) => setSearchText(event.currentTarget.value)}
           leftSection={<Icon name="search" size={16} />}
           size="md"
-          radius="md"
+          radius="sm"
         />
       </Box>
 
       <Box w={LIST_WIDTH} className={S.listSection} flex={1} mih={0}>
         {hasNoResults ? (
-          <Box p="xl">
+          <Box p="xxl">
             <Text c="text-secondary" ta="center">
               {hasAnySegments
                 ? t`No dimensions or segments found`
@@ -213,13 +213,13 @@ function MetricGroupList({
                 onClick={() => onToggleExpanded(group.id)}
                 w="100%"
               >
-                <Flex align="center" gap="sm" px="md">
+                <Flex align="center" gap="sm" px="lg">
                   <SourceColorIndicator
                     colors={group.colors}
                     fallbackIcon={group.icon}
                     size={16}
                   />
-                  <Flex align="center" gap="xs" fw={700}>
+                  <Flex align="center" gap="xxs" fw={700}>
                     <span>{group.metricName}</span>
                     {(group.metricCount ?? 0) > 1 && (
                       <Badge circle color="brand" variant="light">
@@ -238,7 +238,7 @@ function MetricGroupList({
                 className={cx(S.accordionHeader, {
                   [S.accordionHeaderExpanded]: showItems,
                 })}
-                px="md"
+                px="lg"
               >
                 <Flex align="center" gap="sm">
                   <SourceColorIndicator

@@ -44,7 +44,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
       }}
       data-testid="table-picker-filter"
     >
-      <Stack gap="xl" p="lg">
+      <Stack gap="xxl" p="xl">
         <LayerInput
           clearable
           value={form.dataLayer}

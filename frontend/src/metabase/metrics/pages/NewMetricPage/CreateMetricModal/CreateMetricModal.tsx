@@ -87,7 +87,7 @@ function CreateMetricForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg">
+        <Stack gap="xl">
           <FormTextInput
             name="name"
             label={t`Name`}

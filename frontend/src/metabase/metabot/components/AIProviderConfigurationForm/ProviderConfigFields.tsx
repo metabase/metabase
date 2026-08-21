@@ -41,7 +41,7 @@ export function ProviderConfigFields({
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {visibleFields.map((field, index) => (
         <ProviderConfigField
           key={field.key}
@@ -83,7 +83,7 @@ function ProviderConfigField({
     return (
       <Input.Wrapper label={field.label} description={description}>
         <SegmentedControl
-          mt="xs"
+          mt="xxs"
           data={field.options ?? []}
           value={value || field.default || ""}
           onChange={onChange}

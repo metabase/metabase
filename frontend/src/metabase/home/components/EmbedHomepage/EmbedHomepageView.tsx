@@ -92,15 +92,15 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     .exhaustive();
 
   return (
-    <Flex gap="lg" align="flex-start" maw={1000}>
+    <Flex gap="xl" align="flex-start" maw={1000}>
       <Stack maw={550}>
         <HeaderWithDismiss onDismiss={onDismiss} />
 
-        <Card px="xl" py="lg">
-          <Stack gap="xl">
+        <Card px="xxl" py="xl">
+          <Stack gap="xxl">
             <Box>
               {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins */}
-              <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
+              <Title order={2} mb="lg">{t`Embedding Metabase`}</Title>
               <Text>
                 {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins */}
                 {t`Give your customers secure, multi-tenant access to their data with as much (or as little) interactivity and tools to explore data as you want, with as much customization as you need. Embed dashboards, charts—even Metabase's query editor—with iframes or as individual React components.`}

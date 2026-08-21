@@ -30,7 +30,7 @@ export function Relationships({
   );
 
   return (
-    <Stack data-testid="relationships" gap="md">
+    <Stack data-testid="relationships" gap="lg">
       <Text c="text-secondary" fz={17}>
         {jt`${(
           <Text
@@ -45,7 +45,7 @@ export function Relationships({
         )} is connected to:`}
       </Text>
 
-      <Stack gap="md">
+      <Stack gap="lg">
         {sortedForeignKeys.map((fk) => {
           return (
             <Relationship

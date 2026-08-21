@@ -41,7 +41,7 @@ export function MigrateModelsPage() {
       h="100%"
       wrap="nowrap"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap="lg">
         <PageHeader />
         <Card flex="0 1 auto" mih={0} p={0} withBorder>
           {!isLoading && error != null ? (

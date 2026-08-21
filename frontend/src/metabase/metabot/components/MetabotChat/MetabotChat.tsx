@@ -115,8 +115,8 @@ export const MetabotChat = ({
               {/* empty state */}
               <Flex
                 h="100%"
-                gap="md"
-                px="md"
+                gap="lg"
+                px="lg"
                 direction="column"
                 align="center"
                 justify="center"

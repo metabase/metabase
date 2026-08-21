@@ -33,7 +33,7 @@ export const BrowseDataHeader = () => {
 };
 
 const LearnAboutDataLink = () => (
-  <Flex p="0.75rem" justify="flex-end" align="center" gap="md">
+  <Flex p="0.75rem" justify="flex-end" align="center" gap="lg">
     <Link to="reference" onClick={trackDataReferenceClicked}>
       <Flex className={HeaderS.browseHeaderIconContainer} align="center">
         <Icon className={S.learnAboutDataIcon} size={14} name="reference" />

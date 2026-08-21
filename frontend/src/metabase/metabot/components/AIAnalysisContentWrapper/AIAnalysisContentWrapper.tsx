@@ -20,15 +20,15 @@ export function AIAnalysisContentWrapper({
   onClose,
 }: AIAnalysisContentWrapperProps) {
   return (
-    <Stack h="100%" p="lg" style={{ overflowY: "auto" }}>
+    <Stack h="100%" p="xl" style={{ overflowY: "auto" }}>
       <Group justify="space-between" align="center">
-        <Flex align="center" gap="xs">
+        <Flex align="center" gap="xxs">
           <MetabotIcon />
-          <Text fz="1.17em" ml="xs" fw="bold">
+          <Text fz="1.17em" ml="xxs" fw="bold">
             {title}
           </Text>
         </Flex>
-        <Group gap="xs">
+        <Group gap="xxs">
           {explanation && (
             <CopyButton
               value={explanation}

@@ -133,10 +133,10 @@ const AddDataEmptyState = ({
   secondaryAction,
 }: EmptyStateProps) => {
   return (
-    <Stack gap="lg" align="center" justify="center" pt="2.5rem">
+    <Stack gap="xl" align="center" justify="center" pt="2.5rem">
       {illustration}
       <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
-        <Title order={2} size="h4" mb="xs">
+        <Title order={2} size="h4" mb="xxs">
           {title}
         </Title>
         <Text c="text-secondary">{subtitle}</Text>

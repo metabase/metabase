@@ -23,6 +23,6 @@
 /* Only the top corners are rounded to match the card; bdrs prop can't express
    a partial radius. */
 .header {
-  border-top-left-radius: var(--mantine-radius-md);
-  border-top-right-radius: var(--mantine-radius-md);
+  border-top-left-radius: var(--mantine-radius-sm);
+  border-top-right-radius: var(--mantine-radius-sm);
 }

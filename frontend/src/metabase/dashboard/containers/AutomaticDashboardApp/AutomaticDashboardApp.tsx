@@ -108,9 +108,9 @@ const AutomaticDashboardAppInner = () => {
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
                 <Flex
-                  columnGap="md"
+                  columnGap="lg"
                   justify="space-between"
-                  py="md"
+                  py="lg"
                   wrap={{ base: "wrap", sm: "nowrap" }}
                 >
                   <FixedWidthContainer
@@ -123,7 +123,7 @@ const AutomaticDashboardAppInner = () => {
                   </FixedWidthContainer>
                   <Group
                     align="center"
-                    gap="md"
+                    gap="lg"
                     justify="flex-end"
                     w={{ base: "auto", md: SIDEBAR_W }}
                     wrap="nowrap"

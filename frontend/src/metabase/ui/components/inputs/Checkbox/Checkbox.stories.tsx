@@ -38,7 +38,7 @@ const CheckboxGroupTemplate = (args: CheckboxProps) => (
     label="An array of good frameworks"
     description="But which one to use?"
   >
-    <Stack mt="md">
+    <Stack mt="lg">
       <Checkbox {...args} value="react" label="React" />
       <Checkbox {...args} value="svelte" label="Svelte" />
       <Checkbox {...args} value="ng" label="Angular" />

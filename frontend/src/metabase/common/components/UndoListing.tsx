@@ -104,10 +104,10 @@ function UndoToast({
       bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       mt="sm"
-      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      maw="calc(100vw - 2 * var(--mantine-spacing-lg))"
       style={{
         overflowX: noBorder ? "hidden" : undefined,
         ...style,

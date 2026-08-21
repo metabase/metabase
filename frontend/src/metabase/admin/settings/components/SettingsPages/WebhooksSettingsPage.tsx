@@ -96,7 +96,7 @@ const ChannelBox = ({
   <Paper
     shadow="0"
     withBorder
-    p="lg"
+    p="xl"
     onClick={onClick}
     style={{ cursor: "pointer" }}
   >

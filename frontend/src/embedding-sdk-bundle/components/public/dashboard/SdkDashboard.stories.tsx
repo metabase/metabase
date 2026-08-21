@@ -362,7 +362,7 @@ export const ExperimentalLayout = {
       <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <Paper
           display="flex"
-          p="xl"
+          p="xxl"
           pos="relative"
           style={{ flexDirection: "row", overflow: "none" }}
           h="40rem"

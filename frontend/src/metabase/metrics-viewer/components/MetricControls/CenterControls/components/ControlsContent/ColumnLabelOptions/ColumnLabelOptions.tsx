@@ -17,7 +17,7 @@ export function ColumnLabelOptions(props: ColumnLabelOptionsProps) {
   return (
     <Popover
       floatingStrategy="fixed"
-      shadow="md"
+      shadow="sm"
       /* Should not be in a portal to avoid click-outside issues on parent popover */
       withinPortal={false}
     >
@@ -33,7 +33,7 @@ export function ColumnLabelOptions(props: ColumnLabelOptionsProps) {
           <Icon name="ellipsis" c="text-primary" />
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown p="md">
+      <Popover.Dropdown p="lg">
         <Switch
           label={t`Show column labels`}
           size="sm"

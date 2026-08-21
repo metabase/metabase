@@ -9,8 +9,8 @@ interface StoryShowcaseProps {
 
 export function StoryShowcase({ title, children }: StoryShowcaseProps) {
   return (
-    <Paper withBorder radius="sm" p="xl" w="fit-content">
-      <Stack gap="xl">
+    <Paper withBorder radius="xs" p="xxl" w="fit-content">
+      <Stack gap="xxl">
         <Text fz="1.5rem" fw="bold" c="text-primary">
           {title}
         </Text>
@@ -60,7 +60,7 @@ export function StoryRow({
   children,
 }: StoryRowProps) {
   return (
-    <Group gap="md" wrap="nowrap">
+    <Group gap="lg" wrap="nowrap">
       <Text size="sm" c="text-secondary" w={labelWidth}>
         {label}
       </Text>

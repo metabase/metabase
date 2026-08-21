@@ -158,7 +158,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
     return (
       <>
         <Divider key="app-sectiondivider" w="100%" my="sm" />
-        <Box px="md">{items}</Box>
+        <Box px="lg">{items}</Box>
       </>
     );
   }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
@@ -168,7 +168,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
   return (
     <>
-      <Menu position="bottom-end" shadow="md" width={200} offset={9}>
+      <Menu position="bottom-end" shadow="sm" width={200} offset={9}>
         <Menu.Target>
           {appsSection ? (
             <ActionIcon
@@ -207,7 +207,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Target>
         <Menu.Dropdown w={320} px="0">
           {/* Avatar Stuff */}
-          <Box px="md">
+          <Box px="lg">
             <Menu.Item
               component={ForwardRefLink}
               to={Urls.accountSettings()}
@@ -217,7 +217,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                 <Avatar color="core-brand" radius="lg" size={32}>
                   {user ? prepareInitials(user) : "?"}
                 </Avatar>
-                <Stack gap="xs">
+                <Stack gap="xxs">
                   <Text lh="xs">{user?.first_name}</Text>
                   <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
@@ -232,7 +232,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
           {/* Logout and Help */}
           <Divider w="100%" my="sm" />
-          <Box px="md">
+          <Box px="lg">
             <Menu.Sub position="left-start" offset={20} closeDelay={350}>
               <Menu.Sub.Target>
                 <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>

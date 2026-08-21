@@ -1,5 +1,5 @@
 .option {
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
 }
 
 .option[data-combobox-selected] {
@@ -21,5 +21,5 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  margin-top: var(--mantine-spacing-xl);
+  margin-top: var(--mantine-spacing-xxl);
 }

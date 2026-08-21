@@ -55,7 +55,7 @@ export const ForgotPasswordForm = ({
         validationSchema={FORGOT_PASSWORD_SCHEMA}
         onSubmit={handleSubmit}
       >
-        <Form as={Stack} gap="md">
+        <Form as={Stack} gap="lg">
           <FormTextInput
             name="email"
             label={t`Email address`}

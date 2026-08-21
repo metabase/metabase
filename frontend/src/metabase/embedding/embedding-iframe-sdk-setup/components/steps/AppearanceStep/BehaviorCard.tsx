@@ -63,7 +63,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
-          <Stack gap="md">
+          <Stack gap="lg">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -108,7 +108,7 @@ export const BehaviorCard = () => {
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
                 return (
-                  <Flex align="center" gap="xs">
+                  <Flex align="center" gap="xxs">
                     <Checkbox
                       disabled={!hasEmailSetup || disabledInGuestEmbedding}
                       label={t`Allow alerts`}
@@ -154,7 +154,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
-          <Stack gap="md">
+          <Stack gap="lg">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -184,7 +184,7 @@ export const BehaviorCard = () => {
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled: disabledInGuestEmbedding }) => {
                 return (
-                  <Flex align="center" gap="xs">
+                  <Flex align="center" gap="xxs">
                     <Checkbox
                       disabled={!hasEmailSetup || disabledInGuestEmbedding}
                       label={t`Allow subscriptions`}
@@ -250,9 +250,9 @@ export const BehaviorCard = () => {
   }
 
   return (
-    <Card p="md">
-      <Flex align="center" justify="space-between" gap="xs" mb="md">
-        <Flex align="center" gap="xs">
+    <Card p="lg">
+      <Flex align="center" justify="space-between" gap="xxs" mb="lg">
+        <Flex align="center" gap="xxs">
           <Text size="lg" fw="bold">
             {t`Behavior`}
           </Text>

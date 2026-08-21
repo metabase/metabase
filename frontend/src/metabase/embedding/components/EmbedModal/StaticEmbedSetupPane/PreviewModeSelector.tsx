@@ -12,7 +12,7 @@ const ControlOptionItem = ({
   label: string;
   iconName: IconName;
 }) => (
-  <Group wrap="nowrap" px="sm" gap="xs">
+  <Group wrap="nowrap" px="sm" gap="xxs">
     <Icon name={iconName} />
     <Box>{label}</Box>
   </Group>

@@ -16,7 +16,7 @@ export const TransformBadge = forwardRef(function TransformBadge(
       lh="lg"
       fw="bold"
       bdrs="xs"
-      py="xs"
+      py="xxs"
       px="sm"
       className={cx(CS.cursorDefault, className)}
       {...rest}

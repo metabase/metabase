@@ -83,7 +83,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
       onClick={handleClick}
       onAuxClick={handleAuxClick}
     >
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         {tableInfo && (
           <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
         )}

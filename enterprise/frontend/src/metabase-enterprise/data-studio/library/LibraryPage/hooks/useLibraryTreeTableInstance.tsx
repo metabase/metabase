@@ -156,7 +156,7 @@ export function useLibraryTreeTableInstance({
                 row.original.parentCollectionName ? (
                   <Group gap="sm" miw={0} align="center">
                     <Text truncate>{row.original.name}</Text>
-                    <Group gap="xs">
+                    <Group gap="xxs">
                       <Icon name="collection" size={12} c="text-disabled" />
                       <Text fz="xs" c="text-disabled" truncate>
                         {row.original.parentCollectionName}

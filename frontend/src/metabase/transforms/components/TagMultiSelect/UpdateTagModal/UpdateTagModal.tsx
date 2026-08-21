@@ -73,7 +73,7 @@ function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
     >
       {({ dirty }) => (
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Name`}

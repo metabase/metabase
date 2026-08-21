@@ -68,7 +68,7 @@ export const TenantsListing = ({
 
   return (
     <div>
-      <Group w="100%" justify="space-between" mb="lg" gap="md">
+      <Group w="100%" justify="space-between" mb="xl" gap="lg">
         <Flex flex="1">
           <SearchFilter
             value={searchInputValue}
@@ -96,7 +96,7 @@ export const TenantsListing = ({
                 align="center"
                 to={Urls.editTenant(tenant.id)}
                 className={CS.link}
-                gap="md"
+                gap="lg"
               >
                 <UserAvatar
                   user={{ name: tenant.name }}
@@ -118,13 +118,27 @@ export const TenantsListing = ({
 
       {((tenants.length !== 0 && filteredTenants.length === 0) ||
         (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
+        <Text
+          size="lg"
+          fw="700"
+          ta="center"
+          mt="xxl"
+          py="xxl"
+          c="text-disabled"
+        >
           {t`No matching tenants found.`}
         </Text>
       )}
 
       {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
+        <Text
+          size="lg"
+          fw="700"
+          ta="center"
+          mt="xxl"
+          py="xxl"
+          c="text-disabled"
+        >
           {t`Add your first tenant to get started.`}
         </Text>
       )}
@@ -140,7 +154,7 @@ interface ActionsPopoverProps {
 
 function ActionsPopover({ tenant }: ActionsPopoverProps) {
   return (
-    <Menu shadow="md" width={200} position="bottom-end">
+    <Menu shadow="sm" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
           <Icon c="text-disabled" name="ellipsis" />

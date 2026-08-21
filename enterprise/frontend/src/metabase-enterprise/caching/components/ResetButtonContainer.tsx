@@ -9,7 +9,7 @@ import S from "./ResetButtonContainer.module.css";
 
 export const ResetButtonContainer = () => {
   return (
-    <Box pb="md" mt="auto" ms="auto" me="lg">
+    <Box pb="lg" mt="auto" ms="auto" me="lg">
       <ResetAllToDefaultButtonFormBody />
     </Box>
   );
@@ -35,7 +35,7 @@ const ResetAllToDefaultButtonFormBody = () => {
       <Form>
         <Flex justify="flex-end">
           <FormSubmitButton
-            px="md"
+            px="lg"
             py=".75rem"
             lh="1"
             onClick={(e) => {
@@ -55,7 +55,7 @@ const ResetAllToDefaultButtonFormBody = () => {
             activeLabel={<Loader size="xs" />}
             successLabel={
               <Text fw="bold" lh="1" color="feedback-positive">
-                <Group gap="xs">
+                <Group gap="xxs">
                   <Icon name="check" /> {t`Success`}
                 </Group>
               </Text>

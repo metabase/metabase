@@ -143,7 +143,7 @@ function UpdateTargetForm({
     >
       {({ dirty }) => (
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             {supportsSchemas && (
               <SchemaFormSelect
                 name="schema"

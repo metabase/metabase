@@ -51,7 +51,7 @@ export const FontFilesWidget = () => {
   );
 
   return (
-    <Stack mt="md" gap="sm">
+    <Stack mt="lg" gap="sm">
       <Text c="text-secondary">{fontFilesDescription}</Text>
       <FontFilesTable urls={urls} onChange={handleChange} />
     </Stack>

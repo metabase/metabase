@@ -105,7 +105,7 @@ export const DatabaseForm = ({
     >
       <Form
         data-testid="database-form"
-        pt={location === "full-page" ? undefined : "md"}
+        pt={location === "full-page" ? undefined : "lg"}
         mih={0}
         style={{
           display: "flex",

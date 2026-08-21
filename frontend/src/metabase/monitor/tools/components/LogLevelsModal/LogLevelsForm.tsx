@@ -33,7 +33,7 @@ export const LogLevelsForm = ({ presets }: Props) => {
 
   return (
     <Form>
-      <Flex align="flex-end" gap="md" justify="space-between" mb="md">
+      <Flex align="flex-end" gap="lg" justify="space-between" mb="lg">
         <DurationInput />
 
         {presets.length > 0 && (
@@ -67,23 +67,23 @@ export const LogLevelsForm = ({ presets }: Props) => {
       </Box>
 
       {error && (
-        <Text aria-label={error} c="feedback-negative" mt="md" role="alert">
+        <Text aria-label={error} c="feedback-negative" mt="lg" role="alert">
           {error}
         </Text>
       )}
 
-      <Box mt="md">
+      <Box mt="lg">
         <FormErrorMessage />
       </Box>
 
-      <Flex align="center" gap="md" justify="space-between" mt="xl">
+      <Flex align="center" gap="lg" justify="space-between" mt="xxl">
         <Tooltip
           label={t`Available log levels: ${["off", "fatal", "error", "warn", "info", "debug", "trace"].join(", ")}`}
         >
           <Icon name="info" />
         </Tooltip>
 
-        <Flex gap="md" justify="flex-end">
+        <Flex gap="lg" justify="flex-end">
           <Button
             leftSection={<Icon name="revert" />}
             type="reset"

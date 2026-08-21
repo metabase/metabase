@@ -3,9 +3,9 @@ import { Fragment } from "react";
 import { Grid, Paper, type PaperProps, Text } from "metabase/ui";
 
 const args = {
-  p: "md",
-  radius: "md",
-  shadow: "md",
+  p: "lg",
+  radius: "sm",
+  shadow: "sm",
   withBorder: false,
 };
 
@@ -15,15 +15,15 @@ const sampleArgs = {
 
 const argTypes = {
   p: {
-    options: ["xs", "sm", "md", "lg", "xl"],
+    options: ["xs", "sm", "md", "lg", "xl", "xxl"],
     control: { type: "inline-radio" },
   },
   radius: {
-    options: ["xs", "sm", "md"],
+    options: ["xxs", "xs", "sm", "md", "lg"],
     control: { type: "inline-radio" },
   },
   shadow: {
-    options: ["xs", "sm", "md", "lg", "xl"],
+    options: ["xs", "xs_outline", "sm", "sm_outline", "lg_outline"],
     control: { type: "inline-radio" },
   },
   withBorder: {
@@ -38,7 +38,11 @@ const DefaultTemplate = (args: PaperProps) => (
 );
 
 const GridTemplate = (args: PaperProps) => (
-  <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
+  <Grid
+    columns={argTypes.radius.options.length + 1}
+    align="center"
+    gutter="xxl"
+  >
     <Grid.Col span={1} />
     {argTypes.radius.options.map((radius) => (
       <Grid.Col key={radius} span={1}>

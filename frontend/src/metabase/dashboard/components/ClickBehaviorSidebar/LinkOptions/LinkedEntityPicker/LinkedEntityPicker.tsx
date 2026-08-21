@@ -336,7 +336,7 @@ export function LinkedEntityPicker({
             value: String(tab.id),
           }))}
           label={t`Select a dashboard tab`}
-          mt="md"
+          mt="lg"
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />

@@ -175,7 +175,7 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
       description={t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
     >
       <Stack
-        gap="xl"
+        gap="xxl"
         style={{
           flex: 1,
           overflowY: "auto",

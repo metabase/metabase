@@ -76,10 +76,10 @@ export const LensNavigator = ({
         onChange={(value) => value && onSwitchTab(value)}
         className={styles.tabs}
       >
-        <Tabs.List px="lg" className={styles.tabsList}>
+        <Tabs.List px="xl" className={styles.tabsList}>
           {tabs.map((tab) => (
             <Tabs.Tab key={tab.key} value={tab.key} className={styles.tab}>
-              <Group gap="xs" wrap="nowrap">
+              <Group gap="xxs" wrap="nowrap">
                 <Text
                   size="md"
                   fw={700}
@@ -111,7 +111,7 @@ export const LensNavigator = ({
           ))}
         </Tabs.List>
       </Tabs>
-      <Box p="lg">{children}</Box>
+      <Box p="xl">{children}</Box>
     </Stack>
   );
 };

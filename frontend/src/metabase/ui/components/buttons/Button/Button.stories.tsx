@@ -11,7 +11,7 @@ const args = {
   size: "md",
   disabled: false,
   fullWidth: false,
-  radius: "md",
+  radius: "sm",
   loading: false,
 };
 

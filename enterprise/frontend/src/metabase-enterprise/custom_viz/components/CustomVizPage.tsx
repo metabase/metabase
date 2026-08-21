@@ -174,7 +174,7 @@ export function CustomVizPage({ params }: Props) {
             {({ dirty }) => (
               <Form>
                 <Stack gap="40px">
-                  <Stack gap="md">
+                  <Stack gap="lg">
                     <Title order={2}>
                       {isEdit && plugin
                         ? t`Replace bundle for ${plugin.display_name}`

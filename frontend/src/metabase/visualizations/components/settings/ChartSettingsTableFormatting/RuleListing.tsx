@@ -18,7 +18,7 @@ export const RuleListing = ({
 }: SortableRuleListProps & {
   onAdd: MouseEventHandler<HTMLButtonElement>;
 }) => (
-  <Stack gap="md">
+  <Stack gap="lg">
     <Stack gap="sm">
       <Text fw="bold" fz="lg">{t`Conditional formatting`}</Text>
       <Text lh="normal">

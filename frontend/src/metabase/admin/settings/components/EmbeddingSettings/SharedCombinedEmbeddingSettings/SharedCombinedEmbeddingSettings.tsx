@@ -76,7 +76,7 @@ export function SharedCombinedEmbeddingSettings({
             <SettingTitle
               id="static-embeds"
               fz="lg"
-              mb="md"
+              mb="lg"
             >{t`Published embeds`}</SettingTitle>
 
             <EmbeddedResources />

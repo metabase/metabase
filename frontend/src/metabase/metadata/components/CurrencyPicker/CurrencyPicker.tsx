@@ -49,7 +49,7 @@ export const CurrencyPicker = ({
           <SelectItem selected={selected}>
             <Icon name={selected ? "check" : "empty"} />
 
-            <Flex align="center" flex="1" gap="xs" justify="space-between">
+            <Flex align="center" flex="1" gap="xxs" justify="space-between">
               <span>{item.option.label}</span>
 
               <Text
@@ -65,7 +65,7 @@ export const CurrencyPicker = ({
         );
       }}
       rightSection={
-        <Flex align="center" gap="xs" pos="relative">
+        <Flex align="center" gap="xxs" pos="relative">
           <Text c="text-disabled" pos="absolute" px="sm" right="100%">
             {SYMBOLS[value]}
           </Text>

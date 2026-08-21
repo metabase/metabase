@@ -10,7 +10,7 @@ export function SidebarHeader() {
 
   return (
     <Flex
-      px="md"
+      px="lg"
       py="sm"
       justify="space-between"
       align="center"

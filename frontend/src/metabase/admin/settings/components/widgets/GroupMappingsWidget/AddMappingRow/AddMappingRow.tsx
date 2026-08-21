@@ -49,7 +49,7 @@ export function AddMappingRow({
       justify="space-between"
       bd="1px solid var(--mb-color-core-brand)"
       bdrs="md"
-      m="md"
+      m="lg"
       p="sm"
     >
       <input
@@ -62,7 +62,7 @@ export function AddMappingRow({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
       />
-      <Group gap="md">
+      <Group gap="lg">
         <Button
           variant="subtle"
           onClick={handleCancelClick}

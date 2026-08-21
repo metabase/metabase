@@ -89,7 +89,7 @@ export function TimeFilterPicker({
       </FilterPickerHeader>
       <Box>
         {valueCount > 0 && (
-          <Flex p="md">
+          <Flex p="lg">
             <TimeValueInput
               autoFocus={autoFocus}
               values={values}

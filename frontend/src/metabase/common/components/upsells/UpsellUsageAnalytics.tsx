@@ -42,7 +42,7 @@ export const UpsellUsageAnalytics = (
       lh="1.5rem"
       onClick={triggerUpsellFlow}
       buttonStyle={{
-        marginInlineStart: "var(--mantine-spacing-xl)",
+        marginInlineStart: "var(--mantine-spacing-xxl)",
         width: "10rem",
         maxWidth: "100%",
       }}
@@ -50,7 +50,7 @@ export const UpsellUsageAnalytics = (
     >
       <Text
         lh="1.5rem"
-        styles={{ root: { paddingInlineStart: "var(--mantine-spacing-xl)" } }}
+        styles={{ root: { paddingInlineStart: "var(--mantine-spacing-xxl)" } }}
       >
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
         {t`Get detailed reports for tracking Metabase content usage, performance, and configuration changes.`}{" "}

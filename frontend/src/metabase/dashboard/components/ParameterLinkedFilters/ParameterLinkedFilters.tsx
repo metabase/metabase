@@ -118,7 +118,7 @@ function NoUsableParameters() {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text>
         {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
       </Text>
@@ -154,7 +154,7 @@ function ParametersFromOtherSource() {
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text>
         {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
       </Text>
@@ -203,14 +203,14 @@ function ParameterList({
   );
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Text>
         {jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
           <Box key="text" component="strong">{t`this`}</Box>
         )} filter.`}
       </Text>
       {compatibleParameters.length > 0 && (
-        <Stack gap="md" data-testid="compatible-parameters">
+        <Stack gap="lg" data-testid="compatible-parameters">
           {compatibleParameters.map(
             ({ parameter: otherParameter, filteredIds, filteringIds }) => (
               <ParameterItem
@@ -230,7 +230,7 @@ function ParameterList({
         </Stack>
       )}
       {incompatibleParameters.length > 0 && (
-        <Stack gap="md" data-testid="incompatible-parameters">
+        <Stack gap="lg" data-testid="incompatible-parameters">
           <Group gap="sm">
             <Text c="text-secondary" fw="bold">{t`Incompatible filters`}</Text>
             <ParameterHelpInfo />
@@ -266,7 +266,7 @@ function ParameterHelpInfo() {
         <Icon c="text-secondary" name="info" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Stack p="md" maw="20rem">
+        <Stack p="lg" maw="20rem">
           <Text>
             {t`There needs to be a foreign-key relationship between the fields connected to these filters.`}
           </Text>
@@ -302,7 +302,7 @@ const ParameterItem = ({
 
   return (
     <Box className={S.parameterItem} bg="background_page-secondary">
-      <Group justify="space-between" align="center" pr="md">
+      <Group justify="space-between" align="center" pr="lg">
         <Button
           c={isCompatible ? "text-primary" : undefined}
           variant="subtle"
@@ -337,7 +337,7 @@ type FieldListProps = {
 
 const FieldList = ({ filteredIds, filteringIds }: FieldListProps) => {
   return (
-    <SimpleGrid cols={2} px="md" pb="md" spacing="sm" fz="sm">
+    <SimpleGrid cols={2} px="lg" pb="lg" spacing="sm" fz="sm">
       <Box c="core-brand">{t`Filtering column`}</Box>
       <Box c="core-brand">{t`Filtered column`}</Box>
       {filteringIds.map((filteringId) => (

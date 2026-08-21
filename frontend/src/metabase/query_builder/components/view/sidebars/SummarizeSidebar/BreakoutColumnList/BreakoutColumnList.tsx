@@ -108,7 +108,7 @@ export function BreakoutColumnList({
 
   return (
     <>
-      <Box mb="md">
+      <Box mb="lg">
         <TextInput
           placeholder={t`Find...`}
           value={searchQuery}

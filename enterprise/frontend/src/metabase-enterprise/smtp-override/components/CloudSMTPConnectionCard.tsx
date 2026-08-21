@@ -54,7 +54,7 @@ export const CloudSMTPConnectionCard = () => {
 
   return (
     <div className={S.root} data-testid="cloud-smtp-connection-card">
-      <Paper radius="md" className={S.card}>
+      <Paper radius="sm" className={S.card}>
         <Radio.Group
           value={localValue ? "custom" : "metabase"}
           onChange={handleChange}
@@ -89,7 +89,7 @@ export const CloudSMTPConnectionCard = () => {
           </Box>
           <Divider />
           {isSMTPOverrideConfigured && (
-            <Group p="lg" justify="space-between" style={{ cursor: "pointer" }}>
+            <Group p="xl" justify="space-between" style={{ cursor: "pointer" }}>
               <Radio
                 key={"custom"}
                 value={"custom"}

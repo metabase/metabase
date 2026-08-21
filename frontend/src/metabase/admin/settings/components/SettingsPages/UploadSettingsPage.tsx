@@ -13,7 +13,7 @@ import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";
 export function UploadSettingsPage() {
   return (
     <SettingsPageWrapper title={t`Uploads`}>
-      <Flex justify="space-between" gap="lg">
+      <Flex justify="space-between" gap="xl">
         <SettingsSection>
           <UploadSettingsForm />
           <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />

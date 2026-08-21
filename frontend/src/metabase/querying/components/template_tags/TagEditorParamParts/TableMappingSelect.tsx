@@ -32,7 +32,7 @@ export function TableMappingSelect({
     <>
       <InputContainer>
         <ContainerLabel>
-          <Group gap="xs">
+          <Group gap="xxs">
             {t`Table to map to`}
             {isEmpty && <ErrorSpan>{t`(required)`}</ErrorSpan>}
           </Group>

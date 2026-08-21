@@ -116,7 +116,7 @@ export const NotificationSchedule = ({
 
   return (
     <Box {...boxProps}>
-      <Flex className={styles.scheduleContainer} direction="column" gap="md">
+      <Flex className={styles.scheduleContainer} direction="column" gap="lg">
         <Schedule
           verb={c("A verb in the imperative mood").t`Check`}
           value={value}

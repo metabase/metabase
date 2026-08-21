@@ -122,7 +122,7 @@ export function DimensionPill({
         <Flex
           className={cx(S.pill, isInteractive && S.interactive)}
           align="center"
-          gap="xs"
+          gap="xxs"
           opacity={disabled || isEmpty ? 0.6 : undefined}
           onClick={isInteractive ? () => setIsOpen(true) : undefined}
         >
@@ -132,7 +132,7 @@ export function DimensionPill({
           </Text>
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown px={0} py="xs" mah={300} className={S.dropdown}>
+      <Popover.Dropdown px={0} py="xxs" mah={300} className={S.dropdown}>
         {hasMultipleOptions && (
           <AccordionList
             className={S.dimensionList}
@@ -148,7 +148,7 @@ export function DimensionPill({
         )}
         {canRemove && (
           <>
-            {hasMultipleOptions && <Divider my="xs" />}
+            {hasMultipleOptions && <Divider my="xxs" />}
             <AccordionList
               className={S.dimensionList}
               sections={REMOVE_SECTIONS}

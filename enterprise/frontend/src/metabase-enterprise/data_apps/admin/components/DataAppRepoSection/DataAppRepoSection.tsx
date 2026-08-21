@@ -20,13 +20,13 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
       {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /apps/:name.`}
     </Text>
 
-    <Group gap="md" wrap="nowrap" align="center">
+    <Group gap="lg" wrap="nowrap" align="center">
       <Group
         gap="sm"
         wrap="nowrap"
         flex={1}
         miw={0}
-        px="md"
+        px="lg"
         py="sm"
         bg="background-secondary"
         bd="1px solid var(--mb-color-border)"

@@ -43,7 +43,7 @@ export const EmbeddingSecretKeyWidget = () => {
         settingDetails={settingDetails}
         settingKey="embedding-secret-key"
       >
-        <Flex gap="md" w="100%">
+        <Flex gap="lg" w="100%">
           <TextInputBlurChange
             value={value}
             onBlurChange={(e) => handleChange(e.target.value)}

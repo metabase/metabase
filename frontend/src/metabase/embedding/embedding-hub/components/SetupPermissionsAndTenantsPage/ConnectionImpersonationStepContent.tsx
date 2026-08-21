@@ -70,7 +70,7 @@ export const ConnectionImpersonationStepContent = ({
 
   if (!hasCompatibleDatabases) {
     return (
-      <Stack gap="md">
+      <Stack gap="lg">
         <Text size="md" c="text-secondary" lh="lg">
           {t`None of your databases support connection impersonation. Pick a different data segregation strategy in the previous step, or connect a new database in the Database settings before proceeding. Metabase connects to more than 15 popular databases.`}
         </Text>
@@ -89,7 +89,7 @@ export const ConnectionImpersonationStepContent = ({
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text size="md" c="text-secondary" lh="lg">
         {t`Select one or more databases to be made visible to all tenant users. Tenant users will be able to create queries on these databases with the query builder. The tenant attribute database_role will be used to manage permissions. You will specify this attribute for each tenant when you create tenants.`}
       </Text>

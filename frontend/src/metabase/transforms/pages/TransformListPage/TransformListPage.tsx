@@ -327,7 +327,7 @@ export const TransformListPage = () => {
       <TransformsHeader showMetabotButton />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
-        <Flex gap="md">
+        <Flex gap="lg">
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}

@@ -114,7 +114,7 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             />
           </List>
         </Stack>
-        <Group mt="xl" gap="sm">
+        <Group mt="xxl" gap="sm">
           <Box flex={1}>
             <FormErrorMessage />
           </Box>

@@ -144,7 +144,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
       h="calc(100vh - 7rem)"
     >
       {confirmationModal}
-      <Flex gap="xl" className={S.scrollableLayout}>
+      <Flex gap="xxl" className={S.scrollableLayout}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel

@@ -17,7 +17,7 @@ function ChartSettingsErrorButton({
   return (
     <div>
       <div>{message}</div>
-      <Box mt="md">
+      <Box mt="lg">
         <Button variant="filled" onClick={onClick}>
           {buttonLabel}
         </Button>

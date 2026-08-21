@@ -3,7 +3,7 @@
   min-height: 0;
   flex: 0 1 auto;
   overflow: auto;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   background-color: var(--mb-color-background_page-secondary);

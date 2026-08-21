@@ -29,7 +29,7 @@ const RadioGroupTemplate = () => (
     label="An array of good frameworks"
     description="But which one to use?"
   >
-    <Stack mt="md">
+    <Stack mt="lg">
       <Radio value="react" label="React" />
       <Radio value="svelte" label="Svelte" />
       <Radio value="ng" label="Angular" />

@@ -3,7 +3,7 @@
 }
 
 .section {
-  padding: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-xl);
 }
 
 .divided {
@@ -11,7 +11,7 @@
 }
 
 .stack {
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
 }
 
 @media screen and (max-width: 40em) {

@@ -216,7 +216,7 @@ export function Editor(props: EditorProps) {
                 className={S.toolbarButton}
                 variant="subtle"
                 size="xs"
-                p="xs"
+                p="xxs"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />

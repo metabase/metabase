@@ -99,7 +99,7 @@ export function TagEditorSidebar({
             parametersAreUserVisible={parametersAreUserVisible}
           />
         ) : (
-          <Box p="lg">
+          <Box p="xl">
             <TagEditorHelp
               database={database}
               sampleDatabaseId={sampleDatabaseId}
@@ -143,7 +143,7 @@ const SettingsPane = ({
 }: SettingsPaneProps) => {
   if (tags.length === 0) {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <EmptyState
           message={t`Add a variable to your query, like {{variable_name}}, to configure it here.`}
         />

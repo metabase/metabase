@@ -122,7 +122,7 @@ export function SchemaViewerFieldRow({
       gap="sm"
       wrap="nowrap"
       h={ROW_HEIGHT_PX}
-      px="md"
+      px="lg"
       data-clickable={isClickable || undefined}
       onClick={isClickable ? handleClick : undefined}
       style={{ cursor: isClickable ? "pointer" : undefined }}

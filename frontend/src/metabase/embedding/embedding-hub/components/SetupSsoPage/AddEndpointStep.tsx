@@ -14,12 +14,12 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
   const { url: jwtDocsUrl } = useDocsUrl("embedding/authentication");
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Stack gap="sm">
         <Text>{t`You'll need to add a library to your backend to sign your JSON Web Tokens.`}</Text>
         <Text>{t`For Node.js, we recommend jsonwebtoken:`}</Text>
 
-        <Code className={S.codeSnippet} p="md" block>
+        <Code className={S.codeSnippet} p="lg" block>
           npm install jsonwebtoken --save
         </Code>
 

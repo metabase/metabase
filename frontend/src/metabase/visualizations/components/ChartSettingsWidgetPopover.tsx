@@ -93,8 +93,8 @@ export const ChartSettingsWidgetPopover = ({
           >
             {hasMultipleSections && (
               <Tabs
-                px="md"
-                pt="xs"
+                px="lg"
+                pt="xxs"
                 value={currentSection}
                 onChange={(section) => setCurrentSection(section ?? undefined)}
               >
@@ -103,7 +103,7 @@ export const ChartSettingsWidgetPopover = ({
                     <Tabs.Tab
                       key={sectionName}
                       value={String(sectionName)}
-                      p="md"
+                      p="lg"
                     >
                       {sectionName}
                     </Tabs.Tab>

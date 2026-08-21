@@ -12,7 +12,7 @@ export const dateTimePickerOverrides = {
         styles: {
           dropdown: {
             /* Padding workaround since popover padding is overridden to zero */
-            "--popover-padding": "var(--mantine-spacing-md)",
+            "--popover-padding": "var(--mantine-spacing-lg)",
           },
         },
       },
