@@ -44,6 +44,7 @@ export type LlmProviderTypeName =
   | "google"
   | "azure"
   | "bedrock"
+  | "vllm"
   | "metabase";
 
 export type LlmProviderFieldType =

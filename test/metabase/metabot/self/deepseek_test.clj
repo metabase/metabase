@@ -122,8 +122,8 @@
               {:system "You are Metabot."
                :input  [user-message]
                :tools  [(metabot.tu/get-time-tool)]})]
-    (testing "the model defaults to deepseek-v4-flash"
-      (is (= "deepseek-v4-flash" (:model body))))
+    (testing "the model defaults to deepseek-v4-pro"
+      (is (= "deepseek-v4-pro" (:model body))))
     (testing "an unknown model id falls back to the shared max_tokens ceiling"
       (is (= 64000 (:max_tokens body))))
     (is (true? (:stream body)))

@@ -17163,12 +17163,19 @@
                             "type" : "string"
                           }
                         },
+                        "description" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
                         "bundle_path" : {
                           "type" : "string",
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -17336,12 +17343,19 @@
                         "type" : "string"
                       }
                     },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "bundle_path" : {
                       "type" : "string",
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -17475,12 +17489,19 @@
                           "type" : "string"
                         }
                       },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "bundle_path" : {
                         "type" : "string",
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {

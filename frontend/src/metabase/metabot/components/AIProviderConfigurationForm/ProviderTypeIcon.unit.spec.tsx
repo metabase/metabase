@@ -40,6 +40,13 @@ describe("ProviderTypeIcon", () => {
     expect(screen.getByRole("presentation")).toBeInTheDocument();
   });
 
+  it("falls back to a generic icon for vLLM, which is a server rather than a vendor", () => {
+    renderWithProviders(<ProviderTypeIcon type="vllm" />);
+
+    expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+  });
+
   it("falls back to a generic icon for a type the frontend does not know yet", () => {
     // the registry is the backend's, so it can serve a type this union does not list yet;
     // the cast reproduces that server response, which is unreachable through the type alone

@@ -27,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-model "deepseek-v4-flash")
+(def ^:private default-model "deepseek-v4-pro")
 
 (def ^:private anthropic-version "2023-06-01")
 
