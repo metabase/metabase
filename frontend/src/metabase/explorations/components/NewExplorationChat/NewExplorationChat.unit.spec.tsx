@@ -138,14 +138,10 @@ const addResearchGroupsResponse: AddResearchGroupsResponse = {
     },
   ],
   groups: [
-    // metric-anchored: Revenue with an explicitly-chosen dimension
     {
-      anchor: "metric",
       metric_id: metricRevenue.id,
       dimension_ids: [revenueDateDimension.id],
     },
-    // dimension-anchored: slice every related metric by Customer Segment
-    { anchor: "dimension", dimension_id: customerSegmentDimension.id },
   ],
 };
 

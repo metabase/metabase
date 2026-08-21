@@ -32,7 +32,6 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   Comment,
-  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
@@ -65,7 +64,6 @@ interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
-  blockType: ExplorationBlockNodeType;
   exploreFilters?: HydratedExplorationExploreFilter[] | null;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
@@ -161,7 +159,6 @@ function ExplorationGroupVisualizationChart({
   explorationId,
   page,
   queries,
-  blockType,
   exploreFilters,
   availableTimelines,
   selectedTimelineId,
@@ -181,7 +178,6 @@ function ExplorationGroupVisualizationChart({
   const clickActionsMode = useExplorationClickActionsMode({
     explorationId,
     pageId: page.id,
-    blockType,
     queryType: queries[0].query_type,
     commentDrafts,
     setCommentDrafts,

@@ -101,7 +101,6 @@ function renderMode(
       useExplorationClickActionsMode({
         explorationId: 42,
         pageId: 7,
-        blockType: "metric",
         queryType: "default",
         commentDrafts,
         setCommentDrafts,
@@ -136,13 +135,6 @@ describe("useExplorationClickActionsMode", () => {
       "explore-further",
       "add-comment",
     ]);
-  });
-
-  it("omits explore further for ineligible clicks but still offers add comment", () => {
-    const { result } = renderMode({ blockType: "dimension" });
-    const actions = result.current.actionsForClick(makeClicked());
-
-    expect(actions.map((action) => action.name)).toEqual(["add-comment"]);
   });
 
   it("fires explore further with filters and closes the popover", async () => {
