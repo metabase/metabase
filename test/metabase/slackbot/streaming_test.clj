@@ -1,6 +1,7 @@
 (ns metabase.slackbot.streaming-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
@@ -12,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -200,6 +202,69 @@
                          :timeout-ms 5000})))
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
+
+(deftest slackbot-streaming-seeds-state-from-db-test
+  (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {:ai-text "Hello!"}
+            (fn [{:keys [ai-request-calls stop-stream-calls]}]
+              (letfn [(send! []
+                        (mt/client :post 200 "metabot/slack/events"
+                                   (tu/slack-request-options event-body)
+                                   event-body))
+                      (wait! [n]
+                        (u/poll {:thunk      #(>= (count @stop-stream-calls) n)
+                                 :done?      true?
+                                 :timeout-ms 5000}))]
+                (send!)
+                (wait! 1)
+                (testing "the opening turn of a thread starts from an empty baseline"
+                  (is (= {} (:state (last @ai-request-calls)))))
+                ;; Stand in for the state a real first turn would have written: the mocked
+                ;; agent loop produces no turn-state of its own. Taking the conversation id
+                ;; from the captured opts keeps this independent of how it is derived.
+                (t2/insert! :model/MetabotMessage
+                            {:conversation_id (:conversation-id (last @ai-request-calls))
+                             :role            "assistant"
+                             :profile_id      "slackbot"
+                             :total_tokens    0
+                             :data            []
+                             :data_version    2
+                             :finished        true
+                             :state           {:queries {"q1" {:database 1}}}})
+                (send!)
+                (wait! 2)
+                (testing "the next turn in the same thread picks it up instead of {}"
+                  (is (= {:queries {:q1 {:database 1}}}
+                         (:state (last @ai-request-calls)))))))))))))
+
+(deftest slackbot-streaming-records-streamed-error-test
+  (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
+            so conversation-state does not later replay a failed turn's partial state (BOT-522)"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            finalized  (promise)]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_ctx]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (rf init {:type :error :error {:message "boom"}}))))
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [_msg-id _parts & {:as opts}]
+                                          (deliver finalized opts)
+                                          nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (let [opts (deref finalized 5000 ::timeout)]
+                (is (not= ::timeout opts))
+                (is (= {:message "boom"} (:error opts)))))))))))
 
 (deftest slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
