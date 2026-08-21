@@ -10,13 +10,13 @@ import * as parameters from "metabase/parameters/reducers";
 import { reducer as analyticsExport } from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
-import { reducer as downloads } from "metabase/redux/downloads";
 import { embed } from "metabase/redux/embed";
 import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
 import entities from "metabase/redux/entities";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
+import { reducer as downloads } from "metabase/visualizations/store/downloads";
 
 import { metabotReducer as metabot } from "./metabot/state";
 

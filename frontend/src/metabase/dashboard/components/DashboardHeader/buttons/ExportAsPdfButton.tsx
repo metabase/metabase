@@ -6,9 +6,9 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardOrTabEmpty } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/redux";
-import { downloadDashboardToPdf } from "metabase/redux/downloads";
 import type { ActionIconProps } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
+import { downloadDashboardToPdf } from "metabase/visualizations/store/downloads";
 
 export const ExportAsPdfButton = (
   props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,

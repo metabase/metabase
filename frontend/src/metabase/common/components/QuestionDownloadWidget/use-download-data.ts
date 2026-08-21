@@ -5,7 +5,7 @@ import { useDispatch } from "metabase/redux";
 import {
   type DownloadQueryResultsOpts,
   downloadQueryResults,
-} from "metabase/redux/downloads";
+} from "metabase/visualizations/store/downloads";
 
 export type UseDownloadDataParams = Pick<
   DownloadQueryResultsOpts,

@@ -6,17 +6,17 @@ import {
   isRejected,
 } from "@reduxjs/toolkit";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { datasetApi } from "metabase/api/dataset";
-import { exportFormatPng } from "metabase/common/types/export";
+import { type DownloadDatasetArgs, datasetApi } from "metabase/api/dataset";
+import {
+  type ExportFormat,
+  exportFormatPng,
+} from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/settings";
-import * as Urls from "metabase/urls";
-import { getBasename } from "metabase/utils/basename";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
@@ -39,10 +39,10 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
-import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";
+import { trackDownloadResults, trackExportDashboardToPDF } from "../analytics";
 
 export interface DownloadQueryResultsOpts {
-  type: string;
+  type: ExportFormat;
   question: Question;
   result: Dataset;
   enableFormatting?: boolean;
@@ -55,13 +55,6 @@ export interface DownloadQueryResultsOpts {
   documentId?: number;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
-}
-
-interface DownloadQueryResultsParams {
-  method: "GET" | "POST";
-  url: string;
-  body?: Record<string, unknown>;
-  params?: URLSearchParams | string;
 }
 
 export type ResourceType =
@@ -264,13 +257,10 @@ export const downloadDataset = createAsyncThunk(
     { opts, id }: { opts: DownloadQueryResultsOpts; id: number },
     { dispatch },
   ) => {
-    const params = getDatasetParams(opts);
     const promise = dispatch(
-      datasetApi.endpoints.downloadDataset.initiate({
-        method: params.method,
-        url: getDatasetDownloadUrl(params.url, params.params),
-        body: params.body,
-      }),
+      datasetApi.endpoints.downloadDataset.initiate(
+        getDownloadDatasetArgs(opts),
+      ),
     );
     try {
       const response = await promise.unwrap();
@@ -285,180 +275,7 @@ export const downloadDataset = createAsyncThunk(
   },
 );
 
-type ExportParams = {
-  format_rows: boolean;
-  pivot_results: boolean;
-  csv_include_bom: boolean;
-};
-
-const getPublicDashcardParams = (
-  cardId: number,
-  dashboardId: DashboardId,
-  dashcardId: DashCardId,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-  body: {
-    parameters: result?.json_query?.parameters ?? [],
-    ...exportParams,
-  },
-});
-
-const getPublicDocumentCardParams = (
-  cardId: number,
-  documentUuid: string,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
-  body: {
-    parameters: result?.json_query?.parameters ?? [],
-    ...exportParams,
-  },
-});
-
-const getPublicQuestionParams = (
-  uuid: string,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => {
-  const parameters = (result?.json_query?.parameters ?? []).map((param) => ({
-    id: param.id,
-    value: param.value,
-  }));
-
-  return {
-    method: "GET",
-    url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
-    params: new URLSearchParams({
-      parameters: JSON.stringify(parameters),
-      ..._.mapObject(exportParams, (value) => String(value)),
-    }),
-  };
-};
-
-const getEmbedDashcardParams = (
-  token: EntityToken,
-  cardId: number,
-  dashcardId: DashCardId,
-  type: string,
-  params: Record<string, unknown>,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "GET",
-  url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-  params: new URLSearchParams({
-    parameters: JSON.stringify(params),
-    ..._.mapObject(exportParams, (value) => String(value)),
-  }),
-});
-
-const convertSearchParamsToObject = (params: URLSearchParams) => {
-  const object: Record<string, string | string[]> = {};
-  for (const [key, value] of params.entries()) {
-    if (object[key]) {
-      // Unjustified type cast. FIXME
-      object[key] = ([] as string[]).concat(object[key], value);
-    } else {
-      object[key] = value;
-    }
-  }
-
-  return object;
-};
-
-const getEmbedQuestionParams = (
-  token: EntityToken,
-  type: string,
-  params: Record<string, unknown>,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => {
-  // Guest Embed / Modular embedding SDK embeds receive parameter values via postMessage
-  // from the host page, so window.location.search does not reflect the active
-  // editable filter state. Fall back to the params provided by the caller.
-  // Static embed iframes encode filter values in the iframe URL, so read them
-  // from window.location.search.
-  const downloadParameters = isEmbeddingSdk()
-    ? params
-    : convertSearchParamsToObject(new URLSearchParams(window.location.search));
-
-  return {
-    method: "GET",
-    url: Urls.embedCard(token, type),
-    params: new URLSearchParams({
-      parameters: JSON.stringify(downloadParameters),
-      ..._.mapObject(exportParams, (value) => String(value)),
-    }),
-  };
-};
-
-const getInternalDashcardParams = (
-  cardId: number,
-  dashboardId: DashboardId,
-  dashcardId: DashCardId,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
-  body: {
-    parameters: result?.json_query?.parameters ?? [],
-    ...exportParams,
-  },
-});
-
-const getInternalDocumentCardParams = (
-  cardId: number,
-  documentId: number,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/document/${documentId}/card/${cardId}/query/${type}`,
-  body: {
-    parameters: result?.json_query?.parameters ?? [],
-    ...exportParams,
-  },
-});
-
-const getInternalQuestionParams = (
-  cardId: number,
-  type: string,
-  result: Dataset,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/card/${cardId}/query/${type}`,
-  body: {
-    parameters: result?.json_query?.parameters ?? [],
-    ...exportParams,
-  },
-});
-
-const getAdHocQuestionParams = (
-  type: string,
-  result: Dataset,
-  visualizationSettings: VisualizationSettings | undefined,
-  exportParams: ExportParams,
-): DownloadQueryResultsParams => ({
-  method: "POST",
-  url: `/api/dataset/${type}`,
-  body: {
-    query: _.omit(result?.json_query ?? {}, "constraints"),
-    visualization_settings: visualizationSettings ?? {},
-    ...exportParams,
-  },
-});
-
-export const getDatasetParams = ({
+export const getDownloadDatasetArgs = ({
   type,
   question,
   dashboardId,
@@ -472,13 +289,13 @@ export const getDatasetParams = ({
   params = {},
   result,
   visualizationSettings,
-}: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
+}: DownloadQueryResultsOpts): DownloadDatasetArgs => {
   const cardId = question.id();
-
-  const exportParams: ExportParams = {
+  const parameters = result.json_query?.parameters ?? [];
+  const exportOptions = {
+    format: type,
     format_rows: enableFormatting,
     pivot_results: enablePivot,
-    csv_include_bom: true,
   };
 
   const { accessedVia, resourceType } = getDownloadedResourceType({
@@ -494,100 +311,102 @@ export const getDatasetParams = ({
   // Public links use special endpoints that use uuids instead of ids
   if (accessedVia === "public-link") {
     if (resourceType === "dashcard") {
-      return getPublicDashcardParams(
+      return {
+        ...exportOptions,
+        resourceType,
+        accessedVia,
         cardId,
-        checkNotNull(dashboardId),
-        checkNotNull(dashcardId),
-        type,
-        result,
-        exportParams,
-      );
+        dashboardId: checkNotNull(dashboardId),
+        dashcardId: checkNotNull(dashcardId),
+        parameters,
+      };
     }
     if (resourceType === "document-card" && documentUuid) {
-      return getPublicDocumentCardParams(
+      return {
+        ...exportOptions,
+        resourceType,
+        accessedVia,
         cardId,
         documentUuid,
-        type,
-        result,
-        exportParams,
-      );
+        parameters,
+      };
     }
     if (resourceType === "question" && uuid) {
-      return getPublicQuestionParams(uuid, type, result, exportParams);
+      return { ...exportOptions, resourceType, accessedVia, uuid, parameters };
     }
   }
 
   // Static embeds use special endpoints that use signed tokens instead of ids
   if (accessedVia === "static-embed") {
     if (resourceType === "dashcard") {
-      return getEmbedDashcardParams(
-        checkNotNull(token),
+      return {
+        ...exportOptions,
+        resourceType,
+        accessedVia,
+        token: checkNotNull(token),
         cardId,
-        checkNotNull(dashcardId),
-        type,
-        params,
-        exportParams,
-      );
+        dashcardId: checkNotNull(dashcardId),
+        parameterValues: params,
+      };
     }
     if (resourceType === "question" && token) {
-      return getEmbedQuestionParams(token, type, params, exportParams);
+      return {
+        ...exportOptions,
+        resourceType,
+        accessedVia,
+        token,
+        parameterValues: params,
+      };
     }
   }
 
   // Normal endpoints used by internal, interactive embedding, and SDK
   if (resourceType === "dashcard") {
-    return getInternalDashcardParams(
+    return {
+      ...exportOptions,
+      resourceType,
+      accessedVia: "internal",
       cardId,
-      checkNotNull(dashboardId),
-      checkNotNull(dashcardId),
-      type,
-      result,
-      exportParams,
-    );
+      dashboardId: checkNotNull(dashboardId),
+      dashcardId: checkNotNull(dashcardId),
+      parameters,
+    };
   }
 
   if (resourceType === "document-card" && documentId) {
-    return getInternalDocumentCardParams(
+    return {
+      ...exportOptions,
+      resourceType,
+      accessedVia: "internal",
       cardId,
       documentId,
-      type,
-      result,
-      exportParams,
-    );
+      parameters,
+    };
   }
 
   if (resourceType === "question") {
-    return getInternalQuestionParams(cardId, type, result, exportParams);
+    return {
+      ...exportOptions,
+      resourceType,
+      accessedVia: "internal",
+      cardId,
+      parameters,
+    };
   }
 
   if (resourceType === "ad-hoc-question") {
-    return getAdHocQuestionParams(
-      type,
-      result,
-      visualizationSettings,
-      exportParams,
-    );
+    return {
+      ...exportOptions,
+      resourceType,
+      query: result.json_query,
+      visualizationSettings: visualizationSettings ?? {},
+    };
   }
 
   throw new Error(
     `Unsupported download type: ${resourceType} via ${accessedVia}`,
   );
 };
-
-export function getDatasetDownloadUrl(
-  url: string,
-  params?: URLSearchParams | string,
-) {
-  const basename = getBasename();
-  if (basename && url.startsWith(basename)) {
-    url = url.slice(basename.length); // make url relative if it's not
-  }
-  if (params) {
-    url += `?${params.toString()}`;
-  }
-
-  return url;
-}
 
 const getDatasetFileName = (headers: Headers, type: string) => {
   const header = headers.get("Content-Disposition") ?? "";
