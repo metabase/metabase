@@ -140,6 +140,10 @@
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
+  ;; Same quiescence barrier as the snapshot endpoint: in-flight index work must finish before we take
+  ;; the write lock and DROP ALL OBJECTS, else its DDL deadlocks with readers queued behind the lock.
+  (task.search-index/wait-for-init!)
+  (search.ingestion/wait-for-idle!)
   (restore-snapshot! snapshot-name)
   (search/sync-from-restored-db!)
   nil)
