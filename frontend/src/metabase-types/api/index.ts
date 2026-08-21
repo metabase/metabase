@@ -77,6 +77,7 @@ export * from "./tenants";
 export * from "./timeline";
 export * from "./transform";
 export * from "./user";
+export * from "./usage-metadata";
 export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";

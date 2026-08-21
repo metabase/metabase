@@ -5,6 +5,7 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type MouseEvent,
+  type UIEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -26,6 +27,8 @@ import { TreeTableRow } from "./TreeTableRow";
 import { CHECKBOX_COLUMN_WIDTH, DEFAULT_INDENT_WIDTH } from "./constants";
 import type { TreeNodeData, TreeTableProps } from "./types";
 
+const SCROLL_END_THRESHOLD = 200;
+
 export function TreeTable<TData extends TreeNodeData>({
   instance,
   showCheckboxes = false,
@@ -34,6 +37,7 @@ export function TreeTable<TData extends TreeNodeData>({
   emptyState,
   onRowClick,
   onRowDoubleClick,
+  onScrollEnd,
   getSelectionState,
   onCheckboxClick,
   onHeaderCheckboxClick,
@@ -152,6 +156,20 @@ export function TreeTable<TData extends TreeNodeData>({
     [isRowDisabled, onRowClick, setActiveRowId],
   );
 
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const { clientHeight, scrollHeight, scrollTop } = event.currentTarget;
+      const distanceFromEnd = scrollHeight - scrollTop - clientHeight;
+      if (
+        scrollHeight > clientHeight &&
+        distanceFromEnd <= SCROLL_END_THRESHOLD
+      ) {
+        onScrollEnd?.();
+      }
+    },
+    [onScrollEnd],
+  );
+
   const showEmptyState = rows.length === 0 && emptyState;
 
   const renderRow = (
@@ -209,11 +227,13 @@ export function TreeTable<TData extends TreeNodeData>({
       >
         <Box
           ref={bodyRef}
+          data-testid="tree-table-scroll-container"
           className={cx(S.body, classNames?.body, {
             [S.measuring]: !isMeasured,
           })}
           flex={1}
           style={styles?.body}
+          onScroll={handleScroll}
         >
           {showEmptyState ? (
             <Center h="100%" p="xl" c="text-disabled">
