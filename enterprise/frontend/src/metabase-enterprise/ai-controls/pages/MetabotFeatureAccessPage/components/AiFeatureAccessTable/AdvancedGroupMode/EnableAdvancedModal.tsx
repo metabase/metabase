@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSetting } from "metabase/settings";
 import { useEnableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
 type Props = {
@@ -12,6 +13,7 @@ export function EnableAdvancedModal({ onClose }: Props) {
   const [enableAdvanced, { isLoading: loading }] =
     useEnableAdvancedAIControlsPermissionsMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const isUsingTenants = useSetting("use-tenants");
 
   const handleConfirm = async () => {
     try {
@@ -27,7 +29,11 @@ export function EnableAdvancedModal({ onClose }: Props) {
       opened
       onClose={onClose}
       title={t`Switch to group-level permissions?`}
-      message={t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`}
+      message={
+        isUsingTenants
+          ? t`This will remove all AI feature access from the "All Users" and "All tenant users" groups, so users won't have access to AI features unless they're added to a group that has access.`
+          : t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`
+      }
       confirmButtonText={t`Switch`}
       confirmButtonProps={{
         color: "core-brand",

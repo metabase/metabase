@@ -140,15 +140,19 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/ai-controls/permissions/advanced"))))
-      (testing "removes All Users group custom permissions and returns full permissions"
+      (testing "removes All Users and All tenant users custom permissions and returns full permissions"
         (with-metabot-permissions-snapshot
-          (let [all-users-id (u/the-id (perms/all-users-group))]
-            ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
-            (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (let [all-users-id    (u/the-id (perms/all-users-group))
+                all-external-id (u/the-id (perms/all-external-users-group))]
+            ;; Pre-clean any leftover rows for the magic groups to avoid unique-constraint violations.
+            (t2/delete! :model/MetabotPermissions :group_id [:in [all-users-id all-external-id]])
             (mt/with-temporary-setting-values [metabot-advanced-permissions false]
               (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Other Group"}
                              :model/MetabotPermissions         _              {:group_id   all-users-id
                                                                                :perm_type  :permission/metabot-sql-generation
+                                                                               :perm_value :yes}
+                             :model/MetabotPermissions         _              {:group_id   all-external-id
+                                                                               :perm_type  :permission/metabot
                                                                                :perm_value :yes}
                              :model/MetabotPermissions         _              {:group_id   group-id
                                                                                :perm_type  :permission/metabot-nlq
@@ -160,14 +164,14 @@
                       "Response should reflect advanced=true after enabling")
                   (is (true? (metabot-settings/metabot-advanced-permissions))
                       "metabot-advanced-permissions setting should flip to true")
-                  (is (= 0 (t2/count :model/MetabotPermissions :group_id all-users-id))
-                      "All Users custom permissions should be removed")
+                  (is (= 0 (t2/count :model/MetabotPermissions :group_id [:in [all-users-id all-external-id]]))
+                      "All Users and All tenant users custom permissions should be removed")
                   (is (= 1 (t2/count :model/MetabotPermissions :group_id group-id))
                       "Other group permissions should be untouched")
-                  (let [all-users-perms (->> (:permissions response)
-                                             (filter #(= (:group_id %) all-users-id)))]
-                    (is (every? #(= "no" (:perm_value %)) all-users-perms)
-                        "All Users permissions in response should reflect defaults (no)")))))))))))
+                  (let [magic-perms (->> (:permissions response)
+                                         (filter #(contains? #{all-users-id all-external-id} (:group_id %))))]
+                    (is (every? #(= "no" (:perm_value %)) magic-perms)
+                        "Magic group permissions in response should reflect defaults (no)")))))))))))
 
 (deftest disable-advanced-permissions-test
   (mt/with-premium-features #{:ai-controls}
@@ -175,15 +179,19 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 "ee/ai-controls/permissions/advanced"))))
-      (testing "removes custom permissions from specific groups only, preserving All Users"
+      (testing "removes custom permissions from specific groups only, preserving All Users and All tenant users"
         (with-metabot-permissions-snapshot
-          (let [all-users-id (u/the-id (perms/all-users-group))]
-            ;; Pre-clean any leftover rows for the magic All Users group to avoid unique-constraint violations.
-            (t2/delete! :model/MetabotPermissions :group_id all-users-id)
+          (let [all-users-id    (u/the-id (perms/all-users-group))
+                all-external-id (u/the-id (perms/all-external-users-group))]
+            ;; Pre-clean any leftover rows for the magic groups to avoid unique-constraint violations.
+            (t2/delete! :model/MetabotPermissions :group_id [:in [all-users-id all-external-id]])
             (mt/with-temporary-setting-values [metabot-advanced-permissions true]
               (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Specific Group"}
                              :model/MetabotPermissions         _              {:group_id   all-users-id
                                                                                :perm_type  :permission/metabot-nlq
+                                                                               :perm_value :yes}
+                             :model/MetabotPermissions         _              {:group_id   all-external-id
+                                                                               :perm_type  :permission/metabot
                                                                                :perm_value :yes}
                              :model/MetabotPermissions         _              {:group_id   group-id
                                                                                :perm_type  :permission/metabot-sql-generation
@@ -198,4 +206,6 @@
                   (is (= 0 (t2/count :model/MetabotPermissions :group_id group-id))
                       "Specific group custom permissions should be removed")
                   (is (= 1 (t2/count :model/MetabotPermissions :group_id all-users-id))
-                      "All Users custom permissions should be untouched"))))))))))
+                      "All Users custom permissions should be untouched")
+                  (is (= 1 (t2/count :model/MetabotPermissions :group_id all-external-id))
+                      "All tenant users custom permissions should be untouched"))))))))))

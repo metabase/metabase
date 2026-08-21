@@ -84,19 +84,28 @@
                                                  :perm_value perm-value-kw})))))
   (permissions-response))
 
+(defn- magic-group-ids
+  "IDs of the groups the simple permission mode writes to: All Users and, under tenants, All tenant users."
+  []
+  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
+
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
-  "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group."
+  "Switch to advanced group-level permissions. Removes any custom permissions from the All Users and All tenant
+   users groups."
   []
   (api/check-superuser)
-  (t2/delete! :model/MetabotPermissions :group_id (u/the-id (perms/all-users-group)))
+  ;; Resolution takes the most permissive value across all of a user's groups regardless of mode, so a leftover
+  ;; :yes on either magic group would override every group-level :no.
+  (t2/delete! :model/MetabotPermissions :group_id [:in (magic-group-ids)])
   (metabot-settings/metabot-advanced-permissions! true)
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
-  "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users."
+  "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins,
+   All Users and All tenant users."
   []
   (api/check-superuser)
-  (t2/delete! :model/MetabotPermissions :group_id [:not-in [(u/the-id (perms/admin-group)) (u/the-id (perms/all-users-group))]])
+  (t2/delete! :model/MetabotPermissions :group_id [:not-in (into [(u/the-id (perms/admin-group))] (magic-group-ids))])
   (metabot-settings/metabot-advanced-permissions! false)
   (permissions-response))
 
