@@ -36,29 +36,33 @@
 
 ;; Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
 ;; module can't depend on the settings module without a cycle.
-(def ^:private cursor-key "encryption-backfill-cursor")
-(def ^:private done "done")
-
+(def ^:private progress-key "encryption-backfill-progress")
 (def ^:private job-key (jobs/key "metabase.task.encryption-backfill.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.encryption-backfill.trigger"))
 
-(defn- read-cursor []
-  (let [raw (t2/select-one-fn :value :setting :key cursor-key)]
-    (cond
-      (nil? raw)   {}
-      (= raw done) done
-      :else        (json/decode+kw (encryption/maybe-decrypt raw)))))
+(defn- read-progress
+  "Per-column progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it survives
+  the round trip unchanged, and read back through `maybe-decrypt` because key rotation re-encrypts every `setting`
+  row including this one."
+  []
+  (when-let [raw (t2/select-one-fn :value :setting :key progress-key)]
+    (try
+      (json/decode (encryption/maybe-decrypt raw))
+      (catch Throwable e
+        ;; unreadable progress just means starting over; the sweep skips rows it already converted
+        (log/warn e "Could not read encryption backfill progress, starting from the beginning")
+        nil))))
 
-(defn- save-cursor! [cursor]
-  (let [value (if (= cursor done) done (encryption/maybe-encrypt (json/encode cursor)))]
-    (when (zero? (t2/update! :setting {:key cursor-key} {:value value}))
-      (t2/insert! :setting {:key cursor-key :value value}))))
+(defn- save-progress! [progress]
+  (let [value (encryption/maybe-encrypt (json/encode progress))]
+    (when (zero? (t2/update! :setting {:key progress-key} {:value value}))
+      (t2/insert! :setting {:key progress-key :value value}))))
 
 (defn- readiness []
   (cond
-    (not (encryption/default-encryption-enabled?)) :no-key
-    (= done (read-cursor))                         :already-complete
-    :else                                          :ready))
+    (not (encryption/default-encryption-enabled?))         :no-key
+    (mdb.encryption/sweep-complete? (read-progress))       :already-complete
+    :else                                                  :ready))
 
 (defn- log-skip [reason]
   (case reason
@@ -74,19 +78,33 @@
   (let [reason (readiness)]
     (if (not= reason :ready)
       {:status :skipped :reason reason}
-      (let [deadline        (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
-            {:keys [cursor pages]} (mdb.encryption/rewrite-dwh-derived-columns!
-                                    mdb.encryption/encrypt-value (read-cursor) deadline batch-size)]
-        (save-cursor! (or cursor done))
-        {:status (if cursor :more :complete) :pages pages :cursor cursor}))))
+      (let [deadline (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
+            {:keys [progress pages]} (mdb.encryption/rewrite-dwh-derived-columns!
+                                      mdb.encryption/encrypt-value (read-progress) deadline batch-size)]
+        (save-progress! progress)
+        {:status (if (mdb.encryption/sweep-complete? progress) :complete :more)
+         :pages  pages
+         :progress progress}))))
+
+(def ^:private retry-delay-seconds
+  "Backoff after a failed batch, so a deterministic failure retries occasionally rather than every few seconds."
+  (* 15 60))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Encrypt warehouse-derived columns left over from before the upgrade."}
   EncryptionBackfill [ctx]
-  (let [{:keys [status] :as result} (run-batch!)]
-    (log/info "Encryption backfill batch complete" result)
-    (when (= status :more)
-      (schedule-run! (.getScheduler ^JobExecutionContext ctx) continuation-delay-seconds))))
+  ;; reschedule on the way out of a failure too, then rethrow. The trigger is one-shot, so without this a single bad
+  ;; page would end the sweep until the next restart.
+  (let [scheduler (.getScheduler ^JobExecutionContext ctx)
+        {:keys [status] :as result} (try
+                                      (run-batch!)
+                                      (catch Throwable e
+                                        (schedule-run! scheduler retry-delay-seconds)
+                                        (throw e)))]
+    (if (= status :more)
+      (do (log/debug "Encryption backfill batch complete" result)
+          (schedule-run! scheduler continuation-delay-seconds))
+      (log/info "Encryption backfill finished" result))))
 
 (defn- build-job []
   (jobs/build

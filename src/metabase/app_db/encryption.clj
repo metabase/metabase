@@ -83,6 +83,33 @@
    [:metabase_fieldvalues :human_readable_values]
    [:user_parameter_value :value]])
 
+(def ^:private max-update-bytes
+  "Cap on how much column data one UPDATE carries. MariaDB's `max_allowed_packet` defaults to 16MB, the smallest
+  limit in play, so stay comfortably under it."
+  (* 4 1024 1024))
+
+(defn- byte-bounded-chunks
+  "Split `id->value` so no single UPDATE carries more than [[max-update-bytes]] of column data. A page of
+  `metabase_fieldvalues` can be tens of MB, which would otherwise blow past the wire limit."
+  [id->value]
+  (loop [remaining (seq id->value), chunk {}, size 0, chunks []]
+    (if-let [[id v] (first remaining)]
+      (if (and (seq chunk) (> (+ size (count v)) max-update-bytes))
+        (recur remaining {} 0 (conj chunks chunk))
+        (recur (next remaining) (assoc chunk id v) (+ size (count v)) chunks))
+      (cond-> chunks
+        (seq chunk) (conj chunk)))))
+
+(defn- update-page!
+  "Write one chunk of `id -> value` with a single UPDATE, rather than one per row: on a table with millions of fields
+  that is the difference between thousands of round trips and millions."
+  [table column id->value]
+  (t2/query-one {:update table
+                 :set    {column (into [:case]
+                                       (concat (mapcat (fn [[id v]] [[:= :id id] v]) id->value)
+                                               [:else column]))}
+                 :where  [:in :id (keys id->value)]}))
+
 (defn- rewrite-page!
   "Convert up to `batch-size` rows of `table`.`column` with an id above `after-id`, using `f`. Returns the greatest id
   seen, or nil when nothing was left to do."
@@ -101,37 +128,56 @@
                                     (when (not= v value)
                                       [id v]))))
                           rows)]
-        (when (seq changed)
-          ;; one UPDATE per page rather than per row: on a table with millions of fields that is the difference
-          ;; between thousands of round trips and millions
-          (t2/query-one {:update table
-                         :set    {column (into [:case]
-                                               (concat (mapcat (fn [[id v]] [[:= :id id] v]) changed)
-                                                       [:else column]))}
-                         :where  [:in :id (keys changed)]}))
-        (transduce (map :id) max 0 rows)))))
+        (doseq [chunk (byte-bounded-chunks changed)]
+          (update-page! table column chunk))
+        ;; ordered by id, so the last row is the greatest
+        (:id (last rows))))))
+
+(defn- column-key
+  "Stable string identity for a column, used as the progress map's key. A string so the cursor survives a JSON
+  round-trip unchanged."
+  [[table column]]
+  (str (name table) "/" (name column)))
+
+(def ^:private done "done")
+
+(defn- pending
+  "The first column in [[dwh-derived-columns]] with work left, as `[[table column] after-id]`, or nil when every
+  column is finished. Progress is recorded per column, so nothing depends on the order of the list: reordering it
+  changes nothing, and a column added in a later version is simply absent and starts from the beginning."
+  [progress]
+  (some (fn [pair]
+          (let [at (get progress (column-key pair))]
+            (when-not (= done at)
+              [pair (or at 0)])))
+        dwh-derived-columns))
+
+(defn sweep-complete?
+  "Whether `progress` has covered every entry in [[dwh-derived-columns]]."
+  [progress]
+  (nil? (pending progress)))
 
 (defn rewrite-dwh-derived-columns!
-  "Convert [[dwh-derived-columns]] with `f`, resuming from `cursor` and stopping once `deadline-ms` has passed (nil
-  runs to completion). Returns `{:cursor <resume-from-or-nil> :pages <n>}`; a nil `:cursor` means every column is
-  done."
-  [f cursor deadline-ms batch-size]
-  (loop [{:keys [index after-id] :or {index 0 after-id 0}} (or cursor {})
-         pages 0]
-    (if-let [[table column] (get dwh-derived-columns index)]
+  "Convert [[dwh-derived-columns]] with `f`, resuming from `progress` and stopping once `deadline-ms` has passed (nil
+  runs to completion). Returns `{:progress <map> :pages <n>}`; ask [[sweep-complete?]] whether it finished."
+  [f progress deadline-ms batch-size]
+  (loop [progress (or progress {})
+         pages    0]
+    (if-let [[[table column :as pair] after-id] (pending progress)]
       (if-let [last-id (rewrite-page! table column f after-id batch-size)]
-        (let [pages (inc pages)]
+        (let [progress (assoc progress (column-key pair) last-id)
+              pages    (inc pages)]
           (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
-            {:cursor {:index index :after-id last-id} :pages pages}
-            (recur {:index index :after-id last-id} pages)))
-        ;; this column is done, move to the next one
-        (recur {:index (inc index) :after-id 0} pages))
-      {:cursor nil :pages pages})))
+            {:progress progress :pages pages}
+            (recur progress pages)))
+        (recur (assoc progress (column-key pair) done) pages))
+      {:progress progress :pages pages})))
 
 (defn encrypt-value
-  "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op."
+  "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op.
+  An empty string is left as-is: `maybe-encrypt` returns nil for it, which would null the column."
   [v]
-  (if (encryption/possibly-encrypted-string? v)
+  (if (or (empty? v) (encryption/possibly-encrypted-string? v))
     v
     (encryption/maybe-encrypt v)))
 
