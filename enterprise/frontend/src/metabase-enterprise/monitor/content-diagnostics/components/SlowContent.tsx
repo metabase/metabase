@@ -92,6 +92,11 @@ export function SlowContent({
 
   const clearRowSelection = () => setRowSelection({});
 
+  const handleTrashSettled = (failedFindingIds: number[]) =>
+    setRowSelection(
+      Object.fromEntries(failedFindingIds.map((id) => [String(id), true])),
+    );
+
   const handleQueryChange = (query: string | undefined) => {
     clearRowSelection();
     onParamsChange({ ...params, query, page: undefined });
@@ -190,7 +195,7 @@ export function SlowContent({
       </Flex>
       <ContentDiagnosticsBulkTrashBar
         selectedFindings={selectedFindings}
-        onClear={clearRowSelection}
+        onSettled={handleTrashSettled}
       />
     </>
   );

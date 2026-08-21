@@ -88,7 +88,7 @@ function setup({
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
-  const { router } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     <Route
       path={Urls.staleContent()}
       element={
@@ -106,7 +106,7 @@ function setup({
     },
   );
 
-  return { router };
+  return { router, store };
 }
 
 function getUrlQuery(router: TestRouter | undefined) {
@@ -181,7 +181,7 @@ describe("StaleContentPage", () => {
   it("archives the selected findings and refetches the list", async () => {
     fetchMock.put("path:/api/card/1", { status: 200, body: {} });
     fetchMock.put("path:/api/card/2", { status: 200, body: {} });
-    setup({
+    const { store } = setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
           id: 1,
@@ -228,6 +228,57 @@ describe("StaleContentPage", () => {
         fetchMock.callHistory.calls("path:/api/ee/content-diagnostics/stale")
           .length,
       ).toBeGreaterThan(1);
+    });
+
+    await waitFor(() => {
+      expect(
+        store
+          .getState()
+          .undo.some((undo) => undo.message === "Moved 2 items to the trash"),
+      ).toBe(true);
+    });
+  });
+
+  it("keeps items that failed to trash selected", async () => {
+    fetchMock.put("path:/api/card/1", { status: 200, body: {} });
+    fetchMock.put("path:/api/card/2", { status: 500, body: {} });
+    const { store } = setup({
+      findings: [
+        createMockContentDiagnosticsStaleFinding({
+          id: 1,
+          entity_type: "card",
+          entity_id: 1,
+          entity_display_name: "Ok card",
+          can_write: true,
+        }),
+        createMockContentDiagnosticsStaleFinding({
+          id: 2,
+          entity_type: "card",
+          entity_id: 2,
+          entity_display_name: "Bad card",
+          can_write: true,
+        }),
+      ],
+    });
+
+    await screen.findByRole("treegrid");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to trash" }),
+    );
+
+    // the failed item stays selected, so the bar reappears with just it
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        store
+          .getState()
+          .undo.some((undo) => undo.message === "Couldn't remove 1 item"),
+      ).toBe(true);
     });
   });
 

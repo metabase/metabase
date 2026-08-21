@@ -10,7 +10,7 @@ import type {
 
 export type BulkTrashResult = {
   total: number;
-  failed: number;
+  failedFindings: ContentDiagnosticsBaseFinding[];
 };
 
 // Cards (question/model/metric), dashboards, documents and collections archive
@@ -51,10 +51,10 @@ export function useBulkTrashFindings() {
       };
 
       const results = await Promise.allSettled(findings.map(trashFinding));
-      const failed = results.filter(
-        (result) => result.status === "rejected",
-      ).length;
-      return { total: findings.length, failed };
+      const failedFindings = findings.filter(
+        (_finding, index) => results[index].status === "rejected",
+      );
+      return { total: findings.length, failedFindings };
     },
     [archive, deleteTransform],
   );

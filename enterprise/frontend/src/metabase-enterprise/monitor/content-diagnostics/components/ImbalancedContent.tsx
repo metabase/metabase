@@ -96,6 +96,11 @@ export function ImbalancedContent({
 
   const clearRowSelection = () => setRowSelection({});
 
+  const handleTrashSettled = (failedFindingIds: number[]) =>
+    setRowSelection(
+      Object.fromEntries(failedFindingIds.map((id) => [String(id), true])),
+    );
+
   const enableBulkTrash = mode !== "crowded";
 
   const handleQueryChange = (query: string | undefined) => {
@@ -199,7 +204,7 @@ export function ImbalancedContent({
       {enableBulkTrash && (
         <ContentDiagnosticsBulkTrashBar
           selectedFindings={selectedFindings}
-          onClear={clearRowSelection}
+          onSettled={handleTrashSettled}
         />
       )}
     </>

@@ -87,6 +87,11 @@ export function StaleContent({
 
   const clearRowSelection = () => setRowSelection({});
 
+  const handleTrashSettled = (failedFindingIds: number[]) =>
+    setRowSelection(
+      Object.fromEntries(failedFindingIds.map((id) => [String(id), true])),
+    );
+
   const handleQueryChange = (query: string | undefined) => {
     clearRowSelection();
     onParamsChange({ ...params, query, page: undefined });
@@ -185,7 +190,7 @@ export function StaleContent({
       </Flex>
       <ContentDiagnosticsBulkTrashBar
         selectedFindings={selectedFindings}
-        onClear={clearRowSelection}
+        onSettled={handleTrashSettled}
       />
     </>
   );

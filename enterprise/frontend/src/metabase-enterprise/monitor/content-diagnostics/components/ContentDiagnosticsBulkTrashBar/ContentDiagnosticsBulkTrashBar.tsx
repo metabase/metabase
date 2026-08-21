@@ -15,7 +15,7 @@ import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
 type ContentDiagnosticsBulkTrashBarProps = {
   selectedFindings: ContentDiagnosticsBaseFinding[];
-  onClear: () => void;
+  onSettled: (failedFindingIds: number[]) => void;
 };
 
 type TrashCopy = {
@@ -82,9 +82,24 @@ function getTrashCopy(
   };
 }
 
+function getResultMessage(count: number, transformCount: number): string {
+  if (transformCount === 0) {
+    return ngettext(
+      msgid`Moved ${count} item to the trash`,
+      `Moved ${count} items to the trash`,
+      count,
+    );
+  }
+  return ngettext(
+    msgid`Removed ${count} item`,
+    `Removed ${count} items`,
+    count,
+  );
+}
+
 export function ContentDiagnosticsBulkTrashBar({
   selectedFindings,
-  onClear,
+  onSettled,
 }: ContentDiagnosticsBulkTrashBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
@@ -98,21 +113,25 @@ export function ContentDiagnosticsBulkTrashBar({
   const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
-    const { failed } = await trashFindings(selectedFindings);
-    if (failed > 0) {
+    const { total, failedFindings } = await trashFindings(selectedFindings);
+    setIsConfirmOpen(false);
+
+    if (failedFindings.length > 0) {
       dispatch(
         addUndo({
           icon: "warning",
           message: ngettext(
-            msgid`Couldn't remove ${failed} item`,
-            `Couldn't remove ${failed} items`,
-            failed,
+            msgid`Couldn't remove ${failedFindings.length} item`,
+            `Couldn't remove ${failedFindings.length} items`,
+            failedFindings.length,
           ),
         }),
       );
+    } else {
+      dispatch(addUndo({ message: getResultMessage(total, transformCount) }));
     }
-    setIsConfirmOpen(false);
-    onClear();
+
+    onSettled(failedFindings.map((finding) => finding.id));
   };
 
   return (
