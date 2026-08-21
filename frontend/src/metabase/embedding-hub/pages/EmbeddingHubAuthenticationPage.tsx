@@ -16,24 +16,20 @@ const ADMIN_AUTHENTICATION_URL = "/admin/settings/authentication";
  * A JWT-only view of the authentication settings. The admin authentication
  * page does not change -- this is a second view onto the same settings.
  *
- * Only JWT and SAML count as configured SSO here, because those are the only
- * two an embed can drive: /auth/sso resolves to one or the other
- * (sso/api/interface.clj), and the SDK's auth-common ships a jwt and a saml
- * path and nothing else. OIDC, Google and LDAP sign people into Metabase
- * itself, so they are linked out with the rest.
+ * Only JWT and SAML count as configured SSO here, because embedding supports
+ * only those two.
  */
 export function EmbeddingHubAuthenticationPage() {
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
 
-  // The JWT form gates on this same query, and it is the only thing on the
-  // page that loads. Waiting for it here keeps the rest of the page from
-  // sitting next to the form's spinner. Same endpoint, no args, so both hooks
-  // share one cache entry -- this is a second subscriber, not a second
-  // request.
+  // Same endpoint and args as the JWT form, so this is a second subscriber to
+  // one cache entry, not a second request. Gating here keeps the page from
+  // painting beside the form's spinner.
   const { isLoading } = useGetAdminSettingsDetailsQuery();
 
-  // `jwt-configured` is optional in the settings schema, unlike its SAML peer.
-  const isJwtConfigured = useSetting("jwt-configured") ?? false;
+  // `jwt-configured` is optional in metabase-types/api/settings.ts, unlike its
+  // SAML peer.
+  const isJwtConfigured = useSetting("jwt-configured");
   const isSamlConfigured = useSetting("saml-configured");
 
   if (!hasSsoJwt) {
@@ -62,7 +58,7 @@ function AuthenticationSection({
   isJwtConfigured,
   isSamlConfigured,
 }: {
-  isJwtConfigured: boolean;
+  isJwtConfigured: boolean | undefined;
   isSamlConfigured: boolean;
 }) {
   // No banner on the SAML card: its own Go to Admin points at the same page,
@@ -71,9 +67,6 @@ function AuthenticationSection({
     return <SamlConfiguredCard />;
   }
 
-  // The standard JWT form, configured or not. Setting JWT up from scratch has
-  // its own stepped flow, but that belongs to the setup guide rather than
-  // here -- Alessio, 2026-08-21.
   return (
     <>
       <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm title={null} />
@@ -109,12 +102,6 @@ function SamlConfiguredCard() {
   );
 }
 
-/**
- * After the admin embedding section is removed this is the only route from the
- * hub to the other SSO methods, so the link is functional rather than
- * decoration. A single banner, not admin's RelatedSettingsSection grid -- that
- * grid is in no hub frame.
- */
 function OtherAuthMethodsBanner() {
   return (
     <Card p="md" withBorder bg="background-brand">
