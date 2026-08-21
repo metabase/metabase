@@ -1,9 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockField,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 import { getCardUiParametersFromParamFields } from "./cards";
 
@@ -95,39 +98,30 @@ describe("parameters/utils/cards", () => {
     });
 
     it("should fall back to template tag parameters when the card has none saved", () => {
-      const metadata = createMockMetadata({
-        fields: [createMockField({ id: 1 })],
-      });
       const card = createMockCard({
         parameters: [],
-        param_fields: { "tag-id": [createMockField({ id: 1 })] },
-        dataset_query: {
-          type: "native",
-          database: 1,
-          native: {
-            query: "SELECT * FROM venues WHERE {{price}}",
-            "template-tags": {
-              price: {
-                id: "tag-id",
-                name: "price",
-                "display-name": "Price",
-                type: "dimension",
-                "widget-type": "number/=",
-                dimension: ["field", 1, null],
-              },
+        param_fields: { "tag-id": [createMockField({ id: ORDERS.QUANTITY })] },
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "SELECT * FROM ORDERS WHERE {{quantity}}",
+          templateTags: {
+            quantity: {
+              id: "tag-id",
+              type: "dimension",
+              dimension: ORDERS.QUANTITY,
+              "widget-type": "number/=",
             },
           },
-        },
+        }),
       });
 
-      const [priceUiParameter] = getCardUiParametersFromParamFields(
+      const [quantityUiParameter] = getCardUiParametersFromParamFields(
         card,
-        metadata,
+        SAMPLE_METADATA,
       );
 
-      expect(priceUiParameter).toMatchObject({
+      expect(quantityUiParameter).toMatchObject({
         id: "tag-id",
-        fields: [metadata.field(1)],
+        fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
         hasVariableTemplateTagTarget: false,
       });
     });

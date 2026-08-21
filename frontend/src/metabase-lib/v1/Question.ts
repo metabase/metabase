@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import NativeQuery, {
@@ -607,7 +607,7 @@ class Question {
   }
 
   private _getParameters = _.memoize(() => {
-    return getCardUiParametersFromQuery(
+    return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,

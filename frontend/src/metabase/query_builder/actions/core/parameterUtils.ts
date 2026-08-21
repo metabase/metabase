@@ -9,7 +9,7 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { setErrorPage } from "metabase/redux/app";
 import type { Dispatch } from "metabase/redux/store";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Parameter, ParameterValuesMap } from "metabase-types/api";
 
 function shouldPropagateDashboardParameters({
@@ -78,7 +78,7 @@ export function getParameterValuesForQuestion({
   queryParams?: ParameterValuesMap;
   metadata: Metadata;
 }) {
-  const parameters = getCardUiParametersFromQuery(card, metadata);
+  const parameters = getCardUiParameters(card, metadata);
   return getParameterValuesByIdFromQueryParams(parameters, queryParams ?? {});
 }
 
