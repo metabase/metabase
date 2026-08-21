@@ -35,7 +35,8 @@
     (catch clojure.lang.ExceptionInfo e
       (throw (if (contains? #{403 404} (:status-code (ex-data e)))
                (ex-info (ex-message e) (assoc (ex-data e) :agent-error? true) e)
-               e)))))
+               e))))
+  (metabot.tools.sql.common/check-native-query-access! database-id))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.

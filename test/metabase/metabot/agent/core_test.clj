@@ -17,6 +17,8 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -105,6 +107,40 @@
       (is (not (#'agent/terminal-tool-call? #{} success))))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
+
+(defn- tools-registered-for-request!
+  [capabilities]
+  (let [captured (atom nil)]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts tools _tracking-opts _llm-opts]
+                                                  (reset! captured (set (keys tools)))
+                                                  (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+        (into [] (agent/run-agent-loop
+                  {:messages   [{:role :user :content "Open the SQL editor"}]
+                   :state      {}
+                   :profile-id :internal
+                   :context    {:capabilities capabilities}}))))
+    @captured))
+
+(deftest client-claimed-sql-capability-is-clamped-to-actual-permissions-test
+  (mt/with-no-data-perms-for-all-users!
+    (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (testing "a query-builder-only user gets no SQL tools even when the request claims the capability"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "construct_notebook_query"))
+          (is (not (contains? tools "create_sql_query")))
+          (is (not (contains? tools "edit_sql_query")))
+          (is (not (contains? tools "replace_sql_query"))))))
+    (testing "a user with native permission gets the SQL tools for the same request"
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tools (tools-registered-for-request! ["permission:write_sql_queries"])]
+          (is (contains? tools "create_sql_query"))
+          (is (contains? tools "edit_sql_query"))
+          (is (contains? tools "replace_sql_query")))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
