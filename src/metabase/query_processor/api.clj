@@ -167,10 +167,10 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
+                                          (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
-                                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                   (select-keys [:ignore-cached-results?])
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :process-viz-settings?  true
@@ -252,7 +252,7 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc query
+      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)
