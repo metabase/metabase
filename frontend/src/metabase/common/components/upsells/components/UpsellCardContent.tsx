@@ -30,13 +30,7 @@ import S from "./UpsellCardContent.module.css";
 
 export type UpsellCardContentProps = UpsellCardLeftColumnContentProps & {
   image?: string;
-  /**
-   * `image-card` frames the illustration in two nested bordered cards, which
-   * only artwork drawn for that double frame suits. `image-panel` is the same
-   * tinted panel with a single border, for illustrations that carry their own
-   * inner framing or none at all.
-   */
-  variant?: "image-full-height" | "image-card" | "image-panel";
+  variant?: "image-full-height" | "image-card";
 };
 
 export const UpsellCardContent = ({
@@ -115,18 +109,9 @@ export const UpsellCardContent = ({
             withBorder
             maw="50%"
           >
-            {variant === "image-panel" ? (
-              // Padded and centred rather than stretched, with no height of
-              // its own: the illustration's aspect ratio sets the panel height,
-              // so artwork of different proportions is not letterboxed.
-              <Center w="100%" p="xl">
-                <Image src={image} w="100%" h="auto" />
-              </Center>
-            ) : (
-              <Card radius={6} p={0} shadow="none" withBorder>
-                <Image src={image} radius={6} w="100%" />
-              </Card>
-            )}
+            <Card radius={6} p={0} shadow="none" withBorder>
+              <Image src={image} radius={6} w="100%" />
+            </Card>
           </Card>
         )}
       </Flex>
