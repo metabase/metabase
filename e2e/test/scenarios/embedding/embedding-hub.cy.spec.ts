@@ -291,6 +291,110 @@ describe("scenarios > embedding > embedding hub > security", () => {
   });
 });
 
+describe("scenarios > embedding > embedding hub > authentication", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("saves JWT settings from the hub's copy of the admin form", () => {
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
+
+      cy.visit("/embedding/authentication");
+
+      cy.log("the hub supplies the heading, so the form does not add its own");
+      cy.findByRole("heading", { name: "Authentication" }).should("be.visible");
+      cy.findByRole("heading", { name: "JWT" }).should("not.exist");
+
+      cy.findByLabelText("JWT Identity Provider URI *")
+        .type("https://jwt.example.com/auth")
+        .blur();
+
+      cy.log("the shared secret is generated through the key modal");
+      cy.button("Set up key").click();
+      H.modal().within(() => {
+        cy.button("Done").click();
+      });
+
+      cy.button("Save and enable").click();
+      cy.wait("@updateSettings");
+
+      cy.log("the settings the form writes are the real ones");
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["jwt-enabled"]).to.equal(true);
+        expect(body["jwt-identity-provider-uri"]).to.equal(
+          "https://jwt.example.com/auth",
+        );
+      });
+
+      cy.log("and they survive a reload of the tab");
+      // cy.reload() does not work here: the app comes back without the hub
+      // around it, so the page renders with no "Authentication" heading and the
+      // form is never reached. Visiting the path again mounts the hub properly.
+      cy.visit("/embedding/authentication");
+      H.main()
+        .findByLabelText("JWT Identity Provider URI *")
+        .should("have.value", "https://jwt.example.com/auth");
+    });
+
+    it("sends the admin to Admin settings when only SAML is configured", () => {
+      configureSaml();
+
+      cy.visit("/embedding/authentication");
+
+      H.main().within(() => {
+        cy.findByText("SAML is configured").should("be.visible");
+        cy.findByRole("link", { name: /Go to Admin/ }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/authentication",
+        );
+        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
+      });
+    });
+  });
+
+  describe("unlicensed", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells instead of exposing the form", () => {
+      cy.visit("/embedding/authentication");
+
+      H.main().within(() => {
+        cy.findByText("Metabase Pro").should("be.visible");
+        cy.findByText("Secure your embeds with single sign-on").should(
+          "be.visible",
+        );
+        cy.findByText(
+          "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.",
+        ).should("be.visible");
+        cy.findByRole("link", { name: "Upgrade to Pro" }).should("be.visible");
+
+        cy.log("nothing configurable renders below the paywall");
+        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
+      });
+    });
+  });
+});
+
+function configureSaml() {
+  cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8").then(
+    (certificate) => {
+      cy.request("PUT", "/api/setting", {
+        "saml-enabled": true,
+        "saml-identity-provider-uri": "https://example.test",
+        "saml-identity-provider-certificate": certificate,
+        "saml-identity-provider-issuer": "https://example.test/issuer",
+      });
+    },
+  );
+}
+
 function assertPublishedDashboardIsListed() {
   cy.findByTestId("embedding-hub-main").within(() => {
     // The hub clips its content and scrolls it internally, so this card sits

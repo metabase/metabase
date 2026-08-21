@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { User, UserId } from "metabase-types/api";
@@ -14,12 +14,17 @@ export type AuthSettingsPageProps = {
   tab?: AuthSettingsPageTab;
 };
 
+export type SettingsJWTFormProps = {
+  /** `null` renders the form with no heading -- the embedding hub supplies its own. */
+  title?: ReactNode;
+};
+
 const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
   UserProvisioningSettings: PluginPlaceholder,
   SettingsSAMLForm: PluginPlaceholder,
-  SettingsJWTForm: PluginPlaceholder,
+  SettingsJWTForm: PluginPlaceholder<SettingsJWTFormProps>,
   SettingsOIDCForm: PluginPlaceholder,
   // Unjustified type cast. FIXME
   providers: [] as GetAuthProviders[],
