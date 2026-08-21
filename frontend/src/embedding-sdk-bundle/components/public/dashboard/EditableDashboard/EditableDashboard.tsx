@@ -8,7 +8,7 @@ import { createEmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/Embedding
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 
 import {
   type EditableDashboardOwnProps,

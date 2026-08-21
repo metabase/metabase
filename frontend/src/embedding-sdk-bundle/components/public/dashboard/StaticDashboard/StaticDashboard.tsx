@@ -5,8 +5,8 @@ import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/Embedding
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
+import { getEmbeddingMode } from "metabase/querying/click-actions/lib/modes";
 import { isQuestionCard } from "metabase/utils/dashboard";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";

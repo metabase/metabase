@@ -55,10 +55,6 @@ import {
   getTableHeaderClickedObject,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import type {
-  QueryClickActionsMode,
-  VisualizationProps,
-} from "metabase/visualizations/types";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -71,6 +67,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type {
+  ClickActionModeGetter,
+  ClickActionsMode,
+  VisualizationProps,
+} from "../../types";
 import {
   getHighlightedTableCellKey,
   getHighlightedTableCells,
@@ -122,7 +123,7 @@ interface TableProps extends VisualizationProps {
   isPivoted?: boolean;
   hasMetadataPopovers?: boolean;
   question: Question;
-  mode: QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   scrollToColumn?: number;
   scrollToLastColumn?: boolean;
   theme: MantineTheme;

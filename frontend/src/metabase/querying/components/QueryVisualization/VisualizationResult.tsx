@@ -11,6 +11,8 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
+import { getDefaultClickActionMode } from "../../click-actions/lib/modes";
+
 import type { QueryVisualizationProps } from "./types";
 
 const ALLOWED_VISUALIZATION_PROPS = [
@@ -144,6 +146,9 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
       {...vizSpecificProps}
+      // Visualization has no default mode,
+      // so surfaces that never pass one get the stock drills here.
+      mode={props.mode ?? getDefaultClickActionMode}
     />
   );
 }

@@ -11,12 +11,6 @@ import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/utils/measure-text";
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  ClickObject,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
@@ -54,6 +48,11 @@ import type { DimensionsWidgetProps } from "../visualizations/PieChart/Dimension
 import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
+import type {
+  ClickActionModeGetter,
+  ClickActionsMode,
+  ClickObject,
+} from "./click-actions";
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HighlightedObject, HoveredObject } from "./hover";
 import type { ChartSettingSegmentedControlProps } from "./widget-props";
@@ -253,7 +252,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

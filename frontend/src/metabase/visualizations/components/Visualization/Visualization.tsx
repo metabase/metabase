@@ -20,11 +20,9 @@ import type { ContentTranslationFunction } from "metabase/content-translation/ty
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
-import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
@@ -37,8 +35,6 @@ import {
   getVisualizationTransformed,
   prefetchVisualizationComponent,
 } from "metabase/visualizations";
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
@@ -58,7 +54,6 @@ import {
   type HighlightedObject,
   type HoveredObject,
   type OnBrush,
-  type QueryClickActionsMode,
   type VisualizationDefinition,
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
@@ -94,6 +89,7 @@ import {
   VisualizationRoot,
 } from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
+import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
 
 type StateDispatchProps = {
@@ -151,8 +147,10 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
+  /** Shown while a custom viz plugin loads. */
+  customVizLoadingView?: ReactNode;
   metadata?: Metadata;
-  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode;
   editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -440,11 +438,7 @@ class Visualization extends PureComponent<
 
   _getClickActionsCached(
     clickedObject: ClickObject | null | undefined,
-    mode:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
+    mode: ClickActionModeGetter | ClickActionsMode | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
     metadata?: Metadata,
@@ -492,32 +486,22 @@ class Visualization extends PureComponent<
       : [];
   }
 
+  // There is no default mode: composition sites must pass their own.
+  // Without one, clicks resolve no actions.
   private static getMode(
-    modeOrModeGetter:
-      | ClickActionModeGetter
-      | ClickActionsMode
-      | QueryClickActionsMode
-      | undefined,
+    modeOrModeGetter: ClickActionModeGetter | ClickActionsMode | undefined,
     question: Question | undefined,
   ) {
-    const modeOrQueryMode =
+    const mode =
       typeof modeOrModeGetter === "function"
         ? question
           ? modeOrModeGetter({ question })
-          : null
+          : undefined
         : modeOrModeGetter;
 
-    if (isClickActionsMode(modeOrQueryMode)) {
-      return modeOrQueryMode;
-    }
-
-    if (question && modeOrQueryMode) {
-      return new Mode(question, modeOrQueryMode);
-    }
-
-    if (question) {
-      return getMode(question);
-    }
+    // Untyped callers can still pass a bare QueryClickActionsMode.
+    // Treat anything without actionsForClick as no mode rather than crashing.
+    return isClickActionsMode(mode) ? mode : undefined;
   }
 
   getClickActions(clickedObject?: ClickObject | null) {
@@ -1078,8 +1062,8 @@ export default _.compose(
         PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
       if (customVizLoading) {
-        if (props.isDocument) {
-          return <CardEmbedLoadingState />;
+        if (props.customVizLoadingView) {
+          return <>{props.customVizLoadingView}</>;
         }
 
         if (props.isDashboard) {

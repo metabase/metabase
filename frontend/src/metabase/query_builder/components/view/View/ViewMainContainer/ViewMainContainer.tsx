@@ -1,10 +1,13 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
+import type { Mode } from "metabase/querying/click-actions/Mode";
+import { queryModeToClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
@@ -12,7 +15,6 @@ import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { Box } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -104,12 +106,19 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
+  // The query mode is stable across Mode instances,
+  // so keying on it keeps the mode prop identity stable through metadata refreshes.
+  const queryMode = mode?.queryMode();
+  const clickActionMode = useMemo(
+    () => (queryMode ? queryModeToClickActionMode(queryMode) : undefined),
+    [queryMode],
+  );
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
   }
 
-  const queryMode = mode && mode.queryMode();
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
@@ -146,7 +155,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           {...visualizationResultProps}
           noHeader
           className={CS.spread}
-          mode={queryMode}
+          mode={clickActionMode}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

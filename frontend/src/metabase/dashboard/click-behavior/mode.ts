@@ -1,7 +1,7 @@
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { ArchivedMode } from "metabase/visualizations/click-actions/modes/ArchivedMode";
-import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
-import { ListMode } from "metabase/visualizations/click-actions/modes/ListMode";
+import { Mode } from "metabase/querying/click-actions/Mode";
+import { ArchivedMode } from "metabase/querying/click-actions/modes/ArchivedMode";
+import { DefaultMode } from "metabase/querying/click-actions/modes/DefaultMode";
+import { ListMode } from "metabase/querying/click-actions/modes/ListMode";
 import type {
   ClickActionModeGetter,
   QueryClickActionsMode,
@@ -14,7 +14,7 @@ const DashboardDefaultMode: QueryClickActionsMode = {
   clickActions: [...(DefaultMode.clickActions ?? []), DashboardClickAction],
 };
 
-// Mirrors getMode from metabase/visualizations/click-actions/lib/modes, with
+// Mirrors getMode from metabase/querying/click-actions/lib/modes, with
 // the dashboard-owned click-behavior action added for regular dashcards.
 export const getDashboardClickActionMode: ClickActionModeGetter = ({
   question,
