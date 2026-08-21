@@ -416,14 +416,25 @@
 (defn- can-write-by-entity
   "`{[entity-type entity-id] → can_write bool}` for the page's findings, each entity hydrated with its own
   model's `:can_write` - collection curate for card/dashboard/document/collection, DB-transforms permission
-  for transform."
+  for transform. Collection items select only `collection_id`; collection and transform read many columns,
+  so they stay whole-row."
   [findings]
   (into {}
         (for [[etype rows] (group-by :entity_type findings)
-              :let  [model (common/entity-type->model etype)
-                     ids   (into #{} (map :entity_id) rows)]
+              :let  [model      (common/entity-type->model etype)
+                     ids        (into #{} (map :entity_id) rows)
+                     selectable (cond
+                                  ;; card_schema: Card's after-select throws on a row with query columns but no schema
+                                  (= etype :card)
+                                  [model :id :collection_id :card_schema]
+
+                                  (isa? common/hierarchy etype ::common/collection-item)
+                                  [model :id :collection_id]
+
+                                  :else
+                                  model)]
               :when (and model (seq ids))
-              row   (t2/hydrate (t2/select model :id [:in ids]) :can_write)]
+              row   (t2/hydrate (t2/select selectable :id [:in ids]) :can_write)]
           [[etype (:id row)] (boolean (:can_write row))])))
 
 (defn hydrate-findings

@@ -162,13 +162,14 @@
   (testing "can_write reflects whether the current user can trash the entity (curate its collection)"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Card {card-id :id} {:collection_id coll-id}]
-      (let [can-write? #(:can_write (first (api.common/hydrate-findings
-                                            [{:id           1
-                                              :finding_type :stale
-                                              :entity_type  :card
-                                              :entity_id    card-id
-                                              :details      {}}]
-                                            nil)))]
+      (let [can-write? #(-> (api.common/hydrate-findings [{:id           1
+                                                           :finding_type :stale
+                                                           :entity_type  :card
+                                                           :entity_id    card-id
+                                                           :details      {}}]
+                                                         nil)
+                            first
+                            :can_write)]
         (testing "an admin can"
           (mt/with-current-user (mt/user->id :crowberto)
             (is (true? (can-write?)))))

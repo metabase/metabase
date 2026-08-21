@@ -11,25 +11,27 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
+(defn- invalidate!
+  "Run `invalidate-thunk`, logging a failure instead of rethrowing it - `publish-event!` would otherwise fail
+  the archive that triggered it."
+  [log-ctx invalidate-thunk]
+  (try
+    (invalidate-thunk)
+    (catch Throwable e
+      (log/error e "Failed to invalidate content-diagnostics findings" log-ctx))))
+
 (defn- invalidate-entity!
   "Invalidate one entity's findings."
   [entity-type entity-id]
-  (when (premium-features/has-feature? :content-diagnostics)
-    (try
-      (finding/invalidate-for-entity! entity-type entity-id)
-      (catch Throwable e
-        (log/error e "Failed to invalidate content-diagnostics findings for entity"
-                   {:entity-type entity-type :entity-id entity-id})))))
+  (invalidate! {:entity-type entity-type :entity-id entity-id}
+               #(finding/invalidate-for-entity! entity-type entity-id)))
 
 (defn- invalidate-collection-subtree!
-  [collection]
-  (when (premium-features/has-feature? :content-diagnostics)
-    (try
-      (finding/invalidate-for-collection-subtree!
-       (conj (collection/descendant-ids collection) (:id collection)))
-      (catch Throwable e
-        (log/error e "Failed to invalidate content-diagnostics findings for collection subtree"
-                   {:collection-id (:id collection)})))))
+  "Invalidate the findings of a collection subtree (self + descendants)."
+  [{collection-id :id :as collection}]
+  (invalidate! {:collection-id collection-id}
+               #(finding/invalidate-for-collection-subtree!
+                 (conj (collection/descendant-ids collection) collection-id))))
 
 ;; ### Cards - archived via `PUT /api/card/:id` (`:event/card-update` fires on every update)
 (events/derive! ::card-archived :metabase/event)
@@ -37,7 +39,7 @@
 
 (methodical/defmethod events/publish-event! ::card-archived
   [_ {:keys [object]}]
-  (when (:archived object)
+  (when (and (premium-features/has-feature? :content-diagnostics) (:archived object))
     (invalidate-entity! :card (:id object))))
 
 ;; ### Dashboards - archived via `PUT /api/dashboard/:id` (`:event/dashboard-update` fires on every update)
@@ -46,7 +48,7 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-archived
   [_ {:keys [object]}]
-  (when (:archived object)
+  (when (and (premium-features/has-feature? :content-diagnostics) (:archived object))
     (invalidate-entity! :dashboard (:id object))))
 
 ;; ### Collections - archived via `PUT /api/collection/:id`. Archiving cascades to the whole subtree
@@ -56,7 +58,7 @@
 
 (methodical/defmethod events/publish-event! ::collection-archived
   [_ {:keys [object]}]
-  (when (:archived object)
+  (when (and (premium-features/has-feature? :content-diagnostics) (:archived object))
     (invalidate-collection-subtree! object)))
 
 ;; ### Documents - archiving publishes `:event/document-delete` (its own signal, not the after-update hook)
@@ -65,7 +67,8 @@
 
 (methodical/defmethod events/publish-event! ::document-deleted
   [_ {:keys [object]}]
-  (invalidate-entity! :document (:id object)))
+  (when (premium-features/has-feature? :content-diagnostics)
+    (invalidate-entity! :document (:id object))))
 
 ;; ### Transforms - not archivable; hard `DELETE /api/transform/:id` publishes `:event/transform-delete`
 (events/derive! ::transform-deleted :metabase/event)
@@ -73,4 +76,5 @@
 
 (methodical/defmethod events/publish-event! ::transform-deleted
   [_ {:keys [object]}]
-  (invalidate-entity! :transform (:id object)))
+  (when (premium-features/has-feature? :content-diagnostics)
+    (invalidate-entity! :transform (:id object))))
