@@ -303,8 +303,9 @@ Includes filtering, aggregation, custom expressions, and joins.
 
 ```ts
 EditorButton: (props: InteractiveQuestionEditorButtonProps) =>
+  | false
   | Element
-  | null;
+  | undefined;
 ```
 
 **`Function`**
@@ -328,8 +329,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet returns>] -->
 
+\| `false`
 \| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+\| `undefined`
 
 ---
 
@@ -459,8 +461,9 @@ Use `InteractiveQuestion.Editor` instead
 
 ```ts
 NotebookButton: (props: InteractiveQuestionEditorButtonProps) =>
+  | false
   | Element
-  | null;
+  | undefined;
 ```
 
 **`Function`**
@@ -484,8 +487,9 @@ In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorB
 
 <!-- [<snippet returns>] -->
 
+\| `false`
 \| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+\| `undefined`
 
 <!-- [<endsnippet returns>] -->
 
@@ -787,8 +791,7 @@ Uses question context for summarization functionality.
 
 ```ts
 SummarizeDropdown: (props: InteractiveQuestionSummarizeDropdownProps) =>
-  | Element
-  | null;
+  Element;
 ```
 
 **`Function`**
@@ -811,8 +814,7 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
-\| `null`
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
 
 ---
 
