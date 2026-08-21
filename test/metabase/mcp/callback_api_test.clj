@@ -315,6 +315,9 @@
 (defn- legacy-native-query []
   {:database (mt/id) :type "native" :native {:query "SELECT 1"}})
 
+(defn- legacy-mbql-query []
+  {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}})
+
 (defn- credential-for! [scopes]
   (let [user-id (mt/user->id :crowberto)]
     (mcp.session/issue-ui-credential (mcp.session/create! user-id nil) user-id scopes)))
@@ -348,7 +351,7 @@
 
 (deftest ui-credential-mbql-query-is-unaffected-test
   (testing "GHY-4318: rendering an MBQL chart is the iframe's normal path and must not be gated on the SQL scope"
-    (let [query (mt/mbql-query venues {:limit 1})]
+    (let [query (legacy-mbql-query)]
       (is (= 202 (:status (post-dataset-with-ui-credential 202 "dataset" (credential-for! ask-scopes) query))))
       (is (= 202 (:status (post-dataset-with-ui-credential 202 "dataset" (credential-for! sql-scopes) query)))))))
 

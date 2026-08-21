@@ -175,7 +175,7 @@
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
   the `:output` the LLM would see."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
                (agent-tools/construct-notebook-query-tool
                 {:query       {:lib/type "mbql/query" :stages []}
