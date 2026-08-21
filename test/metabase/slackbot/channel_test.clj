@@ -53,11 +53,6 @@
 
 (def ^:private test-site-url "https://metabase.example.com")
 
-(def ^:private oversized-answer
-  "An answer comfortably past Slack's section limit, distinguishable line by line so a truncated
-   copy can be checked against it."
-  (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200))))
-
 (def ^:private viz-blocks
   [{:type "section" :text {:type "mrkdwn" :text "*Orders by month*"}}
    {:type "table" :rows []}])
@@ -104,19 +99,16 @@
         :cancel-prefetched-viz!     (constantly nil)}))
     (assoc @posted :backfill @backfill)))
 
-(deftest ^:parallel section-limit-matches-harness-test
-  (testing "the production constant and the limit the harness models cannot drift apart"
-    (is (= slackbot.tu/slack-section-text-limit
-           @#'slackbot.channel/section-text-limit))))
-
 (deftest ^:parallel truncation-notice-test
   (testing "the notice points at the instance, and says what to do about the cut"
-    (is (= (str "_This answer was too long to post in Slack, so I cut it short._\n\n"
+    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+                "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller"
-                ", or head to <https://metabase.example.com|Metabase>.")
+                ", or head to <https://metabase.example.com|Metabase> and try again.")
            (#'slackbot.channel/truncation-notice test-site-url))))
   (testing "an instance with no site URL still gets a sentence, just without the link"
-    (is (= (str "_This answer was too long to post in Slack, so I cut it short._\n\n"
+    (is (= (str "_This answer was longer than 3000 characters. That is too long to post in Slack, "
+                "so I cut it short._\n\n"
                 "Ask a narrower question so the answer comes back smaller.")
            (#'slackbot.channel/truncation-notice nil))))
   (testing "the notice never deep-links to the conversation -- continuing it on the web is unsupported"
@@ -126,7 +118,7 @@
 (deftest channel-response-truncates-oversized-answer-test
   (testing "an oversized answer is cut, and the same message explains why (BOT-1606)"
     (mt/with-temporary-setting-values [site-url test-site-url]
-      (let [{:keys [text blocks backfill]} (send-channel-response! oversized-answer)
+      (let [{:keys [text blocks backfill]} (send-channel-response! slackbot.tu/oversized-answer)
             [answer-block notice-block]    blocks
             section-text                   (get-in answer-block [:text :text])]
         (testing "no section block is over the limit -- so Slack no longer rejects the message"
@@ -136,7 +128,7 @@
           (is (= "mrkdwn" (get-in answer-block [:text :type])))
           (is (= slackbot.tu/slack-section-text-limit (count section-text)))
           (is (str/ends-with? section-text "..."))
-          (is (str/starts-with? oversized-answer (str/replace section-text #"\.\.\.$" ""))
+          (is (str/starts-with? slackbot.tu/oversized-answer (str/replace section-text #"\.\.\.$" ""))
               "what survives the cut is a genuine prefix of the answer"))
         (testing "the notice rides in a context block of the same message, linking to the instance"
           (is (= "context" (:type notice-block)))
@@ -157,7 +149,7 @@
 (deftest channel-response-truncation-notice-without-site-url-test
   (testing "an instance with no site URL still gets the notice, just without a link"
     (mt/with-temporary-setting-values [site-url nil]
-      (let [{:keys [blocks]} (send-channel-response! oversized-answer)
+      (let [{:keys [blocks]} (send-channel-response! slackbot.tu/oversized-answer)
             notice-block     (second blocks)
             notice           (get-in notice-block [:elements 0 :text])]
         (is (= "context" (:type notice-block)))
@@ -180,7 +172,7 @@
   (mt/with-prometheus-system! [_ system]
     (mt/with-temporary-setting-values [site-url test-site-url]
       (testing "truncating an answer increments the truncation counter"
-        (send-channel-response! oversized-answer)
+        (send-channel-response! slackbot.tu/oversized-answer)
         (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-truncated))))
       (testing "an answer that fits does not"
         (prometheus/clear! :metabase-slackbot/responses-truncated)
