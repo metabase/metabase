@@ -49,7 +49,16 @@ function metabaseDevServer() {
       const distDir = resolve(__dirname, "dist");
 
       server = createServer((req, res) => {
-        const url = req.url ?? "/";
+        let url: string;
+        try {
+          url = decodeURIComponent(
+            new URL(req.url ?? "/", "http://localhost").pathname,
+          );
+        } catch {
+          res.writeHead(400);
+          res.end("Bad request");
+          return;
+        }
 
         // SSE endpoint for hot-reload
         if (url === "/__sse") {
@@ -87,13 +96,14 @@ function metabaseDevServer() {
 
         // Serve static files from dist/
         const { readFile, stat } = require("fs");
-        const { join, extname } = require("path");
+        const { join, extname, sep } = require("path");
 
-        const filePath =
-          url === "/" ? join(distDir, "index.html") : join(distDir, url);
+        const filePath = join(distDir, url);
 
-        // Prevent directory traversal
-        if (!filePath.startsWith(distDir)) {
+        const insideDist =
+          filePath === distDir || filePath.startsWith(distDir + sep);
+
+        if (!insideDist || filePath.includes("\0")) {
           res.writeHead(403);
           res.end("Forbidden");
           return;

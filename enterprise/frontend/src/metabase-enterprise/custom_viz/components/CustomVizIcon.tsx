@@ -10,7 +10,11 @@ type Props = {
 const ICON_SIZE = 20;
 
 export function CustomVizIcon({ plugin }: Props) {
-  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
+  const iconUrl = getPluginAssetUrl(
+    plugin.id,
+    plugin.icon,
+    plugin.dev_bundle_url,
+  );
 
   return (
     <Flex

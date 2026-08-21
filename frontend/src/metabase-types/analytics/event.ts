@@ -31,10 +31,6 @@ export type CustomVizPluginToggledEvent = ValidateEvent<{
   event_detail: "enabled" | "disabled";
 }>;
 
-export type CustomVizPluginRefreshedEvent = ValidateEvent<{
-  event: "custom_viz_plugin_refreshed";
-}>;
-
 export type CustomVizSelectedEvent = ValidateEvent<{
   event: "custom_viz_selected";
 }>;
@@ -44,7 +40,6 @@ export type CustomVizEvent =
   | CustomVizPluginUpdatedEvent
   | CustomVizPluginDeletedEvent
   | CustomVizPluginToggledEvent
-  | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
 
 export type AiSetupStartedEvent = ValidateEvent<{

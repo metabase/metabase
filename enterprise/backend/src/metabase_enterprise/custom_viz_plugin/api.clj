@@ -1,8 +1,6 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
-   [clj-http.client :as http]
-   [clojure.core.async :as a]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
@@ -11,12 +9,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.server.streaming-response :as sr]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader File InputStream InputStreamReader OutputStream)
+   (java.io File)
    (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
@@ -28,6 +24,14 @@
   []
   (api/check (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
              [403 "Custom visualization plugin dev mode is not enabled."]))
+
+(defn- validate-manifest!
+  [manifest]
+  (when manifest
+    (when-let [error (manifest/validation-error manifest)]
+      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                      {:status-code 400})))
+    manifest))
 
 ;;; ------------------------------------------------ Upload guard ------------------------------------------------
 
@@ -115,8 +119,8 @@
   "Convert a plugin record to the safe runtime response shape.
    `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
    instead of served from the browser's `immutable` cache."
-  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
-    :as   plugin}]
+  [dev-mode? {:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
+              :as   plugin}]
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
@@ -126,7 +130,7 @@
            :bundle_hash  bundle_hash
            :manifest     manifest
            :warnings     (plugin-warnings plugin)}
-    dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
+    (and dev-mode? dev_bundle_url) (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -161,21 +165,22 @@
 
 (api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
   "Register a dev-only custom visualization plugin from a local dev server.
-   No bundle upload is required — files are served from the dev server URL.
-   Requires custom viz plugin dev mode to be enabled."
+  No bundle upload is required as files are served from the dev server URL."
   [_route-params
    _query-params
-   {:keys [identifier dev_bundle_url]} :- [:map
-                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
-                                           [:dev_bundle_url ms/NonBlankString]]]
+   {:keys [identifier dev_bundle_url manifest]} :- [:map
+                                                    [:identifier     {:optional true} [:maybe ms/NonBlankString]]
+                                                    [:dev_bundle_url ms/NonBlankString]
+                                                    [:manifest       {:optional true} [:maybe ms/Map]]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
-  (let [manifest     (cache/fetch-dev-manifest dev_bundle_url)
+  (let [dev-url      (cache/validate-dev-url! dev_bundle_url "Dev server URL")
+        manifest     (validate-manifest! manifest)
         identifier   (or identifier
                          (:name manifest)
                          (throw (ex-info (if manifest
                                            "metabase-plugin.json is missing a \"name\" field."
-                                           "Could not fetch metabase-plugin.json from the dev server.")
+                                           "No manifest was sent. Include the contents of metabase-plugin.json, or an explicit identifier.")
                                          {:status-code 400})))
         _            (api/check-400
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
@@ -188,11 +193,10 @@
                                                             :identifier      identifier
                                                             :status          :active
                                                             :enabled         true
-                                                            :dev_bundle_url  dev_bundle_url
+                                                            :dev_bundle_url  dev-url
                                                             :icon            icon
                                                             :manifest        manifest
                                                             :metabase_version version-str))]
-    (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                             :user-id api/*current-user-id*})
     (plugin->response plugin)))
@@ -207,15 +211,16 @@
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with version mismatches are included, with soft `warnings` attached.
-   Dev-only plugins are excluded when dev mode is disabled."
+   Dev-only plugins are excluded when dev mode is disabled and user is not superuser"
   []
-  (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
+  (let [dev-mode? (and (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
+                       api/*is-superuser?*)
         plugins   (custom-viz-plugin/select-non-blob :status :active
                                                      :enabled true
                                                      {:order-by [[:display_name :asc]]})]
     (->> plugins
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
-         (mapv (comp plugin->runtime-response api/read-check)))))
+         (mapv (comp (partial plugin->runtime-response dev-mode?) api/read-check)))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its on-disk cache."
@@ -272,9 +277,9 @@
         (try (.delete tempfile) (catch Exception _))))))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
-  "Serve the JS bundle for a plugin from the on-disk cache.
+  "Serve the JS bundle for an upload-backed plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
-   In dev mode, proxies from `dev_bundle_url` if set."
+   Dev plugins are not served here, browser fetches those from the dev server itself."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
@@ -282,18 +287,16 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
-          dev-url (cache/resolve-dev-bundle id)
-          entry   (cache/resolve-bundle plugin)]
+    (let [plugin (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
+          entry  (cache/get-bundle plugin)]
       (if entry
         (respond {:status  200
-                  :headers (cond-> {"Content-Type"                 "application/javascript"
-                                    "X-Content-Type-Options"       "nosniff"
-                                    "Cross-Origin-Resource-Policy" "same-origin"
-                                    "Referrer-Policy"              "no-referrer"
-                                    "ETag"                         (:hash entry)}
-                             dev-url       (assoc "Cache-Control" "no-store")
-                             (not dev-url) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
+                  :headers {"Content-Type"                 "application/javascript"
+                            "X-Content-Type-Options"       "nosniff"
+                            "Cross-Origin-Resource-Policy" "same-origin"
+                            "Referrer-Policy"              "no-referrer"
+                            "ETag"                         (:hash entry)
+                            "Cache-Control"                "public, max-age=31536000, immutable"}
                   :body    (:content entry)})
         (respond {:status  503
                   :headers {"Content-Type" "application/json"}
@@ -306,7 +309,7 @@
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match the manifest `icon`. Only the icon is served — plugins do not
    ship arbitrary assets.
-   In dev mode, proxies from the dev base URL if set."
+   Dev plugins are not served here, the browser fetches the icon from the dev server itself."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [path]} :- [:map [:path ms/NonBlankString]]
    _body
@@ -317,16 +320,14 @@
     (let [plugin       (api/read-check (custom-viz-plugin/select-one-non-blob :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
-          dev?         (cache/resolve-dev-bundle id)
           bytes        (cache/resolve-asset plugin path)]
       (if bytes
         (respond {:status  200
-                  :headers (cond-> {"Content-Type"                 content-type
-                                    "X-Content-Type-Options"       "nosniff"
-                                    "Cross-Origin-Resource-Policy" "same-origin"
-                                    "Referrer-Policy"              "no-referrer"}
-                             dev?       (assoc "Cache-Control" "no-store")
-                             (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
+                  :headers {"Content-Type"                 content-type
+                            "X-Content-Type-Options"       "nosniff"
+                            "Cross-Origin-Resource-Policy" "same-origin"
+                            "Referrer-Policy"              "no-referrer"
+                            "Cache-Control"                "public, max-age=31536000, immutable"}
                   :body    (java.io.ByteArrayInputStream. bytes)})
         (respond {:status  404
                   :headers {"Content-Type" "application/json"}
@@ -335,10 +336,9 @@
       (raise e))))
 
 (api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
-  "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).
-   The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
-   Persisted to the database so it survives server restarts.
-   Requires custom viz plugin dev mode to be enabled."
+  "Set or clear the dev server URL for a plugin (e.g. `http://localhost:5174`).
+   The browser fetches the bundle from `{origin}/index.js`, the icon from `{origin}/assets/{name}` and the
+   hot-reload stream from `{origin}/__sse`; Metabase itself never requests the URL."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
@@ -346,63 +346,6 @@
   (check-dev-mode-enabled!)
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
-
-(api.macros/defendpoint :get "/:id/dev-sse" :- :any
-  "Proxy Server-Sent Events from the plugin's dev server.
-   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.
-   This avoids the need for a CSP exception for the dev server origin.
-   Requires custom viz plugin dev mode to be enabled."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (check-dev-mode-enabled!)
-  (let [dev-url (cache/resolve-dev-bundle id)]
-    (when-not dev-url
-      (throw (ex-info "No dev server URL configured" {:status-code 404})))
-    (let [sse-url (str (cache/dev-base-url dev-url) "__sse")]
-      (sr/streaming-response {:content-type "text/event-stream"
-                              :status       200
-                              :headers      {"Cache-Control"      "no-cache"
-                                             "Connection"         "keep-alive"
-                                             "X-Accel-Buffering"  "no"}}
-                             [^OutputStream os canceled-chan]
-        (try
-          (let [resp (http/get sse-url {:as               :stream
-                                        :socket-timeout   0
-                                        :connection-timeout 5000
-                                        :headers          {"Accept" "text/event-stream"}})]
-            (with-open [^InputStream is (:body resp)
-                        rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
-              (loop []
-                (when-not (a/poll! canceled-chan)
-                  (when-let [line (.readLine rdr)]
-                    (.write os (.getBytes (str line "\n") "UTF-8"))
-                    (.flush os)
-                    (recur))))))
-          (catch Exception e
-            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
-
-(api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
-  "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
-   plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
-   to `/:id/bundle`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [plugin (api/write-check (custom-viz-plugin/select-one-non-blob :id id))]
-    (api/check-400 (dev-only-plugin? plugin)
-                   "Refresh is only supported for dev-only plugins; upload a new bundle to update an upload-backed plugin.")
-    (let [dev-url      (or (cache/resolve-dev-bundle id)
-                           (throw (ex-info "No dev server URL configured" {:status-code 404})))
-          manifest     (or (cache/fetch-dev-manifest dev-url)
-                           (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
-          version-str  (get-in manifest [:metabase :version])]
-      (t2/update! :model/CustomVizPlugin id
-                  {:display_name     (or (:name manifest) (:identifier plugin))
-                   :icon             (:icon manifest)
-                   :manifest         manifest
-                   :metabase_version version-str})
-      (let [result (custom-viz-plugin/select-one-non-blob :id id)]
-        (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                                :previous-object plugin
-                                                                :user-id         api/*current-user-id*})
-        (plugin->response result)))))
 
 (def routes
   "`/api/ee/custom-viz-plugin` routes."
