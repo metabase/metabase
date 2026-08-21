@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -12,6 +13,7 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { getMcpMetabaseConfig } from "./config";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -26,17 +28,12 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
+  appError: McpAppState["error"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
   uiCredential: string;
-}
-
-interface McpMetabaseConfig {
-  instanceUrl: string;
-  uiCredential: string;
-  mcpSessionId: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -47,11 +44,9 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
+  const { app, error: appError, hostContext, prompt, query } = useMcpApp();
 
-  const { instanceUrl = "", uiCredential = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
+  const { instanceUrl = "", uiCredential = "" } = getMcpMetabaseConfig();
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -80,6 +75,7 @@ export function McpUiAppRoute() {
     >
       <McpUiAppRouteContent
         app={app}
+        appError={appError}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
         prompt={prompt}
@@ -92,6 +88,7 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  appError,
   hostContext,
   instanceUrl,
   prompt,
@@ -101,9 +98,7 @@ function McpUiAppRouteContent({
   const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSetting("is-hosted?");
 
-  const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
+  const { mcpSessionId = "" } = getMcpMetabaseConfig();
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
@@ -132,10 +127,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || appError || userAndSettingsFetchError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [appError, isReady, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -223,6 +218,10 @@ function McpUiAppRouteContent({
     );
 
   const renderContentView = () => {
+    if (appError) {
+      return <SdkError message={t`Visualization cannot be loaded`} />;
+    }
+
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
     }

@@ -396,8 +396,8 @@ const config = {
       chunks: ["vendor", "styles", "app-embed-mcp"],
       template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
 
-      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
-      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // MCP apps are rendered inside a host-owned sandbox, so asset URLs must
+      // point to the Metabase instance. We embed a Mustache
       // variable in publicPath — HtmlWebpackPlugin emits it literally, then
       // Stencil substitutes it at runtime with the real instance URL.
       publicPath: "{{{instanceUrlRaw}}}/app/dist/",

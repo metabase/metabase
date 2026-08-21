@@ -7,12 +7,7 @@ import type * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
 
 import { storeDrillQuery } from "../api";
-
-interface McpGlobalConfig {
-  instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
-}
+import { getMcpMetabaseConfig } from "../config";
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
   T extends `drill-thru/${infer Name}` ? Name : never;
@@ -54,8 +49,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       }
 
       const { instanceUrl, uiCredential, mcpSessionId } =
-        // Unjustified type cast. FIXME
-        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+        getMcpMetabaseConfig();
 
       if (isClaudeHost(app)) {
         if (!instanceUrl) {
@@ -77,13 +71,13 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
 
       const encodedQuery = utf8_to_b64(JSON.stringify(nextCard.dataset_query));
 
-      let handle: string;
+      let queryHandle: string;
       try {
         // Store the card server-side in the MCP session. This is universal —
         // works in all MCP clients (Claude Desktop, Cursor, VS Code).
         // The handle UUID is threaded into the agent message so render_drill_through
         // can fetch the payload without the LLM ever seeing it.
-        ({ handle } = await storeDrillQuery({
+        ({ query_handle: queryHandle } = await storeDrillQuery({
           instanceUrl,
           uiCredential,
           mcpSessionId,
@@ -94,15 +88,13 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      // Uses the same term as the tool description ("show the result")
-      // so the LLM always calls render_drill_through, and includes the handle
-      // it must pass through.
+      // This user-visible message prompts the LLM to call render_drill_through.
       await app.sendMessage({
         role: "user",
         content: [
           {
             type: "text",
-            text: `Show me the result. Use handle ${handle}.`,
+            text: `Show me the result. Use handle ${queryHandle}.`,
           },
         ],
       });

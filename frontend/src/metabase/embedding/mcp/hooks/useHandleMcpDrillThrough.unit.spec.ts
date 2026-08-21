@@ -23,7 +23,9 @@ describe("useHandleMcpDrillThrough", () => {
       mcpSessionId: "mcp-session-id",
     };
 
-    fetchMock.post("path:/api/embed-mcp/drills", { handle: "drill-handle" });
+    fetchMock.post("path:/api/embed-mcp/drills", {
+      query_handle: "drill-handle",
+    });
   });
 
   afterEach(() => {
@@ -60,7 +62,7 @@ describe("useHandleMcpDrillThrough", () => {
     expect(defaultNavigate).not.toHaveBeenCalled();
   });
 
-  it("stores drill queries and sends a render handle for non-Claude hosts", async () => {
+  it("stores drill queries and sends a render query handle for non-Claude hosts", async () => {
     const app = {
       getHostVersion: () => ({ name: "Cursor", version: "1.0.0" }),
       openLink: jest.fn(),

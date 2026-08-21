@@ -11,7 +11,19 @@ type StoreDrillQueryRequest = {
 };
 
 type StoreDrillQueryResponse = {
-  handle: string;
+  query_handle: string;
+};
+
+type ResolveMcpQueryRequest = {
+  instanceUrl: string;
+  uiCredential: string;
+  mcpSessionId: string;
+  queryHandle: string;
+};
+
+type ResolveMcpQueryResponse = {
+  query: string;
+  prompt?: string;
 };
 
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
@@ -20,7 +32,7 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
 };
 
 /**
- * Stores the drill-through's query on the server and returns a handle UUID
+ * Stores the drill-through's query on the server and returns a query handle UUID
  * that the iframe threads into the agent message so `render_drill_through`
  * can fetch the payload without the LLM ever seeing it.
  *
@@ -46,6 +58,35 @@ export async function storeDrillQuery({
   if (!response.ok) {
     throw new Error(
       `storeDrillQuery failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
+export async function resolveMcpQueryHandle({
+  instanceUrl,
+  uiCredential,
+  mcpSessionId,
+  queryHandle,
+}: ResolveMcpQueryRequest): Promise<ResolveMcpQueryResponse> {
+  const response = await fetch(
+    `${instanceUrl}/api/embed-mcp/query-handle/resolve`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+        "X-Metabase-Mcp-Ui-Auth": uiCredential,
+        "Mcp-Session-Id": mcpSessionId,
+      },
+      body: JSON.stringify({ query_handle: queryHandle }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `resolveMcpQueryHandle failed: ${response.status} ${response.statusText}`,
     );
   }
 

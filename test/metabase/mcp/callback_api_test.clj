@@ -41,14 +41,49 @@
                                                             "mcp-session-id" session-id}}}
                                {:encodedQuery "ZW5jb2RlZA=="}))
 
-(deftest drills-post-stores-handle-test
-  (testing "POST returns a UUID handle"
+(defn- post-resolve-query-handle-with-ui-credential
+  [expected-status credential session-id query-handle]
+  (client/client-full-response :post expected-status "embed-mcp/query-handle/resolve"
+                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                            "mcp-session-id" session-id}}}
+                               {:query_handle query-handle}))
+
+(deftest query-handle-resolve-post-resolves-handle-with-ui-credential-test
+  (let [user-id      (mt/user->id :crowberto)
+        session-id   (mcp.session/create! user-id)
+        credential   (mcp.session/issue-ui-credential session-id user-id)
+        query-handle (mcp.session/store-handle! session-id user-id "encoded-query" "show orders")]
+    (is (=? {:status 200
+             :body   {:query  "encoded-query"
+                      :prompt "show orders"}}
+            (post-resolve-query-handle-with-ui-credential 200 credential session-id (str query-handle))))))
+
+(deftest query-handle-resolve-post-returns-not-found-for-unknown-handle-test
+  (let [user-id    (mt/user->id :crowberto)
+        session-id (mcp.session/create! user-id)
+        credential (mcp.session/issue-ui-credential session-id user-id)]
+    (is (= 404 (:status (post-resolve-query-handle-with-ui-credential
+                         404 credential session-id (random-uuid)))))))
+
+(deftest query-handle-resolve-post-enforces-ui-credential-session-binding-test
+  (let [user-id          (mt/user->id :crowberto)
+        session-id       (mcp.session/create! user-id)
+        other-session-id (mcp.session/create! user-id)
+        credential       (mcp.session/issue-ui-credential session-id user-id)
+        query-handle     (str (mcp.session/store-handle! session-id user-id "encoded-query"))]
+    (is (= 404 (:status (post-resolve-query-handle-with-ui-credential
+                         404 credential other-session-id query-handle))))
+    (is (= 401 (:status (post-resolve-query-handle-with-ui-credential
+                         401 "not-a-credential" session-id query-handle))))))
+
+(deftest drills-post-stores-query-handle-test
+  (testing "POST returns a UUID query handle"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           response   (post-drill {:encodedQuery "ZW5jb2RlZA=="}
                                  {"mcp-session-id" session-id})]
       (is (=? {:status 200
-               :body   {:handle parse-uuid}}
+               :body   {:query_handle parse-uuid}}
               response)))))
 
 (deftest drills-post-validates-session-header-test

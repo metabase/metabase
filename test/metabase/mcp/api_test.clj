@@ -1025,7 +1025,7 @@
                :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
-                                             :arguments {:handle handle}})
+                                             :arguments {:query_handle handle}})
                            {"mcp-session-id" session-id})))))
   (testing "render_drill_through returns an error when the handle is unknown"
     (let [[session-id _] (initialize!)]
@@ -1033,7 +1033,7 @@
                :body   {:result {:isError true}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
-                                             :arguments {:handle (str (random-uuid))}})
+                                             :arguments {:query_handle (str (random-uuid))}})
                            {"mcp-session-id" session-id}))))))
 
 (deftest tools-call-visualize-query-test
@@ -1194,7 +1194,7 @@
                :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
-                                             :arguments {:handle handle}})
+                                             :arguments {:query_handle handle}})
                            {"mcp-session-id" rotated-session}))))))
 
 (deftest visualize-query-refuses-cross-user-handle-test
