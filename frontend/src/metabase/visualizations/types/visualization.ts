@@ -1,9 +1,5 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 
-import type {
-  ColorRangeSelectorAttributes,
-  ColorRangeSelectorProps,
-} from "metabase/common/components/ColorRangeSelector/ColorRangeSelector";
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
@@ -35,7 +31,6 @@ import type {
   RowValue,
   RowValues,
   Series,
-  SeriesSettings,
   SingleSeries,
   TimelineEvent,
   TimelineEventId,
@@ -44,19 +39,20 @@ import type {
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
-import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
-import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
-import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
-import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
-import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
-import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
-import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
-import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
-import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
-
-import type { RemappingHydratedDatasetColumn } from "./columns";
+import type { ComputedVisualizationSettings } from "./computed-settings";
 import type { HighlightedObject, HoveredObject } from "./hover";
-import type { ChartSettingSegmentedControlProps } from "./widget-props";
+import type {
+  ChartSettingColorRangeProps,
+  ChartSettingGoalInputProps,
+  ChartSettingMaxCategoriesProps,
+  ChartSettingSegmentedControlProps,
+  ChartSettingSegmentsEditorProps,
+  ChartSettingSeriesOrderProps,
+  ChartSettingTableColumnsProps,
+  DimensionsWidgetProps,
+  SmartScalarComparisonWidgetProps,
+  TreemapGroupsPickerProps,
+} from "./widget-props";
 
 export interface Padding {
   top: number;
@@ -125,12 +121,6 @@ export type OnBrush = (options: {
   clickObject: BrushClickObject;
   openClickActions: (clicked: ClickObject | null) => void;
 }) => void;
-
-export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
-  series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
-  nested?: (value: unknown) => unknown;
-};
 
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
@@ -557,10 +547,7 @@ export type VisualizationSettingsDefinitions = {
   "map.pin_type"?: SeriesSettingDefinition<Value, Props>;
   "map.type"?: SeriesSettingDefinition<Value, Props>;
   "map.region"?: SeriesSettingDefinition<Value, Props>;
-  "map.colors"?: SeriesSettingDefinition<
-    Value,
-    Omit<ColorRangeSelectorProps, keyof ColorRangeSelectorAttributes>
-  >;
+  "map.colors"?: SeriesSettingDefinition<Value, ChartSettingColorRangeProps>;
   "map.heat.radius"?: SeriesSettingDefinition<Value, Props>;
   "map.heat.blur"?: SeriesSettingDefinition<Value, Props>;
   "map.heat.min-opacity"?: SeriesSettingDefinition<Value, Props>;
