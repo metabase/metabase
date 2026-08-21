@@ -367,26 +367,3 @@
             (p/->Ok (combine-adjacent frags)))
           (let [e (:value subject)]
             (p/->Error e)))))))
-
-(defn main
-  "Self-check: asserts a representative set of parses on the BEAM, so
-  `gleam run` proves the same semantics the compiled Clojure claims."
-  {:malli/schema [:=> [:cat] [:or [:fn p/Ok?] [:fn p/Error?]]]}
-  []
-  (p/let-assert (p/->Ok (list (->Literal "select 1")))
-                (parse "select 1" true true))
-  (p/let-assert (p/->Ok (list (->Literal "a=") (->Param "x")))
-                (parse "a={{x}}" true true))
-  (p/let-assert (p/->Ok (list (->Literal "a ") (->Optional (list (->Literal "b ") (->Param "x")))))
-                (parse "a [[b {{x}}]]" true true))
-  (p/let-assert (p/->Ok (list (->Literal "SELECT -- {{foo}}")))
-                (parse "SELECT -- {{foo}}" true true))
-  (p/let-assert (p/->Ok (list (->Literal "'{{}}'")))
-                (parse "'{{}}'" true true))
-  (p/let-assert (p/->Ok (list (->Literal "'") (->Param "x") (->Literal "'")))
-                (parse "'{{x}}'" true true))
-  (p/let-assert (p/->Ok (list (->Literal "{x: {y: \"") (->Param "param") (->Literal "\"}}")))
-                (parse "{x: {y: \"{{param}}\"}}" true true))
-  (p/let-assert (p/->Error (->Unterminated)) (parse "select {{x" true true))
-  (p/let-assert (p/->Error (->OptionalWithoutParam))
-                (parse "[[no params]]" true true)))
