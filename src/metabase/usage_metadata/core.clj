@@ -1,5 +1,5 @@
 (ns metabase.usage-metadata.core
-  "Public API for usage-metadata rollups."
+  "Public API for usage-metadata rollup insights."
   (:require
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.schema :as usage-metadata.schema]

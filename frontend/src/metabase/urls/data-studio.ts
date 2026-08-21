@@ -9,6 +9,8 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  UsageMetadataCandidateType,
+  UsageMetadataCleanupQueue,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
@@ -103,6 +105,52 @@ export function dataStudioLibrary({
     query = `?${params.toString()}`;
   }
   return `${ROOT_URL}/library${query}`;
+}
+
+export type DataStudioCleanupParams = {
+  search?: string;
+  databaseId?: DatabaseId;
+  candidateType?: UsageMetadataCandidateType;
+  queue?: UsageMetadataCleanupQueue;
+  candidateId?: number;
+};
+
+function getCleanupQueryString({
+  search,
+  databaseId,
+  candidateType,
+  queue,
+  candidateId,
+}: DataStudioCleanupParams = {}) {
+  const params = new URLSearchParams();
+  if (search) {
+    params.set("search", search);
+  }
+  if (databaseId != null) {
+    params.set("database", String(databaseId));
+  }
+  if (candidateType) {
+    params.set("type", candidateType);
+  }
+  if (queue && queue !== "suggested") {
+    params.set("queue", queue);
+  }
+  if (candidateId != null) {
+    params.set("candidate", String(candidateId));
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+export function dataStudioCleanup(params?: DataStudioCleanupParams) {
+  return `${ROOT_URL}/cleanup${getCleanupQueryString(params)}`;
+}
+
+export function dataStudioCleanupTable(
+  tableId: TableId,
+  params?: DataStudioCleanupParams,
+) {
+  return `${ROOT_URL}/cleanup/tables/${tableId}${getCleanupQueryString(params)}`;
 }
 
 export function dataStudioTable(tableId: TableId) {

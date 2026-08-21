@@ -43,7 +43,24 @@ export type FilterPickerProps = {
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
 >;
 
-export function FilterPicker({
+export type ReadOnlyFilterPickerProps = Omit<
+  FilterPickerProps,
+  "onSelect" | "readOnly"
+>;
+
+type FilterPickerContentProps = Omit<FilterPickerProps, "onSelect"> & {
+  onSelect?: FilterPickerProps["onSelect"];
+};
+
+export function FilterPicker(props: FilterPickerProps) {
+  return <FilterPickerContent {...props} />;
+}
+
+export function ReadOnlyFilterPicker(props: ReadOnlyFilterPickerProps) {
+  return <FilterPickerContent {...props} readOnly />;
+}
+
+function FilterPickerContent({
   className,
   query,
   stageIndex,
@@ -56,7 +73,7 @@ export function FilterPicker({
   withColumnGroupIcon,
   withCustomExpression,
   readOnly,
-}: FilterPickerProps) {
+}: FilterPickerContentProps) {
   const [filter, setFilter] = useState(initialFilter);
   const [column, setColumn] = useState(
     getInitialColumn(query, stageIndex, filter),
@@ -81,7 +98,7 @@ export function FilterPicker({
   }, [initialFilter]);
 
   const handleChange = (filter: Lib.Filterable) => {
-    onSelect(filter);
+    onSelect?.(filter);
     onClose?.();
   };
 
@@ -126,7 +143,7 @@ export function FilterPicker({
 
   const handleClauseChange = useCallback(
     (_name: string, clause: Lib.ExpressionClause | Lib.FilterClause) => {
-      onSelect(clause);
+      onSelect?.(clause);
       onClose?.();
     },
     [onSelect, onClose],

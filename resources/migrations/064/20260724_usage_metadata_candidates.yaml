@@ -1,0 +1,297 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.um-candidate-run
+      author: retro
+      comment: Create usage metadata candidate refresh runs
+      changes:
+        - createTable:
+            tableName: usage_metadata_candidate_run
+            remarks: Refresh lifecycle and diagnostics for materialized cleanup candidates
+            columns:
+              - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: status, type: varchar(32), remarks: Queued running succeeded or failed, constraints: {nullable: false}}
+              - column: {name: trigger, type: varchar(32), remarks: Manual or scheduled trigger, constraints: {nullable: false}}
+              # Intentionally no User FK so refresh diagnostics survive deletion of the requesting user.
+              - column: {name: requested_by, type: int, remarks: Requesting user ID retained without a foreign key so run diagnostics survive user deletion}
+              - column: {name: algorithm_version, type: int, remarks: Materialization algorithm version, constraints: {nullable: false}}
+              - column: {name: source_config, type: "${text.type}", remarks: JSON query population configuration, constraints: {nullable: false}}
+              - column: {name: summary, type: "${text.type}", remarks: JSON result counts}
+              - column: {name: error, type: "${text.type}", remarks: Failure detail}
+              - column: {name: created_at, type: "${timestamp_type}", remarks: Time the refresh was queued, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
+              - column: {name: started_at, type: "${timestamp_type}", remarks: Time processing began}
+              - column: {name: finished_at, type: "${timestamp_type}", remarks: Time processing completed}
+
+  - changeSet:
+      id: v64.um-candidate
+      author: retro
+      comment: Create materialized usage metadata candidates
+      changes:
+        - createTable:
+            tableName: usage_metadata_candidate
+            remarks: Table Metric Measure or Segment recommendations in an isolated successful snapshot
+            columns:
+              - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
+              - column:
+                  name: run_id
+                  type: int
+                  remarks: Candidate refresh run
+                  constraints: {nullable: false, referencedTableName: usage_metadata_candidate_run, referencedColumnNames: id, foreignKeyName: fk_um_candidate_run, deleteCascade: true}
+              - column: {name: candidate_type, type: varchar(32), remarks: Table Metric Measure or Segment, constraints: {nullable: false}}
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: Owning physical table
+                  constraints: {nullable: false, referencedTableName: metabase_table, referencedColumnNames: id, foreignKeyName: fk_um_candidate_table, deleteCascade: true}
+              - column: {name: signature_version, type: int, remarks: Canonical signature format version, constraints: {nullable: false}}
+              - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
+              - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
+              - column: {name: definition, type: "${text.type}", remarks: JSON creation-ready MBQL definition, constraints: {nullable: false}}
+              - column: {name: semantic_details, type: "${text.type}", remarks: JSON type-specific recommendation details, constraints: {nullable: false}}
+              - column: {name: suggested_name, type: "${text.type}", remarks: Deterministically suggested name, constraints: {nullable: false}}
+              - column: {name: display_name, type: "${text.type}", remarks: Cluster-aware deterministic display name, constraints: {nullable: false}}
+              - column: {name: suggested_description, type: "${text.type}", remarks: Deterministically suggested description, constraints: {nullable: false}}
+              - column: {name: modeling_status, type: varchar(32), remarks: Missing partially modeled or modeled, constraints: {nullable: false}}
+              - column: {name: verified_source_count, type: int, remarks: Distinct verified source cards, constraints: {nullable: false}}
+              - column: {name: official_source_count, type: int, remarks: Distinct official source cards, constraints: {nullable: false}}
+              - column: {name: popular_source_count, type: int, remarks: Distinct popular source cards, constraints: {nullable: false}}
+              - column: {name: distinct_source_count, type: int, remarks: Distinct source cards, constraints: {nullable: false}}
+              - column: {name: recent_view_count, type: int, remarks: Sum of source Card views in the snapshot usage window, constraints: {nullable: false}}
+              - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
+              - column: {name: sort_position, type: int, remarks: Deterministic depth-first position within the snapshot, constraints: {nullable: false}}
+
+  # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
+  # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
+  - changeSet:
+      id: v64.um-candidate-run-index
+      author: retro
+      comment: Index candidate refresh ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate
+                indexName: idx_um_candidate_run
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_run
+            columns:
+              - column: {name: run_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-table-index
+      author: retro
+      comment: Index candidate table ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate
+                indexName: idx_um_candidate_table
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_table
+            columns:
+              - column: {name: table_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-unique
+      author: retro
+      comment: Enforce one semantic candidate per refresh and table
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate
+            columnNames: run_id, candidate_type, table_id, signature_version, signature_hash
+            constraintName: uq_um_candidate_run_signature
+
+  - changeSet:
+      id: v64.um-candidate-index
+      author: retro
+      comment: Index candidate list filtering
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_list
+            columns:
+              - column: {name: run_id}
+              - column: {name: table_id}
+              - column: {name: candidate_type}
+              - column: {name: modeling_status}
+
+  - changeSet:
+      id: v64.um-candidate-families-index
+      author: retro
+      comment: Index deterministic recommendation-family ordering
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate
+            indexName: idx_um_candidate_sort_position
+            columns:
+              - column: {name: run_id}
+              - column: {name: sort_position}
+
+  - changeSet:
+      id: v64.um-candidate-source
+      author: retro
+      comment: Create candidate source provenance
+      changes:
+        - createTable:
+            tableName: usage_metadata_candidate_source
+            remarks: Snapshot of saved questions and models supporting each candidate
+            columns:
+              - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
+              - column:
+                  name: candidate_id
+                  type: int
+                  remarks: Materialized candidate
+                  constraints: {nullable: false, referencedTableName: usage_metadata_candidate, referencedColumnNames: id, foreignKeyName: fk_um_candidate_source_candidate, deleteCascade: true}
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: Original source Card ID retained as snapshot data after Card deletion
+                  # Intentionally no Card FK: completed analysis snapshots must not change when saved content is deleted.
+                  constraints: {nullable: false}
+              - column: {name: card_name, type: varchar(254), remarks: Source Card name at refresh time}
+              - column: {name: card_type, type: varchar(32), remarks: Question or model, constraints: {nullable: false}}
+              - column: {name: verified, type: "${boolean.type}", remarks: Whether the source was verified, constraints: {nullable: false}}
+              - column: {name: official, type: "${boolean.type}", remarks: Whether the source was in an official collection, constraints: {nullable: false}}
+              - column: {name: popular, type: "${boolean.type}", remarks: Whether the source met the popularity threshold, constraints: {nullable: false}}
+              - column: {name: recent_view_count, type: int, remarks: Source Card views in the snapshot usage window, constraints: {nullable: false}}
+              - column: {name: joined, type: "${boolean.type}", remarks: Whether evidence came from a joined stage, constraints: {nullable: false}}
+              - column: {name: stage_numbers, type: "${text.type}", remarks: JSON stage numbers contributing evidence, constraints: {nullable: false}}
+              - column: {name: model_lineage, type: "${text.type}", remarks: JSON transparent model lineage}
+
+  - changeSet:
+      id: v64.um-candidate-source-candidate-index
+      author: retro
+      comment: Index candidate source ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_source
+                indexName: idx_um_candidate_source_candidate
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_source
+            indexName: idx_um_candidate_source_candidate
+            columns:
+              - column: {name: candidate_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-source-unique
+      author: retro
+      comment: Count each source Card once per semantic candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_source
+            columnNames: candidate_id, card_id
+            constraintName: uq_um_candidate_source_card
+
+  - changeSet:
+      id: v64.um-candidate-match
+      author: retro
+      comment: Create candidate Library reconciliation matches
+      changes:
+        - createTable:
+            tableName: usage_metadata_candidate_match
+            remarks: Snapshot of exact and structural relationships to Library entities
+            columns:
+              - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
+              - column:
+                  name: candidate_id
+                  type: int
+                  remarks: Materialized candidate
+                  constraints: {nullable: false, referencedTableName: usage_metadata_candidate, referencedColumnNames: id, foreignKeyName: fk_um_candidate_match_candidate, deleteCascade: true}
+              - column: {name: relation, type: varchar(32), remarks: Exact same-base subset superset or overlap, constraints: {nullable: false}}
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Related Measure or Segment ID retained as snapshot data after entity deletion
+                  # Candidate type identifies the entity model. Intentionally no entity FK: completed analysis
+                  # snapshots must remain internally consistent after the Measure or Segment is deleted.
+                  constraints: {nullable: false}
+              - column: {name: entity_name, type: varchar(254), remarks: Related entity name at refresh time, constraints: {nullable: false}}
+              - column: {name: entity_description, type: "${text.type}", remarks: Related entity description at refresh time}
+
+  - changeSet:
+      id: v64.um-candidate-match-index
+      author: retro
+      comment: Index candidate reconciliation lookup and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_match
+                indexName: idx_um_candidate_match_candidate
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_match
+            indexName: idx_um_candidate_match_candidate
+            columns:
+              - column: {name: candidate_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-match-entity-unique
+      author: retro
+      comment: Keep one entity relationship per usage metadata candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_match
+            columnNames: candidate_id, relation, entity_id
+            constraintName: uq_um_candidate_match_entity
+
+  - changeSet:
+      id: v64.um-candidate-dismissal
+      author: retro
+      comment: Create durable global candidate dismissals
+      changes:
+        - createTable:
+            tableName: usage_metadata_candidate_dismissal
+            remarks: Semantic candidate identities hidden from the admin workflow
+            columns:
+              - column: {name: id, type: int, autoIncrement: true, remarks: Surrogate primary key, constraints: {primaryKey: true, nullable: false}}
+              - column: {name: candidate_type, type: varchar(32), remarks: Table Metric Measure or Segment, constraints: {nullable: false}}
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: Owning physical table
+                  constraints: {nullable: false, referencedTableName: metabase_table, referencedColumnNames: id, foreignKeyName: fk_um_candidate_dismissal_table, deleteCascade: true}
+              - column: {name: signature_version, type: int, remarks: Canonical signature format version, constraints: {nullable: false}}
+              - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
+              # Intentionally no User FK so the dismissal remains durable after the administrator is deleted.
+              - column: {name: dismissed_by, type: int, remarks: Dismissing user ID retained without a foreign key so the durable dismissal survives user deletion, constraints: {nullable: false}}
+              - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
+
+  - changeSet:
+      id: v64.um-candidate-dismissal-table-index
+      author: retro
+      comment: Index candidate dismissal table ownership and cascade deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: usage_metadata_candidate_dismissal
+                indexName: idx_um_candidate_dismissal_table
+      changes:
+        - createIndex:
+            tableName: usage_metadata_candidate_dismissal
+            indexName: idx_um_candidate_dismissal_table
+            columns:
+              - column: {name: table_id}
+      rollback: []
+
+  - changeSet:
+      id: v64.um-candidate-dismissal-unique
+      author: retro
+      comment: Keep one global dismissal per semantic candidate
+      changes:
+        - addUniqueConstraint:
+            tableName: usage_metadata_candidate_dismissal
+            columnNames: candidate_type, table_id, signature_version, signature_hash
+            constraintName: uq_um_candidate_dismissal_signature
