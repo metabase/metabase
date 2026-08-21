@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.context :as context]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -357,6 +359,72 @@
           (is (some? result))
           (is (str/includes? result "-- Customer purchase transactions"))
           (is (str/includes? result "CREATE TABLE")))))))
+
+(deftest build-schema-context-constrains-tables-to-requested-database-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database other-db {}
+                   :model/Table    other-table {:db_id (:id other-db) :name "secret" :schema "public"}
+                   :model/Field    _of {:table_id (:id other-table) :name "id" :database_type "INTEGER" :base_type :type/Integer}
+                   :model/Database db {}
+                   :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                   :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+      (testing "a table ID from a different database is not included in the DDL, even though the user can read it"
+        (let [{:keys [ddl tables]} (context/build-schema-context (:id db) #{(:id table) (:id other-table)})]
+          (is (str/includes? ddl "orders"))
+          (is (not (str/includes? ddl "secret")))
+          (is (= [(:id table)] (map :id tables)))))
+      (testing "requesting only the other database's table returns nil (no accessible tables in the requested db)"
+        (is (nil? (context/build-schema-context (:id db) #{(:id other-table)})))))))
+
+(deftest build-schema-context-requires-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database is denied, rather than silently returning nil"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                                (context/build-schema-context (:id db) #{(:id table)}))))))))
+
+(deftest get-tables-with-columns-requires-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database is denied, rather than silently returning nil -- this
+                  endpoint (POST /api/llm/extract-sources) shares fetch-accessible-tables-with-columns with
+                  build-schema-context, so it must fail the same way"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                                (context/get-tables-with-columns (:id db) #{(:id table)}))))))))
+
+(deftest fetch-field-values-caps-restricted-columns-test
+  (testing "columns of a row-restricted table are capped at max-restricted-field-values-fetches per request;
+            columns of an unrestricted table are not capped"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    restricted-table {:db_id (:id db)}
+                   :model/Table    open-table       {:db_id (:id db)}]
+      (let [field-defs (fn [table n prefix]
+                         (for [i (range n)]
+                           {:table_id (:id table) :name (str prefix i) :database_type "VARCHAR"
+                            :base_type :type/Text :has_field_values :list}))
+            restricted-fields (t2/insert-returning-instances!
+                               :model/Field (field-defs restricted-table 40 "r"))
+            open-fields       (t2/insert-returning-instances!
+                               :model/Field (field-defs open-table 3 "o"))
+            columns (fn [fields table-id]
+                      (mapv (fn [f] {:id (:id f) :table-id table-id}) fields))
+            all-columns (into (columns restricted-fields (:id restricted-table))
+                              (columns open-fields (:id open-table)))
+            calls (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [params.field-values/get-or-create-field-values!
+                                      (fn [_field] (swap! calls inc) nil)]
+            (#'context/fetch-field-values all-columns #{(:id restricted-table)}))
+          (is (= (+ 3 @#'context/max-restricted-field-values-fetches) @calls)
+              "3 unrestricted + the restricted cap, not all 40 restricted columns")
+          (finally
+            (t2/delete! :model/Field :id [:in (map :id (concat restricted-fields open-fields))])))))))
 
 ;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
 
