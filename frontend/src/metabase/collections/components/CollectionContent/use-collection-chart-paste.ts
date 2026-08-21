@@ -8,6 +8,7 @@ import type { ChartClipboardPayload } from "metabase/common/utils/chart-clipboar
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection } from "metabase-types/api";
+import { exact } from "metabase-types/guards";
 
 const PASTE_TOAST_ID = "collection-chart-paste";
 
@@ -33,14 +34,16 @@ export function useCollectionChartPaste(collection: Collection) {
         }),
       );
       try {
-        await createCard({
-          name: payload.name,
-          description: payload.description ?? null,
-          display: payload.display,
-          dataset_query: payload.dataset_query,
-          visualization_settings: payload.visualization_settings,
-          collection_id: canonicalCollectionId(id),
-        }).unwrap();
+        await createCard(
+          exact({
+            name: payload.name,
+            description: payload.description ?? null,
+            display: payload.display,
+            dataset_query: payload.dataset_query,
+            visualization_settings: payload.visualization_settings,
+            collection_id: canonicalCollectionId(id),
+          }),
+        ).unwrap();
         dispatch(
           addUndo({
             id: PASTE_TOAST_ID,

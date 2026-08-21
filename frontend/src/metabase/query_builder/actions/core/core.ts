@@ -41,6 +41,7 @@ import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
+import { exact } from "metabase-types/guards";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
@@ -379,15 +380,31 @@ async function reduxCreateQuestion(
 ) {
   const display = question.display();
   const size = getDefaultSize(display);
+  const card = question.card();
   // Unjustified type cast. FIXME
-  const card = (await dispatch(
-    createQuestionCard({
-      ...question.card(),
-      dashboard_tab_id: options?.dashboardTabId,
-      ...(size && { size: { size_x: size.width, size_y: size.height } }),
-    }),
+  const newCard = (await dispatch(
+    createQuestionCard(
+      exact({
+        name: card.name,
+        dataset_query: card.dataset_query,
+        display: card.display,
+        visualization_settings: card.visualization_settings,
+        type: card.type,
+        parameters: card.parameters,
+        parameter_mappings: card.parameter_mappings,
+        description: card.description,
+        collection_id: card.collection_id,
+        dashboard_id: card.dashboard_id,
+        document_id: card.document_id,
+        dashboard_tab_id: options?.dashboardTabId,
+        collection_position: card.collection_position,
+        result_metadata: card.result_metadata,
+        cache_ttl: card.cache_ttl,
+        ...(size && { size: { size_x: size.width, size_y: size.height } }),
+      }),
+    ),
   )) as Card;
-  return question.setCard(card);
+  return question.setCard(newCard);
 }
 
 async function reduxUpdateQuestion(
