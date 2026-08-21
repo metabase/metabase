@@ -6,7 +6,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.documents.content-visibility :as content-visibility]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -151,7 +150,7 @@
                    (t2/select :model/Card {:where [:and [:in :id card-ids]
                                                    [:or [:<> :document_id id]
                                                     [:= :document_id nil]]]}))]
-    (content-visibility/with-content-gate-cache
+    (m.document/with-content-gate-cache
       (reduce (fn [accum card]
                 (api/read-check card)
                 (assoc accum

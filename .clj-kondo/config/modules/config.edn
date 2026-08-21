@@ -825,7 +825,6 @@
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
-           metabase.documents.content-visibility
            metabase.documents.core
            metabase.documents.init
            metabase.documents.prose-mirror

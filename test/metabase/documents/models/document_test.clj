@@ -866,3 +866,28 @@
         (is (not (contains? extracted (eid summary-id)))
             "a Summary document is never exported — it is not first-class content, and its body embeds
              values computed under its creator's data-access lens")))))
+
+(defn- import-document-ast
+  "Run an exported AST back through the serdes `:document` import transform."
+  [document]
+  ((get-in (serdes/make-spec "Document" {}) [:transform :document :import-with-context])
+   document :document nil))
+
+(deftest document-serdes-card-embed-round-trips-test
+  (testing "a cardEmbed's Card id survives export and comes back on import"
+    (mt/with-temp [:model/Collection {coll-id :id}  {}
+                   :model/Card       {card-id :id} {:collection_id coll-id}]
+      (let [exported (export-document-ast
+                      {:content_type "application/json+vnd.prose-mirror"
+                       :document     {:type    "doc"
+                                      :content [{:type  "cardEmbed"
+                                                 :attrs {:id card-id}}]}})
+            imported (import-document-ast
+                      {:content_type "application/json+vnd.prose-mirror"
+                       :document     exported})]
+        (testing "export rewrites the id to a portable path"
+          (is (vector? (-> exported :content first :attrs :id))))
+        (testing "import rewrites it back to this instance's Card id — on the serialized form the id
+                  is a serdes path, so any guard that expects a raw integer skips the node and leaves
+                  the path in place"
+          (is (= card-id (-> imported :content first :attrs :id))))))))

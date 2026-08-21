@@ -16,7 +16,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.documents.content-visibility :as content-visibility]
+   [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -432,7 +432,7 @@
 
 (defmethod ^:private post-process-collection-children :document
   [_ _ collection rows]
-  (content-visibility/with-content-gate-cache
+  (documents/with-content-gate-cache
     (map #(dissoc % :exploration_id)
          (t2/hydrate (for [document rows]
                        (-> (t2/instance :model/Document document)
