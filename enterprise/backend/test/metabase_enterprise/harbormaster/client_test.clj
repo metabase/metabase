@@ -65,7 +65,7 @@
         (catch Exception e
           (ex-data e))))))
 
-(deftest ^:sequential call-error-ex-data-test
+(deftest ^:synchronized call-error-ex-data-test
   (testing "the Store's HTTP status and decoded error body are both available on ex-data"
     (is (= {:status         400
             :upsert-add-ons "This organization already has a product with the same metric-name."}

@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { dayjs } from "metabase/dayjs";
 import {
   createBlock,
   createExploration,

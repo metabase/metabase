@@ -32,6 +32,7 @@ const elements = [
   // lib
   createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
+  createElement({ type: "lib", name: "dayjs", enforcePublicApi: true }),
   createElement({
     type: "lib",
     name: "env",

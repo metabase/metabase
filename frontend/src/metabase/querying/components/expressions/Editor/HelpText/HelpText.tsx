@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
+import { hasRequiredFeature } from "metabase/databases";
 import {
   type HelpText,
   expressionModeSupportsClause,
@@ -91,7 +92,8 @@ export function HelpText({
   const clause = helpText && getClauseDefinition(helpText.name);
   const isSupported =
     clause &&
-    database?.hasFeature(clause?.requiresFeature) &&
+    database != null &&
+    hasRequiredFeature(database, clause?.requiresFeature) &&
     expressionModeSupportsClause(expressionMode, clause.name);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
