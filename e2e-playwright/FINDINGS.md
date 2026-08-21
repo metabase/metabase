@@ -1,0 +1,5029 @@
+# Migration dividends — evidence file
+
+Every concrete benefit surfaced by porting Cypress e2e specs to Playwright.
+Each entry: what we found, where, and why it matters. **Process rule: any new
+dividend found during porting gets an entry here in the same PR.**
+
+## Scoreboard — read this before quoting numbers
+
+**Product bugs: 1 jar-CONFIRMED (#1), 6 retracted (#2, #3, #22, #24,
+`dashboard-parameters` field-61, `dashboard-reproductions` 12926), 2 open
+questions (#45, #46 — jar-observed, but neither established as a defect rather
+than intended behaviour; do NOT count these as bugs).** Every claim
+was put through the jar gauntlet.
+
+**Coverage claims need two numbers, not one.** ~300+ specs are ported; a
+non-trivial share is **ported-and-gated** — faithful, typechecked, and not
+executed anywhere *yet*, because the spike's own CI workflow skips QA-database
+snapshot generation (`-@external`) and we don't run those containers locally
+(#49). Quote ported-and-verified separately from ported-and-gated. **Note this
+is a config gap in the spike, NOT a limit of the harness** — Cypress CI runs
+these specs today with QA containers, and #50, which claimed otherwise, is
+retracted.
+
+**The case has costs on the record too**, deliberately: one spec where the
+migration *reduced* coverage (#47), and one input class where Playwright's real
+CDP input is worse than Cypress's (#48). **#1 reproduces on the production bundle** — a
+real, precisely-scoped embedding bug (details in #1). Everything else was
+retracted after it failed to reproduce against the CI uberjar: the
+`parameters: []` / load-path / "Cypress fails identically" cluster (#2, #22,
+#24, field-61, 12926) died to one shared mechanism — a code path we didn't know
+about masked the difference we measured (see #31) — and #3 (search-index drop)
+simply doesn't reproduce and was test-infra, not user-facing, to begin with.
+
+The honest headline is **one confirmed bug**, not a count — and it's the right
+one to lead with because it's verified and scoped. The stronger case for the
+migration is the capability + test-quality evidence below (isolation, real
+iframes/downloads, strictly-stronger and de-vacuoused tests), which doesn't
+depend on bug count and survived the same scrutiny.
+
+**Do not quote a bug count from an un-cross-checked observation.** The honest,
+defensible case for migration does not rest on bug count — it rests on
+capability differences the harness demonstrably has and Cypress structurally
+lacks (#8 per-worker isolation, #22's retraction is itself a demonstration,
+#32 a race only Playwright can see, #33 a green test whose mock never ran),
+plus a large set of strictly-stronger tests and vacuous-assertion fixes (#4–6,
+#34–38) that make the suite catch things the originals could not. Every bug
+candidate has now been through the jar + `--browser chrome` gauntlet: #1 is
+confirmed (and cross-checked as a race Cypress cannot see); the other six are
+retracted. Lead with #1 and the capability evidence.
+
+## Product bugs found by porting
+
+1. **Enter on a highlighted embedded-search result navigates to `/search`
+   instead of the result** (`search.spec.ts`). **JAR-CONFIRMED 2026-07-18 —
+   reproduces on the production bundle, and is more severe than first written.**
+
+   The classic `SearchBar` wires two handlers to Enter: the results dropdown's
+   `onKeyDown` (navigate to the highlighted result) and the input's `onKeyPress`
+   → `goToSearchApp` (go to the full-page `/search` app). A real Enter press
+   emits both a keydown and a keypress, so both fire — and `goToSearchApp`
+   **wins**, so a user who arrow-keys to a result and presses Enter lands on
+   `/search`, losing their selection.
+
+   Probe against the CI uberjar (slot 13, jar mode), embedded app with
+   `top_nav=true, search=true`, one ArrowDown to highlight, then Enter:
+   - natural `page.keyboard.press("Enter")` → extra `GET /api/search?…&context=
+     search-app` fires and the frame ends on **`/search`** (wrong).
+   - `realPressEnter` (rawKeyDown+keyUp only, no char → no keypress) → no extra
+     request, frame ends on **`/dashboard/10-orders-in-a-dashboard`** (correct).
+   The only variable is whether the keypress/char event is delivered, which
+   pins the cause to the `onKeyPress` handler firing regardless of highlight
+   state.
+
+   **Scope (precise):** the classic `SearchBar` renders only in the embedding
+   iframe — `AppBarLarge`/`AppBarSmall` show `<SearchBar>` when
+   `isEmbeddingIframe`, else the command-palette `<SearchButton>`. So this hits
+   **full-app embedding with the top-nav search bar**, a shipped customer
+   config, NOT the normal Metabase app. Reachable by real users (a hardware
+   Enter emits keypress in Chromium). The port avoids it with a keydown-only
+   CDP helper (`realPressEnter`).
+
+   **Cross-check DONE 2026-07-18 — Cypress structurally cannot catch it.** Ran
+   the original `search.cy.spec.js` "allows to select a search result using
+   keyboard" against the SAME jar backend (:4114) with `--browser chrome`
+   (Chrome 150 headless). It **passes**: it asserts landing on
+   `/question/<id>-orders` with exactly one search request, and does — because
+   `cy.realPress("Enter")` (cypress-real-events) delivers the char event
+   delayed, so the result-navigation wins and `goToSearchApp` loses the race.
+   Only the input mechanism differs from the Playwright repro (same backend,
+   same browser, same test intent): Playwright's tight keydown→keypress→keyup
+   mirrors a real keyboard and exposes the bug; Cypress's delayed dispatch
+   hides it. So this is a real, user-reachable race that the Cypress suite is
+   **blind to by construction** — the cleanest migration dividend in the file:
+   not "a bug we found", but "a class of input-timing bug Cypress cannot see".
+
+2. ~~**Dimension-template-tag cards get empty `parameters`**~~
+   **RETRACTED 2026-07-18 — not a bug. Do not cite this as a migration
+   dividend.** The original claim was: cards created with dimension-type
+   template tags come back with `parameters: []`, so `string/=` filters error
+   at query time ("Invalid values provided for operator"), and the Cypress
+   original fails identically against the same backend.
+
+   Re-verified against the CI uberjar (run 29569211972's own artifact, slot 11
+   / :4111, jar mode). **Every limb of the claim is false:**
+
+   - **`parameters: []` is normal and designed-for, not a regression.** The
+     Cypress helper `question()` (`e2e/support/helpers/api/createQuestion.ts`)
+     passes `parameters` straight through to `POST /api/card` and never
+     derives it, so a fixture that omits it stores `[]` *by construction* —
+     always has. Both sides then derive from template-tags on purpose:
+     `getParametersFromCard` (`metabase-lib/v1/parameters/utils/template-tags.ts`)
+     falls back to `getTemplateTagParametersFromCard` when `card.parameters`
+     is empty, and the backend mirrors it in
+     `queries/models/card.clj:384 template-tag-parameters`, whose docstring
+     says outright: *"An older style was to not include `:template-tags` onto
+     cards as parameters… Apparently lots of e2e tests are sloppy about this so
+     this is included as a convenience."* `queries/card.clj:24` and
+     `embedding_rest/api/common.clj:442,486` use the same fallback.
+   - **The filters do render and the query does succeed.** With the fixme
+     lifted, the test passes `toHaveURL(/source=Affiliate/)`, renders
+     "Affiliate" and "Previous 30 years" in the filter widget, and resolves
+     `GET /api/public/card/:uuid/query` (202). Only the *download* step is red.
+   - **"Invalid values provided for operator" has a different cause and is not
+     UI-reachable.** It comes from `verify-type-and-arity`
+     (`query_processor/parameters/operators.clj:54`) when a *variadic* operator
+     gets a non-sequential value — i.e. from the fixture's `default: "Affiliate"`
+     (a bare string) on a `string/=` tag, and only on the raw-API path where the
+     **server** applies the default. The FE normalises it to `["Affiliate"]`
+     first; with FE-shaped params the query returns 202 and xlsx/csv return 200.
+   - **The download failure is ours, twice over.** (1) A slot backend's
+     `site-url` stays `http://localhost:4000` (snapshot-pinned), so
+     `/public/question/:uuid.xlsx` 302s to the *dev* backend, which 404s — no
+     download event. (2) The FE downloads via a `blob:` URL, so the port's
+     `expect(download.url()).toContain("/public/question/<uuid>.xlsx")` can
+     never pass. Repointing site-url makes the download fire.
+
+   See `findings-inbox/findings-2-22-reverification.md` for the evidence.
+
+3. ~~**`restore()` can silently kill the search index**~~ **RETRACTED as a
+   product bug 2026-07-18 — does not reproduce, and was never user-facing.**
+   Original claim: back-to-back `/api/testing/restore` calls drop the async
+   search-index rebuild, leaving table search permanently empty until a
+   force-reindex.
+
+   Probed against the CI uberjar (slot 13, jar mode): two back-to-back raw
+   restores, then poll `GET /api/search?q=Reviews&models=table` for 25s with no
+   force-reindex — **7 runs (incl. a cold path that never force-reindexes), the
+   table index was populated at t=0 every time, zero drops.** The likely reason
+   the harness once needed the mitigation no longer bites: the current
+   (regenerated) snapshots ship a persisted index, so restore repopulates it
+   immediately — there's no rebuild window to lose.
+
+   Two honest caveats: (a) `/api/testing/restore` is a **test-only** endpoint,
+   so even if it reproduced this was never a user-facing product bug — it was
+   miscategorized here; (b) I probed the backend index via the API, not the
+   exact original FE empty-state scenario (observed in the source/hot-bundle
+   era). The `fixtures.ts` poll+force-reindex mitigation is **kept** — it's
+   cheap (exits on the first iteration when the index is present, as the probe
+   confirms) and harmless defense — but this should not be cited as a bug.
+
+## Tests that got strictly stronger in the port
+
+4. **downloads.spec.ts actually downloads.** The Cypress original intercepts
+   export requests, asserts status/content-type, and redirects the response
+   away — no file ever lands. The port completes real downloads and parses
+   the xlsx/csv (18,760-row assertions are now real). It also found the
+   Cypress spec asserting against a wrong endpoint expectation for saved
+   questions and *ignoring* the row-count arguments callers passed to
+   `assertOrdersExport`.
+
+5. **Dead assertions in the Cypress originals surfaced.** Multiple specs
+   carried assertions that could never fail: `search.cy.spec.js` passes a
+   callback to jQuery `.first()` (never executed); `suggestions.cy.spec.ts`
+   asserts `.should("have.length", 1)` on a `cy.contains` result (always 1
+   by construction). The ports made these real assertions — and they pass,
+   but now they actually guard something.
+
+6. **Strict mode catches ambiguity loudly instead of clicking the wrong
+   element.** Cypress `.contains`/first-match semantics silently act on the
+   first of multiple matches; Playwright errors. In `permissions-baseline`
+   this exposed that the "run button disabled" assertion was only ever
+   checking the first of two run buttons — the second (hidden) one is
+   *enabled*, which the Cypress test can never notice.
+
+## Infrastructure findings
+
+7. **Full-app embedding tests now run in a real iframe** (`support/search.ts`
+   harness). Cypress fakes embedding by exploiting its own architecture (it
+   runs tests inside an iframe and deletes `window.Cypress`). The Playwright
+   harness loads the app in an actual `<iframe>` like a customer site —
+   which also documented that the backend sends `X-Frame-Options: DENY` +
+   `frame-ancestors 'none'` and exactly which headers interactive embedding
+   relies on stripping.
+
+8. **Per-worker backend isolation is solved and measured** (`worker-backend.ts`):
+   H2 sample-DB file locking, plugins-dir extraction races, nREPL port
+   clashes, cold-boot first-query failures — all diagnosed with fixes. CI
+   numbers on standard 4vCPU runners: workers=2 → 1.27× wall clock, ~1.4×
+   test throughput; matches-to-beats Cypress serial on identical specs and
+   hardware, with headroom on bigger runners (2×+ at 4 workers on 14 cores).
+   Cypress architecturally cannot parallelize within a run.
+
+## Framework-level simplifications
+
+9. **cypress-real-events is unnecessary.** CodeMirror typing, hover, keyboard
+   shortcuts all work with Playwright's native CDP input (`page.keyboard`,
+   `hover()`). This retires the exact plugin responsible for the pinned-
+   Chrome headless failures from the Chrome-upgrade investigation
+   (realHover tooltip hit-testing, realPress kbar dispatch).
+
+10. **dnd-kit drags are real mouse input**, not 40 lines of synthetic-event
+    choreography with hardcoded waits (`moveDnDKitElementOnto` — and it's
+    target-based rather than pixel-offset-based, so row-height changes don't
+    break it).
+
+11. **No pinned browser.** Playwright ships versioned browsers; the
+    setup-chrome pinning (and the class of "tests break on Chrome vN"
+    migrations) goes away. CI runs needed zero browser-specific flags beyond
+    `bypassCSP` (the analog of Cypress's `chromeWebSecurity: false`).
+
+12. **Traces instead of videos**: failure artifacts include full
+    DOM/network/console timelines (`--trace retain-on-failure`), which is
+    how most of the porting bugs in this spike were diagnosed in minutes.
+
+## Port-cost evidence (for the effort estimate)
+
+- 20 spec files / 137 tests ported (~4,000 Cypress lines), largely by
+  parallel agents; **0-2 small fixes per spec**, every one surfaced by
+  strict mode or a timeout on the first run — nothing silently wrong found
+  later. Fix categories converged quickly (exact-match, wait-inversion,
+  hover-gating, strict-mode duplicates) and are now codified in PORTING.md.
+- Full suite green in CI serial and 2-worker parallel; two consecutive
+  zero-flake CI runs before the parallel experiments began.
+
+## Wave 5 additions (question-saved/new, command-palette, collections, embedding)
+
+13. **Bogus MBQL fixture caught by TypeScript** (`saved.cy.spec.js`): the
+    view-only-tag test's join fixture references `PRODUCTS.PRODUCT_ID` — a
+    field that doesn't exist (undefined → serialized as `null`), plus
+    inconsistent join aliases. Passes in Cypress only because the card is
+    never executed. The TS port refused to compile it, which is how it
+    surfaced. Ported byte-identically with a NOTE.
+
+14. **Latent copy-paste bug** (`collection-pinned-overview.cy.spec.js:240`):
+    the required-parameter test asserts on a *different fixture's* `.name`
+    than the one it created — masked because both constants share the same
+    name string. Port references the correct constant.
+
+15. **A family of dead/vacuous Cypress assertions** found this wave alone:
+    `cy.realPress(["Meta","["])` tests a keybinding that doesn't exist (the
+    following assertion passes because the sidebar was already visible);
+    chained `cy.get()` silently un-scopes (`commandPalette().get(...)`,
+    `tableInteractiveBody().get(...)`); `.then()` used where `.within()` was
+    meant (no scoping at all); `should("be.exist")` (works only because
+    chai's `be` is a passthrough); a `location("pathname")` check that can
+    never catch a slow redirect. All ported as real assertions.
+
+16. **Cypress wait-ordering quirk documented** (`question-new`): upstream
+    `cy.wait("@createDashboard")` sits after a click that does NOT trigger
+    the request — it passes because cy.wait consumes already-received
+    responses. The Playwright port must register the wait at the true
+    trigger; a naive 1:1 port would hang. (Porting rule updated.)
+
+17. **Real HTML5 drag-and-drop — the thing Cypress's own comment wishes
+    for.** The Cypress spec carries a long apology that synthetic dnd
+    events "will not guarantee that the drag and drop functionality will
+    work in the real world" and that the test "would not have caught
+    metabase#30614". Playwright's `dragTo` drives actual mouse input with
+    CDP drag interception — the browser itself synthesizes the full drag
+    event stream. The ported pin-by-dragging test now exercises exactly the
+    interaction the upstream comment says it can't.
+
+18. **Embedding rendering is context-sensitive and Cypress hid it**:
+    /embed/* and /public/* pages render differently when framed (borders,
+    hidden action buttons — `use-embed-frame-options.ts`); Cypress tests got
+    the framed context *by accident of its architecture*. The Playwright
+    iframe harness makes that context explicit and controllable. Also found:
+    a dead `database_id` param in the spec's factory call, another
+    never-awaited intercept, and a `site-url` coupling in embed preview
+    iframes that only shows up with more than one backend.
+
+19. **kbar drops keystrokes in real usage** (`command-palette.spec.ts`,
+    instrumented and verified): kbar detaches/re-attaches its window keydown
+    listener whenever any action re-registers (RTK Query refetches do this
+    at arbitrary times) and keeps it detached while a modal is open or
+    mid-close-transition. Keystrokes landing in those windows silently
+    vanish — a trusted `?` keydown was observed reaching `window` with no
+    handler attached. User-reachable; very plausibly the root cause of the
+    kbar `realPress` flake from the 2026 Chrome-upgrade investigation.
+    Cypress's inter-command latency masks it; the port handles it with an
+    effect-verified `pressShortcut` retry helper (no weakened assertions)
+    and documents the dead windows.
+
+## Wave 6 additions (binning, filters, native-filters, dashboard-management, onboarding)
+
+20. **Vacuous 403 assertion across an 18-invocation permission matrix**
+    (`dashboard-management.cy.spec.js`): `assertOnRequest` reads
+    `xhr.status`, which doesn't exist on Cypress interceptions (it's
+    `xhr.response.statusCode`) — so it asserted `undefined !== 403`, always
+    true. The port makes the status check real for the first time.
+
+21. **Harness self-defense**: the binning port's agent caught a latent bug
+    in our OWN earlier helper (metrics.ts binning picker used
+    case-insensitive substring matching — "Total" would select the
+    "Subtotal" row). The review loop guards the new harness, not just the
+    ported specs.
+
+22. ~~**Third confirmed hit of the dimension-template-tag regression**~~
+    **RETRACTED 2026-07-18 — does not reproduce. Do not cite this as a
+    migration dividend.** The original claim was that sql-field-filter's widget
+    test fails identically in Cypress against this backend, giving FINDINGS #2
+    a blast radius across three specs.
+
+    Re-verified against the CI uberjar (run 29569211972's artifact, slot 11 /
+    :4111). **The port passes**: `sql-field-filter.spec.ts` is 8/8 with the
+    fixme lifted, and the named test is 3/3 under `--repeat-each=3`. It is
+    re-enabled in this PR.
+
+    **The "Cypress fails identically" evidence was an artifact of running
+    Cypress on a shared box.** The Cypress original (Chrome 150 headless,
+    `MB_JETTY_PORT=4111`, no :4000 contact) does fail 3/8 — but with
+    `POST 500 /api/card/:id/query`, and the 500 is:
+
+    ```
+    Database may be already in use: ".../e2e/tmp/sample-database.db.mv.db".
+    Possible solutions: close all other connection(s); use the server mode
+    ```
+
+    Snapshots pin database 1 to the **shared** `e2e/tmp` H2 file, which only
+    one JVM can hold; this box runs 8+ concurrent slot backends. Our Playwright
+    harness re-points database 1 to a per-worker private copy after *every*
+    restore (`support/fixtures.ts` restore(), the `sampleDbUrl` block) —
+    **Cypress has no such step**, because it never needed one. So the port is
+    insulated from a collision Cypress is fully exposed to.
+
+    Controlled proof — same card, same backend, same session, only the repoint
+    differs: without it `POST /api/card/:id/query` → **500** (lock error); with
+    it → **202, completed, row_count 42**, which is exactly the "Showing 42
+    rows" the test asserts. `parameters: []` is present in *both* arms, so it is
+    causally irrelevant. Two of the three Cypress failures ("field alias") were
+    never part of this claim at all — a tell that the cause was environmental.
+
+    Mechanism note, mirroring #24: a code path we didn't know about (the
+    harness's own sample-DB repoint) masked the real difference, and we read the
+    resulting Cypress-vs-Playwright split as an app bug.
+
+23. More silently-weak Cypress assertions made real: a Save-button check on
+    the `disabled` attribute where the button is actually gated by
+    `aria-disabled` (passes vacuously upstream); another `.get()` silently
+    de-scoping a `within()` chain in `multiAutocompleteInput`; a regex
+    passed to chai-jQuery `contain` (which expects a string).
+
+## Wave 7 additions (native pack, schema-viewer, detail-view, glossary, filters/oauth)
+
+24. ~~**Two more real app bugs — an MBQL5 load-path template-tag cluster**~~
+    **RETRACTED 2026-07-17 — does not reproduce. Do not cite this as a
+    migration dividend.** The original claim was: (a) card-reference tags no
+    longer rewritten to slugs on question load (`GET /api/card/:id` never
+    fires from `updateTemplateTagNames`); (b) snippet-inner variable tags not
+    surfaced on saved-question load.
+
+    Re-verified against the CI uberjar (run 29569211972's own artifact) while
+    chasing an unrelated CI failure: **both sub-claims are false there**.
+    `GET /api/card/:id` fires and the rewrite lands (instrumented); the
+    `test.fixme`'d card-tag test passes end-to-end and has been re-enabled.
+    Both `native-snippet-tags` fixmes also pass on the jar (verified by
+    temporarily flipping them; that spec is restored byte-identical).
+
+    One mechanism explains why we mis-read it: where the rewrite *does* land,
+    the loaded question is dirty, so the QB runs it via `/api/dataset` and the
+    card-query endpoint never fires — which is what the original
+    investigation saw and read as "the rewrite never happened". See
+    `findings-inbox/native-subquery-ci-failure.md` for the evidence.
+
+    **Caveat**: the source-mode side was not re-verified (slots were busy).
+    A stale slot backend or stale hot bundle is the likely explanation, but
+    that remains a hypothesis, not a confirmed cause. (An earlier version of
+    this note argued a behavioural split was *impossible* because the repo
+    outside `e2e-playwright/` is identical between the jar's commit and HEAD.
+    That argument is weaker than stated: CI builds a **merge commit**, so the
+    jar's `version.properties` hash isn't a repo revision we can diff against.)
+
+    **Action owed — DONE 2026-07-18**: #2 and #22 were re-checked against the
+    jar the same way and **both are now retracted too** (see above). The
+    "load-path reconciliation cluster" framing is dead: there is no cluster and
+    no product bug. `parameters: []` turned out to be a documented,
+    deliberately-accommodated condition, and the "Cypress fails identically"
+    evidence was H2 sample-DB lock contention between concurrent slot backends.
+    Evidence: `findings-inbox/findings-2-22-reverification.md`.
+
+25. **Another silently-ignored assertion argument**:
+    `H.NativeEditor.completions("ANOTHER")` — completions() takes no
+    argument, so the test only ever checked that *some* completion tooltip
+    was visible. Port asserts the named completion.
+
+26. **Latent upstream flake source made explicit** (schema-viewer): the
+    Cypress camera-zoom assertions snapshot an *animating* transform via
+    `invoke("attr")`; the port's expect.poll genuinely retries. Also: the
+    writable-Postgres describe upstream carries no @external tag despite
+    requiring live QA containers — a tagging gap.
+
+## Wave 8 additions (self-verifying agent loop)
+
+27. **QA-DB gating can pass by racing** (`document-title` port): the
+    "Doing science..." loading assertion flashes even when the QA database
+    connection is refused instantly — the Cypress original can go green
+    against an unreachable QA DB. Also: `cypress.env.json` hardcodes
+    `QA_DB_ENABLED: "true"` regardless of whether containers run.
+
+28. **Silent snapshot staleness after migrations**: `restore-snapshot!`
+    only auto-migrates when `config/is-dev?`, which source-mode e2e
+    backends (run-mode e2e) never satisfy — local restores silently serve
+    pre-migration schemas until snapshots are regenerated; the Cypress
+    original fails identically. Found when a 2-day-old migration broke the
+    security-center port.
+
+29. **Another no-op test**: bookmarks-collection's "removes items from
+    bookmarks list when they are archived" never asserted the removal; the
+    port asserts it (passes — behavior fine, test was dead).
+
+30. **Latent time-drift flake in Cypress** (`relative-datetime`): `now` is
+    captured at module load with only ~4 minutes of tolerance in the
+    minutes-unit tests; the Cypress spec runs ~3.5 minutes — one slow CI
+    run from flaking. The port captures `now` per test.
+
+## Wave 9 additions (nine large specs: dashboards, documents, embedding, metrics)
+
+This wave landed nine of the largest specs in the corpus (~22K lines) and, more
+importantly, matured how we decide whether a finding is real. Read the
+methodology note first — it reframes several earlier entries.
+
+### Methodology: jar mode is the verification default, and it retracted five claims
+
+31. **The single most valuable lesson of the spike: verify against the CI
+    uberjar, not the local dev bundle — and the Cypress cross-check proves port
+    *fidelity*, never *causation*.** Both harnesses run against one backend and
+    one local rspack hot bundle, so a shared environmental cause fails both
+    identically while the app is fine. Over this wave, **five product-bug claims
+    of exactly this shape were retracted** after checking against the jar: #2,
+    #22, #24, `dashboard-parameters`' field-61, and `dashboard-reproductions`'
+    12926, across four independent specs. Each was a *real observation* and a
+    *wrong inference*. Jar mode is now the default loop (it's what CI runs and
+    2–3× faster); source mode is for debugging with source maps only. The
+    decider for real-vs-environmental is a different **artifact**, not a second
+    harness on the same one. This is a strength of the migration, honestly
+    stated: the discipline that caught these is repeatable and now written down.
+
+### Capability differences (things Cypress structurally cannot do)
+
+32. **A real app race only Playwright can see** (`documents-comments`):
+    `deleteNewParamFromURLIfNeeded` strips `?new=true` *after* the mutation
+    resolves, using a `location.pathname` captured at submit time, so a route
+    change inside that window is reverted by a stale `replace`. Instrumented
+    `history` and watched Escape's `push /document/1` get undone. Cypress's
+    command-queue latency always covers the window, so it passes there.
+    **Scope**: the Cypress cross-check passes → not a port defect and not
+    CI-catchable; user impact not hand-verified. A genuine candidate, precisely
+    bounded.
+
+33. **Playwright does not proxy a redirect's follow-up request** — and it
+    exposed a green test that never ran its own mock (`interactive-embedding`).
+    Cypress's proxy fronts every hop; Playwright's `route()` does not, so a JWT
+    SSO test was passing while its IdP mock had *never once executed* — it only
+    waited for the request to be attempted. Isolated with a control: a direct
+    `goto` hits the handler, the same URL via a 302 skips even a `() => true`
+    catch-all. Fixed with a client-side redirect shim.
+
+    **Scope narrowed 2026-07-20** (`tenant-users-sidecar`): this applies to a
+    `page.route`-**mocked** hop. An `/auth/sso?jwt=` redirect served by the real
+    backend is the app's own redirect and a plain `page.goto` follows it fine —
+    no shim needed. As originally written the entry sounded like it covered every
+    JWT SSO port; it does not.
+
+### Tests that got strictly stronger
+
+34. **A resize test that asserts the opposite of the app's behaviour and passes
+    by accident** (`documents`). Upstream drags a card's handle down 200px and
+    asserts the card gets *shorter*; it passes only because the shared
+    `documentDoDrag` helper fires `mouseup` with no coordinates, committing the
+    resize at the body centre instead of the drag destination. Measured to the
+    pixel (426→264 upstream vs the correct 426→626). The `{y:200}` delta is
+    discarded; the test would pass for any delta and flip meaning with layout.
+    The port asserts the real behaviour (drag down 200 → grow by 200).
+
+35. **A dead upstream test** (`documents`): `it("should support formatting via
+    floating menu")` is declared *inside* another test's callback body, so Mocha
+    never schedules it — an entire rich-text-format menu suite that has never
+    run, reading as coverage. The port runs it as a real sibling.
+
+36. **`should("be.disabled")` on a menu is an ANY assertion, not ALL**
+    (`documents`, `metrics-explorer`, others): chai-jquery resolves it to
+    `$els.is(":disabled")`, true if *any* element matches. Upstream "all items
+    disabled" passed with an enabled Download item (correct product behaviour).
+    Same class as #6. Ports assert per-item intent. **Cross-checked**: Cypress
+    passes where the naive port failed — confirmed as port drift, not a bug.
+
+37. **Callback-scoped assertions never enforce** (`click-behavior`): two
+    upstream tests assert an href inside `H.onNextAnchorClick`'s callback and
+    pass green while asserting an href the app never produces — corroborated
+    *within one test body* (asserts a cell reads "October 2026" while asserting
+    an href containing `2025-07`). The port asserts outside the callback.
+
+38. **A cluster of vacuous assertions surfaced across the dashboard specs**
+    (`dashboard-reproductions`): `cy.tick` misused so a negative assertion
+    passed vacuously; `realHover` silently no-ops off-viewport so a tooltip
+    check asserted nothing; `enable_embedding` spread into a POST that ignores
+    it (killed 5 tests once ported faithfully). Each became a real assertion.
+
+### Infrastructure findings
+
+39. **A harness bug corrupting every slot: `site-url` baked to :4000**
+    (found independently by two agents, `dashboard-reproductions` +
+    `interactive-embedding`). Snapshots pin `site-url: http://localhost:4000`,
+    so every drill-through/`openUrl` navigation on a :410N slot backend landed
+    the browser on a *different instance* — and failed silently, because a
+    pathname-only assertion still passed. Fixed once in `worker-backend.ts` via
+    `MB_SITE_URL`. **Known cost** (documented): env beats the app DB, so any
+    test that *writes* site-url is now silently overridden — one fixme records
+    it. Reproduces identically under Cypress, so the cross-check does not clear
+    it — a backend-setting instance of the shared-cause class in #31.
+
+40. **CSS-module class names are minified in the jar — never select on them**
+    (`documents`). A selector matching the class substring `__visible` was green
+    in source mode and red on the jar, where the production bundle minifies the
+    class to an opaque token (measured `vs_4B O6wZQ`). The textbook case for
+    verifying on the jar. Fixed by selecting on computed `opacity`, the real
+    signal in both builds.
+
+41. **Viewport drift — the whole spike runs at 1280×720, not the configured
+    1280×800** (`interactive-embedding`). `devices["Desktop Chrome"]` silently
+    overrides the top-level viewport; caught only because one test asserts the
+    height back. Cypress runs 800, so this is a real fidelity gap. **Needs an
+    owner** — landed specs may have stabilized against 720; fix + full-suite
+    revalidation at a checkpoint, not mid-wave.
+
+42. **Zero-box Mantine modal roots** (`documents`): `ConfirmModal` spreads its
+    testid onto Mantine's `Modal` *root*, which is `position: static` with
+    `fixed` children and collapses to height 0. Cypress `should("be.visible")`
+    passes (visible-child rule); Playwright `toBeVisible()` fails on an open
+    modal. Scope assertions to the dialog content. Reusable across every port.
+
+43. **The jar+CI gauntlet catches its own blind spot — local verify-jar drift**
+    (`smartscalar-trend`). A port pinned `maxPeriodsAgo` to `47`, the value the
+    *local* verify uberjar (COMMIT-ID 751c2a98) clamps to. It passed locally
+    8/8 and the `--browser chrome` cross-check on the same jar "confirmed" 47.
+    CI's freshly-built jar clamps to **48** (matching upstream) — the max is
+    derived from the sample DB's month span, so it is jar-/sample-data-dependent,
+    and the local jar simply carried older sample data. CI caught it (1/402 on
+    shard 4). Two lessons for the case: (a) the fidelity cross-check proves the
+    port matches the original *in that environment* but is blind to a skewed
+    environment — it is not a substitute for CI on the fresh jar; (b) the fix is
+    to assert the *behaviour* (over-max input clamps to `[min, typed)`) not a
+    data-derived magic number, which makes the Playwright port strictly more
+    robust than upstream's hardcoded `48`. This is the process working as
+    intended, not a regression — worth citing as evidence the verification loop
+    is honest about its own limits.
+
+44. **A keyboard shortcut Playwright fires and Cypress can't** (`user-settings`).
+    The dark-mode toggle is a tinykeys global shortcut `$mod+Shift+KeyL`. In the
+    Cypress suite this was unreliable in headless Chrome — cypress-real-events'
+    `realPress` (CDP keyboard dispatch) never reached the handler, so the
+    **original spec abandoned real input and dispatched a synthetic
+    `KeyboardEvent`** via `cy.trigger`. The port uses a real
+    `page.keyboard.press("ControlOrMeta+Shift+KeyL")` and it fires **5/5 across
+    1+2+3 runs, zero fallback**: Playwright's real input delivers a genuine
+    `KeyboardEvent` that satisfies tinykeys' `instanceof` check where CDP dispatch
+    could not. Second independently-evidenced instance of #1 (an input Playwright
+    drives that Cypress structurally can't), and it confirms the exact hypothesis
+    from the Chrome-upgrade investigation. The proof is upstream's own synthetic
+    fallback — Cypress conceded real input here; Playwright doesn't need to. This
+    is a strictly-stronger port, not a faithful one.
+
+## Wave 10 additions (pivot_tables, embedding-dashboard, dashboard-cards/filters repros, column-compare)
+
+Five specs / ~145 tests, all green on the jar. **No product bugs** — every
+failure this wave was port drift, fixed and (where a bug was plausible)
+disproven by the `--browser chrome` cross-check. The dividends are test-quality
+and a migration caveat, not bugs:
+
+- **Engine caveat (worth knowing for the migration):** Playwright's bundled
+  Chromium differs from Chrome in pixel/text metrics — SmartScalar truncation
+  lands differently, so pixel-exact text tests are engine-sensitive. Cross-check
+  passes under Chrome while the Chromium run fails; not a bug or drift. Handled
+  with `test.fixme` + recorded cross-check (dashboard-card-reproductions).
+- **More vacuous assertions surfaced:** `column-compare`'s entire suite is
+  `@skip` (feature disabled) — verified the helper chain still exercises real
+  behaviour by temporarily un-skipping; `embedding #66742`'s `IsSticky` class
+  assertion is a no-op on the minified jar bundle (needs a `data-*` hook).
+- **Consolidation debt is now worth a pass** (flagged repeatedly this wave):
+  `caseSensitiveSubstring`/text matchers duplicated across 5+ support files
+  (→ `support/text.ts`); `findDisplayValue`/`assertIsEllipsified`/
+  `updatePermissionsGraph`/`createQuestionAndAddToDashboard` duplicated across
+  repros modules; typed wrappers (`visitPivotAdhoc`, `createPivotQuestion`) exist
+  only because shared `api.createQuestion` / `permissions.visitQuestionAdhoc`
+  param types omit `visualization_settings` (both forward it at runtime —
+  widening the types deletes the wrappers). New gotchas → PORTING.md wave-10.
+
+See `NOTES-parallelism.md` for the read-only-pool / seeding analysis done this
+session, and `findings-inbox/` for per-spec detail.
+
+## Batches 8–11 additions (66 inbox entries reconciled 2026-07-20)
+
+66 per-spec inbox entries merged in one pass. **No new confirmed product bugs**
+— 60 of the 66 explicitly record "no product-bug claims", which under #31 is the
+expected and healthy outcome, and worth stating plainly: sixty consecutive specs
+went through the jar loop and produced nothing to retract. Two observations rise
+to *open product questions* (#45, #46) and are labelled as such, not as bugs.
+
+The most valuable material in this batch runs **against** the migration case.
+Four findings (#47–#50) are costs, losses, or overclaims. They are recorded here
+in the same detail as the wins, because a case that only survives favourable
+evidence isn't worth making.
+
+### Two open product questions — NOT confirmed bugs
+
+45. **Tenant collections are selectable in a non-tenant collection's move picker,
+    and upstream passes only on search-index lag** (`entity-picker-shared-tenant-collection`).
+    `/api/search?context=entity-picker` returns collection hits with
+    `namespace: null` (12/12 polls against the EE jar after a full force-reindex),
+    while `/api/collection/:id/items` does carry it. `SearchResultsItemList` gates
+    selectability on `PLUGIN_TENANTS.canPlaceEntityInCollection`, whose EE impl
+    (`tenants/utils/utils.ts:44`) reads `collection.namespace` — so a tenant
+    collection reads as a regular one. Upstream's `should("not.exist")` passes
+    because a freshly-created collection isn't searchable for ~1–2s and the check
+    lands before the debounced search returns; the Chrome cross-check on the same
+    jar confirms the timing accident. **Jar status:** the namespace omission and
+    the leak were observed directly on the CI EE uberjar, so this clears the
+    environmental bar that killed #2/#22/#24. **Not established:** user-facing
+    severity, or whether anything outside the picker-move flow is affected. The
+    port stayed faithful to the racy timing rather than asserting the leak.
+
+46. **"Explain this chart" renders inside full-app embedding, and
+    `should("not.exist")` is structurally blind to it** (`metabot`). Both the
+    navbar metabot icon and `AIQuestionAnalysisButton` share one gate
+    (`useUserMetabotPermissions().hasMetabotAccess`) with no embedding-specific
+    check on the latter; the QB toolbar just mounts ~160ms after the navbar. A
+    dedicated Cypress ground-truth spec on the same jar measured
+    `{after: 0, settled: 1}`. **Jar status: jar-observed, and the fidelity
+    cross-check passes on the same jar — but nobody has established that the
+    explainer appearing in embedding is a defect rather than an intended
+    affordance.** Open product question, not a bug claim. The durable dividend is
+    the mechanism, which is new: Cypress `should("not.exist")` passes on its
+    *first* absent poll and never re-checks, so **any assertion of absence inside
+    a mount-lag window is vacuous by construction** — a distinct class from the
+    #15/#38 family.
+
+    **Update (2026-07-21): the port no longer replicates the vacuous check.**
+    The ported assertion was still upstream's one-shot `toBe(0)`, which duly
+    failed in CI at `workers=1` with `Expected: 0, Received: 1` — the race
+    landing on the *other* side for once. Re-measured by polling every 500ms:
+    `t=0 count=0` (the instant the navbar icon is visible), `t=500ms count=1`,
+    stable through `t=5500ms`. That confirms this finding's original mechanism
+    from the opposite direction. The port now asserts
+    `expect(getByLabel("Explain this chart")).toBeVisible()` — strictly
+    stronger than upstream, which passes vacuously whenever it wins the race,
+    and it fails if the app ever stops surfacing the explainer. The divergence
+    is documented at the call site. The open *product* question is unchanged:
+    nobody has established whether the explainer appearing in embedding is a
+    defect or an intended affordance.
+
+### Findings that cut against the migration case
+
+47. **The first recorded case of the migration REDUCING coverage**
+    (`document-metabot`). Upstream stubs at the Anthropic wire level via
+    `cy.task startMockLlmServer` and lets the real backend run
+    `document_construct_sql_chart` — SQL validation, query construction,
+    `draft-card-from-chart-output`. Jar mode can't reach an LLM, so the port mocks
+    the FE-facing `POST /api/metabot/document/generate-content` one hop below,
+    and the backend tool pipeline is no longer exercised **at all**. The pitch
+    rests on capability differences; the one running the other way needs stating.
+    Closeable — `ai-controls` (#51) built exactly the mock-LLM fixture this needs.
+
+48. **Real CDP input is not uniformly better than Cypress's — here it is worse**
+    (`custom-column-1`). Accepting the `coalesce` completion inserts a
+    Tab-navigable CodeMirror snippet; typing an argument's `[` fires
+    close-brackets plus the column autocomplete, and that transaction *exits the
+    active snippet*, so the next Tab indents instead of advancing. Probed
+    exhaustively: plain text advances, any `[` kills it; Enter-accept,
+    click-accept, Escape-then-Tab, ArrowRight-then-Tab and a 300ms settle all
+    fail. The Cypress original passes both tests on the *same* slot-4 jar backend
+    under `--browser chrome`, so the app is correct and this is purely
+    `realType`-vs-`page.keyboard`. The honest counterweight to #1 and #44: real
+    input is *different*, not strictly better, and here Cypress's dispatch was the
+    safer one. Port matches outcome via `keyboard.insertText` (no key events).
+
+49. **The ported-but-never-executed tier is now large enough that headline
+    numbers must separate it.** In batch 11 alone, `dependency-graph` (16 tests),
+    `dependency-unreferenced-list` (11) and `database-routing-admin` (15) are
+    faithful, tsc-clean, and comprise **42 tests that have never run a single
+    assertion** — all gate on `PW_QA_DB_ENABLED` plus a token, and a green local
+    run means "correctly skipped". The wave-11 rule says this per-spec, but the
+    port-cost section quotes ported test counts without separating tiers. Any
+    number we publish must distinguish **ported-and-verified** from
+    **ported-and-gated**, or the effort estimate silently claims coverage the
+    spike has not demonstrated.
+
+50. ~~**A whole class of specs can never run in CI — the `postgres-writable`
+    snapshot is gitignored**~~ **RETRACTED 2026-07-20 — the inference was wrong.
+    Do not cite this.** The original claim was that because
+    `git check-ignore e2e/snapshots/postgres_writable.sql` reports IGNORED, the
+    artifact CI needs "does not exist", so `@external`/QA-DB specs could never
+    run in CI even once ported.
+
+    **Every limb of that inference is false:**
+    - **All snapshots are gitignored** — `/e2e/snapshots/*` is a blanket
+      `.gitignore` entry covering `default.sql`, which every landed spec in this
+      spike uses. Snapshots are **generated at CI time**, never committed, so
+      "gitignored" carries no information about CI at all.
+    - **Cypress CI runs these specs today.** `.github/workflows/e2e-test.yml`
+      provisions maildev, openldap, webhook, snowplow, **postgres, mysql and
+      mongo** containers, and runs with
+      `grepTags="-@mongo+-@python+-@OSS+-@skip"` — which does **not** exclude
+      `@external`.
+    - **The gap is our own spike workflow's scoping choice**, one line:
+      `e2e-playwright.yml:114` generates snapshots with
+      `grepTags="-@external"`, deliberately skipping the QA-database snapshots.
+
+    **What is actually true**, and all that should be claimed: these specs are
+    ported-and-gated *in the Playwright spike's current CI config*. Unblocking
+    them is a workflow change that mirrors what `e2e-test.yml` already does —
+    add the QA-DB containers and drop `-@external` from the snapshot step — not
+    an infrastructure impossibility. `transforms-codegen` remains the cheapest
+    proof case (its LLM is already fully stubbed via canned SSE).
+
+    **Mechanism note, and the reason this entry is kept rather than deleted:**
+    this is the same failure mode the file keeps documenting — a real
+    observation (`git check-ignore` really does report IGNORED) turned into a
+    confident causal claim without checking the one thing that would falsify it
+    (what CI actually does). #31 is about exactly this, and the author of this
+    entry had read #31.
+
+### Vacuous upstream assertions — two new mechanisms
+
+51. **Intercepts and waits that cannot match what they name.** Four independent
+    instances this batch, all a step beyond #16 (which was about *ordering*):
+    here the pattern could never have matched. `admin-tools`' `/api/task` glob
+    intercepts (`?` matching a literal `?`, remainder exact with no `*`) match
+    only the fully-unfiltered request, so every filtered request falls through to
+    the real backend and `filtering should work` silently asserts against live
+    sync data. `content-translation-dashboards` waits on the app-mode card-query
+    POST inside describes that run in **static embeds**, which never call that
+    endpoint at all. `homepage`'s x-ray alias is table-only
+    (`/api/automagic-*/table/**`) while the zoom-in drill fires
+    `/api/automagic-dashboards/field/53`, so the second wait was satisfied
+    retroactively by the first click's stale response and the drill was never
+    verified. `public-resource-downloads` matches dashcard exports with
+    `…/card/*/<type>`, so the `questionId` every caller threads in never
+    constrained anything. All four ported as predicates that actually match.
+
+52. **Mocks that cannot affect what they appear to control.** `admin-tools-help`'s
+    `mockSessionPropertiesTokenFeatures` is inert for the "Helping hand"
+    visibility it appears to drive — that reads the **active token** via the
+    settings bootstrap, a path the `/api/session/properties` intercept never
+    reaches. The tests pass because of the real token, not the mock. Ported
+    faithfully with the inertness documented, so nobody later "fixes" a test by
+    editing a mock that does nothing. Related: `metrics-browse`'s
+    "should respect the user setting" forces
+    `browse-filter-only-verified-metrics = true` (already the backend default)
+    and then asserts `aria-selected="false"` — it passes only because the toggle
+    renders false before the forced setting hydrates and Cypress's retry latches
+    onto that first frame. Almost certainly a copy-paste bug; the port drives
+    `false` so the test finally exercises its stated intent.
+
+53. **#25 again, but with proof it mattered** (`line-bar-tooltips`).
+    `e2e-visual-tests-helpers.js:184`'s `tooltipHeader()` takes no parameters and
+    asserts nothing, so every `H.tooltipHeader("2025")` in the spec is a no-op.
+    Porting those strings as real `assertEChartsTooltip({ header })` assertions
+    *fails* — `testAvgTotalChange`'s index-1 tooltip actually reads "2026". The
+    ignored argument was not merely unchecked, it was **wrong**: had it ever been
+    enforced, the suite would have been red.
+
+### Tests that got strictly stronger
+
+54. **Jar speed makes sub-poll-interval UI states unobservable — so the port
+    controls the window instead of racing it** (`whitelabel`). The custom loading
+    message renders only in the QB overlay while a query runs; against the jar's
+    static assets that window is shorter than Playwright's poll interval, so
+    `toBeVisible` missed it every time where Cypress's retry-until-timeout
+    happened to catch the flicker. The port holds the response ~1.5s with
+    `page.route(…) → route.continue()`, making it a real assertion on a
+    controlled window rather than a race won by luck. Generalises to every
+    "assert the transient loading/spinner text" port.
+
+### Infrastructure
+
+55. **A real mock-LLM server, and why stubbing at the browser would have made
+    every quota test vacuous** (`ai-controls`). The obvious port
+    (`mockMetabotResponse`) fulfils `POST /api/metabot/agent-streaming` at the
+    browser — but the entire point of these tests is the backend's
+    `usage/check-usage-limits!` logic, so all 17 quota assertions would have
+    passed without exercising anything. The faithful mechanism is upstream's: a
+    Node HTTP server impersonating the Anthropic Messages API, pointed at by
+    `llm-anthropic-api-base-url`, so traffic flows through the real backend and
+    only the provider call is stubbed. The port binds an **ephemeral port**
+    (`listen(0)`) instead of Cypress's fixed 6123, so it cannot collide with a
+    sibling worker. This is the missing `cy.task("startMockLlmServer")` analogue
+    and it unblocks #47.
+
+56. **Gate audits reclaim coverage — two directions, both cheap.** `custom-viz`
+    restores the `postgres-writable` snapshot but every question queries the
+    sample H2 DB and the writable Postgres is never touched; swapping to
+    `"default"` makes the whole 54-case spec runnable on the bare jar with
+    nothing exercised changed. `homepage`'s SQLite x-ray tests need no container
+    either — they use the built-in `sqlite` driver against the repo-root
+    `resources/sqlite-fixture.db`, which resolves because slot backends run from
+    `REPO_ROOT`. Conversely `admin-permissions` tags 12 permission-table tests
+    `@OSS`, excluding them from CI's EE leg, but all 12 pass on the EE jar with
+    no token active; gating on "no token" rather than "OSS build" reclaims them.
+    Inverse of #26's tagging gap — and auditing snapshot/gate dependencies during
+    a port is nearly free.
+
+57. **Search-backed browse pages refetch exactly once, so a stale post-`restore()`
+    index is permanent** (`metrics-browse`). Browse > Metrics reads
+    `/api/search?models=metric`; after a mutation RTK invalidates the `card` list
+    tag and the page refetches **once** on remount, then caches forever.
+    `restore()`'s force-reindex is async, so a mutation issued moments after
+    restore is read against a still-settling index and the page stays wrong for
+    the rest of the test — assertion retry cannot rescue it because no second
+    fetch is ever issued. A backend probe confirmed moderation is reflected
+    synchronously, so this is a reindex-settle race, not a product bug. Applies to
+    every search-backed browse/list page.
+
+58. **Harness self-defense, second instance** (`remote-sync`, fixing
+    `support/snippets.ts` — same class as #21). `setupGitSync` runs a bare
+    `git init`; on a runner with no global `init.defaultBranch` that creates
+    `master` while the sync settings configure `remote-sync-branch: "main"`, so
+    the import finds no ref and fails. Fix: `git branch -M main` after the first
+    commit (works pre-2.28, unlike `git init -b main`) plus
+    `commit.gpgsign=false` so an inherited signing config can't break the commit
+    on a signing-less runner. **Already landed** in `support/snippets.ts:143,148`
+    (commit `8cbe3b6d915`) — the inbox entry recorded it as owed, but the
+    remote-sync port had applied it; verified in place during this reconciliation.
+    Also measured there and correcting the `snippets` inbox entry: remote-sync
+    endpoints are **premium-token-gated** (`PUT /api/ee/remote-sync/settings`
+    returns 402 without a token), not `:feature :none` — both specs pass only
+    because the jar activates `pro-self-hosted`.
+
+59. **Real git push/pull is covered and needs no external server**
+    (`remote-sync`). `setupGitSync()` builds a throwaway repo under `$TMPDIR` and
+    the backend clones `file://…/.git` in-process. The read-write describe
+    (create branch, push, switch, force-push, stash-to-branch, discard) passes
+    8/8 locally. It doesn't run in the spike's CI only because that describe's
+    `beforeEach` restores `postgres-writable` despite the tests never touching
+    that DB — a gating over-reach worth revisiting. (Originally cited #50 as
+    "can't run in CI"; #50 is retracted — the spike's workflow simply doesn't
+    generate QA-DB snapshots, and Cypress CI runs these specs today.)
+
+60. **Consolidation debt has crossed from "worth a pass" to "costing every
+    port".** Five more independent duplications in one batch of eleven specs:
+    `createOfficialCollection` is the **4th** independent `createCollection`
+    variant (the shared ports all drop `authority_level`); `ORDERS_COUNT_QUESTION_ID`
+    is re-derived locally for the **3rd** time; `createPublicDocumentLink`
+    duplicates `createPublicLink` solely because the document endpoint uses a
+    different slug; `mockMetabotResponseWithDelay` is a strict superset of the
+    shared `mockMetabotResponse`. The driver is the "new module per agent, don't
+    edit shared files" rule interacting with parallel agents — correct during the
+    spike, but the fix list is now concrete and scheduled in PORTING.md.
+
+61. **Marginal port cost in a covered domain is now near zero**
+    (`content-translation-questions`). Third spec in that domain: 3 tests, 6/6
+    under `--repeat-each=2`, and **no support file was created at all** — the
+    existing content-translation helpers, `visitEmbeddedPage` and the shared
+    factories covered it entirely. A concrete data point for the effort estimate:
+    the third spec in a domain costs roughly the diff, not the harness.
+
+## Batch 12–13 additions
+
+### A capability the spike had been leaving on the table
+
+62. **Snowplow events can be captured at the browser boundary — no micro, no
+    container, no cross-slot contention** (`search-snowplow`). PORTING rule 6
+    said stub snowplow to no-ops; applied to a spec whose *subject* is analytics
+    that would have produced **26 no-op tests**. The working mechanism instead:
+    `page.addInitScript` overrides `window.MetabaseBootstrap` to force tracking
+    on and point the collector at the app's own origin, then `page.route`
+    base64url-decodes the tracker's `tp2` POST body — yielding `data.data`
+    byte-identical to what micro exposes, which is exactly what
+    `expectUnstructuredSnowplowEvent` matches on.
+
+    Two things make this a genuine dividend rather than a workaround. First, the
+    **CORS discovery**: the tracker sends `application/json` plus `SP-Anonymous`,
+    so a cross-origin collector triggers a preflight — and **Playwright does not
+    intercept preflight `OPTIONS`**, so the real POST is never sent and the
+    capture sees nothing. Re-pointing the client at the app origin removes CORS
+    entirely, and this generalises to *any* port trying to observe a POST body
+    sent to a third-party origin. Second, a shared snowplow-micro on :9090 has a
+    structural problem this avoids: `resetSnowplow` wipes one global store that
+    every parallel worker shares.
+
+    **Proven on three independent specs with zero modification to the helper** —
+    `search-snowplow`, `data-studio-metrics` (which reported that stubbing would
+    have made three of its tests no-ops), and `visualizer-snowplow-tracking`
+    (whose matcher shapes and count-accumulation assertions the original never
+    exercised). It is now the documented default for snowplow-subject specs.
+
+    **Stated gap:** it cannot reproduce `expectNoBadSnowplowEvents`, which asks
+    micro for **Iglu schema validation failures**; the port degrades that to a
+    structural check, so it does NOT catch "the FE emits a field the schema
+    rejects". Closing it means running `snowplow/iglu-client-embedded/schemas`
+    through a JSON-schema validator (`ajv` is already in the repo root).
+
+    The rule change also has to survive its own converse, and it did:
+    `data-studio-snippets` correctly judged the *opposite* way — upstream calls
+    `resetSnowplow` but asserts no events at all, so capture would have bought
+    nothing. Its 14 tests carry no analytics coverage, upstream included, and
+    that is now written down rather than papered over.
+
+### More upstream tests that assert nothing
+
+63. **A test with no assertion whatsoever** (`data-studio-library`): "should let
+    you move metrics into the library, even when empty" ends on a `Duplicate`
+    click and simply stops — it would pass if the duplicate returned 500. Ported
+    with the test's stated intent made real: anchor the `POST /api/card`
+    response, assert 200 and `collection_id === <library-metrics id>`. The
+    starkest member of the #15/#38/#51 family so far.
+
+64. **An absence assertion aimed at the wrong object** (`measures-data-studio`):
+    the deletion test creates "Measure to Delete", then asserts
+    `verifyMeasureNotInQueryBuilder("Total Revenue")` — a measure it never
+    creates and that `restore()` guarantees absent. The deletion was never
+    verified. Ported against the right name; it passes, so the behaviour is fine
+    and only the check was empty.
+
+65. **Absence checks that pass just as well on a broken page**
+    (`application-permissions`, three instances). Each asserts X is absent from a
+    container the test never asserts is *present*. The strongest is the
+    notifications list, where the whole claim is "the subscription is listed but
+    unremovable" — an empty list satisfies it identically. All three are now
+    gated on the container, and on "Subscription" actually being listed; they
+    still pass, so the gates are load-bearing rather than cosmetic. Ported as
+    non-retrying `count()` per #46's one-shot rule, not as a stronger
+    `toHaveCount(0)`.
+
+66. **A poll that returns before the thing it waits for**
+    (`multi-factor-auth`): `H.getInbox()` resolves as soon as the inbox is
+    non-empty, and both email tests already have an enrollment notification
+    sitting there — so it returns before the email under test is necessarily
+    sent, making the following `to.exist` a timing coin flip. Ported as a
+    subject-matching wait, and `expect(code).to.be.a("string")` tightened to
+    `/^\d{6}$/`.
+
+### Infrastructure
+
+67. **A green run that never ran: maildev 3.x silently disables every email
+    test** (`multi-factor-auth`). maildev 3.x moved its REST API to `/api/email`,
+    so `isMaildevRunning()` probes the 2.x path, reports false, and every email
+    test gate-skips — while the suite reports green. `bunx maildev` installs 3.x
+    by default, so this is the easy mistake, not the exotic one. Pin
+    `maildev@2.0.5`. Same failure shape as #49: the exit code is not the
+    coverage number.
+
+68. **A container dependency inherited from a helper is not automatically a real
+    dependency of the test** (`application-permissions`). `H.setupSMTP()` PUTs
+    `/api/email`, which live-validates and therefore needs maildev — but the test
+    calling it never reads an inbox; it only needs the "email is configured"
+    state. Swapping to `configureSmtpSettings` (bulk `PUT /api/setting`, no
+    validation) kept the test executable on the bare jar instead of gate-skipped.
+    Cheap win, and the same audit that #56 describes for snapshots.
+
+### The SDK-iframe tier — feasibility settled
+
+69. **The 28 deferred SDK-iframe specs are PORTABLE, with no hard blockers, and
+    all three assumed obstacles were false or cheap.** `embed.js` needs no SDK
+    build — confirmed by measurement, not assumption: it ships in the uberjar at
+    82,224 bytes and `GET :4105/app/embed.js` returns exactly that off a slot
+    backend, so upstream's `mockEmbedJsToDevServer` is a hot-reload convenience
+    and was dropped. The `:4000` hardcoding is not structural — it appears in
+    three places that must merely agree (script `src`, `instanceUrl`, test-page
+    origin), all now derived from `mb.baseUrl`; no product code reads `:4000`.
+    And `visitCustomHtmlPage` is *less* machinery in Playwright than in Cypress
+    (`page.route()` + `fulfill()` + `goto()`). Proof spec `authentication`:
+    **16/16, 32/32 under `--repeat-each=2`**, tsc clean; 3 first-run failures,
+    all port drift, no bug claims.
+
+70. **Cypress's `chromeWebSecurity: false` has been doing invisible work, and
+    two browser security mechanisms surface the moment you stop disabling it.**
+    Both were found porting the SDK harness, and both look exactly like product
+    regressions:
+    - **Credentialed CORS**: a wildcard `Access-Control-Allow-Origin` is rejected
+      for `credentials: "include"`. Fix: echo the caller's Origin.
+    - **Private Network Access**: `http://example.com` → `http://localhost:4105`
+      is refused — *"the request client is not a secure context and the resource
+      is in more-private address space `loopback`"*. `embed.js` never loads, the
+      iframe never exists, and it reads as the app being broken. **Critically,
+      `grantPermissions(["local-network-access"])` does NOT lift this** — the
+      blocker is the secure-context requirement, not a permission. Fix: upgrade
+      non-loopback test origins to `https://` (faithful, because `_getIsLocalhost`
+      reads hostname only).
+
+    **This qualifies #7's harness**, which leans on that `grantPermissions` call
+    — it works there only because that page's origin is already loopback. Anyone
+    reusing #7's approach from a non-loopback origin will hit this.
+
+71. **Method note: proving you are on your own slot requires falsification, not
+    assertion** (the #39 discipline applied). Content assertions cannot prove it —
+    `:4000` serves identical sample data, which is exactly why #39 failed
+    silently. The harness ships a two-leg guard and the agent **falsified both
+    rather than asserting them**: leg 1 rejected a deliberate misdirection at
+    another live slot (`:4104`), producing
+    `Expected /^http:\/\/localhost:4105/ Received "http://localhost:4104/embed/sdk/v1…"`;
+    leg 2 writes a slot-unique marker to the app DB and reads it back *from
+    inside the embed iframe's own document*, then re-writes a second marker to
+    track the change — proving live backend state rather than anything the
+    harness injected. **Scope caveat on record:** `:4000` was not running during
+    that session, so a `:4000` misdirection would have failed loudly anyway. The
+    guard is what makes this trustworthy on a box where `:4000` *is* up — the
+    normal dev machine, and the exact condition of #39.
+
+72. **The tier is two groups, not one — and that halves the scary number.** The
+    13 `sdk-iframe-embedding-setup/` specs **do not use the embed.js harness at
+    all**: they are ordinary admin-UI tests that visit `/admin/embedding` and
+    drive the setup flow, with only 2 touching `loadSdkIframeEmbedTestPage` once
+    each. They need a port of their 200-line spec-local `helpers/index.ts` —
+    normal work, no novel infrastructure.
+    - **Group A** (14 specs genuinely needing the harness): ~7–9 sessions, with
+      one ~20-line gap to close first (`prepareGuestEmbedSdkIframeEmbedTest`,
+      needed by 3 specs). Highest variance: `guest-token-refresh` (1018 lines).
+    - **Group B** (13 setup specs): 1 session for the shared helper, then 4–5 to
+      fan out.
+    - **Total ~12–14 sessions**, which is the spike's remaining runway of
+      genuinely CI-verifiable work.
+
+    Flagged upside worth a dedicated look: in `sdk-iframe-embedding.cy.spec.ts`
+    upstream **explicitly gives up on `cy.clock()` inside the iframe** and falls
+    back to real timeouts. `page.clock` installs into frames, so that block may
+    become both faster and deterministic — a likely capability win of the same
+    shape as #1 and #44.
+
+### The absence-assertion class — the biggest test-quality finding of the spike
+
+73. **All 8 absence assertions in `custom-elements-api` were vacuous upstream,
+    proven by inversion.** `H.getSimpleEmbedIframeContent()` gates on
+    `data-iframe-loaded`, which fires *before* the embed paints — measured:
+    iframe loaded +0ms, metabot chat +92ms, drill popover +243ms. Every
+    `should("not.exist")` in that window is satisfied by "nothing has rendered
+    yet". Verified the right way: each input was **inverted**
+    (`with-title="false"`→`"true"`, `drills` off→on, `embedded-metabot-enabled?`
+    false→true) and **all 8 stayed green with the behaviour under test
+    reversed**. Reading the source would not have established this.
+
+    All 8 now carry an anchor and were re-mutated to confirm they fail for the
+    right reason (8/8 red). Six anchor on content present in both variants —
+    including the disabled component's own error text
+    ("Metabot is not enabled for embedded analytics."), a discriminating signal
+    found by dumping the disabled DOM. Two `drills="false"` cases have no DOM
+    signal for "the click was ignored" and use a bounded 3s settle against the
+    measured 243ms (>12× margin), documented as the honest fallback rather than
+    a habit.
+
+    Sub-trap worth its own rule: **a locator that exists in a pre-interaction
+    placeholder form gates nothing.** `data-step-cell` resolves in ~3ms because
+    the empty notebook step is already mounted; the anchor has to be the step
+    *naming Orders*.
+
+74. **A correction to our own playbook, caught by two agents and proven by a
+    third.** PORTING.md had claimed Cypress's `should("not.exist")` is a one-shot
+    check and that agents should match it with a non-retrying
+    `expect(await loc.count()).toBe(0)`, on the reasoning that a retrying
+    `toHaveCount(0)` would be "stronger than the original". **That is backwards.**
+    Both forms retry and both pass at the first absent observation — they are
+    equivalent, and `toHaveCount(0)` is the faithful port. The non-retrying form
+    samples one instant, is *stricter*, and can go falsely red.
+
+    Not theoretical: `select-embed-options` written to the bad rule flaked
+    **1-in-36** (the wizard re-renders its preview in place, so the one-shot
+    count catches the outgoing DOM); converted to retrying, **63/63**. 28
+    assertions across 7 specs were written this way before the rule was fixed.
+    Recorded because the spike's credibility rests on the playbook being
+    correctable, and because it is a clean example of the failure mode this file
+    keeps documenting: a plausible mechanism asserted without measurement.
+
+76. **A test whose entire subject can be deleted without turning it red — with a
+    control that makes the claim sharp** (`select-embed-entity`). Removing the
+    *whole* entity-picker interaction from "can search and select a dashboard"
+    leaves the test **green**: it creates "Acme Inc" in its own body, and the
+    wizard defaults to the most-recently-created dashboard (the EMB-1179
+    behaviour the file's last test asserts), so the picker merely re-selects what
+    was already selected. What makes this a finding rather than a guess is the
+    control: the identical probe against the sibling "can search and select a
+    question" **fails**, because its default is a different question. So the
+    weakness is specific to the dashboard case, not a property of the harness.
+    Ported faithfully rather than strengthened — the fix is upstream's to make.
+
+77. **Upstream's CSV assertions inspect the WRONG BYTES** (`sdk-csv-downloads`) —
+    a sharper instance of #4. The spec intercepts `/api/dataset/csv` and calls
+    `res.send({ statusCode: 200 })`, **replacing the response body**; the file
+    `cy.verifyDownload` then inspects is Cypress's replacement, not the actual
+    export. So the assertions never witness what the endpoint produced. The port
+    completes the real download and asserts against the saved file — confirmed a
+    genuine pivoted export (51 lines,
+    `Created At: Month,0,20,…,Row totals`) — which means it now actually
+    witnesses the metabase#70757 fix the test is named for.
+    **Stated gap:** CSV validity is checked structurally (every record splits to
+    the same field count), not with a real parser — upstream uses `csv-parse`,
+    which is not a dependency of this package. Weaker than upstream on that axis,
+    deliberately recorded rather than quietly dropped.
+
+78. **`installSnowplowCapture` reaches inside the embed iframe — proven, not
+    assumed.** `page.addInitScript` runs in every frame and `page.route`
+    intercepts every frame, so the shared capture sees events fired from within
+    a cross-origin embed. Payload printed to confirm: exactly one
+    `{"event":"dashboard_pdf_exported","dashboard_id":10,"dashboard_accessed_via":"sdk-embed"}`.
+    Every remaining sdk-iframe spec whose snowplow events are the subject can
+    therefore capture rather than stub. (Eighth independent reuse of the helper
+    with zero modification.)
+
+79. **CI builds a MERGE commit, so CI's jar contains master code our branch does
+    not — a sharper and nastier variant of #43.** #43 was about stale *sample
+    data* in the local jar. This is stale *product code*: upstream
+    `8dd86422fec` (Jul 18) moved the subscriptions sidebar onto the shared
+    `Schedule` component (lowercase "Sent *hourly*",
+    `data-testid="select-frequency"`) **and updated that very Cypress spec in the
+    same PR**, away from `findByDisplayValue`. Our branch doesn't contain it;
+    CI's merge jar does. The port was faithful to the original as it existed at
+    fork time, and CI was right to fail it.
+
+    ⚠️ **Caveat on the technique, learned the hard way 2026-07-20:**
+    `PW_KEEP_SLOT_BACKENDS=1` **silently ignores `JAR_PATH` if the slot backend
+    is already up** — it prints `(reused)` and keeps its original jar. A later
+    agent produced a whole evidence table against the stale local jar while
+    believing it was on the CI one, caught it via `ps`, and redid every
+    load-bearing run. **Kill the slot backend before switching jars, and verify
+    with `ps` or `version.hash` vs `COMMIT-ID` rather than trusting the env
+    var.** This is the same "reports success while doing nothing" class as #67.
+
+    **The technique that settled it, worth reusing:** download **the exact
+    uberjar CI ran** (from the run's artifact — here `COMMIT-ID e45bd0c9`), boot
+    a slot from it, and reproduce locally. That converts "CI-only, can't
+    reproduce" into an ordinary local debugging loop, and it produced a
+    before-red/after-green on the *same artifact* — far stronger evidence than a
+    green on our stale jar. It also directly measured the control value flipping
+    from `"Hourly"` to `"hourly"`/aria `Frequency` between the two jars.
+
+    **Accepted trade-off, documented in the spec header:** the fixed test now
+    **fails on our stale local jar** (which has no `select-frequency`). Local
+    re-verification of that spec requires a jar containing `8dd86422fec`. Same
+    shape as the trade already accepted for the #22/#24 re-enabled tests.
+
+    **Standing hazard this implies:** any spec verified only against our local
+    jar may be stale with respect to CI's merge jar. Long-lived branches make
+    this worse the longer they run.
+
+80. **A hardcoded plan→feature table is billing data living outside the repo, and
+    it drifts** (`admin-tools-help`). FINDINGS #52 correctly established that
+    `mockSessionPropertiesTokenFeatures` is **inert** for the "Helping hand"
+    section — `initializePlugin()` gates `PLUGIN_SUPPORT.isEnabled` on
+    `hasPremiumFeature("support-users")`, called at module scope from
+    `app.js:65` reading `window.MetabaseBootstrap`, which no
+    `/api/session/properties` intercept can reach. But that mechanism was **not
+    what reddened CI**. The actual cause: the staging **`pro-self-hosted` token
+    now grants `support-users`** — measured, all four tokens return true, and
+    the served `#_metabaseBootstrap` confirms it. The upstream test hardcodes a
+    plan→feature mapping that is not repo state, and it drifted out from under
+    the test.
+
+    Fixed by asserting the **relationship** rather than the table: read the
+    bootstrap grant per document and assert the section renders iff granted. Still
+    non-vacuous — the no-token step is a hard negative independent of any plan,
+    and four sibling tests still require `pro-cloud` to render the section.
+    **Unexplained and recorded as such:** the first local run of the unmodified
+    spec passed before probing began. `token_check.clj`'s 12h soft-TTL cache is
+    the obvious candidate; it was not proven and is not claimed.
+
+81. **A port can be faithful line-by-line and still functionally inert — and
+    deleting the original would break tooling SILENTLY** (`coverage-baseline`).
+    `coverage-baseline.cy.spec.js` is not a product spec: it is instrumentation
+    scaffolding. `.github/scripts/e2e-spec-globs.mjs` exports it as
+    `BASELINE_SPEC` and `listSpecFiles()` explicitly `ignore:`s it, while
+    `config.js:250`'s `after:spec` hook writes raw coverage that
+    `build-coverage-manifest.mjs` **subtracts from every other spec** to strip
+    boot noise. It was ported 1:1 (it is a real sub-second smoke test and passes),
+    **but the Playwright harness has no coverage instrumentation, so the port does
+    not reproduce the original's function.** Retiring the Cypress spec on the
+    strength of a green port would break baseline subtraction — and would surface
+    as **wrong selective-test plans, not a failing test**.
+
+    Generalises to the migration plan: "every spec is ported and green" is not
+    sufficient grounds to delete the Cypress suite. Specs that exist to feed
+    *tooling* rather than to assert behaviour need their consumers checked
+    independently, because their failure mode is silent.
+
+82. **The snowplow capture covers the FE-emitted class only — `instance-stats`
+    is backend-emitted and has no browser seam.** `instance_stats` goes
+    `stats.clj:1054` → `snowplow.clj track-event!` → Java `Tracker` → Apache
+    HttpClient, never touching the browser. Measured rather than argued: a
+    `node:http` server on the collector port received exactly one
+    `POST /…/tp2` (`iglu:com.metabase/instance_stats/jsonschema/2-0-0`) ~1s after
+    `POST /api/testing/stats` returned 200, with zero browser traffic. **The app
+    is fine; there is no seam to observe it from.**
+
+    The two tests were `test.fixme`'d rather than faked, and re-pointing the
+    collector per-test is impossible — `snowplow.clj` builds the tracker in a
+    `defonce` whose `network-config` reads `snowplow-url` **once at backend
+    boot** — so the fix had to be a harness change.
+
+    **RESOLVED 2026-07-20 — a per-slot collector now exists** (`support/snowplow-collector.ts`,
+    wired in `worker-backend.ts` + `fixtures.ts`): a `node:http` server in the
+    Playwright process on `backend port + 1000`, started before the slot backend
+    spawns. It restores micro's vantage point (downstream of everything, so it
+    sees backend-emitted events) without micro's one-store-on-one-fixed-port
+    contention. `instance-stats-snowplow` is un-fixme'd and passing;
+    `installSnowplowCapture` is untouched and the two coexist. See
+    `findings-inbox/per-slot-snowplow-collector.md`.
+
+    ⚠️ **Two claims in the original version of this entry were WRONG and are
+    retracted** (measured during the fix):
+    - **`MB_SNOWPLOW_URL` does not work.** `environ` merges system properties
+      *after* env vars, and `deps.edn`'s `:e2e` alias pins
+      `-Dmb.snowplow.url` via `JDK_JAVA_OPTIONS`. `_JAVA_OPTIONS` is what wins,
+      because it is applied after the command line. The `MB_SITE_URL` pattern
+      does **not** generalise — site-url simply isn't pinned as a system property.
+    - **"A clean or CI backend would fire real events at
+      `https://sp.metabase.com`" is false.** The `:e2e` alias also sets
+      `-Dmb.run.mode=e2e`, so `config/is-prod?` is **false** for slot backends
+      and that default never applied. A clean-shell boot reports
+      `localhost:9090`. **Nothing was escaping to production**, and the
+      safety argument that was made for this change does not hold. The real
+      benefit is narrower: previously all five slots emitted to one fixed port
+      (interleaving into a store any slot could wipe, or vanishing silently when
+      micro was down); now each slot owns its collector.
+
+    Also landed: `expectNoBadSnowplowEvents` is now **real** on the collector
+    path — `ajv` against the schemas vendored in `snowplow/iglu-client-embedded`,
+    verified inside a Playwright worker (valid passes; `analytics_uuid: 12345`
+    fails `must be string`; an unknown schema URI is reported, not skipped). This
+    closes the Iglu gap #62 recorded, **for the collector path only** — the
+    browser-side check in `search-snowplow.ts` was deliberately left alone, since
+    retrofitting it would change assertion strength across ~26 landed tests and
+    deserves its own verification pass.
+
+83. **`should("be.empty")` on an `<input>` is vacuous** (`embedding-hub`) — a
+    new member of the chai-jquery-semantics family (#6, #36, #23). chai-jquery's
+    `empty` means "has no child nodes", which is **trivially true of a void
+    element**: an `<input>` can never have children regardless of its value. So
+    the assertion passes whatever the field contains. Ported as
+    `toHaveValue("")`, which is what the test meant.
+
+84. **An absence assertion that sails past a 500 — and the honest finding is
+    that it's faithful** (`embedding-hub`). Mutation D fulfilled
+    `PUT /api/permissions/graph` with a 500, and upstream's
+    `undoToast().should("not.exist")` passed in three tests. The agent confirmed
+    the toast is genuinely emitted rather than assuming — flipping the same
+    assertion to `toHaveCount(1)` under the same mutation *found* it — so the
+    absence check simply samples before the toast paints.
+
+    **This is a no-op upstream too**, since Cypress's `should("not.exist")` has
+    identical first-absent semantics (#74). So it is not port drift and not a
+    Playwright weakness; it is an upstream assertion that cannot fail. Fixed per
+    the standing rule — **anchor, don't change the assertion form** — by gating
+    each of the three on the success signal the same submit produces (the `check`
+    icon on *Select data to make available*). Re-running mutation D against the
+    anchored version kills it.
+
+    Worth noting as the pattern that keeps recurring: a *surviving* mutant is the
+    signal, and the follow-up question is always "is this vacuous, or is the
+    mutation wrong?" — answered here by asserting presence under the same
+    mutation.
+
+85. **🔴 The QA-DB tier is not safely parallelisable as built — one writable
+    container is shared by all five slots** (`datamodel-data-studio`). Each
+    spec's reset creates only *its own* fixture; upstream's `multi_schema` reset
+    does **not** drop foreign schemas, because CI hands every run a fresh
+    container and never had to. On our long-lived shared container the debris
+    accumulates: measured `Schema A`…`Schema Z` plus six stray `public` tables
+    from other slots' runs.
+
+    **It fails in the shape of a product bug**, which is what makes it dangerous:
+    a database checkbox stuck `indeterminate`; a `Wild` schema unclickable
+    because it sorted after 26 injected schemas and never rendered. Cause and
+    cure were both confirmed — all 5 affected tests pass on a cleaned container
+    and fail again once sibling runs repopulate it. Nothing was weakened to
+    accommodate it.
+
+    **Narrowed 2026-07-20** (`transforms` session 3): contamination comes from
+    **running** transforms, not from **creating** them. That session's batch
+    created transforms in collections but never ran any, and added **zero** new
+    tables — 29 schemas before and after, identical to the prior baseline. So the
+    fix surface is narrower than "every QA-DB spec": it's the specs that
+    materialise physical tables.
+
+    **🔴 NOW BLOCKING, NOT COSMETIC** (`filters-reproductions`, 2026-07-20): the
+    debris makes the notebook mini picker render a **schema level upstream never
+    sees** — a clean `writable_db` has only `public`, so the picker skips
+    straight to tables. And because the list is virtualized, `public` is **not in
+    the DOM at all** (`count()` → 0; `scrollIntoViewIfNeeded` times out). Ports
+    now have to *work around* the contamination (wheel the virtual list, pin the
+    schema) rather than merely tolerate it. That is a cost paid by every future
+    QA-DB port until the reset is fixed.
+
+    **🔴 A GREEN CYPRESS CROSS-CHECK IS NOT EVIDENCE THE CONTAINER IS CLEAN —
+    and on this tier it actively misleads** (`entity-picker`, 2026-07-20).
+    Measured: after a Cypress run Metabase sees **3** tables in `writable_db`;
+    after the port's run it sees **29**. Cause: `H.resyncDatabase({ dbId })` with
+    no `tables` returns instantly (satisfied by the snapshot's own metadata), so
+    **Cypress reads the picker before the background sync has discovered the
+    debris**. The port passes `tables` — the correct, documented behaviour — and
+    therefore waits long enough to see it.
+
+    So the cross-check says "Cypress passes, your port drifted" when the truth is
+    "the port is more correct and the container is dirty". This is a new way for
+    the fidelity cross-check to mislead, on top of #31's shared-cause problem:
+    here the two harnesses genuinely observe **different application state**.
+    Concretely, `GET /api/search?q=anim` returns 28 results with the target at
+    rank **27** — below the virtualized render window, so never in the DOM; on a
+    clean container the same query returns 2 results at ranks 0 and 1.
+
+    **🔴 ESCALATION — contamination also causes vacuous GREENS, not just reds**
+    (`transforms`, 2026-07-20). `Domestic.Animals` — another spec's fixture,
+    left in the shared container — exists with **zero rows**, and can win
+    upstream's *unpinned* table lookup. At that point the `metabase#64473`
+    test's absence assertion **passes on an empty result pane**. So this is a
+    #49 vacuous green arriving through the *container* rather than through a
+    gate, which is strictly harder to notice: nothing skips, nothing fails,
+    and the count looks like coverage.
+
+    Fixed by pinning the schema (a no-op on a clean container, and what upstream
+    does everywhere else) rather than dropping foreign schemas. Note the
+    relationship is **mutual** — that spec injects `Schema A`…`Schema Z` itself,
+    so every QA-DB spec is both victim and contaminator. Its later batch adds
+    generically-named `table_a`/`table_b`/`table_c` too, which is exactly the
+    naming most likely to collide with another spec's unpinned lookup.
+
+    **A SECOND, distinct mechanism** (`data-model-shared-2`, 2026-07-20): the
+    debris also breaks **`visitDataModel`'s own wait gate**. That helper waits on
+    `GET /api/database/:id/schema/:name`, which only fires when a schema
+    **auto-expands** — and auto-expand requires **exactly one schema**. The
+    shared writable postgres has 29 (measured), so the request never fires and
+    the helper burns its full 30s on a **correctly-rendered page**. Note this is
+    not the virtualization mechanism below; contamination breaks this tier in at
+    least two independent ways.
+
+    **MECHANISM NAMED 2026-07-20** (`admin-datamodel`): the admin table picker
+    is **virtualized** (`@tanstack/react-virtual`, `Results.tsx`). With 26 debris
+    schemas present the backend reports **29 schemas while the DOM holds only
+    20** — `Domestic, public, Schema A … Schema R`. **`Wild` sorts after
+    `Schema Z` and is therefore never in the DOM at all.** That single fact
+    explains every observed failure, including the puzzling one where
+    `getDatabases()` returned 0 after clearing a search: the virtualizer had
+    scrolled to the selected row at the bottom and unmounted the *database* rows
+    too. So the symptom isn't "the app is broken" or "the locator is wrong" —
+    it's that the element genuinely does not exist in the DOM.
+
+    Neat corollary: the port could be proven correct **without touching the
+    container** — the three non-count-based tests pass 3/3 with
+    `viewport: {width:1280, height:1800}` as the only change, because a taller
+    viewport virtualizes more rows into the DOM. The fourth is inherently
+    contamination-fatal since it counts rendered schemas.
+
+    **Consequence for the migration plan, and it is a real one:** the per-worker
+    *backend* isolation that #8 celebrates does not extend to the QA databases.
+    Before more of this tier lands, it needs either a **per-slot writable DB** or
+    a **"drop everything not mine" reset**. Until then, QA-DB specs verified
+    concurrently may not reproduce, and a green result carries less weight than
+    the same result obtained serially.
+
+    Recorded honestly: the agent dropped the foreign schemas once to run its
+    control, and disclosed that a concurrently-running sibling could have been
+    disturbed by it.
+
+86. **QUANTIFIED 2026-07-20 (`native-reproductions`): tag-based classification
+    misses most container tests.** That spec has **5 tests needing a QA
+    container** (postgres-12 ×3, postgres-writable ×1, mongo-5 ×1) and **only
+    one carries `@external`** — 55951, 57644-multi and 59356 restore postgres
+    snapshots while untagged. So **3 of 5, i.e. 60%, are invisible to the tag.**
+
+    Consequence for planning: any "how many specs need QA infra" number derived
+    from tags — including the tier split I produced earlier — is a **lower
+    bound** on tests and unreliable per-spec. The only sound method is opening
+    the spec. (Conversely the tag over-reports at spec granularity, since it also
+    covers maildev and `@mongo` — which is how four specs briefed as QA-DB
+    turned out to need no container at all.) **The tag is not the tier, in
+    either direction.**
+
+    **The untagged-`@external` pattern — now FIVE+ sightings, so it is systemic**
+    (`datamodel-data-studio`, `data-model-shared-1`, schema-viewer via #26, and
+    `admin-settings`). The newest is the sharpest: `admin-settings`' Pro-cloud
+    SMTP test needs a **third container nobody had running — `maildev-ssl`**
+    (`:465` plus a root CA in the JVM keystore), because
+    `PUT /api/ee/email/override` live-validates. Measured: 400 *"Wrong host or
+    port"*, `nc -z localhost 465` closed. **Upstream carries no `@external` tag
+    on it at all.**
+
+    Original entry follows.
+
+    **A second instance of the untagged-`@external` pattern** (`datamodel-data-studio`).
+    `Extra info about tables` (3 tests) and `should filter unused tables only`
+    restore `postgres-writable` with **no `@external` tag**, so on a
+    `-@external` CI leg they run against a container that isn't there. The first
+    instance was `data-model-shared-1`'s untagged mysql-8 test, and #26 recorded
+    the same shape for schema-viewer. Three sightings makes it a pattern in the
+    upstream suite rather than an oversight: **restoring a QA snapshot and
+    carrying an `@external` tag are independently maintained, and they drift.**
+
+87. **🔴 Two sandboxing tests have silently-disabled column assertions — and the
+    shared helper's fallback is weaker than it looks** (`sandboxing-via-api`).
+    This is the highest-stakes instance of the vacuity family, because the
+    surface is data-access security.
+
+    `assertDatasetReqIsSandboxed` degrades to an **`is_sandboxed`-only** check
+    when either option is falsy. And `is_sandboxed` is the query processor
+    **self-reporting that a sandbox ran** — never that data was actually
+    *filtered*. So a silently-dropped option turns a data-restriction assertion
+    into "the sandbox code path executed", which is a much weaker claim.
+
+    Two call sites do exactly that, both by typo, both measured:
+    - *"should be sandboxed even after applying a filter"* passes
+      **`columnAssetion`** (sic) — the column check never runs. Fixing the typo
+      alone still fails (string `"3"` vs a numeric column); `Number(ATTRIBUTE_VALUE)`
+      passes.
+    - *"dashboard question as a sandbox source"* passes
+      **`columnId: PEOPLE.USER_ID`**, which is `undefined` — PEOPLE has no
+      `USER_ID`. `PEOPLE.ID` passes.
+
+    Both are **test defects, not product bugs**: the sandboxing itself works.
+    Ported verbatim with the analysis inline rather than shipped as strengthened
+    green tests — the fix is upstream's to make, and silently "fixing" a security
+    test in a port would hide that it had been disabled.
+
+    **The sandbox restriction itself is genuinely observed**, proven by the
+    strongest available mutation: swapping `sandboxTable` for plain unrestricted
+    access (so the user still has data access, isolating the *sandbox* rather
+    than access itself) kills at the row count — `"11 rows"` vs
+    `"Showing first 2,000 rows"` — and, with the row count also removed, kills
+    again inside `assertDatasetReqIsSandboxed`. Two independent proxies observe
+    the restriction.
+
+88. **`H.popover()` returns a SET, and destructuring takes the FIRST one — so a
+    hovercard test never looked at the hovercard** (`filters-reproductions`,
+    issue 50731). `const [container] = $element` grabs the first visible popover,
+    which is the filter column-list popover; the hovercard the test is *named
+    for* mounts **second**. Both popovers' contents were measured.
+
+    The proof is the strongest form available: **deleting the `hover()` line
+    entirely — the entire subject of the test — leaves it green in 1.6s.** Same
+    shape as #76, and the second time a test has survived deletion of the very
+    interaction it exists to exercise.
+
+    Cypress has identical destructuring semantics, so this is an **upstream
+    hole, not port drift**. Ported verbatim with the analysis inline rather than
+    silently strengthened. Caveat stated by the agent: with cross-checks banned
+    while sibling slots run, the claim rests on the mutation plus a
+    byte-identical popover selector, not on a cross-harness comparison.
+
+89. **🔴 SYSTEMIC: the permissions/security test helpers silently drop
+    assertions — four independent instances, all measured.** Individually each
+    looks like a typo. Together they mean the suite's *security* coverage is
+    materially thinner than its test titles claim, and it is the strongest
+    test-quality finding of the spike.
+
+    - **`assertPermissionTable` never compares the trailing column**
+      (`view-data`). Its `.each` iterates the **actual** cells — every table
+      renders **5** — while many expectation rows list **6**, so
+      `permissions[5]` is never read. Proved with a deliberately-surviving
+      mutant: the 6th value was replaced with `"MUTANT-M5-GARBAGE"` and the test
+      still passed.
+    - **The same helper, hit from the other side** (`downgrade-ee-to-oss`):
+      upstream asserts six values for the Sample Database row where the table
+      renders five, so the 6th has never been evaluated — confirmed by a control
+      run of the unmodified Cypress spec.
+    - **`assertPermissionForItem`'s 4th argument is discarded at 12 call sites**
+      (`view-data`). The helper takes three parameters; the spec passes
+      `…, "No", true` meaning "and it is disabled". So the test titled *"should
+      allow saving 'blocked' and **disable create queries dropdown when set**"*
+      never checks the disabling — and a working `isPermissionDisabled` exists
+      and is used elsewhere **in the same file**.
+    - **Two sandboxing assertions disabled by typo** (#87): `columnAssetion`
+      (sic) and a `columnId` that evaluates to `undefined`, where
+      `assertDatasetReqIsSandboxed` then degrades to an `is_sandboxed`-only
+      check — the QP self-reporting that a sandbox *ran*, never that data was
+      *filtered*.
+
+    **All four are vacuous in Cypress too** — identical semantics — so this is
+    upstream's problem, not port drift, and not something the migration
+    introduced. Every one was ported **verbatim with the analysis inline**
+    rather than silently strengthened: on a security surface, quietly fixing a
+    disabled assertion in a port would hide that it had ever been disabled.
+
+    The common mechanism is worth stating plainly: **these helpers take options
+    they do not validate, and a dropped or misspelled option degrades the
+    assertion instead of erroring.** That is what makes the failure silent and
+    repeatable. TypeScript catches the argument-count case at the boundary,
+    which is one concrete argument for the ported suite over the original.
+
+90. **`expect(rect).to.deep.eq(otherRect)` on two DOMRects is ALWAYS TRUE**
+    (`question-reproductions`, issue 39487). A `DOMRect`'s `x/y/width/height`
+    live on the **prototype** as accessors, so `Object.keys(rect)` is `[]` and
+    deep-eql's `objectEqual` compares two empty own-property sets — which always
+    match. **Two of that test's three assertions cannot fail upstream**, whatever
+    the geometry.
+
+    Verified against the repo's `deep-eql@5.0.2`. Caveat stated by the agent:
+    Cypress bundles 4.x and the check wasn't run directly against that version,
+    though it is the same code path.
+
+    This one **was** strengthened rather than ported verbatim (compare the
+    numeric fields explicitly), and the deviation is documented in the spec — the
+    assertion's intent is unambiguous and there is no security surface involved,
+    unlike the #89 cluster where preserving the defect was the honest choice.
+
+    Generalises: **any `deep.eq` between two DOM-API objects whose fields are
+    prototype accessors is vacuous** — `DOMRect`, `DOMStringMap`, `CSSStyleDeclaration`.
+
+91. **🔴 ACTIONABLE: the local `MB_PRO_SELF_HOSTED_TOKEN` is STALE — it lacks
+    `transforms-basic`** (`transforms` session 4). Measured immediately after a
+    `beforeEach` activated it: `transforms-python: true`, **`transforms-basic:
+    false`** — absent from all 40 truthy features. The reason is dating:
+    `:transforms-basic` is `^{:added "0.59.0"}` while `:transforms-python` is
+    `"0.57.0"`, so **the token predates the feature**.
+
+    **This resolved a prior unexplained finding.** Session 3 had recorded, and
+    correctly declined to explain, that the transforms Move picker's root item
+    list computes to zero (`item-picker-level-0` empty, while
+    `GET /api/collection/root?namespace=transforms` returns 200). The cause is
+    `use-get-root-items.ts:52` — literally `useHasTokenFeature("transforms-basic")`
+    — so the transforms root is never pushed. **Their observations were all
+    correct; only their assumption that the token carried the feature was
+    wrong.** No cross-check was needed; a later measurement settled it.
+
+    That is the process working as intended: an honest "unexplained" survived
+    long enough to be explained, rather than being closed with an invented
+    mechanism.
+
+    **Concretely actionable: refreshing the token recovers 3 tests and removes
+    every remaining fixme in that file.** It also means any *other* spec gated on
+    a post-0.57 feature may be silently under-running here — worth an audit of
+    `token-features` against the current feature list.
+
+    Also settled while probing: the `@python` script test-run is blocked by
+    `POST /api/ee/transforms-python/test-run` → **500, "Connection refused" to
+    localhost:4566** (the localstack S3), which fails before :5001 is reached.
+    No 402 anywhere — the final nail in my retracted premium-gating claim.
+
+92. **🔴 `isScrollableHorizontally` / `Vertically` are vacuous under overlay
+    scrollbars — a SHARED upstream helper, so this is a sweep candidate**
+    (`custom-column-reproductions-2`). The helper infers a scrollbar from the
+    layout height it *reserves*; overlay scrollbars reserve **zero**. Measured by
+    forcing a dropdown child to 2000px: `scrollWidth 2000 > clientWidth 1197`
+    (genuinely overflowing) yet `offsetHeight - clientHeight - borders = 0`, so
+    the helper returns `false`. Both of issue 55984's tests were **unfailable**.
+
+    **Prediction worth checking during the sweep:** if the helper always returns
+    `false` here, then every `expect(isScrollable).toBe(false)` using it is
+    vacuous, and any `toBe(true)` assertion would *fail* — so the surviving green
+    specs are presumably asserting only the false direction. **Call sites:
+    `dashboard-parameters`, `detail-view`, `search`, `visualizations-table`,
+    `custom-column-reproductions-2`** (plus `support/search.ts`). Not swept.
+
+    Handled by keeping the verbatim port **and adding** a direct
+    `scrollWidth - clientWidth <= 0` check alongside it, with the strengthening
+    stated explicitly.
+
+    ⚠️ **UNRESOLVED CONFLICT with #question-reproductions-4's scrollbar finding.**
+    That port measured the same class of problem and concluded it was
+    **macOS-specific** — overlay scrollbars come from `NSScroller`,
+    `--disable-features=OverlayScrollbar` changes nothing, and it explicitly
+    stated that Linux behaviour was **inferred, not observed** (it gated its fix
+    behind an in-browser gutter probe rather than `process.platform` for exactly
+    that reason). This port instead claims the vacuity holds **"CI included"**.
+    **Both cannot be right, and neither has been measured on Linux.** Whoever
+    runs the sweep should settle it on a CI runner first — the answer determines
+    whether this is a local-only artifact or real lost coverage in CI.
+
+93. **A test that cannot see the behaviour it exists to test — with a measured,
+    one-line upstream fix** (`native-filters-reproductions`, issue 31606:
+    *"should not start drag and drop from clicks on popovers"*).
+
+    `ParametersList` uses `useDndSensors`, which registers **MouseSensor +
+    TouchSensor only — no PointerSensor** — and upstream's call omits
+    `useMouseEvents`. So the PointerEvents the test dispatches are **inert for
+    any target whatsoever**. Confirmed rather than inferred: dragging a widget
+    that *provably* reorders under mouse events also did nothing under pointer
+    events. Re-run with MouseEvents, the app **correctly refuses** the drag — so
+    **the behaviour is real and the test simply can't observe it.**
+
+    **Actionable upstream follow-up: add `useMouseEvents: true` to that call —
+    measured safe.** This is the clearest "the fix is one line and we know it
+    works" item the spike has produced.
+
+    Also in the same spec: issue 15163's
+    `NativeEditor.get().should("not.exist")` is vacuous — `.cm-content` count is
+    **0 for admin and 0 for `nodata` alike** (a saved question always renders the
+    editor collapsed), so it cannot discriminate the permission state it exists
+    to check. **Not strengthened** — permissions surface, so ported verbatim per
+    the #89 rule, with upstream's own `loading-indicator` gate restored.
+
+    And a third instance of tag drift, this time the *stale-tag* direction: the
+    file's only `@external` tag is obsolete — commit `4701e5f8dc5` removed this
+    file's `WRITABLE_DB_ID` usage without updating it. Gating on it reflexively
+    would have skipped a perfectly runnable test.
+
+94. **A distinct vacuity shape, now seen TWICE: an assertion targeting a testid
+    that does not exist anywhere in the product.**
+    - `tenants` asserts absence of **`navbar-new-collection-button`** — zero hits
+      across `frontend/src` + `enterprise/frontend/src`; `git log -S` shows the
+      tenants PR introduced it **in the spec only**. Proven by probe: it resolves
+      to 0 for an admin too, so it can never match for anyone.
+    - `admin-databases`' *"should handle is_attached_dwh databases"* has its one
+      flag-gated assertion pointed at **`database-actions-panel`** — likewise
+      **zero occurrences** in the codebase. A presence probe under the same
+      mutation confirmed the mutation *had* applied (the `!is_attached_dwh`-gated
+      "Sync database schema" rendered) and the test simply doesn't observe it.
+      The rest of that test's signal comes from `isDbModifiable`, which is false
+      for `is_sample` too — so it isn't discriminating the flag either.
+
+    Both ported verbatim with the analysis inline. This shape is worth a
+    dedicated sweep: **a grep for asserted testids that appear nowhere in
+    `frontend/src`/`enterprise/frontend/src` would find these mechanically**, and
+    unlike the timing-dependent vacuities it is a static check.
+
+95. **🔴 The wave-11 "actions specs are all-skip" claim was too broad — and
+    ~33 tests may be recoverable.** Wave 11 recorded that fully
+    `@external`+`@actions` specs are ported-but-unexecuted everywhere, based on
+    `actions-on-dashboards` (33/33 gated). `model-actions` falsifies the general
+    form: **17 of its 18 tests run green** against live `writable_db` on
+    :5404/:3304, and the single skip is correct
+    (`cy.onlyOn(dialect === "postgres")`).
+
+    **So the claim should be narrowed to `actions-on-dashboards` specifically —
+    and that spec is now worth re-checking**, because if it runs for the same
+    reason `model-actions` does, that is 33 tests moving from
+    ported-and-gated into executed coverage. Concrete, cheap, and directly
+    improves the honest coverage number #49 asks us to quote.
+
+96. **A near-miss that would have produced a false product-bug claim**
+    (`model-actions`). The port initially **guessed** `USER_GROUPS` ids as 4/5
+    for COLLECTION/DATA; the real values are 5/6, and **4 is
+    `DATA_ANALYSTS_GROUP`**. So the test blocked the *wrong group*, impersonation
+    was never enforced, the write succeeded (`200 {"rows-affected":1}`) — and it
+    read exactly like *"impersonation is broken in the app."*
+
+    Caught because the agent verified the constant rather than trusting the
+    symptom. The temptation was structural: `click-behavior.ts` exports a
+    **partial** mirror (`COLLECTION_GROUP` only), which invites guessing the
+    rest. **A complete shared `USER_GROUPS` is a consolidation candidate**, and
+    the general rule is worth stating: *a guessed fixture id doesn't fail — it
+    silently tests something else.*
+
+### Capability: `page.clock` reaches into embed iframes
+
+75. **`page.clock` installs into the embed iframe, where upstream gave up on
+    `cy.clock()`** (`sdk-iframe-embedding`). Verified from inside the frame's own
+    runtime on a loaded dashboard — `window.setTimeout` there is Playwright's
+    stub, and the frame's `Date.now()` advances by exactly the amount passed to
+    `runFor`, in lockstep with the parent. The SDK's 1s refresh `setInterval`
+    (`useDashboardRefreshPeriod` → Mantine `useInterval`, living inside the
+    iframe) is therefore drivable. Both auto-refresh tests now freeze real time
+    and advance virtual time; the negative test's window went from upstream's
+    ~1 real second to **30 virtual seconds** at the same wall clock, and because
+    real time is frozen the positive test becomes the negative test's control.
+
+    **Framed honestly, at the porting agent's own insistence:** the wall-clock
+    saving is small (upstream waited only ~1–2s), so this is a
+    determinism/assertion-width win, not a speed one. And it is a **weaker**
+    instance of the #1/#44 pattern than hoped — upstream *tried* `cy.clock()` and
+    abandoned it, but nobody has proven Cypress **cannot** do it. Do not cite
+    this as a third "Cypress structurally can't" alongside #1 and #44.
+
+    **The reusable catch:** you must step the clock at the app timer's own
+    period. Against a 1s timer, `runFor(1000)`×12 → exactly 12 refreshes; a
+    single `runFor(3000)` → **0**; `runFor(5000)` → 1. A big jump coalesces
+    ticks, which on a negative assertion is a silently vacuous pass.
+
+### Open item owed from this batch
+
+**The one experiment that would give a third instance of #1/#44 is blocked, and
+it is cheap** (`database-routing-admin`). `assertDbRoutingDisabled` is the exact
+test MEMORY records as a Chrome v122+ headless failure: upstream abandoned
+`realHover()` on `#database-routing-toggle` — CDP hit-testing resolves to the
+disabled `<input>` inside the Mantine Switch and swallows the boundary events —
+and fell back to a synthetic `cy.trigger("mouseenter")`. The port uses a real
+`hover({ force: true })` on `database-routing-toggle-wrapper`, but the tooltip
+path only runs after the `postgres-writable` setup (#50), so **the probe never
+executed**. To settle it: `PW_QA_DB_ENABLED=1` against a live writable QA
+postgres, `assertDbRoutingDisabled` under `--repeat-each=3`. Recorded as an owned
+open item, not as evidence.
+
+## Batch 14 additions (onboarding/setup, native pack, admin/databases)
+
+### A harness defect that reads exactly like port drift
+
+97. **This box's `e2e/snapshots/blank.sql` is corrupt — it holds the fully
+    set-up `default` state (11 users, 97 cards) instead of a blank instance**
+    (`onboarding-setup`). `e2e/snapshot-creators/default.cy.snap.js` takes
+    `snapshot("blank")` *before* `setup()`, so a correct one has no users at all.
+
+    What makes this a finding rather than a guess is the **same-backend
+    control**: `restore/blank` → `has-user-setup TRUE`, a freshly captured blank
+    → `FALSE`, and `restore/nonsense` → 404. The third leg is the important one —
+    it proves the endpoint was live, so the first two results are real answers
+    rather than a silently-failing restore.
+
+    It cost a **15-way failure** that looked precisely like a bad port: a setup
+    wizard cannot be tested against an instance that is already set up. Any spec
+    needing a genuinely un-set-up instance will fail here the same way.
+
+    **`e2e/snapshots/*` is gitignored, so CI is unaffected** — CI generates these
+    at run time. This is a stale local artifact only. The agent deliberately did
+    **not** regenerate it, because regenerating means running Cypress and
+    rewriting files all five slots share; it captured a correct snapshot under an
+    unreferenced name on its own port instead. **Owed: regenerate `blank.sql`
+    once the slots drain.**
+
+### A porting hazard general enough to sweep for
+
+98. **`getByText(..., { exact: true })` is not equivalent to Cypress's exact
+    match** (`onboarding-setup`). testing-library's `getNodeText` reads only an
+    element's **direct child text nodes**; Playwright reads its full
+    `textContent`, including nested elements. An element whose label is split
+    across child spans therefore matches upstream and not the port. Measured on
+    the same element: `exact: true` → **0 matches**, `exact: false` → **1**.
+
+    This is the third member of the exact-match family (after the
+    testing-library trim rule and the ECharts anchored-regex case), and the one
+    most likely to be mistaken for a product bug, because the text is plainly
+    visible on screen while the locator finds nothing.
+
+### Two mutation results worth recording for method, not outcome
+
+99. **A survivor explained by measurement rather than argument**
+    (`onboarding-setup`). `expect.poll(...).not.toBe("onscreen")` accepted its
+    **first** offscreen sample, catching the element's pre-animation position —
+    the helper genuinely discriminates (hidden `y=860` vs shown `y=574` against a
+    720px fold), so the assertion is not vacuous, but its retry semantics let a
+    transient state satisfy it. **Upstream's `should("not.be.visible")` has
+    identical semantics**, so this was recorded as a faithfully-ported weakness
+    and documented in the helper rather than silently strengthened.
+
+    Also of note: the agent judged **one of its own mutations bad** (it died at a
+    precondition rather than the assertion under test) and reaimed it. That is
+    now the fourth agent today to catch an invalid mutation of its own — the
+    "check *where* the mutant dies" rule is doing real work.
+
+100. **A hypothesis correctly withheld from the findings** (`onboarding-setup`).
+    The backend `invite_sent` snowplow event is dropped before leaving the JVM,
+    but *only* when preceded by a test that generated backend snowplow traffic —
+    it passes alone and under `--repeat-each=4`. The collector logged exactly 3
+    POSTs, 0 malformed, with tracking enabled and `POST /api/user` returning 200
+    on the `source: setup` branch, so the event is never sent at all. The agent
+    had a plausible mechanism (the collector's default 5s keep-alive against the
+    backend's `defonce` pooled client) but **could not confirm it, and recorded
+    it as a hypothesis with a fixme rather than a finding.** The fix would touch
+    a shared support module, which a port must not edit. **Owed: investigate.**
+
+### #85 root cause: the debris is self-inflicted, not cross-slot
+
+101. **The `Schema A…Z` contamination in the shared writable container is created
+    by `issue 28106` — a test *inside* `notebook-data-source` itself**
+    (`notebook-data-source`). Measured: 29 schemas present (`Domestic`,
+    `Schema A`…`Schema Z`, `Wild`, `public`), and the `Schema A…Z` block is the
+    `many_schemas` fixture that this very spec creates. **It contaminates itself
+    across runs.**
+
+    This materially changes how #85 should be read. It had been framed as
+    sibling slots polluting a shared resource — a coordination problem, fixable
+    by scheduling. It is substantially **a spec creating fixtures it never
+    cleans up**, which means it reproduces on a single-agent box and would
+    reproduce in CI on any re-run against a persistent container. The
+    coordination story is not wrong (multiple slots do share the container) but
+    it was not the main mechanism.
+
+    The consequence is the one already documented: the mini picker is a
+    `VirtualizedList` holding ~20 rows, so `Wild` — sorting after `Schema Z` —
+    is **never in the DOM**. Fixed here with a scroll-until-attached
+    `clickMiniPickerItem`, with **no assertion weakened**.
+
+    **This strengthens the case for the owed `multi_schema` reset fix**: a reset
+    that drops only the schemas it owns will not clear `many_schemas` debris
+    either. Whatever lands should be verified against a container that already
+    has the `Schema A…Z` block present.
+
+### An `@OSS` tag that wasn't a gate at all
+
+102. **`@OSS` resolved as not a real gate — +1 executed test**
+    (`notebook-data-source`). "should display databases by default" runs
+    unconditionally and passes on the EE jar, because its assertions are scoped
+    `data-active` checks with **no upsell CTA and no page-wide EE-chrome count**,
+    so `PLUGIN_IS_EE_BUILD` cannot reach them.
+
+    The complementary result from the same spec is what makes this a method
+    rather than a lucky guess: an **untagged** describe turned out to be
+    *genuinely* token-gated, proven by deleting `activateToken` and watching both
+    tests fail in `beforeEach` at `POST /api/ee/library`. So the tags were wrong
+    in **both** directions in one file. **Probe the gate; don't read the tag.**
+
+### A fixme that is environmental, with the measurement to prove it
+
+103. **`issue 34350` fails on a heap-order accident, not a product defect**
+    (`notebook-data-source`). It asserts `cell-data` contains `37.65` — Orders
+    **id 1** — against a virtualized ~18-row grid, so it silently depends on id 1
+    being physically first in an `ORDER BY`-less `LIMIT 2000`.
+
+    Measured: `select ctid, id from orders where id in (1,2)` returns
+    `(213,21) | 1` versus `(0,2) | 2`. Row 1 was UPDATEd into the tail of an
+    18760-row heap and is outside the virtualization window. The DOM was probed
+    directly to confirm the grid starts at id 2 with nothing scrolled.
+
+    **That ctid is impossible in a fresh fixture, so CI should be green.** The
+    repair (`CLUSTER orders USING orders_pkey`) was correctly refused while
+    sibling slots were live. **Owed: re-seed the container, then flip the fixme.**
+    No Cypress cross-check was run, so whether upstream also fails is unknown and
+    is not claimed either way.
+
+### `page.goBack()` is measurably not the app's back control
+
+104. **Swapping `page.goBack()` for a click on the app's back affordance changes
+    the request profile, not just the rendering** (`dashboard-back-navigation`).
+    Measured: `goBack()` fires an **extra `GET /api/dashboard/:id`** (1 → 2) and
+    an **extra dashcard query** (2 → 3).
+
+    This had been asserted in a brief as a plausible rule; it is now measured.
+    The consequence is sharper than "they're different": in a **caching** spec,
+    the swap would mask precisely the regression under test — the port would go
+    green while no longer exercising the cache path at all. **Port the click if
+    upstream clicks; use `goBack()` only where upstream uses `cy.go("back")`.**
+
+### An over-broad `@external` tag, distinguished from a vacuous test
+
+105. **Only one of two `@external`-gated tests actually depends on the container**
+    (`dashboard-back-navigation`). Repointing the slow card to H2 kills the
+    loading-cards test but leaves "preserve filter value" passing — its subject
+    is counts and filter state, indifferent to whether the query errors.
+
+    The distinction that makes this a tag finding rather than a test-quality one:
+    **the mutation provably applied**, because its sibling died from the same
+    constant. So the test is not vacuous; the *gate* is over-broad. Those are
+    different defects with different fixes, and conflating them would have led to
+    "weakening" a sound test. Tags have now been found wrong in both directions
+    on four specs today — missing, stale, over-broad, and red-herring.
+
+### The transforms token debt was largely imaginary
+
+106. **`transforms-basic` is absent from the local token but does not gate the
+    inspect tier** (`transforms-inspect`). The predicate is
+    `query-transforms-enabled?` (`token_check.clj:715`):
+    `(and transforms-enabled (or (not is-hosted?) (has-feature? :transforms-basic)))`.
+    The slot backend reports **`is-hosted? = false`**, so the `or` short-circuits
+    and the feature check never runs. The docstring is explicit: *"OSS
+    intentionally gets query transforms without a license."*
+
+    Verified end-to-end before a line was written: create → run (`succeeded`) →
+    `GET /inspect` → **200**, `available_lenses: [generic-summary,
+    column-comparison]`. Result: **9/9 ported, 9/9 executing**, gate-off control
+    showing 9 skipped / 0 executed.
+
+    **This retracts part of the standing brief guidance.** I had been telling
+    agents that the missing `transforms-basic` might block the whole transforms
+    tier and that a token refresh was owed for it. For the inspect tier a refresh
+    would recover **zero** tests. The debt is real only for the sibling
+    `transforms.spec.ts`. **A missing feature flag is not a gate until you have
+    read the predicate that consumes it.**
+
+### An environmental trap that manufactures false "no features" conclusions
+
+107. **`.env` has a trailing comma on every token value** (`transforms-inspect`).
+    A naive parse yields a 65-char token that **400s on activation**, after which
+    `token-features` reads `ON (0)` — indistinguishable at a glance from "this
+    token genuinely has no features".
+
+    This is exactly the shape of the over-gating failure mode that has already
+    cost this spike two sessions (the false "transforms is 402-blocked" claim).
+    The agent nearly logged it as a finding and checked instead. Also measured:
+    `MB_ALL_FEATURES_TOKEN` is 61 chars and 400s the same way, so **bleeding-edge
+    features may be silently unusable on this box** — worth knowing before anyone
+    concludes a bleeding-edge surface is broken.
+
+    **Strip the comma and re-check before concluding a feature is unavailable.**
+
+### A survivor that was the assertion being right
+
+108. **Corrupting the warehouse cannot reach a fingerprint-derived statistic**
+    (`transforms-inspect`). A mutation NULLing a source column to move a
+    null-percentage **survived**. The agent confirmed the mutation applied
+    against the DB, then ran a sentinel probe: the cell renders `0.00 %`
+    regardless, because the null-percentage is **fingerprint-derived, not
+    recomputed live**.
+
+    So the assertion is sound and discriminating; the mutation simply could not
+    reach it. Recorded honestly as **"no input-side mutant kills the field-stats
+    block — not triggered by any failure mode I could induce"** rather than
+    claimed as coverage. That is the distinction this spike keeps having to make:
+    *unkillable by me* is not *vacuous*.
+
+### A stub-fidelity rule that hides in plain sight
+
+109. **`cy.intercept(url, { statusCode: 500 })` sends an EMPTY body** — porting
+    it as a `route.fulfill` with a JSON body is a behavioural change
+    (`data-model-shared-4`). The port supplied
+    `{ message: "Internal Server Error" }`, and Metabase's preview rendered *that
+    string* instead of the generic "Something went wrong".
+
+    What makes this worth recording is how nearly it escaped: the drift was
+    **invisible across 13 of 15 surfaces**, because toast text is FE-constructed
+    and never echoes the response. Only the single place where the app displays
+    the server body went red. A port that happened not to touch that surface
+    would have shipped an error-path stub that silently tests the wrong string.
+
+    **Default to an empty body when porting a bare `statusCode` intercept**, and
+    supply one only where upstream does.
+
+### A `snowplow` gate that was dead setup
+
+110. **`H.resetSnowplow()` present, zero snowplow assertions**
+    (`data-model-shared-4`). The queue tagged this spec `snowplow` because the
+    string appears; the spec asserts no event, has no
+    `expectNoBadSnowplowEvents`, and `e2e/support/e2e.js` has **no global hook** —
+    grepped, not assumed. So the correct vantage was **none at all**.
+
+    This is a sixth distinct way the tag metadata misleads, alongside missing,
+    stale, over-broad and red-herring: **a setup call with no corresponding
+    assertion**. The generated queue's gate column is a keyword scan and cannot
+    tell the difference; only reading the spec can.
+
+### #41 RESOLVED: the viewport line in playwright.config.ts is dead code
+
+111. **The harness runs 1280×720, not the 1280×800 the config appears to
+    specify** (`custom-column-2`). Mechanism, confirmed directly in
+    `playwright.config.ts`: line 46 sets `viewport: { width: 1280, height: 800 }`
+    in the **top-level `use`**, but the `chromium` project at line 52 spreads
+    `...devices["Desktop Chrome"]`, which carries its own `viewport` of
+    **1280×720** — and **project-level `use` overrides top-level `use`**. So line
+    46 has never taken effect.
+
+    This closes FINDINGS #41, which had been open since early in the spike as an
+    unexplained discrepancy against Cypress's 1280×800.
+
+    **It is not cosmetic.** At 720 the expression popover flips *above* its
+    anchor (measured `y=26` vs `y=402`) and covers "Pick columns", which broke
+    **four tests** in a way that reads exactly like port drift. Any spec whose
+    layout depends on fold position has been silently running at the wrong
+    viewport, and a port that "fixed" such a failure locally may have encoded a
+    workaround for a harness defect.
+
+    **Fix, deliberately NOT applied yet:** add the viewport *after* the spread in
+    the project block. Doing so while agents are live would change rendering
+    mid-run and invalidate verification already completed at 720. **Owed once the
+    slots drain — and landed ports should then be re-run**, since some may
+    contain workarounds that become unnecessary or wrong at 800.
+
+### The mechanism behind "the first Mod-j is silently refused"
+
+112. **`@codemirror/autocomplete` has a 75ms `interactionDelay`**
+    (`custom-column-2`; `dist/index.js:1044,1066`, left at its default by
+    Metabase). For 75ms after the suggestion tooltip opens,
+    `acceptCompletion`, `moveCompletionSelection` and option-click all return
+    `false`.
+
+    The damaging part is what happens next: **a refused Enter falls through to
+    `insertNewline`**, silently corrupting the formula rather than doing nothing.
+    Measured: three back-to-back Enters produce `["rou","","",""]`; with a 300ms
+    gap, `round(column)`.
+
+    Two consequences worth propagating:
+    - **The tooltip DOM is not a valid gate** — the option renders
+      `aria-selected="true"` immediately, so waiting for it proves nothing. A
+      `toPass` retry loop is *unsafe* here, because each refused attempt inserts
+      a newline.
+    - This is very likely the **same root cause** as the long-standing "first
+      `Mod-j` after a completion tooltip is silently refused" gotcha (identical
+      guard) — which had been recorded as an observation with no mechanism.
+      Upstream's own helper works around it with `cy.wait(300)`.
+
+### 🔴 INDEPENDENT CORROBORATION: the #64406 DataSelector regression
+
+113. **A second agent, on a different spec, root-caused the same commit**
+    (`admin-datamodel-reproductions`; first found in `native-reproductions-js`).
+    Commit `2a6741df9cf` (PR **#64406**, 2025-12-18) widened
+    `DataSelector.skipSteps` from `databases.length === 1` to
+    `enabledDatabases.length >= 1`, so with two databases the DATABASE step is
+    **always skipped**.
+
+    The two reports were produced independently, on unrelated specs, with
+    different symptoms:
+    - `native-reproductions-js` (issue 18148): the native DB picker auto-selects
+      the first database ~750ms in and PUTs `last-used-native-database-id`,
+      closing the picker before "sqlite" can be chosen.
+    - `admin-datamodel-reproductions` (segments "Filter by table"): no database
+      list renders at all — the picker opens straight on Sample Database's
+      tables, so `Writable Postgres12` is **unreachable**.
+
+    **Both measurements discriminate rather than merely fit.** The first observed
+    two enabled databases present when the skip fired — impossible under
+    `=== 1`. The second sampled the popover's `innerText` every 100ms for 4s and
+    found it **identical at every sample including t=0**, ruling out a race,
+    scoping, and virtualization. The affected test predates the change by 11
+    months.
+
+    **Still not claimed:** neither agent ran the Cypress original, because the
+    cross-check is banned while sibling slots are live. So whether upstream fails
+    identically is **unknown**, and the ~80ms window in the first case means
+    upstream may simply be flaky rather than red. What is established is the code
+    change and its observable consequence, not that Cypress catches it.
+
+    This is the strongest product finding the migration has produced: two
+    independent derivations of the same root cause, each with a measurement that
+    excludes the alternatives.
+
+### Two more vacuity confirmations, both kept verbatim
+
+114. **The command-palette "Recents" absence check is vacuous — upstream too**
+    (`admin-datamodel-reproductions`). The palette renders its empty state until
+    the recents fetch **commits** at ~t=200ms, so an absence assertion is
+    satisfied by a component that simply hasn't loaded. **Three anchors were
+    tried and each proven insufficient**, including `waitForResponse`, which
+    resolves a tick before React commits. Kept **verbatim with the analysis
+    inline** rather than papered over with a sleep.
+
+115. **`isScrollableVertically` is structurally vacuous on macOS**
+    (`admin-datamodel-reproductions`). It infers a scrollbar from layout width,
+    and Chromium's **overlay scrollbars consume none**. Measured on a plainly
+    overflowing popover — `scrollHeight 650` vs `clientHeight 147` — it still
+    returns `false`.
+
+    This is consistent with the open **#92** conflict (overlay scrollbars:
+    macOS-only vs CI-included) and does not resolve it: the helper **may be live
+    on Linux CI**, where scrollbars can take layout width. **Owed: settle #92 on
+    a Linux runner.** Until then, treat every `isScrollable*` call site as
+    unproven — there are 5 known.
+
+### The shared `openTable` drops arguments on its notebook branch — twice now
+
+116. **`ad-hoc-question.ts`'s `openTable` silently drops `limit` on the notebook
+    branch** (`notebook-native-preview-sidebar`), and its comment claims no
+    caller needs it. This spec does: without the limit there is no
+    `step-limit-0-0` to delete and the smoke test collapses.
+
+    This is the **second** argument the same helper is known to drop — it also
+    discards `database` on that branch (`joins.openTableNotebook` hardcodes
+    `SAMPLE_DB_ID`). So the pattern is not a one-off bug but a shape: **the
+    notebook branch of `openTable` honours fewer options than its signature
+    advertises, and its comments assert otherwise.** Reproduced locally rather
+    than editing shared code. **Consolidation candidate — and any caller relying
+    on `openTable`'s notebook branch should be audited, not trusted.**
+
+### A brief claim that did not survive contact
+
+117. **My "generated-SQL whitespace" warning did not apply here, and the agent
+    said so** (`notebook-native-preview-sidebar`). The brief called the
+    `toHaveText` normalization trap "the single most likely way this port goes
+    green while asserting nothing", since the spec renders generated SQL.
+
+    On inspection all nine SQL assertions are **single-token substring
+    containment**, where normalization is a **no-op**. The agent used raw
+    `textContent` anyway but correctly reported it as *the safer equivalent, not
+    a strengthening*, and stated that none was ever at risk of the `\tSELECT`
+    vacuity.
+
+    Recorded because the alternative — quietly accepting the coordinator's
+    framing and claiming a dividend — is exactly the failure mode this spike
+    keeps guarding against. **A warning being inapplicable is a result.**
+
+### A virtualization accommodation, correctly bounded
+
+118. **The mongo `"Small Marble Shoes"` assertion failed on document order, not
+    on the port** (`notebook-native-preview-sidebar`). The generated pipeline has
+    **no `$sort`**, so rows come back in MongoDB natural order; on this box the
+    target row sits at position **20 of 200** while the 196px results grid
+    virtualizes **10**.
+
+    Port drift was ruled out by measurement first — same query, same testid, 90
+    cells present, same viewport. Fixed with `scrollResultsToCell`, which is a
+    virtualization accommodation rather than a semantic change: the assertion
+    still reads "some *rendered* cell contains X".
+
+    **Explicitly left undetermined:** whether CI's mongo container orders those
+    documents the same way. The Cypress cross-check is barred on a shared box, so
+    this is recorded as environment-bounded rather than as a product claim.
+    Third instance of the virtualization-window class today, after the ~18-row
+    results grid and the ~20-row schema picker.
+
+### A row-count assertion that cannot distinguish true from false
+
+119. **Flipping the boolean filter leaves one test green, and the cause is the
+    data, not the assertion** (`dashboard-filters-boolean`). Flipping
+    `False`→`True` killed the mbql and native-variable tests **at a tail
+    assertion** (the fourth row-count check) but **survived** on the
+    native-field-filter test.
+
+    Confirmed against the container rather than inferred: `many_data_types` holds
+    **exactly one `true` row and one `false` row**, so both branches expect the
+    identical string `"1 row"`. The assertion is structurally incapable of
+    telling the two values apart.
+
+    **The distinction that matters was then made explicitly.** "Same data" and
+    "vacuous assertion" are different defects, and the agent separated them by
+    asserting *presence* under the same mutation: a temporary "false cell
+    visible" check went **red**, proving the interaction genuinely fires and only
+    the *count* is blind. Corroborated three further times, where
+    `assertTableRowsCount(1)` and `assertQueryBuilderRowCount(1)` all sail
+    through a flipped boolean.
+
+    Kept **verbatim with the analysis inline** — the test is faithful to
+    upstream and the weakness is upstream's. **A row count is a weak proxy for a
+    boolean filter whenever both branches return the same number of rows**, which
+    for a two-row fixture is always.
+
+### An accurate tag over a partially unnecessary gate
+
+120. **`@external` is correct here, but 6 of 9 tests never touch the container**
+    (`dashboard-filters-boolean`). The `beforeEach` writes and syncs
+    `many_data_types` in the writable postgres, so the gate is genuinely required
+    for the spec as written — gate-ON 9 executed, gate-OFF 9 skipped.
+
+    But only 3 tests actually depend on it; the other 6 would run on `default`.
+    Because the `beforeEach` is **shared upstream**, splitting them would be a
+    structural change rather than a port, so it was recorded as an audit note and
+    left faithful. Same class as `custom-viz`.
+
+    Worth tracking as a **coverage-recovery candidate**: specs where an accurate
+    tag hides tests that could execute without containers. This is the second.
+
+### 🔴 The queue's gate column is per-FILE; tags are per-DESCRIBE
+
+121. **Gating this spec at the file level would have silently skipped 9 of its 11
+    tests** (`dashboard-filters-source`). The queue reports `@external`, but only
+    the **second** describe carries that tag — the first is `@slow` and runs on
+    plain H2.
+
+    Measured: `PW_QA_DB_ENABLED=1` → **11 executed / 0 skipped**; gate off →
+    **9 executed / 2 skipped**.
+
+    This is a defect in `scripts/build-queue.mjs`, not in the spec. The gate
+    column is a **keyword scan over the whole file**, so a tag on any one
+    describe colours the entire entry, and an agent that trusts it applies a
+    file-wide gate. The result is the worst kind of failure this spike has:
+    **ported, green, and silently not executing** — indistinguishable from
+    success unless someone runs the gate-off control.
+
+    **Consequence for briefs: "probe the gate" must mean per-describe, not
+    per-file.** The gate-OFF control is what catches this, which is why it is
+    mandatory. Owed: either make the generator emit per-describe gates, or label
+    the column explicitly as "any describe in this file mentions…".
+
+    Related: `dashboard-filters-boolean` (#120) is the inverse — an accurate
+    file-level tag where 6 of 9 tests still don't need the container.
+
+### Three brief warnings that did not apply, reported rather than banked
+
+122. **`dashboard-filters-source` reported three of my warnings as inapplicable**
+    — the second agent in a row to do so, after #117.
+    - **Virtualization:** every dropdown here holds 3–4 options, and the
+      `toHaveCount(0)` mutants failed by *finding* elements, not by
+      under-rendering.
+    - **The `cy.wait` queue rule:** the `/api/dataset` intercept is registered
+      and **never awaited anywhere in the file**, so there was no queue to port.
+    - **The 1280×720 viewport defect:** nothing observed was layout- or
+      popover-position-dependent.
+
+    Recording this because the briefs have grown long and carry an increasing
+    number of hazards that are real *somewhere*. An agent that quietly treats
+    every listed hazard as present will manufacture work and, worse, may "fix"
+    something that was never broken. **A warning being inapplicable is a
+    result, and saying so is the correct behaviour.**
+
+    Also settled, as a by-product of a mutation: flipping
+    `ORDER BY ID ASC`→`DESC` killed both label tests, which **answers the
+    ordering question the brief raised** — that list's order is guaranteed by
+    the query, not incidental.
+
+### 🔴 The `@external` tagging convention has drifted repo-wide
+
+123. **~20 of ~50 specs that restore a `*-writable` snapshot carry no
+    `@external` tag** (`database-writable-connection`). This spec's describe has
+    *no* tag at all, yet it restores `mysql-writable` and issues raw
+    `CREATE USER` / `CREATE TABLE` against the QA MySQL container.
+
+    The agent audited the whole repo rather than reporting its own file, which is
+    what makes this actionable: **the convention has drifted generally**, so
+    "untagged" cannot be read as "needs no container". Combined with #121 (the
+    queue's gate column was a per-file scan) and #120 (an accurate tag over
+    tests that don't need the container), **the tag metadata is unreliable in
+    every direction** — missing, stale, over-broad, red-herring, dead-setup, and
+    now systematically absent across a whole class.
+
+    **Operational consequence: the gate-OFF control is the only trustworthy
+    signal.** A spec that runs green with the gate off is either genuinely
+    container-free or silently skipping — and only the executed-vs-skipped counts
+    distinguish those.
+
+### A token gap traced to its predicate — and how it differs from the retracted one
+
+124. **`writable_connection` is genuinely unavailable on the local token, with no
+    short-circuit** (`database-writable-connection`). It is `false` on
+    `pro-self-hosted`, `pro-cloud` and `starter`, and true only on
+    `bleeding-edge` (53 features).
+
+    This is the **opposite** outcome to #106, and the contrast is the point.
+    There, `transforms-basic` was absent but gated nothing, because
+    `query-transforms-enabled?` short-circuits on `(not is-hosted?)`. Here the
+    agent checked for the same escape and found none: `define-premium-feature` on
+    the stock getter, the FE rendering `PluginPlaceholder → null`, and the
+    backend hard-throwing `assert-has-feature`. **Same method, opposite answer** —
+    which is exactly why the method matters.
+
+    So this is a **local token gap, not a product finding**; CI's
+    `pro-self-hosted` evidently carries the feature. The port keeps
+    `pro-self-hosted` verbatim and probes the feature at runtime. The agent
+    verified the port by *temporarily* swapping to a feature-carrying token —
+    **9/9 green, 27/27 under `--repeat-each=3`** — then restored it, leaving a
+    two-line diff that was both the token. Gate-OFF control: 9 skipped / 0
+    executed.
+
+### A placeholder trap where the accessible name IS the state
+
+125. **The global model-persistence `Switch`'s accessible name changes with its
+    state** (`Disabled` → `Enabled`), so a locator built on it **dies mid-flow**
+    (`database-writable-connection`). This is the placeholder-trap family again,
+    but with the mutating value in the *a11y name* rather than the `placeholder`
+    or `value` attribute — a third variant, after the native parameter widgets
+    and React's `value`-attribute sync.
+
+    It surfaced as a real failure: model persistence returned
+    `400 "Persisting models not enabled for database"` because the admin toggle's
+    async mutation **raced the next API call**. Fixed by gating on the state the
+    race corrupts (the checked switch) rather than on a sleep.
+
+    Also recorded, and left alone: the runs leaked **8 orphan
+    `metabase_cache_*` schemas**, which the agent cleaned — attributing them by
+    *contents*, because `create_time` proved unreliable (the container clock runs
+    ~7h behind the host). **Upstream has the same cache-schema leak**, so this is
+    not port-specific.
+
+### A truthy-string coercion, and a candidate bug scoped honestly
+
+126. **`?ssl=false` in a connection string turns the SSL switch ON**
+    (`database-connection-strings`). `database-field-mapper.ts` passes the raw
+    string straight into `details.ssl`, and the string `"false"` is **truthy**.
+
+    The agent scoped the claim tightly and I am keeping it that way: this was
+    **measured at the form layer only**. It did not check what the *saved record*
+    ends up containing, so this is **not** an end-to-end bug claim. Recorded as a
+    candidate, with the exact boundary of what was observed.
+
+    The same coercion explains one of its mutation survivors: `ssl=true` →
+    `ssl=false` survived because both strings are truthy. Rather than filing that
+    as vacuity, the agent ran the presence probe — `.not.toBeChecked()` under the
+    same mutation failed with "Received: checked" — establishing **coincidence,
+    not a blind assertion**.
+
+### A vacuity proven by where the mutant died
+
+127. **`should("have.value", "on")` on a checkbox is near-tautological**
+    (`database-connection-strings`). `"on"` is the HTML default `value` for a
+    checkbox and **does not track checkedness** at all.
+
+    Proven rather than argued: the mutation that genuinely unchecks the box
+    **died at `toBeChecked()` and sailed straight past the value check**. That
+    ordering is the evidence — the value assertion cannot distinguish the states
+    it appears to be testing. Kept **verbatim with the analysis inline**.
+
+### Mutation-tooling hygiene: verify the mutation you think you made
+
+128. **A `perl`-based mutation silently clobbered a fixture line to `X`**
+    (`database-connection-strings`). It was caught only by **reading the file
+    back** after mutating.
+
+    This is a failure mode the spike had not recorded: a mutation that does
+    something *other* than intended produces a result that looks like a finding —
+    a mutant that "kills" for the wrong reason, or "survives" because the intended
+    change never landed. It sits alongside the known bad-mutation shapes
+    (mutating a shared constant so assertions move with it; removing a value the
+    app persists).
+
+    **Adopted remedy, worth generalising:** use an **anchored replace with a
+    `count == 1` assertion**, and **read the file back** before drawing any
+    conclusion from the run. Every later mutation in that port did so.
+
+    Related, from the same agent: it also **sanity-checked its own dead-import
+    checker** after a greedy regex reported `test` as a dead import — the real
+    answer was zero. **Verify the tool before trusting its verdict.**
+
+### ⚠️ #107 NARROWED: the trailing-comma trap does not affect this harness
+
+129. **`.env` does have a trailing comma on its token values, but the harness
+    never reads `.env`** (`transforms-permissions`; narrows #107). Verified
+    directly: `support/env.ts:8-15` loads the gitignored repo-root
+    **`cypress.env.json`**, whose four tokens are clean 64-char strings that all
+    activate **204**.
+
+    So the operational advice I propagated into roughly a dozen briefs —
+    "strip the comma and re-check before concluding a feature is unavailable" —
+    was **aimed at a file this harness does not consult**. The measurement behind
+    #107 was real (a 65-char token does 400), but the inference that it explains
+    a `token-features` reading of `ON (0)` was wrong.
+
+    **The actual explanation for `ON (0)`: a backend with no token activated
+    yet.** That is the thing to check first.
+
+    #107 stands as a fact about `.env`; its *conclusion* is retracted. Eighth
+    coordinator claim corrected on evidence.
+
+### 🔴 The scratchpad is NOT agent-isolated — it caused real data loss
+
+130. **A sibling agent wrote `spec.orig.ts` over another agent's file mid-run**
+    (`transforms-permissions`). The victim's revert `cp` then clobbered its own
+    spec with the sibling's content.
+
+    The agent rebuilt and re-verified the spec functionally, and — importantly —
+    reported it as **"re-verified", explicitly not "restored byte-identical"**,
+    because the md5 differs in whitespace. That distinction is the correct call:
+    every other port this session claims a byte-identical md5 restore, and
+    silently claiming it here would have made an unverifiable statement.
+
+    **Generic scratchpad filenames are already colliding.** Five slots share one
+    scratchpad directory, and names like `spec.orig.ts`, `run4.log` and
+    `mutation.bak` are the obvious things for an agent to reach for.
+
+    **Fix to propagate: slot-prefix every scratchpad filename** (`s3-spec.orig.ts`,
+    `s3-run4.log`). Cheap, and the failure mode is silent overwrite of another
+    agent's in-flight work — which git cannot recover, because scratch files are
+    never tracked.
+
+### 🔴 #100 RETRACTED AND REPLACED: snowplow events are QUEUED, not dropped
+
+131. **The "backend event dropped before leaving the JVM" hypothesis is wrong.
+    Events are queued with a persistent offset, and a test can pass on its
+    PREDECESSOR's event** (`collections-uploads`; replaces the hypothesis in
+    #100).
+
+    Mechanism, measured: `snowplow.clj` uses one JVM-wide `defonce` Tracker with
+    `batchSize(1)`. A POST that fails while the collector is down is **re-queued**,
+    so the queue never recovers on its own.
+
+    The evidence is specific and damning:
+    - A `POST /api/dashboard` flushed a **stale `csv_append_failed` from an
+      earlier run**.
+    - 45 dashboard creations flushed **6 stale `csv_upload_successful` payloads
+      with `model_id` 98–102 from the prior run**.
+
+    **The consequence is worse than flakiness. At offset 1, a test passes on the
+    event emitted by its predecessor** — a hollow green, not a red. Measured:
+    a fresh backend gives 20/21; a backlogged backend gives **4 failures plus 2
+    hollow passes**. CI is unaffected, since each run gets a fresh JVM.
+
+    This retracts #100's mechanism entirely. #100 was correctly filed as a
+    *hypothesis* rather than a finding, which is exactly why it was cheap to
+    replace — the earlier agent said it could not confirm the mechanism, and it
+    was right not to.
+
+    **One thing left unexplained, and recorded as such:** an in-spec drain worked
+    from a standalone script but never converged inside the harness. The agent
+    removed it rather than ship machinery it could not account for.
+
+### Two upstream defects in the uploads spec
+
+132. **The invalid-file "no table created" check is vacuous**
+    (`collections-uploads`): `tableName` is `undefined`, so the query becomes
+    `LIKE '%undefined_%'` and can never match. Kept verbatim with analysis inline.
+
+    Also: the `permissions` and `Upload Table Cleanup` describes **silently
+    create tables in the read-only QA `sample` database and never clean up**.
+    This port does clean up. That is a second confirmed instance of the
+    self-inflicted-debris pattern behind #101 — specs, not slots, are the
+    dominant source of container contamination.
+
+### 🔴 The per-slot snowplow collector is structurally blind to FE-emitted events
+
+133. **The collector cannot see frontend events — the opposite of what its
+    docstring claims** (`metric-page`). The tracker POSTs with
+    `credentials: "include"`; the collector's preflight omits
+    `Access-Control-Allow-Credentials`, so the POST dies with `net::ERR_FAILED`
+    and **only the OPTIONS is recorded**.
+
+    Isolated with a three-way fetch: `omit` → 200, `same-origin` → 200,
+    `include` → fail. Same CORS-credentials rule that bit the SDK-iframe harness
+    earlier in the spike.
+
+    **Audit of what this affects.** Five specs import the collector:
+    `transforms-incremental`, `onboarding-setup`, `collections-uploads`,
+    `instance-stats-snowplow`, `transforms-inspect`. Backend-emitted events do
+    **not** traverse the browser, so they are unaffected — and the two specs whose
+    collector use is load-bearing (`collections-uploads`' `csvupload` from
+    `upload/impl.clj`, `onboarding-setup`'s `invite_sent`) are both backend.
+    `transforms-inspect` and `database-connection-strings` independently chose
+    the **browser boundary** after reading their call sites.
+    **So no landed port is currently believed broken by this — but that is an
+    inference from the reports, not a re-run.** Recorded as needing verification
+    rather than asserted.
+
+    `metric-page` picked the collector first *because* it is the only seam giving
+    real Iglu validation, then fell back to `installSnowplowCapture` and **stated
+    that this degrades `expectNoBadSnowplowEvents`** rather than papering over it.
+    One-line fix in the shared module, **deliberately not applied** while agents
+    are live. **Owed.**
+
+### 🔴 Toast exit transitions are disabled ONLY under Cypress
+
+134. **`UndoListing.tsx:203` selects `"Cypress" in window ? MockGroup :
+    TransitionGroup`** (`metric-page`). Playwright gets the **real** transition, so
+    a dismissed toast lingers for seconds and the next toast produces a
+    strict-mode violation — reproduced deterministically 3/3, and **invisible
+    upstream by construction**.
+
+    This is the *mechanism* behind the shared `verifyAndCloseToast` violation
+    recorded earlier: that entry correctly observed the assertion never
+    disambiguated and the timing did, but attributed the timing to Cypress's
+    pacing. The real cause is a **product-side branch on `window.Cypress`**.
+
+    Fixed by gating on `toHaveCount(0)` — **not** by loosening to `.first()`,
+    which would have hidden it. **Generalises to any port that dismisses a toast
+    and then asserts on `toast-undo`.**
+
+    Notable as a class: this is a place where the app **behaves differently
+    because Cypress is the runner**, so the migration cannot inherit upstream's
+    green as evidence of anything.
+
+### An ambiguity that is upstream's, not the container's
+
+135. **`getTable("Animals")` matches 6 elements — and it is not purely #85
+    debris** (`data-studio-bulk-table`). There are 28 tables named `Animals` in
+    the app DB, but the decisive detail is that **the describe's own
+    `multi_schema` fixture creates both `Domestic.Animals` and `Wild.Animals`**,
+    so the upstream selector is **ambiguous by construction even on a clean
+    container**.
+
+    That distinction matters: "contaminated environment" and "ambiguous selector"
+    have different fixes, and only the second is a real defect. Pinned to the
+    `Domestic` schema following the existing `getTableCheckbox` precedent, and
+    declared as a deviation. **Whether upstream passes on clean CI is recorded as
+    an open question, not a bug claim** — the Cypress cross-check is barred.
+
+    The same port also measured the thing the brief asked about: the db-level
+    test's loop covered **8 of 8** rows (server-side `database_ids`, unbounded),
+    so **no virtualization gap**, and the un-checking-neighbours failure mode was
+    checked for and **not observed**.
+
+### The transforms token predicate splits per SOURCE TYPE
+
+136. **`check-feature-enabled!` routes MBQL/SQL and python to different
+    predicates** (`transforms-incremental`), so #106's conclusion does not
+    transfer wholesale. MBQL/SQL → `query-transforms-enabled?`, which
+    short-circuits on `is-hosted? = false`, so the missing `transforms-basic`
+    never matters. Python → `python-transforms-enabled?`, which requires
+    `transforms-basic` **with no short-circuit**.
+
+    Probed live rather than inferred: incremental MBQL create/run returns
+    **200/202** with `checkpoint_hi_value: 30`; python create returns a genuine
+    **402**. (localstack :4566 is also down, so python was doubly blocked.) There
+    is no incremental-specific flag. 2 of 3 tests execute; python is `test.fixme`.
+
+    Third distinct answer from the same method — short-circuit (#106), hard gate
+    (#124), and now **split by argument**. "Does feature X gate this?" has no
+    file-level answer.
+
+### A survivor that is data coincidence, with the discriminator identified
+
+137. **Stubbing `reset-checkpoint` leaves the tests green**
+    (`transforms-incremental`). A presence probe proved the assertion is live, so
+    this is coincidence, not vacuity — and the API probe shows exactly why:
+    `checkpoint_hi_value` is **30 before the reset, after a no-reset re-run, and
+    after the reset**. Only `checkpoint_lo_value` discriminates, and the UI
+    renders its "Checkpoint from" row only when non-null.
+
+    Recorded inline with a concrete follow-up rather than strengthened. This is
+    the same shape as #119 (a boolean filter where both branches return
+    `"1 row"`): **the assertion is sound; the data cannot distinguish the states.**
+
+### Three port-drift mechanisms worth propagating
+
+138. From `transforms-incremental`, all three fixed and all three port drift:
+    - **The transform target defaults to the `Domestic` schema**, not the source
+      schema.
+    - 🔴 **`pressSequentially` after `fill()` PREPENDS** — the caret sits at index
+      0, and the failure surfaced **two assertions later**.
+    - **The DB popover auto-resolves within 200ms**, so upstream's click cannot be
+      ported literally. Recorded as environment-dependent rather than a product
+      claim, since the Cypress cross-check is barred.
+
+    Also a **cross-slot hazard**: `transforms.spec.ts`'s cleanup drops any
+    `%transform%` table in Schema A/B, which would have deleted upstream's
+    `transform_table` mid-run. Avoided by a declared rename to
+    `incr_target_table`. **A spec's cleanup can reach into another spec's
+    fixtures** — a fourth mechanism behind the #85 family.
+
+### 🔴 HARNESS BUG: `signInWithCredentials` silently poisons later `mb.api` calls
+
+139. **`signInWithCredentials` posts `/api/session` through `mb.api`, so the
+    session cookie lands in the API request context's jar** — and Metabase's
+    `wrap-session-key` resolves the **cookie before the header**. Every later
+    `mb.api` call therefore runs as that user, and **`mb.signInAsAdmin()` does
+    not undo it** (`database-routing-usage`). It cost that agent a run with 403s
+    on `POST /api/card`, and it worked around it locally via `context.request`.
+
+    **This is not spec-local.** Any port doing admin API work after
+    `signInWithCredentials` is silently running it as the wrong user.
+
+    **Audit: two landed specs use it** — `database-routing-usage` (now handled)
+    and **`sandboxing-via-api`**, which has 84 `mb.api`/`signInAsAdmin`
+    references. That one is the concerning case: on a **sandboxing** tier,
+    running setup or verification as the wrong user is exactly the failure that
+    makes a security assertion pass while enforcing nothing — the same shape as
+    the guessed `USER_GROUPS` id that made impersonation look broken.
+
+    **Owed, and it should come before more porting on that tier:** verify
+    `sandboxing-via-api`'s API calls actually run as the intended user, and fix
+    `signInWithCredentials` in the shared harness (not applied while agents are
+    live). **Until then, treat that spec's green as unverified.**
+
+### A survivor caused by missing navigation, not a weak assertion
+
+140. **Both halves of the routing test assert without re-visiting the question**
+    (`database-routing-usage`), so they re-check the **admin's stale render**.
+    Mutation 4 (routing that user elsewhere) **survived**; a presence probe that
+    added a single `visitQuestion` under the same mutation **killed it instantly**
+    at spec:289.
+
+    So the defect is the **missing navigation**, not a weak assertion — a
+    distinction worth keeping, because "strengthen the assertion" would have been
+    the wrong fix. Kept verbatim with the analysis inline.
+
+### Unexplained, recorded rather than invented
+
+141. **The MBQL routing-error message node exists but reports `hidden` to
+    Playwright for the full retry window, while the native half of the same test
+    reports it visible** (`database-routing-usage`). The agent had added
+    `toBeVisible()` as a strengthening and **removed it** — upstream's
+    `findByText` is existence-only, so the strengthening was its own addition and
+    not something to defend.
+
+    If that banner really is zero-size for MBQL routing failures, **no current
+    assertion can see it**. Recorded as unexplained. No Cypress cross-check was
+    run, so whether upstream sees it is unknown.
+
+### The dependency graph is backfilled ASYNC — a conversion can outrun it and still report success
+
+142. **A model→transform conversion that outruns the async backfill rewrites
+    nothing and still reports `succeeded`** (`model-to-transform`). The
+    replacement runner resolves dependents from the **dependency graph**, which
+    card create/update only marks **stale** — `dependencies/events.clj` says
+    outright that "the backfill task does the actual computation".
+
+    Symptom: the test failed with `data-step-cell` reading "Dashboard model" and
+    **passed in isolation** — the classic pacing signature. Fixed by polling the
+    product's own `GET /api/ee/dependencies/backfill-status` rather than a sleep.
+
+    **This is a pacing difference, not a product bug, and it generalises to the
+    whole dependency/replacement tier.** Any port that creates a card and
+    immediately triggers a dependency-driven operation is exposed.
+
+    A second required wait in the same spec: `MigrateModelsPage` reads the
+    **search index** via RTK-Query, cached per mount, so a raced read is
+    **unrecoverable by assertion retry** — retrying the assertion can never fix a
+    stale cached read.
+
+### A mutation that disproved the agent's own vacuity worry
+
+143. **`toBeDisabled()` is not satisfied by the `isLoading` window**
+    (`model-to-transform`). The agent had flagged its own assertion as possibly
+    vacuous — the button might read disabled merely because the page was still
+    loading. M4a settled it: under the mutation the locator reads **`enabled`**,
+    so the assertion genuinely tracks the disabled state.
+
+    Worth recording as method: the agent raised a doubt **about its own port**,
+    then designed a mutation to answer it rather than either defending or
+    silently softening the assertion. All 5 mutations landed (read back), all 7
+    tests killed, no unexplained survivors and no bad mutations — the first port
+    today with a clean sweep on both counts.
+
+### `schemas[0]` is `Domestic`, not `public`, on this box
+
+144. **`ReplaceWithTransformModal` defaults its target schema to `schemas[0]`**,
+    which under the #85 debris is **`Domestic`** rather than `public`
+    (`model-to-transform`). Nothing asserted depends on it, so the port stays
+    faithful — but the consequence is that **upstream's unqualified
+    `DROP TABLE mtt_output_table` cannot reach the output table here**.
+
+    That is a cleanup path silently missing its target because of container
+    contamination, which is how debris accumulates in the first place. Fifth
+    distinct mechanism in the #85 family, after self-inflicted fixtures,
+    virtualized pickers, unpinned lookups, and a spec's cleanup reaching into
+    another spec's fixtures.
+
+### A hidden 30-day fuse in the `default` snapshot
+
+145. **"Getting Started" renders only while `instance-creation` is under 30 days
+    old** (`add-initial-data`) — that setting is the snapshot's first-user
+    timestamp. This box reads 2026-07-17, so it passes now, but **an aging local
+    `default.sql` will fail two tests in a way that looks exactly like port
+    drift**.
+
+    Same family as the corrupt `blank.sql` (#97), different snapshot and a
+    different mechanism: not wrong *content* but **stale content that decays**.
+    Both are invisible in CI, which regenerates snapshots per run, and both
+    manufacture failures that read as port defects locally.
+
+    **Third environmental trap of this shape**, after `blank.sql` and the
+    heap-order accident behind `issue 34350`. The general lesson: **before
+    accepting a local failure as port drift, check whether the fixture itself is
+    time- or order-dependent.**
+
+### The mutation-verification script was itself wrong
+
+146. **An agent's readback assertion asserted the wrong thing and false-aborted
+    *after* the file had already been written** (`add-initial-data`). It checked
+    that the *new* text appears exactly once; on M6 that failed even though the
+    mutation had landed correctly. **Had the agent trusted the abort, it would
+    have interpreted a mutated file as clean** — a false "survivor" of the worst
+    kind. Its "LANDED @ line" locator was also 236 lines off on M11.
+
+    This is #128 recurring one level up: that entry said *verify the mutation
+    landed*, and here **the verifier itself was the broken thing**. The agent
+    caught it, fixed both, re-verified every multi-line mutant by hand, and
+    separately sanity-checked its dead-import checker by injecting a known-unused
+    import.
+
+    **Rule to carry: a verification step is not self-verifying.** When a check
+    reports something surprising, test the check before believing it — twice
+    today a tool's verdict was wrong rather than the thing it measured.
+
+### An `@external` tag gating precisely nothing
+
+147. **`add-initial-data`'s `@external` gates zero tests.** Read from the
+    `beforeEach` rather than the tag: plain `H.restore()` on the `default`
+    snapshot, no QA dialect, no `WRITABLE_DB_ID`. The only external service was
+    **snowplow-micro**, which browser-boundary capture replaces outright.
+
+    Gate-OFF control: **11 passed both ways, 0 skipped both ways** — the cleanest
+    possible demonstration that the tag is inert. Meanwhile the *token* gate is
+    real and maps to exactly one test (`application-name` is
+    `defsetting :feature :whitelabel`, no short-circuit; FE `getIsWhiteLabeling`
+    is EE-plugin-only; probed live at **204 with token, 500 without**).
+
+    Seventh way the tag metadata misleads, and a reminder that **container gating
+    and token gating are independent** — a spec can be wrongly tagged for one and
+    correctly gated by the other.
+
+### 🔴 #139 CONFIRMED BY MUTATION: the auth footgun makes sandboxing tests pass while measuring nothing
+
+148. **Simulating the `signInWithCredentials` leak leaves two "shows all data
+    before sandboxing" tests passing green while measuring nothing**
+    (`sandboxing-via-ui`, mutation M5). The agent reproduced the bug first — after
+    `signInWithCredentials`, `mb.api` runs as the new user and
+    `mb.signInAsAdmin()` does **not** undo it, while the *browser* correctly
+    becomes admin — then mutated its own guard away to measure the consequence.
+
+    **M5c bounds the damage honestly: the vacuity is one-directional.** It fails
+    loudly on sandboxed-direction tests, so only the "before sandboxing" baseline
+    assertions go hollow. That is a real bound, not a reassurance — a baseline
+    that cannot fail is exactly what makes a subsequent sandboxing assertion look
+    meaningful when it isn't.
+
+    Its own port avoids the bug: `signInAs` does the session POST through a
+    **throwaway request context disposed immediately**, so `mb.api`'s cookie jar
+    stays clean (measured). It added `assertRunningAs` as a **declared
+    strengthening on a security surface**.
+
+    **This raises the priority of the owed audit on `sandboxing-via-api`**, which
+    uses `signInWithCredentials` across 84 `mb.api`/`signInAsAdmin` references and
+    whose green is already marked unverified (#139). We now have a demonstrated
+    mechanism, not just a suspicion. **The shared harness fix is still owed.**
+
+### An `@external` tag that costs 18 tests
+
+149. **`sandboxing-via-ui` restores `postgres-12` but only ever touches database
+    1.** Swapping to `restore("default")` passes all 18. So the tag is **dead
+    setup**, and dropping it would **recover 18 tests on non-QA-DB legs**.
+
+    Recorded, not acted on — changing the restore is a structural change rather
+    than a port. Third entry in the coverage-recovery class after `custom-viz`
+    and `dashboard-filters-boolean`, and by far the largest.
+
+### Data insufficiency that is arguably the upstream intent
+
+150. **The 12 custom-column sandboxing tests cannot detect sandboxing at all**
+    (`sandboxing-via-ui`). A presence probe confirmed the sandbox genuinely
+    filters (`is_sandboxed=true`, Gizmo-only rows), but `limit 20` against **>20
+    products in every category** (minimum 42) makes the `"20 rows"` assertion
+    true in **both** branches.
+
+    The agent then made the judgement call worth recording: this is **data
+    insufficiency, not vacuity**, and it is **arguably upstream's actual intent**
+    — "custom columns don't blow up under sandboxing" rather than "sandboxing
+    filters correctly". Ported **verbatim** on that reading rather than
+    strengthened.
+
+    Third instance of the same shape today (#119 boolean filter, #137 checkpoint
+    `hi`/`lo`), and the first where the weak assertion looks *deliberate*.
+
+### 🔴 #64406, THIRD independent derivation — now with a direct measurement
+
+151. **`native-database-source` hit the `DataSelector.skipSteps` regression and
+    measured the window directly** (after `native-reproductions-js` and
+    `admin-datamodel-reproductions`, #113). A navigate-and-poll probe on the CI
+    jar:
+
+    - `last-used-native-database-id` is **`""` after restore** — this
+      **eliminates the dirty-snapshot explanation**, which was the main
+      alternative still standing.
+    - **+159ms**: popover open, both rows present, `topBar="Select a database"`,
+      nothing selected.
+    - **+280ms**: `selected=["QA Postgres12"]`, popover gone,
+      `PUT …/last-used-native-database-id → 204`.
+
+    So the observable window for "no database selected" is **~150ms wide**.
+
+    **7 tests are `test.fixme`** — exactly those whose subject is *"no database
+    selected → user picks one"*, which the regression makes impossible to test.
+    The agent lifted two fixmes and ran `--repeat-each=5`: **0/5 and 0/5**. So an
+    earlier single green elsewhere was **a race win, not evidence**.
+
+    Three independent agents, three different specs, three different symptoms,
+    and now a measurement that excludes the alternatives. **The Cypress
+    cross-check has still not been run** (barred while slots are live), so
+    whether upstream is red is **unknown and not claimed** — but the code change
+    and its consequence are established beyond reasonable doubt.
+
+    **This is worth raising with the frontend team as a product bug**, separate
+    from the migration.
+
+### A token gate proven by a two-arm control
+
+152. **`enable-advanced-permissions?` is a bare `define-premium-feature` with no
+    `(not is-hosted?)` escape** (`native-database-source`) — traced *and*
+    measured with both arms: no token → `PUT /api/permissions/graph` with
+    `view-data: "blocked"` returns **402**; `pro-self-hosted` → **200**.
+
+    So `activateToken` is load-bearing here. Fifth distinct token outcome
+    established by the same tracing method, and the two-arm control is the
+    pattern worth copying — it proves the gate is real *and* that the token
+    actually lifts it, rather than only one of the two.
+
+### Two hazards traced through the helper and found inapplicable
+
+153. **The 75ms autocomplete `interactionDelay` and the
+    "`{Enter}`-is-a-completion-accept" trap do not arise in
+    `native-database-source`** — the spec never presses Enter into a completion
+    list. The agent went further than asserting that: it **traced both
+    `NativeEditor.type` strings through the helper's parser** and confirmed it
+    swallows nothing here (net keystrokes equal the source), so a literal
+    `keyboard.type` is faithful.
+
+    That is the right standard for dismissing a brief warning — not "I didn't see
+    it" but "I checked the mechanism that would cause it". The placeholder
+    focus-drop *does* apply and was handled.
+
+    It also flagged **one of its own mutants as partially blunt**: M7 kills, but
+    one assertion earlier than aimed, leaving `contains "New Database"`
+    **reached-but-unproven**. Recorded rather than counted as coverage.
+
+### My compression of #98 was ambiguous, and an agent read it backwards
+
+154. **`transforms-template-tags` reported #98 as inverted. It isn't — but my
+    brief phrasing was.** #98 states correctly that **testing-library's
+    `getNodeText` reads direct child text nodes** while **Playwright reads full
+    `textContent`**. In later briefs I compressed that to
+    *"(direct child text nodes vs full `textContent`)"*, which **doesn't say
+    which side is which**. The agent read it the wrong way round.
+
+    It then measured and landed on the correct answer anyway:
+    `<div>Default value<span>(required)</span></div>` matches upstream and **not**
+    Playwright's exact matcher — which killed its run 1. Fixed with a
+    `directText()` XPath matcher reproducing testing-library's semantics, applied
+    to the `not.exist` checks too, correctly noting that **a narrower matcher on
+    an absence assertion drifts the wrong way**.
+
+    **The lesson is mine, not the agent's:** compressing a rule into a
+    parenthetical dropped the very asymmetry that made it a rule. Ninth
+    coordinator error corrected on evidence, and the second caused by
+    abbreviating something that was right when written out in full.
+
+### Both queue gates wrong on one spec, with controls for each
+
+155. **`transforms-template-tags` has `snowplow` and `token` in the queue, and
+    neither is real.**
+    - **snowplow is dead setup**: `grep` returns exactly one line —
+      `H.resetSnowplow()` in the `beforeEach`. Zero assertions, no `afterEach`.
+      Neither vantage was ported, and the two known collector/capture defects are
+      **inapplicable, not banked**.
+    - **token is a red herring, with a control**: every transform here is a
+      `query` transform (no python), so only `query-transforms-enabled?` is
+      reachable and it short-circuits on `is-hosted? = false`. The agent removed
+      `activateToken` and re-ran: **3 passed with `features ON: 0`**.
+
+    It also recorded a **near-miss**: the EE frontend sets
+    `PLUGIN_TRANSFORMS.isEnabled = hasPremiumFeature("transforms-basic")`, false
+    here — but its only two readers are `SmartLinkNode` and
+    `DataPermissionsHelp`, **not** the transform routes. That is the difference
+    between a flag being false and a flag gating anything.
+
+    Upstream carries **no tags at all** on this spec while siblings in the same
+    directory carry `@external` — more evidence for the drift in #123.
+
+### Two fixture names that collide with live siblings
+
+156. **Upstream's `transform_table` collides with a live sibling fixture already
+    in the container, and sits inside `transforms.spec.ts`'s `%transform%` DROP
+    sweep** (`transforms-template-tags`) — the cross-spec cleanup hazard from
+    #138, now hit a second time. Upstream's `"Foo"` also materialises a physical
+    table named `foo`.
+
+    Both renamed (`tt_tag_target`, `TTFoo`) and **declared as deviations**, both
+    being unasserted literals. Container: **37 tables before, 37 after, listings
+    identical.**
+
+### 🔴🔴 THE #85 ROOT CAUSE: `resetWritableDb` was never ported
+
+157. **Cypress's `H.restore("*-writable")` also calls `resetWritableDb`
+    (`e2e/support/db_tasks.js:41`), which wipes the warehouse. Our `mb.restore()`
+    does the app-DB half only** (`dependency-checks`). Verified independently:
+    `resetWritableDb` exists in the Cypress harness and has **zero
+    implementations** in `e2e-playwright/`, while **47 files** in this package
+    restore a writable snapshot.
+
+    **This is the missing half of #85.** The debris was previously attributed to
+    self-inflicted fixtures (#101) and cross-spec cleanup (#138), both real — but
+    the reason *nothing ever clears it* is that the restore path which clears it
+    upstream was never ported. Under Cypress every writable restore starts from a
+    clean warehouse; under ours, warehouse state accumulates **forever**.
+
+    It surfaced concretely: test 4 died `403 A table with that name already
+    exists`, because two transform tests target the same `public.base_transform`
+    and the target check hits the warehouse via `driver/table-exists?`.
+
+    **This is also a fidelity gap, not just hygiene.** Every ported spec on this
+    tier runs against a materially different warehouse state than upstream does,
+    which can both mask real failures and manufacture false ones.
+
+    **The fix is owed and is NOT a drop-in:** a faithful `resetWritableDb` would
+    `DROP SCHEMA … CASCADE` across `Schema A`…`Schema Z`, destroying live
+    siblings' fixtures. It must land when the slots are drained, and be verified
+    against a container that already carries the debris.
+
+### A spec whose subject was deleted from the product
+
+158. **`dependency-checks` tests behaviour that no longer exists**
+    (`dependency-checks`). `git log` on the source surfaced `d8b40292d12`
+    *"Disable blocking dependency checks on save (#70819)"*, which unregistered
+    the `useCheck*Dependencies` hooks **and deleted 145 lines from this very
+    spec** — every test asserting the confirmation *does* appear. A follow-up
+    deleted the components and the
+    `POST /api/ee/dependencies/check-card|check-transform|check-snippet`
+    endpoints. Confirmed against the current tree: zero grep hits, absent from
+    `api.clj`'s endpoint list.
+
+    So the four surviving tests are the **negative half of a pair whose positive
+    half is gone**. Measured rather than asserted — a probe replicating the
+    deleted breaking-change test returned `modals=0 affectedListed=0
+    saveAnywayButtons=0` with `PUT /api/card → 200`, and mutation M3 confirmed it
+    on the transform surface. Ported faithfully with the analysis inline, **not
+    strengthened**.
+
+    Left explicitly unexplained: **whether the removal is permanent or a
+    temporary disable cannot be determined from the repo** —
+    `errors-from-proposed-edits` is intact and still wired to Metabot, which is
+    consistent with either.
+
+### The backfill hazard is moot here, and the direction inverts
+
+159. **I briefed the async-backfill race (#142) as this spec's primary hazard. It
+    doesn't apply** (`dependency-checks`), and the agent measured rather than
+    assumed: `--repeat-each=3` ran **12/12 both with and without** the
+    `backfill-status` wait.
+
+    There is a mechanism — the only consumer of the graph on these paths was the
+    **deleted** check endpoint. And the agent noted the direction **inverts** my
+    framing: a stale graph here would make these tests pass *more* easily
+    (hollow green), never flake. It kept the wait as cheap insurance.
+
+    **Inbox correction owed:** `dependency-unreferenced-list.ts:78` claims
+    `backfill-status` is "only the global one-time backfill flag". That is
+    **wrong** — `api.clj:1047` is `(not (has-stale-or-outdated?))`, genuinely
+    per-entity. The `model-to-transform` reading (#142) is the correct one.
+
+### 🔴 The success toast is NOT a proxy for the write
+
+160. **Neutering the write left the success toast passing**
+    (`actions-in-object-detail-view`, M1). Dropping the `fill()` of Score so the
+    implicit `row/update` writes the row back unchanged **killed 2/2 tests at the
+    table read-back** (`987,654,321` count 1→0) — while the **success toast still
+    passed**.
+
+    **So a toast-only port would be green against a no-op write.** That
+    generalises across the whole actions tier, where "action succeeded" toasts
+    are the obvious thing to assert on. The read-back is what makes these tests
+    load-bearing; the toast only proves the request returned 200.
+
+    This is the fourth actions spec ported, and the **first where the `@external`
+    tag is correct**.
+
+### Two self-flagged mutation limits, stated rather than counted
+
+161. From `actions-in-object-detail-view`, both worth keeping as method:
+    - **M6 is partially blunt** — aimed at the error-text assertions, it killed
+      one assertion earlier. The mechanism is informative: a successful update
+      **unmounts the modal**, which turns upstream's filler-looking
+      `findByLabelText("Team Name").should("exist")` into a real *"the modal did
+      not close"* check.
+    - **M7 is expectation-side, deliberately and declared.** No input inversion
+      can reach the error-text assertions, because **any input avoiding the
+      duplicate name also closes the modal**. Rather than pretend an input
+      mutation existed, the agent used an expectation-side one and said so.
+
+    It also listed two assertions as **"not triggered by any failure mode I could
+    induce"** — the post-Escape object-detail visibility check (the behaviour the
+    test is *named* for) and the final post-delete `toHaveCount(0)`. Both
+    non-vacuous, both downstream of an assertion that dies first. **Stated, not
+    counted as covered.**
+
+### `tsc` is provably silent on dead imports
+
+162. **Measured rather than assumed** (`actions-in-object-detail-view`): the
+    agent injected **an unused import and a type error** into the same file.
+    `tsc` reported only the type error and said nothing about the dead import.
+
+    This confirms the standing instruction ("`tsc` does not catch dead imports —
+    check by hand") with a control instead of folklore. It matters because a
+    dangling import has already broken collection on every CI shard in this
+    package, and `tsc` green is the check most likely to be trusted for it.
+
+    The same agent **sanity-checked its mutation verifier before using it** —
+    confirming it aborts on 0 occurrences and on 3, with the file md5 unchanged.
+    That is #146's lesson adopted proactively rather than after a failure.
+
+### 🔴 A token probe left a slot backend contaminated with MORE features
+
+163. **`workspace-instance`'s two-arm token control left `bleeding-edge` active
+    on slot 3**, and the agent declared it as a deliberate residue reasoning that
+    "every `beforeEach` re-activates it". **I verified and it was not benign:**
+    `GET :4103/api/session/properties` reported **53 features ON**, with
+    `workspaces: true` **and `transforms-basic: true`** — the latter being a
+    feature the local `pro-self-hosted` token does **not** carry.
+
+    **The failure mode this creates is the worst kind: a genuinely gated spec
+    would appear ungated on that slot**, producing a confident "this tier runs
+    here" conclusion that is an artifact of the previous agent's probe. That is
+    the same shape as #106, where I wrongly concluded a tier was blocked — only
+    inverted, and harder to catch because everything passes.
+
+    Killed the slot-3 backend (PID confirmed as the `metabase.jar` process on
+    4103) so the next agent gets a clean one.
+
+    **Rule: a token probe must restore the token, not rely on the next spec's
+    `beforeEach`.** The reasoning "every `beforeEach` re-activates it" is only
+    true for specs that activate a token at all — and a spec testing OSS or
+    gated behaviour is precisely the one that won't.
+
+### A green run interrogated rather than accepted
+
+164. **`workspace-instance` flagged its own 4.4s runtimes as a possible #49
+    "ported but never really executed" green, then ruled it out three ways** —
+    a warm-backend restore measured at 0.103s, mutations dying on real
+    warehouse/DOM state, and the sync semantics accounted for.
+
+    Worth recording because #49's whole point is that a fast green is the hardest
+    kind to distrust. Two of its kills also prove **product behaviour rather than
+    port fidelity**: on both engines the canonical path
+    (`Domestic.transform_table` / `writable_db.transform_table`) **does not
+    exist** in the warehouse, while the workspace-qualified path holds exactly 3
+    rows.
+
+    It also found an **assertion subsumed by its successor**: upstream asserts
+    `contain.text "transform_table"` then `"mb__isolation/__transform_table"` —
+    the second string contains the first, so the first **cannot fail
+    independently**. Ported verbatim with the analysis inline.
+
+### Two thirds of one upstream test does nothing — proven, not inferred
+
+165. **`#15170`'s `semantic_type: type/PK` on `uuid` and its dashcard
+    `parameter_mappings` target are both provably non-load-bearing**
+    (`dashboard-chained-filters`). Two mutations survived, and the agent
+    separated "vacuous" from "my mutation was bad" with a **presence probe** — a
+    bogus assertion target **failed**, proving the assertion is live.
+
+    So roughly **two thirds of that test's body has no effect on its only
+    assertion**. Recorded, not strengthened.
+
+### My slot-prefix scheme collides across sequential agents
+
+166. **`s4-mutate.py`, `s4-spec.baseline.ts`, `s4-spec.orig.ts` were found in the
+    scratchpad by a slot-4 agent that did not create them** — they belonged to an
+    *earlier* slot-4 agent. My fix for #130 (prefix scratch files by slot) only
+    prevents collisions between **concurrent** slots; it does nothing for
+    **sequential** agents reusing the same slot number.
+
+    No harm this time — the agent used distinct names and verified its restore
+    clean — but it correctly flagged the risk rather than ignoring unfamiliar
+    files. Scratchpad swept; only the live slot's files kept.
+
+    **Better scheme: prefix by slot *and* spec** (`s4-chained-filters-…`), or
+    clean the scratchpad between dispatches. The underlying lesson is the same
+    one as #163: **state that outlives an agent is a hazard to the next one**,
+    whether it is a scratch file, a backend token, or a warehouse table.
+
+### An unbounded absence assertion satisfied by an auto-expiry timer
+
+167. **Removing the click from `closeUndoToast` survived, because undo toasts
+    auto-expire** (`data-studio-single-table`, M6). An unbounded
+    `toHaveCount(0)` is satisfied by the **timer**, not by the dismissal it is
+    supposed to verify.
+
+    **The tell was runtime, not the result: 19.4s versus 6.5s.** The agent
+    noticed the duration, bounded the gate at 3s rather than report a survivor,
+    and M6 then dies.
+
+    This is a new vacuity shape for the collection — distinct from the pre-fetch
+    empty-state family. **Any absence assertion against something that
+    self-dismisses is time-bounded whether you say so or not**, and an unbounded
+    retry will eventually pass for the wrong reason. Worth sweeping other toast
+    and transient-banner absence checks.
+
+### Four persistence assertions were vacuous, and upstream has the same race
+
+168. **The "navigate away and back" assertions in `data-studio-single-table` did
+    not verify persistence.** M4 asserted the **wrong** value for `Source` and
+    **passed**.
+
+    The agent's first hypothesis (anchor on the name input) was wrong — the
+    mutant still survived — so it **measured instead of theorising again**:
+    dumping all four inputs read back the correct settled values, and merely
+    adding those round-trips killed the mutant. Mechanism is the pre-fetch render
+    family: clicking a table re-renders the section before `query_metadata`
+    lands, and **the name input flips before the selects settle**, so an
+    assertion anchored on the name reads stale selects.
+
+    Fixed with a declared `query_metadata` anchor; **assertions unchanged and
+    verbatim**. Mutant now dies 3/3.
+
+    **Cypress retries identically, so upstream has the same structural race** —
+    stated as a structural inference, with the agent explicitly noting it ran no
+    cross-check and cannot claim upstream fails.
+
+### Tag drift in the opposite direction: a live assertion with no tag
+
+169. **`data-studio-single-table` makes a live snowplow assertion and carries no
+    `@snowplow` tag** — the inverse of the dead-setup case (#110, where the tag
+    existed and the assertions didn't). Eighth way the tag metadata misleads.
+
+    Also on that spec: **two token predicates, not one** — `:library`
+    (publish/unpublish) **and** `:dependencies` (graph link, Dependencies rows),
+    which its bulk-table sibling never hit. Both hard gates, proven with a
+    two-arm control (`POST publish-tables` → **402** without, route reached
+    with). **Nuance worth keeping: the Library nav item renders in BOTH arms,
+    merely `isGated`** — so a presence-only assertion there would be a false
+    negative.
+
+### 🔴 Playwright's non-exact `getByText` is CASE-INSENSITIVE
+
+170. **A bare `getByText` used for a `not.exist` check matched the wrong element
+    because Playwright's non-exact matching is case-insensitive**
+    (`alert`). The agent had reached for the bare form thinking it was "safely
+    broader"; it matched a paragraph the same modal is asserted to *contain*.
+
+    This completes the `getByText` picture, and the two halves pull in opposite
+    directions:
+    - **`{exact: true}`** is *narrower* than Cypress (Playwright reads full
+      `textContent`, testing-library reads direct child text nodes) — #98.
+    - **`{exact: false}`** is *broader* than expected, because it **also ignores
+      case** — this entry.
+
+    So neither form is a safe default for an absence assertion. The fix used was
+    to assert two ways. **Worth checking any ported `not.exist` that dropped
+    `exact`.**
+
+### `@external` wrong in BOTH directions within one spec
+
+171. **`alert` has an over-broad tag, a missing tag, and one genuine
+    dependency — all measured, not inferred.**
+    - **maildev genuinely engages**: `PUT /api/email` live-connects before
+      saving. Measured on :4104 — dead port 1026 → `400 "Wrong host or port"`,
+      live 1025 → `200`.
+    - **webhook-tester is never contacted**: `POST /api/channel` only inserts the
+      row (the connection test is the separate `POST /api/channel/test`), and the
+      alert is created then deleted without firing. The container's request count
+      was **1 before and 1 after every run**, including `--repeat-each=3` — **zero
+      delta**. That describe's `@external` is over-broad.
+    - **A missing tag**: the untagged *"can set up an alert for a question saved
+      in a dashboard"* calls `setupSMTP()` and needs maildev exactly as much as
+      the EE describe.
+
+    `maildev-ssl` was ruled inapplicable **by mechanism, not absence** —
+    `setupSMTP` sends `email-smtp-security: "none"`.
+
+    A request-count delta is the cleanest probe yet for "did this service
+    actually get used", and it is cheap. Worth reusing on every webhook tier.
+
+### A verifier that wrote before validating
+
+172. **The agent's mutation verifier had a real flaw — it wrote the file before
+    validating, and false-aborted on wrapping mutants** (`alert`). It found this
+    itself, patched it, re-sanity-checked (aborts on 0, on ambiguity, on no-op;
+    md5 unchanged), and confirmed **no run was compromised**.
+
+    That is the third verifier defect found today (#128 clobbered a line, #146
+    false-aborted after writing), and the second where the agent caught it before
+    drawing a wrong conclusion. **The practice now paying for itself: sanity-check
+    the verifier against known-bad inputs before trusting a single result.**
+
+    It also flagged **M1 as its own bad mutation** — it died in a helper rather
+    than an assertion because "Foo Hook" is already the default handler — and
+    resolved a survivor honestly: deleting an explicit
+    `addNotificationHandlerChannel("Bar Hook")` survives because the default
+    handler already satisfies `icon("webhook")`. A presence probe showed both
+    hook names render exactly once, so **the data can discriminate** — making it
+    a genuine **upstream assertion gap**, recorded not strengthened.
+
+### A Mantine Modal root measures zero-height — Playwright needs a box, Cypress doesn't
+
+173. **`leaveConfirmationModal().should("be.visible")` cannot be ported
+    literally** (`transforms-reproductions`). The `data-testid` sits on Mantine's
+    Modal **root**, measured at `{w:1280, h:0}` while the content is
+    `{w:620, h:190}`. **Playwright requires a bounding box on the element
+    itself; Cypress does not.** Harness semantics, not an app failure.
+
+    The agent's first reading was wrong — it took the URL change on back-nav for
+    a failed blocker — and it **corrected itself rather than shipping the first
+    explanation**. This refines the earlier "a Mantine Modal reports `hidden`
+    while open" note with the actual measurement.
+
+### Inheriting a sibling's conclusion would have been wrong
+
+174. **`findByText("Writable Postgres12").click()` can't be ported literally, but
+    not for the reason a sibling recorded** (`transforms-reproductions`). The
+    agent probed instead of inheriting: **only one DB is transform-eligible, so
+    the app auto-selects and the popover is gone by t+200ms**. That is the
+    **auto-select** mechanism (the #64406 family), *not* the "two popovers"
+    mechanism the sibling's comment leads with.
+
+    Worth recording as method: the findings file is now large enough that
+    **inheriting a neighbouring explanation is a real failure mode**. The
+    symptom matched; the mechanism didn't.
+
+### A verifier that caught a six-site anchor
+
+175. **The mutation verifier aborted on a 6-occurrence anchor** that would
+    otherwise have mutated six sites at once and mis-attributed the death
+    (`transforms-reproductions`) — the same class the `dashboard-chained-filters`
+    verifier caught at two sites. Sanity-checked against 0-occurrence and
+    multi-occurrence inputs **before** use.
+
+    The agent also flagged its own weak mutation: **M2 was an assertion
+    inversion**, so it added M2b (removing the 1000-item mock) as an input
+    inversion — which **survived**, honestly read as *"the data cannot
+    discriminate on a fixed build"* rather than vacuity, since M2 had already
+    established non-vacuity.
+
+    **Unexplained and left so:** a pre-control reading of **52 token features**
+    where 42 is the count both before and after. The agent could not account for
+    it and did not invent a mechanism; the decisive control ran at 0 features, so
+    no conclusion depends on it. (Noting for the record that 52 is suspiciously
+    near `bleeding-edge`'s 53 — but that is my speculation, not a finding.)
+
+    Two upstream weaknesses ported verbatim: **#68378 ends on a Save click with
+    no assertion at all**, and **GDGT-1776 checks `loading-indicator` absence
+    *before* its positive anchor**.
+
+### 🔴🔴 `toHaveCount(0)` retries, but a ZERO-assertion is satisfied on its FIRST poll
+
+176. **Retrying never rescues a negative assertion from a render race**
+    (`sso-ldap`). This is the most generally important finding of the session and
+    it invalidates a comfortable assumption behind every absence check we have
+    written.
+
+    Measured: M6 (grant the token, require the OSS denial to go red) **survived**,
+    because the provisioning section is a separate plugin component that commits
+    **~550 ms after** the form fields. `toHaveCount(0)` fired **pre-render** and
+    passed. The retry loop cannot help — the very first poll already satisfies a
+    zero-assertion, so there is nothing to retry *into*.
+
+    Fixed by anchoring on the settings response **plus** the submit button, and
+    **proven by M6 killing against the anchored version**.
+
+    **Consequence: "both `toHaveCount(0)` and `expect(await count()).toBe(0)`
+    retry" — which I have told every agent — is true and beside the point.** An
+    absence assertion needs a **positive anchor proving the thing that would
+    contain it has rendered**. This joins the pre-fetch empty-state family (#73),
+    the auto-expiry-timer family (#167), and the name-settles-before-selects case
+    (#168) as the fourth distinct way an absence check goes hollow.
+
+    It also **retracts that agent's own pass-1 "unexplained"**: provisioning
+    rendering nothing with `sso_ldap=true` was its pre-render measurement
+    artifact, not a mystery.
+
+### The LDAP tier: 4 → 14 executing, and the mutation predictions held
+
+177. **All 14 `sso-ldap` tests now execute and pass, 42/42 under
+    `--repeat-each=3`**, after I started the OpenLDAP container the agent had
+    correctly identified as the sole blocker. Ten tests moved from
+    ported-and-unverified into real coverage.
+
+    **M3 flipped from survivor to kill, exactly as predicted.** With no server,
+    ports `1` and `389` both yielded "Wrong host or port"; with a real one, 389
+    succeeds and 1 fails. So **#16226 is genuinely load-bearing**, and the
+    agent retracted its own "data cannot discriminate" verdict.
+
+    **The cleanest evidence of the session: M7** (break the bind password) kills
+    **exactly 10** and spares **exactly 4** — and those 4 are precisely the tests
+    that ran before the container existed. **Two entirely independent methods
+    partitioned the suite identically.** M8 (break the login password) is the
+    surgical complement, killing only the two login tests.
+
+    `:sso-ldap` is confirmed **split by argument** — basic login is OSS, attribute
+    sync and provisioning are gated — now proven **by execution** rather than
+    code-reading, since the OSS login test passes without a token.
+
+    **Also caught by the live run: a strict-mode violation** from Playwright's
+    non-exact `getByText` being **case-insensitive substring** matching —
+    `"Password"` matched *"I seem to have forgotten my password"*. Fixed with
+    `exact: true`, which is the **faithful** port since Cypress's string match is
+    exact. Second independent confirmation of #170.
+
+    **And a bad mutation the agent disproved by probing rather than reasoning:**
+    M10 survived and it hypothesised `getByText("Active")` was matching
+    *"Deactivate"*. It probed, **was wrong** — the card reads `"LDAP\nPaused\n…"`
+    — and found the real cause was `waitForResponse` resolving a tick before
+    React commits. Replaced with M11, which kills.
+
+    Judgement call I endorse: it **kept** the `ldapReachable()` TCP gate now that
+    the container exists. One connect per worker turns "no container" into an
+    actionable skip rather than a 10-test cascade.
+
+### ⚠️ CORRECTION: slots do NOT share an app DB — only the warehouse containers
+
+178. **I told every agent "four other slots share this instance" for
+    instance-wide state. That is wrong for app-DB state** (`email-alert`
+    caught it; verified independently at `support/worker-backend.ts:266`, which
+    sets `MB_DB_FILE` to `$TMPDIR/mb-pw-slot-<N>/metabase.db`).
+
+    The correct split:
+    - **Per-slot, isolated:** settings, users, groups, tokens, collections,
+      questions, dashboards — everything in the application database. Each slot
+      is its own JVM with its own H2 file.
+    - **Genuinely shared:** the **warehouse containers** (postgres :5404, mysql
+      :3304, mongo), plus maildev and webhook-tester. That is where #85, the
+      `resetWritableDb` gap (#157), and cross-spec fixture collisions (#138,
+      #156) all live.
+
+    **This also reframes #163** (a probe leaving `bleeding-edge` active). The
+    hazard was real, but it is **sequential — the next agent on the same slot** —
+    not concurrent contamination of siblings. Killing that backend was still the
+    right call; my description of *why* was not.
+
+    **Net effect: I have been over-constraining app-DB writes and
+    under-emphasising warehouse hygiene.** SMTP config, token activation and
+    settings churn were never visible across slots. Tenth claim of mine corrected
+    on evidence.
+
+### An `@OSS` gate resolved by reading what the assertion actually reads
+
+179. **`email-alert`'s `@OSS` tag is a red herring, and the reasoning is worth
+    copying.** The predicate is
+    `:include_branding (not (enable-whitelabeling?))`
+    (`notification/payload/core.clj:137`) — a pure `:whitelabel` **feature**
+    check with **no build check**, so an EE jar with no token satisfies it
+    identically.
+
+    My standing counter-case ("some assertions are OSS-build-only because
+    `PLUGIN_IS_EE_BUILD` renders EE chrome") **does not apply here**, and the
+    agent said exactly why: the assertion is on the **email HTML served by
+    maildev**, which the frontend bundle cannot influence. Confirmed by a run
+    showing the test green at `token features ON: 0`.
+
+    It also noted `isOssBackend()` would have **skipped this permanently**, since
+    the backend reports `version.tag = vUNKNOWN`. Ported ungated — real coverage
+    recovered.
+
+    **Services probed rather than assumed:** maildev genuinely engages (M3
+    repointed SMTP at a dead port and turned all three branding tests red — they
+    read the delivered message off :1080, with **no toast to be fooled by**),
+    while webhook-tester is **never contacted** (the saved alert is Slack, and
+    Slack is mocked).
+
+### ⚠️ UNRESOLVED: `pro-self-hosted` feature count — 42 or 52?
+
+180. **Two agents have now reported 52 features where my briefs say 42, and a
+    direct measurement says 42.** Recording the conflict rather than picking a
+    side.
+    - `transforms-reproductions` saw a **transient 52** pre-control, with 42
+      before and after, and left it explicitly unexplained (#175).
+    - `transforms-indexes` reports **52 consistently**, and corrects my brief on
+      that basis — its slot ended at "valid=true, 52 features, identical to
+      baseline".
+    - **My own measurement, taken just now across four live slot backends:
+      `:4101` → 42, `:4104` → 42** (`:4102` and `:4105` were at 0, correctly
+      cleaned by their agents).
+
+    So the direct evidence says 42 on the slots I can see, while two agents saw
+    52 on theirs. **I cannot reconcile these and am not going to guess** — the
+    candidates (a second token being picked up, a partially-applied activation, a
+    counting difference between `true` and merely-present keys) are all
+    untested. The qualitative point everyone agrees on is unaffected:
+    **`transforms-basic: false` on this token.**
+
+    **Owed: settle it with one measurement of `cypress.env.json`'s
+    `pro-self-hosted` token against a freshly started backend.** Until then,
+    briefs should say *"~42–52 features, `transforms-basic` absent"* rather than
+    a precise number nobody has pinned.
+
+### A probe that assumed `.env` and wiped a slot's token
+
+181. **A probe written against `.env` PUT an undefined token and cleared slot 4**
+    (`transforms-indexes`). The agent detected it within one command,
+    re-activated, hardened the probe to throw on an undefined value, and
+    **disclosed it in full**.
+
+    This is the retracted-#107 trap biting from the other side: the file to read
+    is **`cypress.env.json` via `support/env.ts`**, not `.env`. My briefs say
+    that now, but the wrong assumption is evidently still easy to make, and its
+    failure mode is silent — an undefined token PUTs successfully and leaves the
+    slot at zero features, which then looks like "this tier is gated".
+
+### `runTransform` invalidates the index cache — the test depends on that, not navigation
+
+182. **Upstream's `toHaveCount(2)` silently depends on cache invalidation**
+    (`transforms-indexes`). The agent's M8 died at the wrong assertion; rather
+    than invent a mechanism it **probed the API directly**, which returned both
+    rows and exonerated the backend. The real cause is `transform.ts:71`:
+    `runTransform` invalidates `listTag("table-index")`.
+
+    Also from that spec: **M3 survived exactly as predicted, exposing a genuine
+    upstream defect** — row-0's `contain "name"` is vacuous because the Name cell
+    already reads `idx_animal_name`. Presence-probed to confirm "data cannot
+    discriminate" rather than "never ran", and kept **verbatim with analysis
+    inline**.
+
+    And a **declared non-upstream fix** that is a direct consequence of #157:
+    without `resetIndexesTargetTables()` the *second* run 403s on "table already
+    exists", because Cypress's `restore` calls `resetWritableDb` and ours does
+    not. It drops two exact names in one schema — no `LIKE`, no foreign schemas —
+    and the `--repeat-each=3` green is the proof.
+
+### 🔴 The sharpest #85 reproduction: a spec that CANNOT pass until the reset lands
+
+183. **`datamodel-data-studio-search` is ported and proven correct, but it is
+    RED on the real shared container — 2 passed / 6 failed.** Under a diagnostic
+    shim presenting the writable DB as pristine it is **8/8, and 24/24 under
+    `--repeat-each=3`**.
+
+    **This is not being recorded as a green.** It is ported-and-blocked, and it
+    stays that way until the `resetWritableDb` fix (#157) lands.
+
+    Port drift was ruled out three ways rather than assumed: upstream's numbers
+    fall out **exactly** on a pristine container (`an`→3, `a`→4); a direct API
+    read returns **31** rows for `term=an`, of which **28 are `Animals`** left by
+    the `many_schemas` fixture across `Schema A`–`Z`; and filtering only that
+    response flips 2/8 to 8/8.
+
+    **It is the sharpest reproduction we have, because it asserts *exact*
+    counts** — a single stray table breaks it. That also makes it the natural
+    **acceptance test for the owed fix**: when `resetWritableDb` lands, this spec
+    should go 2/8 → 8/8 with no other change.
+
+    **Bonus finding that explains why upstream never noticed:** the UI showed **9
+    rows where the API returned 51** — the results grid is **virtualized**, so
+    `getTables()` counts *rendered* rows. On a clean container the two coincide.
+
+### `pressSequentially` types at caret 0 — second confirmation
+
+184. **`type("c")` on `"a"` produced `"ca"`, read straight off the failure
+    snapshot** (`datamodel-data-studio-search`). `cy.type()` appends;
+    `pressSequentially` inserts at the current caret, which is 0. Fixed with
+    `press("End")`.
+
+    Independent confirmation of the `transforms-incremental` finding (#138),
+    where the same behaviour surfaced **two assertions later** and was much
+    harder to attribute. Now measured twice, from opposite directions.
+
+    Two more genuine port bugs from the same spec, both measured:
+    - **The shared `selectFilterOption` is unscoped** where upstream's `within()`
+      scopes it → two "Visibility layer" textboxes → strict-mode violation. Local
+      scoped variant added; shared module untouched.
+    - **Upstream's second `selectFilterOption("Visibility layer","Final")` is not
+      a filter at all** — measured filter-form count 0, table-section count 0,
+      one textbox. It is the **bulk-attribute editor performing a metadata
+      write**. The agent's first reading was wrong, the diagnostic disproved it,
+      and it explicitly **did not inherit the sibling's explanation** (#174).
+
+    It also flagged its own bad guess: it anchored the bulk write on
+    `PUT /api/table` and timed out; the real endpoint is
+    `POST /api/data-studio/table/edit`.
+
+### Another token red herring, and another missing tag
+
+185. **`datamodel-data-studio-search`'s token gate is a pure red herring**, proven
+    with a full tokenless run: 0 features, `library: false`, and
+    `POST /api/data-studio/table/edit` still returns **200** — it is the OSS
+    route, while only `/api/ee/data-studio` is `:library`-gated. **The whole spec
+    passes 8/8 tokenless.** Kept for faithfulness; slot verified back at 42
+    features, `library: true`.
+
+    And upstream carries **no tag at all** despite a live writable-DB dependency —
+    the "live dependency, missing tag" case again (#123, #171). Gate-OFF control:
+    8 skipped / 0 executed.
+
+### 🔴 The maildev inbox is SHARED across slots — and `setupSMTP` deletes it
+
+186. **`setupSMTP` DELETEs the shared maildev inbox**, so any spec reading
+    delivered mail can have its messages destroyed by a concurrent slot
+    (`alert-permissions`). Observed directly: the inbox went **5 → 4 across one
+    run** while sibling agents were delivering into it.
+
+    This makes the **request-count-delta probe (#171) useless for maildev**,
+    though it remains sound for webhook-tester (re-measured here as 1 before / 1
+    after, confirming the sibling's finding rather than inheriting it). The agent
+    substituted a mechanism probe instead: `PUT /api/email` at dead port 1026 →
+    **400**, live 1025 → **200**.
+
+    This sharpens #178's split. Shared across slots: **warehouse containers,
+    maildev (including its inbox), webhook-tester**. Per-slot: **everything in
+    the app DB**. **Any spec asserting on delivered mail is exposed to
+    concurrent slots**, and that is a genuine parallelism limit rather than a
+    hygiene issue — worth knowing before anyone raises the worker count.
+
+### `beforeAll` re-runs under `--repeat-each` — each repeat is a separate worker
+
+187. **Playwright dispatches each `--repeat-each` iteration as a separate
+    worker, so `beforeAll` re-runs and module state resets**
+    (`alert-permissions`). Proven, not assumed: the recipient test passed in
+    repeats 2 and 3 **despite** repeat 1's unsubscribe having removed that
+    recipient.
+
+    That matters for how we read `--repeat-each` results generally — it is **not**
+    a clean test of intra-file order-dependence for anything held in `beforeAll`
+    or module scope, because that state is rebuilt each time. It still catches
+    ordering effects *within* a single repeat.
+
+    The same agent found **upstream's "all tests can run independently" comment
+    is false as written** — the unsubscribe test destroys the recipient test's
+    precondition. Recorded, not "fixed": reordering would change coverage.
+
+    Also: **`tsc`'s silence on dead imports (#162) bit this port for real** — the
+    hand-audit found a dead `currentUser` export that `tsc` said nothing about.
+    The audit is not ceremonial.
+
+### 🔴 `should("be.enabled")` does NOT map to `toBeEnabled()`
+
+188. **Sizzle's `:enabled` is `elem.disabled === false`; Playwright's
+    `toBeEnabled()` uses the ARIA notion** (`alert-types`). They disagree on
+    anything that isn't a form control.
+
+    Measured on a real case: `alert-goal-select` is **two different elements**
+    depending on branch — a Mantine `<Paper>` (a plain `<div>`) in the
+    single-option branch, and an `<input>` in the Select branch. A `<div>` has no
+    `disabled` property, so **Cypress's `should("not.be.enabled")` passes**,
+    while Playwright considers that same `<div>` **enabled** — so the naive port
+    would have gone **red against correct product code**.
+
+    Ported as `toHaveJSProperty("disabled", false)`, which reproduces the jQuery
+    predicate exactly. Confirmed empirically rather than by reasoning: mutant M4's
+    failure output **printed both resolved elements**.
+
+    Joins the `getByText` pair (#98, #170) and `.contains()` (#153) as a
+    chai-jquery→Playwright mapping that looks one-to-one and isn't. **Worth
+    grepping landed ports for `toBeEnabled`/`toBeDisabled` ported from
+    `be.enabled`/`not.be.enabled`.**
+
+### A correction to my own brief, and an open question left open
+
+189. **My brief said "zero emission in the notification BE namespaces". That is
+    wrong as stated** (`alert-types`): there are **18 Prometheus emissions**, all
+    in `send.clj`, on a path this spec never reaches. **"Zero *Snowplow*" is the
+    accurate claim.** Eleventh claim of mine corrected on evidence — this one a
+    sloppy generalisation from "no snowplow" to "no emission".
+
+    The same agent flagged an **upstream** weakness worth recording: the test
+    named *"should not be possible to create goal based alert for a multi-series
+    question"* **never reaches the guard it names** — its fixture sets no
+    `visualization_settings`, so `graph.show_goal` is falsy and it short-circuits
+    down the path the rows-describe already covers. Left verbatim with the
+    analysis inline.
+
+    And it left **M8 explicitly unexplained** — two aggregations plus a goal
+    still offering goal options — with the reasoning I want to keep quoting:
+    *"I could have written a plausible-sounding mechanism for it; I'd rather you
+    know it's an open question."*
+
+    It also **re-measured rather than inherited** the webhook-tester result
+    (request-count delta 1 → 1 across ~60 executions) while correctly noting it
+    is itself an **exposer** of the shared maildev inbox, since `setupSMTP`
+    deletes it once per test.
+
+### Scope of the #188 exposure, measured — 41 specs, but the hazard is narrow
+
+190. **I swept the landed ports for the `be.enabled` mapping hazard.** 120 files
+    use `toBeEnabled()`/`toBeDisabled()`; of the specs whose upstream source also
+    uses `should("be.enabled")` / `should("not.be.enabled")`, **41 are exposed**,
+    including `database-connection-strings` (4 upstream uses),
+    `transforms-template-tags` (5), `embedding-hub` (5),
+    `data-studio-snippets` (3), `document-links` (3), `add-initial-data` (3),
+    `custom-viz` (3), and `alert-types` (3, already handled).
+
+    **This is an exposure list, not a defect list, and the distinction matters.**
+    The hazard only bites when the assertion's target is **not a form control** —
+    Sizzle's `:enabled` is `elem.disabled === false`, which a `<div>` fails
+    (so Cypress passes), while Playwright's ARIA notion treats that same `<div>`
+    as enabled. For a genuine `<input>` or `<button>` the two agree and the
+    mapping is correct.
+
+    So the audit is per-**site**, not per-file: for each of those uses, check
+    whether the resolved element is a form control. Where it isn't, the faithful
+    port is `toHaveJSProperty("disabled", false)`.
+
+    **Direction of the failure is worth noting: a naive port goes RED against
+    correct product code**, which is the *safe* direction — it surfaces as a
+    failure to investigate rather than a silent false green. That is why this is
+    recorded as owed work rather than something to chase mid-wave. It also means
+    any of these 41 that are currently **green have already demonstrated** their
+    targets behave consistently under both notions.
+
+### A cross-slot write window that exists only because we run in parallel
+
+191. **`dashboard-filters-sql-text-category` writes to the QA `sample` postgres,
+    which is shared across slots — so for ~2s another slot querying db 2 sees
+    `New Category`.** Upstream has the identical property and never suffers from
+    it, **because Cypress runs serially**.
+
+    This is a new category in the shared-state picture: not debris that
+    accumulates (#85/#157), not a fixture-name collision (#138/#156), and not a
+    deleted shared inbox (#186), but a **transient write visible to a concurrent
+    reader**. It is **unfixable without diverging from upstream**, so it is
+    documented rather than worked around. Post-run state was verified clean
+    (Doohickey 42 rows, no residue).
+
+    Worth knowing as a **parallelism limit**: some upstream specs are only safe
+    because Cypress is serial, and porting them faithfully imports that
+    assumption into a parallel runner.
+
+### Two more things done the way I want them done
+
+192. From the same port:
+    - **It probed a suspiciously fast runtime instead of accepting it.** 2.6s
+      looked impossible, so it injected a sanity-probe string and confirmed the
+      body executes through the visualizer flow before failing at that line. The
+      speed is real (warm backend, API-driven setup). That is the third agent to
+      interrogate its own green rather than bank it.
+    - **It verified the existing positive anchors rather than adding new ones.**
+      The spec has **no absence assertions** — all four upstream assertions are
+      `should("exist")` — and the two shared-helper `toHaveCount(0)` checks
+      already carried anchors, which it **checked** rather than assuming or
+      duplicating.
+    - **It called out its own weak mutation**: M3 dies at the same line as M1 and
+      its failure is **over-determined**, so it doesn't independently prove
+      anything. M2 is the load-bearing one — tail-aimed, killing at the final
+      dropdown assertion, the only assertion it is visible to.
+
+    One deviation stated plainly: `should("exist")` → `toBeVisible()` is a
+    **strengthening**, because testing-library matches hidden nodes.
+
+### A test left faithfully FAILING, with the precondition it needs identified
+
+193. **`workspace-manager`'s postgres arm fails with a 412, and it is not port
+    drift.** `writable_db`'s `public` schema grants CREATE to PUBLIC, which
+    workspace isolation refuses.
+
+    Drift was ruled out three ways: the **mysql arm drives the identical helper
+    surface and is green**; a `pw:api` trace shows every click landing; and
+    `CreateWorkspaceParams` is `{:closed true}`, so a hand-built curl reproduced
+    the FE payload exactly.
+
+    **The agent did not fix it, and the reasoning is right:** the one-line REVOKE
+    targets a container shared with four other slots and **never reset**, so it
+    belongs in **provisioning**, not a `beforeEach`. The permission layer also
+    blocked it when tried as a probe — correctly. Test left **faithful and
+    failing with a full FIXME**, which is the honest state.
+
+    **Open question left open:** nothing in the repo establishes that
+    precondition — `resetWritableDb` never touches ACLs, there is no CI step, and
+    the image is stock. With the Cypress cross-check barred, whether upstream
+    passes in CI is **unknown and not claimed**. Recorded as unresolved.
+
+    This is the second spec now sitting in a non-green state on purpose
+    (`datamodel-data-studio-search` is the other), and both are blocked on
+    **warehouse provisioning** rather than on anything about the port.
+
+### An agent that weakened its own claim after measuring it
+
+194. **`workspace-manager` added a positive anchor ahead of a "deleted → not
+    listed" absence assertion and called it a strengthening — then retracted
+    that.** Mutation M2b showed `toHaveCount(0)` **does** pass vacuously in the
+    pre-fetch window, so the anchor is doing real work — **but upstream was
+    already anchored by its very next line**. So the addition changes **where**
+    the failure surfaces, not **whether** it surfaces.
+
+    It amended its own spec header rather than leave the stronger claim standing.
+
+    That is the behaviour I most want from this exercise: the easy move was to
+    bank "found and fixed a vacuous absence assertion" — which would have been
+    the fourth such find today and entirely plausible — and it checked instead.
+
+    It also flagged **M1 as over-determined** (both its anchor and upstream's
+    assertion catch it, so it proves nothing new), designed M2a/M2b to correct
+    for that, and **probed a suspicious ~1.0s runtime** with a `pw:api` trace
+    rather than banking it — the fourth agent to interrogate its own green.
+
+### 🔴 Model persistence leaks a fresh schema FOREVER — a second, independent leak
+
+195. **`unpersist` only *marks for pruning*** (`model_persistence/api.clj:296`),
+    **and the schema name hashes the site-uuid** — so **every model-persistence
+    run leaks a new `metabase_cache_*` schema permanently**
+    (`admin-reproductions`). The agent counted exactly **9**, matching its 9
+    persists.
+
+    **I verified and cleaned this myself.** `writable_db` held exactly 9
+    `metabase_cache_%` schemas, each containing only `cache_info`; dropped all 9,
+    taking the container from 39 to **30** schemas.
+
+    **This is a second, independent leak mechanism from #157.** Porting
+    `resetWritableDb` would clear these as a side effect, but the leak is real
+    upstream too — it just never accumulates there, because CI containers are
+    ephemeral and a developer's local run is occasional. **A long-lived container
+    plus repeated runs is the condition that surfaces it**, which is exactly what
+    this spike created.
+
+    The agent **did not route around the permission block** on its cleanup — it
+    put the SQL in its findings file for me to run. That is the correct
+    behaviour, and it is why the cleanup happened at all.
+
+### `waitForSyncToFinish` is very nearly a bare `cy.wait(500)`
+
+196. **`initial_sync_status` is a FIRST-EVER-sync marker** — once `complete` it
+    stays complete across later `sync_schema` runs (`admin-reproductions`). In
+    `41765`, the `beforeEach` already resyncs and waits on that exact table, so
+    by the time the test body calls `waitForSyncToFinish` after clicking "Sync
+    database schema", **the predicate is already true and it returns after one
+    500 ms sleep**. It does **not** wait for the newly-added column.
+
+    **Upstream is therefore racing the sync, and the port reproduces that race
+    rather than papering over it** — the faithful choice.
+
+    This sharpens the earlier `resyncDatabase` note (a stale
+    `initial_sync_status: "complete"` satisfies the wait instantly) by explaining
+    *why*: the flag is not a "sync is idle" signal at all.
+
+    Also from that spec: an untagged token gate on `issue 45890`, traced to
+    `caching/index.tsx:23` and proven with both arms — **0 vs 42 features,
+    `PUT /api/cache {type:"schedule"}` 400 vs 200, launcher count 0 vs 1**. Worth
+    banking: the backend rejects with **400 ("enum of :nocache, :ttl"), not
+    402** — the strategy is **absent from the schema**, not merely forbidden.
+    And one briefed hazard reported **inapplicable by mechanism**: the
+    accessible-name-is-state Switch trap does not apply, since the name comes
+    from a static `<label for>`; what actually bit was plain pointer
+    interception, which is why upstream forces the click.
+
+### `openTable` drops `database` — THIRD confirmation, and now with the failure it would have caused
+
+197. **`support/ad-hoc-question.ts::openTable` routes `mode:"notebook"` through
+    `joins.openTableNotebook`, which hardcodes `SAMPLE_DB_ID` and drops the
+    `database` argument** — while **upstream honours `database` in both modes**
+    (`query-external`). Third independent confirmation, after the `database` and
+    `limit` cases (#116).
+
+    What makes this one decisive is the failure it *would* have produced here:
+    the spec queries a **foreign table id** against a QA database, so using
+    `openTable` would have **silently queried the Sample Database with that
+    foreign id** — the exact port-drift shape these briefs warn about, arriving
+    with no error.
+
+    Worked around via the existing read-only `openTableNotebookInDb`. Note a
+    **near-duplicate `openTableNotebookInDatabase` also exists** in
+    `question-reproductions-1.ts`. **Both should be retired once `openTable`
+    threads `database` through** — that is now a well-evidenced shared-module fix
+    with three independent motivations.
+
+### `WRITABLE_DB_ID` proven a pure misnomer here, by probing rather than reasoning
+
+198. **`query-external` restores `mongo-5` and `mysql-8`, and probed the live API
+    after each**: db 2 is **"QA Mongo"** and **"QA MySQL8"** (`details.dbname =
+    "sample"`, port 3304). **Never `writable_db`.** So `WRITABLE_DB_ID` is a pure
+    misnomer on this spec, and it touches no shared writable state at all.
+
+    The `schemas[0] == Domestic` hazard was reported **inapplicable by
+    mechanism** — the endpoint is `/api/database/:id/schema/` with an *empty*
+    schema name, and no index into `schemas` exists anywhere in the port.
+
+    **The fast green was probed rather than banked** (fifth agent to do so):
+    1.1–1.7s looked implausible, so M1 asserted an impossible value and pushed
+    runtime to **11.8s** — the ~10s assertion timeout — proving the assertion is
+    live and polling, and that the fast green is first-poll resolution on a warm
+    backend. M3 (swapping the two snapshots) dies in **0.2s** with
+    `Expected "QA Mongo", Received "QA MySQL8"` — the direct runtime proof of the
+    db-2 identity claim.
+
+    It flagged **M2 as partially over-determined** (same death line as M1) and
+    **rejected a bad mutation before running it** — retargeting to db 1 would
+    survive for an uninteresting reason, since the Sample Database holds the same
+    data. One **declared strengthening**: an added `expect(db.name).toBe(dbName)`
+    identity check the source doesn't perform, which is what M3 kills on.
+
+### ⚠️ My "expect this to be blocked" framing was wrong — and it was checked, not inherited
+
+199. **`python-library` is fully green: 1 of 1 executed, 0 unexecuted, 0 fixme.**
+    I briefed it as almost certainly blocked on two independent legs. **Both were
+    wrong for this spec**, and the agent checked each rather than accepting them.
+
+    - **Leg 1 (the gate) — wrong mechanism.**
+      `GET/PUT /api/ee/transforms-python/library/:path` **never call
+      `check-feature-enabled!` at all**, so the MBQL-vs-python split I leaned on
+      (#136) is irrelevant here. Their gate is the **route mount** at
+      `api_routes/routes.clj:144` — `premium-handler … :transforms-python`.
+      Measured across three arms: no token → **402/402**; `pro-self-hosted` →
+      **200/200** *with `transforms-basic` still false* — which is exactly why my
+      prediction misfired; all-features → 200/200.
+    - **Leg 2 (localstack) — true but inapplicable.** :4566 and :5001 are both
+      genuinely down, but **neither is on this spec's path**: the library is
+      app-DB-backed CRUD and upstream never calls `setPythonRunnerSettings()`.
+
+    The decisive question was one I'd put in the brief almost as an aside —
+    *"check whether the library surface needs python at all"*. **Twelfth claim of
+    mine corrected on evidence**, and the second where a hazard was real
+    elsewhere but simply not on the path.
+
+    🔴 **And the `token` gate here is REAL — the opposite of the sibling result
+    on a different transforms spec.** Two-arm control: remove `activateToken` and
+    the test fails at the link click (30s timeout), because the FE hides the
+    "Python library" row without `transforms-python`. **Do not generalise a
+    token verdict across the transforms family** — this family has now produced
+    a short-circuit, a hard route-mount gate, a split-by-argument, and a pure red
+    herring.
+
+    Also: **no support module was created**, flagged loudly against the brief's
+    expectation — everything already existed in `transforms.ts`,
+    `transforms-codegen.ts`, `search-snowplow.ts` and `transforms-indexes.ts`,
+    imported read-only. One structural trap recorded: **`PythonLibrary` is a
+    sibling of `Transforms` under `DataStudio`, not nested.**
+
+    Its snowplow tag is **not** dead setup — upstream's `afterEach` is a real
+    assertion — so it is ported at the browser boundary, with the degradation to
+    a structural envelope check **recorded rather than hidden**. Slot 3 measured
+    at **42** features. It flagged **M2 as weak** (removing Save dies at the
+    toast, *earlier* than the persistence assertion, so it doesn't independently
+    prove persistence — M1's input inversion is the one that does), and added
+    `resetTransformTargetTables()` with no upstream counterpart because the
+    long-lived warehouse carries `"Schema A"."table_a"` residue that CI avoids by
+    provisioning fresh.
+
+### 🔴 A third route to the false "feature is off" conclusion: underscore vs hyphen
+
+200. **The `token-features` JSON key is `advanced_permissions` (underscore) while
+    the backend keyword is `:advanced-permissions` (hyphenated)**
+    (`impersonated`). The agent's first probe checked the hyphen form, got
+    `undefined`, **and that reads exactly like "feature off"**.
+
+    This is the **third** independent route to the same false conclusion, after
+    the retracted `.env` trailing comma (#107/#129) and the probe that PUT an
+    undefined token (#181). All three produce a confident, wrong "this tier is
+    gated" — which has already cost this spike two sessions.
+
+    **The general rule: before concluding a feature is absent, confirm you are
+    reading the key that exists.** `undefined` and `false` are not the same
+    answer, and a probe that cannot tell them apart is not a probe.
+
+### The `USER_GROUPS` hazard confirmed at source, plus fixture-label drift
+
+201. **`USER_GROUPS` = `{ALL_USERS:1, ADMIN:2, COLLECTION:5, DATA:6, …}` — ids 3
+    and 4 are simply absent**, because they live in a separate
+    `MAGIC_USER_GROUPS` (`DATA_ANALYSTS_GROUP: 4`) (`impersonated`). That is the
+    structural reason a sequential guess lands on the wrong group, and it is now
+    read from the fixture *and* re-derived from the live instance at run time.
+
+    **New drift found alongside it:** the checked-in
+    `cypress_sample_instance_data.json` calls group 1 **"All internal users"**,
+    but this jar serves **"All Users"**. Ids agree; only the label moved. The
+    agent's first guard matched on name and failed, and it corrected to match on
+    the stable `magic_group_type`. **That JSON is not safe for name-based
+    lookups** — a caution worth propagating, since matching a fixture by label is
+    the obvious thing to do.
+
+    It also ruled `signInWithCredentials` **inapplicable by mechanism** rather
+    than by absence: `impersonated` *is* in `LOGIN_CACHE` so `signIn` takes the
+    cached branch and never POSTs `/api/session`, and the `mb` fixture uses
+    Playwright's top-level `request` fixture rather than `context.request`, so
+    the cookie jars are separate either way. Proven with four
+    `GET /api/user/current` checks at each transition.
+
+    **One bad mutation, correctly diagnosed:** MUT-A (ALL_USERS
+    `impersonated`→`unrestricted`) **survived**, and reading
+    `enforce-impersonations?` shows why — it inspects only groups *other than*
+    the policy-holding group, so ALL_USERS' own value is excluded and the mutant
+    is a **semantic no-op**. MUT-C (unblocking COLLECTION_GROUP — the historical
+    defect) killed both tests at their real security assertions, with runtime
+    rising 4–5s → 11–15s as the tell. **One declared strengthening**:
+    `select current_user` → `orders_products_access`, a *positive* proxy, since a
+    denial alone is a shape many failures produce (the token-less arm denies too)
+    while the role name appears only if the role was actually assumed.
+
+### 🔴 `[].every(...)` is TRUE — a shared helper passes on an empty result set
+
+202. **`rowsShouldContainOnlyOneCategory` passes on an EMPTY result set**
+    (`sandboxing-misconfiguration`), because `[].every(...)` is `true`. Mutant
+    M4b drove the pre-drop assertion to zero rows and it **sailed through**.
+
+    The helper is **shared**, so per the faithfulness rule it was documented
+    rather than patched — and note **a fix there would also strengthen
+    `sandboxing-via-ui`**, which is the larger sandboxing port.
+
+    This is a distinct vacuity shape from the four absence-assertion families: a
+    **universally-quantified predicate over a collection that can be empty**.
+    Worth grepping for `.every(`/`.all(` in shared assertion helpers, since the
+    same reasoning applies to any of them.
+
+    Related, from the same spec: **M4b also proved the two halves of
+    `assertResponseFailsClosed` are not over-determined** — `rows.length === 0`
+    cannot distinguish "failed closed" from "legitimately empty"; only
+    `error_type` can.
+
+### 🔴 A CI parallelism hazard: two specs rebuild the same table in the shared warehouse
+
+203. **`sandboxing-misconfiguration` and `tests/question-reproductions.spec.ts`
+    both rebuild `public.products` in the shared warehouse**, so **they must not
+    run concurrently across slots**. Flagged by the agent rather than discovered
+    as a flake.
+
+    This is the concrete, actionable form of the parallelism limit sketched in
+    #191: upstream is safe because Cypress is serial, and a parallel runner needs
+    either sharding that keeps such pairs apart or per-slot warehouses. **Worth
+    settling before the shard count is raised** — it will present as an
+    inexplicable intermittent failure in exactly one of the two.
+
+    The same spec's **first failure was environmental, not port drift**: the
+    permissions page timed out because the never-reset `writable_db` has 29 debris
+    schemas, so it lists *schemas* instead of tables. Handled with a
+    **conditional** schema click that is byte-identical to upstream in a clean
+    single-schema environment, plus a positive anchor so a pre-render empty
+    sidebar cannot pick the branch.
+
+### A token trace that predicted the wrong death site
+
+204. **Removing `activateToken` killed at `advanced_permissions`, not
+    `:sandboxes`** (`sandboxing-misconfiguration`) — `blockUserGroupPermissions`
+    takes a 402 in **setup**, long before the sandbox gate is reached. A second
+    arm that also skipped `preparePermissions` was needed to reach the real gate,
+    where the FE omits "Row and column security", agreeing with the
+    `defenterprise :feature :sandboxes` backend half.
+
+    **Two independent token dependencies on one spec**, and the agent flagged its
+    own arm B as **a bad mutation in isolation** because it changes two things at
+    once. Its first spec header had asserted only the `:sandboxes` predicate; the
+    arms corrected it.
+
+    It also **did not take the neighbour's cookie-jar explanation on trust** —
+    it pinned **both** ends every run (`assertRunningAs(api, alice)` *and*
+    `assertRunningAs(mb.api, admin)`), so the sandboxed queries provably run as
+    the sandboxed user while `mb.api` provably stays admin.
+
+    Two caveats it chose to state rather than bury: under `--repeat-each` every
+    repeat landed on a **fresh worker**, so the `built === true` path was never
+    exercised by those greens; and its `waitForSyncedField` guard catches a
+    shape-*changed* stale table but **not a shape-identical one** — a partial
+    mitigation, not a fix.
+
+### The shared-inbox risk, solved by isolating on the per-slot site URL
+
+205. **`forgot-password` isolates its inbox assertion on the reset link's
+    per-slot site URL** (`session/api.clj` builds it from `system/site-url`;
+    `worker-backend.ts:265` pins `MB_SITE_URL` per slot). That converts the
+    #186 hazard from "hope no sibling deletes the inbox" into a mechanism.
+
+    **The agent watched the inbox go to 0 mid-probe** — a sibling's `setupSMTP`
+    DELETE, exactly as briefed — and its mutation M1 is the proof the isolation
+    works: pointed at `:4101` it failed **with the correct email visibly sitting
+    in the inbox**, subject and recipient matching, rejected purely by the
+    site-URL conjunct. That is the right shape for an isolation guard: it must
+    reject a message that looks right in every other respect.
+
+### `cy.icon("gear").should("not.exist")` matches nothing, anywhere
+
+206. **`.Icon-gear` matches zero elements on any page**, including `/` as admin
+    (`forgot-password`) — the app bar renders `Icon-burger`/`Icon-search` and the
+    settings entry point is labelled "Settings" with no gear class. So the
+    assertion cannot fail. Kept **verbatim with analysis inline**, plus a
+    **declared strengthening** on `appBar()`, presence-probed as a real
+    discriminator (1 on `/`, 0 on the auth page).
+
+    Found only because the agent's **first presence probe was over-determined and
+    died at the anchor** — which it called out as its own bad mutation. Fourth
+    "asserted testid/class that exists nowhere in the product" case.
+
+    Also recorded: **M2 is survivor-adjacent by design.** The "If the email
+    exists" message appears for a nonexistent address too — **anti-enumeration**
+    — so that assertion *cannot* discriminate, and all the real evidence lives in
+    the email read and the toast. That is a case where the weak assertion is
+    correct product behaviour, not a defect.
+
+### An unexplained 5s tax on every email spec
+
+207. **`setupSMTP`'s single `PUT /api/email` takes ~5.0s on first call and
+    ~0.12s thereafter**, reproducible with plain curl (`#1 → 5.124s`, `#2–6 →
+    ~0.12s`) (`forgot-password`). It surfaced as a suspicious 6.7s/1.6s
+    alternation, and the agent **localized it precisely and then stopped**.
+
+    Ruled out: its own test code, delivery latency, and **IPv6 fallback — its
+    first hypothesis, which it tested and found wrong** (both `::1` and
+    `127.0.0.1` connect in 0 ms). **It did not identify the mechanism and
+    deliberately did not invent one.**
+
+    Recorded as open, and worth pursuing: **it taxes every email spec through the
+    shared helper**, so it is a real if small cost across the suite.
+
+## Post-queue fixes (2026-07-21)
+
+### ✅ #133 FIXED — collector CORS preflight
+
+208. **`Access-Control-Allow-Credentials: "true"` added to
+    `support/snowplow-collector.ts`.** Verified by driving the collector directly:
+    OPTIONS **200** with `allow-origin: http://localhost:4101` (echoed, not `*` —
+    a credentialed request forbids the wildcard) and `allow-credentials: true`;
+    POST likewise.
+
+    **Scope of what that proves, stated precisely: the headers are now correct.
+    It does NOT yet prove an FE event is captured end-to-end**, which needs a
+    spec that actually asserts on one through the collector. `metric-page` fell
+    back to the browser boundary because of this bug and is the natural candidate
+    to re-point as confirmation.
+
+### ✅ #139/#148 FIXED — and the leak demonstrated both ways
+
+209. **`signInWithCredentials` now POSTs `/api/session` through a throwaway
+    request context that is disposed immediately**, so the `Set-Cookie` never
+    reaches the shared jar. `sandboxing-via-api`: **29/29 green**, `tsc` clean.
+
+    **The fix is proven load-bearing by a two-way probe** — `mb.api`'s identity
+    read immediately before and after the call:
+
+    | | before | after |
+    | --- | --- | --- |
+    | **with the fix** | `u1@metabase.test` | `u1@metabase.test` — unchanged |
+    | **reverted to the old code** | `u1@metabase.test` | **`u2@metabase.test`** |
+
+    **The test passed in both cases.** That is the whole point: the leak was
+    invisible to the suite, which is why `sandboxing-via-api`'s green was marked
+    UNVERIFIED. **That mark can now be lifted.**
+
+    **A bad probe of my own, called out.** My first attempt asserted `mb.api`
+    should be `admin@metabase.test` after the call. It failed — and I nearly read
+    that as "the fix didn't work". It was my probe that was wrong: the test does
+    `mb.signIn("sandboxed")` three lines earlier, and `u1@metabase.test` **is**
+    the sandboxed user. I had asserted an expected value without checking what
+    the test had already done. The before/after form is the discriminating one,
+    because it needs no assumption about which user *should* be active.
+
+    **A second self-inflicted error worth recording:** my first version of the
+    fix used the module-level `BASE_URL`, which is **:4000** — not the slot's
+    backend under `PW_PER_WORKER_BACKEND`. It failed loudly with
+    `ECONNREFUSED ::1:4000`, which is the safe direction, and the signature now
+    takes `baseUrl` explicitly (callers pass `mb.baseUrl`).
+
+### 🔴 THE TIMING ANSWER: Playwright is ~1.7x SLOWER per spec, and wins only on parallelism
+
+210. **Matched per-spec against Cypress's `timings.json` across 387 specs:
+    Playwright 665.7 min vs Cypress 389.2 min — 1.71x slower. Only 35 of 387
+    specs (9%) are faster in Playwright.** Reproducible via
+    `scripts/compare-timings.mjs`.
+
+    **This retracts the earlier "22% faster" framing entirely.** That number came
+    from a run where **831 tests silently skipped** (the QA tier had no
+    containers), so it compared less work against more.
+
+    **Why per-spec is the only honest pairing.** Neither of the other two numbers
+    means anything on its own:
+    - **Shard wall-time is not comparable** — we run `workers=2`, so a
+      shard-minute contains up to two minutes of test execution.
+    - **Job time includes setup**, which is a parallel constant, not test cost.
+    Both sides here are summed per-spec durations, measuring the same thing.
+
+    **What Playwright actually buys is parallelism, not speed.** The 50-shard
+    wall clock is **19.0 min** (14.3 min of tests + a ~4.9 min setup floor) while
+    executing 1.71x more total work than Cypress's recorded timings. That is a
+    real operational win and it is a different claim from "faster".
+
+    **The figure is a floor, not a ceiling.** Playwright's per-test `duration`
+    covers the test and its `beforeEach`, but **not `beforeAll` or worker
+    fixtures** — and our per-worker backend boot lives there. Cypress's per-spec
+    duration includes everything. So the true gap is **at least** 1.71x.
+
+    Worst offenders, all far above the mean: `transforms` (+7.5m),
+    `interactive-embedding` (+5.3m), `subscriptions` (+5.0m),
+    `public-sharing-embed-button-behavior` (+4.4m),
+    `sdk-embed-setup-select-embed-options` (+4.3m), `data-model-shared-2`
+    (+3.9m). **Those six are where any optimisation effort should start**, and
+    several are plausibly our own waits rather than framework cost.
+
+### A matching bug of mine that produced a wrong ratio first time
+
+211. **My first pass matched specs on BASENAME and got 1.67x.** That is wrong:
+    `reproductions.cy.spec.ts` exists in several directories
+    (`data-studio/transforms/`, `models/`, `question-reproductions/`, …), so
+    multiple ports silently collapsed onto a single Cypress entry — which is why
+    the "wins" column was full of implausible `cy=2.99m` repeats against
+    `pw=0.11m`.
+
+    I noticed because the repeated value looked like a default, checked whether
+    `timings.json` had a default cluster (**it does not** — only 2 entries near
+    179s), and found the real cause was my own key collapsing distinct specs.
+
+    Corrected to match on the **full path below `scenarios/`**, with an explicit
+    duplicate-rejection guard. `scripts/compare-timings.mjs` carries the warning
+    in its header so the next person does not repeat it.
+
+    Third time in this spike that a *tool* was wrong rather than the thing it
+    measured (after the mutation verifiers, #128/#146/#172, and the stale "~13m
+    setup floor"). **The suspicious-looking output is the signal; check the tool
+    before believing the number.**
+
+### ✅ #157 FIXED — `resetWritableDb` ported, and the 403 cluster is gone
+
+212. **`support/reset-writable-db.ts` ports `resetWritableDb`
+    (`e2e/support/db_tasks.js:41`), wired into `mb.restore()` for any
+    `*-writable` snapshot — before the restore, matching upstream's ordering
+    (`e2e-setup-helpers.js:44-49`).**
+
+    Measured effect on the local container: **30 schemas → 3**.
+
+    | spec | before | after |
+    | --- | --- | --- |
+    | `transforms-permissions` | 1 failed (403) | **12 passed / 2 skipped** |
+    | `dependency-graph` | 2 failed (403) | **15 passed**, 1 failed (different test) |
+    | `datamodel-data-studio-search` | 2 passed / 6 failed | **7 passed / 1** |
+
+    In the CI run this targets, **9 tests failed with
+    `403 A table with that name already exists`** across `dependency-broken-list`
+    (5), `dependency-graph` (2), `transforms-permissions` (1) and neighbours,
+    plus **8 flaky in `transforms` alone**. That cluster is the reset gap.
+
+    **Two deliberate deviations from upstream, both stated:**
+    - postgres tables are dropped `IF EXISTS … CASCADE` rather than upstream's
+      bare `DROP TABLE`. Ports create views and FKs upstream's fixtures do not,
+      and a dependency error mid-loop would abort the reset **half-done** —
+      worse than not resetting.
+    - mysql suspends `FOREIGN_KEY_CHECKS` around the drops, since
+      `information_schema` gives no FK-safe ordering.
+
+    The module is **self-contained** rather than importing `knexClient` from
+    `support/actions-on-dashboards.ts`: that is a per-spec module, and shared
+    infrastructure must not depend on one. The connection config is duplicated
+    from `cypress_data.js` with a comment saying why.
+
+### The last `datamodel-data-studio-search` failure is a STALE LOCAL FIXTURE
+
+213. **The one remaining failure is not the reset and not the port.** The test
+    asserts on `Accounts` and `Analytic Events`; this box's Sample Database has
+    only **4 tables** — `Orders, People, Products, Reviews`. CI generates the
+    extended sample DB and **passes this spec outright** (it does not appear in
+    the CI failure list at all).
+
+    Confirmed by querying `/api/database/1/metadata` directly rather than
+    inferring from the symptom.
+
+    Fourth member of the stale-local-fixture family, after the corrupt
+    `blank.sql` (#97), the 30-day `instance-creation` fuse (#145), and the
+    postgres heap-order accident (#103). **The pattern is now strong enough to
+    state as a rule: when a local failure looks like missing data, check the
+    fixture against what CI generates before touching the port.**
+
+### 🔴🔴 THE TIMING ANSWER, CORRECTED: 1.07x — parity. The 1.71x was a measurement artifact.
+
+214. **Playwright's per-test `duration` is WALL TIME, not CPU time.** With
+    `workers=2` sharing one runner, each test spends a large fraction of its
+    recorded duration **descheduled — waiting for CPU, not working**. Summing
+    those durations counts overlapping wall periods on our side while Cypress's
+    per-spec durations are strictly sequential. **Fraser spotted this; I had
+    reported 1.71x off the back of it.**
+
+    **Controlled A/B**, same commit, same 50-shard split, restricted to the
+    **371 specs whose tests were green in BOTH runs** — so the `resetWritableDb`
+    fix and retry noise cannot contaminate it:
+
+    | | total | vs Cypress |
+    | --- | --- | --- |
+    | Playwright `workers=2` | 579.2 min | **1.51x** |
+    | **Playwright `workers=1`** | **412.1 min** | **1.07x** |
+    | Cypress (`timings.json`) | 384.0 min | — |
+
+    **Contention inflation: 1.41x.** The corrected conclusion is **parity on real
+    execution time**, not a 1.7x regression.
+
+    **Two independent confirmations of the mechanism, not just the number:**
+    - **The overlap factor flipped as predicted.** `workers=2` summed/elapsed =
+      **1.60x** (intervals overlap); `workers=1` = **0.88x** (gaps between
+      tests, no overlap left to double-count). A pure speed difference would not
+      move this ratio at all.
+    - **The "non-linearity" I built a story on evaporates.** I had argued that
+      the slowest tests degrading 11.6x against the median's 5.4x was evidence
+      of wait/retry thresholds being crossed. It is simply descheduling: a test
+      that yields the CPU more often accumulates more idle wall time. No
+      wait-threshold mechanism was ever needed — I invented one to fit a number.
+
+    **What the spike should actually claim:** comparable execution time, and far
+    better wall clock — **23.4 min at 50 shards** for work that costs Cypress
+    384 min of sequential spec time.
+
+    **The methodological lesson, which is the fourth instance of the same
+    error.** After the stale "~13m setup floor", "setup multiplies with shard
+    count" (it is a parallel floor: `wall = setup + test/N`), and basename
+    spec-matching — every one was **reasoning from a derived number instead of
+    the mechanism producing it**. The unit question *"what does this figure
+    actually measure?"* would have caught all four. It is now the first question
+    to ask of any timing claim in this project.
+
+### 🔴 `activateToken` swallowed its own failure — a token problem masquerading as product bugs
+
+215. **`MetabaseApi.activateToken` passed `failOnStatusCode: false` and then
+    ignored the response entirely.** A rejected token — expired, wrong CI
+    secret, malformed — left the instance on **zero premium features** while the
+    spec carried on, so every feature-gated assertion afterwards failed 30s
+    later on an unrelated locator with nothing pointing at the cause.
+
+    Found while triaging the `alert` cluster: 4 CI failures presenting as
+    `locator.click: Timeout 30000ms` on a token-field textbox, and a missing
+    "You're only allowed to email subscriptions to addresses ending in
+    metabase.test" string. Both are downstream of `email-allow-list` being
+    absent. **All 4 pass locally**, so the difference is the token the
+    environment resolves — exactly what a swallowed activation failure hides.
+
+    **This is the fourth appearance of one trap: "no entitlement" and "the probe
+    failed" are indistinguishable unless you check.** #107 (retracted `.env`
+    comma), #181 (a probe PUT an *undefined* token and left the slot at zero
+    features), #200 (underscore vs hyphen returning `undefined`), and now the
+    activation path itself.
+
+    **Fixed:** `activateToken` now throws on a non-2xx, naming the token, the
+    status, and **the resolved value's LENGTH only** — enough to separate "wrong
+    secret" from "empty env var" without ever printing a token. Verified both
+    ways: with a deliberately bad token it fails immediately with
+    `400 Bad Request … length 8` and no value in the output; with the real token,
+    `alert` (8), `transforms-inspect` (9), `impersonated` (2) and
+    `workspace-instance` (2) all still pass.
+
+    **What this does NOT do is fix the CI failures** — it makes them legible. If
+    CI's `STAGING_MB_PRO_SELF_HOSTED_TOKEN` genuinely lacks `email-allow-list`,
+    the next run will say so in one line instead of four mystery timeouts, and
+    the honest response is then to gate those tests on the feature rather than
+    assume the token carries it.
+
+### An anchor I could not prove load-bearing — stated, not claimed
+
+216. **`database-routing-admin` › "should show for users with db management
+    permissions…" fails in CI with
+    `PUT /api/ee/database-routing/router-database/2 -> 400 Cannot enable
+    database routing for a database with actions enabled`.**
+
+    Diagnosis: the `postgres-writable` snapshot has model actions **enabled by
+    default** on db 2 — the spec's own "feature compatibility" describe disables
+    them via the API for exactly this reason, with the comment saying so. This
+    test instead toggles them off **through the UI**, and the toggle's `PUT` is
+    async, so `configureDbRoutingViaAPI` raced ahead of it.
+
+    Same race and same shape as **#125** (model persistence 400ing because an
+    admin toggle's async mutation outran the next API call).
+
+    **Fix applied:** anchor on the `PUT /api/database/2` response before
+    continuing, rather than a sleep.
+
+    🔴 **But I could not prove the anchor is load-bearing.** The mutation —
+    deleting the `await` — still passes **5/5 locally**. The race does not
+    reproduce on this machine, which is consistent with everything else measured
+    here: CI runners are roughly 5x slower (#214), and the async PUT only loses
+    when the machine is slow enough.
+
+    So this is **"not triggered by any failure mode I could induce"**, not
+    "fixed". The change is correct by construction — depending on a mutation
+    without waiting for it is a bug whether or not it bites today — but **CI is
+    the only thing that can confirm it.** If that test still 400s on the next
+    run, the diagnosis is wrong and the real cause is elsewhere.
+
+### The sandboxing evidence helper could pass on ZERO rows — strengthened, declared
+
+217. **`assertDatasetReqIsSandboxed` (`support/notebook-link-to-data-source.ts`)
+    ran `expect(values.every(v => v === columnAssertion)).toBe(true)` with no
+    non-empty guard.** `[].every(...)` is `true`, so **a sandboxed query
+    returning zero rows satisfied "every value in this column equals X" while
+    proving nothing** — on the helper that is the primary evidence across the
+    sandboxing specs.
+
+    **Upstream is identical** (`e2e-permissions-helpers.js:148-154`), so this is
+    an upstream weakness, not port drift. Per the faithfulness rule that would
+    normally mean record-don't-fix — but this is a **security surface**, where
+    strengthening is permitted if declared, and #202 had already established the
+    same shape in a neighbouring helper.
+
+    **Added a `values.length > 0` guard with the reasoning inline**, and verified
+    it three ways rather than assuming:
+    - **All six consumers still pass** — `sandboxing-via-api` (29),
+      `sandboxing-via-ui` (18), `sandboxing-misconfiguration` (1),
+      `dashboard-reproductions` (40), `permissions-reproductions-js` (11),
+      `notebook-link-to-data-source` (16). So no test legitimately depends on
+      the empty case.
+    - **The guard discriminates:** inverting it to `toBe(0)` fails **11 of 29**
+      in `sandboxing-via-api`, proving those queries really do return rows and
+      the guard is not decorative.
+    - Passing `columnId` + `columnAssertion` means "every value in this column
+      is X", which is only meaningful with values; tests expecting an empty
+      result assert on `is_sandboxed` or a row count and never reach this branch.
+
+    **A porting gap found alongside, and NOT a defect:** upstream accepts a
+    **function** as `columnAssertion` (`_.isFunction(columnAssertion)`), which
+    our port does not. Checked every call site — all pass `Number(...)`, so the
+    narrowing is safe in practice. Recorded rather than silently relied upon.
+
+### ⚠️ #217 SCOPED DOWN: the hole is real in Cypress, but 13 of 14 call sites already cover it
+
+218. **I overstated #217.** I called the `every()` vacuity "the primary evidence
+    across the sandboxing specs". Measured, it is not.
+
+    **What is true:** the hole is genuinely in Cypress, not a porting artifact.
+    `e2e-permissions-helpers.js:143-155` is the identical
+    `expect(values.every(assertionFn)).to.equal(true)` with no non-empty guard,
+    and `[].every(...)` is `true` in JS regardless of runner.
+
+    **What I got wrong:** of the **14 upstream call sites that pass `columnId`**
+    (the only branch that can go vacuous), **13 carry an adjacent row-count
+    guard** — `cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10)`
+    immediately before, or `assertQueryBuilderRowCount(6)` just after. Exactly
+    **one** is exposed: `question/notebook-link-to-data-source.cy.spec.ts:530`.
+
+    So for most of those tests the **row-count assertion is doing the
+    load-bearing work** and `every()` is secondary confirmation. The correct
+    framing is *a latent hole in a shared helper, incidentally covered by
+    convention at nearly every site*, not a systematic gap in sandboxing
+    coverage.
+
+    **The guard still earns its place** — it protects the one exposed site, and
+    protects any future call site added without the neighbouring row-count
+    check, which is exactly the kind of thing that gets forgotten. And it is
+    discriminating rather than decorative: inverting it fails 11 of 29.
+
+    Recorded because the difference between "sandboxing coverage has a hole" and
+    "a helper has a latent hole that convention covers" is the difference
+    between an alarming claim and a true one.
+
+### `table-editing`'s resync race — intermittent, and I mis-attributed it
+
+219. **9 `table-editing` tests failed with `Table with name editing_test cannot
+    be found`.** The `beforeEach` does
+    `CREATE TABLE editing_test AS SELECT … FROM many_data_types`, then
+    `resyncDatabase(mb.api, { dbId })` — **the bare form**, which returns as soon
+    as the database reports a completed sync. `initial_sync_status` is a
+    *first-ever-sync* marker that stays complete (#196), so the resync can
+    return before `editing_test` is in the metadata and `getTableId` throws.
+
+    **Fixed** by passing `tables: [INLINE_EDIT_TEST_TABLE_NAME]`, which is what
+    the parameter exists for. Locally: **9 failures → 0**, 20 passed.
+
+    🔴 **I initially blamed my own `resetWritableDb`, and that was wrong.**
+    Comparing three CI runs settles it:
+
+    | run | had `resetWritableDb`? | table-editing failures |
+    | --- | --- | --- |
+    | `workers=2` | yes | 1 |
+    | `workers=1` (a) | yes | **0** |
+    | `workers=1` (b) | yes | **9** |
+
+    The reset was present in **all three**, so it cannot be the cause. The race
+    is **intermittent** — timing-sensitive, and runner speed varies run to run.
+    The fix hardens it regardless, but the causal story I reached for first was
+    unsupported, and the comparison took two minutes.
+
+    **Separately, one local-only failure:** `WRK-907` times out waiting for a
+    field-values search on `ORDERS.USER_ID`. It appears in **none** of the three
+    CI runs, and this box's Sample Database is the stale 4-table copy (#213), so
+    it is almost certainly that. Not chased.
+
+---
+
+### #218 PRODUCT BUG (app code, NOT ours to fix): data studio drops the open
+### table from the URL when another schema is expanded
+
+**Status: confirmed from source and from a measured e2e run. No app code changed.**
+Reported here for whoever owns data studio to triage. We deliberately did *not*
+fix the product; the port now asserts the observed behaviour so it cannot
+regress silently either way.
+
+**The behaviour.** With a table open in the data-model table picker, expanding a
+*different* schema should leave the URL pointing at the open table. Admin does
+this. Data studio does not — it replaces the URL with the schema route and drops
+the open table.
+
+Measured (console.log checkpoints, one locked run, `data-model-shared-1`):
+
+| checkpoint | admin | data studio |
+|---|---|---|
+| after Animals click | `…/2:Domestic/table/201` | `…/2:Domestic/table/201` |
+| **after Wild schema click** | `…/2:Domestic/table/201` | **`…/2:Wild`** (table lost) |
+| after Birds click | `…/2:Wild/table/203` | `…/2:Wild/table/203` |
+
+**The cause.** The two areas are forked copies of the picker, and the data-studio
+fork dropped the guard.
+
+`frontend/src/metabase/metadata/pages/DataModelV1/components/TablePicker/wrappers.tsx:17-36`
+(admin) — the guard, and a comment stating the intent verbatim:
+
+```ts
+// Update URL only when either opening a table or no table has been opened yet.
+// We want to keep user looking at a table when navigating databases/schemas.
+const canUpdateUrl = value.tableId != null || props.tableId == null;
+```
+
+`frontend/src/metabase/data-studio/data-model/components/TablePicker/wrappers.tsx:30-34`
+(data studio) — no guard at all:
+
+```ts
+const onChange = useCallback((value: TreePath) => {
+  setValue(value);
+  dispatch(replace(Urls.dataStudioData(value)));
+}, [dispatch]);
+```
+
+Both URL builders (`Urls.dataModel` admin.ts:87, `Urls.dataStudioData`
+data-studio.ts:59) are pure functions of their argument and neither preserves a
+previously-open table — correctly so. The preservation lives *only* in the
+caller, and only the admin caller has it.
+
+Secondary divergence at the same site: data studio uses `replace` for **all**
+navigation, so this also clobbers history; admin uses `push` for user-initiated
+clicks and `replace` only for programmatic selection.
+
+**Why nobody noticed.** Upstream asserts the correct behaviour for *both* areas —
+and the assertion has never once executed. It is one of the 8 vacuous
+`.should(callback)` sites (see below): the callback `return`s a boolean instead
+of throwing, and Cypress `.should(fn)` only fails when the callback throws, so
+the return value is discarded. The bug has been sitting behind a dead assertion.
+
+`e2e/test/scenarios/data-model/data-model-shared-1.cy.spec.ts:337-344`:
+
+```js
+cy.log("should not update URL to point to schema as we have a table open");
+cy.location("pathname").should((pathname) => {
+  return pathname.startsWith(`…/schema/${WRITABLE_DB_ID}:Domestic/table/`);
+});
+```
+
+That this is an error and not a house convention is settled by line 184 of the
+*same file*, which uses the asserting form `should("eq", …)`.
+
+**Caveat on the source read:** git history is squashed here (both files show
+only `d1f282210c3`), so blame cannot say whether the guard was dropped
+deliberately during the fork or lost by accident. That is the one part a human
+owner needs to decide.
+
+### #219 8 vacuous `.should(callback)` sites in the Cypress suite
+
+Same mechanism as #218. `.should(fn)` retries until the callback stops
+*throwing* and discards its return value, so a callback whose body is
+`return <boolean>` asserts nothing, forever, silently. All 8 are
+`pathname.startsWith` URL checks:
+
+| file | count |
+|---|---|
+| `e2e/test/scenarios/data-model/data-model-shared-1.cy.spec.ts` | 6 |
+| `e2e/test/scenarios/admin/datamodel/datamodel.cy.spec.ts` | 1 |
+| `e2e/test/scenarios/data-studio/data-model/datamodel-data-studio.cy.spec.ts` | 1 |
+
+Magnitude honestly stated: 8 sites is a contained defect class, not a suite-wide
+crisis. It is worth recording because it is cheap to verify and because it hid a
+real product bug (#218), not because it is large.
+
+Porting consequence: converting these to real assertions is correct, but the
+expected values in them have never been validated — three of the four in
+`data-model-shared-1` were simply wrong (`Domestic` copy-pasted throughout).
+A dead assertion carries no evidence that its expectation was ever right.
+
+---
+
+### #220 PRODUCT BUG (app code, NOT ours to fix): "No results" on a pin map
+### with only null coordinates is render-order dependent
+
+**Status: measured, and corroborated from source. No app code changed, and the
+spec was deliberately NOT changed.** Reported for whoever owns visualizations.
+
+**The behaviour.** metabase#18061 case 3: a map card whose filtered result set
+contains rows with `null` latitude/longitude should show the "No results" empty
+state. It does so only sometimes. Cypress reliably observes the correct state;
+Playwright observes it roughly 3 times in 5 on an idle machine and fails
+consistently under CI load — which is why it first looked like a deterministic
+port defect.
+
+**Why it is not an empty-dataset case.** With the filter applied
+(`?category=Twitter`) the dashcard IS re-queried and the response is **1 row**
+(`ID=1, SOURCE="Twitter"`, `CClat`/`CClong` both `null`). So the dataset is not
+empty and the empty state cannot be coming from "no rows returned".
+
+**The mechanism, verified in source.**
+`frontend/src/metabase/visualizations/components/PinMap.jsx:191` mutates its own
+props during render, stripping the null-coordinate rows:
+
+```js
+const mapProps = { ...this.props };
+mapProps.series[0].data.rows = rows;   // rows = null coords removed
+```
+
+`Visualization.tsx:897` then gates the empty state on a flag derived from that
+same series data:
+
+```jsx
+) : (isDashboard || isMetricsViewer) && noResults ? (
+  <NoResultsView isSmall={small} />
+```
+
+So "no plottable points" is only ever observed by a **subsequent** render. If no
+further render lands, the card shows an empty pin map with zero markers instead
+of "No results". That is a race between a render-time side effect and whatever
+happens to schedule the next render — not a test-timing question.
+
+**Evidence it is the app and not the port:**
+- The **upstream Cypress spec** was run against the same running code: it passes,
+  and a DOM probe shows `noRes=1 pin=0` at t+500ms. The app can reach the right
+  state — it just isn't guaranteed to.
+- The port is faithful (upstream does `cy.findAllByTestId("no-results-image")`;
+  the port asserts visibility, which is strictly stronger).
+- Ruled out as levers, each measured: `reducedMotion` (`no-preference` still
+  1/3), browser build (`channel: "chrome"`, Chrome 150 — same as Cypress —
+  still 1/4), and post-hoc mouse/scroll/viewport-resize nudges (never flip it).
+
+**The assertion is provably not vacuous** — the usual worry for an empty-state
+check. It currently *fails* while the app renders results, and it is paired with
+`expect(pin-map).toHaveCount(0)`, so a rendered map kills it.
+
+**A real fix belongs in the product**, not the spec: compute "no plottable
+points" declaratively rather than mutating `series[0].data.rows` during render.
+Mutating props in `render()` is the underlying defect; the flaky empty state is
+a symptom.
+
+**Porting lesson, and the reason this is worth recording even if the product
+team decides the empty state is cosmetic:** Cypress's slower command pacing was
+*hiding* a real render-order bug. The migration did not introduce this flake —
+it made an existing product race observable. Same family as #218, where a dead
+assertion hid a product bug; here it is slow pacing rather than a dead
+assertion, but the conclusion is identical: the old suite was green for reasons
+unrelated to correctness.
+
+---
+
+### #221 PORTING RULE: `cy.wait("@alias")` matches RETROACTIVELY;
+### `page.waitForResponse` does not
+
+**The asymmetry.** Cypress registers `cy.intercept(...).as("x")` and
+`cy.wait("@x")` then resolves against **any request since registration** —
+including one that has already completed. Playwright's `page.waitForResponse`
+only matches responses arriving **after the call is made**. A port that keeps
+upstream's ordering but registers the listener after the triggering action is
+therefore racing: it passes only when the response happens to land after
+registration.
+
+**Measured** (`actions-on-dashboards`, instrumented with `page.on("request")`):
+
+```
+step addFilter        44ms
+req  GET .../dashcard/88/execute?parameters=...   92ms   <- request fires
+step registerPrefetch 111ms                              <- listener registered
+```
+
+19ms late. When the race is lost, nothing ever matches and `waitForResponse`
+blocks its full 30s, reporting a **timeout that reads like a hang** rather than
+a missed match. That is why the same defect appeared as a deterministic failure
+in one test and a flake in another — same coin, two sides.
+
+**The trap in this specific case** was that the request is fired by *applying
+the filter*, not by the obvious "click the action button": `ActionVizForm`
+mounts with `canPrefetch === false` (empty `dashcardParamValues`, see
+`ActionVizForm.tsx:91`) and issues nothing; applying the filter changes
+`dashcardParamValues`, which re-runs the prefetch effect. Clicking the action
+button only calls `setShowFormModal(true)` and issues **no request at all**. So
+"register the wait just before the button click" looks right and is wrong.
+
+**The rule.** Create the promise BEFORE the action that triggers the request:
+
+```ts
+const prefetch = page.waitForResponse(isPrefetch);   // register first
+await filterWidget(page).click();                    // then trigger
+await prefetch;
+```
+
+**This is NOT reliably greppable, and a count should not be quoted.** The
+broken form is syntactically identical to the correct one — a stored promise —
+and differs only in position relative to the triggering action. Deciding
+whether a given site is safe requires knowing which interaction actually issues
+the request, which is exactly what was mis-identified here. A grep for
+`await page.waitForResponse` (the inline form) finds a different, smaller
+population and does NOT find this defect; treating that count as the exposure
+would understate it.
+
+Four sites in `actions-on-dashboards.spec.ts` had this shape — two were the
+reported failures, two were latent and fixed at the same time. Mutation-verified
+by requiring a `MUTANT_parameters` query param: all three affected tests went
+red at exactly the moved line, so the wait is load-bearing in its new position.
+
+---
+
+### #222 HYPOTHESIS (not confirmed): a cold GraalPy/sqlglot pool and Playwright's
+### default `waitForResponse` timeout are both exactly 30s
+
+Offered as a lead for the `impersonated` :: "caching should not circumvent
+impersonation permissions" flake and, potentially, any native-query spec that
+waits on `POST /api/dataset`. **Not established as the cause** — stated so
+nobody quotes it as one.
+
+**The verified facts** (`src/metabase/sql_parsing/graal.clj`):
+- `call-timeout-ms` is **30000** (line 198-200) — the backend's own per-call
+  Python timeout.
+- The context pool has **min 0**, "so when idle the pool shrinks to 0 and the
+  last `destroy` closes the engine", and "the first call after an idle gap
+  rebuilds" it (lines 8-10).
+- It runs GraalPy **interpreted** — no Graal compiler on a stock JDK.
+
+Playwright's default `waitForResponse` timeout is also 30s. So on the first
+native query after an idle gap, a *slow but successful* response and a genuine
+hang are indistinguishable: whichever 30s expires first decides what the failure
+looks like. That matches the observed shape — flaky, passes on retry (warm
+pool), and reports as a timeout rather than an error.
+
+**Deliberately NOT acted on.** Raising the Playwright timeout would make the
+symptom disappear without establishing the cause, and would mask a real
+regression if the pool ever genuinely hangs. The right next step is to measure
+the actual `POST /api/dataset` duration in a failing CI run.
+
+**Local caveat that blocked confirmation:** on this machine every native query
+500s with `ModuleNotFoundError: No module named 'sqlglot'`. Metabase lazily
+installs sqlglot in dev via `uv` or `pip`, and neither is on PATH here (only
+`pip3`), so `ensure-sqlglot-installed!` warns and continues. Any agent running a
+native-query spec locally will hit this and should not mistake it for a port
+defect.
+
+---
+
+### #223 PRODUCT BUG (app code, NOT ours to fix): `/backfill-status` reports
+### `complete: true` while entities are stale, and snippet-referencing native
+### cards fail dependency analysis
+
+**Status: reproduced 8/8, and corroborated from source and from the live app DB.
+No app code changed, and the spec was deliberately NOT changed.** Reported for
+whoever owns dependencies. This is why `dependency-graph` :: "should display
+dependencies for a snippet and navigate to them" is flaky in CI.
+
+**Two distinct defects.**
+
+**(a) Dependency backfill throws for native cards/transforms referencing
+`{{snippet:Name}}`.** After creating a snippet plus a snippet-based
+question/model/transform, the graph API returns `dependents_count {"snippet": 1}`
+— the question, model and transform are all missing — and it stays that way
+**stably for 124 seconds**. Not a race. Queried over the running backend's
+nREPL:
+
+```clj
+{:entity_type "card" :entity_id 99 :dependency_analysis_version 0 :stale true
+ :fail_count 1 :next_retry_at #t "2026-07-21T02:13:34" :terminal false}
+;; contrast, a normally-analysed card:
+{:entity_id 97 :dependency_analysis_version 6 :stale false :fail_count 0 :next_retry_at nil}
+```
+
+`dependency_analysis_version` stuck at 0 with `fail_count 1` and `next_retry_at`
+≈ +60 min (the `dependency-backfill-delay-minutes` default). The snippet→snippet
+edge DOES land, because `calculate-deps* :snippet` reads `template_tags`
+directly, whereas the card/transform path goes through `compile-query`, which
+can throw.
+
+**(b) `GET /api/ee/dependencies/backfill-status` lies when anything is in retry
+backoff.** `api.clj:1052` is `{:complete (not (has-stale-or-outdated?))}`, and
+`has-stale-or-outdated?`
+(`models/dependency_status.clj:100-108`) is defined in terms of
+`instances-for-dependency-calculation`, whose own docstring says it returns
+entities that are "not terminal, **retry delay elapsed**". So an entity that has
+failed and is waiting out its backoff is excluded from the check — and the
+endpoint reports the backfill **finished** while that entity is still stale and
+unprocessed. With the 60-minute default delay, it reports complete for an hour.
+
+Defect (b) is the more general problem: the endpoint cannot distinguish "no work
+left" from "work deferred", so no caller — the frontend included — can either.
+
+**Why this produces two different CI symptoms.** Poll before the entities are
+marked stale, or after they enter backoff, and the status returns immediately
+with dependents missing → the test fails later on a `locator.click` timeout.
+Poll inside the actionable window and it blocks the full 30s →
+`Dependency backfill timeout`. Both faces observed; same root cause.
+
+**Not fixable in the spec.** `waitForBackfillComplete` matches upstream's helper
+exactly (same 30s / 100ms), so the port is faithful; `support/dependency-graph.ts`
+is shared by 14 specs; and no spec edit can make an assertion correct when the
+API it waits on reports completion prematurely. A related data point, not
+diagnosed: "should display dependencies for a table and navigate to them" in the
+same file fails with the identical locator-timeout shape and is probably the
+same bug.
+
+**#222 UPDATE (measured): mechanism confirmed, magnitude NOT.** The spec was run
+with `--trace on` and the real `POST /api/dataset` durations pulled from
+`1-trace.network`:
+
+| Condition | first `POST /api/dataset` |
+|---|---|
+| Cold JVM + cold pool | **5940 ms** |
+| Warm JVM, cold pool | 2748 ms |
+| Warm (repeats) | 37 / 40 / 39 ms |
+
+The cost is entirely front-loaded — on the cold run the *next* native query
+(same SQL, via `POST /api/card/98/query`) took 161 ms, then 85, then 66. So the
+"first call after an idle gap rebuilds them" signature is real, and it lands on
+exactly the request CI timed out on.
+
+**But 5.9s is ~5x short of the 30s budget** on an idle dev machine with one
+backend. CI at `--workers=2` has two JVMs, a cold page cache and contended CPU,
+so a further 5x is plausible — but it has NOT been demonstrated and should not
+be claimed. The test also did not reproduce at all locally (6/6 pass), so
+nothing here was changed.
+
+**The collision is ordered, not merely coincidental.** `waitForDataset`
+registers its `waitForResponse` *before* the click (`support/models.ts:88`,
+deliberately, per #221). Playwright's 30s window therefore opens fractionally
+*earlier* than the request is sent — and since `call-timeout-ms` is also 30000,
+the backend's own Python timeout can **never** be observed by this test. If
+sqlglot genuinely hung, the backend would eventually answer with an error at
+~30s, but Playwright will always have given up first, by a hair. A slow cold
+start and a real GraalPy hang are therefore *guaranteed* to produce an identical
+`TimeoutError` with no response recorded. They cannot be told apart from a CI
+artifact alone.
+
+**Better lead than raising the timeout:** `metabase.sql-tools.metrics` already
+records per-operation sqlglot timings (`record-operation-completion! :sqlglot
+"validate-query"`, exercised in `test/metabase/sql_tools/metrics_test.clj`).
+Reading those on a failing CI run attributes the latency directly instead of
+inferring it from outside. Warming the pool inside the spec is NOT a fix — the
+warm-up would have to run a native query, which is the very thing being timed,
+so it would hide the cost rather than remove it.
+
+---
+
+### #224 AMBIGUOUS SIGNATURE (security-relevant): in custom-viz confinement,
+### "widget never rendered" and "sandbox escape" both produce `top === 0`
+
+`custom-viz` :: "confines custom viz and custom viz setting widget to its
+container" asserts the attacker's `position: fixed; inset: 0` widget is clamped
+by the wrapper's `contain: layout paint`
+(`SandboxedPluginContainer.module.css`), which makes it the containing block.
+
+**The trap:** an *unrendered* element yields an all-zero DOMRect, which
+satisfies `height === 0` and `width < 1280` and fails **only** on `top > 0` —
+the identical signature to a genuine escape. Verified: with the sidebar forced
+to `display: none`, `rect = {top:0,w:0,h:0}` AND `toHaveCSS("position","fixed")`
+still passed, so the guard is blind to it.
+
+The CI failure was resolved in favour of "unrendered", on two grounds: the
+failing input (`settingRect.top`) measured **byte-identical at 720 and 800**
+(169 both times), so it is viewport-insensitive; and 66 local runs were green.
+The fix restores upstream's retry (`.should(callback)` retries; the port
+snapshotted once) via `expect(...).toPass()`.
+
+**If this test fails again after that fix, do NOT assume harness flake.** That
+would point at the escape reading and should be treated as a security bug.
+
+Mutation evidence includes a **simulated genuine escape** — injecting
+`contain: none` to defeat the boundary makes the test fail with `Received: 0`,
+the exact CI message. So `toPass()` does not mask a real escape: a truly-escaped
+widget never satisfies the block however long you retry. That distinction is the
+reason the retry fix is safe here.
+
+**Correction on the record:** this was reported as a viewport casualty when the
+1280x800 fix landed. It is not. The viewport commit surfaced a pre-existing
+latent flake by coincidence.
+
+**#224 RESOLVED: it is the escape reading. The containment was deliberately
+removed on master, and the guarding tests were deleted with it.**
+
+The tripwire condition above ("if this test fails again after the retry fix,
+that points at the escape reading") was met on run 29825096184, and the evidence
+supports the escape.
+
+**Direct evidence** (`playwright-report-s10` trace screencast): the final frame
+of BOTH the first attempt and the retry is a **solid red viewport** — the
+attacker's `background: red` covering the entire page including the nav bar.
+Frame by frame: at +7968ms red is clamped to the chart area; at +8410ms it has
+spread to `x=0, width~558`; by +8882ms it fills 1280x800 and stays for the
+remaining ~80s. That is persistent, not transient, and not an unrendered
+element.
+
+**Mechanism.** The security wrapper is absent from the shipped DOM:
+
+```
+CI (merge commit):  DIV[data-testid=chart-settings-widget-forbiddenWidget]
+                      DIV[data-plugin-sandbox="2"]        <- no wrapper
+local (our HEAD):   DIV[data-testid=chart-settings-widget-forbiddenWidget]
+                      DIV.SandboxedPluginContainer-module__container___pKfrR
+                        DIV[data-plugin-sandbox="2"]
+```
+
+The CI bundle contains other custom_viz CSS-module output but **zero**
+occurrences of `contain: layout paint`. The rule is not in the shipped build.
+
+**Cause — an upstream product decision, verified in source.** Commit
+`07cb2f0a6c7`, "GDGT-2872 Revert #77695 to allow custom widget popovers
+(#78124)", landed on master 2026-07-21 15:32 +0700. It:
+
+- deletes `SandboxedPluginContainer.module.css`, whose entire content was
+  `.container { contain: layout paint; /* Security boundary */ }`
+- deletes `SandboxedPluginContainer.tsx`, replacing it with a bare
+  `<div ref={containerRef} data-plugin-sandbox={pluginId}
+  style={{width:"100%",height:"100%"}} />` — matching the CI DOM exactly
+- deletes the upstream Cypress test `it("confines custom viz and custom viz
+  setting widget to its container (GDGT-2400)")` (86 lines)
+- deletes the unit test "mounts the plugin inside a host-controlled wrapper the
+  plugin cannot tag"
+
+Not on our branch. `actions/checkout@v6` with no `ref` on a `pull_request`
+event checks out the **merge commit**, so CI built branch + current master. That
+is why 66 prior local runs and 4 local runs today were green.
+
+**The `toPass()` retry fix was correct and needs no further work.** `top` was 0
+permanently, so it retried to the test timeout and reported the first failing
+assertion. Retry distinguishes a race from a real failure; this is the real one.
+
+**Security assessment.** Untrusted custom-viz plugin code can set
+`position: fixed; inset: 0; z-index: 99999` on its own container and cover the
+whole application viewport, nav bar included — a clickjacking / UI-spoofing
+surface. The removal is clearly **intentional** (the revert exists to let custom
+widget popovers escape the widget box, tracked as GDGT-2872) and the guarding
+tests were deleted in the same commit, so this is not an unnoticed regression.
+
+What is worth raising with the custom-viz owners: whether the clickjacking
+consequence was explicitly weighed when trading containment for popover
+overflow, given the removed rule was annotated `/* Security boundary */` and had
+a dedicated e2e test. That is a product question, not a porting one.
+
+**Open decision on our side.** Upstream deleted this test, so our port now
+asserts a guarantee the product deliberately no longer makes. Options: port the
+deletion to match upstream; keep it as a known-failing marker pending the
+security conversation; or hold. NOT decided unilaterally — it trades a red CI
+signal against erasing the only automated evidence that a security boundary was
+given up.
+
+**#224 TRIAGE (2026-07-22): not urgent.** Fraser has reviewed and does not
+consider this urgent. Rationale for the record: the removal was a deliberate
+product decision (GDGT-2872), not an unnoticed regression, and custom viz
+plugins are installed deliberately rather than reachable by an anonymous
+attacker. A message to the custom-viz owners is drafted, asking whether the
+clickjacking/UI-spoofing consequence was explicitly weighed or fell out as a
+side effect of the popover fix.
+
+**Pending until they answer**, the ported test is deliberately left asserting
+containment and therefore failing in CI. If they confirm the trade was
+intentional and weighed, delete our test to match upstream's deletion and close
+this. Do not silently delete it before then — it is the only automated evidence
+that the boundary was given up.
+
+**#224 CLOSED (2026-07-22, later): master restored the boundary — the owners'
+answer is moot.** ~~[superseded — see the RETRACTION below]~~ `SandboxedPluginContainer`
+now wraps the sandbox in a dedicated element carrying
+`contain: layout paint; /* Security boundary */` … Verified: GDGT-2400 passes
+on the merge jar locally and on CI run 29883950172 s10.
+
+**#224 RETRACTION OF THE CLOSURE (2026-07-22, latest): the escape is STILL
+LIVE on master. The closure above was wrong on every limb, and the mechanism
+of the error is itself instructive.**
+
+- `SandboxedPluginContainer` + its containment CSS exist **only in this
+  branch's checkout** — they were added by PR #77695 BEFORE our merge-base and
+  reverted on master by 07cb2f0a6c7 AFTER it. Reading the working-tree file and
+  attributing it to master was the mistake; `git show
+  origin/master:<path>` errors ("exists on disk, but not in 'origin/master'")
+  and `git grep "contain: layout" origin/master` is empty. Nothing named
+  SandboxedPluginContainer exists on master.
+- **The greens were FALSE greens.** On a boundary-less build the attack's
+  100ms `setInterval` races the geometry read: sometimes the test measures the
+  widget's rect before the `position:fixed;inset:0` reapply lands, reads
+  top>0, and passes. Confirmed by the s10 investigation: the CI-built jar's
+  compiled bundle contains **zero** occurrences of `contain:layout paint`, the
+  rendered DOM has no `.container` wrapper (bare `[data-plugin-sandbox]` div),
+  and run 29885617640's frontend chunk is byte-identical to that jar's. A
+  green run on such a build verified nothing.
+- Also corrected en route: the "Forbidden widget" text in the failure
+  snapshots is the FIXTURE's own setting title
+  (index-widget-security-component.tsx), not an app fallback — the
+  trusted-mount-race hypothesis is disproven; the sandbox's
+  `blocked createElement: input` behavior is by design and asserted by the
+  sibling test.
+- **Test hardened so this cannot recur**: a bounded pre-check requires an
+  ancestor with layout containment before any geometry is read — a
+  boundary-less build now fails deterministically in ~12s naming the missing
+  boundary, instead of false-greening or burning 90s. Geometry assertions
+  unchanged.
+- **Disposition (2026-07-22, FINAL): the ported test was DELETED** to match
+  upstream master (which deleted its own GDGT-2400 with the 07cb2f0a6c7 revert)
+  and keep the port close to Cypress. Fraser's call: he owns the relationship
+  with the custom-viz team and will raise the escape with them directly
+  (see docs/custom-viz-sandbox-escape-note.md, written for that conversation),
+  so the automated red is no longer earning its keep as a nag. The escape
+  itself is UNCHANGED and still real on master — this is a coverage decision,
+  not a resolution. If the boundary is ever restored on master, the test can
+  be resurrected from git history (it was the "confines custom viz and custom
+  viz setting widget to its container (GDGT-2400)" test in tests/custom-viz.spec.ts,
+  with the containment pre-check that made it fail fast rather than false-green).
+  The shared security fixture and interceptInjectedBundle helper stay — other
+  sandbox tests use them.
+
+Method lesson for the file: a security test that can false-green under the
+exact condition it guards (racing an attacker's interval) needs a
+precondition assertion on the mechanism (the containment boundary), not just
+the outcome (geometry). And: verify claims about master against
+`origin/master` refs, never against this long-lived branch's working tree.
+
+---
+
+### #225 PRODUCT LIMITATION (app code, NOT ours to fix): Metabase cannot
+### connect to a MySQL 8.4 account with a cold `caching_sha2_password` cache
+### over a non-TLS connection
+
+Surfaced by `database-writable-connection` :: "should show up-to-date connection
+health status", which fails **deterministically** (both CI attempts) with:
+
+```
+expect(locator).toHaveText(expected) failed
+Locator: ...getByTestId('database-connection-health-info')
+Expected: "Connected"
+Received: "Could not connect to address=(host=localhost)(port=3304)(type=master) :
+           (conn=176) Plugin 'mysql_native_password' is not loaded"
+```
+
+**Mechanism.** The QA image `metabase/qa-databases:mysql-sample-8` is now
+**MySQL 8.4.2**, where `mysql_native_password` is DISABLED and
+`authentication_policy = *,,` — every account defaults to
+`caching_sha2_password`. The spec creates `readonly_user` fresh in `beforeEach`
+and drops it in `afterEach`, and `DROP USER` **evicts the server's sha2 password
+cache**. A cold-cache account requires caching_sha2 "full authentication", which
+needs either TLS or the server's RSA public key. Metabase's MySQL driver
+(MariaDB Connector/J) is configured `useSSL false` with no
+`serverRsaPublicKeyFile` / `allowPublicKeyRetrieval`
+(`src/metabase/driver/mysql.clj:743`), so it cannot complete it.
+
+Measured against a live backend via `POST /api/database/validate`:
+
+| connection | result |
+|---|---|
+| `root` (long-lived, cache warm) | `valid: true` |
+| `readonly_user`, **cold** cache | `valid: false` — *"RSA public key is not available client side (option serverRsaPublicKeyFile not set)"* |
+| `readonly_user`, after one mysql2 connect (warms the cache) | `valid: true` |
+
+Local and CI report different messages for the same failure (locally the RSA
+error; in CI the connector falls back to requesting the disabled
+`mysql_native_password`), but it is one failure class.
+
+**Why this is a product finding, not a test one.** `/api/database/validate` is
+the same path the admin "add a database" UI uses. A user adding a MySQL 8.4
+warehouse with a fresh `caching_sha2` account over a non-TLS connection hits
+exactly this. The e2e failure is the symptom, not the bug.
+
+**Not port drift.** The port's `createUser` is byte-identical to upstream's, and
+upstream's Cypress spec has the same defect — it was presumably green when the
+**mutable** `mysql-sample-8` tag pointed at an older MySQL. Note the wider
+hazard: a mutable image tag means CI's warehouse can change under the suite
+without any commit.
+
+**Why only one test fails.** Of the nine in that describe, this is the only one
+asserting `readonly_user` **can** connect. One changes to that user without
+asserting health; four expect operations to *fail*, so they pass for the wrong
+reason. Exactly one visible failure is consistent with the diagnosis.
+
+**Nothing changed in the spec**, per the faithfulness rule. If we want to unblock
+it without weakening anything, the minimal fixture-side fix is to connect once as
+`readonly_user` through mysql2 inside `createUser` to warm the server cache —
+proven to flip validation to `valid: true`. That masks a real product limitation,
+so it should only be done alongside reporting #225 to the drivers owners.
+
+**#222 SUBSTANTIATED, and three of my own claims corrected (2026-07-22).**
+The magnitude gap this finding explicitly left open is now closed, and the two
+`impersonated` failures are confirmed to share one cause.
+
+**Why this spec specifically.** `apply-impersonation`
+(`enterprise/.../impersonation/middleware.clj:30`) routes **every native query on
+an impersonation-configured DB — all users, admins included** (its own comment:
+"Validate for ALL users if impersonation is configured on this DB") through
+`driver/validate-impersonated-query` -> `validate-impersonated-query*`
+(`driver/sql.clj:337-355`) -> `sql-tools/is-single-stmt-of-type?` -> GraalPy /
+sqlglot, **synchronously inside QP preprocessing**, blocking the `/api/dataset`
+response. Native queries elsewhere do not do this. Both failing tests reach
+`models.ts:64` via `runNativeQuery`, so the shared line is structural, not
+coincidence.
+
+**Magnitude — the gap is closed.** Isolated via nREPL
+(`is-single-stmt-of-type? :postgres "select * from reviews"`):
+
+| condition | first call | warm |
+|---|---|---|
+| one cold JVM, idle machine | 6998 ms | 3-12 ms |
+| two cold JVMs x 3 concurrent contexts | 17190 / 17423 ms | |
+| same, second replicate | **23819 / 23656 ms** | |
+
+At HTTP level, CI-shaped locally (2 cold JVMs, `--workers=2 --fully-parallel`,
+1500m heap): first native `POST /api/dataset` took **12598 ms** ("have limited
+access") and **8864 ms** ("caching..."), both ~100 ms on the warm repeat.
+
+23.8s of a 30s budget on an idle M-series Mac is not "a plausible further 5x" —
+the budget is reached. CI is ~2x slower again (these tests take 38-74s there vs
+~37s locally), with a heap cap and cold page cache.
+
+**Correction 1 — the backend's 30s timeout does NOT cover the expensive part.**
+I wrote that the two 30s timers race and Playwright always wins by a hair.
+Wrong. `do-with-python-context` (`graal.clj:228-233`) calls `.acquire` on the
+pool **first**, and wraps only `f` in `with-timeout*`. Cold context generation
+happens inside `.acquire`, **unbounded**. Corroborated by the concurrency shape:
+three concurrent calls returned within 1 ms of each other (17190/17190/17191),
+i.e. generation serialises inside `acquire` rather than building in parallel.
+
+**Correction 2 — the metrics route I recommended would not have worked.**
+`is-single-stmt-of-type?` (`sql_tools/core.clj:228-231`) is the **only**
+sql-tools entry point not wrapped in `with-operation-timing`; every neighbour
+has it. The exact call that pays the cost is uninstrumented.
+
+**Correction 3 — the "genuine hang" reading is refuted.** A real hang logs
+`"Python execution timed out after 30000 ms - GraalVM interrupted"`
+(`graal.clj:242`). `slot-backend-logs-s25` from run 29866774427 spans both the
+failed first attempt and the passing retry of this spec: **zero** graal/sqlglot/
+timeout lines. Slow cold start, not a hang.
+
+**Correction 4 — warming IS viable, contrary to my closing note.** I said a
+warm-up "would have to run a native query, which is the very thing being timed".
+That is true only *inside* the timed interaction. The `beforeEach` is not timed;
+a single `POST /api/dataset` against the impersonated DB there moves the cold
+cost outside the measured window while leaving the warm path fully observable.
+NOT done — the agent could not reproduce the failure, so could not
+mutation-test that it changes the outcome.
+
+**Why the two tests fail semi-independently (3/4 and 2/4, not together):**
+`--fully-parallel` with per-worker backends lets them land on **different** JVMs,
+each with a `min 0` pool, so each pays a full cold start rather than one warming
+the other.
+
+**Durable fix is product-side:** `min-size 1` on the context pool, or an eager
+warm at boot. A one-line `with-operation-timing` around
+`is-single-stmt-of-type?` would also attribute this directly in any CI run.
+
+**What settles it without app changes:** the trace fix (`18a02dd000c`) now
+uploads reports for flaky-but-passing shards. On a failing attempt no response is
+recorded, so a trace will not show a duration — but it **will** show whether the
+request was ever *sent*, which is exactly the discriminator between "slow
+response" and "the click never fired a query". Nothing so far has separated
+those.
+
+**#222 RESOLVED (2026-07-22) — pool warmed in the spec's beforeEach, cold cost
+moved off the timed path.** Correction 4 above is now acted on. The fix is
+`warmSqlParsingPool(api)` (support/impersonated.ts): one trivial native parse
+(`select 1`) on the impersonated DB, as admin, fired at the END of the inner
+`impersonated users` beforeEach — after `setImpersonatedPermission`, so it
+actually routes through `apply-impersonation` -> `is-single-stmt-of-type?` ->
+GraalPy and warms the shared per-JVM pool. `select 1` needs no table access, so
+it succeeds regardless of role. A 120s request timeout is passed because the
+cold parse itself can outrun the 30s APIRequestContext default — the very cost
+being relocated. `support/models.ts:64` (`waitForDataset`) was NOT touched; the
+mask lives in the affected spec's setup, not in the shared helper, and its
+comment stays accurate.
+
+**Not in worker-backend `warmUp`, deliberately** (reasoning recorded in the
+helper docstring): that boot-time warm runs a plain MBQL count on the H2 sample
+DB, which never reaches `is-single-stmt-of-type?`; the `postgres-12` snapshot and
+impersonation config the sqlglot path needs don't exist at boot; it would add the
+cold cost to every spec's boot for a two-test concern; and `min-size 0` lets the
+pool idle back to cold before the test runs. A beforeEach warm is both more
+targeted and more reliable. Option (b) — a wider first-`waitForDataset` timeout —
+was not needed: the explicit warm proved reliable, and it is less masking (a real
+regression in the timed native query still trips the normal 30s budget).
+
+**Measured on a freshly-booted slot-5 backend (port 4105 killed first, genuinely
+cold pool):** the warm helper's first-ever parse took **cold=6036ms**, the
+immediate repeat **warm=37ms** — the exact cold/warm signature, and consistent
+with the finding's "one cold JVM, idle machine" ~7s figure (the 17-24s numbers
+needed two contended JVMs). test 2's beforeEach on the same still-warm JVM saw
+34ms/21ms. Because that 6s (up to ~24s under CI load) now lands in the untimed
+beforeEach, both tests **passed cold** (2/2) and under `--repeat-each=2` (4/4);
+`tsc --noEmit` clean.
+
+---
+
+### #226 PORTING RULE: `click({ force: true })` does NOT mean the same thing in
+### Cypress and Playwright — Playwright's can silently miss
+
+**The asymmetry.**
+- **Cypress** `.click({ force: true })` dispatches the event **directly on the
+  element**. It cannot miss.
+- **Playwright** `click({ force: true })` only skips the actionability
+  **checks** (visible / stable / receives-events) and still performs a **real
+  mouse click at the element's coordinates**. Skipping the *stable* check means
+  it will happily click a moving target — and land where the element used to be.
+
+A forced Playwright click on an element mid-reflow logs
+`"forcing action" -> "click action done"` **with no error**, while doing nothing.
+That is the worst possible shape: a silent no-op that reports success.
+
+**How it presented.** `temporal-unit-parameters`'s `removeQuestion()` follows the
+parameter sidebar's `Done` button at exactly two call sites (lines 202-203 and
+232-233). Closing the sidebar reflows the dashboard grid, and the forced click
+landed at stale coordinates ~40ms into that reflow. The dashcard survived, the
+next block ran against a **stale card at index 0**, and the test died 30s later
+on a locator that could never match. The page snapshot showed two dashcards where
+there should be one — the leftover "No breakouts" card reading "No valid fields"
+sitting at `.first()`.
+
+**The positional evidence is exact.** The two CI failures landed in precisely the
+blocks following those two call sites:
+
+| CI run | failing block | preceded by |
+|---|---|---|
+| 29814216890 | breakout by expression — waiting for `"Select…"` | Done+remove @202 |
+| 29820641912 | native query — waiting for `/Add a variable to this question/` | Done+remove @232 |
+
+The three `removeQuestion` calls that instead follow `editDashboard()` — no
+sidebar, therefore no reflow — have **never** failed.
+
+**Reproduced**, which almost nothing in this failure class has been: invisible
+unthrottled (30/30 pass), but **2/10 fail** under `Emulation.setCPUThrottlingRate:
+6` with CI's `--workers=2 --fully-parallel`. Fixed: 10/10.
+
+**The fix is to REMOVE `force: true`, which makes the click STRICTER** — it now
+waits for visible + stable + receives-events instead of skipping them. The
+preceding `hover()` already makes the hover-gated close icon visible, so nothing
+is lost.
+
+**Generalise:** any port that carries `force: true` across from Cypress is
+suspect, especially where the element can move (a closing sidebar, an animating
+panel, a re-laying-out grid). The Cypress original was safe by construction; the
+Playwright translation is not. Note this is the *opposite* direction from the
+usual porting hazard — here the faithful-looking translation is the dangerous
+one, and the correction is to be less forceful than upstream.
+
+**Related, and worth knowing:** the failure sites above were recovered WITHOUT a
+trace. Both shards went flaky-and-passed, so no report was uploaded — but
+`playwright-results.json`, in the always-uploaded `playwright-timings-s*`
+artifact, carries full error text including the failing locator. That is reusable
+for any flaky-only failure predating the artifact fix (#18a02dd000c).
+
+**Not explained by this.** The other two `temporal-unit-parameters` failures
+("auto-wire to cards with breakouts after a new card is added", "not auto-wire to
+cards without breakout columns") did **not** reproduce (0/10 under the same
+throttle) and are undetermined. Nothing was changed for them.
+
+**Scale, stated carefully.** `force: true` appears at **375 sites across 160
+files** in this package. That is an upper bound on where to *look*, NOT a defect
+count, and it should never be quoted as one. Most are harmless: forcing a click
+on an element that is merely overlapped or offscreen-but-stable behaves as
+intended. The defect needs the element to be **moving** at click time — a
+closing sidebar, an animating panel, a re-laying-out grid.
+
+Deciding which sites qualify requires knowing whether a reflow is in flight, so
+this is not mechanically detectable, exactly as with #221. The tractable triage
+is the shape that bit us here: a `force: true` click that immediately follows an
+action known to reflow its container (a `Done` / `Save` / `Cancel` that closes a
+sidebar or modal). Those are worth auditing; the other several hundred are not,
+absent evidence.

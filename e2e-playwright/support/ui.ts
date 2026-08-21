@@ -1,0 +1,198 @@
+/**
+ * Ports of the `H` UI helpers used by the navbar spec
+ * (e2e/support/helpers/e2e-ui-elements-helpers.js and e2e-misc-helpers.js).
+ * Each helper takes the Page and returns a Locator, mirroring the Cypress
+ * helpers that return chainables.
+ */
+import { FrameLocator, Locator, Page, expect } from "@playwright/test";
+
+import type { MetabaseApi } from "./api";
+
+/** Any locator root that exposes `.locator()` — a page, an embedding iframe, or
+ * a scoped locator. Canonical scope type for the shared locator helpers. */
+type Scope = Page | FrameLocator | Locator;
+
+/**
+ * `.Icon-<name>` locator. Canonical home for the helper that had been
+ * copy-defined in dashboard-cards.ts / permissions.ts / interactive-embedding.ts.
+ */
+export function icon(scope: Scope, name: string): Locator {
+  return scope.locator(`.Icon-${name}`);
+}
+
+/**
+ * The open Mantine modal dialog. Canonical home for the helper that had been
+ * copy-defined in dashboard.ts / models.ts / interactive-embedding.ts.
+ */
+export function modal(scope: Scope): Locator {
+  return scope.locator("[role='dialog'][aria-modal='true']");
+}
+
+const POPOVER_SELECTOR =
+  ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
+
+/**
+ * Matches all visible popovers (like the Cypress helper). With a single
+ * popover open, chaining works directly; when two coexist (e.g. a filter
+ * widget with a typeahead dropdown) disambiguate with .first()/.last().
+ */
+export function popover(scope: Scope): Locator {
+  return scope.locator(POPOVER_SELECTOR).filter({ visible: true });
+}
+
+/** Click a tab by its accessible name. Canonical home for the copy that had
+ * been defined in dashboard-parameters.ts / filters-repros.ts /
+ * interactive-embedding.ts. */
+export async function goToTab(scope: Scope, tabName: string) {
+  await scope.getByRole("tab", { name: tabName, exact: true }).click();
+}
+
+/**
+ * Port of H.main() (e2e-ui-elements-helpers.js:25): cy.get("main"). Canonical
+ * home for the copy that had been defined in metrics-reproductions.ts /
+ * models-reproductions-2.ts / questions-entity-id.ts / sharing.ts /
+ * viz-tabular-repros.ts.
+ */
+export function main(page: Page): Locator {
+  return page.locator("main");
+}
+
+export function navigationSidebar(page: Page): Locator {
+  return page.getByTestId("main-navbar-root");
+}
+
+export function appBar(page: Page): Locator {
+  return page.getByLabel("Navigation bar");
+}
+
+export function newButton(page: Page): Locator {
+  return page.getByTestId("app-bar").getByRole("button", { name: "New" });
+}
+
+export function collectionTable(page: Page): Locator {
+  return page.getByTestId("collection-table");
+}
+
+export function queryBuilderHeader(page: Page): Locator {
+  return page.getByTestId("qb-header");
+}
+
+export async function assertNavigationSidebarItemSelected(
+  page: Page,
+  name: string | RegExp,
+  value = "true",
+) {
+  await expect(
+    navigationSidebar(page).getByRole("treeitem", { name }),
+  ).toHaveAttribute("aria-selected", value);
+}
+
+/**
+ * The sidebar sections use a literal role="section" attribute — not a valid
+ * ARIA role, so Playwright's getByRole engine can't match it. Cypress
+ * testing-library tolerated it; here we fall back to an attribute selector.
+ */
+export function sidebarSection(page: Page, name: string): Locator {
+  return navigationSidebar(page).locator(
+    `[role="section"][aria-label="${name}"]`,
+  );
+}
+
+export async function assertNavigationSidebarBookmarkSelected(
+  page: Page,
+  name: string | RegExp,
+  value = "true",
+) {
+  await expect(
+    sidebarSection(page, "Bookmarks").getByRole("listitem", { name }),
+  ).toHaveAttribute("aria-selected", value);
+}
+
+/**
+ * Port of openNavigationSidebar's self-healing open loop: navigating to a
+ * dashboard/question collapses the navbar, and the collapse can land a beat
+ * after page content renders, so re-check after acting.
+ */
+export async function openNavigationSidebar(page: Page) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (await navigationSidebar(page).isVisible()) {
+      break;
+    }
+    await appBar(page).getByTestId("sidebar-toggle").click();
+    await page.waitForTimeout(100);
+  }
+  await expect(navigationSidebar(page)).toBeVisible();
+}
+
+/**
+ * Port of H.visitQuestion: navigate and wait for the metadata + query
+ * responses. Note the Playwright inversion — waits are registered *before*
+ * the navigation that triggers them.
+ */
+export async function visitQuestion(page: Page, id: number) {
+  const metadataResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.match(
+        new RegExp(`^/api/card/.*${id}/query_metadata$`),
+      ) !== null,
+  );
+  const queryResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.match(
+        new RegExp(`^/api/card/.*\\b${id}/query$`),
+      ) !== null,
+  );
+  await page.goto(`/question/${id}`);
+  await Promise.all([metadataResponse, queryResponse]);
+}
+
+/**
+ * Port of H.visitDashboard: look up the dashboard through the API as the
+ * current user, then wait for every first-tab dashcard query to complete.
+ */
+export async function visitDashboard(
+  page: Page,
+  api: MetabaseApi,
+  dashboardId: number,
+) {
+  const { status, body } = await api.getDashboard(dashboardId);
+  const canView = status === 200;
+
+  const dashcards: {
+    id: number;
+    card_id: number | null;
+    dashboard_tab_id: number | null;
+    card: { display?: string; dataset_query?: unknown };
+  }[] = body.dashcards ?? [];
+
+  const firstTabId: number | null = body.tabs?.length ? body.tabs[0].id : null;
+  const cardQueries = dashcards
+    .filter((dashcard) => dashcard.card_id != null)
+    // Cards the current user is not allowed to see come back without a
+    // dataset_query, and the FE never fires a query for them (mirrors the
+    // dashboardHasQuestions filter in e2e-misc-helpers.js).
+    .filter((dashcard) => dashcard.card.dataset_query !== undefined)
+    .filter(
+      (dashcard) =>
+        firstTabId == null || dashcard.dashboard_tab_id === firstTabId,
+    )
+    .map((dashcard) => {
+      const base =
+        dashcard.card.display === "pivot"
+          ? `/api/dashboard/pivot/${dashboardId}`
+          : `/api/dashboard/${dashboardId}`;
+      return `${base}/dashcard/${dashcard.id}/card/${dashcard.card_id}/query`;
+    });
+
+  const waits = canView
+    ? cardQueries.map((path) =>
+        page.waitForResponse(
+          (response) => new URL(response.url()).pathname === path,
+        ),
+      )
+    : [];
+
+  await page.goto(`/dashboard/${dashboardId}`);
+  await Promise.all(waits);
+}
