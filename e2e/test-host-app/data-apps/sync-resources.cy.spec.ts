@@ -10,6 +10,7 @@ import {
   declareDataAppQueries,
   getPermissionByGroup,
   removeDataAppQueryDeclaration,
+  resetDataAppHostAppSources,
   setDataAppCollectionAccess,
   syncDataAppResources,
 } from "e2e/support/helpers";
@@ -27,6 +28,13 @@ type AppCard = { id: number; name: string; collection_id: number | null };
 const APP_ROOT = () => dataAppHostAppRoot();
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
+const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
+
+const AUTHORED_MANIFEST = `name: Vite 6 Data App
+path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
+`;
 
 /**
  * The query half of `sync-resources`, run against the dev host app: a real vite
@@ -34,19 +42,23 @@ const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
  * the package an author actually consumes rather than a stub.
  */
 describe("Embedding SDK: data-app sync-resources (queries)", () => {
+  const resetHostAppSources = () => {
+    resetDataAppHostAppSources();
+    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    // The app is a checked-in directory, so leave no generated state behind.
-    cy.exec(`rm -rf ${APP_ROOT()}/queries ${LOCKFILE()}`);
+    // The query and actions specs share a checked-in host app, so start clean.
+    resetHostAppSources();
     createDataAppApiKey().as("apiKey");
   });
 
   after(() => {
-    cy.exec(`rm -rf ${dataAppHostAppRoot()}/queries`);
-    cy.exec(`rm -f ${dataAppHostAppRoot()}/resources_metadata.json`);
+    resetHostAppSources();
   });
 
   const sync = () =>
@@ -461,7 +473,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             expect(
               database?.["view-data"],
               "only orders is readable",
-            ).to.deep.eq({ public: { [ORDERS_ID]: "unrestricted" } });
+            ).to.deep.eq({ PUBLIC: { [ORDERS_ID]: "unrestricted" } });
 
             // The graph reports only what departs from a group's defaults, and
             // "no" is the default — so anything else here would mean the group
