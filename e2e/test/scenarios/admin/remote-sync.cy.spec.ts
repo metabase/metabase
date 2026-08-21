@@ -723,11 +723,15 @@ describe("Remote Sync", () => {
       // a stale (empty) collection tree forever. Wait for it server-side before booting the app.
       H.configureGitAndPullChanges("read-only");
 
+      // The collection page fires two items requests (pinned + regular); under CI's 4g throttling
+      // they can outlive the table assert's 4s window on a freshly booted page. Wait for both.
+      cy.intercept("GET", "/api/collection/*/items?*").as("mainBranchItems");
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@mainBranchItems", "@mainBranchItems"]);
       H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
       // Make a change, and commit it to the branch
@@ -782,11 +786,14 @@ describe("Remote Sync", () => {
       // and collection contents come from the "test" branch.
       H.pollForTask({ taskName: "import" });
 
+      // Same items-request barrier as the first visit — the reload boots the app from scratch.
+      cy.intercept("GET", "/api/collection/*/items?*").as("testBranchItems");
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@testBranchItems", "@testBranchItems"]);
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
 
