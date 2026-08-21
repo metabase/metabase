@@ -7,9 +7,10 @@ import type React from "react";
 import { forwardRef, useContext } from "react";
 
 import { FrontendLocaleContext } from "metabase/embedding/FrontendLocaleContext";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useComputedColorScheme } from "metabase/ui";
 import { isRTLLocale } from "metabase/utils/i18n";
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 
@@ -20,7 +21,7 @@ import S from "./PublicComponentStylesWrapper.style.css";
  */
 const PublicComponentStylesWrapperInner = styled.div`
   font-size: ${({ theme }) => theme.other.fontSize};
-  ${saveDomImageStyles}
+  ${() => getSaveDomImageStyles(isEmbeddingSdk())}
 `;
 
 export const PublicComponentStylesWrapper = forwardRef<

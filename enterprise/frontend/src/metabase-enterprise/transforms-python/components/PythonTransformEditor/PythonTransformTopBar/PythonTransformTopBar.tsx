@@ -3,7 +3,7 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";

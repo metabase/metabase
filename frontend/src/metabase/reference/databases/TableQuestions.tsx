@@ -18,13 +18,8 @@ import type { Card } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getError,
-  getLoading,
-  getTable,
-  getTableQuestions,
-} from "../selectors";
-import type { StubbedTable } from "../types";
+import { getTable, getTableQuestions } from "../selectors";
+import type { ReferenceLoadingProps, StubbedTable } from "../types";
 import { getQuestionUrl } from "../utils";
 
 const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
@@ -46,8 +41,6 @@ const mapStateToProps = (
 ) => ({
   table: getTable(state, props),
   entities: getTableQuestions(state, props),
-  loading: getLoading(state),
-  loadingError: getError(state),
   metadata: getMetadata(state),
 });
 
@@ -112,4 +105,11 @@ class TableQuestions extends Component<TableQuestionsProps> {
 export default connect(
   mapStateToProps,
   // Unjustified type cast. FIXME
-)(TableQuestions as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  TableQuestions as unknown as React.ComponentType<
+    ReferenceRouteProps & ReferenceLoadingProps
+  >,
+);

@@ -35,7 +35,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
 
-**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, TypeScript migration, testing requirements, and available scripts.
+**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, testing requirements, and available scripts.
 
 ## Running Backend Tests
 

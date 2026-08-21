@@ -12,7 +12,12 @@ import {
   getXAxisDateRangeFromSortedXAxisValues,
   getXAxisModel,
 } from "./axis";
-import type { DimensionModel, SeriesExtents } from "./types";
+import { isTimeSeriesAxis } from "./guards";
+import type {
+  DimensionModel,
+  SeriesExtents,
+  TimeSeriesXAxisModel,
+} from "./types";
 
 describe("computeSplit", () => {
   const extents: SeriesExtents = {
@@ -86,6 +91,77 @@ describe("getXAxisModel", () => {
     const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
 
     expect(model.formatter("2022-04-01T00:00:00Z")).toBe("April 2022");
+  });
+
+  describe("timeseries toEChartsAxisValue", () => {
+    const dateColumn = createMockDatetimeColumn({ unit: "hour" });
+
+    const dimensionModel: DimensionModel = {
+      column: dateColumn,
+      columnIndex: 0,
+      columnByCardId: { 1: dateColumn },
+    };
+
+    const settings = createMockVisualizationSettings({
+      "graph.x_axis.scale": "timeseries",
+    });
+
+    const getTimeSeriesModel = (resultsTimezone: string) => {
+      const dataset = [
+        { [X_AXIS_DATA_KEY]: "2025-03-30 00:00:00", "0": 10 },
+        { [X_AXIS_DATA_KEY]: "2025-03-30 01:00:00", "0": 11 },
+      ];
+      const rawSeries = [
+        createMockSingleSeries(
+          { display: "line" },
+          { data: { results_timezone: resultsTimezone } },
+        ),
+      ];
+      // graph.x_axis.scale is timeseries, so the model should be a TimeSeriesXAxisModel
+      const model = getXAxisModel(
+        dimensionModel,
+        rawSeries,
+        dataset,
+        settings,
+      ) as TimeSeriesXAxisModel;
+      expect(isTimeSeriesAxis(model)).toBe(true);
+      return model;
+    };
+
+    it("should preserve timezone-naive datetime wall clock as fake UTC under a named results_timezone (#56580)", () => {
+      const model = getTimeSeriesModel("US/Samoa");
+      expect(model.toEChartsAxisValue("2025-03-30 00:00:00")).toBe(
+        "2025-03-30T00:00:00Z",
+      );
+    });
+
+    it("should preserve timezone-naive date-only wall clock as fake UTC under a named results_timezone (#56580)", () => {
+      const model = getTimeSeriesModel("US/Samoa");
+      expect(model.toEChartsAxisValue("2025-04-01")).toBe(
+        "2025-04-01T00:00:00Z",
+      );
+    });
+
+    it("should preserve timezone-naive wall clock under an offset results_timezone (#56580)", () => {
+      const model = getTimeSeriesModel("+08:00");
+      expect(model.toEChartsAxisValue("2025-03-30 00:00:00")).toBe(
+        "2025-03-30T08:00:00+08:00",
+      );
+    });
+
+    it("should still shift timezone-aware values into fake UTC using a named results_timezone", () => {
+      const model = getTimeSeriesModel("US/Mountain");
+      expect(model.toEChartsAxisValue("2025-03-30T00:00:00-06:00")).toBe(
+        "2025-03-30T00:00:00Z",
+      );
+    });
+
+    it("should still shift timezone-aware values when results_timezone is an offset", () => {
+      const model = getTimeSeriesModel("+08:00");
+      expect(model.toEChartsAxisValue("2025-03-30T00:00:00+08:00")).toBe(
+        "2025-03-30T08:00:00+08:00",
+      );
+    });
   });
 });
 
