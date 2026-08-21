@@ -7,10 +7,9 @@ on:
         type: boolean
         default: false
       force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
+        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
         type: boolean
         default: false
-
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
