@@ -1,6 +1,6 @@
 ```ts
 type ActionResultForUpdate = {
-  rows-updated: readonly RowValue[];
+  rows-updated: readonly (null | string | number | false | true | object)[];
 };
 ```
 
@@ -10,8 +10,8 @@ Response from a single-row update — the affected primary keys.
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type                                       |
-| :--------------------------------------- | :----------------------------------------- |
-| <a id="rows-updated"></a> `rows-updated` | readonly [`RowValue`](./api/RowValue.md)[] |
+| Property                                 | Type                                                                         |
+| :--------------------------------------- | :--------------------------------------------------------------------------- |
+| <a id="rows-updated"></a> `rows-updated` | readonly (`null` \| `string` \| `number` \| `false` \| `true` \| `object`)[] |
 
 <!-- [<endsnippet properties>] -->
