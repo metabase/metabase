@@ -50,7 +50,7 @@
 ;; Derived from the production constant, so the harness cannot drift from what the code enforces.
 (def slack-section-text-limit
   "Slack rejects a `section` block whose `text.text` exceeds this many characters."
-  @#'slackbot.channel/section-text-limit)
+  slackbot.channel/section-text-limit)
 
 (def oversized-answer
   "An answer comfortably past [[slack-section-text-limit]], numbered line by line so a truncated

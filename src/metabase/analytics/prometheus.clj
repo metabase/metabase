@@ -735,6 +735,9 @@
    (prometheus/counter :metabase-slackbot/responses-truncated
                        {:description (str "Number of Slack bot responses truncated because they exceeded "
                                           "Slack's message limits.")})
+   (prometheus/counter :metabase-slackbot/viz-links-dropped
+                       {:description (str "Number of visualization query links dropped from Slack bot messages "
+                                          "because the linked title exceeded Slack's block limits.")})
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"

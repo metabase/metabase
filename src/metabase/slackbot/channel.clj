@@ -23,7 +23,7 @@
   [prompt]
   (str prompt channel-response-style-suffix))
 
-(def ^:private section-text-limit
+(def section-text-limit
   "Slack rejects a `section` block whose `text.text` exceeds this many characters, failing the whole
    `chat.postMessage` with `invalid_blocks`.
    See https://docs.slack.dev/reference/block-kit/blocks/section-block."
@@ -137,8 +137,8 @@
               res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
                                                                          final-text :blocks final-blocks)]
           (when truncated?
-            (log/debugf "[slackbot] channel answer truncated (answer_length=%d limit=%d)"
-                        (count answer) section-text-limit)
+            (log/infof "[slackbot] channel answer truncated (answer_length=%d limit=%d)"
+                       (count answer) section-text-limit)
             (analytics/inc! :metabase-slackbot/responses-truncated))
           (when-let [res-ts (:ts res)]
             (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts))
