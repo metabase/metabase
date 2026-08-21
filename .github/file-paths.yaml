@@ -7,7 +7,7 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-actionlint:
+workflows:
   - added|modified: ".github/workflows/*.yml"
   - added|modified: ".github/workflows/*.yaml"
 
