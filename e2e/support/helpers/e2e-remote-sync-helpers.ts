@@ -331,17 +331,32 @@ export const closeSyncResultModal = () => {
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
-  retries = 0,
+  seenPolls = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
-    throw Error(`Too many retries waiting for ${taskName}`);
+  // Generous backstop only — observing many polls is expected while a task runs.
+  if (seenPolls > 60) {
+    throw Error(`Too many polls waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+  // The app polls current-task only while a task is running, its modal is shown, and no sync
+  // mutation is in flight (`shouldPoll` in use-sync-status). The mutation that starts the task
+  // suspends polling for its whole round-trip — which includes a synchronous server-side git
+  // snapshot — so the first poll can legitimately arrive well after Cypress's default 5s
+  // requestTimeout. Span that round-trip instead of failing on it.
+  return cy.wait("@currentTask", { timeout: 30000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
-      return waitForTask({ taskName });
-    } else if (body?.status !== "successful") {
-      return waitForTask({ taskName }, retries + 1);
+      return waitForTask({ taskName }, seenPolls + 1);
+    }
+    if (
+      ["errored", "cancelled", "timed-out", "conflict"].includes(body?.status)
+    ) {
+      throw Error(
+        `Task ${taskName} ended as ${body.status}: ${body.error_message || "Unknown error"}`,
+      );
+    }
+    if (body?.status !== "successful") {
+      // Still running — a healthy state, not a failed attempt. Keep observing polls.
+      return waitForTask({ taskName }, seenPolls + 1);
     }
     // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
     return closeSyncResultModal();

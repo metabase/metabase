@@ -21,22 +21,25 @@ const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
 
+// Setup is scoped per describe: a shared postgres-writable restore here would be immediately
+// thrown away by the default restore in half the describes, and the doubled restores were the
+// suite's top CI failure mode (30s timeouts on /api/testing/restore/postgres-writable).
 describe("Remote Sync", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.setupGitSync();
-    H.interceptTask();
-  });
-
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
   describe("read-write Mode", () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.setupGitSync();
+      H.interceptTask();
+    });
+
     it("can push and pull changes", () => {
       H.configureGitWithNewSyncedCollection("read-write").as(
         "syncedCollection",
@@ -465,9 +468,11 @@ describe("Remote Sync", () => {
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       H.activateToken("pro-self-hosted");
       H.setupGitSync();
       cy.signInAsAdmin();
+      H.interceptTask();
     });
 
     it("can set up read-write mode", () => {
@@ -699,9 +704,11 @@ describe("Remote Sync", () => {
   describe("read-only mode", () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupGitSync();
+      H.interceptTask();
     });
 
     it("can change branches", () => {
@@ -709,7 +716,10 @@ describe("Remote Sync", () => {
 
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-only");
+      // Read-only setup auto-triggers a server-side import. It is started via cy.request, so the
+      // app never polls for it and never refetches when it lands — a page loaded mid-import keeps
+      // a stale (empty) collection tree forever. Wait for it server-side before booting the app.
+      H.configureGitAndPullChanges("read-only");
 
       cy.visit("/");
 
@@ -725,8 +735,32 @@ describe("Remote Sync", () => {
         return doc;
       });
 
+      // The settings form rebuilds its formik initialValues (enableReinitialize) each time one of
+      // these queries resolves, resetting every field. Typing into "Sync branch" before the last
+      // one lands gets interleaved with a reset back to "main", corrupting the value ("maintest")
+      // or wiping it and leaving the submit button disabled. Settle them all before typing.
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+      cy.intercept("GET", "/api/setting").as("settingDetails");
+      cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+      cy.intercept("GET", "/api/ee/library").as("libraryCollection");
       cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
+      // The later queries fire only after the code-split settings section mounts, which under CI's
+      // simulated 4g throttling can take longer than the default 5s requestTimeout.
+      cy.wait(
+        [
+          "@sessionProperties",
+          "@settingDetails",
+          "@rootItems",
+          "@libraryCollection",
+        ],
+        { requestTimeout: 15000 },
+      );
+
+      cy.findByLabelText("Sync branch")
+        .scrollIntoView()
+        .clear()
+        .type("test")
+        .should("have.value", "test");
       cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
@@ -740,6 +774,11 @@ describe("Remote Sync", () => {
       H.waitForTask({ taskName: "import" });
 
       cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+
+      // waitForTask observes a single UI poll of current-task; confirm server-side that the
+      // branch-switch import has fully settled before reloading, so the fresh page's sidebar tree
+      // and collection contents come from the "test" branch.
+      H.pollForTask({ taskName: "import" });
 
       cy.visit("/");
 
@@ -773,6 +812,7 @@ describe("Remote Sync", () => {
   describe("shared tenant collections", () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupGitSync();
@@ -1006,6 +1046,14 @@ describe("Remote Sync", () => {
 
   describe("initial pull conflict handling", () => {
     beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.setupGitSync();
+      H.interceptTask();
+
       // Create a local transform that could be overwritten by the remote
       H.createSqlTransform({
         sourceQuery: "SELECT 1",
