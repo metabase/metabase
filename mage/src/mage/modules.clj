@@ -425,7 +425,7 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [force-run pr-labels skip particular-driver-changed? verbose? only-driver]}
+   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
    skipped-drivers
    updated]
@@ -534,7 +534,6 @@
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
-             :verbose? (not github-output-only?)
              :only-driver only-driver}
         ;; force-run decides every driver on its own, so the remote skip list is neither fetched
         ;; nor honored there.
