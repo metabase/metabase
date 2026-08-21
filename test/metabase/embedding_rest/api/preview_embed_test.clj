@@ -9,6 +9,8 @@
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
@@ -579,34 +581,34 @@
       (mt/with-column-remappings [orders.quantity {5 "N5"}
                                   orders.product_id products.title]
         (mt/with-temp [:model/Card card
-                       {:dataset_query
-                        {:database (mt/id)
-                         :type     :native
-                         :native   {:query         "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}"
-                                    :template-tags {"quantity"      {:id           "quantity"
-                                                                     :name         "quantity"
-                                                                     :display-name "Internal"
-                                                                     :type         :dimension
-                                                                     :widget-type  :number/=
-                                                                     :dimension    [:field (mt/id :orders :quantity) nil]}
-                                                    "product_id_fk" {:id           "product_id_fk"
-                                                                     :name         "product_id_fk"
-                                                                     :display-name "FK"
-                                                                     :type         :dimension
-                                                                     :widget-type  :id
-                                                                     :dimension    [:field (mt/id :orders :product_id) nil]}
-                                                    "user_id_pk"    {:id           "user_id_pk"
-                                                                     :name         "user_id_pk"
-                                                                     :display-name "PK->Name"
-                                                                     :type         :dimension
-                                                                     :widget-type  :id
-                                                                     :dimension    [:field (mt/id :people :id) nil]}}}}
-                        :parameters [{:id "quantity", :name "Internal", :slug "quantity", :type "number/="
-                                      :target ["dimension" ["template-tag" "quantity"]]}
-                                     {:id "product_id_fk", :name "FK", :slug "product_id_fk", :type "id"
-                                      :target ["dimension" ["template-tag" "product_id_fk"]]}
-                                     {:id "user_id_pk", :name "PK->Name", :slug "user_id_pk", :type "id"
-                                      :target ["dimension" ["template-tag" "user_id_pk"]]}]}]
+                       (let [mp (mt/metadata-provider)]
+                         {:dataset_query
+                          (-> (lib/native-query mp "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}")
+                              (lib/with-template-tags
+                                {"quantity"      {:id           "quantity"
+                                                  :name         "quantity"
+                                                  :display-name "Internal"
+                                                  :type         :dimension
+                                                  :widget-type  :number/=
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :quantity)))}
+                                 "product_id_fk" {:id           "product_id_fk"
+                                                  :name         "product_id_fk"
+                                                  :display-name "FK"
+                                                  :type         :dimension
+                                                  :widget-type  :id
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :product_id)))}
+                                 "user_id_pk"    {:id           "user_id_pk"
+                                                  :name         "user_id_pk"
+                                                  :display-name "PK->Name"
+                                                  :type         :dimension
+                                                  :widget-type  :id
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :id)))}}))
+                          :parameters [{:id "quantity", :name "Internal", :slug "quantity", :type "number/="
+                                        :target ["dimension" ["template-tag" "quantity"]]}
+                                       {:id "product_id_fk", :name "FK", :slug "product_id_fk", :type "id"
+                                        :target ["dimension" ["template-tag" "product_id_fk"]]}
+                                       {:id "user_id_pk", :name "PK->Name", :slug "user_id_pk", :type "id"
+                                        :target ["dimension" ["template-tag" "user_id_pk"]]}]})]
           (let [token (embed-test/card-token card {:_embedding_params {:quantity      "enabled"
                                                                        :product_id_fk "enabled"
                                                                        :user_id_pk    "enabled"}})]
