@@ -22,6 +22,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import type { SettingKey } from "metabase-types/api";
 
+import { EmbeddedAppearanceSettings } from "./components/EmbeddedAppearanceSettings";
 import { LandingPageUrlField } from "./components/LandingPageUrlField";
 import { LogoIcon } from "./components/LogoIcon";
 import { WhiteLabelBrandingSettingsPage } from "./components/WhiteLabelBrandingSettingsPage";
@@ -45,6 +46,7 @@ export function initializePlugin() {
       WhiteLabelBrandingSettingsPage;
     PLUGIN_WHITELABEL.WhiteLabelConcealSettingsPage =
       WhiteLabelConcealSettingsPage;
+    PLUGIN_WHITELABEL.EmbeddedAppearanceSettings = EmbeddedAppearanceSettings;
 
     PLUGIN_APP_INIT_FUNCTIONS.push(() => {
       updateColors();

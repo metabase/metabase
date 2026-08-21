@@ -34,13 +34,15 @@ describe("embedding hub routes", () => {
       "embedding/permissions/data/group/:groupId/database/:databaseId/schema/:schemaName",
       "embedding/permissions/collections/:collectionId",
       "embedding/tenancy",
+      "embedding/appearance",
+      "embedding/appearance/:themeId",
     ]);
   });
 
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getEmbeddingHubRoutes());
 
-    expect(loaders).toHaveLength(18);
+    expect(loaders).toHaveLength(19);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
