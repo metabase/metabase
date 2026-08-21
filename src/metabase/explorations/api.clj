@@ -117,7 +117,7 @@
   dimension source metadata)."
   [thread blocks pages card-name-by-id card-dim-by-id]
   (let [enriched-blocks (enrich-block-dimensions blocks card-dim-by-id)
-        ;; Label queries first so blocks-tree can name metric-anchored pages "By <dimension>".
+        ;; Label queries first so blocks-tree can name pages after their dimension.
         labeled         (attach-query-dimension-labels thread enriched-blocks card-dim-by-id)]
     (assoc labeled :blocks (explorations.blocks/blocks-tree
                             enriched-blocks pages card-name-by-id (:queries labeled)))))
@@ -247,7 +247,7 @@
   (when (seq blocks)
     (t2/insert! :model/ExplorationBlock
                 (positional-rows thread-id
-                                 (map #(select-keys % [:type :metrics :dimensions]) blocks)))))
+                                 (map #(select-keys % [:metrics :dimensions]) blocks)))))
 
 (defn- insert-thread-timelines!
   "Attach `timeline-ids` to the thread, in payload order. Deduped (`distinct`, keeping first
@@ -374,15 +374,11 @@
    [:semantic-type  {:optional true} [:maybe :string]]])
 
 (def ^:private BlockSelection
-  "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
-   or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
-   `ExplorationBlock` row; the planners cross this block's metrics with this block's
+  "One Research-plan area on the FE — a metric plus its chosen dimensions. Persisted verbatim as
+   one `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
   [:map
-   ;; Whether the block is anchored on its metric or its dimension. The read side
-   ;; uses this to build the sidebar heading + sub-item names.
-   [:type       {:optional true} [:maybe [:enum "metric" "dimension"]]]
    [:metrics    {:optional true} [:maybe [:sequential MetricSelection]]]
    [:dimensions {:optional true} [:maybe [:sequential DimensionSelection]]]])
 
@@ -430,12 +426,10 @@
    [:hidden    :boolean]])
 
 (mr/def ::ExplorationBlockNode
-  "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
-   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or
-   `By <dimension>`). `:position` is the block's 0-indexed authoring slot."
+  "A block (the FE's sidebar group): a heading plus its pages. `:name` is the computed heading
+   (the metric name). `:position` is the block's 0-indexed authoring slot."
   [:map
    [:id              ms/PositiveInt]
-   [:type            [:enum "metric" "dimension"]]
    [:name            [:maybe :string]]
    [:position        ms/IntGreaterThanOrEqualToZero]
    [:explore_filters {:optional true}
@@ -740,7 +734,6 @@
               tid    (:id thread)]
           (t2/insert! :model/ExplorationBlock
                       {:exploration_thread_id tid
-                       :type                  (:type block)
                        :metrics               metrics'
                        :dimensions            (stringify-dim-types (:dimensions block))
                        :position              0})

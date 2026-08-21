@@ -18,7 +18,6 @@ import type {
 import { isBrushClickObject } from "metabase/visualizations/types";
 import type {
   DocumentContent,
-  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageId,
   ExplorationQueryType,
@@ -34,7 +33,6 @@ import type { CommentDrafts } from "../types";
 interface UseExplorationClickActionsModeParams {
   explorationId: ExplorationId;
   pageId: ExplorationPageId;
-  blockType: ExplorationBlockNodeType;
   queryType: ExplorationQueryType;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
@@ -43,7 +41,6 @@ interface UseExplorationClickActionsModeParams {
 export function useExplorationClickActionsMode({
   explorationId,
   pageId,
-  blockType,
   queryType,
   commentDrafts,
   setCommentDrafts,
@@ -62,7 +59,7 @@ export function useExplorationClickActionsMode({
       actionsForClick: (clicked: ClickObject) => {
         const actions: ClickAction[] = [];
 
-        if (canExploreFurther(clicked, blockType, queryType)) {
+        if (canExploreFurther(clicked, queryType)) {
           const handleExploreFurther = async () => {
             const exploreFilters = getExploreFurtherFilters(clicked);
             sendToast({ icon: "bolt", message: t`Exploring further…` });
@@ -160,7 +157,6 @@ export function useExplorationClickActionsMode({
   }, [
     explorationId,
     pageId,
-    blockType,
     queryType,
     setCommentDrafts,
     exploreFurther,

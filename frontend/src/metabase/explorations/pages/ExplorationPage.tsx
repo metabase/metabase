@@ -578,7 +578,6 @@ function ExplorationPageForId() {
               explorationId={exploration.id}
               page={selectedPage.page}
               queries={selectedPage.queries}
-              blockType={selectedPage.block.type}
               exploreFilters={selectedPage.block.explore_filters}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
