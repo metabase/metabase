@@ -56,6 +56,32 @@ function getMetricClauseIds(
   return ids;
 }
 
+function getSavedCardSourceIds(
+  query: unknown,
+  ids = new Set<number>(),
+): Set<number> {
+  if (Array.isArray(query)) {
+    query.forEach((item) => getSavedCardSourceIds(item, ids));
+  } else if (isRecord(query)) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (key === "source-card" && isPositiveInteger(value)) {
+        ids.add(value);
+      } else if (key === "source-table" && typeof value === "string") {
+        const match = /^card__(\d+)$/.exec(value);
+        const id = match && Number(match[1]);
+
+        if (isPositiveInteger(id)) {
+          ids.add(id);
+        }
+      }
+
+      getSavedCardSourceIds(value, ids);
+    });
+  }
+
+  return ids;
+}
+
 /**
  * Rewrite a metric clause to
  * swap the original metric id with the copied metric id.
@@ -203,6 +229,17 @@ export async function reconcileMetrics({
   if (missingMetricIds.length > 0) {
     throw new Error(
       `These metrics are missing and cannot be reconciled: ${missingMetricIds.join(", ")}.`,
+    );
+  }
+
+  const metricsWithSavedCardSources = metrics
+    .filter((metric) => getSavedCardSourceIds(metric.dataset_query).size > 0)
+    .map((metric) => metric.id)
+    .sort((a, b) => a - b);
+
+  if (metricsWithSavedCardSources.length > 0) {
+    throw new Error(
+      `Metrics with saved-card joins cannot be synchronized: ${metricsWithSavedCardSources.join(", ")}.`,
     );
   }
 

@@ -262,6 +262,51 @@ describe("metric reconciliation", () => {
     expect(client.updateMetric).not.toHaveBeenCalled();
   });
 
+  it("rejects a metric that joins a saved card", async () => {
+    const client = createMockClient();
+
+    await expect(
+      reconcileMetrics({
+        appRoot: makeApp(),
+        collectionId: 35,
+        resolvedQueries: [
+          {
+            dataset_query: {
+              stages: [{ aggregation: [["metric", {}, 251]] }],
+            },
+            metrics: [
+              {
+                id: 251,
+                name: "Lifetime value",
+                type: "metric",
+                collection_id: 1,
+                dataset_query: {
+                  stages: [
+                    {
+                      "source-table": 1,
+                      joins: [{ stages: [{ "source-card": 99 }] }],
+                    },
+                  ],
+                },
+                display: "table",
+                visualization_settings: {},
+                description: null,
+              },
+            ],
+          },
+        ],
+        lockfile: { queries: [], models: [], metrics: [] },
+        client,
+        log: jest.fn(),
+      }),
+    ).rejects.toThrow(
+      "Metrics with saved-card joins cannot be synchronized: 251.",
+    );
+
+    expect(client.createMetric).not.toHaveBeenCalled();
+    expect(client.updateMetric).not.toHaveBeenCalled();
+  });
+
   it("deletes a copied metric when no query references it", async () => {
     const appRoot = makeApp();
     const client = createMockClient();
