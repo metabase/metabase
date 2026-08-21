@@ -336,13 +336,13 @@
   "Set of quarantined drivers to actually enforce for this run.
 
    The quarantine list is fetched on the fly from a remote file (ci-test-config.json, see
-   [[quarantined-drivers]]). We intentionally IGNORE it on `master` and `release-*` branches:
-   there, every driver must run and gate, so a stray remote quarantine entry can't silently
-   disable a driver's tests (nor raise a quarantine-conflict, which would fail a push demanding
-   a PR-only break-quarantine label). On PR/feature branches the quarantine is honored, subject
-   to the break-quarantine-<driver> label."
-  [is-master-or-release]
-  (if is-master-or-release
+   [[quarantined-drivers]]). We intentionally IGNORE it on a force-run -- `master` and
+   `release-*` branches, or a ci:run-all label: there, every driver must run and gate, so a
+   stray remote quarantine entry can't silently disable a driver's tests (nor raise a
+   quarantine-conflict, which would fail a push demanding a PR-only break-quarantine label).
+   Otherwise the quarantine is honored, subject to the break-quarantine-<driver> label."
+  [force-run]
+  (if force-run
     #{}
     (quarantined-drivers)))
 
@@ -391,7 +391,7 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose? only-driver]}
+   {:keys [force-run pr-labels skip particular-driver-changed? verbose? only-driver]}
    driver-deps-affected?
    quarantined-drivers
    updated]
@@ -406,17 +406,25 @@
       {:should-run false
        :reason     (str "--only-driver=" (name only-driver) " requested instead")})
 
-    ;; Priority 1: Global skip (no backend changes)
+    ;; Priority 1: Global force-run. Every driver runs; the remote quarantine list is not
+    ;; consulted at all, so a stray entry there can't silently disable a driver's tests. This
+    ;; sits ahead of the global skip on purpose: a release-branch push that happens to touch no
+    ;; backend files still has to run and gate every driver.
+    force-run
+    {:should-run true
+     :reason "force-run (master/release branch or ci:run-all label)"}
+
+    ;; Priority 2: Global skip (no backend changes)
     skip
     {:should-run false
      :reason "workflow skip (no backend changes)"}
 
-    ;; Priority 2: H2 and Postgres always run when backend tests run
+    ;; Priority 3: H2 and Postgres always run when backend tests run
     (#{:h2 :postgres} driver)
     {:should-run true
      :reason "H2/Postgres always run"}
 
-    ;; Priority 3: ci:run-all-drivers or ci:run-<driver> label
+    ;; Priority 4: ci:run-all-drivers or ci:run-<driver> label
     (or (contains? pr-labels "ci:run-all-drivers")
         (contains? pr-labels (run-driver-label driver)))
     {:should-run true
@@ -424,9 +432,10 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers — skipped unless a break-quarantine-<driver> label is present.
-    ;; On master/release this set is empty (see [[effective-quarantined-drivers]]), so quarantine is
-    ;; ignored there and we fall through to Priority 5.
+    ;; Priority 5: Quarantined drivers — skipped unless a break-quarantine-<driver> label is present.
+    ;; On a force-run this set is empty (see [[effective-quarantined-drivers]]) and Priority 1 has
+    ;; already decided, so quarantine never applies there. Priorities 1 and 4 are the ways to force
+    ;; a quarantined driver to run.
     (contains? quarantined-drivers driver)
     (do
       (when verbose?
@@ -436,11 +445,6 @@
          :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
         {:should-run false
          :reason "driver is quarantined"}))
-
-    ;; Priority 5: Master/release branch - all (non-quarantined) drivers run
-    is-master-or-release
-    {:should-run true
-     :reason "master/release branch"}
 
     ;; Priority 6: Cloud driver + ci:all-cloud-drivers label
     (and (contains? cloud-drivers driver)
@@ -490,28 +494,28 @@
    Usage:
      ./bin/mage -driver-decisions \\
        --git-ref=master \\
-       --is-master-or-release=false \\
+       --force-run=false \\
        --pr-labels=ci:all-cloud-drivers,other-label \\
        --skip=false \\
        --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
-        is-master-or-release (parse-bool (:is-master-or-release options))
+        force-run (parse-bool (:force-run options))
         only-driver (parse-only-driver (:only-driver options))
         ;; Detect file changes for ALL drivers via git diff
         particular-driver-changed? (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
-             :is-master-or-release is-master-or-release
+             :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)
              :only-driver only-driver}
-        ;; On master/release we drop the remote quarantine list entirely (see
-        ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
-        ;; quarantine-conflict is raised.
-        quarantined (effective-quarantined-drivers is-master-or-release)
+        ;; A force-run decides every driver on its own, so the remote quarantine list is
+        ;; neither fetched nor honored there (see [[effective-quarantined-drivers]]) -- every
+        ;; driver runs and gates, and no quarantine-conflict is raised.
+        quarantined (effective-quarantined-drivers force-run)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
