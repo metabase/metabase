@@ -59,10 +59,12 @@
                                                         [:= :pgm.user_id user-id]]})
                                     :table)
 
-          data-app-group-ids             (into #{} (keep :data_app_group_id) sandboxes-with-group-ids)
           impersonations-with-group-ids (when (seq user-group-ids)
                                           (t2/select :model/ConnectionImpersonation
                                                      :group_id [:in user-group-ids]))
+          ;; Data app groups grant unrestricted table access for app queries.
+          ;; Make sure a sandbox from another group always take precedence over data app groups.
+          data-app-group-ids             (into #{} (keep :data_app_group_id) sandboxes-with-group-ids)
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids
