@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
-import type { MetabaseFontFamily } from "metabase/utils/fonts";
-import type { DeepPartial } from "metabase/utils/types";
+import type { DeepPartial } from "metabase-types/utils/types";
+
+import type { MetabaseFontFamily } from "./fonts";
 
 export type MetabaseThemePreset = "light" | "dark";
 

@@ -24,10 +24,6 @@ import {
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
-import {
-  getDatabasesList,
-  getSampleDatabaseId,
-} from "metabase/querying/selectors";
 import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
@@ -195,7 +191,6 @@ const mapStateToProps = (state: State) => {
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
 
     metadata: getMetadata(state),
 
@@ -225,7 +220,6 @@ const mapStateToProps = (state: State) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),

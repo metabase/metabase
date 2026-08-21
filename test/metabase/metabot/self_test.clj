@@ -74,6 +74,10 @@
               (#'self/parse-provider-model "moonshot/kimi-k3")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
+      (llm.tu/with-connections [(llm.tu/connection "vllm")]
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
+                (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit")))))
     (testing "serves the managed connection through the wire family the model names"
       (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
               (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -94,7 +98,8 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "google"))))
+    (is (fn? (#'self/resolve-adapter "google")))
+    (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -969,7 +974,17 @@
       ;; but other stuff is not
       false (RuntimeException. "oops")
       ;; a wrapped non-transient cause stays non-retryable
-      false (ex-info "boom" {} (IllegalArgumentException. "bad")))))
+      false (ex-info "boom" {} (IllegalArgumentException. "bad"))))
+  (testing ":retryable? false outranks both the status check and the cause walk"
+    (are [x y] (= x (#'self/retryable-error? y))
+      false (ex-info "vLLM stopped responding"
+                     {:api-error true :error-code :vllm-timeout :retryable? false}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      false (ex-info "vLLM queue full" {:status 429 :retryable? false})))
+  (testing "the tag is an opt-out only — :retryable? true cannot force a retry"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429 :retryable? true})
+      false (ex-info "bad request" {:status 400 :retryable? true}))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"
