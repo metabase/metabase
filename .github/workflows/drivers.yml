@@ -92,71 +92,11 @@ jobs:
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
-      # Per-driver configured status from ci-test-config (skip | info | required)
-      h2-status: ${{ steps.driver-decisions.outputs.h2-status }}
-      athena-status: ${{ steps.driver-decisions.outputs.athena-status }}
-      bigquery-status: ${{ steps.driver-decisions.outputs.bigquery-status }}
-      clickhouse-status: ${{ steps.driver-decisions.outputs.clickhouse-status }}
-      databricks-status: ${{ steps.driver-decisions.outputs.databricks-status }}
-      druid-jdbc-status: ${{ steps.driver-decisions.outputs.druid-jdbc-status }}
-      mongo-status: ${{ steps.driver-decisions.outputs.mongo-status }}
-      mongo-ssl-status: ${{ steps.driver-decisions.outputs.mongo-ssl-status }}
-      mongo-sharded-cluster-status: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-status }}
-      mysql-mariadb-status: ${{ steps.driver-decisions.outputs.mysql-mariadb-status }}
-      oracle-status: ${{ steps.driver-decisions.outputs.oracle-status }}
-      postgres-status: ${{ steps.driver-decisions.outputs.postgres-status }}
-      presto-jdbc-status: ${{ steps.driver-decisions.outputs.presto-jdbc-status }}
-      redshift-status: ${{ steps.driver-decisions.outputs.redshift-status }}
-      snowflake-status: ${{ steps.driver-decisions.outputs.snowflake-status }}
-      sparksql-status: ${{ steps.driver-decisions.outputs.sparksql-status }}
-      sqlite-status: ${{ steps.driver-decisions.outputs.sqlite-status }}
-      sqlserver-status: ${{ steps.driver-decisions.outputs.sqlserver-status }}
-      vertica-status: ${{ steps.driver-decisions.outputs.vertica-status }}
-      # Per-driver quarantine conflict flags (set when driver is quarantined but has file changes)
-      athena-quarantine-conflict: ${{ steps.driver-decisions.outputs.athena-quarantine-conflict }}
-      bigquery-quarantine-conflict: ${{ steps.driver-decisions.outputs.bigquery-quarantine-conflict }}
-      clickhouse-quarantine-conflict: ${{ steps.driver-decisions.outputs.clickhouse-quarantine-conflict }}
-      databricks-quarantine-conflict: ${{ steps.driver-decisions.outputs.databricks-quarantine-conflict }}
-      druid-quarantine-conflict: ${{ steps.driver-decisions.outputs.druid-quarantine-conflict }}
-      druid-jdbc-quarantine-conflict: ${{ steps.driver-decisions.outputs.druid-jdbc-quarantine-conflict }}
-      mongo-quarantine-conflict: ${{ steps.driver-decisions.outputs.mongo-quarantine-conflict }}
-      mongo-ssl-quarantine-conflict: ${{ steps.driver-decisions.outputs.mongo-ssl-quarantine-conflict }}
-      mongo-sharded-cluster-quarantine-conflict: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-quarantine-conflict }}
-      mysql-mariadb-quarantine-conflict: ${{ steps.driver-decisions.outputs.mysql-mariadb-quarantine-conflict }}
-      oracle-quarantine-conflict: ${{ steps.driver-decisions.outputs.oracle-quarantine-conflict }}
-      postgres-quarantine-conflict: ${{ steps.driver-decisions.outputs.postgres-quarantine-conflict }}
-      presto-jdbc-quarantine-conflict: ${{ steps.driver-decisions.outputs.presto-jdbc-quarantine-conflict }}
-      redshift-quarantine-conflict: ${{ steps.driver-decisions.outputs.redshift-quarantine-conflict }}
-      snowflake-quarantine-conflict: ${{ steps.driver-decisions.outputs.snowflake-quarantine-conflict }}
-      sparksql-quarantine-conflict: ${{ steps.driver-decisions.outputs.sparksql-quarantine-conflict }}
-      sqlite-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlite-quarantine-conflict }}
-      sqlserver-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlserver-quarantine-conflict }}
-      vertica-quarantine-conflict: ${{ steps.driver-decisions.outputs.vertica-quarantine-conflict }}
     steps:
-      # Up front (before any driver job), drop info-driver comments from older commits so a
-      # superseded comment disappears immediately rather than waiting for this run's drivers.
-      # Keeps this commit's comment (if any) so a re-run doesn't flicker.
-      - name: Remove stale info-driver comments
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/github-script@v9
-        continue-on-error: true
-        with:
-          script: | # js
-            const pr = context.payload.pull_request;
-            if (!pr) return;
-            const { owner, repo } = context.repo;
-            const PREFIX = "<!-- info-driver-result";
-            const keep = `<!-- info-driver-results:${pr.head.sha} -->`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner, repo, issue_number: pr.number, per_page: 100,
-            });
-            for (const c of comments) {
-              if (c.body.includes(PREFIX) && !c.body.includes(keep)) {
-                await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
-              }
-            }
       - name: Checkout repository
         uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
         run: |
@@ -169,13 +109,13 @@ jobs:
           # branch context, labels, and file changes to decide what runs.
           MAGE_ARGS=(
             --git-ref="${BASE_REF}"
-            --is-master-or-release="${IS_MASTER_OR_RELEASE}"
+            --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
             --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
-          echo "./bin/mage -driver-decisions ${MAGE_ARGS[@]}"
+          echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
           echo ""
           # First call: show human-readable output for debugging
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
@@ -183,16 +123,16 @@ jobs:
           echo "Want to force-run a specific driver? Add a ci:run-<driver> or ci:run-all-drivers label to your PR."
           echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
           # Second call: output only key=value lines for GITHUB_OUTPUT
-          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
+          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
+          FORCE_RUN: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' || needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -209,16 +149,6 @@ jobs:
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
     name: Athena
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Athena driver is quarantined but you changed files in modules/drivers/athena/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Athena tests, add the label: break-quarantine-athena"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Athena driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test Athena driver
       id: test-driver
@@ -229,25 +159,12 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 60
+    timeout-minutes: 70
     strategy:
       fail-fast: false
       matrix:
@@ -282,16 +199,6 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::BigQuery driver is quarantined but you changed files in modules/drivers/bigquery-cloud-sdk/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run BigQuery tests, add the label: break-quarantine-bigquery"
-        echo ""
-        echo "If you merge without testing, you risk breaking the BigQuery driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -304,31 +211,18 @@ jobs:
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' || needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -352,16 +246,6 @@ jobs:
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: Clickhouse ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::ClickHouse driver is quarantined but you changed files in modules/drivers/clickhouse/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run ClickHouse tests, add the label: break-quarantine-clickhouse"
-        echo ""
-        echo "If you merge without testing, you risk breaking the ClickHouse driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -390,30 +274,18 @@ jobs:
       with:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -428,16 +300,6 @@ jobs:
           CLUSTER_SIZE: nano-quickstart
     name: Druid (JDBC)
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Druid JDBC driver is quarantined but you changed files in modules/drivers/druid-jdbc/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Druid JDBC tests, add the label: break-quarantine-druid-jdbc"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Druid JDBC driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test Druid JDBC driver
       id: test-driver
@@ -448,24 +310,12 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -503,43 +353,21 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Databricks tests, add the label: break-quarantine-databricks"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Databricks driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
+        artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -578,37 +406,15 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks (Multi-Catalog)
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Databricks tests, add the label: break-quarantine-databricks"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Databricks driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test Databricks driver with multi-catalog
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
+        artifact-suffix: ${{ matrix.job.name }}
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
-        report-variant: ${{ matrix.job.name }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -629,18 +435,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -662,18 +456,6 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -800,23 +582,11 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: ${{ matrix.version.junit-name }}
-          logs-artifact-suffix: ${{ matrix.version.name }}
+          artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -826,7 +596,7 @@ jobs:
 
   be-tests-mongo:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -863,16 +633,6 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::MongoDB driver is quarantined but you changed files in modules/drivers/mongo/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run MongoDB tests, add the label: break-quarantine-mongo"
-        echo ""
-        echo "If you merge without testing, you risk breaking the MongoDB driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -885,20 +645,8 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -908,7 +656,7 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -926,16 +674,6 @@ jobs:
       MB_TEST_MONGO_REQUIRES_SSL: true
     name: "${{ matrix.version.name }} (SSL)"
     steps:
-      - name: Fail on quarantine conflict
-        if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
-        run: |
-          echo "::error::MongoDB SSL driver is quarantined but you changed files in modules/drivers/mongo/"
-          echo ""
-          echo "Your changes will NOT be tested because the driver is currently quarantined."
-          echo "To run MongoDB SSL tests, add the label: break-quarantine-mongo-ssl"
-          echo ""
-          echo "If you merge without testing, you risk breaking the MongoDB SSL driver!"
-          exit 1
       - uses: actions/checkout@v6
       - name: Spin up Mongo docker container
         run: >-
@@ -971,22 +709,10 @@ jobs:
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -999,16 +725,6 @@ jobs:
           - "27017:17017"
     name: MongoDB Sharded Cluster
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::MongoDB Sharded Cluster driver is quarantined but you changed files in modules/drivers/mongo/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run MongoDB Sharded Cluster tests, add the label: break-quarantine-mongo-sharded-cluster"
-        echo ""
-        echo "If you merge without testing, you risk breaking the MongoDB Sharded Cluster driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test MongoDB driver (Sharded cluster)
       id: test-driver
@@ -1018,22 +734,10 @@ jobs:
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
 
   be-tests-oracle:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' || needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -1084,45 +788,23 @@ jobs:
           - "1521:${{ matrix.version.port }}"
     name: ${{ matrix.version.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Oracle driver is quarantined but you changed files in modules/drivers/oracle/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Oracle tests, add the label: break-quarantine-oracle"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Oracle driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: ${{ matrix.version.junit-name }}
-        logs-artifact-suffix: ${{ matrix.version.name }}
+        artifact-suffix: ${{ matrix.version.name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
 
   be-tests-postgres:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -1206,24 +888,11 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
-          logs-artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
+          artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
-          report-variant: ${{ matrix.version.name }}-${{ matrix.job.name }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1233,7 +902,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.presto-jdbc-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1256,23 +925,13 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Presto JDBC driver is quarantined but you changed files in modules/drivers/presto-jdbc/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Presto JDBC tests, add the label: break-quarantine-presto-jdbc"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Presto JDBC driver!"
-        exit 1
     - uses: actions/checkout@v6
     - uses: ./.github/actions/await-port
       with:
          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
       timeout-minutes: 5
     - name: Create temp cacerts file based on bundled JDK one
-      run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+      run: cp "$JAVA_HOME/lib/security/cacerts" /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
       run: |
           while [[ ! -s /tmp/presto-ssl-ca.pem ]]; do
@@ -1301,24 +960,12 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' || needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -1361,16 +1008,6 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Redshift driver is quarantined but you changed files in modules/drivers/redshift/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Redshift tests, add the label: break-quarantine-redshift"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Redshift driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -1385,33 +1022,20 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
         test-args: >-
           ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: ${{ !matrix.job.skip && !cancelled() }}
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' || needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 60
+    timeout-minutes: 70
     strategy:
       fail-fast: false
       matrix:
@@ -1449,16 +1073,6 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     name: Snowflake ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Snowflake driver is quarantined but you changed files in modules/drivers/snowflake/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Snowflake tests, add the label: break-quarantine-snowflake"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Snowflake driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -1471,31 +1085,18 @@ jobs:
       with:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
-        report-variant: ${{ matrix.job.name }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' || needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1508,16 +1109,6 @@ jobs:
           - "10000:10000"
     name: Spark SQL
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::SparkSQL driver is quarantined but you changed files in modules/drivers/sparksql/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SparkSQL tests, add the label: break-quarantine-sparksql"
-        echo ""
-        echo "If you merge without testing, you risk breaking the SparkSQL driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test Spark driver
       id: test-driver
@@ -1528,22 +1119,10 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' || needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1551,16 +1130,6 @@ jobs:
       DRIVERS: sqlite
     name: SQLite
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::SQLite driver is quarantined but you changed files that affect it"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SQLite tests, add the label: break-quarantine-sqlite"
-        echo ""
-        echo "If you merge without testing, you risk breaking the SQLite driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Test SQLite driver
       id: test-driver
@@ -1571,22 +1140,10 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' || needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -1625,16 +1182,6 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::SQL Server driver is quarantined but you changed files in modules/drivers/sqlserver/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run SQL Server tests, add the label: break-quarantine-sqlserver"
-        echo ""
-        echo "If you merge without testing, you risk breaking the SQL Server driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -1647,20 +1194,8 @@ jobs:
       with:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.version.name }}
+        artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1695,19 +1230,10 @@ jobs:
   #       junit-name: 'be-tests-starburst-ee'
   #       test-args: >-
   #         :only-tags [:mb/driver-tests]
-  #   - name: Upload Test Results
-  #     uses: ./.github/actions/upload-test-results
-  #     if: always()
-  #     with:
-  #       input-path: ./target/junit/
-  #       output-name: ${{ github.job }}
-  #       bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-  #       role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-  #       aws-region: ${{ vars.AWS_REGION }}
 
   login-to-ecr:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
@@ -1727,9 +1253,11 @@ jobs:
 
         REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
 
-        echo "docker_username=AWS" >> $GITHUB_OUTPUT
-        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
-        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+        {
+          echo "docker_username=AWS"
+          echo "docker_password=$PASSWORD"
+          echo "registry=$REGISTRY"
+        } >> "$GITHUB_OUTPUT"
     outputs:
       registry: ${{ steps.login-ecr.outputs.registry }}
       docker_username: ${{ steps.login-ecr.outputs.docker_username }}
@@ -1737,7 +1265,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1753,16 +1281,6 @@ jobs:
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     name: Vertica
     steps:
-    - name: Fail on quarantine conflict
-      if: ${{ needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
-      run: |
-        echo "::error::Vertica driver is quarantined but you changed files in modules/drivers/vertica/"
-        echo ""
-        echo "Your changes will NOT be tested because the driver is currently quarantined."
-        echo "To run Vertica tests, add the label: break-quarantine-vertica"
-        echo ""
-        echo "If you merge without testing, you risk breaking the Vertica driver!"
-        exit 1
     - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
@@ -1775,32 +1293,13 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-        aws-region: ${{ vars.AWS_REGION }}
-        previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
 
   drivers-tests-result:
     needs:
-      # Supplies each driver's configured status (info/skip/required) so this gate can ignore
-      # "info" drivers regardless of their result -- including cancelled or timed-out runs, which
-      # the per-job continue-on-error cannot force green because the controlling step never
-      # completes. Not a driver job; it is filtered out of the pass/fail check below.
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
       - be-tests-athena-ee
-      # Listed unconditionally; ci-test-config controls their effect via per-driver status.
-      # An "info" driver is reported as passing, so it never blocks this check; flip it to
-      # "required" in the config to make a real failure gate, with no change here.
       - be-tests-snowflake-ee
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-databricks-ee
@@ -1829,46 +1328,18 @@ jobs:
         uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
-          # Job name -> configured driver status, from determine-driver-skips. An "info" driver is
-          # data-collection only and must never gate; a cancelled/timed-out info job lands here as
-          # cancelled/failure (its own continue-on-error can't force it green), so we drop info jobs
-          # from the gate entirely. Empty/unknown status falls back to "required" (gates as before).
-          statuses: |
-            {
-              "be-tests-athena-ee": "${{ needs.determine-driver-skips.outputs.athena-status }}",
-              "be-tests-bigquery-cloud-sdk-ee": "${{ needs.determine-driver-skips.outputs.bigquery-status }}",
-              "be-tests-clickhouse-ee": "${{ needs.determine-driver-skips.outputs.clickhouse-status }}",
-              "be-tests-databricks-ee": "${{ needs.determine-driver-skips.outputs.databricks-status }}",
-              "be-tests-druid-jdbc-ee": "${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}",
-              "be-tests-h2": "${{ needs.determine-driver-skips.outputs.h2-status }}",
-              "be-tests-mongo": "${{ needs.determine-driver-skips.outputs.mongo-status }}",
-              "be-tests-mongo-ssl": "${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}",
-              "be-tests-mongo-sharded-cluster-ee": "${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}",
-              "be-tests-mysql-mariadb": "${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}",
-              "be-tests-oracle": "${{ needs.determine-driver-skips.outputs.oracle-status }}",
-              "be-tests-postgres": "${{ needs.determine-driver-skips.outputs.postgres-status }}",
-              "be-tests-presto-jdbc-ee": "${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}",
-              "be-tests-redshift-ee": "${{ needs.determine-driver-skips.outputs.redshift-status }}",
-              "be-tests-snowflake-ee": "${{ needs.determine-driver-skips.outputs.snowflake-status }}",
-              "be-tests-sparksql-ee": "${{ needs.determine-driver-skips.outputs.sparksql-status }}",
-              "be-tests-sqlite-ee": "${{ needs.determine-driver-skips.outputs.sqlite-status }}",
-              "be-tests-sqlserver": "${{ needs.determine-driver-skips.outputs.sqlserver-status }}"
-            }
         with:
           script: | # js
             const needs = JSON.parse(process.env.needs);
-            const statuses = JSON.parse(process.env.statuses);
 
-            // Drop the determine-driver-skips bookkeeping job, then drop "info" drivers: they are
-            // non-gating, so their result (including cancelled/timed-out) must not fail this check.
+            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
+            // job whose result gates this check.
             const jobs = Object.entries(needs)
               .filter(([jobName]) => jobName !== 'determine-driver-skips')
               .map(([jobName, jobValues]) => ({
                 name: jobName,
-                result: jobValues.result,
-                status: statuses[jobName] || 'required'
-              }))
-              .filter(job => job.status !== 'info');
+                result: jobValues.result
+              }));
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
