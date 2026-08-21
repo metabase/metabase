@@ -1,5 +1,5 @@
 ```ts
-function useApplicationName(): string | null;
+function useApplicationName(): null | string;
 ```
 
 Returns application name.
@@ -9,6 +9,6 @@ Returns `null` until the SDK is fully loaded and initialized.
 
 <!-- [<snippet returns>] -->
 
-`string` \| `null`
+`null` \| `string`
 
 <!-- [<endsnippet returns>] -->

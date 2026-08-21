@@ -1,5 +1,5 @@
 ```ts
-function CreateQuestion(props: CreateQuestionProps | undefined): Element;
+function CreateQuestion(props: undefined | CreateQuestionProps): Element;
 ```
 
 ## Parameters
@@ -8,7 +8,7 @@ function CreateQuestion(props: CreateQuestionProps | undefined): Element;
 
 | Parameter | Type                                                                 |
 | :-------- | :------------------------------------------------------------------- |
-| `props`   | [`CreateQuestionProps`](./api/CreateQuestionProps.md) \| `undefined` |
+| `props`   | `undefined` \| [`CreateQuestionProps`](./api/CreateQuestionProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 
