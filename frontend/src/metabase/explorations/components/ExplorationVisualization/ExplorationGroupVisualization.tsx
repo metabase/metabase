@@ -400,7 +400,7 @@ function ExplorationGroupVisualizationChart({
             view="page"
             onClose={onCloseCommentsSidebar}
             context={{
-              timeline_id: selectedTimelineId,
+              timeline_id: selectedTimelineId ?? undefined,
             }}
             timelines={availableTimelines}
             onSelectTimelineId={onSelectTimelineId}

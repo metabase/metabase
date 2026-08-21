@@ -26,6 +26,9 @@ export type CommentContext = {
   highlighted?: CommentHighlight;
   /** Derived by the server on read — never stored, and rejected if sent on create. */
   highlight_label?: string;
+  // The server schema is the thing that actually closes this blob; the index signature keeps the
+  // type assignable where callers still treat a comment's context as opaque JSON.
+  [key: string]: unknown;
 };
 
 export interface Comment {

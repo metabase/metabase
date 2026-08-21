@@ -14,6 +14,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
@@ -216,6 +217,63 @@
            (mt/user-http-request :crowberto :post 404
                                  (format "document/%d/copy" Integer/MAX_VALUE)
                                  {:name "Copy"})))))
+
+(deftest copy-document-read-checks-foreign-cards-test
+  (testing "POST /api/document/:id/copy read-checks every card it copies, so a card the caller cannot read is not
+            laundered into an owned copy"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {readable-coll :id} {}
+                       :model/Collection {secret-coll :id} {}
+                       :model/Document {doc-id :id} {:name "Source"
+                                                     :collection_id readable-coll
+                                                     :content_type prose-mirror/prose-mirror-content-type
+                                                     :document {:type "doc" :content []}}
+                       ;; The card belongs to the document by FK, but lives in a collection the caller cannot read and
+                       ;; is no longer embedded in the document body.
+                       :model/Card {secret-card :id} {:name "Secret"
+                                                      :document_id doc-id
+                                                      :collection_id secret-coll
+                                                      :dataset_query (mt/mbql-query venues)}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) readable-coll)
+          (testing "the caller can read the source document but not the foreign card"
+            (is (mt/user-http-request :rasta :get 200 (format "document/%d" doc-id)))
+            (mt/user-http-request :rasta :get 403 (format "card/%d" secret-card)))
+          (testing "copy refuses to duplicate the unreadable card and commits no copy"
+            (mt/user-http-request :rasta :post 403 (format "document/%d/copy" doc-id)
+                                  {:name "Copy" :collection_id readable-coll})
+            ;; only the original card remains — no laundered duplicate was committed
+            (is (= [secret-card] (map :id (t2/select :model/Card :name "Secret"))))))))))
+
+(deftest document-card-parameter-field-permissions-test
+  (testing "POST /api/document enforces the same parameter-target data-permission check POST /api/card enforces"
+    ;; mu.fn/*enforce* false reproduces a production JAR where mu/defn :- schemas are not compiled in, so the guard
+    ;; under test must be a plain runtime call that still fires here.
+    (binding [mu.fn/*enforce* false]
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {coll-id :id} {}]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (mt/with-no-data-perms-for-all-users!
+              (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+              ;; deliberately NOT granting create-queries on VENUES, the table the parameter target names
+              (let [card-body {:name "c" :display "table" :visualization_settings {}
+                               :dataset_query (mt/mbql-query categories)
+                               :parameters [{:id "pid" :name "p" :slug "p" :type "category"
+                                             :target [:dimension [:field (mt/id :venues :name) nil]]}]}]
+                (testing "the Card endpoint refuses it — the control"
+                  (is (re-find #"VENUES"
+                               (:message (mt/user-http-request :rasta :post 403 "card"
+                                                               (assoc card-body :collection_id coll-id))))))
+                (testing "the Document endpoint must refuse it too"
+                  (mt/user-http-request :rasta :post 403 "document/"
+                                        {:name "d"
+                                         :collection_id coll-id
+                                         :document {:type "doc" :content []}
+                                         :cards {"-1" card-body}}))
+                (testing "no Card carrying that target may exist afterwards"
+                  (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
 
 (deftest copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"

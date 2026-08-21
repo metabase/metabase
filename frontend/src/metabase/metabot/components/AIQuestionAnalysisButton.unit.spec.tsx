@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
@@ -7,8 +6,10 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
 import { MetabotProvider } from "metabase/metabot/context";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { lastReqBody } from "metabase/metabot/tests/utils";
+import {
+  createTestMetabotState,
+  lastReqBody,
+} from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
@@ -38,11 +39,9 @@ function setup({
   setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
-  const metabotState = assocIn(
-    getMetabotInitialState(),
-    ["conversations", "omnibot", "title"],
-    "Chart analysis",
-  );
+  const metabotState = createTestMetabotState({
+    conversationTitle: "Chart analysis",
+  });
 
   renderWithProviders(
     <MetabotProvider>
