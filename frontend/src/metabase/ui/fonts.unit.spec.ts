@@ -1,4 +1,4 @@
-import { getFontFamilyValue } from "metabase/utils/fonts";
+import { getFontFamilyValue } from "metabase/ui/fonts";
 
 describe("getFontFamilyValue", () => {
   describe("single font name", () => {
