@@ -530,7 +530,13 @@
                         t2/select-fn->fn  (fn [& _] {})]
             (python-runner/execute-python-code-http-call! args)
             (is (= (+ (* 7 1000) @#'python-runner/socket-timeout-ms) (:socket-timeout @captured))))
-          (with-redefs [http/request      (fn [& _] (throw (java.net.SocketTimeoutException. "read timed out")))
-                        t2/select-fn->fn  (fn [& _] {})]
-            (is (:timeout (:body (python-runner/execute-python-code-http-call! args)))
-                "a hung runner surfaces as a timeout result, not a thrown error")))))))
+          (let [cancelled (atom nil)]
+            (with-redefs [http/request      (fn [opts & _]
+                                              (if (str/ends-with? (:url opts) "/cancel")
+                                                (do (reset! cancelled opts) {:status 200 :body {}})
+                                                (throw (java.net.SocketTimeoutException. "read timed out"))))
+                          t2/select-fn->fn  (fn [& _] {})]
+              (is (:timeout (:body (python-runner/execute-python-code-http-call! args)))
+                  "a hung runner surfaces as a timeout result, not a thrown error")
+              (is (= {:request_id "r"} (some-> @cancelled :body json/decode+kw))
+                  "and the runner is told to drop the run we stopped waiting for"))))))))
