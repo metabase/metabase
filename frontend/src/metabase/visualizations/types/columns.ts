@@ -1,4 +1,9 @@
-import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
+import type {
+  DatasetColumn,
+  DatasetData,
+  RowValues,
+} from "metabase-types/api";
 
 export type RemappingHydratedDatasetColumn = DatasetColumn & {
   remapped_from_index?: number;
@@ -8,4 +13,12 @@ export type RemappingHydratedDatasetColumn = DatasetColumn & {
 
 export type RemappingHydratedChartData = DatasetData & {
   cols: RemappingHydratedDatasetColumn[];
+};
+
+export type PivotedRowValues = RowValues & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
+};
+
+export type PivotedDatasetColumn = DatasetColumn & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };
