@@ -1101,7 +1101,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       nameValue: string;
     }) {
       H.tableInteractive().findByText(idValue).click();
-      H.popover().findByText("View details").click();
       H.modal().within(() => {
         cy.findAllByText(idValue).should("have.length.gte", 1);
         cy.findAllByText(nameValue).should("have.length.gte", 1);

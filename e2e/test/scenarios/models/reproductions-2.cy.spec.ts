@@ -563,8 +563,6 @@ describe("issue 38747", () => {
       .should("be.visible")
       .click({ waitForAnimations: false });
 
-    H.popover().findByText("View details").click();
-
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");
     cy.findByTestId("filter-pill").should(

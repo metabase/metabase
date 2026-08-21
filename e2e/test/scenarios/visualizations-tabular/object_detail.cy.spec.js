@@ -157,7 +157,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
-    H.popover().findByText("View details").click();
 
     H.modal().findByRole("link", { name: "77 Orders" }).click();
     cy.log("should close the modal when browsing relationships");
@@ -321,7 +320,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.openProductsTable({ limit: 5 });
 
     H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
-    H.popover().findByText("View details").click();
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
@@ -830,7 +828,6 @@ function getRow(rowIndex) {
 
 function drillPK({ id }) {
   cy.get(".test-Table-ID").contains(id).first().click();
-  H.popover().findByText("View details").click();
 }
 
 function drillFK({ id }) {

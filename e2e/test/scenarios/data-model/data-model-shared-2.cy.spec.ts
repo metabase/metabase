@@ -705,7 +705,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
-          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("be.visible");
           H.modal().findByText("2.07").should("be.visible");
         });
@@ -752,7 +751,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
-          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("not.exist");
           H.modal().findByText("2.07").should("not.exist");
         });
@@ -827,7 +825,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
             .findAllByTestId("cell-data")
             .eq(0)
             .click();
-          H.popover().findByText("View details").click();
           H.modal().findByText("Tax").should("be.visible");
           H.modal().findByText("2.07").should("be.visible");
         });

@@ -61,6 +61,26 @@ describe("CopyValueAction", () => {
     expect(setup({ column, value: null })).toHaveLength(0);
   });
 
+  it("returns no actions on a primary key cell, so it still drills straight to the object detail view", () => {
+    const pkColumn = createMockColumn({
+      name: "ID",
+      display_name: "ID",
+      semantic_type: "type/PK",
+    });
+
+    expect(setup({ column: pkColumn, value: 42 })).toHaveLength(0);
+  });
+
+  it("returns an action on a foreign key cell", () => {
+    const fkColumn = createMockColumn({
+      name: "PRODUCT_ID",
+      display_name: "Product ID",
+      semantic_type: "type/FK",
+    });
+
+    expect(setup({ column: fkColumn, value: 42 })).toHaveLength(1);
+  });
+
   it("returns a copy-value action for a cell with a value", () => {
     const actions = setup({ column, value: "hello" });
     const [action] = actions;

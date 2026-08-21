@@ -479,7 +479,6 @@ describe("issue 32840", () => {
 
   it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
     cy.findAllByTestId("cell-data").eq(8).click();
-    H.popover().findByText("View details").click();
     H.modal().within(() => {
       cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
       cy.findByTestId("actions-menu").click();

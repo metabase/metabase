@@ -175,7 +175,6 @@ describe("scenarios > question > nested", () => {
     );
     cy.get(".test-Table-ID").as("primaryKeys").should("have.length", 3);
     cy.get("@primaryKeys").first().click();
-    H.popover().findByText("View details").click();
 
     cy.findByTestId("object-detail").should(
       "contain",

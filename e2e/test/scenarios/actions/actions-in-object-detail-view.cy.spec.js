@@ -240,12 +240,10 @@ function visitObjectDetail(modelId, objectId) {
   H.visitModel(modelId);
   cy.get("main").findByText("Loading...").should("not.exist");
   H.tableInteractive().findByText(objectId).click();
-  H.popover().findByText("View details").click();
 }
 
 function openObjectDetailModal(objectId) {
   H.tableInteractive().findByText(objectId).click();
-  H.popover().findByText("View details").click();
 }
 
 function openUpdateObjectModal() {

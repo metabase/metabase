@@ -483,7 +483,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
     H.tableHeaderClick("ID");
 
     cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
-    H.popover().findByText("View details").click();
 
     cy.wait("@dataset");
 
@@ -831,7 +830,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .get("[data-dataset-index=0] > [data-column-id='ID']")
       .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
       .click();
-    H.popover().findByText("View details").click();
 
     cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).to.not.exist;

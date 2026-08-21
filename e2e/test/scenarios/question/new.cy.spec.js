@@ -188,7 +188,6 @@ describe("scenarios > question > new", () => {
 
     // Test was flaky due to long chain.
     cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(0).click();
-    H.popover().findByText("View details").click();
     cy.wait("@dataset");
 
     H.tableInteractiveBody()
@@ -207,7 +206,6 @@ describe("scenarios > question > new", () => {
       .eq(0) // first table body cell
       .should("contain", 1)
       .click();
-    H.popover().findByText("View details").click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");

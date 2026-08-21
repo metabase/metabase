@@ -6,6 +6,7 @@ import type {
   LegacyDrill,
 } from "metabase/visualizations/types";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 import { nativeDrillFallback } from "../utils";
 
@@ -16,7 +17,9 @@ export const CopyValueAction: LegacyDrill = ({
 }) => {
   const column = clicked?.column;
 
-  if (!clicked || column == null || clicked.value == null) {
+  // "View details" is a PK cell's only action, and a lone default action skips the
+  // popover — a second action here would break that jump to the object detail view.
+  if (!clicked || column == null || clicked.value == null || isPK(column)) {
     return [];
   }
   // This action should not override the native query fallback
