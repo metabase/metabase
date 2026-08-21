@@ -73,7 +73,9 @@ export const HeaderCellWithColumnInfo = memo(
       const queryInfo = query != null ? Lib.queryDisplayInfo(query) : undefined;
       const stageIndex = -1;
       const columnMetadata =
-        query != null && queryInfo != null && !queryInfo.isNative
+        query != null &&
+        queryInfo != null &&
+        (!queryInfo.isNative || column.source === "native")
           ? Lib.fromLegacyColumn(query, stageIndex, column)
           : undefined;
 
