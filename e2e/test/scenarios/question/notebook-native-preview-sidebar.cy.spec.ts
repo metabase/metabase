@@ -268,7 +268,7 @@ describe(
         H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
-          .and("contain", "$limit");
+          .and("not.contain", "$limit");
 
         cy.button("Convert this question to a native query").click();
       });
@@ -296,7 +296,7 @@ describe(
         H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
-          .and("contain", "$limit")
+          .and("not.contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
 
