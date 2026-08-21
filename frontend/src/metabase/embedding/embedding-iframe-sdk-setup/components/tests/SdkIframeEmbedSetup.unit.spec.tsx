@@ -139,7 +139,7 @@ describe("Embed flow > custom visualizations", () => {
     );
   });
 
-  it("automatically allows the custom visualizations used by a dashboard opened from the embedding hub", async () => {
+  it("automatically allows the custom visualizations used by a dashboard opened from the setup guide", async () => {
     const dashboard = createMockDashboard({
       enable_embedding: true,
       dashcards: [
