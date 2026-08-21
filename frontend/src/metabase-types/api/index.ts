@@ -28,6 +28,7 @@ export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./erd";
 export * from "./exploration";
+export * from "./export-format";
 export * from "./field";
 export * from "./fonts";
 export * from "./formatting";

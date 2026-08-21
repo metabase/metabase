@@ -1,7 +1,8 @@
-import { getPlan } from "metabase/common/utils/plan";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-describe("common/utils/columns", () => {
+import { getPlan } from "./plan";
+
+describe("metabase/settings/plan", () => {
   describe("getPlan", () => {
     it("returns `oss` if the token features object is undefined or null or does not have any features", () => {
       expect(getPlan()).toBe("oss");
