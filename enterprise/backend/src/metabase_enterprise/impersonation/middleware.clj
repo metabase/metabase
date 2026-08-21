@@ -10,24 +10,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
-(defenterprise remove-impersonation-keys
-  "Pre-processing middleware. Removes the `:impersonation/*` keys [[apply-impersonation]] sets on the query once it has
-  worked out which database role the query should run under.
-
-  They are ordinary namespaced keywords on the top-level query, so they ride in from the JSON request body untouched:
-  `:impersonation/role` let a non-admin choose the database role their query runs as, overriding the configured one,
-  and `:impersonation/admin?` let them past the check restricting an impersonated native query to a single statement
-  of the expected type. Both are only ever set below, further down preprocessing, so nothing legitimate arrives
-  carrying them. `:impersonation/allow-write?` is no longer read anywhere -- it is a binding now,
-  see [[metabase.driver.settings/*impersonation-allow-write?*]] -- and is dropped so it cannot come back to life.
-
-  Lives here, next to the only code that sets these keys, so the two can't drift apart. `:feature :none` so that
-  stripping never depends on the token: a key the user should not be able to set is not something to start honouring
-  because a licence lapsed."
-  :feature :none
-  [query]
-  (dissoc query :impersonation/role :impersonation/admin? :impersonation/allow-write?))
-
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
   and adds an impersonation role key to the query for non-admin users. Currently used solely for caching."
