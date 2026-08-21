@@ -149,19 +149,22 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid}]
         (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
-          (is (=? {:database (mt/id)
-                   :stages   [{:native "-"}]}
-                  dataset_query))
-          (is (not (str/includes? (json/encode dataset_query) "source-table"))))))))
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 dataset_query)))))))
 
 (deftest fetch-dashboard-strips-dataset-query-test
   (testing "GET /api/public/dashboard/:uuid replaces each Card's query with a blank native query so its contents are not exposed"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash _card]
         (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
-          (is (=? {:database (mt/id)
-                   :stages   [{:native "-"}]}
-                  (-> response :dashcards first :card :dataset_query))))))))
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"

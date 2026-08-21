@@ -28,7 +28,6 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -179,10 +178,11 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    (mt/native-query {:query "SELECT id FROM venues"})}]
         (let [{:keys [dataset_query]} (client/client :get 200 (card-url card))]
-          (is (=? {:database (mt/id)
-                   :stages   [{:native "-"}]}
-                  dataset_query))
-          (is (not (str/includes? (json/encode dataset_query) "venues"))))))))
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 dataset_query)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -589,12 +589,12 @@
   (testing "GET /api/embed/dashboard/:token replaces each Card's query with a blank native query"
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-        (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))
-              dataset-query (-> response :dashcards first :card :dataset_query)]
-          (is (=? {:database (mt/id)
-                   :stages   [{:native "-"}]}
-                  dataset-query))
-          (is (not (str/includes? (json/encode dataset-query) "source-table"))))))))
+        (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))]
+          (is (= {:lib/type "mbql/query"
+                  :database (mt/id)
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
+                 (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
