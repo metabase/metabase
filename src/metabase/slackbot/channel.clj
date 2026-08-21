@@ -147,7 +147,16 @@
                         (:error res)
                         (count final-blocks)
                         (pr-str (mapv :type final-blocks))
-                        (pr-str (get-in res [:response_metadata :messages]))))
+                        (pr-str (get-in res [:response_metadata :messages])))
+            ;; The blocks were rejected for a reason we did not anticipate. A plain-text reply
+            ;; carries no blocks for Slack to reject, so the user gets something back rather than
+            ;; silence (BOT-1606).
+            (let [fallback (slackbot.client/post-thread-reply
+                            client message-ctx
+                            "I generated a response, but Slack could not render it. Please try again.")]
+              (when-not (:ok fallback)
+                (log/errorf "[slackbot] channel fallback post-message failed: %s" (:error fallback))
+                (analytics/inc! :metabase-slackbot/responses-undeliverable))))
           (doseq [e errors]
             (post-viz-error! client channel thread-ts e))))
       (catch Exception e

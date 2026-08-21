@@ -60,17 +60,18 @@
 (def ^:private feedback-blocks
   [{:type "context_actions" :elements []}])
 
-(defn- send-channel-response!
-  "Drive [[slackbot.channel/send-channel-response]] to completion with `answer` as the model's text,
-   returning `{:text .. :blocks ..}` as posted to Slack plus the `:backfill` it recorded."
-  [answer]
-  (let [posted   (atom nil)
+(defn- drive-channel-response!
+  "Drive [[slackbot.channel/send-channel-response]] to completion with `answer` as the model's text
+   and `reply-result` standing in for what Slack returns from `post-thread-reply`, called with the
+   number of posts made so far. Returns `{:posts [{:text .. :blocks ..} ..] :backfill ..}`, in the
+   order the posts were made."
+  [answer reply-result]
+  (let [posts    (atom [])
         backfill (atom nil)]
     (mt/with-dynamic-fn-redefs [slackbot.client/set-status (constantly {:ok true})
                                 slackbot.client/post-thread-reply
                                 (fn [_client _message-ctx text & {:keys [blocks]}]
-                                  (reset! posted {:text text :blocks blocks})
-                                  {:ok true :ts "1700000000.000002"})
+                                  (reply-result (count (swap! posts conj {:text text :blocks blocks}))))
                                 metabot.persistence/set-response-slack-msg-id!
                                 (fn [msg-id slack-msg-id]
                                   (reset! backfill {:msg-id msg-id :slack-msg-id slack-msg-id}))]
@@ -97,7 +98,16 @@
         :post-viz-error!            (constantly nil)
         :make-viz-prefetch-callback (constantly (fn [& _]))
         :cancel-prefetched-viz!     (constantly nil)}))
-    (assoc @posted :backfill @backfill)))
+    {:posts @posts :backfill @backfill}))
+
+(defn- send-channel-response!
+  "Drive [[slackbot.channel/send-channel-response]] with a Slack that accepts everything, returning
+   `{:text .. :blocks ..}` as posted plus the `:backfill` it recorded."
+  [answer]
+  (let [{:keys [posts backfill]} (drive-channel-response!
+                                  answer
+                                  (constantly {:ok true :ts "1700000000.000002"}))]
+    (assoc (last posts) :backfill backfill)))
 
 (deftest ^:parallel truncation-notice-test
   (testing "the notice points at the instance, and says what to do about the cut"
@@ -178,3 +188,40 @@
         (prometheus/clear! :metabase-slackbot/responses-truncated)
         (send-channel-response! "Short answer.")
         (is (= 0.0 (mt/metric-value system :metabase-slackbot/responses-truncated)))))))
+
+(deftest channel-response-falls-back-to-plain-text-when-blocks-are-rejected-test
+  (testing "a message Slack rejects still reaches the user as plain text, rather than silence"
+    (let [{:keys [posts]}     (drive-channel-response!
+                               "Orders peaked in March."
+                               (fn [n] (if (= n 1)
+                                         {:ok false :error "invalid_blocks"}
+                                         {:ok true :ts "1700000000.000002"})))
+          [rejected fallback] posts]
+      (is (= 2 (count posts))
+          "the rejected post is followed by a plain-text retry")
+      (is (seq (:blocks rejected))
+          "the first attempt carried blocks")
+      (is (nil? (:blocks fallback))
+          "the fallback carries none, so there is nothing left for Slack to reject")
+      (is (= "I generated a response, but Slack could not render it. Please try again."
+             (:text fallback)))))
+  (testing "a message Slack accepts is posted once, with no fallback"
+    (let [{:keys [posts]} (drive-channel-response!
+                           "Orders peaked in March."
+                           (constantly {:ok true :ts "1700000000.000002"}))]
+      (is (= 1 (count posts))))))
+
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest channel-response-undeliverable-metric-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "a response that fails even as plain text is counted as undeliverable"
+      (drive-channel-response! "Orders peaked in March."
+                               (constantly {:ok false :error "channel_not_found"}))
+      (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))
+    (testing "a response saved by the fallback is not -- the user did get a reply"
+      (prometheus/clear! :metabase-slackbot/responses-undeliverable)
+      (drive-channel-response! "Orders peaked in March."
+                               (fn [n] (if (= n 1)
+                                         {:ok false :error "invalid_blocks"}
+                                         {:ok true :ts "1700000000.000002"})))
+      (is (= 0.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))))

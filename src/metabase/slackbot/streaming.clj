@@ -617,7 +617,8 @@
                                                                        message-ctx
                                                                        "I generated a response, but Slack could not render it. Please try again.")]
                 (when-not (:ok fallback-result)
-                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result)))))
+                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result))
+                  (analytics/inc! :metabase-slackbot/responses-undeliverable))))
             (doseq [e errors]
               (post-viz-error! client channel thread-ts e)))
           (slackbot.client/post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again.")))

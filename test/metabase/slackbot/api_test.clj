@@ -262,6 +262,29 @@
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest dm-response-undeliverable-metric-test
+  (testing "a DM whose stream and plain-text fallback both fail is counted as undeliverable"
+    (tu/with-slackbot-setup
+      (mt/with-prometheus-system! [_ system]
+        (let [event-body tu/base-dm-event]
+          (tu/with-slackbot-mocks
+            {:ai-text "Here is your answer"}
+            (fn [_]
+              ;; `post-thread-reply` delegates to `post-message`, so failing that fails the
+              ;; fallback too -- the user ends up with nothing at all.
+              (mt/with-dynamic-fn-redefs
+                [slackbot.client/stop-stream  (constantly {:ok false :error "invalid_blocks"})
+                 slackbot.client/post-message (constantly {:ok false :error "channel_not_found"})]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk      #(mt/metric-value system :metabase-slackbot/responses-undeliverable)
+                           :done?      pos?
+                           :timeout-ms 5000})
+                  (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))))))))))
+
 (deftest ai-request-error-stops-stream-test
   (testing "When the agent loop throws after the stream has started, the stream is stopped"
     (tu/with-slackbot-setup
