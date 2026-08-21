@@ -55,6 +55,9 @@
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
+    :fast?            - When true, request the provider's fast mode where the model
+                        supports it (Anthropic Opus fast mode); adapters without one
+                        ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
@@ -69,6 +72,7 @@
    [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid

@@ -393,6 +393,174 @@ describe("AdminSettingInput", () => {
     expect(body).toStrictEqual({ value: "simple" });
   });
 
+  it("should persist a reversal made before the post-save refetch lands", async () => {
+    setup({
+      title: "Enable X-rays",
+      name: "enable-xrays",
+      inputType: "boolean",
+    });
+    const input = await screen.findByRole("switch");
+
+    // Hold the post-save refetches open so the server-derived value stays
+    // stale while the second click happens.
+    const pendingRefetches: Array<() => void> = [];
+    let pendingRefetchCount = 0;
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () => {
+        pendingRefetchCount += 1;
+        return new Promise<void>((resolve) =>
+          pendingRefetches.push(resolve),
+        ).then(() => {
+          pendingRefetchCount -= 1;
+          return createMockSettings({ "enable-xrays": true });
+        });
+      },
+      { name: "get-session-properties" },
+    );
+
+    await userEvent.click(input);
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole("switch"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/setting/enable-xrays"),
+      ).toHaveLength(2);
+    });
+    const [first, second] = fetchMock.callHistory.calls(
+      "path:/api/setting/enable-xrays",
+    );
+    expect(JSON.parse(String(first.options.body))).toStrictEqual({
+      value: false,
+    });
+    expect(JSON.parse(String(second.options.body))).toStrictEqual({
+      value: true,
+    });
+
+    // Each resolved refetch can queue another one; drain them all so the
+    // global afterEach can flush the request history.
+    await waitFor(() => {
+      pendingRefetches.splice(0).forEach((resolve) => resolve());
+      expect(pendingRefetchCount).toBe(0);
+    });
+  });
+
+  it("should save restoring a number the server has since changed", async () => {
+    // Number inputs submit strings while the settings APIs return numbers, so
+    // the write sentinel can never be matched against a refetched value.
+    let ttl = 64;
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+    fetchMock.get(
+      "path:/api/session/properties",
+      () =>
+        createMockSettings({
+          "query-caching-min-ttl": ttl,
+          "site-name": "Metabased",
+        }),
+      { name: "get-session-properties" },
+    );
+    setupSettingsEndpoints([]);
+    fetchMock.put(
+      new RegExp("/api/setting/query-caching-min-ttl"),
+      ({ options }) => {
+        ttl = Number(JSON.parse(String(options.body)).value);
+        return { status: 204 };
+      },
+      { name: "update-ttl" },
+    );
+    setupUpdateSettingEndpoint();
+    renderWithProviders(
+      <>
+        <AdminSettingInput
+          title="TTL"
+          name="query-caching-min-ttl"
+          inputType="number"
+        />
+        <AdminSettingInput
+          title="Site Name"
+          name="site-name"
+          inputType="text"
+        />
+        <UndoListing />
+      </>,
+    );
+
+    const ttlInput = await screen.findByRole("spinbutton");
+    await userEvent.clear(ttlInput);
+    await userEvent.type(ttlInput, "60");
+    fireEvent.blur(ttlInput);
+    await waitFor(async () => {
+      expect(await findRequests("PUT")).toHaveLength(1);
+    });
+
+    // another admin's change arriving with the sibling save's refetch
+    ttl = 120;
+    const siteName = await screen.findByDisplayValue("Metabased");
+    await userEvent.clear(siteName);
+    await userEvent.type(siteName, "Wigglybase");
+    fireEvent.blur(siteName);
+    await waitFor(() => {
+      expect(screen.getByRole("spinbutton")).toHaveValue(120);
+    });
+
+    await userEvent.clear(screen.getByRole("spinbutton"));
+    await userEvent.type(screen.getByRole("spinbutton"), "60");
+    fireEvent.blur(screen.getByRole("spinbutton"));
+
+    const ttlPuts = async () =>
+      (await findRequests("PUT")).filter((put) =>
+        put.url.includes("query-caching-min-ttl"),
+      );
+    await waitFor(async () => {
+      expect(await ttlPuts()).toHaveLength(2);
+    });
+    const [, restore] = await ttlPuts();
+    expect(restore.body).toStrictEqual({ value: "60" });
+  });
+
+  it("should revert the input when the save fails", async () => {
+    setup({
+      title: "Enable X-rays",
+      name: "enable-xrays",
+      inputType: "boolean",
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const input = await screen.findByRole("switch");
+    expect(input).toHaveAttribute("data-checked", "true");
+    await userEvent.click(input);
+
+    await screen.findByText("Error saving enable-xrays");
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toHaveAttribute(
+        "data-checked",
+        "true",
+      );
+    });
+  });
+
+  it("should keep a typed value when the save fails", async () => {
+    setup({
+      title: "Site Name",
+      name: "site-name",
+      inputType: "text",
+    });
+    setupUpdateSettingEndpoint({ status: 400 });
+
+    const input = await screen.findByDisplayValue("Metabased");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Wigglybase");
+    fireEvent.blur(input);
+
+    await screen.findByText("Error saving site-name");
+    expect(screen.getByRole("textbox")).toHaveValue("Wigglybase");
+  });
+
   it("should show an error toast on save failure", async () => {
     setup({
       title: "Humanization Strategy",

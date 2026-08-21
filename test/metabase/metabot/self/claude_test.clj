@@ -321,6 +321,64 @@
              [{:type :reasoning :id "r1" :text "unsigned"}
               {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
 
+(deftest ^:parallel claude-request-body-fast-mode-test
+  (let [input [{:role :user :content "hi"}]
+        speed #(:speed (claude/claude-request-body (merge {:input input} %)))]
+    (testing ":fast? requests fast mode on models that support it"
+      (is (= "fast" (speed {:model "claude-opus-5" :fast? true})))
+      (is (= "fast" (speed {:model "claude-opus-4-8" :fast? true}))))
+    (testing "no speed without :fast?"
+      (is (nil? (speed {:model "claude-opus-5"}))))
+    (testing "no speed on models without fast mode"
+      (is (nil? (speed {:model "claude-opus-4-7" :fast? true})))
+      (is (nil? (speed {:model "claude-sonnet-4-6" :fast? true})))
+      (is (nil? (speed {:model "claude-haiku-4-5" :fast? true}))))
+    (testing "no speed through the AI proxy"
+      (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
+
+(deftest claude-raw-fast-mode-fallback-test
+  (testing "a 400 on a fast-mode request is retried once at standard speed"
+    (let [requests (atom [])]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  http/request            (fn [req]
+                                                            (swap! requests conj req)
+                                                            (if (:speed (json/decode+kw (:body req)))
+                                                              (throw (ex-info "clj-http: status 400"
+                                                                              {:status  400
+                                                                               :headers {"content-type" "application/json"}
+                                                                               :body    (json/encode
+                                                                                         {:type  "error"
+                                                                                          :error {:type    "invalid_request_error"
+                                                                                                  :message "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"}})}))
+                                                              {:body req}))]
+        (claude/claude-raw {:model       "claude-opus-5"
+                            :fast?       true
+                            :credentials byok-credentials
+                            :input       [{:role :user :content "hi"}]})
+        (let [[fast-req retry-req] @requests]
+          (is (= 2 (count @requests)))
+          (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
+          (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
+          (is (nil? (:speed (json/decode+kw (:body retry-req)))))
+          (is (nil? (get-in retry-req [:headers "anthropic-beta"]))))))))
+
+(deftest claude-fast-mode-beta-header-test
+  (let [headers (fn [opts]
+                  (let [captured (atom nil)]
+                    (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                                http/request            (fn [req]
+                                                                          (reset! captured (:headers req))
+                                                                          {:body req})]
+                      (claude/claude-raw (merge {:credentials byok-credentials
+                                                 :input       [{:role :user :content "hi"}]}
+                                                opts)))
+                    @captured))]
+    (testing "fast-mode requests carry the beta header"
+      (is (= "fast-mode-2026-02-01"
+             (get (headers {:model "claude-opus-5" :fast? true}) "anthropic-beta"))))
+    (testing "other requests don't"
+      (is (nil? (get (headers {:model "claude-opus-5"}) "anthropic-beta"))))))
+
 (deftest ^:parallel claude-request-body-reasoning-disabled-test
   (testing ":reasoning? false disables thinking and strips reasoning replay"
     (let [body (claude/claude-request-body

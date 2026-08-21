@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
 
@@ -437,14 +438,24 @@
   [model]
   (some? (model-thinking-config model)))
 
+(defn fast-mode-model?
+  "Whether `model` supports Anthropic fast mode (Opus 4.8 and later)."
+  [model]
+  (when-let [[family major minor] (claude-model-version model)]
+    (and (= family "opus")
+         (or (> major 4) (and (= major 4) (>= minor 8))))))
+
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? fast? ai-proxy?]
     :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
   (let [;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
         thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
                     (model-thinking-config model))
+        ;; fast mode is premium-priced, so only honor it on BYOK connections;
+        ;; proxied requests bill through Metabase Cloud.
+        fast?     (and fast? (not ai-proxy?) (fast-mode-model? model))
         input     (cond->> input
                     (nil? thinking) (remove #(= :reasoning (:type %))))
         messages  (parts->claude-messages input)
@@ -472,6 +483,8 @@
 
       thinking          (assoc :thinking thinking)
 
+      fast?             (assoc :speed "fast")
+
       ;; sampling params are rejected alongside thinking
       (and temperature (not thinking) (model-supports-temperature? model))
       (assoc :temperature temperature))))
@@ -498,8 +511,9 @@
                                      {:method  :post
                                       :url     "/v1/messages"
                                       :as      :stream
-                                      :headers {"anthropic-version" "2023-06-01"
-                                                "content-type"      "application/json"}
+                                      :headers (cond-> {"anthropic-version" "2023-06-01"
+                                                        "content-type"      "application/json"}
+                                                 (:speed req) (assoc "anthropic-beta" "fast-mode-2026-02-01"))
                                       :body    (json/encode req)})]
           ;; The SSE body is consumed lazily, after this `try` has exited — wrap
           ;; the reducible so mid-stream IO/timeout failures get the same
@@ -511,7 +525,12 @@
                                      :request  req})
               (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
+          ;; a 400 on a fast request is usually a fast-mode rejection (account not in the
+          ;; research preview, or on a Priority Tier commitment): retry once at standard speed
+          (if (and (:speed req) (= 400 (:status (ex-data e))))
+            (do (log/warn "Anthropic rejected the fast-mode request; retrying at standard speed")
+                (claude-raw (assoc opts :fast? false)))
+            (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
