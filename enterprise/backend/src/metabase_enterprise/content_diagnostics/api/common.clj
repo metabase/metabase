@@ -52,25 +52,12 @@
 ;;; Resolved live at read time against each entity's *current* collection (not scan-time
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
-(defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
-  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
-  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
-  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
-  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
-  [coll-pred-fn]
-  (for [[etype model] common/entity-type->model]
-    [:and
-     [:= :entity_type (name etype)]
-     [:in :entity_id {:select [:id]
-                      :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
-
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read (a collection subject must
   itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
   []
-  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
+  (into [:or] (common/entity-collection-clauses (keys common/entity-type->model)
+                                                collection/visible-collection-filter-clause)))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -126,7 +113,8 @@
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
+          (common/entity-collection-clauses (keys common/entity-type->model)
+                                            (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +

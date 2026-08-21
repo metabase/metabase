@@ -25,6 +25,21 @@
   keywords like `:model/Card`."
   (set/map-invert entity-type->model))
 
+(defn entity-collection-clauses
+  "For each of `entity-types`, a clause keeping findings whose entity currently lives in a collection
+  satisfying `coll-pred-fn` - a fn of the column holding the entity's collection id. Checked against the
+  entity's own table, so it reflects where the entity is now. A `:collection` subject *is* the collection, so
+  its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  [entity-types coll-pred-fn]
+  (for [etype entity-types
+        :let  [model (entity-type->model etype)]
+        :when model]
+    [:and
+     [:= :entity_type (name etype)]
+     [:in :entity_id {:select [:id]
+                      :from   [(t2/table-name model)]
+                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
+
 (def eligible-collection-where
   "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
   directly (not via `mi/exclude-internal-content-hsql`) so the scope is visible here and stable against
