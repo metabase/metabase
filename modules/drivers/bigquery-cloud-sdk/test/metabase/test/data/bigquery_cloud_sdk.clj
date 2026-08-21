@@ -147,6 +147,16 @@
     (flush)
     (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil)))
 
+(defn- untrack-dataset!
+  "Drop `dataset-id`'s row from the tracking table. Separate from [[destroy-dataset!]] because this is a mutating DML
+  statement and BigQuery queues at most 20 outstanding per table before failing the query with `resourcesExceeded`:
+  only a dataset that was tracked in the first place should pay for one."
+  [^String dataset-id]
+  (execute-params!
+   (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
+           (project-id))
+   [dataset-id]))
+
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
@@ -159,10 +169,6 @@
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (execute-params!
-   (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
-           (project-id))
-   [dataset-id])
   (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
 
 (defn base-type->bigquery-type [base-type]
@@ -362,7 +368,8 @@
                       (project-id))]
     (doseq [outdated (map first all-outdated)]
       (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
+      (destroy-dataset! outdated)
+      (untrack-dataset! outdated))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -429,17 +436,21 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
+  ;; Ephemeral datasets are the bulk of the traffic against this one table, and nothing later reads their row. Skipping
+  ;; them costs no GC coverage: should one leak anyway, [[delete-old-datasets!]] still finds any `sha_%` schema missing
+  ;; from the tracking table via its INFORMATION_SCHEMA `creation_time`.
+  (when-not (tx/ephemeral? db-def)
+    (setup-tracking-dataset!)
+    ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
+    (u/ignore-exceptions
+      (execute-params!
+       (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                    "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                    "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                    "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+       [(tx/hash-dataset db-def)
+        (test-dataset-id db-def)
+        (tx/tracking-access-note)]))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
@@ -468,7 +479,11 @@
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
-  (destroy-dataset! (test-dataset-id db-def)))
+  (destroy-dataset! (test-dataset-id db-def))
+  ;; mirrors [[tx/track-dataset]]: an ephemeral dataset never got a row, so deleting one would be a DML statement
+  ;; against the shared tracking table for nothing
+  (when-not (tx/ephemeral? db-def)
+    (untrack-dataset! (test-dataset-id db-def))))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]
