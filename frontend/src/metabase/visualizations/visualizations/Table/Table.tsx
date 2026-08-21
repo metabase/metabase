@@ -51,6 +51,11 @@ function TableComponent(props: TableProps) {
   const getColumnSortDirection = useCallback(
     (columnIndex: number) => {
       const query = question.query();
+      const queryInfo = Lib.queryDisplayInfo(query);
+      if (queryInfo.isNative) {
+        return undefined;
+      }
+
       const stageIndex = -1;
       const column = Lib.findMatchingColumn(
         query,
@@ -58,16 +63,19 @@ function TableComponent(props: TableProps) {
         Lib.fromLegacyColumn(query, stageIndex, data.cols[columnIndex]),
         Lib.orderableColumns(query, stageIndex),
       );
-
-      if (column != null) {
-        const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        if (columnInfo.orderByPosition != null) {
-          const orderBys = Lib.orderBys(query, stageIndex);
-          const orderBy = orderBys[columnInfo.orderByPosition];
-          const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
-          return orderByInfo.direction;
-        }
+      if (column == null) {
+        return undefined;
       }
+
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      if (columnInfo.orderByPosition == null) {
+        return undefined;
+      }
+
+      const orderBys = Lib.orderBys(query, stageIndex);
+      const orderBy = orderBys[columnInfo.orderByPosition];
+      const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+      return orderByInfo.direction;
     },
     [question, data],
   );

@@ -70,13 +70,19 @@ export const HeaderCellWithColumnInfo = memo(
       // question.query will throw when used in the visualizer
       // we don't go down this code path in the visualizer because isDashboard is true
       const query = question?.query();
+      const queryInfo = query != null ? Lib.queryDisplayInfo(query) : null;
       const stageIndex = -1;
+      const column =
+        query != null && queryInfo != null && !queryInfo.isNative
+          ? Lib.fromLegacyColumn(query, stageIndex, column)
+          : undefined;
+
       headerContent = (
         <QueryColumnInfoPopover
           position="bottom-start"
           query={query}
           stageIndex={stageIndex}
-          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+          column={column}
           timezone={timezone}
           openDelay={500}
           showFingerprintInfo
