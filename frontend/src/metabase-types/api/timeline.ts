@@ -59,6 +59,12 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
+export interface TimelineEventsVisibility {
+  hidden_timeline_ids?: TimelineId[];
+  shown_timeline_ids?: TimelineId[];
+  hidden_event_ids?: TimelineEventId[];
+}
+
 export type ListTimelinesRequest = {
   include?: "events";
   archived?: boolean;

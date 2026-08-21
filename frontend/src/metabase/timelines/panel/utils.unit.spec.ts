@@ -1,14 +1,18 @@
 import { dayjs } from "metabase/dayjs";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
 import {
+  filterTimelinesByXAxis,
+  filterVisibleTimelineEvents,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
-} from "./TimelineSidebar";
+  transformTimelines,
+} from "./utils";
 
 const releases = createMockTimeline({
   id: 1,
@@ -122,5 +126,82 @@ describe("formatTitle", () => {
     expect(formatTitle([june3, june27])).toBe(
       "Events between Jun 3, 2027 and Jun 27, 2027",
     );
+  });
+});
+
+describe("transformTimelines", () => {
+  it("drops archived events", () => {
+    const [timeline] = transformTimelines([
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 1 }),
+          createMockTimelineEvent({ id: 2, archived: true }),
+        ],
+      }),
+    ]);
+
+    expect(timeline.events?.map((event) => event.id)).toEqual([1]);
+  });
+});
+
+describe("filterTimelinesByXAxis", () => {
+  const timelines = transformTimelines([
+    createMockTimeline({
+      id: 1,
+      events: [
+        createMockTimelineEvent({ id: 1, timestamp: "2024-01-15T00:00:00Z" }),
+        createMockTimelineEvent({ id: 2, timestamp: "2024-03-20T00:00:00Z" }),
+        createMockTimelineEvent({ id: 3, timestamp: "2024-06-01T00:00:00Z" }),
+      ],
+    }),
+    createMockTimeline({
+      id: 2,
+      events: [
+        createMockTimelineEvent({ id: 4, timestamp: "2020-01-01T00:00:00Z" }),
+      ],
+    }),
+  ]);
+  const domain: [dayjs.Dayjs, dayjs.Dayjs] = [
+    dayjs("2024-01-01T00:00:00Z"),
+    dayjs("2024-03-01T00:00:00Z"),
+  ];
+
+  const filterIds = (interval: TimeSeriesInterval | null) =>
+    filterTimelinesByXAxis(timelines, { domain, interval }).flatMap(
+      (timeline) => (timeline.events ?? []).map((event) => event.id),
+    );
+
+  it("keeps events up to the end of the last period and drops empty timelines", () => {
+    expect(filterIds({ count: 1, unit: "month" })).toEqual([1, 2]);
+  });
+
+  it("extends by whole intervals for sub-day units", () => {
+    expect(filterIds({ count: 6, unit: "hour" })).toEqual([1]);
+  });
+
+  it("returns non-empty timelines untouched without an axis", () => {
+    const filtered = filterTimelinesByXAxis(timelines, null);
+    expect(filtered.map((timeline) => timeline.id)).toEqual([1, 2]);
+  });
+});
+
+describe("filterVisibleTimelineEvents", () => {
+  it("returns visible events across timelines sorted by timestamp", () => {
+    const timelines = [
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 1, timestamp: "2027-06-15T00:00:00Z" }),
+          createMockTimelineEvent({ id: 2, timestamp: "2027-06-01T00:00:00Z" }),
+        ],
+      }),
+      createMockTimeline({
+        events: [
+          createMockTimelineEvent({ id: 3, timestamp: "2027-06-10T00:00:00Z" }),
+        ],
+      }),
+    ];
+    expect(
+      filterVisibleTimelineEvents(timelines, [1, 3]).map((event) => event.id),
+    ).toEqual([3, 1]);
   });
 });

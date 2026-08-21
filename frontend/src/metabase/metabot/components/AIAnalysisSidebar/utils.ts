@@ -1,3 +1,4 @@
+import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import { isNotNull } from "metabase/utils/types";
 import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -6,8 +7,10 @@ export const getTimelineEventsForAnalysis = (
   timelines: Timeline[],
   questionCollectionId: CollectionId,
 ) => {
-  const sameCollectionTimelineEvents = timelines
-    .filter((timeline) => timeline.collection_id === questionCollectionId)
+  const sameCollectionTimelineEvents = getCollectionTimelines(
+    timelines,
+    questionCollectionId,
+  )
     .flatMap((timeline) => timeline.events ?? [])
     .filter(isNotNull);
 
