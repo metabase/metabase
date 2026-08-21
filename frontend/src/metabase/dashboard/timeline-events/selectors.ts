@@ -1,4 +1,8 @@
-import { createSelector } from "@reduxjs/toolkit";
+import {
+  createSelector,
+  createSelectorCreator,
+  lruMemoize,
+} from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 
 import {
@@ -44,13 +48,24 @@ export const getDashCardTimelineEventsVisibility = (
 ): TimelineEventsVisibility | undefined =>
   getTimelineEventsOverrides(state)[dashcardId];
 
+const areEventListsEqual = (a: TimelineEvent[], b: TimelineEvent[]) =>
+  a === b || (a.length === b.length && a.every((event, i) => event === b[i]));
+
+const createStableEventsSelector = createSelectorCreator({
+  memoize: lruMemoize,
+  memoizeOptions: { resultEqualityCheck: areEventListsEqual },
+});
+
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
   [getTimelineEventsVisibilityContext, getDashCardTimelineEventsVisibility],
   (context, visibility): TimelineEvent[] => {
     const events = resolveVisibleTimelineEvents({ ...context, visibility });
     return events.length > 0 ? events : NO_EVENTS;
   },
-)((_state, dashcardId) => dashcardId);
+)({
+  keySelector: (_state, dashcardId) => dashcardId,
+  selectorCreator: createStableEventsSelector,
+});
 
 export const getDashCardSelectedTimelineEventIds = (
   state: State,
