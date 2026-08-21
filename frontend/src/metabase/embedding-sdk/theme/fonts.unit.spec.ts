@@ -3,31 +3,30 @@ import { getFontFamilyValue } from "metabase/embedding-sdk/theme/fonts";
 describe("getFontFamilyValue", () => {
   describe("single font name", () => {
     it.each([
-      ["Lato", '"Lato", Arial, sans-serif'],
-      ["Merriweather", '"Merriweather", "Lora", serif'],
-      ["Roboto Mono", '"Roboto Mono", monospace'],
-    ])("appends the fallback chain for %s", (font, expected) => {
+      ["Lato", '"Lato"'],
+      ["Merriweather", '"Merriweather"'],
+      ["Roboto Mono", '"Roboto Mono"'],
+      ["Custom", '"Custom"'],
+    ])("quotes %s", (font, expected) => {
       expect(getFontFamilyValue(font)).toBe(expected);
     });
 
-    it.each([
-      ["Custom", '"Custom", sans-serif'],
-      ["Comic Sans MS", '"Comic Sans MS", sans-serif'],
-    ])("falls back to sans-serif for %s", (font, expected) => {
-      expect(getFontFamilyValue(font)).toBe(expected);
+    it("strips quotes already present in the input", () => {
+      expect(getFontFamilyValue('"Open Sans"')).toBe('"Open Sans"');
+      expect(getFontFamilyValue("'Open Sans'")).toBe('"Open Sans"');
     });
   });
 
   describe("font family list", () => {
-    it("supports lists and picks the fallback chain from the first family", () => {
+    it("quotes every family separately", () => {
       expect(getFontFamilyValue("Open Sans, Helvetica")).toBe(
-        '"Open Sans", "Helvetica", "Lato", sans-serif',
+        '"Open Sans", "Helvetica"',
       );
     });
 
     it("drops empty entries", () => {
-      expect(getFontFamilyValue("Inter,,Helvetica,")).toBe(
-        '"Inter", "Helvetica", sans-serif',
+      expect(getFontFamilyValue("Lato,,Helvetica,")).toBe(
+        '"Lato", "Helvetica"',
       );
     });
   });
@@ -37,8 +36,8 @@ describe("getFontFamilyValue", () => {
       ["an empty string", ""],
       ["whitespace only", "   "],
       ["commas only", ",,,"],
-    ])("returns the bare fallback for %s", (_label, font) => {
-      expect(getFontFamilyValue(font)).toBe("sans-serif");
+    ])("returns an empty value for %s", (_label, font) => {
+      expect(getFontFamilyValue(font)).toBe("");
     });
   });
 });
