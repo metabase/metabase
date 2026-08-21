@@ -30,8 +30,6 @@ import {
   createThunkAction,
 } from "metabase/redux";
 import { navigate } from "metabase/router";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
   CollectionPermissions,
@@ -39,9 +37,14 @@ import type {
   GroupId,
   GroupsPermissions,
   PermissionEntityId,
+  PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 
+import {
+  DATABASE_TABLES_QUERY,
+  getPermissionsDatabase,
+} from "./selectors/data-permissions/databases";
 import { selectGroupList } from "./selectors/data-permissions/groups";
 import {
   DataPermission,
@@ -49,11 +52,7 @@ import {
   type DataPermissionValue,
   type PermissionSectionConfig,
 } from "./types";
-import {
-  isDatabaseEntityId,
-  isSchemaEntityId,
-  isTableEntityId,
-} from "./utils/data-entity-id";
+import { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
@@ -212,7 +211,7 @@ export interface UpdateDataPermissionPayload {
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  metadata: Metadata;
+  database: PermissionsDatabase | undefined;
   entityId: PermissionEntityId;
 }
 export const UPDATE_DATA_PERMISSION =
@@ -226,25 +225,22 @@ export const updateDataPermission = createThunkAction(
     entityId,
     view,
   }: UpdateDataPermissionParams) => {
-    return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
-      if (isDatabaseEntityId(entityId)) {
-        // Fire-and-forget background refresh of the database's table metadata;
-        // the reducer below reads the current snapshot synchronously. Swallow
-        // rejections so a failed fetch doesn't surface as an unhandled
-        // promise rejection.
-        void runRtkEndpoint(
-          {
-            id: entityId.databaseId,
-            include_hidden: true,
-            remove_inactive: true,
-            skip_fields: true,
-          },
+    return async (
+      dispatch,
+      getState,
+    ): Promise<UpdateDataPermissionPayload | undefined> => {
+      // The reducer writes one entry per schema, so it needs the database's
+      // tables. Drilling into a database loads them, but the database list can
+      // be edited without ever opening one, so fetch when they are missing.
+      // Swallow rejections; the reducer treats a missing database as a no-op.
+      const database =
+        getPermissionsDatabase(getState(), entityId.databaseId) ??
+        (await runRtkEndpoint(
+          { id: entityId.databaseId, ...DATABASE_TABLES_QUERY },
           dispatch,
           databaseApi.endpoints.getDatabaseMetadata,
-        ).catch(() => undefined);
-      }
-
-      const metadata = getMetadataWithHiddenTables(getState());
+          { forceRefetch: false },
+        ).catch(() => undefined));
       const postAction = permissionInfo.postActions?.[value];
       if (postAction) {
         // A post action takes the change over: it sends the admin to where this
@@ -256,7 +252,7 @@ export const updateDataPermission = createThunkAction(
         return;
       }
 
-      return { groupId, permissionInfo, value, metadata, entityId };
+      return { groupId, permissionInfo, value, database, entityId };
     };
   },
 );
@@ -640,9 +636,7 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
 
       state = current(state); // some of the update functions use icepick which is incompatible with immer
 
-      const { value, groupId, entityId, metadata, permissionInfo } = payload;
-
-      const database = metadata.database(entityId.databaseId);
+      const { value, groupId, entityId, database, permissionInfo } = payload;
 
       if (database == null) {
         return state;
