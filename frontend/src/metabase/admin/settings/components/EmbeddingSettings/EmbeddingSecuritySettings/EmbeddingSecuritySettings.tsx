@@ -8,6 +8,11 @@ import {
 import { CorsInputWidget } from "./CorsInputWidget";
 import { SameSiteSelectWidget } from "./SameSiteSelectWidget";
 
+/**
+ * The admin embedding section's Security page, unchanged. EMB-1526 deletes it
+ * along with the rest of that section; until then it and the embedding hub's
+ * Security tab both render these widgets.
+ */
 export function EmbeddingSecuritySettings() {
   return (
     <SettingsPageWrapper title={t`Security`}>

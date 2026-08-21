@@ -17,6 +17,11 @@ const embeddingHubGetStartedPage = () =>
     Component: EmbeddingHubGetStartedPage,
   }));
 
+const embeddingHubSecurityPage = () =>
+  import("./pages").then(({ EmbeddingHubSecurityPage }) => ({
+    Component: EmbeddingHubSecurityPage,
+  }));
+
 const setupPermissionsAndTenantsPage = () =>
   import("metabase/embedding/setup-guide").then(
     ({ SetupPermissionsAndTenantsPage }) => ({
@@ -54,6 +59,8 @@ export function getEmbeddingHubRoutes() {
           />
           <Route path="sso-setup" lazy={setupSsoPage} />
         </Route>
+
+        <Route path="security" lazy={embeddingHubSecurityPage} />
       </Route>
     </Route>
   );

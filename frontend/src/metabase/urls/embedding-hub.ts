@@ -9,3 +9,7 @@ export function embeddingHub() {
 export function embeddingHubGetStarted() {
   return `${ROOT_URL}/get-started`;
 }
+
+export function embeddingHubSecurity() {
+  return `${ROOT_URL}/security`;
+}

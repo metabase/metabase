@@ -41,6 +41,11 @@ export function EmbeddingHubLayout() {
   // Order comes from the design.
   const tabs: EmbeddingHubTab[] = [
     { label: t`Get started`, icon: "list", to: Urls.embeddingHubGetStarted() },
+    {
+      label: t`Security`,
+      icon: "shield_outline",
+      to: Urls.embeddingHubSecurity(),
+    },
   ];
 
   const upperNav = (
