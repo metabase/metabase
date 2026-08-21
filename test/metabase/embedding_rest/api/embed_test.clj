@@ -28,6 +28,7 @@
    [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -171,6 +172,17 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (=? successful-card-info
               (client/client :get 200 (card-url card)))))))
+
+(deftest embed-card-strips-dataset-query-test
+  (testing "GET /api/embed/card/:token replaces the Card's query with a blank native query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-card [card {:enable_embedding true
+                             :dataset_query    (mt/native-query {:query "SELECT id FROM venues"})}]
+        (let [{:keys [dataset_query]} (client/client :get 200 (card-url card))]
+          (is (=? {:database (mt/id)
+                   :stages   [{:native "-"}]}
+                  dataset_query))
+          (is (not (str/includes? (json/encode dataset_query) "venues"))))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -572,6 +584,17 @@
               (client/client :get 200 (dashboard-url dash))))
       (is (=? successful-dashboard-info
               (client/client :get 200 (dashboard-url (:entity_id dash) dash)))))))
+
+(deftest embed-dashboard-strips-dataset-query-test
+  (testing "GET /api/embed/dashboard/:token replaces each Card's query with a blank native query"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))
+              dataset-query (-> response :dashcards first :card :dataset_query)]
+          (is (=? {:database (mt/id)
+                   :stages   [{:native "-"}]}
+                  dataset-query))
+          (is (not (str/includes? (json/encode dataset-query) "source-table"))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
