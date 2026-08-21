@@ -48,9 +48,15 @@
 
 (defmethod definition :model/Card
   [card]
-  (-> card
-      :dataset_query
-      ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
+  ;; A stored `dataset_query` can be empty or otherwise unparseable -- nothing at the schema level prevents
+  ;; it. Such a card simply has no context-bearing forms; without the guard one broken card would take down
+  ;; the whole related-entities computation (and with it every x-ray) for everyone else.
+  (try
+    (-> card
+        :dataset_query
+        ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields)))
+    (catch Exception _
+      nil)))
 
 (mu/defmethod definition :model/Segment
   [segment :- [:map [:definition ::segments.schema/definition]]]
