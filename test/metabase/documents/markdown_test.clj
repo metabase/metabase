@@ -485,6 +485,65 @@
         (is (not (str/includes? m "\\<"))
             (format "%s mid-paragraph was escaped: %s" label (pr-str m)))))))
 
+(def ^:private childless-container-types
+  "Node types the editor's schema will not accept without children: `blockquote`, `listItem` and
+  `supportingText` hold blocks, the lists hold list items, and the layout containers hold one to
+  three of theirs."
+  #{"blockquote" "listItem" "bulletList" "orderedList" "supportingText" "flexContainer" "resizeNode"})
+
+(defn- contentless-containers
+  "The types of every node in `ast` that must have children and came back with none."
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (filter #(and (childless-container-types (:type %)) (empty? (:content %))))
+       (mapv :type)))
+
+(def ^:private nothing-to-show-markdown
+  "Markdown whose container ends up holding nothing a document can render: an HTML comment converts
+  to no nodes at all, and a bare `>` or `-` never had a child to begin with. The serializer escapes
+  a line-start `<` so it never writes the first shape, but `document_write` takes `content_markdown`
+  straight from the agent, so all of these reach `parse` anyway."
+  {"blockquote holding only a comment"   "> <!-- secret note -->"
+   "bullet item holding only a comment"  "- <!-- secret note -->"
+   "ordered item holding only a comment" "1. <!-- secret note -->"
+   "blockquote with no children"         ">"
+   "bullet item with no children"        "-"})
+
+(deftest ^:parallel container-with-nothing-to-show-is-dropped-test
+  (testing "a container whose children all convert to nothing is dropped rather than emitted empty.
+           The editor's content model requires children, so a container without them is a document
+           body that cannot be loaded at all — the write succeeds and the document never opens."
+    (doseq [[label markdown] nothing-to-show-markdown]
+      (let [ast (md/parse markdown)]
+        (is (= [] (contentless-containers ast))
+            (format "%s produced a container with no :content" label))
+        (is (= ["paragraph"] (mapv :type (:content ast)))
+            (format "%s left more than the trailing paragraph behind: %s" label (pr-str (:content ast))))))))
+
+(deftest ^:parallel comment-in-a-list-costs-only-its-own-item-test
+  (testing "an item holding only a comment leaves the list — and the items around it — alone"
+    (let [ast (md/parse "- a\n- <!-- secret note -->\n- c")]
+      (is (= [] (contentless-containers ast)))
+      (is (= ["bulletList" "paragraph"] (mapv :type (:content ast))))
+      (is (= [["a"] ["c"]]
+             (for [item (get-in ast [:content 0 :content])]
+               (mapv #(get-in % [:content 0 :text]) (:content item))))))))
+
+(deftest ^:parallel comment-beside-prose-keeps-the-prose-and-the-container-test
+  (testing "a comment accompanied by real content costs that content nothing — the container stays
+           and keeps its structure, with only the comment gone"
+    (doseq [[label markdown] {"blockquote" "> <!-- secret note -->\n> real prose"
+                              "list item"  "- <!-- secret note -->\n\n  real prose"}]
+      (let [ast       (md/parse markdown)
+            container (get-in ast [:content 0])]
+        (is (= [] (contentless-containers ast)) label)
+        (is (= (if (= "blockquote" label) "blockquote" "bulletList") (:type container)) label)
+        (is (= ["real prose"]
+               (->> (tree-seq :content :content container)
+                    (filter #(= "paragraph" (:type %)))
+                    (map #(get-in % [:content 0 :text]))))
+            (format "%s lost the prose beside the comment: %s" label (pr-str container)))))))
+
 ;;; ------------------------------------------------ Tables -------------------------------------------------------
 
 (def ^:private table-markdown

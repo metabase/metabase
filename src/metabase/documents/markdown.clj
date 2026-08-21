@@ -490,9 +490,19 @@
 
 (declare convert-blocks)
 
+(defn- container-block
+  "`node` with `content` attached, as the one-element seq a `convert-block` branch returns — or an
+  empty one when the conversion produced no children. A container with no children is a document
+  the editor's content model rejects and cannot load, so a container whose children all convert to
+  nothing (an HTML comment block, a bullet with nothing after it) is dropped rather than emitted
+  empty. Nothing visible goes with it: what it held was already nothing to show."
+  [node content]
+  (when (seq content)
+    [(assoc node :content (vec content))]))
+
 (defn- convert-list-item
   [item]
-  (with-content {:type "listItem"} (convert-blocks (fm-children item))))
+  (container-block {:type "listItem"} (convert-blocks (fm-children item))))
 
 (defn- code-block-text
   ^String [^Block node]
@@ -517,21 +527,23 @@
     Heading           [(with-content {:type  "heading"
                                       :attrs {:level (.getLevel ^Heading node) :_id (mint-id)}}
                          (convert-inlines (fm-children node) false))]
-    BulletList        [(with-content {:type  "bulletList"
-                                      :attrs {:_id (mint-id)}}
-                         (map convert-list-item (fm-children node)))]
-    OrderedList       [(with-content {:type  "orderedList"
-                                      :attrs {:start (.getStartNumber ^OrderedList node) :type nil :_id (mint-id)}}
-                         (map convert-list-item (fm-children node)))]
-    BlockQuote        [(with-content {:type  "blockquote"
-                                      :attrs {:_id (mint-id)}}
-                         (convert-blocks (fm-children node)))]
+    BulletList        (container-block {:type  "bulletList"
+                                        :attrs {:_id (mint-id)}}
+                                       (mapcat convert-list-item (fm-children node)))
+    OrderedList       (container-block {:type  "orderedList"
+                                        :attrs {:start (.getStartNumber ^OrderedList node) :type nil :_id (mint-id)}}
+                                       (mapcat convert-list-item (fm-children node)))
+    BlockQuote        (container-block {:type  "blockquote"
+                                        :attrs {:_id (mint-id)}}
+                                       (convert-blocks (fm-children node)))
     FencedCodeBlock   [(code-block-node node (not-empty (first (str/split (str (.getInfo ^FencedCodeBlock node)) #"\s+"))))]
     IndentedCodeBlock [(code-block-node node nil)]
     ThematicBreak     [{:type "horizontalRule"}]
     HtmlBlock         [{:type    "paragraph"
                         :attrs   {:_id (mint-id)}
                         :content [{:type "text" :text (str/trimr (str (.getChars ^Node node)))}]}]
+    ;; A comment renders nowhere, so it carries no node — a container left with only comments in it
+    ;; is dropped by [[container-block]] rather than emitted with nothing inside.
     HtmlCommentBlock  []
     ;; A definition still in the tree is one [[unlink-consumed-references!]] found no link for, so
     ;; its URL reaches the document only as the prose it was written as.
@@ -574,7 +586,7 @@
 
   Only definitions parented by the document go — a consumed one leaves at least the block holding
   its link behind, whereas a definition inside a blockquote or a list item can be that container's
-  only child, and a container with no children is a document the editor's `block+` model rejects."
+  only child, and unlinking it there would take the whole container out of the document."
   [^Node root]
   (doseq [node (vec (iterator-seq (.iterator (.getDescendants root))))
           :when (instance? LinkRef node)]
