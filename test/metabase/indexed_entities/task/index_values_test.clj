@@ -1,9 +1,10 @@
 (ns metabase.indexed-entities.task.index-values-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.task.index-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.indexed-entities.models.model-index-test :refer [with-scheduler-setup!]]
    [metabase.indexed-entities.task.index-values :as task.index-values]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.task.impl :as task]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -12,7 +13,9 @@
   (with-scheduler-setup!
     (mt/dataset test-data
       (testing "Missing triggers are recreated on job-init"
-        (let [query     (mt/mbql-query products)
+        (let [mp        (mt/metadata-provider)
+              query     (lib/query mp (lib.metadata/table mp (mt/id :products)))
+
               pk-ref    (mt/$ids $products.id)
               value-ref (mt/$ids $products.title)
               by-key    (fn [k xs]

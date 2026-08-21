@@ -1,13 +1,11 @@
 (ns metabase.tiles.api-test
   "Tests for `/api/tiles` endpoints."
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.tiles.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
@@ -18,33 +16,25 @@
 (defn png? [s]
   (= [\P \N \G] (drop 1 (take 4 s))))
 
-(defn- venues-query
-  []
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table (mt/id :people)
-              :fields [[:field (mt/id :people :id) nil]
-                       [:field (mt/id :people :state) nil]
-                       [:field (mt/id :people :latitude) nil]
-                       [:field (mt/id :people :longitude) nil]]}})
+(defn- venues-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+        (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
+                          (lib.metadata/field mp (mt/id :people :state))
+                          (lib.metadata/field mp (mt/id :people :latitude))
+                          (lib.metadata/field mp (mt/id :people :longitude))]))))
 
-(defn- native-query
-  []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query "SELECT LATITUDE, LONGITUDE FROM PEOPLE;"
-              :template-tags {}}})
+(defn- native-query []
+  (lib/native-query (mt/metadata-provider) "SELECT LATITUDE, LONGITUDE FROM PEOPLE;"))
 
-(defn- parameterized-native-query
-  []
-  {:database (mt/id)
-   :type     :native
-   :native   {:query "SELECT LATITUDE, LONGITUDE FROM PEOPLE WHERE STATE = {{state}};"
-              :template-tags {"state" {:id           "_STATE_"
-                                       :name         "state"
-                                       :display-name "State"
-                                       :type         "text"
-                                       :required     false}}}})
+(defn- parameterized-native-query []
+  (lib/native-query (mt/metadata-provider)
+                    "SELECT LATITUDE, LONGITUDE FROM PEOPLE WHERE STATE = {{state}};"
+                    nil {:template-tags {"state" {:id           "_STATE_"
+                                                  :name         "state"
+                                                  :display-name "State"
+                                                  :type         "text"
+                                                  :required     false}}}))
 
 (defn encoded-lat-field-ref
   "JSON-encoded latitude field ref for the People table"
@@ -54,7 +44,7 @@
    (json/encode
     (case mbql-or-native
       :mbql   (mt/$ids $people.latitude)
-      :native [:field "LATITUDE" {:base-type :type/Float}]))))
+      :native [:field {:base-type :type/Float} "LATITUDE"]))))
 
 (defn encoded-lon-field-ref
   "JSON-encoded longitude field ref for the People table"
@@ -64,7 +54,7 @@
    (json/encode
     (case mbql-or-native
       :mbql   (mt/$ids $people.longitude)
-      :native [:field "LONGITUDE" {:base-type :type/Float}]))))
+      :native [:field {:base-type :type/Float} "LONGITUDE"]))))
 
 (defn implicit-join-query
   "Query on Orders; the People lat/lon columns are only reachable via an implicit join through USER_ID."
@@ -73,11 +63,11 @@
     (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
 
 (defn encoded-implicit-join-field-ref
-  "JSON-encoded legacy ref with `:source-field` for a People column reached from Orders via an implicit join."
+  "JSON-encoded ref with `:source-field` for a People column reached from Orders via an implicit join."
   [field-name]
   (let [col (m/find-first #(= (:id %) (mt/id :people field-name))
                           (lib/visible-columns (implicit-join-query)))]
-    (json/encode (lib/->legacy-MBQL (lib/ref col)))))
+    (json/encode (lib/ref col))))
 
 (deftest ^:parallel ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"
@@ -123,7 +113,9 @@
                      :crowberto :get 200 (format "tiles/%d/1/1/1" (u/id card))
                      :latField (encoded-lat-field-ref :native)
                      :lonField (encoded-lon-field-ref :native)
-                     :parameters (json/encode [{:id "_STATE_"
+                     :parameters (json/encode [{:id (-> (:dataset_query card)
+                                                        lib/all-template-tags
+                                                        first :id)
                                                 :type :text
                                                 :target [:variable [:template-tag :state]]
                                                 :value "CA"}])))))))))
@@ -210,11 +202,12 @@
 (deftest ^:parallel tiles-query-test
   (testing "mbql"
     (testing "adds the inside filter and only selects the lat/lon fields"
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                       (lib/limit 50000)
-                      (lib/with-fields [(meta/field-metadata :people :id)
-                                        (meta/field-metadata :people :latitude)
-                                        (meta/field-metadata :people :longitude)]))]
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
+                                        (lib.metadata/field mp (mt/id :people :latitude))
+                                        (lib.metadata/field mp (mt/id :people :longitude))]))]
         (is (=? {:stages [{}
                           ;; should append a new stage
                           {:fields  [[:field {} "LATITUDE"]
@@ -228,13 +221,14 @@
                                       double?
                                       double?]]}]}
                 (#'api.tiles/tiles-query query 2 3 1
-                                         [:field (meta/id :people :latitude) nil]
-                                         [:field (meta/id :people :longitude) nil])))))))
+                                         (lib/normalize [:field {} (mt/id :people :latitude)])
+                                         (lib/normalize [:field {} (mt/id :people :longitude)]))))))))
 
 (deftest ^:parallel tiles-query-test-2
   (testing "native"
     (testing "nests the query, selects fields"
-      (let [query (lib/native-query meta/metadata-provider "select name, latitude, longitude from zomato limit 5000;")]
+      (let [query (lib/native-query  (mt/metadata-provider)
+                                     "select name, latitude, longitude from zomato limit 5000;")]
         (is (=? {:stages [{:native "select name, latitude, longitude from zomato limit 5000;"}
                           {:fields  [[:field {:base-type :type/Float} "latitude"]
                                      [:field {:base-type :type/Float} "longitude"]]
@@ -247,24 +241,25 @@
                                       double?
                                       double?]]
                            :limit   2000}]}
-                (@#'api.tiles/tiles-query query 2 2 1
-                                          [:field "latitude" {:base-type :type/Float}]
-                                          [:field "longitude" {:base-type :type/Float}])))))))
+                (#'api.tiles/tiles-query query 2 2 1
+                                         (lib/normalize [:field {:base-type :type/Float} "latitude"])
+                                         (lib/normalize [:field {:base-type :type/Float} "longitude"]))))))))
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
     (mt/dataset test-data
       (with-redefs [api.tiles/create-tile (fn [_ points] points)
                     api.tiles/tile->byte-array identity]
-        (let [result (mt/user-http-request
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                        (lib/breakout (lib.metadata/field mp (mt/id :people :latitude)))
+                        (lib/breakout (lib.metadata/field mp (mt/id :people :longitude)))
+                        (lib/aggregate (lib/count)))
+              result (mt/user-http-request
                       :crowberto :get 200 "tiles/7/30/49"
                       :latField (encoded-lat-field-ref :mbql)
                       :lonField (encoded-lon-field-ref :mbql)
-                      :query (json/encode
-                              (mt/mbql-query people
-                                {:breakout    [[:field (mt/id :people :latitude)]
-                                               [:field (mt/id :people :longitude)]]
-                                 :aggregation [[:count]]})))]
+                      :query (json/encode query))]
           (is (= [[36.6163612 -94.5197949]
                   [36.8177783 -93.8447328]
                   [36.8311004 -95.0253779]]
@@ -277,7 +272,11 @@
              :rasta :get 400 "tiles/1/1/1"
              :latField (encoded-lat-field-ref :mbql)
              :lonField (encoded-lon-field-ref :mbql)
-             :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))))))
+             :query (json/encode
+                     (let [mp (mt/metadata-provider)]
+                       (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                           (lib/filter (lib/= (lib.metadata/field mp (mt/id :people :id))
+                                              "X"))))))))))
 
 (deftest ^:parallel ad-hoc-implicit-join-ref-test
   (testing "GET /api/tiles/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
@@ -312,28 +311,26 @@
               :latField (encoded-implicit-join-field-ref :latitude)
               :lonField (encoded-implicit-join-field-ref :longitude)))))))
 
-(deftest ^:parallel legacy-ref-schema-strips-extra-keys-test
+(deftest ^:parallel encoded-ref-schema-strips-extra-keys-test
   (testing "the tile latField/lonField schema decodes a JSON field ref, validates it, and strips undeclared properties"
     (let [decoded (api.macros/decode-and-validate-params
-                   :query ::api.tiles/legacy-ref
-                   (json/encode [:field 1 {:base-type :type/Integer :a 1 :a/b 2}]))]
-      (is (mr/validate ::api.tiles/legacy-ref decoded))
-      (is (= [:field 1 {:base-type :type/Integer}] decoded)))
+                   :query ::api.tiles/encoded-ref
+                   (json/encode [:field {:base-type :type/Integer :a 1 :a/b 2} 1]))]
+      (is (mr/validate ::api.tiles/encoded-ref decoded))
+      (is (=? [:field {:base-type :type/Integer} 1] decoded)))
     (testing "a value that isn't a field ref is rejected with a clean 400 (not a 500 later)"
       (is (= 400 (-> (try (api.macros/decode-and-validate-params
-                           :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"}))
+                           :query ::api.tiles/encoded-ref (json/encode {:not "a-ref"}))
                           (catch clojure.lang.ExceptionInfo e (ex-data e)))
                      :status-code))))))
 
 (deftest ^:parallel query-schema-strips-extra-keys-test
   (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips undeclared properties"
-    (let [decoded (api.macros/decode-and-validate-params
-                   :query ::api.tiles/query
-                   (json/encode {:database (mt/id)
-                                 :type     "query"
-                                 :query    {:source-table (mt/id :people)
-                                            :a            1
-                                            :a/b          2}}))]
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                    (assoc :a 1 :a/b 2))
+          decoded (api.macros/decode-and-validate-params
+                   :query ::api.tiles/query (json/encode query))]
       (is (= :mbql/query (:lib/type decoded)))
       (is (not (contains? decoded :a)))
       (is (not (contains? decoded :a/b)))

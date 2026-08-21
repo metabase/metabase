@@ -1,5 +1,4 @@
 (ns ^:mb/driver-tests metabase.indexed-entities.models.model-index-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.models.model-index-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -8,6 +7,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -33,13 +34,16 @@
          ~@body
          (finally (qs/shutdown scheduler#))))))
 
+(defn- product-query [a b]
+  (let [mp (mt/metadata-provider)
+        field (lib.metadata/field mp (mt/id :products :id))]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        (lib/filter (lib/and (lib/> field a) (lib/< field b))))))
+
 (deftest quick-run-through
   (with-scheduler-setup!
     (mt/dataset test-data
-      (let [query     (mt/mbql-query products
-                        {:filter [:and
-                                  [:> $id 0]
-                                  [:< $id 10]]})
+      (let [query     (product-query 0 10)
             pk_ref    (mt/$ids $products.id)
             value_ref (mt/$ids $products.title)]
         (mt/with-model-cleanup [:model/Card]
@@ -66,26 +70,25 @@
               (model-index/add-values! model-index)
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
-                                             (mt/mbql-query products {:fields [$title]
-                                                                      :filter [:and
-                                                                               [:> $id 0]
-                                                                               [:< $id 10]]}))))
+                                             (lib/with-fields
+                                               query
+                                               [(lib.metadata/field
+                                                 (mt/metadata-provider)
+                                                 (mt/id :products :title))]))))
                      (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index)))))
             (testing "When the values change the indexed values change"
               ;; update the filter on the model to simulate different values indexed
               (t2/update! :model/Card
                           (u/the-id model)
-                          {:dataset_query (mt/mbql-query products
-                                            {:filter [:and
-                                                      [:> $id 10]
-                                                      [:< $id 20]]})})
+                          {:dataset_query (product-query 10 20)})
               (model-index/add-values! model-index)
               (is (= 9 (count (t2/select :model/ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
-                                             (mt/mbql-query products {:fields [$title]
-                                                                      :filter [:and
-                                                                               [:> $id 10]
-                                                                               [:< $id 20]]}))))
+                                             (lib/with-fields
+                                               (product-query 10 20)
+                                               [(lib.metadata/field
+                                                 (mt/metadata-provider)
+                                                 (mt/id :products :title))]))))
                      (t2/select-fn-set :name :model/ModelIndexValue :model_index_id (:id model-index))))
               (is (=? {:error nil
                        :state "indexed"}
@@ -177,33 +180,46 @@
 (deftest ^:parallel fetch-values-test
   (mt/test-drivers (disj (mt/normal-drivers) :mongo)
     (mt/dataset test-data
-      (doseq [[scenario query [field-refs]]
+      (doseq [:let [mp (mt/metadata-provider)]
+              [scenario query [field-refs]]
               (remove nil?
-                      [[:mbql (mt/mbql-query products {:fields [$id $title]})]
-                       [:mbql-custom-column (mt/mbql-query products
-                                              {:expressions
-                                               {"inc-id"
-                                                [:+ $id 1]
-                                                "full-name"
-                                                [:concat $title "custom"]}})
-                        [[[:expression "inc-id"] [:expression "full-name"]]]]
+                      [[:mbql
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            (lib/with-fields [(lib.metadata/field mp (mt/id :products :id))
+                                              (lib.metadata/field mp (mt/id :products :title))]))]
+                       [:mbql-custom-column
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            (lib/expression "inc-id" (lib/+ 1 (lib.metadata/field mp (mt/id :products :id))))
+                            (lib/expression "full-name" (lib/concat
+                                                         (lib.metadata/field mp (mt/id :products :title))
+                                                         "custom")))
+                        [[[:expression {} "inc-id"] [:expression {} "full-name"]]]]
                        [:native (mt/native-query
                                  (qp.compile/compile
-                                  (mt/mbql-query products {:fields [$id $title]})))]
+                                  (let [mp (mt/metadata-provider)]
+                                    (lib/query mp (lib.metadata/table mp (mt/id :products))))))]
                        (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
-                         [:join (mt/mbql-query people
-                                  {:joins [{:fields       :all,
-                                            :source-table $$orders,
-                                            :condition    [:=
-                                                           $people.id
-                                                           &Orders.orders.user_id],
-                                            :alias        "Orders"}
-                                           {:fields       :all,
-                                            :source-table $$products,
-                                            :condition    [:=
-                                                           &Orders.orders.product_id
-                                                           &Products.products.id],
-                                            :alias        "Products"}]})
+                         [:join
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                              (lib/join (-> (lib/join-clause
+                                             (lib.metadata/table mp (mt/id :orders))
+                                             [(lib/= (lib.metadata/field mp (mt/id :people :id))
+                                                     (lib/with-join-alias
+                                                      (lib.metadata/field mp (mt/id :orders :user_id))
+                                                      "Orders"))])
+                                            (lib/with-join-alias "Orders")
+                                            (lib/with-join-fields :all)))
+                              (lib/join (-> (lib/join-clause
+                                             (lib.metadata/table mp (mt/id :products))
+                                             [(lib/=
+                                               (lib/with-join-alias
+                                                (lib.metadata/field mp (mt/id :orders :product_id))
+                                                "Orders")
+                                               (lib/with-join-alias
+                                                (lib.metadata/field mp (mt/id :products :id))
+                                                "Products"))])
+                                            (lib/with-join-alias "Products")
+                                            (lib/with-join-fields :all))))
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
         (mt/with-temp [:model/Card model (mt/card-with-source-metadata-for-query
                                           query)]
@@ -228,13 +244,14 @@
     (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
                                             :type :model
                                             :name "model index test")]
-      (let [by-name     (fn [n] (or (some (fn [f]
-                                            (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
-                                              (:field_ref f)))
-                                          (:result_metadata model))
-                                    (throw (ex-info (str "Didn't find field: " n)
-                                                    {:fields (map :name (:result_metadata model))
-                                                     :field  n}))))
+      (let [by-name (fn [n] (or (some (fn [f]
+                                        (when (= (-> f :display_name u/lower-case-en)
+                                                 (u/lower-case-en n))
+                                          (lib/normalize (:field_ref f))))
+                                      (:result_metadata model))
+                                (throw (ex-info (str "Didn't find field: " n)
+                                                {:fields (map :name (:result_metadata model))
+                                                 :field  n}))))
             model-index (mt/user-http-request :rasta :post 200 "model-index"
                                               {:model_id  (u/the-id model)
                                                :pk_ref    (by-name pk-name)
@@ -252,7 +269,8 @@
 (deftest model-index-test
   (mt/dataset test-data
     (testing "Simple queries"
-      (test-index! {:query      (mt/mbql-query products)
+      (test-index! {:query      (let [mp (mt/metadata-provider)]
+                                  (lib/query mp (lib.metadata/table mp (mt/id :products))))
                     :pk-name    "id"
                     :value-name "title"
                     :quantity   200
@@ -262,19 +280,28 @@
 (deftest model-index-test-2
   (mt/dataset test-data
     (testing "With joins"
-      (test-index! {:query      (mt/mbql-query people
-                                  {:joins [{:fields       :all,
-                                            :source-table $$orders,
-                                            :condition    [:=
-                                                           [:field $people.id nil]
-                                                           [:field $orders.user_id {:join-alias "Orders"}]],
-                                            :alias        "Orders"}
-                                           {:fields       :all,
-                                            :source-table $$products,
-                                            :condition    [:=
-                                                           [:field $orders.product_id {:join-alias "Orders"}]
-                                                           [:field $products.id {:join-alias "Products"}]],
-                                            :alias        "Products"}]})
+      (test-index! {:query      (let [mp (mt/metadata-provider)]
+                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                      (lib/join (-> (lib/join-clause
+                                                     (lib.metadata/table mp (mt/id :orders))
+                                                     [(lib/=
+                                                       (lib.metadata/field mp (mt/id :people :id))
+                                                       (lib/with-join-alias
+                                                        (lib.metadata/field mp (mt/id :orders :user_id))
+                                                        "Orders"))])
+                                                    (lib/with-join-alias "Orders")
+                                                    (lib/with-join-fields :all)))
+                                      (lib/join (-> (lib/join-clause
+                                                     (lib.metadata/table mp (mt/id :products))
+                                                     [(lib/=
+                                                       (lib/with-join-alias
+                                                        (lib.metadata/field mp (mt/id :orders :product_id))
+                                                        "Orders")
+                                                       (lib/with-join-alias
+                                                        (lib.metadata/field mp (mt/id :products :id))
+                                                        "Products"))])
+                                                    (lib/with-join-alias "Products")
+                                                    (lib/with-join-fields :all)))))
                     :pk-name    "Products → ID"
                     :value-name "Products → Title"
                     :quantity   200
@@ -284,19 +311,24 @@
 (deftest model-index-test-3
   (mt/dataset test-data
     (testing "Native"
-      (test-index! {:query      (mt/native-query (qp.compile/compile (mt/mbql-query products)))
-                    :pk-name    "id"
-                    :value-name "title"
-                    :quantity   200
-                    :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
-                    :scenario   :native}))))
+      (let [mp                (mt/metadata-provider)
+            query             (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+        (test-index! {:query      (mt/native-query (qp.compile/compile query))
+                      :pk-name    "id"
+                      :value-name "title"
+                      :quantity   200
+                      :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                      :scenario   :native})))))
 
 (deftest model-index-test-4
   (mt/dataset test-data
     (testing "Records error message on failure"
-      (let [query             (mt/mbql-query products {:fields [$id $title]})
-            pk-ref            (mt/$ids $products.id)
-            invalid-value-ref (mt/$ids $products.ean)]
+      (let [mp                (mt/metadata-provider)
+            query             (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                  (lib/with-fields [(lib.metadata/field mp (mt/id :products :id))
+                                                    (lib.metadata/field mp (mt/id :products :title))]))
+            pk-ref            (lib/normalize (mt/$ids $products.id))
+            invalid-value-ref (lib/normalize (mt/$ids $products.ean))]
         (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
                                                 :type :model
                                                 :name "model index test")
