@@ -1,7 +1,6 @@
 export * from "./action";
 export * from "./activity";
 export * from "./ai-entity-analysis";
-export * from "./analytics";
 export * from "./api";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
