@@ -34,6 +34,9 @@ jobs:
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
       - name: Generate environment variables documentation
         id: generate_env_docs
         run: |
@@ -66,6 +69,22 @@ jobs:
           set -e  # Exit on any error
           echo "Generating API documentation..."
           clojure -M:ee:doc command-documentation
+        continue-on-error: false
+
+      - name: Generate embedding SDK documentation
+        id: generate_embedding_sdk_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding SDK documentation..."
+          bun run embedding-sdk:docs:generate
+        continue-on-error: false
+
+      - name: Generate embedding EAJS documentation
+        id: generate_embedding_eajs_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating embedding EAJS documentation..."
+          bun run embedding-eajs:docs:generate
         continue-on-error: false
 
       - name: Check for changes
@@ -137,6 +156,8 @@ jobs:
           - \`clojure -M:ee:doc environment-variables-documentation\`
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
+          - \`bun run embedding-sdk:docs:generate\`
+          - \`bun run embedding-eajs:docs:generate\`
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \
