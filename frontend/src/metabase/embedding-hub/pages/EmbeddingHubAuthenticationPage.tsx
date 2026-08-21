@@ -75,7 +75,7 @@ function AuthenticationSection({
   // here -- Alessio, 2026-08-21.
   return (
     <>
-      <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />
+      <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm title={null} />
       <OtherAuthMethodsBanner />
     </>
   );

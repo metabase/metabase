@@ -19,6 +19,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import type { SettingsJWTFormProps } from "metabase/plugins";
 import {
   useAdminSetting,
   useGetAdminSettingsDetailsQuery,
@@ -39,7 +40,9 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-lastname"
 >;
 
-export const SettingsJWTForm = () => {
+export const SettingsJWTForm = ({
+  title = t`JWT`,
+}: SettingsJWTFormProps = {}) => {
   const {
     data: settingDetails,
     isLoading: isLoadingDetails,
@@ -86,7 +89,7 @@ export const SettingsJWTForm = () => {
   const usingTenants = settingDetails["use-tenants"]?.value;
 
   return (
-    <SettingsPageWrapper title={t`JWT`}>
+    <SettingsPageWrapper title={title}>
       {jwtEnabled && (
         <SettingsSection>
           <AdminSettingInput
