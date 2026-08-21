@@ -143,8 +143,6 @@
                       :query      (mt.tu/restricted-column-query (mt/id))}}
                     :attributes {:cat 50}}
     (let [field (t2/select-one :model/Field :id (mt/id :venues :name))]
-      ;; Other tests may leave advanced FieldValues behind for this field, throwing off the counts below
-      (#'field-values/clear-advanced-field-values-for-field! field)
       ;; Make sure FieldValues are populated
       (field-values/get-or-create-full-field-values! field)
       ;; Warm up the cache
