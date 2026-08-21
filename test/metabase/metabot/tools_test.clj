@@ -171,6 +171,29 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
+(defn- construct-tool-output-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
+  the `:output` the LLM would see."
+  [e]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+    (:output (binding [shared/*profile-id* :nlq]
+               (agent-tools/construct-notebook-query-tool
+                {:query       {:lib/type "mbql/query" :stages []}
+                 :title       "Seat check"
+                 :description "Total order count."})))))
+
+(deftest construct-notebook-query-tool-permission-error-test
+  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
+                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
+                "named is not a failure to report as one")
+    (is (= "You don't have permissions to do that."
+           (construct-tool-output-for-thrown
+            (ex-info "You don't have permissions to do that." {:status-code 403})))))
+  (testing "anything else without `:agent-error?` still gets the generic wrapper"
+    (is (= "Failed to construct notebook query: something went sideways"
+           (construct-tool-output-for-thrown
+            (ex-info "something went sideways" {:status-code 400}))))))
+
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
     (is (contains? @#'agent-tools/state-dependent-tools "create_chart"))

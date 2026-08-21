@@ -1,7 +1,7 @@
 import { type HTMLAttributes, forwardRef } from "react";
 
 import MetabaseSettings from "metabase/utils/settings";
-import { hasTimezoneOffset } from "metabase/utils/time-dayjs";
+import { hasExplicitTimezone } from "metabase/utils/time-dayjs";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ColumnSettings, DatetimeUnit } from "metabase-types/api";
 
@@ -21,7 +21,7 @@ export const getFormattedTime = (
   const settingsOptions = MetabaseSettings.formattingOptions();
   // offset-less strings have no known timezone, so render them as written
   const canConvertToLocal =
-    typeof value !== "string" || hasTimezoneOffset(value);
+    typeof value !== "string" || hasExplicitTimezone(value);
   return formatDateTimeWithUnit(value, unit ?? "default", {
     ...settingsOptions,
     local: local && canConvertToLocal,

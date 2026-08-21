@@ -62,12 +62,11 @@ const NUMERIC_UNIT_FORMATS: Record<string, (value: number) => Dayjs> = {
   year: (value: number) => dayjs().year(value).startOf("year"),
 };
 
-// only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
-// moment normally interprets the DD in YYYY-MM-DD as an offset :-/
-const OFFSET_SUFFIX_REGEX = /(Z|[+-]\d\d:?\d\d)$/;
+// either Z or ±hh:mm or ±hhmm
+const EXPLICIT_TIMEZONE_PATTERN = /(Z|[+-]\d\d:?\d\d)$/;
 
-export function hasTimezoneOffset(value: unknown): value is string {
-  return typeof value === "string" && OFFSET_SUFFIX_REGEX.test(value);
+export function hasExplicitTimezone(value: string): boolean {
+  return EXPLICIT_TIMEZONE_PATTERN.test(value);
 }
 
 export function parseTimestamp(
@@ -97,7 +96,7 @@ export function parseTimestamp(
     } else {
       result = dayjs.utc(value);
     }
-  } else if (hasTimezoneOffset(value)) {
+  } else if (typeof value === "string" && hasExplicitTimezone(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     // Unjustified type cast. FIXME
