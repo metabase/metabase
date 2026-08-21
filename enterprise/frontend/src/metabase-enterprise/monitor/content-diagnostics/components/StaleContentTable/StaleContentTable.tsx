@@ -1,4 +1,10 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -31,10 +37,12 @@ type StaleContentTableProps = {
   sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
+  rowSelection: RowSelectionState;
   onSelect?: (finding: ContentDiagnosticsStaleFinding) => void;
   onSortOptionsChange: (
     sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined,
   ) => void;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
 export function StaleContentTable({
@@ -43,8 +51,10 @@ export function StaleContentTable({
   sortOptions,
   isFetching = false,
   isLoading = false,
+  rowSelection,
   onSelect,
   onSortOptionsChange,
+  onRowSelectionChange,
 }: StaleContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
@@ -78,7 +88,10 @@ export function StaleContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
+      enableRowSelection: (row) => row.original.can_write,
+      rowSelection,
       onRowActivate: handleRowActivate,
+      onRowSelectionChange,
       onSortingChange: handleSortingChange,
     });
 
@@ -98,12 +111,20 @@ export function StaleContentTable({
       data-testid="stale-content-list"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={SKELETON_COLUMN_WIDTHS}
+        />
       ) : (
         <>
           <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
           <TreeTable
             instance={treeTableInstance}
+            showCheckboxes
+            onHeaderCheckboxClick={() =>
+              treeTableInstance.table.toggleAllRowsSelected()
+            }
+            headerCheckboxAriaLabel={t`Select all`}
             emptyState={<MonitorEmptyState label={t`No stale content found`} />}
             onRowClick={handleRowActivate}
           />

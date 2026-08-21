@@ -59,7 +59,9 @@
    [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
-   [:created_at          [:maybe ms/TemporalInstant]]])
+   [:created_at          [:maybe ms/TemporalInstant]]
+   ;; whether the caller can trash the entity (curate its collection, or delete a transform)
+   [:can_write           :boolean]])
 
 (def ^:private BreadcrumbId
   "A breadcrumb collection id: a real collection id, or the literal \"root\" of the root sentinel."

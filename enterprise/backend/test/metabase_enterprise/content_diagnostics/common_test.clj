@@ -158,6 +158,26 @@
           (is (nil? (get-in row [:details :description])))
           (is (nil? (get-in row [:details :collection]))))))))
 
+(deftest hydrate-findings-attaches-can-write-test
+  (testing "can_write reflects whether the current user can trash the entity (curate its collection)"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:collection_id coll-id}]
+      (let [can-write? #(-> (api.common/hydrate-findings [{:id           1
+                                                           :finding_type :stale
+                                                           :entity_type  :card
+                                                           :entity_id    card-id
+                                                           :details      {}}]
+                                                         nil)
+                            first
+                            :can_write)]
+        (testing "an admin can"
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (true? (can-write?)))))
+        (testing "a user without curate permission on its collection cannot"
+          (mt/with-non-admin-groups-no-collection-perms coll-id
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (false? (can-write?))))))))))
+
 (deftest root-resident-collection-breadcrumb-names-its-own-tree-test
   (testing "a root-resident collection subject's root breadcrumb is labeled by its own namespace, not
             blanket \"Our analytics\" (duplicated spans transforms-ns collections)"

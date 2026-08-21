@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import type { RowSelectionState } from "@tanstack/react-table";
 import { useLayoutEffect, useMemo, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -11,6 +12,7 @@ import { useListStaleFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
 
+import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
@@ -44,6 +46,7 @@ export function StaleContent({
 }: StaleContentProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const { page = 0, query } = params;
   const filterOptions = useMemo(() => getStaleFilterOptions(params), [params]);
@@ -78,14 +81,26 @@ export function StaleContent({
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
   );
+  const selectedFindings = findings.filter(
+    (finding) => rowSelection[String(finding.id)],
+  );
+
+  const clearRowSelection = () => setRowSelection({});
+
+  const handleTrashSettled = (failedFindingIds: number[]) =>
+    setRowSelection(
+      Object.fromEntries(failedFindingIds.map((id) => [String(id), true])),
+    );
 
   const handleQueryChange = (query: string | undefined) => {
+    clearRowSelection();
     onParamsChange({ ...params, query, page: undefined });
   };
 
   const handleFilterOptionsChange = (
     newFilterOptions: StaleContentFilterOptions,
   ) => {
+    clearRowSelection();
     onParamsChange(
       {
         ...params,
@@ -97,12 +112,14 @@ export function StaleContent({
   };
 
   const handlePageChange = (page: number) => {
+    clearRowSelection();
     onParamsChange({ ...params, page });
   };
 
   const handleSortOptionsChange = (
     sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined,
   ) => {
+    clearRowSelection();
     onParamsChange(
       {
         ...params,
@@ -121,49 +138,60 @@ export function StaleContent({
   }, [selectedFindingId, selectedFinding]);
 
   return (
-    <Flex ref={containerRef} h="100%" wrap="nowrap">
-      <MonitorMain>
-        <DiagnosticsHeader />
-        <StaleContentFilterBar
-          query={query}
-          filterOptions={filterOptions}
-          isLoading={isLoading}
-          onQueryChange={handleQueryChange}
-          onFilterOptionsChange={handleFilterOptionsChange}
-          actions={<DiagnosticsScanButton />}
-        />
-        {error != null ? (
-          <Center flex={1}>
-            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-          </Center>
-        ) : (
-          <StaleContentTable
-            findings={findings}
-            params={params}
-            sortOptions={sortOptions}
-            isFetching={isFetching}
+    <>
+      <Flex ref={containerRef} h="100%" wrap="nowrap">
+        <MonitorMain>
+          <DiagnosticsHeader />
+          <StaleContentFilterBar
+            query={query}
+            filterOptions={filterOptions}
             isLoading={isLoading}
-            onSelect={(finding) => setSelectedFindingId(finding.id)}
-            onSortOptionsChange={handleSortOptionsChange}
+            onQueryChange={handleQueryChange}
+            onFilterOptionsChange={handleFilterOptionsChange}
+            actions={<DiagnosticsScanButton />}
           />
+          {error != null ? (
+            <Center flex={1}>
+              <DelayedLoadingAndErrorWrapper
+                loading={isLoading}
+                error={error}
+              />
+            </Center>
+          ) : (
+            <StaleContentTable
+              findings={findings}
+              params={params}
+              sortOptions={sortOptions}
+              isFetching={isFetching}
+              isLoading={isLoading}
+              rowSelection={rowSelection}
+              onSelect={(finding) => setSelectedFindingId(finding.id)}
+              onSortOptionsChange={handleSortOptionsChange}
+              onRowSelectionChange={setRowSelection}
+            />
+          )}
+          {!isLoading && error == null && (
+            <DiagnosticsPagination
+              page={page}
+              pageItemCount={findings.length}
+              totalCount={totalCount}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </MonitorMain>
+        {selectedFinding != null && (
+          <Sidebar containerWidth={containerWidth}>
+            <StaleContentSidebar
+              finding={selectedFinding}
+              onClose={() => setSelectedFindingId(undefined)}
+            />
+          </Sidebar>
         )}
-        {!isLoading && error == null && (
-          <DiagnosticsPagination
-            page={page}
-            pageItemCount={findings.length}
-            totalCount={totalCount}
-            onPageChange={handlePageChange}
-          />
-        )}
-      </MonitorMain>
-      {selectedFinding != null && (
-        <Sidebar containerWidth={containerWidth}>
-          <StaleContentSidebar
-            finding={selectedFinding}
-            onClose={() => setSelectedFindingId(undefined)}
-          />
-        </Sidebar>
-      )}
-    </Flex>
+      </Flex>
+      <ContentDiagnosticsBulkTrashBar
+        selectedFindings={selectedFindings}
+        onSettled={handleTrashSettled}
+      />
+    </>
   );
 }

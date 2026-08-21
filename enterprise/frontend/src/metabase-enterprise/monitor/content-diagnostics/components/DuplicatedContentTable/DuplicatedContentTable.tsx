@@ -1,4 +1,10 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -31,10 +37,12 @@ type DuplicatedContentTableProps = {
   sortOptions: Sorting<ContentDiagnosticsDuplicatedSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
+  rowSelection: RowSelectionState;
   onSelect?: (finding: ContentDiagnosticsDuplicatedFinding) => void;
   onSortOptionsChange: (
     sortOptions: Sorting<ContentDiagnosticsDuplicatedSortColumn> | undefined,
   ) => void;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
 export function DuplicatedContentTable({
@@ -43,8 +51,10 @@ export function DuplicatedContentTable({
   sortOptions,
   isFetching = false,
   isLoading = false,
+  rowSelection,
   onSelect,
   onSortOptionsChange,
+  onRowSelectionChange,
 }: DuplicatedContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
@@ -78,7 +88,10 @@ export function DuplicatedContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
+      enableRowSelection: (row) => row.original.can_write,
+      rowSelection,
       onRowActivate: handleRowActivate,
+      onRowSelectionChange,
       onSortingChange: handleSortingChange,
     });
 
@@ -98,12 +111,20 @@ export function DuplicatedContentTable({
       data-testid="duplicated-content-list"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={SKELETON_COLUMN_WIDTHS}
+        />
       ) : (
         <>
           <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
           <TreeTable
             instance={treeTableInstance}
+            showCheckboxes
+            onHeaderCheckboxClick={() =>
+              treeTableInstance.table.toggleAllRowsSelected()
+            }
+            headerCheckboxAriaLabel={t`Select all`}
             emptyState={
               <MonitorEmptyState label={t`No duplicated content found`} />
             }

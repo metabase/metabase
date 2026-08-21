@@ -52,25 +52,12 @@
 ;;; Resolved live at read time against each entity's *current* collection (not scan-time
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
-(defn entity-collection-clauses
-  "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
-  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
-  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
-  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
-  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
-  [coll-pred-fn]
-  (for [[etype model] common/entity-type->model]
-    [:and
-     [:= :entity_type (name etype)]
-     [:in :entity_id {:select [:id]
-                      :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
-
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read (a collection subject must
   itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
   []
-  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
+  (into [:or] (common/entity-collection-clauses (keys common/entity-type->model)
+                                                collection/visible-collection-filter-clause)))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -126,7 +113,8 @@
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
+          (common/entity-collection-clauses (keys common/entity-type->model)
+                                            (fn [coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
@@ -413,6 +401,30 @@
 (defmethod finalize-finding :sparse  [_ base row _ctx] (merge base (select-keys row [:content_count])))
 (defmethod finalize-finding :crowded [_ base row _ctx] (merge base (select-keys row [:content_count])))
 
+(defn- can-write-by-entity
+  "`{[entity-type entity-id] → can_write bool}` for the page's findings, each entity hydrated with its own
+  model's `:can_write` - collection curate for card/dashboard/document/collection, DB-transforms permission
+  for transform. Collection items select only `collection_id`; collection and transform read many columns,
+  so they stay whole-row."
+  [findings]
+  (into {}
+        (for [[etype rows] (group-by :entity_type findings)
+              :let  [model      (common/entity-type->model etype)
+                     ids        (into #{} (map :entity_id) rows)
+                     selectable (cond
+                                  ;; card_schema: Card's after-select throws on a row with query columns but no schema
+                                  (= etype :card)
+                                  [model :id :collection_id :card_schema]
+
+                                  (isa? common/hierarchy etype ::common/collection-item)
+                                  [model :id :collection_id]
+
+                                  :else
+                                  model)]
+              :when (and model (seq ids))
+              row   (t2/hydrate (t2/select selectable :id [:in ids]) :can_write)]
+          [[etype (:id row)] (boolean (:can_write row))])))
+
 (defn hydrate-findings
   "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
   nested `details` = stored verdict + {collection, description, owner, creator, view_count?}. `view_count`
@@ -432,6 +444,7 @@
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)
+        can-write   (can-write-by-entity findings)
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
@@ -458,6 +471,7 @@
                                      :detected_at         detected_at
                                      :entity_display_name entity_name
                                      :created_at          entity_created_at
+                                     :can_write           (get can-write [entity_type entity_id] false)
                                      :details             details*}
                               ;; keyed on entity type so a card row with NULL card_type still serves
                               ;; the key, as null

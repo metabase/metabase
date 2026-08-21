@@ -1,5 +1,12 @@
-import type { Row, SortingState, Updater } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -31,10 +38,13 @@ type ImbalancedContentTableProps = {
   emptyStateLabel: string;
   isFetching?: boolean;
   isLoading?: boolean;
+  enableSelection: boolean;
+  rowSelection: RowSelectionState;
   onSelect?: (finding: ContentDiagnosticsImbalancedFinding) => void;
   onSortOptionsChange: (
     sortOptions: Sorting<ContentDiagnosticsImbalancedSortColumn> | undefined,
   ) => void;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
 export function ImbalancedContentTable({
@@ -44,8 +54,11 @@ export function ImbalancedContentTable({
   emptyStateLabel,
   isFetching = false,
   isLoading = false,
+  enableSelection,
+  rowSelection,
   onSelect,
   onSortOptionsChange,
+  onRowSelectionChange,
 }: ImbalancedContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(
@@ -79,7 +92,12 @@ export function ImbalancedContentTable({
       sorting: sortingState,
       manualSorting: true,
       getNodeId: (finding) => String(finding.id),
+      enableRowSelection: enableSelection
+        ? (row) => row.original.can_write
+        : false,
+      rowSelection,
       onRowActivate: handleRowActivate,
+      onRowSelectionChange,
       onSortingChange: handleSortingChange,
     });
 
@@ -99,12 +117,20 @@ export function ImbalancedContentTable({
       data-testid="imbalanced-content-list"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
+        <TreeTableSkeleton
+          showCheckboxes={enableSelection}
+          columnWidths={SKELETON_COLUMN_WIDTHS}
+        />
       ) : (
         <>
           <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
           <TreeTable
             instance={treeTableInstance}
+            showCheckboxes={enableSelection}
+            onHeaderCheckboxClick={() =>
+              treeTableInstance.table.toggleAllRowsSelected()
+            }
+            headerCheckboxAriaLabel={t`Select all`}
             emptyState={<MonitorEmptyState label={emptyStateLabel} />}
             onRowClick={handleRowActivate}
           />
