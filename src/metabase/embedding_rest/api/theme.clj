@@ -19,6 +19,7 @@
    [:entity_id ms/NonBlankString]
    [:name      ms/NonBlankString]
    [:settings ms/Map]
+   [:is_default :boolean]
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
@@ -28,7 +29,7 @@
   ; settings field is used for theme card previews.
   ; we can optimize this by only selecting the preview colors needed.
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]
-                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :settings :is_default :created_at :updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
@@ -92,6 +93,9 @@
   (locking seed-defaults-lock
     (t2/with-transaction [_conn]
       (when-not (embedding.settings/default-embedding-themes-seeded)
-        (t2/insert! :model/EmbeddingTheme themes)
+        ;; Marked here because nothing else can identify them afterwards: the
+        ;; names are stored already translated, and seeding is lazy so the ids
+        ;; are not ordered.
+        (t2/insert! :model/EmbeddingTheme (map #(assoc % :is_default true) themes))
         (embedding.settings/default-embedding-themes-seeded! true))))
   nil)

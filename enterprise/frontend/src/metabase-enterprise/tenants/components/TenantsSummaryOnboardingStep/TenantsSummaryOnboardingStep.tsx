@@ -44,7 +44,9 @@ export const TenantsSummaryOnboardingStep = ({
     { skip: tenants.length > 0 },
   );
 
-  const onDone = () => navigate("/admin/embedding/setup-guide");
+  // Relative so the wizard returns to whichever host mounted it: the admin
+  // setup guide, or the embedding hub's Get started tab.
+  const onDone = () => navigate("..");
 
   const tenantsToShow = useMemo(() => {
     // If we have tenants from the flow, use them

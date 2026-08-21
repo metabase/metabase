@@ -1,32 +1,27 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
-import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  useCompletedSetupGuideSteps,
+  useGetSetupGuideSteps,
+  useSetupGuideModals,
+} from "../hooks";
+import type { SetupGuideStepId } from "../types/setup-guide";
 
-import { useCompletedSetupGuideSteps, useGetSetupGuideSteps } from "../hooks";
-import type {
-  SetupGuideModalToTrigger,
-  SetupGuideStepId,
-} from "../types/setup-guide";
-
-import { SetupGuideXrayPickerModal } from "./SetupGuideXrayPickerModal";
 import {
   type StepperCardClickAction,
   type StepperStep,
   StepperWithCards,
 } from "./StepperWithCards/StepperWithCards";
 
-export const SetupGuide = () => {
+export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
   const embeddingSteps = useGetSetupGuideSteps();
   const { data: completedSteps } = useCompletedSetupGuideSteps();
 
-  const [openedModal, setOpenedModal] =
-    useState<SetupGuideModalToTrigger | null>(null);
-
-  const closeModal = () => setOpenedModal(null);
+  // Flows that leave the guide -- connecting a database, for one -- come back
+  // here, and the guide has more than one host.
+  const { setOpenedModal, modals } = useSetupGuideModals({ returnTo });
 
   const lockedSteps: Partial<Record<SetupGuideStepId, boolean>> = useMemo(
     () => ({
@@ -74,7 +69,7 @@ export const SetupGuide = () => {
             type: "docs" as const,
             docsPath,
             anchor,
-            utm: { utm_campaign: "embedding_hub", utm_content: stepId },
+            utm: { utm_campaign: "setup-guide", utm_content: stepId },
           }))
           .with({ modal: P.nonNullable }, ({ modal }) => ({
             type: "click" as const,
@@ -96,30 +91,12 @@ export const SetupGuide = () => {
         };
       }),
     }));
-  }, [embeddingSteps, completedSteps, lockedSteps]);
+  }, [embeddingSteps, completedSteps, lockedSteps, setOpenedModal]);
 
   return (
     <>
       <StepperWithCards steps={stepperSteps} />
-      <AddDataModal
-        opened={openedModal?.type === "add-data"}
-        onClose={closeModal}
-        initialTab={
-          openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
-        }
-        fromEmbeddingSetupGuide
-      />
-      <CreateDashboardModal
-        opened={openedModal?.type === "new-dashboard"}
-        onClose={closeModal}
-      />
-      <SetupGuideXrayPickerModal
-        opened={openedModal?.type === "xray-dashboard"}
-        onClose={closeModal}
-      />
-      {openedModal?.type === "user-strategy" && (
-        <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />
-      )}
+      {modals}
     </>
   );
 };

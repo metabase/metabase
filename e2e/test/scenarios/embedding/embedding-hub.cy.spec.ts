@@ -1,0 +1,220 @@
+import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+
+const { H } = cy;
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
+
+/**
+ * The embedding hub at `/embedding` -- the tabbed section, not the older
+ * onboarding checklist that `onboarding/embedding-homepage.cy.spec.ts` covers.
+ * One describe per tab; each tab adds its own as it lands.
+ *
+ * Deliberately thin: card copy, the upsell banner and the AI card's done states
+ * are unit-tested next to their components. What is here is what needs a real
+ * browser or a real backend -- routing, the two step orderings, and completion
+ * coming back from the checklist endpoint.
+ *
+ * Get started's blocks are both `@EE`, because the steps themselves are: tenants,
+ * SSO and data segregation only exist on an enterprise build. The unlicensed case
+ * is that same build with no token activated, which is what the locked states are
+ * about.
+ */
+
+const CARD = "embedding-hub-checklist-card";
+
+const PRO_STEP_ORDER = [
+  "Connect a database",
+  "Create a dashboard",
+  "Get embed snippet",
+  "Configure data permissions and tenants",
+  "Set up SSO",
+  "Embed in production with SSO",
+  "Create a custom theme",
+  "Configure AI",
+];
+
+// Without modular embedding every Fine-tune step is locked, so AI -- the one
+// advanced step still reachable -- is promoted into the first section.
+const UNLICENSED_STEP_ORDER = [
+  "Connect a database",
+  "Create a dashboard",
+  "Get embed snippet",
+  "Configure AI",
+  "Configure data permissions and tenants",
+  "Set up SSO",
+  "Embed in production with SSO",
+  "Create a custom theme",
+];
+
+function assertStepOrder(titles: string[]) {
+  cy.findAllByTestId(CARD)
+    .should("have.length", titles.length)
+    .each(($card, index) => {
+      cy.wrap($card).should("contain.text", titles[index]);
+    });
+}
+
+describe("scenarios > embedding > embedding hub > get started", () => {
+  describe("pro", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("redirects from the hub root and lists the licensed step order", () => {
+      cy.visit("/embedding");
+
+      cy.log("the hub root is the Get started tab");
+      cy.location("pathname").should("eq", "/embedding/get-started");
+
+      cy.findByRole("link", { name: "Get started" }).should(
+        "have.attr",
+        "aria-current",
+        "page",
+      );
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByRole("heading", {
+          name: "Get started with Metabase Embedding",
+        }).should("be.visible");
+
+        assertStepOrder(PRO_STEP_ORDER);
+      });
+    });
+
+    it("returns to Get started from the permissions wizard", () => {
+      cy.visit("/embedding/get-started");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("link", { name: "Configure data permissions and tenants" })
+        .click();
+
+      cy.location("pathname").should(
+        "eq",
+        "/embedding/get-started/permissions-setup",
+      );
+
+      cy.log(
+        "the wizard's back link is relative, so it lands on the host that mounted it rather than admin",
+      );
+      cy.findByRole("link", { name: /Back to the setup guide/ }).click();
+
+      cy.location("pathname").should("eq", "/embedding/get-started");
+    });
+
+    it("finishes the permissions wizard and lands back on Get started", () => {
+      cy.log("seed every step the wizard checks, so Summary is the one left");
+      H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      }).then(({ body: sharedCollection }) => {
+        H.createDashboard({
+          name: "Tenant dashboard",
+          collection_id: sharedCollection.id,
+        });
+      });
+
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({ table_id: STATIC_ORDERS_ID, group_id: group.id });
+        },
+      );
+
+      cy.visit("/embedding/get-started/permissions-setup");
+
+      cy.log("the Summary step closes the wizard out");
+      cy.findByRole("button", { name: "Done" }).click();
+
+      cy.location("pathname").should("eq", "/embedding/get-started");
+      cy.findByTestId("embedding-hub-main").should("be.visible");
+    });
+
+    it("finishes the SSO wizard and lands back on Get started", () => {
+      cy.log("JWT configured is what unlocks the two steps after it");
+      enableJwtAuth();
+
+      cy.visit("/embedding/get-started/sso-setup");
+
+      cy.findByRole("button", { name: "Next" }).click();
+
+      cy.log("confirming the manual login test is what closes the wizard out");
+      // A link, not a button: it is a `Button component={Link}`, so the step's
+      // own navigation is what returns to the hub.
+      cy.findByRole("link", { name: "Log in works, I'm done" }).click();
+
+      cy.location("pathname").should("eq", "/embedding/get-started");
+      cy.findByTestId("embedding-hub-main").should("be.visible");
+    });
+  });
+
+  describe("unlicensed", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("promotes AI into the first section and locks the Fine-tune steps", () => {
+      cy.visit("/embedding/get-started");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        assertStepOrder(UNLICENSED_STEP_ORDER);
+
+        cy.log(
+          "the upsell banner is what stands in for the Fine-tune subtitle",
+        );
+        cy.findByText(
+          "Upgrade to Metabase Pro to configure advanced options.",
+        ).should("be.visible");
+
+        cy.log("a feature-locked step is inert, with no link to follow");
+        cy.findByRole("link", { name: "Set up SSO" }).should("not.exist");
+        cy.findByText("Set up SSO")
+          .closest(`[data-testid=${CARD}]`)
+          .should("have.attr", "aria-disabled", "true");
+
+        cy.log("AI is never locked -- the admin AI page needs no token");
+        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
+      });
+    });
+
+    it("marks the embed step complete once a guest embed is published", () => {
+      cy.visit("/embedding/get-started");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Get embed snippet")
+          .closest(`[data-testid=${CARD}]`)
+          .findByLabelText("Step 3 complete")
+          .should("not.exist");
+      });
+
+      cy.log("publish a dashboard as a guest embed");
+      H.createDashboard({ name: "Published dashboard" }).then(
+        ({ body: dashboard }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            enable_embedding: true,
+          });
+        },
+      );
+
+      cy.log(
+        "the checklist is served without a licence, so completion is real rather than all-false",
+      );
+      cy.visit("/embedding/get-started");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Get embed snippet")
+          .closest(`[data-testid=${CARD}]`)
+          .findByLabelText("Step 3 complete")
+          .should("exist");
+      });
+    });
+  });
+});
