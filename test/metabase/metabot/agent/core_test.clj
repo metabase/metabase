@@ -393,9 +393,8 @@
                   {:type      :tool-input
                    :id        "call-search-1"
                    :function  "search"
-                   :arguments {:semantic_queries ["orders table"]
-                               :keyword_queries  ["orders"]
-                               :entity_types     ["table"]}}
+                   :arguments {:query        "orders"
+                               :entity_types ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
                  ;; Iteration 2: Construct a simple query via the representations YAML format
                  [{:type :start :id "msg-2"}
@@ -482,9 +481,8 @@
                                {:type      :tool-input
                                 :id        "call-search-1"
                                 :function  "search"
-                                :arguments {:semantic_queries ["orders table"]
-                                            :keyword_queries  ["orders"]
-                                            :entity_types     ["table"]}}
+                                :arguments {:query        "orders"
+                                            :entity_types ["table"]}}
                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                 :model "test" :id "msg-1"}]
                               ;; Iteration 2: final text (no tool)
@@ -531,9 +529,8 @@
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)
-                  (is (= {:semantic_queries ["orders table"]
-                          :keyword_queries  ["orders"]
-                          :entity_types     ["table"]}
+                  (is (= {:query        "orders"
+                          :entity_types ["table"]}
                          (get-in search [:attributes :ai/tool-args])))
                   (let [parent-llm (first (filter #(= (:parent-id search) (:id %)) llms))]
                     (is (some? parent-llm) "tool's parent-id resolves to an llm.call in the tree")))))))))))
@@ -721,9 +718,8 @@
                                             {:type      :tool-input
                                              :id        "t1"
                                              :function  "search"
-                                             :arguments {:semantic_queries ["test"]
-                                                         :keyword_queries  ["test"]
-                                                         :entity_types     ["table"]}}
+                                             :arguments {:query        "test"
+                                                         :entity_types ["table"]}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                              :model "test-model" :id "msg-1"}])
                                           (mut/mock-llm-response

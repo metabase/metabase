@@ -195,10 +195,9 @@
       (search/init-index! {:force-reset? false :re-populate? true})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [result (search-tools/search-tool
-                      {:semantic_queries ["orders"]
-                       :keyword_queries  ["orders"]
-                       :entity_types     ["table"]})]
-          (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
+                      {:query        "orders"
+                       :entity_types ["table"]})]
+          (assert-formatted-structured result "search: tables" #"<results\b"))))))
 
 (deftest search-tool-with-models-structured-output-test
   (testing "search tool with model results formats correctly"
@@ -215,11 +214,10 @@
                                                       :type          :model}]
             (search/init-index! {:force-reset? false :re-populate? true})
             (let [result (search-tools/search-tool
-                          {:semantic_queries ["Searchable Test Model"]
-                           :keyword_queries  ["Searchable Test Model"]
-                           :entity_types     ["model"]})]
+                          {:query        "Searchable Test Model"
+                           :entity_types ["model"]})]
               (assert-formatted-structured
-               result "search: model" #"<search-results\b"))))))))
+               result "search: model" #"<results\b"))))))))
 
 (deftest list-available-fields-structured-output-test
   (testing "list_available_fields :structured-output formats to clean XML"

@@ -179,20 +179,20 @@ Errors:
 
 ### POST /v1/search
 
-Search for tables and metrics. Supports keyword and semantic search. Results
-are ranked using Reciprocal Rank Fusion when both query types are provided.
+Hybrid keyword + semantic search. When semantic search is active the engine matches on
+both meaning and keywords; otherwise matching is keyword-only. Either way, provide one
+query string, not paraphrases.
 
 Request:
 
 ```json
 {
-  "term_queries": ["revenue", "orders"],
-  "semantic_queries": ["how much money did we make"]
+  "query": "orders by region"
 }
 ```
 
-At least one of `term_queries` or `semantic_queries` should be provided. Both
-are arrays of strings. Results are limited to 50 by default.
+`query` is a single, required string. Phrase it as a short noun phrase or
+question fragment. Results are limited to 50 by default.
 
 Response:
 

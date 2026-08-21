@@ -2,6 +2,7 @@
 (ns metabase.search.engine
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as mdb]
    [metabase.search.settings :as settings]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -229,6 +230,30 @@
   Prefers engines with a maintained index over merely supported ones."
   [engine]
   (u/seek #(not= engine %) (concat (active-engines) (supported-engines))))
+
+(defn resolved-engine
+  "The engine a search will actually run on: the semantic engine when it's active (it serves a query
+  alone, fusing keyword and vector matching), otherwise whatever the default precedence resolves to."
+  []
+  (or (u/seek #{:search.engine/semantic} (active-engines))
+      (default-engine)))
+
+(defn tsquery-operators-supported?
+  "Whether the keyword matcher that [[resolved-engine]] will use understands Postgres tsquery operator
+  syntax — `or` as alternation, `\"exact phrase\"`, `-exclusion`, trailing-word prefix.
+
+  True for the semantic engine, whose keyword half runs `to_tsquery` inside pgvector whatever the app
+  db is, and for the appdb engine on a Postgres app db. False otherwise: `in-place` matches with LIKE
+  patterns, and appdb on H2/MySQL splits on whitespace and ANDs the tokens as LIKE patterns (see
+  `metabase.search.appdb.specialization.h2/wildcard-tokens`), so there `or` is simply one more token
+  that must also match — an `or`-joined query is *narrower*, not broader.
+
+  Callers use this to decide whether operator syntax is worth emitting at all."
+  []
+  (case (resolved-engine)
+    :search.engine/semantic true
+    :search.engine/appdb    (= :postgres (mdb/db-type))
+    false))
 
 (defmethod disjunction :default [_ terms] terms)
 

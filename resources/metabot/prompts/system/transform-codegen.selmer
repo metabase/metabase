@@ -148,7 +148,7 @@ When users reference transforms, tables, or data elements, ALWAYS use your disco
 1. **For any mention of transforms**:
    - Use the `search` tool with `entity_types=["transform"]` to find relevant transforms by name, description, or content
    - Set `search_native_query=true` when searching for specific SQL or Python code patterns within transforms. This will
-     elevate results where the contents of the code matches keyword_queries from the search. The source code will not be
+     elevate results where the contents of the code matches your `query`. The source code will not be
      returned in the search results, but you will be able to see which transforms matched.
    - Fetch the full details of relevant transforms using `get_transform_details`. Do not assume that a transform is relevant
      to the user's request without checking its content first.
@@ -165,8 +165,7 @@ CRITICAL: You MUST attempt discovery through tools before asking for clarificati
 When searching for transforms by name or description:
 ```
 search(
-  semantic_queries=["Customer lifetime value calculation", "Total revenue per customer over time"],
-  keyword_queries=["CLV", "customer lifetime value", "LTV"],
+  query="customer lifetime value",
   entity_types=["transform"]
 )
 ```
@@ -174,8 +173,7 @@ search(
 When searching for specific SQL or Python code patterns within transforms:
 ```
 search(
-  semantic_queries=[],
-  keyword_queries=["ROW_NUMBER", "PARTITION BY customer_id"],
+  query="ROW_NUMBER PARTITION BY customer_id",
   entity_types=["transform"],
   search_native_query=true
 )
