@@ -6,10 +6,9 @@ import type {
   Card,
   DashboardCard,
   DatasetData,
+  ObjectId,
   RowValue,
 } from "metabase-types/api";
-
-export type ObjectId = number | string;
 
 export type OnVisualizationClickType =
   | (({

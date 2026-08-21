@@ -6,6 +6,7 @@ import type {
   Dataset,
   Field,
   NativeQuerySnippet,
+  ObjectId,
   ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
@@ -101,7 +102,7 @@ export interface QueryBuilderState {
 
   parameterValues: ParameterValuesMap;
 
-  zoomedRowObjectId: number | string | null;
+  zoomedRowObjectId: ObjectId | null;
   tableForeignKeyReferences: Record<number, ForeignKeyReference> | null;
 
   selectedTimelineEventIds: number[];

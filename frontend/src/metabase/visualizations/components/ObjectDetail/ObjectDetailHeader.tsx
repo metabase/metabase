@@ -4,9 +4,9 @@ import { t } from "ttag";
 import type { ActionItem } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
+import type { ObjectId } from "metabase-types/api";
 
 import S from "./ObjectDetailHeader.module.css";
-import type { ObjectId } from "./types";
 
 export interface ObjectDetailHeaderProps {
   actionItems: ActionItem[];

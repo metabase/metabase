@@ -14,11 +14,10 @@ import type {
   Table as ApiTable,
   DatasetColumn,
   DatasetData,
+  ObjectId,
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import type { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
   table?: Table | null;

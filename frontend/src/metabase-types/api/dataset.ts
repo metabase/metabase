@@ -26,6 +26,10 @@ import type { TableId } from "./table";
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
+// Identifies a single row in object detail: the row's PK value, or its row
+// index when the table has no single PK.
+export type ObjectId = number | string;
+
 export function getRowsForStableKeys(
   data: Pick<DatasetData, "rows" | "untranslatedRows">,
 ): RowValues[] {

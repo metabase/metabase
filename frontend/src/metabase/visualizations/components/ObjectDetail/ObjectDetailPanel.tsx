@@ -24,6 +24,7 @@ import type {
   ConcreteTableId,
   DatasetColumn,
   DatasetData,
+  ObjectId,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -34,7 +35,7 @@ import {
   ObjectDetailContainer,
   ObjectDetailLayout,
 } from "./ObjectDetailPanel.styled";
-import type { ObjectDetailProps, ObjectId } from "./types";
+import type { ObjectDetailProps } from "./types";
 import { getDisplayId, getObjectName, getSinglePKIndex } from "./utils";
 
 function filterByPk(
