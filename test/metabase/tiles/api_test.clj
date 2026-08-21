@@ -3,12 +3,14 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.tiles.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 ;; TODO: Assert on the contents of the response, not just the format
@@ -284,3 +286,31 @@
                      :lonField (encoded-lon-field-ref :mbql))))
           (is (= ["SECRET"]
                  (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
+(deftest ^:parallel legacy-ref-schema-strips-extra-keys-test
+  (testing "the tile latField/lonField schema decodes a JSON field ref, validates it, and strips undeclared properties"
+    (let [decoded (api.macros/decode-and-validate-params
+                   :query ::api.tiles/legacy-ref
+                   (json/encode [:field 1 {:base-type :type/Integer :a 1 :a/b 2}]))]
+      (is (mr/validate ::api.tiles/legacy-ref decoded))
+      (is (= [:field 1 {:base-type :type/Integer}] decoded)))
+    (testing "a value that isn't a field ref is rejected with a clean 400 (not a 500 later)"
+      (is (= 400 (-> (try (api.macros/decode-and-validate-params
+                           :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"}))
+                          (catch clojure.lang.ExceptionInfo e (ex-data e)))
+                     :status-code))))))
+
+(deftest ^:parallel query-schema-strips-extra-keys-test
+  (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips undeclared properties"
+    (let [decoded (api.macros/decode-and-validate-params
+                   :query ::api.tiles/query
+                   (json/encode {:database (mt/id)
+                                 :type     "query"
+                                 :query    {:source-table (mt/id :people)
+                                            :a            1
+                                            :a/b          2}}))]
+      (is (= :mbql/query (:lib/type decoded)))
+      (is (not (contains? decoded :a)))
+      (is (not (contains? decoded :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages decoded))
+          "undeclared properties are stripped from every stage"))))
