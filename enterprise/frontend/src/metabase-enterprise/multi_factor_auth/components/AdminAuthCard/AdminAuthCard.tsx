@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { msgid, ngettext, t } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
@@ -18,10 +18,17 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
+import {
+  useGetMfaAdminOverviewQuery,
+  useGetMfaStatusQuery,
+} from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";
 
-import { ENROLLED_USERS_PATH, UNENROLLED_USERS_PATH } from "../../constants";
+import {
+  ACCOUNT_AUTHENTICATION_PATH,
+  ENROLLED_USERS_PATH,
+  UNENROLLED_USERS_PATH,
+} from "../../constants";
 
 const ENFORCEMENT_OPTIONS = ["optional", "required", "required-date"] as const;
 type EnforcementOption = (typeof ENFORCEMENT_OPTIONS)[number];
@@ -72,6 +79,13 @@ export function AdminAuthCard() {
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
   });
+  const { data: mfaStatus } = useGetMfaStatusQuery(undefined, {
+    skip: !enabled,
+  });
+
+  // Requiring 2FA invalidates every session lacking a second factor, this admin's included, so
+  // they have to enrol before they can turn it on. Assume not enrolled until the status loads.
+  const canRequire = hasFeature && mfaStatus?.enrolled === true;
 
   const hasNoPasswordLogin =
     isPasswordLoginEnabled === false && isLdapEnabled === false;
@@ -159,13 +173,22 @@ export function AdminAuthCard() {
                   key={value}
                   value={value}
                   label={label}
-                  // Without the feature the backend only accepts "off", which the switch above
-                  // stays enabled for so a lapsed license can always be turned off.
-                  disabled={!hasFeature}
+                  disabled={value === "optional" ? !hasFeature : !canRequire}
                 />
               ))}
             </Stack>
           </Radio.Group>
+          {hasFeature && !canRequire && (
+            <Text size="sm" c="text-secondary" mt="sm">
+              {jt`${(
+                <Anchor
+                  key="enroll"
+                  component={Link}
+                  to={ACCOUNT_AUTHENTICATION_PATH}
+                >{t`Set up two-factor authentication`}</Anchor>
+              )} for your own account before requiring it, so you don't lock yourself out.`}
+            </Text>
+          )}
         </Box>
       )}
       {enforcement === "required" && deadline !== null && (

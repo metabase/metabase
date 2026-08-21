@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import {
   findRequests,
   setupMfaAdminOverviewEndpoint,
+  setupMfaStatusEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -15,6 +16,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 import {
   createMockMfaAdminOverview,
+  createMockMfaStatus,
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
@@ -31,6 +33,7 @@ type SetupOpts = {
   hasFeature?: boolean;
   overview?: MfaAdminOverview;
   isAdmin?: boolean;
+  isEnrolled?: boolean;
   isPasswordLoginEnabled?: boolean;
   isLdapEnabled?: boolean;
 };
@@ -41,6 +44,7 @@ function setup({
   hasFeature = true,
   overview = createMockMfaAdminOverview(),
   isAdmin = false,
+  isEnrolled = true,
   isPasswordLoginEnabled = true,
   isLdapEnabled = false,
 }: SetupOpts = {}) {
@@ -70,6 +74,7 @@ function setup({
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
   setupMfaAdminOverviewEndpoint(overview);
+  setupMfaStatusEndpoint(createMockMfaStatus({ enrolled: isEnrolled }));
 
   renderWithProviders(<AdminAuthCard />, {
     withRouter: true,
@@ -196,6 +201,10 @@ describe("AdminAuthCard", () => {
 
       setup({ enforcement: "required", deadline: chosen });
 
+      expect(
+        await screen.findByRole("radiogroup", { name: ENFORCEMENT_LABEL }),
+      ).toBeInTheDocument();
+
       await userEvent.click(await screen.findByLabelText(ALLOW_LABEL));
 
       await waitFor(async () => {
@@ -203,18 +212,6 @@ describe("AdminAuthCard", () => {
         expect(put?.body["mfa-enforcement"]).toBe("off");
         expect(put?.body["mfa-requirement-deadline"]).toBeNull();
       });
-
-      expect(
-        await screen.findByRole("radiogroup", { name: ENFORCEMENT_LABEL }),
-      ).toBeInTheDocument();
-    });
-
-    it("should name the enforcement group for screen readers", async () => {
-      setup({ enforcement: "optional" });
-
-      expect(
-        await screen.findByRole("radiogroup", { name: ENFORCEMENT_LABEL }),
-      ).toBeInTheDocument();
     });
   });
 
@@ -279,6 +276,40 @@ describe("AdminAuthCard", () => {
       expect(screen.getByLabelText(DEADLINE_LABEL)).toHaveValue(
         "January 1, 2099",
       );
+    });
+  });
+
+  describe("admin has not enrolled", () => {
+    it("should only allow enforcement to stay optional", async () => {
+      setup({ enforcement: "optional", isEnrolled: false });
+
+      await screen.findByRole("link", {
+        name: "Set up two-factor authentication",
+      });
+
+      expect(screen.getByLabelText("Don't require")).toBeEnabled();
+      expect(screen.getByLabelText("Require now")).toBeDisabled();
+      expect(screen.getByLabelText("Require by a certain date")).toBeDisabled();
+
+      expect(
+        await screen.findByRole("link", {
+          name: "Set up two-factor authentication",
+        }),
+      ).toHaveAttribute("href", "/account/authentication");
+    });
+
+    it("should allow requiring once they have enrolled", async () => {
+      setup({ enforcement: "optional", isEnrolled: true });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Require now")).toBeEnabled();
+      });
+      expect(screen.getByLabelText("Require by a certain date")).toBeEnabled();
+      expect(
+        screen.queryByRole("link", {
+          name: "Set up two-factor authentication",
+        }),
+      ).not.toBeInTheDocument();
     });
   });
 
