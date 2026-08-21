@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
+   [metabase.session.events.revoke-on-deactivation] ; for side effects: deletes sessions on deactivation
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
@@ -34,6 +35,25 @@
 (def ^:private test-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
 (def ^:private test-session-key-hashed (session/hash-session-key test-session-key))
 (def ^:private test-session-id "abcd1234")
+
+(deftest session-deactivation-revokes-test
+  (init-status/set-complete!)
+  (testing "deactivating the user deletes the session; reactivating does NOT revive it (SEC-863)"
+    (mt/with-temp [:model/User {user-id :id} {:is_active true}]
+      (let [session-key (str (random-uuid))]
+        (t2/insert! (t2/table-name :model/Session)
+                    {:id         (session/generate-session-id)
+                     :key_hashed (session/hash-session-key session-key)
+                     :user_id    user-id
+                     :created_at :%now})
+        (testing "session authenticates while the user is active"
+          (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active false})
+        (testing "after deactivation the session no longer authenticates"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
+        (t2/update! :model/User user-id {:is_active true})
+        (testing "after reactivation the same session STILL does not authenticate"
+          (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (deftest session-expired-test
   (init-status/set-complete!)
