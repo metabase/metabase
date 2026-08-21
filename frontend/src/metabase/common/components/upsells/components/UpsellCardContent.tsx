@@ -196,7 +196,7 @@ const UpsellCardLeftColumnContent = ({
           </Text>
         )}
         {isTrialAvailable && (
-          <Text>{t`Get a 14-day free trial of this and other pro features`}</Text>
+          <Text>{t`Get a 14 day trial of this and other Pro features.`}</Text>
         )}
       </Stack>
       {!shouldShowContactAdmin && (
