@@ -84,28 +84,25 @@
                                                  :perm_value perm-value-kw})))))
   (permissions-response))
 
-(defn- magic-group-ids
-  "IDs of the groups the simple permission mode writes to: All Users and, under tenants, All tenant users."
+(defn- simple-mode-group-ids
+  "IDs of the groups simple mode shows: Administrators, All Users and, under tenants, All tenant users."
   []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
+  [(u/the-id (perms/admin-group)) (u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
-  "Switch to advanced group-level permissions. Removes any custom permissions from the All Users and All tenant
-   users groups."
+  "Switch to group-level permissions. The All Users and All tenant users rows are kept but stop counting
+   towards a user's permissions until simple mode is switched back on."
   []
   (api/check-superuser)
-  ;; Resolution takes the most permissive value across all of a user's groups regardless of mode, so a leftover
-  ;; :yes on either magic group would override every group-level :no.
-  (t2/delete! :model/MetabotPermissions :group_id [:in (magic-group-ids)])
   (metabot-settings/metabot-advanced-permissions! true)
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
-  "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins,
-   All Users and All tenant users."
+  "Switch back to simple permissions. Removes the permissions of every group other than Administrators, All Users
+   and All tenant users, whose rows come back into force as they were before group-level mode was switched on."
   []
   (api/check-superuser)
-  (t2/delete! :model/MetabotPermissions :group_id [:not-in (into [(u/the-id (perms/admin-group))] (magic-group-ids))])
+  (t2/delete! :model/MetabotPermissions :group_id [:not-in (simple-mode-group-ids)])
   (metabot-settings/metabot-advanced-permissions! false)
   (permissions-response))
 
