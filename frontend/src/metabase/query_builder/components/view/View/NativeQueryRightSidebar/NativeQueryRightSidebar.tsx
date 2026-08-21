@@ -12,10 +12,8 @@ import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   CollectionId,
-  DatabaseId,
   EmbeddingParameterVisibility,
   NativeDatasetQuery,
   NativeQuerySnippet,
@@ -54,8 +52,6 @@ interface NativeQueryRightSidebarProps {
   onCloseAIQuestionAnalysisSidebar: () => void;
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
-  databases: Database[];
-  sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
