@@ -11,6 +11,7 @@
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
@@ -232,15 +233,10 @@
 ;;; Viewing Context Formatting
 
 (defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider,
-  so gate it like the metabase://chart|query resources do. Queries with no :database
-  only ever pprint (no name resolution), so they pass through."
+  "The client-supplied adhoc query, only when the current user can read its database. Audited for
+  the same reason its card ids get the audited store: the id is the caller's own."
   [query]
-  (let [database-id (and (map? query) (:database query))]
-    (when (or (not database-id)
-              (mi/can-read? :model/Database database-id))
-      query)))
+  (shared.content-store/query-if-database-readable query))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
@@ -250,7 +246,9 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
+              (te/field "Query" (some-> (:query item)
+                                        query-if-database-readable
+                                        (llm-shape/export-query-for-llm shared.content-store/audited-store)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -337,12 +335,14 @@
 
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]."
+  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
+  as client-supplied as the adhoc query above, so it gets the same audited gate and store on
+  top of the table/field-level check."
   [source]
-  (let [query (:query source)]
+  (when-let [query (query-if-database-readable (:query source))]
     (when (or (not (and (map? query) (:database query)))
               (queryable-normalized-query query))
-      (llm-shape/export-query-for-llm query))))
+      (llm-shape/export-query-for-llm query shared.content-store/audited-store))))
 
 (defn- transform-source-type
   [source]

@@ -2806,18 +2806,22 @@
   ([mp parsed]
    (repair mp parsed resolve.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
-   (-> parsed
-       normalize-shape*
-       (stamp-top-level-database* mp)
-       rewrite-order-by-inline-aggs*
-       resolve-aggregation-ref-indexes*
-       split-post-agg-filters*
-       (resolve-source-field-join-alias* mp content-store)
-       (resolve-implicit-joins* mp content-store)
-       (infer-source-card-field-types* mp content-store)
-       (infer-cross-stage-field-types* mp content-store)
-       (assert-cross-stage-refs-resolved* mp content-store)
-       friendly-errors*)))
+   ;; Every pass below is best-effort: a failed mini-resolve is logged at debug and skipped, and
+   ;; the caller resolves the query for real afterwards. A permission refusal in here therefore
+   ;; reaches nobody, so it must not go into the audit trail as one.
+   (binding [resolve.mp/*audit-refusals?* false]
+     (-> parsed
+         normalize-shape*
+         (stamp-top-level-database* mp)
+         rewrite-order-by-inline-aggs*
+         resolve-aggregation-ref-indexes*
+         split-post-agg-filters*
+         (resolve-source-field-join-alias* mp content-store)
+         (resolve-implicit-joins* mp content-store)
+         (infer-source-card-field-types* mp content-store)
+         (infer-cross-stage-field-types* mp content-store)
+         (assert-cross-stage-refs-resolved* mp content-store)
+         friendly-errors*))))
 
 ;;; ============================================================
 ;;; Post-resolve gate -- expressions the FE expression editor rejects

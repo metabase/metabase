@@ -87,25 +87,30 @@
   map with a `:database` is normalized and exported to the portable representations form
   the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
-  export renders nothing at all rather than the fallback."
-  [query]
-  (cond
-    (string? query) query
-    (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            mp         (lib-be/application-database-metadata-provider (:database normalized))
-            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
-        (or (repr-data->llm-block exported)
-            (query-edn-fallback normalized)))
-      (catch Exception e
-        (when-not (= 403 (:status-code (ex-data e)))
-          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
-          (query-edn-fallback query))))
-    (string? (get-in query [:native :query])) (get-in query [:native :query])
-    (map? query) (query-edn-fallback query)
-    :else (some-> query str)))
+  export renders nothing at all rather than the fallback.
+
+  `store` gates the Card / Measure / Segment lookups and every caller names one: the unaudited
+  [[shared.content-store/default-store]] for queries loaded from the app DB,
+  [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup
+  keeps its audit trail. No defaulting arity, so the choice stays visible at the call site."
+  ([query store]
+   (cond
+     (string? query) query
+     (string? (:query-content query)) (:query-content query)
+     (and (map? query) (:database query))
+     (try
+       (let [normalized (lib-be/normalize-query query)
+             mp         (lib-be/application-database-metadata-provider (:database normalized))
+             exported   (repr.resolve/export-query mp normalized store)]
+         (or (repr-data->llm-block exported)
+             (query-edn-fallback normalized)))
+       (catch Exception e
+         (log/debugf "Failed to export query for LLM: %s" (ex-message e))
+         (when-not (= 403 (:status-code (ex-data e)))
+           (query-edn-fallback query))))
+     (string? (get-in query [:native :query])) (get-in query [:native :query])
+     (map? query) (query-edn-fallback query)
+     :else (some-> query str))))
 
 (defn transform-query->text
   "Render a transform source query for model context: native SQL verbatim, anything else
@@ -113,7 +118,7 @@
   fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (when-let [text (export-query-for-llm query)]
+      (when-let [text (export-query-for-llm query shared.content-store/default-store)]
         (if (str/starts-with? text "```json\n")
           (format "\n%s\n" text)
           text))))
