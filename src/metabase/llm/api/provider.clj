@@ -255,33 +255,35 @@
   [{conn-key :key :keys [type config]}]
   [conn-key type (hash config) (selected-model conn-key)])
 
-(defn- record-listing-health!
-  "Report a model listing to [[metabase.llm.health]] so what it found outlives the response — the provider list
-  shows the failure, and the fallback skips the connection until it works again. Returns `result`.
+(defn- record-listing-failure!
+  "Report a failed model listing to [[metabase.llm.health]] so it outlives the response — the provider list shows
+  it, and the fallback skips the connection until it clears. Returns `result`.
+
+  A listing that works records nothing. It is not proof the connection can serve requests: Anthropic answers
+  `GET /v1/models` for an account whose balance is empty, so a clean listing must not wipe what inference found.
+  Only an inference that succeeds clears a failure, or the timeout on a transient one.
 
   Called on the way into the cache rather than on every read, so an error being served from the cache does not keep
   pushing back the moment a transient failure expires. Types whose catalog is fixed are answered from the registry
-  without a request, so they prove nothing about the connection either way and are left out of the record."
+  without a request, so they prove nothing about the connection and are left out of the record."
   [{conn-key :key :keys [type]} {:keys [error transient?] :as result}]
-  (when-not (llm.provider/fixed-models type)
-    (if error
-      (llm.health/record-failure! conn-key error (not transient?))
-      (llm.health/record-success! conn-key)))
+  (when (and error (not (llm.provider/fixed-models type)))
+    (llm.health/record-failure! conn-key error (not transient?)))
   result)
 
 (defn- connection-models-response
-  "List `conn`'s models for the client, reporting to [[metabase.llm.health]] whatever the listing found."
+  "List `conn`'s models for the client, reporting a failure to [[metabase.llm.health]]."
   [{conn-key :key conn-name :name :keys [type] :as conn}]
   (merge {:key conn-key :name conn-name :type type}
          (dissoc
           (try
             (cache.wrapped/lookup-or-miss models-cache (models-cache-key conn)
-                                          (fn [_] (record-listing-health! conn (list-connection-models* conn nil nil false))))
+                                          (fn [_] (record-listing-failure! conn (list-connection-models* conn nil nil false))))
             (catch Exception e
               (log/warn e "Failed to list models for LLM provider connection" {:connection conn-key})
               ;; Not a rejection from the provider — a request that never got an answer, which a later one still
               ;; might, so it is not cached and not held against the connection permanently.
-              (record-listing-health! conn {:models [] :error (.getMessage e) :transient? true})))
+              (record-listing-failure! conn {:models [] :error (.getMessage e) :transient? true})))
           :transient?)))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------

@@ -1269,6 +1269,22 @@
       (testing "and the connection is taken out of the fallback rotation"
         (is (false? (llm.provider/connection-serviceable? "recorded-anthropic")))))))
 
+(deftest listing-models-never-clears-an-inference-failure-test
+  (testing "a listing that works is not proof inference does — Anthropic serves its catalog to an account it will not
+            run a request for — so it leaves a recorded failure alone; only inference, or the timeout, clears one"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})]]
+      (llm.health/record-failure! "anthropic" "Your credit balance is too low" true)
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (constantly {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
+        (is (=? [{:key "anthropic" :models [{:id "claude-sonnet-4-6"}]}]
+                (mt/user-http-request :crowberto :get 200 "llm/models"))
+            "the listing itself succeeds")
+        (is (= {:message "Your credit balance is too low" :fatal? true}
+               (select-keys (llm.health/failure "anthropic") [:message :fatal?]))
+            "and the failure inference recorded is still there")
+        (is (false? (llm.provider/connection-serviceable? "anthropic"))
+            "so the connection stays out of the fallback rotation")))))
+
 (deftest editing-a-connection-clears-its-failure-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
     (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
