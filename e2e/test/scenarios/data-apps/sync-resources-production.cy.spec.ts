@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
@@ -8,9 +8,10 @@ import {
   mockDataApp,
   syncDataAppResources,
 } from "e2e/support/helpers";
+import type { Dataset } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
 const APP_DISPLAY_NAME = "Synced App";
@@ -28,6 +29,7 @@ const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
 const AUTHORED_DECLARATION = [
   "import {",
   "  aggregations,",
+  "  breakout,",
   "  defineQuery,",
   '} from "@metabase/embedding-sdk-react/data-app";',
   "",
@@ -38,9 +40,19 @@ const AUTHORED_DECLARATION = [
   " * Synchronization writes `savedQuestionSourceId` in here, and the spec restores",
   " * this file afterwards.",
   " */",
+  "const OrdersUserId = {",
+  '  type: "column" as const,',
+  `  fieldId: ${ORDERS.USER_ID},`,
+  `  tableId: ${ORDERS_ID},`,
+  '  name: "USER_ID",',
+  '  displayName: "User ID",',
+  '  jsType: "number",',
+  "};",
+  "",
   "export const OrdersCount = defineQuery({",
   `  source: { type: "table", id: ${ORDERS_ID} },`,
   "  aggregations: [aggregations.count()],",
+  "  breakouts: [breakout(OrdersUserId)],",
   "});",
 ].join("\n");
 
@@ -133,13 +145,17 @@ describe("scenarios > data apps > sync-resources in production", () => {
       cy.request("POST", "/api/dataset", {
         type: "query",
         database: SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.USER_ID, null]],
+        },
       }).then(({ body: authored }) => {
         cy.request("POST", `/api/card/${cardId}/query`).then(
           ({ body: published }) => {
             expect(published.data.rows).to.deep.eq(authored.data.rows);
             expect(
-              published.data.rows[0][0],
+              published.data.rows[0][1],
               "a match on two empty results would be vacuous",
             ).to.be.greaterThan(0);
           },
@@ -163,6 +179,65 @@ describe("scenarios > data apps > sync-resources in production", () => {
               expect(Number($total.text())).to.be.greaterThan(0);
             },
           );
+        });
+      });
+    });
+  });
+
+  it("applies the app group's sandbox to the synchronized query", () => {
+    const SANDBOXED_USER_ID = Number(USERS.sandboxed.login_attributes.attr_uid);
+
+    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+
+    syncApp().then(() => {
+      cy.request<Dataset>("POST", "/api/dataset", {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.USER_ID, null]],
+        },
+      }).then(({ body: rows }) => {
+        const userIds = Cypress._.uniq(
+          rows.data.rows.map(([userId]) => userId),
+        );
+
+        expect(
+          userIds,
+          "sample data has more than one tenant",
+        ).to.have.length.greaterThan(1);
+
+        const otherUserId = userIds.find(
+          (userId) => userId !== SANDBOXED_USER_ID,
+        );
+
+        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+          addUserToGroup(groupId, USERS.sandboxed.email);
+
+          cy.sandboxTable({
+            group_id: groupId,
+            table_id: ORDERS_ID,
+            attribute_remappings: {
+              attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+            },
+          });
+
+          mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+
+          cy.signInAsSandboxedUser();
+          cy.visit(`/apps/${APP_SLUG}`);
+
+          dataAppIframe(APP_DISPLAY_NAME).within(() => {
+            cy.findByTestId("synced-app-tenant", { timeout: 30000 })
+              .should("have.text", String(SANDBOXED_USER_ID))
+              .and("not.have.text", String(otherUserId));
+
+            cy.findByTestId("synced-app-total", { timeout: 30000 }).should(
+              ($total) => expect(Number($total.text())).to.be.greaterThan(0),
+            );
+          });
         });
       });
     });
