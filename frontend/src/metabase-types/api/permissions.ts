@@ -1,5 +1,6 @@
 import type {
   CollectionId,
+  Database,
   DatabaseId,
   SchemaName,
   TableId,
@@ -202,6 +203,15 @@ export type PermissionEntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
 export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+/**
+ * What the permissions tree needs of a database. `getDatabaseMetadata` supplies
+ * it, tables included; the permissions code never reads more than this.
+ */
+export type PermissionsDatabase = Pick<
+  Database,
+  "id" | "name" | "tables" | "features" | "router_user_attribute"
+>;
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 

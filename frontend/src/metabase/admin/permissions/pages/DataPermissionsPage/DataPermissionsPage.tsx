@@ -9,10 +9,9 @@ import {
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
-import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Center, Loader } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { GroupInfo } from "metabase-types/api";
+import { isNotNull } from "metabase/utils/types";
+import type { DatabaseId, GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -21,23 +20,34 @@ import {
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
-import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
+import {
+  DATABASE_TABLES_QUERY,
+  getPermissionsDatabase,
+} from "../../selectors/data-permissions/databases";
+import {
+  getChangedDatabaseIds,
+  getDiff,
+  getIsDirty,
+} from "../../selectors/data-permissions/diff";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
-const EMPTY_DATABASE_LIST: Database[] = [];
 
 export function DataPermissionsPage() {
   const params = useParams<{ databaseId: string }>();
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
-  const databases = useSelector(
-    (state) =>
-      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
-  );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
   );
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
+  // The save confirmation names the tables an edit granted or revoked, so it
+  // needs every changed database's tables, not just the one on screen.
+  const changedDatabaseIds = useSelector(getChangedDatabaseIds);
+  const databases = useSelector((state) =>
+    changedDatabaseIds
+      .map((databaseId) => getPermissionsDatabase(state, databaseId))
+      .filter(isNotNull),
+  );
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
   const dispatch = useDispatch();
 
@@ -62,12 +72,7 @@ export function DataPermissionsPage() {
 
   const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
     params.databaseId !== undefined
-      ? {
-          id: Number(params.databaseId),
-          include_hidden: true,
-          remove_inactive: true,
-          skip_fields: true,
-        }
+      ? { id: Number(params.databaseId), ...DATABASE_TABLES_QUERY }
       : skipToken,
   );
 
@@ -95,7 +100,18 @@ export function DataPermissionsPage() {
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal
     >
+      {changedDatabaseIds.map((databaseId) => (
+        <ChangedDatabaseTables key={databaseId} databaseId={databaseId} />
+      ))}
       <Outlet />
     </PermissionsPageLayout>
   );
+}
+
+// Navigating between databases unsubscribes the previous one's tables, which the
+// save confirmation still needs. Holding a subscription per changed database
+// keeps them loaded for as long as the edit is unsaved.
+function ChangedDatabaseTables({ databaseId }: { databaseId: DatabaseId }) {
+  useGetDatabaseMetadataQuery({ id: databaseId, ...DATABASE_TABLES_QUERY });
+  return null;
 }
