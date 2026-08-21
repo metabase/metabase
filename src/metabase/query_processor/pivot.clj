@@ -628,7 +628,8 @@
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
      (let [rff               (or rff qp.reducible/default-rff)
-           query             (lib/query (qp.store/metadata-provider) query)
+           query             (-> (lib/query (qp.store/metadata-provider) query)
+                                 lib/prepare-after-deserialization)
            pivot-opts        (or
                               (pivot-options query (get query :viz-settings))
                               (pivot-options query (get-in query [:info :visualization-settings]))
@@ -637,4 +638,5 @@
                                  (assoc-in [:middleware :pivot-options] pivot-opts))
            all-queries       (generate-queries query pivot-opts)
            column-mapping-fn (make-column-mapping-fn query)]
-       (process-multiple-queries all-queries rff column-mapping-fn)))))
+       (binding [qp.pipeline/*pivot?* true]
+         (process-multiple-queries all-queries rff column-mapping-fn))))))

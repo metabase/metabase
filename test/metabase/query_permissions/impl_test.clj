@@ -294,7 +294,7 @@
                   :card-ids             #{card-1-id card-2-id}
                   :paths                #{(format "/collection/%d/read/" collection-1-id)
                                           (format "/collection/%d/read/" collection-2-id)}}
-                 (query-perms/required-perms-for-query native-query)))
+                 (query-perms/required-perms-for-query native-query :already-preprocessed? true)))
           (testing "pMBQL query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
@@ -303,7 +303,8 @@
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
-                               (lib/->pMBQL native-query)))))))))))
+                               (lib/->pMBQL native-query))
+                    :already-preprocessed? true)))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test
   (testing "MBQL query with native source card (#30077)"
