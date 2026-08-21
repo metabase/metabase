@@ -243,8 +243,9 @@ describe("issue 18747", () => {
 
     H.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          cards: [
+        H.updateDashboard({
+          id: dashboard_id,
+          dashcards: [
             {
               id,
               card_id,

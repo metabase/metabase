@@ -813,18 +813,17 @@ describe("issue 32573", () => {
       H.createQuestion(getQuestionDetails(model.id)).then(
         ({ body: question }) => {
           H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-            return cy
-              .request("PUT", `/api/dashboard/${dashboard.id}`, {
-                dashcards: [
-                  createMockDashboardCard({
-                    card_id: question.id,
-                    parameter_mappings: [getParameterMapping(question.id)],
-                    size_x: 6,
-                    size_y: 6,
-                  }),
-                ],
-              })
-              .then(() => H.visitDashboard(dashboard.id));
+            return H.updateDashboard({
+              id: dashboard.id,
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: question.id,
+                  parameter_mappings: [getParameterMapping(question.id)],
+                  size_x: 6,
+                  size_y: 6,
+                }),
+              ],
+            }).then(() => H.visitDashboard(dashboard.id));
           });
         },
       );
@@ -915,7 +914,8 @@ describe("issue 45670", { tags: ["@external"] }, () => {
       H.createNativeQuestion(getQuestionDetails(field.id)).then(
         ({ body: card }) => {
           H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            H.updateDashboard({
+              id: dashboard.id,
               dashcards: [
                 createMockDashboardCard({
                   card_id: card.id,

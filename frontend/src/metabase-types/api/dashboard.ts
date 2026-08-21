@@ -320,23 +320,47 @@ export type CreateDashboardRequest = {
   cache_ttl?: number;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
-  tabs?: Pick<DashboardTab, "id" | "name" | "position">[];
 };
+
+export type UpdateDashboardCardRequest = Pick<
+  BaseDashboardCard,
+  "id" | "row" | "col" | "size_x" | "size_y"
+> &
+  Partial<
+    Pick<
+      BaseDashboardCard,
+      "card_id" | "dashboard_tab_id" | "visualization_settings"
+    >
+  > & {
+    action_id?: WritebackActionId | null;
+    inline_parameters?: ParameterId[] | null;
+    parameter_mappings?:
+      | DashboardParameterMapping[]
+      | ActionParametersMapping[]
+      | VirtualDashCardParameterMapping[]
+      | null;
+    series?: Array<{ id: CardId }> | null;
+  };
+
+export type UpdateDashboardTabRequest = Pick<
+  DashboardTab,
+  "id" | "name" | "position"
+>;
 
 export type UpdateDashboardRequest = {
   id: DashboardId;
   collection_position?: number | null;
   caveats?: string | null;
   position?: number | null;
+  dashcards?: UpdateDashboardCardRequest[];
+  tabs?: UpdateDashboardTabRequest[];
 } & Partial<
   Pick<
     Dashboard,
     | "parameters"
-    | "point_of_interest"
     | "description"
     | "archived"
-    | "dashcards"
-    | "tabs"
+    | "auto_apply_filters"
     | "show_in_getting_started"
     | "enable_embedding"
     | "embedding_type"

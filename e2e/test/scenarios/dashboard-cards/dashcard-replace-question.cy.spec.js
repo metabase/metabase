@@ -114,7 +114,8 @@ describe("scenarios > dashboard cards > replace question", () => {
         H.createQuestion(NEXT_QUESTION_CREATE_INFO).then(() => {
           H.createDashboard(DASHBOARD_CREATE_INFO).then(
             ({ body: { id: dashboardId } }) => {
-              cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+              return H.updateDashboard({
+                id: dashboardId,
                 dashcards: getDashboardCards(mappedQuestionId),
               }).then(() => {
                 cy.wrap(dashboardId).as("dashboardId");

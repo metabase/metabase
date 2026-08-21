@@ -4,10 +4,12 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardId,
+  UpdateDashboardCardRequest,
 } from "metabase-types/api";
 
 import { type DashboardDetails, createDashboard } from "./createDashboard";
 import type { NativeQuestionDetails } from "./createQuestion";
+import { updateDashboard } from "./updateDashboard";
 
 export const createNativeQuestionAndDashboard = ({
   questionDetails,
@@ -16,7 +18,7 @@ export const createNativeQuestionAndDashboard = ({
 }: {
   questionDetails: NativeQuestionDetails;
   dashboardDetails?: DashboardDetails;
-  cardDetails?: Partial<DashboardCard>;
+  cardDetails?: Partial<UpdateDashboardCardRequest>;
 }): Cypress.Chainable<
   Cypress.Response<DashboardCard> & {
     dashboardId: DashboardId;
@@ -24,15 +26,16 @@ export const createNativeQuestionAndDashboard = ({
     questionId: CardId;
   }
 > => {
-  const tabs = dashboardDetails?.tabs ?? [];
+  const { tabs = [], ...detailsWithoutTabs } = dashboardDetails ?? {};
   const defaultTabId = tabs[0]?.id ?? null;
 
   // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createNativeQuestion(questionDetails).then(
     ({ body: { id: questionId } }) => {
-      createDashboard(dashboardDetails).then(
+      createDashboard(detailsWithoutTabs).then(
         ({ body: { id: dashboardId } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          return updateDashboard({
+            id: dashboardId,
             tabs,
             dashcards: [
               {

@@ -27,7 +27,7 @@ export function createDestinationDatabasesViaAPI({
   databases,
 }: {
   router_database_id: number;
-  databases: DatabaseData[];
+  databases: DestinationDatabaseData[];
 }) {
   cy.request("POST", "/api/ee/database-routing/destination-database", {
     router_database_id,
@@ -35,14 +35,9 @@ export function createDestinationDatabasesViaAPI({
   });
 }
 
+type DestinationDatabaseData = Pick<DatabaseData, "name" | "details">;
+
 export const BASE_POSTGRES_DESTINATION_DB_INFO = {
-  is_on_demand: false,
-  is_full_sync: true,
-  is_sample: false,
-  cache_ttl: null,
-  refingerprint: false,
-  auto_run_queries: true,
-  schedules: {},
   details: {
     host: "localhost",
     port: QA_POSTGRES_PORT,
@@ -56,7 +51,6 @@ export const BASE_POSTGRES_DESTINATION_DB_INFO = {
     "advanced-options": false,
   },
   name: "DestinationDB",
-  engine: "postgres",
 };
 
 export const DB_ROUTER_USERS = {

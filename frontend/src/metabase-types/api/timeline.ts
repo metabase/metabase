@@ -119,7 +119,5 @@ export interface UpdateTimelineEventRequest {
   timezone?: string;
   icon?: TimelineIcon;
   timeline_id?: TimelineId;
-  source?: TimelineEventSource;
-  question_id?: CardId;
   archived?: boolean;
 }

@@ -219,6 +219,7 @@ export interface CreateDatabaseRequest {
   auto_run_queries?: boolean;
   cache_ttl?: number;
   connection_source?: "admin" | "setup";
+  provider_name?: string | null;
 }
 
 export interface UpdateDatabaseRequest {
@@ -228,13 +229,15 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
+  is_full_sync?: boolean;
+  is_on_demand?: boolean;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
   auto_run_queries?: boolean;
   cache_ttl?: number | null;
+  provider_name?: string | null;
   settings?: DatabaseSettings | null;
 }
 

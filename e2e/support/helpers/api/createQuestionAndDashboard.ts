@@ -1,10 +1,15 @@
-import type { CardId, Dashboard, DashboardCard } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardCard,
+  UpdateDashboardCardRequest,
+} from "metabase-types/api";
 
 import { type DashboardDetails, createDashboard } from "./createDashboard";
 import {
   type StructuredQuestionDetails,
   createQuestion,
 } from "./createQuestion";
+import { updateDashboard } from "./updateDashboard";
 
 export const createQuestionAndDashboard = ({
   questionDetails,
@@ -13,7 +18,7 @@ export const createQuestionAndDashboard = ({
 }: {
   questionDetails: StructuredQuestionDetails;
   dashboardDetails?: DashboardDetails;
-  cardDetails?: Partial<DashboardCard>;
+  cardDetails?: Partial<UpdateDashboardCardRequest>;
 }): Cypress.Chainable<
   Cypress.Response<DashboardCard> & { questionId: CardId }
 > => {
@@ -21,26 +26,25 @@ export const createQuestionAndDashboard = ({
     ({ body: { id: questionId } }) => {
       return createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          return cy
-            .request<Dashboard>("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: [
-                {
-                  id: -1,
-                  card_id: questionId,
-                  // Add sane defaults for the dashboard card size
-                  row: 0,
-                  col: 0,
-                  size_x: 11,
-                  size_y: 6,
-                  ...cardDetails,
-                },
-              ],
-            })
-            .then((response) => ({
-              ...response,
-              body: response.body.dashcards[0],
-              questionId,
-            }));
+          return updateDashboard({
+            id: dashboardId,
+            dashcards: [
+              {
+                id: -1,
+                card_id: questionId,
+                // Add sane defaults for the dashboard card size
+                row: 0,
+                col: 0,
+                size_x: 11,
+                size_y: 6,
+                ...cardDetails,
+              },
+            ],
+          }).then((response) => ({
+            ...response,
+            body: response.body.dashcards[0],
+            questionId,
+          }));
         },
       );
     },

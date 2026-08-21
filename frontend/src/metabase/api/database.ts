@@ -44,6 +44,7 @@ import {
   tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import { pick } from "./utils/pick";
 
 /**
  * schema names containing slashes, backslashes, or percent signs are rejected
@@ -230,7 +231,18 @@ export const databaseApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/database",
-        body,
+        body: pick(body, [
+          "name",
+          "engine",
+          "details",
+          "is_full_sync",
+          "is_on_demand",
+          "schedules",
+          "auto_run_queries",
+          "cache_ttl",
+          "connection_source",
+          "provider_name",
+        ]),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
@@ -242,7 +254,23 @@ export const databaseApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/database/${id}`,
-        body,
+        body: pick(body, [
+          "name",
+          "engine",
+          "refingerprint",
+          "details",
+          "write_data_details",
+          "is_full_sync",
+          "is_on_demand",
+          "schedules",
+          "description",
+          "caveats",
+          "points_of_interest",
+          "auto_run_queries",
+          "cache_ttl",
+          "provider_name",
+          "settings",
+        ]),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [

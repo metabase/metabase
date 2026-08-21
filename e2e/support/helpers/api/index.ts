@@ -48,6 +48,7 @@ export { setMetricDefaultDimension } from "./setMetricDefaultDimension";
 export { unpublishTables } from "./unpublishTables";
 export { updateAdvancedPermissionsGraph } from "./updateAdvancedPermissionsGraph";
 export { updateComment } from "./updateComment";
+export { updateDashboard } from "./updateDashboard";
 export { updateDashboardCards } from "./updateDashboardCards";
 export {
   updateEnterpriseSetting,

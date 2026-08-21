@@ -1,9 +1,9 @@
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
   ListSubscriptionsRequest,
+  TestSubscriptionRequest,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
@@ -16,6 +16,7 @@ import {
   provideSubscriptionListTags,
   provideSubscriptionTags,
 } from "./tags";
+import { pick } from "./utils/pick";
 
 export const subscriptionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -46,7 +47,16 @@ export const subscriptionApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/pulse",
-        body,
+        body: pick(body, [
+          "name",
+          "cards",
+          "channels",
+          "skip_if_empty",
+          "collection_id",
+          "collection_position",
+          "dashboard_id",
+          "parameters",
+        ]),
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("subscription")]),
@@ -58,7 +68,16 @@ export const subscriptionApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/pulse/${id}`,
-        body,
+        body: pick(body, [
+          "name",
+          "cards",
+          "channels",
+          "skip_if_empty",
+          "collection_id",
+          "collection_position",
+          "parameters",
+          "archived",
+        ]),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -79,12 +98,22 @@ export const subscriptionApi = Api.injectEndpoints({
     }),
     testSubscription: builder.mutation<
       { ok: boolean },
-      DashboardSubscriptionData
+      TestSubscriptionRequest
     >({
       query: (body) => ({
         method: "POST",
         url: "/api/pulse/test",
-        body,
+        body: pick(body, [
+          "id",
+          "name",
+          "cards",
+          "channels",
+          "skip_if_empty",
+          "collection_id",
+          "collection_position",
+          "dashboard_id",
+          "parameters",
+        ]),
       }),
     }),
     getChannelInfo: builder.query<ChannelApiResponse, void>({

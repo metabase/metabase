@@ -41,6 +41,7 @@ import {
   tag,
 } from "./tags";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+import { pick, pickUpdateDashboardRequest } from "./utils/pick";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -207,10 +208,10 @@ export const dashboardApi = Api.injectEndpoints({
             : [],
       }),
       updateDashboard: builder.mutation<Dashboard, UpdateDashboardRequest>({
-        query: ({ id, ...body }) => ({
+        query: (request) => ({
           method: "PUT",
-          url: `/api/dashboard/${id}`,
-          body,
+          url: `/api/dashboard/${request.id}`,
+          body: pickUpdateDashboardRequest(request),
         }),
         // Subscriptions can be archived server-side when a referenced
         // parameter is removed, so invalidate the subscription list too.
@@ -250,7 +251,13 @@ export const dashboardApi = Api.injectEndpoints({
         query: ({ id, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/${id}/copy`,
-          body,
+          body: pick(body, [
+            "name",
+            "description",
+            "collection_id",
+            "collection_position",
+            "is_deep_copy",
+          ]),
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [

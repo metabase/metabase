@@ -1557,7 +1557,8 @@ describe("issue 42165", () => {
         ({ body: dashboard }) => {
           const [dashcard] = dashboard.dashcards;
           const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+          H.updateDashboard({
+            id: dashboard.id,
             dashcards: [
               {
                 ...dashcard,
@@ -1781,7 +1782,8 @@ describe("issue 54353", () => {
         ({ body: dashboard }) => {
           const [dashcard] = dashboard.dashcards;
           const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+          return H.updateDashboard({
+            id: dashboard.id,
             dashcards: [
               {
                 ...dashcard,
@@ -2115,7 +2117,8 @@ describe("issue 52674", () => {
         ({ body: dashboard }) => {
           const [dashcard] = dashboard.dashcards;
           const [parameter] = dashboard.parameters;
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+          return H.updateDashboard({
+            id: dashboard.id,
             dashcards: [
               {
                 ...dashcard,
@@ -2299,7 +2302,8 @@ describe("issue 58556, issue 66277", () => {
         ({ body: dashboard }) => {
           const [dashcard] = dashboard.dashcards;
 
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+          return H.updateDashboard({
+            id: dashboard.id,
             dashcards: [
               {
                 ...dashcard,

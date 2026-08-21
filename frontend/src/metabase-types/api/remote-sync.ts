@@ -120,7 +120,6 @@ export type CollectionSyncPreferences = Record<number, boolean>;
 
 export type RemoteSyncConfigurationSettings = Pick<
   EnterpriseSettings,
-  | "remote-sync-enabled"
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"

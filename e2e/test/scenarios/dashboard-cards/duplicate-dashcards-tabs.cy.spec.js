@@ -59,7 +59,8 @@ describe("scenarios > dashboard cards > duplicate", () => {
       ({ body: { id: mappedQuestionId } }) => {
         H.createDashboard(DASHBOARD_CREATE_INFO).then(
           ({ body: { id: dashboardId } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            return H.updateDashboard({
+              id: dashboardId,
               dashcards: [createMappedDashcard(mappedQuestionId)],
             }).then(() => {
               cy.wrap(dashboardId).as("dashboardId");

@@ -345,18 +345,17 @@ describe("scenarios > custom column > boolean functions", () => {
       return H.createDashboard({ ...dashboardDetails, ...opts }).then(
         ({ body: dashboard }) => {
           return H.createQuestion(questionDetails).then(({ body: card }) => {
-            return cy
-              .request("PUT", `/api/dashboard/${dashboard.id}`, {
-                dashcards: [
-                  createMockDashboardCard({
-                    card_id: card.id,
-                    parameter_mappings: [getParameterMapping(card.id)],
-                    size_x: 8,
-                    size_y: 8,
-                  }),
-                ],
-              })
-              .then(() => dashboard);
+            return H.updateDashboard({
+              id: dashboard.id,
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: card.id,
+                  parameter_mappings: [getParameterMapping(card.id)],
+                  size_x: 8,
+                  size_y: 8,
+                }),
+              ],
+            }).then(() => dashboard);
           });
         },
       );

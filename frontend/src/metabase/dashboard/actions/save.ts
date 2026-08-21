@@ -7,11 +7,8 @@ import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import type {
-  DashCardId,
-  ParameterId,
-  UpdateCardRequest,
-} from "metabase-types/api";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import type { DashCardId, ParameterId } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { trackDashboardSaved } from "../analytics";
@@ -151,13 +148,15 @@ export const updateDashboardAndCards = createThunkAction(
       // update modified cards
       await Promise.all(
         dashboard.dashcards
+          .filter(isQuestionDashCard)
           .filter((dc) => "isDirty" in dc.card && Boolean(dc.card.isDirty))
           .map((dc) =>
             dispatch(
-              cardApi.endpoints.updateCard.initiate(
-                // Unjustified type cast. FIXME
-                dc.card as UpdateCardRequest,
-              ),
+              cardApi.endpoints.updateCard.initiate({
+                ...dc.card,
+                embedding_params: dc.card.embedding_params ?? undefined,
+                cache_ttl: dc.card.cache_ttl ?? undefined,
+              }),
             ).unwrap(),
           ),
       );

@@ -32,7 +32,12 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/database-routing/destination-database?check_connection_details=true",
         body: {
           router_database_id,
-          destinations: [destination_database],
+          destinations: [
+            {
+              name: destination_database.name,
+              details: destination_database.details,
+            },
+          ],
         },
       }),
       transformResponse: (response: [Database]): Database => response[0],

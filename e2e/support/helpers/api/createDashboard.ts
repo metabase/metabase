@@ -1,8 +1,11 @@
 import type {
   CreateDashboardRequest,
   Dashboard,
-  DashboardCard,
+  UpdateDashboardCardRequest,
+  UpdateDashboardTabRequest,
 } from "metabase-types/api";
+
+import { updateDashboard } from "./updateDashboard";
 
 export interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
   name?: string;
@@ -10,7 +13,8 @@ export interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
   enable_embedding?: Dashboard["enable_embedding"];
   embedding_type?: Dashboard["embedding_type"];
   embedding_params?: Dashboard["embedding_params"];
-  dashcards?: Partial<DashboardCard>[];
+  dashcards?: UpdateDashboardCardRequest[];
+  tabs?: UpdateDashboardTabRequest[];
 }
 
 interface Options {
@@ -37,6 +41,7 @@ export const createDashboard = (
     embedding_type,
     embedding_params,
     dashcards,
+    tabs,
     ...restDashboardDetails
   } = dashboardDetails;
   const { wrapId = false, idAlias = "dashboardId" } = options;
@@ -49,22 +54,28 @@ export const createDashboard = (
       name,
       ...restDashboardDetails,
     })
-    .then(({ body }) => {
+    .then((response) => {
       if (wrapId) {
-        cy.wrap(body.id).as(idAlias);
+        cy.wrap(response.body.id).as(idAlias);
       }
       if (
         enable_embedding != null ||
         auto_apply_filters != null ||
-        Array.isArray(dashcards)
+        Array.isArray(dashcards) ||
+        Array.isArray(tabs)
       ) {
-        return cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
+        return updateDashboard({
+          id: response.body.id,
           auto_apply_filters,
           enable_embedding,
           embedding_type,
           embedding_params,
           dashcards,
+          tabs,
         });
       }
+      // Cypress keeps the POST response when the callback returns undefined, but
+      // the types don't; wrap so both branches yield Chainable<Response<Dashboard>>.
+      return cy.wrap(response);
     });
 };

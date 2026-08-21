@@ -1,9 +1,11 @@
-import _ from "underscore";
-
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
-import type { Card } from "metabase-types/api";
+import type {
+  Card,
+  CreateCardRequest,
+  UpdateCardRequest,
+} from "metabase-types/api";
 
 /**
  * Card lifecycle events dispatched by the create/update thunks below. They let
@@ -33,36 +35,6 @@ export const cardUpdated = (card: Card) => ({
   payload: { object: card, question: card },
 });
 
-// The properties the card endpoints accept on write. Mirrors the former
-// Questions entity `writableProperties`.
-// NOTE: keep in sync with src/metabase/queries_rest/api/card.clj
-const WRITABLE_CARD_PROPERTIES = [
-  "name",
-  "cache_ttl",
-  "type",
-  "dataset_query",
-  "display",
-  "description",
-  "visualization_settings",
-  "parameters",
-  "parameter_mappings",
-  "archived",
-  "enable_embedding",
-  "embedding_params",
-  "collection_id",
-  "dashboard_id",
-  "dashboard_tab_id",
-  "collection_position",
-  "collection_preview",
-  "result_metadata",
-  "delete_old_dashcards",
-  "size",
-] as const;
-
-const pickWritable = (card: object) =>
-  // Unjustified type cast. FIXME
-  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES) as Record<string, unknown>;
-
 /**
  * Creates a card and notifies the retired-entity reducers. Replaces
  * `Questions.actions.create`, preserving its request shaping: only writable
@@ -70,10 +42,9 @@ const pickWritable = (card: object) =>
  * collection.
  */
 export const createQuestionCard =
-  (request: object) =>
+  (request: CreateCardRequest) =>
   async (dispatch: Dispatch): Promise<Card> => {
-    const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
-      pickWritable(request);
+    const { collection_id, dashboard_id, dashboard_tab_id, ...rest } = request;
 
     const destination = dashboard_id
       ? { dashboard_id, dashboard_tab_id }
@@ -93,10 +64,10 @@ export const createQuestionCard =
  * `Questions.actions.update`, sending only writable properties.
  */
 export const updateQuestionCard =
-  (request: object) =>
+  (request: UpdateCardRequest) =>
   async (dispatch: Dispatch): Promise<Card> => {
     const card: Card = await runRtkEndpoint(
-      pickWritable(request),
+      request,
       dispatch,
       cardApi.endpoints.updateCard,
     );

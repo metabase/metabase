@@ -1,10 +1,11 @@
 import type {
   CardId,
-  Dashboard,
   DashboardCard,
   DashboardId,
+  UpdateDashboardCardRequest,
 } from "metabase-types/api";
 
+import { updateDashboard } from "./updateDashboard";
 import { DEFAULT_CARD } from "./updateDashboardCards";
 
 export function addOrUpdateDashboardCard({
@@ -14,20 +15,19 @@ export function addOrUpdateDashboardCard({
 }: {
   card_id: CardId;
   dashboard_id: DashboardId;
-  card: Partial<DashboardCard>;
+  card: Partial<UpdateDashboardCardRequest>;
 }): Cypress.Chainable<Cypress.Response<DashboardCard>> {
-  return cy
-    .request<Dashboard>("PUT", `/api/dashboard/${dashboard_id}`, {
-      dashcards: [
-        {
-          ...DEFAULT_CARD,
-          card_id,
-          ...card,
-        },
-      ],
-    })
-    .then((response) => ({
-      ...response,
-      body: response.body.dashcards[0],
-    }));
+  return updateDashboard({
+    id: dashboard_id,
+    dashcards: [
+      {
+        ...DEFAULT_CARD,
+        card_id,
+        ...card,
+      },
+    ],
+  }).then((response) => ({
+    ...response,
+    body: response.body.dashcards[0],
+  }));
 }

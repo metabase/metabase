@@ -39,15 +39,8 @@ export const updateDatabase =
 export const updateTable =
   (table: Table) =>
   async (dispatch: Dispatch): Promise<unknown> => {
-    const slimTable = _.omit(
-      table,
-      "fields",
-      "fields_lookup",
-      "aggregation_operators",
-      "segments",
-    );
     const result: unknown = await runRtkEndpoint(
-      slimTable,
+      table,
       dispatch,
       tableApi.endpoints.updateTable,
     );

@@ -16,6 +16,7 @@ import {
   tag,
 } from "./tags";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+import { pick } from "./utils/pick";
 
 export const segmentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -48,7 +49,16 @@ export const segmentApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/segment/${id}`,
-        body,
+        body: pick(body, [
+          "name",
+          "definition",
+          "revision_message",
+          "archived",
+          "caveats",
+          "description",
+          "points_of_interest",
+          "show_in_getting_started",
+        ]),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
