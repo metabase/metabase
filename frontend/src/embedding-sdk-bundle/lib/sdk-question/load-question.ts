@@ -7,13 +7,17 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { resolveCards } from "metabase/query_builder/actions";
-import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import {
+  getCardUiParametersFromParamFields,
+  getCardUiParametersFromQuery,
+} from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api/card";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -80,11 +84,15 @@ export const loadQuestionSdk =
       question = question.applyTemplateTagParameters();
     }
 
-    const parameterValues = getParameterValuesForQuestion({
-      card,
-      metadata,
-      queryParams: initialSqlParameters,
-    });
+    // Guest embed card payloads carry param_fields instead of the real query,
+    // so parameter targets cannot be resolved against the query there.
+    const parameters = isGuestEmbed
+      ? getCardUiParametersFromParamFields(card, metadata)
+      : getCardUiParametersFromQuery(card, metadata);
+    const parameterValues = getParameterValuesByIdFromQueryParams(
+      parameters,
+      initialSqlParameters ?? {},
+    );
 
     if (parameterValues) {
       question = question.setParameterValues(parameterValues);
