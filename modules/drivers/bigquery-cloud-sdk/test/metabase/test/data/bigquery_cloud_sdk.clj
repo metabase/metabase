@@ -348,21 +348,47 @@
               (recur (dec num-retries))
               (throw e))))))))
 
+(defn- old-dataset-names
+  "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
+  created that long ago. `_` is a wildcard in BigQuery LIKE, so the SQL prefix only prefilters and `starts-with?`
+  below is what enforces it."
+  [hours]
+  (let [current-test-data (test-dataset-id (tx/get-dataset-definition
+                                            (data.impl/resolve-dataset-definition *ns* 'test-data)))]
+    (into []
+          (comp (map first)
+                (filter #(str/starts-with? % "sha_"))
+                (remove #(= % current-test-data)))
+          (execute! (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                         " WHERE `name` LIKE 'sha_%%'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
+                         " UNION ALL "
+                         "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
+                           and d.schema_name like 'sha_%%'
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))")
+                    (project-id)
+                    hours
+                    (project-id)
+                    (project-id)
+                    hours))))
+
+(defn- drop-datasets!
+  "Delete each named dataset, returning the ones actually deleted. Catches per dataset -- usually a concurrent run
+  got there first, which must not abandon the rest of the sweep."
+  [dataset-ids]
+  (into []
+        (keep (fn [dataset-id]
+                (try
+                  (destroy-dataset! dataset-id)
+                  dataset-id
+                  (catch Throwable e
+                    (log/warnf "Failed to delete %s, skipping: %s" dataset-id (ex-message e))
+                    nil))))
+        dataset-ids))
+
 (defn delete-old-datasets! []
-  (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
-                           " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
-                             and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
-                      (project-id)
-                      (project-id)
-                      (project-id))]
-    (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
+  (drop-datasets! (old-dataset-names (* 14 24))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -372,6 +398,11 @@
   []
   (when (compare-and-set! deleted-old-datasets? false true)
     (delete-old-datasets!)))
+
+;; Nightly garbage collection of orphaned test datasets.
+(defmethod tx/gc-orphans! :bigquery-cloud-sdk
+  [_driver {:keys [fixture-hours]}]
+  (drop-datasets! (old-dataset-names fixture-hours)))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

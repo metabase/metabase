@@ -163,9 +163,15 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
+(def ^:dynamic *skip-before-run?*
+  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook. Bound by the nightly sweep
+  ([[metabase.test.data.gc]]), which needs the extensions to dispatch [[gc-orphans!]] but not the hooks: Redshift's
+  creates a session schema, which the sweep would then leak nightly."
+  false)
+
 ;; this gets called below by [[load-test-extensions-namespace-if-needed]]
 (defn- do-before-run-if-needed [driver]
-  (when-not (@has-done-before-run driver)
+  (when-not (or *skip-before-run?* (@has-done-before-run driver))
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
@@ -386,6 +392,24 @@
 (defmethod after-run ::test-extensions
   [driver]
   (log/infof "%s has no after-run hooks." driver))
+
+(defmulti gc-orphans!
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse. Returns the names actually
+  deleted, not those found. Runs nightly (`.github/workflows/test.cleanup-dwh-data.yml`) because [[after-run]] never
+  fires when a CI job is cancelled.
+
+  `options` are `:temp-data-hours` (per-run garbage) and `:fixture-hours` (datasets runs share).
+
+  Implement only for drivers whose tests create objects in a shared cloud account -- not Athena or Databricks, whose
+  datasets are preloaded. Match only names the driver's own test extensions generate, never a bare wildcard."
+  {:arglists '([driver options])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod gc-orphans! ::test-extensions
+  [driver _options]
+  (log/infof "%s has no orphan GC; skipping." driver)
+  [])
 
 (defmulti drop-if-exists-and-create-db!
   "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
