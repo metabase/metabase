@@ -115,7 +115,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         cy.findByText(/Please ask a Metabase Store Admin/).should("not.exist");
 
         cy.log("no trial → no trial line");
-        cy.findByText(/14-day free trial/).should("not.exist");
+        cy.findByText(/14 day trial/).should("not.exist");
 
         cy.log(
           "CTA is rendered (hosted starter as store admin → opens the upgrade modal)",
@@ -155,7 +155,7 @@ describe("scenarios > embedding > themes > upsell", () => {
 
         cy.log("trial line is rendered");
         cy.findByText(
-          /Get a 14-day free trial of this and other pro features/,
+          /Get a 14 day trial of this and other Pro features/,
         ).should("be.visible");
 
         cy.log("button text switches to 'Try for free'");
