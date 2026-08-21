@@ -496,7 +496,14 @@
         ;; equivalent; instead you can do `<string> + 0.0` =(
         ("float" "double") [:+ json-extract+jsonpath [:inline 0.0]]
 
-        [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
+        ;; CONVERT's target type cannot be a quoted identifier, so a `database-type` that isn't a plain type name
+        ;; (the same rule as [[h2x/cast]]) cannot be spliced into the SQL safely — reject it instead
+        (do
+          (when-not (h2x/raw-type-name? field-type)
+            (throw (ex-info (format "Invalid database type for MySQL CONVERT: %s" (pr-str field-type))
+                            {:type          driver-api/qp.error-type.invalid-query
+                             :database-type field-type})))
+          [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]])))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
