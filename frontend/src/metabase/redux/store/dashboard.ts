@@ -9,6 +9,8 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   ParameterValuesMap,
+  TimelineEventId,
+  TimelineEventsVisibility,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -19,7 +21,8 @@ export type DashboardSidebarName =
   | "settings"
   | "sharing"
   | "info"
-  | "analyze";
+  | "analyze"
+  | "events";
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;
@@ -47,10 +50,31 @@ export interface EditParameterSidebarState extends BaseSidebarState {
   props: EditParameterSidebarProps;
 }
 
+export type EventsSidebarProps = {
+  dashcardId?: DashCardId;
+  focusedEventIds?: TimelineEventId[];
+};
+
+export interface EventsSidebarState extends BaseSidebarState {
+  name: "events";
+  props: EventsSidebarProps;
+}
+
 export type DashboardSidebarState =
   | BaseSidebarState
   | ClickBehaviorSidebarState
-  | EditParameterSidebarState;
+  | EditParameterSidebarState
+  | EventsSidebarState;
+
+export type TimelineEventsSelection = {
+  dashcardId?: DashCardId;
+  eventIds: TimelineEventId[];
+};
+
+export interface DashboardTimelineEventsState {
+  overrides: Record<DashCardId, TimelineEventsVisibility>;
+  selection: TimelineEventsSelection | null;
+}
 
 export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
@@ -117,6 +141,8 @@ export interface DashboardState {
   slowCards: Record<DashCardId, boolean>;
 
   sidebar: DashboardSidebarState;
+
+  timelineEvents: DashboardTimelineEventsState;
 
   missingActionParameters: unknown;
 
