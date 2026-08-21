@@ -48,6 +48,14 @@
                       ::models.notification/CreateNotificationRecipientParams)
    {:with-id? false}))
 
+(mr/def ::NotificationApiUpdateInput
+  "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,
+  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/NotificationHandler
+                      ::models.notification/NotificationRecipient)
+   {:with-id? true :update-input? true}))
+
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
   [handlers]
@@ -253,6 +261,15 @@
                           :previous-object existing-notification
                           :user-id         api/*current-user-id*}))
 
+(defn- inject-authoritative-ids
+  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
+  payload."
+  [body {:keys [id payload_id]}]
+  ;; without the ids the spec-update below would treat the body as a different row and delete +
+  ;; recreate it, changing primary keys out from under the caller
+  (cond-> (assoc body :id id)
+    (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -266,13 +283,14 @@
   the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   body :- ::NotificationApiInput]
+   body :- ::NotificationApiUpdateInput]
   (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
-    (models.notification/update-notification! existing-notification body)
-    (u/prog1 (get-notification id)
-      (publish-notification-update! <> existing-notification))))
+    (let [body (inject-authoritative-ids body existing-notification)]
+      (models.notification/update-notification! existing-notification body)
+      (u/prog1 (get-notification id)
+        (publish-notification-update! <> existing-notification)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
