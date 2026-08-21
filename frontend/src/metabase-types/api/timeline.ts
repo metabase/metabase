@@ -60,7 +60,6 @@ export interface TimelineEventData {
 }
 
 export interface TimelineEventsVisibility {
-  hidden_timeline_ids?: TimelineId[];
   shown_timeline_ids?: TimelineId[];
   hidden_event_ids?: TimelineEventId[];
 }

@@ -1,25 +1,15 @@
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { useDashboardContext } from "metabase/dashboard/context";
-import type {
-  DashboardSidebarState,
-  EventsSidebarState,
-} from "metabase/redux/store";
+import { getEventsSidebarProps } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/redux";
 
 import { DashCardEventsSidebar } from "./DashCardEventsSidebar";
 import { DashboardWideEventsSidebar } from "./DashboardWideEventsSidebar";
 
-function isEventsSidebar(
-  sidebar: DashboardSidebarState,
-): sidebar is EventsSidebarState {
-  return sidebar.name === SIDEBAR_NAME.events;
-}
-
 export function DashboardEventsSidebar() {
-  const { sidebar } = useDashboardContext();
-  if (!isEventsSidebar(sidebar)) {
+  const sidebarProps = useSelector(getEventsSidebarProps);
+  if (!sidebarProps) {
     return null;
   }
-  const { dashcardId, focusedEventIds } = sidebar.props;
+  const { dashcardId, focusedEventIds } = sidebarProps;
   return dashcardId != null ? (
     <DashCardEventsSidebar
       dashcardId={dashcardId}
