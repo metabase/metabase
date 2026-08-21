@@ -59,16 +59,16 @@ If your question is a time series, you can click on the **Calendar** in the bott
 
 ## Events on dashboards
 
-Time series charts on a dashboard show the events of the timelines in the dashboard's collection, just like questions do. Very small cards don't have room for events, so they won't show them.
+Time series charts on a dashboard don't show any events until you turn a timeline on. Very small cards don't have room for events, so they won't show them even when a timeline is on.
 
-To choose which events a chart shows, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing the timelines and events that fall in the range of that chart. You can:
+To choose which events a chart shows, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing the timelines of the dashboard's collection and the events that fall in the range of that chart. You can:
 
 - Toggle a timeline or an event on or off for that card (including timelines from other collections).
 - Add a new event, or edit, move, and archive events (if you have curate access to the collection).
 
 To toggle events for every time series chart on the dashboard at once, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**. If some cards show an event and others don't, its checkbox shows a dash. Clicking it applies your choice to every card.
 
-These selections are temporary; if you reload the dashboard, Metabase will show the collection's events again.
+These selections are temporary; if you reload the dashboard or start editing it, events return to hidden.
 
 ## Viewing events and timelines on a chart from a different collection
 

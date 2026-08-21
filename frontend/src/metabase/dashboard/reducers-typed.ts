@@ -23,14 +23,10 @@ import {
   NAVIGATE_BACK_TO_DASHBOARD,
   REVERT_CARD_TO_REVISION,
 } from "metabase/redux/query-builder";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase/redux/store/dashboard";
+import type { StoreDashboard } from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  DashCardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
@@ -45,7 +41,6 @@ import {
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_SIDEBAR,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
@@ -59,6 +54,7 @@ import {
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  setSidebar,
 } from "./actions";
 import {
   deselectTimelineEvents,
@@ -204,19 +200,7 @@ export const sidebar = createReducer(
     builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
     builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          name: DashboardSidebarName;
-          props?: {
-            dashcardId?: DashCardId;
-            parameterId?: ParameterId;
-          };
-        };
-      }
-    >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
+    builder.addCase(setSidebar, (_state, { payload: { name, props } }) => ({
       name,
       props: props || {},
     }));
@@ -235,10 +219,7 @@ export const timelineEvents = createReducer(
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
     });
-    builder.addCase<
-      string,
-      { type: string; payload: { name: DashboardSidebarName } }
-    >(SET_SIDEBAR, (state, { payload: { name } }) => {
+    builder.addCase(setSidebar, (state, { payload: { name } }) => {
       if (name !== SIDEBAR_NAME.events) {
         state.selection = null;
       }
