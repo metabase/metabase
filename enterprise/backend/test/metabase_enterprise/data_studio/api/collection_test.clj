@@ -37,15 +37,15 @@
                                             (str "collection/" (u/the-id collection) "/items")
                                             :archived true)]
             (is (empty? (filter #(= "table" (:model %)) (:data items))))))
-        (testing "tables don't appear when pinned_state=is_pinned"
+        (testing "tables don't appear when pinned-state=is_pinned"
           (let [items (mt/user-http-request :crowberto :get 200
                                             (str "collection/" (u/the-id collection) "/items")
-                                            :pinned_state "is_pinned")]
+                                            :pinned-state "is_pinned")]
             (is (empty? (filter #(= "table" (:model %)) (:data items))))))
-        (testing "tables appear when pinned_state=is_not_pinned"
+        (testing "tables appear when pinned-state=is_not_pinned"
           (let [items (mt/user-http-request :crowberto :get 200
                                             (str "collection/" (u/the-id collection) "/items")
-                                            :pinned_state "is_not_pinned")]
+                                            :pinned-state "is_not_pinned")]
             (is (= 1 (count (filter #(= "table" (:model %)) (:data items)))))))))))
 
 (deftest collection-items-table-permissions-test

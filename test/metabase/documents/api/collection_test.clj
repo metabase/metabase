@@ -18,12 +18,12 @@
                (set (map (juxt :id :model)
                          (:data (mt/user-http-request :rasta :get 200
                                                       (str "collection/" coll-id "/items"))))))))
-      (testing "Even with show_dashboard_questions=true, in_document cards do not appear"
+      (testing "Even with show-dashboard-questions=true, in_document cards do not appear"
         (is (= #{[normal-card-id "card"]
                  [dash-id "dashboard"]}
                (set (map (juxt :id :model)
                          (:data (mt/user-http-request :rasta :get 200
-                                                      (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))))
+                                                      (str "collection/" coll-id "/items?show-dashboard-questions=true")))))))))))
 
 (deftest document-cards-do-not-appear-in-root-items
   (testing "GET /api/collection/root/items excludes cards with document_id"
@@ -42,8 +42,8 @@
           (is (= #{[normal-card-id "card"]
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items))))))
-      (testing "Even with show_dashboard_questions=true, in_document cards do not appear"
-        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items?show_dashboard_questions=true")
+      (testing "Even with show-dashboard-questions=true, in_document cards do not appear"
+        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items?show-dashboard-questions=true")
               root-test-items (filter #(#{normal-card-id dash-id in-document-card-id} (:id %))
                                       (:data items))]
           (is (= #{[normal-card-id "card"]
@@ -113,7 +113,7 @@
             (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))
 
 (deftest document-pinning-collection-items
-  (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"
+  (testing "GET /api/collection/:id/items supports pinned-state parameter for documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {pinned-doc-id :id} {:collection_id coll-id
                                                         :name "Pinned Document"
@@ -127,25 +127,25 @@
                    :model/Card {unpinned-card-id :id} {:collection_id coll-id
                                                        :name "Unpinned Card"
                                                        :collection_position nil}]
-      (testing "pinned_state=is_pinned returns only pinned documents and cards"
+      (testing "pinned-state=is_pinned returns only pinned documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned_state=is_pinned")))
+                                                 (str "collection/" coll-id "/items?pinned-state=is_pinned")))
               item-ids (set (map (juxt :model :id) items))]
           (is (contains? item-ids ["document" pinned-doc-id]))
           (is (contains? item-ids ["card" pinned-card-id]))
           (is (not (contains? item-ids ["document" unpinned-doc-id])))
           (is (not (contains? item-ids ["card" unpinned-card-id])))))
-      (testing "pinned_state=is_not_pinned returns only unpinned documents and cards"
+      (testing "pinned-state=is_not_pinned returns only unpinned documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned_state=is_not_pinned")))
+                                                 (str "collection/" coll-id "/items?pinned-state=is_not_pinned")))
               item-ids (set (map (juxt :model :id) items))]
           (is (not (contains? item-ids ["document" pinned-doc-id])))
           (is (not (contains? item-ids ["card" pinned-card-id])))
           (is (contains? item-ids ["document" unpinned-doc-id]))
           (is (contains? item-ids ["card" unpinned-card-id]))))
-      (testing "pinned_state=all returns all documents and cards"
+      (testing "pinned-state=all returns all documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned_state=all")))
+                                                 (str "collection/" coll-id "/items?pinned-state=all")))
               item-ids (set (map (juxt :model :id) items))]
           (is (contains? item-ids ["document" pinned-doc-id]))
           (is (contains? item-ids ["card" pinned-card-id]))
@@ -153,7 +153,7 @@
           (is (contains? item-ids ["card" unpinned-card-id])))))))
 
 (deftest document-pinning-root-items
-  (testing "GET /api/collection/root/items supports pinned_state parameter for documents"
+  (testing "GET /api/collection/root/items supports pinned-state parameter for documents"
     (mt/with-temp [:model/Document {pinned-doc-id :id} {:collection_id nil
                                                         :name "Pinned Root Document"
                                                         :collection_position 1}
@@ -166,15 +166,15 @@
                    :model/Card {unpinned-card-id :id} {:collection_id nil
                                                        :name "Unpinned Root Card"
                                                        :collection_position nil}]
-      (testing "pinned_state=is_pinned returns only pinned root documents and cards"
-        (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned_state=is_pinned"))
+      (testing "pinned-state=is_pinned returns only pinned root documents and cards"
+        (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned-state=is_pinned"))
               test-item-ids (set (map (juxt :model :id) items))]
           (is (contains? test-item-ids ["document" pinned-doc-id]))
           (is (contains? test-item-ids ["card" pinned-card-id]))
           (is (not (contains? test-item-ids ["document" unpinned-doc-id])))
           (is (not (contains? test-item-ids ["card" unpinned-card-id])))))
-      (testing "pinned_state=is_not_pinned returns only unpinned root documents and cards"
-        (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned_state=is_not_pinned"))
+      (testing "pinned-state=is_not_pinned returns only unpinned root documents and cards"
+        (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned-state=is_not_pinned"))
               test-item-ids (set (map (juxt :model :id) items))]
           (is (not (contains? test-item-ids ["document" pinned-doc-id])))
           (is (not (contains? test-item-ids ["card" pinned-card-id])))
@@ -205,7 +205,7 @@
           (is (some #(= 3 %) doc-positions))))
       (testing "Pinned documents have higher collection_position values and appear before unpinned"
         (let [items (:data (mt/user-http-request :rasta :get 200
-                                                 (str "collection/" coll-id "/items?pinned_state=is_pinned")))
+                                                 (str "collection/" coll-id "/items?pinned-state=is_pinned")))
               pinned-docs (filter #(= "document" (:model %)) items)]
           (is (= 2 (count pinned-docs)))
           ;; Verify all pinned docs have non-nil collection_position

@@ -2,11 +2,13 @@ import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
   CollectionItemModel,
+  CollectionItemsMetadata,
   CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetCollectionItemsMetadataRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -87,6 +89,21 @@ export const collectionApi = Api.injectEndpoints({
         [ObjectUnionSchema],
         (response) => response.data,
       ),
+    }),
+    getCollectionItemsMetadata: builder.query<
+      CollectionItemsMetadata,
+      GetCollectionItemsMetadataRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items/metadata`,
+        params,
+      }),
+      // The metadata describes items of every model, so any item change may invalidate it.
+      providesTags: (_response, _error, { id }) => [
+        ...provideCollectionItemListTags([]),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -217,6 +234,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,
