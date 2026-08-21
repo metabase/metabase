@@ -115,9 +115,17 @@
       (str/replace ">" "&gt;")
       (str/replace "|" "\u2502")))
 
+(def ^:private image-alt-text-limit
+  "Slack rejects an `image` block whose `alt_text` exceeds this many characters.
+   Tighter than [[slackbot.channel/section-text-limit]], so a title can fit the section and still
+   fail here.
+   See https://docs.slack.dev/reference/block-kit/blocks/image-block."
+  2000)
+
 (defn- format-viz-title
   "Build the title text for a visualization message, combining the title with a link to the query.
-   Returns nil when there is neither, and never exceeds [[slackbot.channel/section-text-limit]]."
+   Returns nil when nothing is left to show, and never exceeds
+   [[slackbot.channel/section-text-limit]]."
   [title link]
   (let [limit     slackbot.channel/section-text-limit
         full-link (when link (str (system/site-url) link))
@@ -131,9 +139,15 @@
     ;; than truncate it; with no title left, `viz-output->blocks` falls back to "Query results".
     (if (and text (> (count text) limit))
       (do
-        (log/infof "[slackbot] viz title over limit, dropping query link (text_length=%d link_length=%d limit=%d)"
-                   (count text) (count full-link) limit)
-        (analytics/inc! :metabase-slackbot/viz-links-dropped)
+        ;; Either way the answer is the same elided title -- only what we report differs, because
+        ;; with no link there is nothing to drop and the counter would overstate what happened.
+        (if full-link
+          (do
+            (log/infof "[slackbot] viz title over limit, dropping query link (text_length=%d link_length=%d limit=%d)"
+                       (count text) (count full-link) limit)
+            (analytics/inc! :metabase-slackbot/viz-links-dropped))
+          (log/infof "[slackbot] viz title over limit with no link to drop, eliding it (title_length=%d limit=%d)"
+                     (count text) limit))
         (u.str/elide title limit))
       text)))
 
@@ -151,7 +165,10 @@
                                  :text {:type "mrkdwn" :text text}}
                                 {:type       "image"
                                  :slack_file {:id id}
-                                 :alt_text   (or title filename "Visualization")}]]
+                                 ;; Plain text, so it is cut rather than elided -- no ellipsis to add.
+                                 :alt_text   (or (some-> title (u.str/limit-chars image-alt-text-limit))
+                                                 filename
+                                                 "Visualization")}]]
                blocks))))
 
 (def ^:private tool-friendly-names
@@ -617,7 +634,8 @@
                                                                        message-ctx
                                                                        "I generated a response, but Slack could not render it. Please try again.")]
                 (when-not (:ok fallback-result)
-                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result))
+                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s"
+                              (:error fallback-result))
                   (analytics/inc! :metabase-slackbot/responses-undeliverable))))
             (doseq [e errors]
               (post-viz-error! client channel thread-ts e)))

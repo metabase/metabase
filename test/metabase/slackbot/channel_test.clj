@@ -61,8 +61,8 @@
   [{:type "context_actions" :elements []}])
 
 (defn- drive-channel-response!
-  "Drive [[slackbot.channel/send-channel-response]] to completion with `answer` as the model's text
-   and `reply-result` standing in for what Slack returns from `post-thread-reply`, called with the
+  "Drive [[slackbot.channel/send-channel-response]] to completion with `answer` as the model's text.
+   `reply-result` stands in for what Slack returns from `post-thread-reply`, and is called with the
    number of posts made so far. Returns `{:posts [{:text .. :blocks ..} ..] :backfill ..}`, in the
    order the posts were made."
   [answer reply-result]
@@ -101,8 +101,8 @@
     {:posts @posts :backfill @backfill}))
 
 (defn- send-channel-response!
-  "Drive [[slackbot.channel/send-channel-response]] with a Slack that accepts everything, returning
-   `{:text .. :blocks ..}` as posted plus the `:backfill` it recorded."
+  "Drive [[slackbot.channel/send-channel-response]] with a Slack that accepts everything.
+   Returns `{:text .. :blocks ..}` as posted, plus the `:backfill` it recorded."
   [answer]
   (let [{:keys [posts backfill]} (drive-channel-response!
                                   answer

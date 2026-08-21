@@ -24,8 +24,8 @@
   (str prompt channel-response-style-suffix))
 
 (def section-text-limit
-  "Slack rejects a `section` block whose `text.text` exceeds this many characters, failing the whole
-   `chat.postMessage` with `invalid_blocks`.
+  "Slack rejects a `section` block whose `text.text` exceeds this many characters.
+   The whole `chat.postMessage` fails with `invalid_blocks`.
    See https://docs.slack.dev/reference/block-kit/blocks/section-block."
   3000)
 

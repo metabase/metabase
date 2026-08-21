@@ -47,20 +47,20 @@
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
 
-;; Derived from the production constant, so the harness cannot drift from what the code enforces.
+;; Aliased rather than restated, so the harness cannot drift from what the code enforces.
 (def slack-section-text-limit
-  "Slack rejects a `section` block whose `text.text` exceeds this many characters."
+  "Alias for [[metabase.slackbot.channel/section-text-limit]]."
   slackbot.channel/section-text-limit)
 
 (def oversized-answer
-  "An answer comfortably past [[slack-section-text-limit]], numbered line by line so a truncated
-   copy can be checked against the original."
+  "An answer comfortably past [[slack-section-text-limit]].
+   Numbered line by line, so a truncated copy can be checked against the original."
   (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200))))
 
 (defn oversized-section-error
-  "The `chat.postMessage` rejection Slack returns when a `section` block in `blocks` is over
-   [[slack-section-text-limit]], or nil when none is. Models that one rule -- the one BOT-1606 is
-   about -- not Block Kit validation at large."
+  "The `chat.postMessage` rejection Slack returns for an oversized `section` block in `blocks`.
+   Nil when every block is within [[slack-section-text-limit]]. Models that one rule -- the one
+   BOT-1606 is about -- not Block Kit validation at large."
   [blocks]
   ;; The mocked client accepts anything, so tests that care about this rule come through here.
   (when-let [idx (first (keep-indexed (fn [idx block]
