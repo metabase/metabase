@@ -132,7 +132,7 @@ runs:
       uses: ./.github/actions/collect-profile
       with:
         profiled: ${{ steps.run-test.outputs.profiled }}
-        artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.logs-artifact-suffix && format('-{0}', inputs.logs-artifact-suffix) || '') }}
+        artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
 
     - name: Report failed tests to ci-conductor
       if: ${{ !cancelled() && ( steps.run-test.outcome == 'failure' || github.run_attempt != '1' ) }}
