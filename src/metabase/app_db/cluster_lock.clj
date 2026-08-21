@@ -22,6 +22,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.config.core :as config]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -143,6 +144,14 @@
         (when previous
           (set-session-lock-wait-timeout! conn previous))))))
 
+(defn- lock-wait-timed-out?
+  "Whether `e` says we timed out waiting for a row lock, rather than failing for some other reason."
+  [^Throwable e]
+  (or (instance? java.sql.SQLTimeoutException e)
+      (instance? java.sql.SQLTimeoutException (ex-cause e))
+      (true? (::acquisition-timeout (ex-data e)))
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+
 (defn- insert-lock-row-out-of-band!
   "Insert the lock's row on a connection of our own, so it is committed rather than tied to the caller's
   transaction.
@@ -180,28 +189,50 @@
           (do-with-lock-wait-timeout conn timeout insert!)
           (insert!))))))
 
+(defn- insert-lock-row-in-band!
+  "Insert the lock's row on the caller's own connection, inside its transaction.
+  This record will not be visible until the tx commits, so there's no need to lock it; concurrent
+  inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
+  (under a detached lock ambient resolution would hand it a different connection) and needs the
+  same query timeout as the SELECT — concurrent first-time inserters block on the winner's
+  uncommitted unique-index entry."
+  [^Connection conn lock-name-str timeout]
+  (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                  :columns     [:lock_name]
+                                  :values      [[[:raw "?"]]]})]
+    (with-open [insert-stmt (.prepareStatement conn ^String sql)]
+      (u.connection/set-query-timeout! insert-stmt timeout)
+      (.setString insert-stmt 1 lock-name-str)
+      (.executeUpdate insert-stmt))))
+
 (defn- acquire-lock-row!*
   [^Connection conn lock-name-str timeout mode ambient-transaction?]
   (let [inserted-out-of-band?
         (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
                     result-set (.executeQuery stmt)]
           (when-not (.next result-set)
-            (if ambient-transaction?
-              (do (insert-lock-row-out-of-band! lock-name-str timeout)
-                  true)
-              ;; this record will not be visible until the tx commits, so there's no need to lock it; concurrent
-              ;; inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
-              ;; (under a detached lock ambient resolution would hand it a different connection) and needs the
-              ;; same query timeout as the SELECT — concurrent first-time inserters block on the winner's
-              ;; uncommitted unique-index entry
-              (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
-                                              :columns     [:lock_name]
-                                              :values      [[[:raw "?"]]]})]
-                (with-open [insert-stmt (.prepareStatement conn ^String sql)]
-                  (u.connection/set-query-timeout! insert-stmt timeout)
-                  (.setString insert-stmt 1 lock-name-str)
-                  (.executeUpdate insert-stmt))
-                false))))]
+            ;; `config/is-test?` because this only matters where the ambient transaction may never commit:
+            ;; `with-temp` rolls back, so a row inserted inside it is gone again and the next acquisition
+            ;; replays a race meant to happen once. In production the caller's transaction commits the row
+            ;; the ordinary way, and `load-from-h2!` shows that production really does take cluster locks
+            ;; inside one -- so leave that path exactly as it was.
+            (if (and ambient-transaction? config/is-test?)
+              (try
+                (insert-lock-row-out-of-band! lock-name-str timeout)
+                true
+                (catch Exception e
+                  ;; A lock-wait timeout here usually means the blocker is the ambient transaction itself:
+                  ;; on MySQL/MariaDB a SELECT ... FOR UPDATE it took earlier holds a next-key lock whose gap
+                  ;; covers this row's key, and our fresh connection can never outwait our own caller (e.g.
+                  ;; load-from-h2 inserts Databases -- and so takes the batch-permissions locks -- inside one
+                  ;; big load transaction). Fall back to inserting on the caller's connection, which cannot
+                  ;; block on its own locks.
+                  (if (lock-wait-timed-out? e)
+                    (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                        false)
+                    (throw e))))
+              (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                  false))))]
     (when inserted-out-of-band?
       ;; the row was committed on another connection, so take its lock here now that there is one to take
       (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
