@@ -855,6 +855,7 @@
                     [:= :dr.model "Document"]
                     [:= :dr.user_id user-id]
                     [:not= :d.exploration_id nil]]}
+          ^:allow-subquery
           {:select [[:id :eid] [:created_at :ts]]
            :from   [:exploration]
            :where  [:= :creator_id user-id]}]}

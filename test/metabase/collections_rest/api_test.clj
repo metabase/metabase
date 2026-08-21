@@ -795,6 +795,35 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
+(deftest collection-items-card-permission-checks-do-not-scale-with-card-count-test
+  (testing "listing a collection's cards issues no per-card query (#78848)"
+    ;; `:can_write` hydration runs `mi/can-write?` on every row, which since Cards became
+    ;; Document-scopable has to know each Card's `document_id`. If the listing query does not
+    ;; select that column, `parent-document-id` resolves it from the primary key instead — one
+    ;; extra `SELECT` per Card. Compare two collection sizes rather than asserting a fixed budget,
+    ;; so the test pins the *shape* (constant) and not an incidental number.
+    (let [items!     (fn [coll-id]
+                       (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items")
+                                             :models "card"))
+          call-count (fn [n]
+                       (mt/with-temp [:model/Collection {coll-id :id} {}]
+                         (doseq [i (range n)]
+                           (t2/insert! :model/Card
+                                       {:name                   (str "n1q card " i)
+                                        :type                   :question
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :collection_id          coll-id
+                                        :database_id            (mt/id)
+                                        :dataset_query          (mt/mbql-query venues)
+                                        :display                "table"
+                                        :visualization_settings {}}))
+                         ;; warm any lazily-initialized caches the first request would otherwise pay for
+                         (items! coll-id)
+                         (t2/with-call-count [cc]
+                           (items! coll-id)
+                           (cc))))]
+      (is (= (call-count 2) (call-count 6))))))
+
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"

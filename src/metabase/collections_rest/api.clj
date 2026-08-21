@@ -703,13 +703,23 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
+      ;; `card-query` filters `[:= :c.document_id nil]` unconditionally, so every row here is known
+      ;; not to belong to a Document. Say so on the instance: `mi/can-write?` consults `document_id`
+      ;; (a Document-scoped Card is gated by its Document), and an instance that merely *omits* the
+      ;; column makes it resolve one from the primary key instead — one extra query per row, on a
+      ;; listing that renders a full page of them. Stamping it rather than selecting it keeps the
+      ;; column out of `all-select-columns`, which every model's union arm would otherwise have to
+      ;; pad, and out of the response body.
+      (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
 (defn- post-process-card-row-after-hydrate [row]
-  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace)
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace
+              ;; internal-only: stamped in `post-process-card-row` for the permission check
+              :document_id)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
