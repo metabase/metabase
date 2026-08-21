@@ -9,6 +9,7 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { getFontFamilyValue } from "metabase/embedding-sdk/theme/fonts";
 import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 import { deriveFullMetabaseTheme } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
@@ -64,7 +65,7 @@ export function getMetabaseSdkCssVariables({
 }) {
   return css`
     :root {
-      --mb-default-font-family: ${font};
+      --mb-default-font-family: ${getFontFamilyValue(font)};
       ${createColorVars("light", whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}

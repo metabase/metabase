@@ -9,6 +9,7 @@ import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
+import { getFontFamilyValue } from "metabase/embedding-sdk/theme/fonts";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -35,7 +36,7 @@ export const GlobalStyles = (): JSX.Element => {
     return css`
       ${cssVariables}
       :root {
-        --mb-default-font-family: "${font}";
+        --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
       ${defaultFontFiles({ baseUrl: sitePath })}

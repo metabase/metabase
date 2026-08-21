@@ -118,8 +118,7 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                                      ;; don't want default constraints overriding anything that's already there
-                                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                                      (dissoc :constraints :middleware)
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters
                                                                               filter-stage-added? add-stage-to-temporal-unit-parameters))

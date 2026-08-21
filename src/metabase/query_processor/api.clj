@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty get-in])
+  (:refer-clojure :exclude [not-empty get-in select-keys])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -27,7 +27,9 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
    [metabase.util :as u]
@@ -36,7 +38,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.util.performance :refer [not-empty get-in select-keys]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -152,10 +154,10 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
+                                          (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
-                                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                   (select-keys [:ignore-cached-results?])
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :process-viz-settings?  true
@@ -202,13 +204,29 @@
                                            [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
-    (let [query (lib-be/normalize-query (dissoc query :pretty))]
+    (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
+                    (dissoc :constraints :middleware)
+                    lib/disable-default-limit)]
       (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-      (let [driver (driver.u/database->driver database)
-            prettify (partial driver/prettify-native-form driver)
-            compiled (qp.compile/compile-with-inline-parameters query)]
-        (cond-> compiled
-          pretty (update :query prettify))))))
+      (qp.setup/with-qp-setup [query query]
+        (binding [driver/*compile-with-inline-parameters* true]
+          ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
+          ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
+          ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
+          ;; the time we check.
+          (let [preprocessed (qp.preprocess/preprocess query)]
+            (try
+              (qp.perms/check-query-permissions* preprocessed)
+              (catch clojure.lang.ExceptionInfo e
+                (throw (if (:permissions-error? (ex-data e))
+                         (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
+                         e))))
+            (let [compiled (qp.compile/compile-preprocessed preprocessed)
+                  driver (driver.u/database->driver database)]
+              ;; Return only the compiled query and its params, not the internal keys the compiler carries
+              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids).
+              (-> (select-keys compiled [:query :params])
+                  (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
@@ -220,7 +238,7 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc query
+      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
                                 rff)
