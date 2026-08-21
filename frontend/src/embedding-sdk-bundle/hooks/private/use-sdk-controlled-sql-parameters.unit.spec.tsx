@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterValuesMap } from "metabase-types/api";
 
 import type { SqlParameterValues } from "../../types";
@@ -17,13 +17,14 @@ jest.mock("metabase/selectors/metadata", () => ({
   getMetadata: jest.fn(),
 }));
 jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
-  getCardUiParameters: jest.fn(),
+  getCardUiParametersFromQuery: jest.fn(),
 }));
 
 // Unjustified type cast. FIXME
 const useSelectorMock = useSelector as unknown as jest.Mock;
 // Unjustified type cast. FIXME
-const getCardUiParametersMock = getCardUiParameters as unknown as jest.Mock;
+const getCardUiParametersFromQueryMock =
+  getCardUiParametersFromQuery as unknown as jest.Mock;
 
 // Unjustified type cast. FIXME
 const STATE_PARAM = {
@@ -72,7 +73,7 @@ const setup = (options: SetupOptions = {}) => {
   } = options;
 
   useSelectorMock.mockReturnValue({});
-  getCardUiParametersMock.mockReturnValue(parameterDefinitions);
+  getCardUiParametersFromQueryMock.mockReturnValue(parameterDefinitions);
 
   const updateParameterValues = jest.fn();
 
@@ -181,7 +182,7 @@ describe("useSdkControlledSqlParameters", () => {
 
       expect(updateParameterValues).not.toHaveBeenCalled();
 
-      getCardUiParametersMock.mockReturnValue(DEFAULT_DEFINITIONS);
+      getCardUiParametersFromQueryMock.mockReturnValue(DEFAULT_DEFINITIONS);
       rerender({
         sqlParameters: stableSqlParameters,
         onSqlParametersChange: undefined,
@@ -370,7 +371,7 @@ describe("useSdkControlledSqlParameters", () => {
         "initial-state",
       );
 
-      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      getCardUiParametersFromQueryMock.mockReturnValue([STATE_PARAM]);
       rerender({
         sqlParameters: inputParameters,
         onSqlParametersChange,
@@ -400,7 +401,7 @@ describe("useSdkControlledSqlParameters", () => {
       });
       expect(onSqlParametersChange).toHaveBeenCalledTimes(1);
 
-      getCardUiParametersMock.mockReturnValue([STATE_PARAM]);
+      getCardUiParametersFromQueryMock.mockReturnValue([STATE_PARAM]);
       rerender({
         sqlParameters: { state: "NY" },
         onSqlParametersChange,

@@ -63,7 +63,7 @@ export function getTextTagFromTarget(target: ParameterTarget) {
 export function getParameterTargetField(
   question: Question,
   parameter: Parameter,
-  target: ParameterTarget,
+  target: ParameterTarget | undefined,
 ) {
   if (!isDimensionTarget(target)) {
     return null;

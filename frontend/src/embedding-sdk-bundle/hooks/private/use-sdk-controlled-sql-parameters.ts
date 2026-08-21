@@ -11,7 +11,7 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterValuesMap } from "metabase-types/api";
 
 import type { SqlParameterValues } from "../../types";
@@ -45,7 +45,7 @@ export const useSdkControlledSqlParameters = ({
   const parameterDefinitions = useMemo<UiParameter[]>(
     () =>
       question
-        ? getCardUiParameters(
+        ? getCardUiParametersFromQuery(
             question.card(),
             metadata,
             parameterValues,

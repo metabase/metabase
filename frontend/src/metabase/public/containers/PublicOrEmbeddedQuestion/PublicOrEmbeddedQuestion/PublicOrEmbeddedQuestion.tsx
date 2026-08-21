@@ -20,7 +20,7 @@ import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromParamFields } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
@@ -86,11 +86,9 @@ export const PublicOrEmbeddedQuestion = () => {
         );
       }
 
-      const parameters = getCardUiParameters(
+      const parameters = getCardUiParametersFromParamFields(
         card,
         metadataRef.current,
-        {},
-        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -197,12 +195,7 @@ export const PublicOrEmbeddedQuestion = () => {
       return [];
     }
 
-    return getCardUiParameters(
-      card,
-      metadataRef.current,
-      {},
-      card.parameters || undefined,
-    );
+    return getCardUiParametersFromParamFields(card, metadataRef.current);
   };
 
   return (

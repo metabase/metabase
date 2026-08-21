@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { useLatest, usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getDashboardUiParametersFromParamFields } from "metabase/parameters/utils/dashboards";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 type UseParameterListProps = {
@@ -41,7 +41,7 @@ export const useAvailableParameters = ({
     if (experience === "dashboard") {
       // Unjustified type cast. FIXME
       const dashboard = resource as Dashboard;
-      return getSavedDashboardUiParameters(
+      return getDashboardUiParametersFromParamFields(
         dashboard.dashcards,
         dashboard.parameters,
         dashboard.param_fields,
@@ -50,7 +50,7 @@ export const useAvailableParameters = ({
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParameters(card, metadataRef.current) || [];
+      return getCardUiParametersFromQuery(card, metadataRef.current) || [];
     }
 
     return [];

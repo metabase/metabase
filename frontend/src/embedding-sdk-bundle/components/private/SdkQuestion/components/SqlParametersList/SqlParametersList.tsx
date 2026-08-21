@@ -7,7 +7,7 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterId } from "metabase-types/api";
 
 import SqlParametersListS from "./SqlParametersList.module.css";
@@ -48,7 +48,7 @@ export const SqlParametersList = () => {
 
     const originalParameters = originalQuestion.card().parameters ?? [];
 
-    const uiParameters = getCardUiParameters(
+    const uiParameters = getCardUiParametersFromQuery(
       question.card(),
       metadataRef.current,
       parameterValues,

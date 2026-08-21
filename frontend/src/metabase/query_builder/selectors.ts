@@ -39,7 +39,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameterValue,
   normalizeParameters,
@@ -158,7 +158,7 @@ export const getTableForeignKeyReferences = (state: State) =>
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    card ? getCardUiParameters(card, metadata, parameterValues) : [],
+    card ? getCardUiParametersFromQuery(card, metadata, parameterValues) : [],
 );
 
 const getLastRunDatasetQuery = createSelector(

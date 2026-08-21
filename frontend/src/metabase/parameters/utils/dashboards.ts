@@ -130,7 +130,7 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
   });
 }
 
-export function getSavedDashboardUiParameters(
+export function getDashboardUiParametersFromParamFields(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
   parameterFields: Dashboard["param_fields"],
@@ -140,7 +140,7 @@ export function getSavedDashboardUiParameters(
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      return buildSavedDashboardParameter(
+      return buildDashboardParameterFromParamFields(
         parameter,
         mappings,
         parameterFields,
@@ -156,7 +156,7 @@ export function getSavedDashboardUiParameters(
   return uiParameters;
 }
 
-export function getUnsavedDashboardUiParameters(
+export function getDashboardUiParametersFromQuery(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
   metadata: Metadata,
@@ -166,7 +166,7 @@ export function getUnsavedDashboardUiParameters(
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      return buildUnsavedDashboardParameter(
+      return buildDashboardParameterFromQuery(
         parameter,
         mappings,
         metadata,
@@ -204,7 +204,7 @@ export function getDashboardQuestions(
   }, {});
 }
 
-function buildSavedDashboardParameter(
+function buildDashboardParameterFromParamFields(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   fields: Dashboard["param_fields"],
@@ -228,7 +228,7 @@ function buildSavedDashboardParameter(
   };
 }
 
-function buildUnsavedDashboardParameter(
+function buildDashboardParameterFromQuery(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   metadata: Metadata,
