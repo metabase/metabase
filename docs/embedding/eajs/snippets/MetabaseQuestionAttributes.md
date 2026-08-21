@@ -1,0 +1,26 @@
+Attributes for the `<metabase-question>` web component.
+
+Embeds a Metabase question (chart). Provide either `question-id` (for SSO embeds)
+or `token` (for guest embeds), plus optional display configuration.
+Use `question-id="new"` to embed the query builder exploration interface.
+Use `question-id="new-native"` to embed the SQL editor interface.
+
+## Properties
+
+<!-- [<snippet properties>] -->
+
+| Property                                                     | Type                 | Description                                                                                                                                                                                                                                                                   |
+| :----------------------------------------------------------- | :------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="drills"></a> `drills`                                 | `boolean`            | Whether to enable drill-through on the question.<br>---<br>Optional<br>Default: `true`<br>Available in Pro/Enterprise.                                                                                                                                                        |
+| <a id="entity-types"></a> `entity-types`                     | `string`[]           | Which entity types to show in the question's data picker, e.g. `["model", "table"]`.<br>---<br>Optional<br>Possible values: `"model"`, `"table"`<br>Available in Pro/Enterprise and Guest embed.                                                                              |
+| <a id="hidden-parameters"></a> `hidden-parameters`           | `string`[]           | List of parameter names to hide from the question.<br>---<br>Optional<br>Available in Pro/Enterprise.                                                                                                                                                                         |
+| <a id="initial-sql-parameters"></a> `initial-sql-parameters` | `object`             | Default values for SQL parameters, only applicable to native SQL questions, e.g. `{ "productId": "42" }`.<br>---<br>Optional<br>Available in Pro/Enterprise and Guest embed.                                                                                                  |
+| <a id="is-save-enabled"></a> `is-save-enabled`               | `boolean`            | Whether the save button is enabled.<br>---<br>Optional<br>Default: `false`<br>Available in Pro/Enterprise.                                                                                                                                                                    |
+| <a id="question-id"></a> `question-id`                       | `string` \| `number` | The ID of the question to embed. Can be a regular ID or an [entity ID](https://www.metabase.com/docs/latest/installation-and-operation/serialization#entity-ids-work-with-embedding). Use `"new"` to embed the query builder. Only for SSO embeds — guest embeds use `token`. |
+| <a id="target-collection"></a> `target-collection`           | `string` \| `number` | The collection to save a question to. Values: regular ID, entity ID, `"personal"`, `"root"`.<br>---<br>Optional<br>Available in Pro/Enterprise.                                                                                                                               |
+| <a id="token"></a> `token`                                   | `string`             | The token for guest embeds. Set automatically by the guest embed flow.<br>---<br>Optional<br>Available in Guest embed.                                                                                                                                                        |
+| <a id="with-alerts"></a> `with-alerts`                       | `boolean`            | Whether to show the alerts button.<br>---<br>Optional<br>Default: `false`<br>Available in Pro/Enterprise.                                                                                                                                                                     |
+| <a id="with-downloads"></a> `with-downloads`                 | `boolean`            | Whether to show download buttons for question results.<br>---<br>Optional<br>Default: `true` on OSS/Starter, `false` on Pro/Enterprise<br>Available in Guest embed.                                                                                                           |
+| <a id="with-title"></a> `with-title`                         | `boolean`            | Whether to show the question title in the embed.<br>---<br>Optional<br>Default: `true`<br>Available in Guest embed.                                                                                                                                                           |
+
+<!-- [<endsnippet properties>] -->
