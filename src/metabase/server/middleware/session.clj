@@ -132,6 +132,8 @@
                                   [:= :user.is_active true]
                                   [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
+                                  [:or [:= :session.expires_at nil]
+                                   [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
                                                                  :full-app-embed ^:allow-raw-sql [:raw "?"])]]
