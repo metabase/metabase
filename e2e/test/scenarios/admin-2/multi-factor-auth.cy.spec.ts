@@ -25,7 +25,8 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     H.clearInbox();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.intercept("PUT", "/api/setting/mfa-enforcement").as("updateEnforcement");
+    // Every enforcement change writes the deadline alongside it, so it lands on the bulk route.
+    cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("POST", "/api/ee/mfa/enroll").as("enroll");
   });
 
@@ -37,18 +38,19 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         mfaSetting()
           .findByText("Two-factor authentication")
           .should("be.visible");
-        mfaSelect().should("have.value", "Off").click();
-        H.popover().findByText("Optional").click();
-        cy.wait("@updateEnforcement");
+        mfaToggle().should("not.be.checked").click();
+        cy.wait("@updateSettings");
         mfaSetting()
           .should("contain", "0 enrolled users")
           .and("contain", "users without 2FA");
 
+        cy.log("Enabling it leaves enforcement optional");
+        enforcementOption("Don't require").should("be.checked");
+
         cy.log("Disable it again");
-        mfaSelect().should("have.value", "Optional").click();
-        H.popover().findByText("Off").click();
-        cy.wait("@updateEnforcement");
-        mfaSelect().should("have.value", "Off");
+        mfaToggle().should("be.checked").click();
+        cy.wait("@updateSettings");
+        mfaToggle().should("not.be.checked");
         mfaSetting().should("not.contain", "enrolled");
       });
 
@@ -353,23 +355,23 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("required", () => {
     describe("admin", () => {
-      it("allows user to set mfa to required, sets default grade period", () => {
-        cy.intercept("PUT", "/api/setting").as("updateSettings");
-
+      it("allows user to set mfa to required, sets default grace period", () => {
         const deadline = dayjs().add(GRACE_PERIOD_DAYS, "day");
 
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView();
 
-        cy.log("The deadline only exists once enforcement is Required");
+        cy.log("Enforcement and the deadline only exist once 2FA is allowed");
+        mfaSetting().should("not.contain", "Require now");
         mfaDeadline().should("not.exist");
 
-        mfaSelect().should("have.value", "Off").click();
-        H.popover().findByText("Required").click();
+        mfaToggle().should("not.be.checked").click();
+        cy.wait("@updateSettings");
 
         cy.log(
           "Enforcement and a default two-week grace period are saved together",
         );
+        enforcementOption("Require by a certain date").click();
         cy.wait("@updateSettings");
 
         mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
@@ -377,7 +379,8 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         cy.log("Both settings survive a reload");
         cy.reload();
         mfaSetting().scrollIntoView();
-        mfaSelect().should("have.value", "Required");
+        mfaToggle().should("be.checked");
+        enforcementOption("Require by a certain date").should("be.checked");
         mfaDeadline().should("have.value", deadline.format("MMMM D, YYYY"));
       });
 
@@ -663,8 +666,13 @@ function mfaSetting() {
   return cy.findByTestId("mfa-setting");
 }
 
-function mfaSelect() {
-  return mfaSetting().findByRole("textbox", { name: "Enforcement" });
+function mfaToggle() {
+  return mfaSetting().findByLabelText("Allow two-factor authentication");
+}
+
+/** One of "Don't require", "Require now", "Require by a certain date". */
+function enforcementOption(label: string) {
+  return mfaSetting().findByLabelText(label);
 }
 
 function mfaDeadline() {

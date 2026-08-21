@@ -7,21 +7,36 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
-import { Alert, Anchor, DateInput, Group, Select, Text } from "metabase/ui";
+import {
+  Alert,
+  Anchor,
+  Box,
+  DateInput,
+  Group,
+  Radio,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
-import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
+import type { MfaAdminOverview } from "metabase-types/api";
 
 import { ENROLLED_USERS_PATH, UNENROLLED_USERS_PATH } from "../../constants";
 
-type EnforcementOption = {
-  value: MfaEnforcement;
-  label: string;
-};
+const ENFORCEMENT_OPTIONS = ["optional", "required", "required-date"] as const;
+type EnforcementOption = (typeof ENFORCEMENT_OPTIONS)[number];
 
-const getEnforcementOptions = (): EnforcementOption[] => [
-  { value: "off", label: t`Off` },
-  { value: "optional", label: t`Optional` },
-  { value: "required", label: t`Required` },
+const isEnforcementOption = (value: unknown): value is EnforcementOption =>
+  typeof value === "string" &&
+  ENFORCEMENT_OPTIONS.some((option) => option === value);
+
+const getEnforcementOptions = (): {
+  value: EnforcementOption;
+  label: string;
+}[] => [
+  { value: "optional", label: t`Don't require` },
+  { value: "required", label: t`Require now` },
+  { value: "required-date", label: t`Require by a certain date` },
 ];
 
 const DEADLINE_INPUT_FORMAT = "YYYY-MM-DD";
@@ -39,9 +54,6 @@ const getDefaultDeadline = () =>
     dayjs().add(DEFAULT_GRACE_PERIOD_DAYS, "day").format(DEADLINE_INPUT_FORMAT),
   );
 
-const hasGracePeriodLeft = (deadline: string | null | undefined) =>
-  deadline != null && dayjs(deadline).isAfter(dayjs());
-
 export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
   const {
@@ -56,14 +68,11 @@ export function AdminAuthCard() {
   const { value: isLdapEnabled } = useAdminSetting("ldap-enabled");
 
   const enabled = enforcement != null && enforcement !== "off";
-  const isRequired = enforcement === "required";
 
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
   });
 
-  // MFA only gates the password form, which LDAP users sign in through too, so there is nothing
-  // to configure once both are off. Mirrors the provider filter in metabase-enterprise/auth.
   const hasNoPasswordLogin =
     isPasswordLoginEnabled === false && isLdapEnabled === false;
 
@@ -75,29 +84,41 @@ export function AdminAuthCard() {
     return null;
   }
 
-  // Any value other than "off" needs the token, but "off" stays selectable so a lapsed
-  // licence can always be wound back down.
-  const options = getEnforcementOptions().map((option) => ({
-    ...option,
-    disabled: option.value !== "off" && !hasFeature,
-  }));
+  const handleEnable = (value: boolean) => {
+    updateSettings({
+      "mfa-enforcement": value ? "optional" : "off",
+      "mfa-requirement-deadline": null,
+    });
+  };
 
-  const handleChange = (value: string | null) => {
-    const option = options.find((option) => option.value === value);
-
-    if (!option) {
-      return;
-    }
-
-    if (option.value === "required" && !hasGracePeriodLeft(deadline)) {
+  const handleRequire = (value: EnforcementOption) => {
+    if (value === "optional") {
       updateSettings({
-        "mfa-enforcement": option.value,
+        "mfa-enforcement": "optional",
+        "mfa-requirement-deadline": null,
+      });
+    } else if (value === "required-date") {
+      updateSettings({
+        "mfa-enforcement": "required",
         "mfa-requirement-deadline": getDefaultDeadline(),
       });
-      return;
+    } else if (value === "required") {
+      updateSettings({
+        "mfa-enforcement": "required",
+        "mfa-requirement-deadline": null,
+      });
     }
+  };
 
-    updateSetting({ key: "mfa-enforcement", value: option.value });
+  const getEnforcementValue = (): EnforcementOption => {
+    if (enforcement === "optional") {
+      return "optional";
+    }
+    if (enforcement === "required" && deadline !== null) {
+      return "required-date";
+    } else {
+      return "required";
+    }
   };
 
   const handleDeadlineChange = (date: string | null) => {
@@ -107,34 +128,57 @@ export function AdminAuthCard() {
     });
   };
 
+  // Shared so the visible header and the group's accessible name can't drift apart.
+  const enforcementLabel = t`Require two-factor authentication`;
+
   return (
     <SettingsSection
       data-testid="mfa-setting"
       title={t`Two-factor authentication`}
       description={t`Let users secure their account with an authenticator app.`}
     >
-      <Select
-        id="mfa-enforcement"
-        label={t`Enforcement`}
-        data={options}
-        value={enforcement ?? "off"}
-        onChange={handleChange}
-        maw="20rem"
+      <Switch
+        label={t`Allow two-factor authentication`}
+        checked={enforcement !== "off"}
+        onChange={(event) => handleEnable(event.currentTarget.checked)}
+        size="sm"
       />
-      {isRequired && (
+      {enforcement !== "off" && (
+        <Box>
+          <Radio.Group
+            label={enforcementLabel}
+            labelProps={{ fw: "bold", mb: "sm" }}
+            value={getEnforcementValue()}
+            onChange={(value) =>
+              isEnforcementOption(value) && handleRequire(value)
+            }
+          >
+            <Stack gap="sm">
+              {getEnforcementOptions().map(({ label, value }) => (
+                <Radio
+                  key={value}
+                  value={value}
+                  label={label}
+                  // Without the feature the backend only accepts "off", which the switch above
+                  // stays enabled for so a lapsed license can always be turned off.
+                  disabled={!hasFeature}
+                />
+              ))}
+            </Stack>
+          </Radio.Group>
+        </Box>
+      )}
+      {enforcement === "required" && deadline !== null && (
         <DateInput
           id="mfa-requirement-deadline"
           label={t`Enrollment deadline`}
-          placeholder={t`Enrollment deadline`}
-          description={t`Users must enroll before this date. Leave it empty to require two-factor authentication right away.`}
+          description={t`Users must enroll before this date`}
           value={toDeadlineInput(deadline)}
           onChange={handleDeadlineChange}
           minDate={dayjs().format(DEADLINE_INPUT_FORMAT)}
           disabled={!hasFeature}
-          clearable
-          clearButtonProps={{ "aria-label": t`Clear enrollment deadline` }}
           maw="20rem"
-          data-1p-ignore // 1Password will cover the clear button without this.
+          data-1p-ignore // 1Password will try to fill this in for some reason
         />
       )}
       {enabled && overview && !overview.encryption_key_set && (
