@@ -54,21 +54,22 @@
 (defn- source-query-permissions-ok?
   "Whether the current user may run a query transform's source `query`, per the query processor's own permission
   check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
-  checked too. True when no user is bound."
+  checked too. Throws when no user is bound: every caller must establish one, a scheduled run included."
   [query]
-  (if-not api/*current-user-id*
-    true
-    (try
-      (qp.setup/with-qp-setup [query query]
-        (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
-        true)
-      (catch clojure.lang.ExceptionInfo e
-        ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
-        ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
-        ;; is left to validation and execution, which report the specific problem.
-        (let [data (ex-data e)]
-          (not (or (:permissions-error? data)
-                   (= 403 (:status-code data)))))))))
+  (when-not api/*current-user-id*
+    (throw (ex-info "source-query-permissions-ok? requires a current user; bind one before checking a transform source"
+                    {})))
+  (try
+    (qp.setup/with-qp-setup [query query]
+      (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
+      true)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
+      ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
+      ;; is left to validation and execution, which report the specific problem.
+      (let [data (ex-data e)]
+        (not (or (:permissions-error? data)
+                 (= 403 (:status-code data))))))))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
@@ -106,14 +107,14 @@
 
 (defn check-source-query-permissions!
   "Throw a 403 unless the current user may run `transform`'s source query -- see
-  [[source-query-permissions-ok?]]. A no-op when no user is bound, so a scheduled run is unaffected.
+  [[source-query-permissions-ok?]]. Requires a bound user; the execution path binds the user the run
+  executes as before calling.
 
   Transforms compile and run their source query directly rather than through `qp.execute/run`, so the check is
   made here."
   [transform]
-  (when api/*current-user-id*
-    (api/check-403 (source-query-permissions-ok? (get-in transform [:source :query])))
-    nil))
+  (api/check-403 (source-query-permissions-ok? (get-in transform [:source :query])))
+  nil)
 
 (defn prefetch-source-models
   "Bulk-load the source databases and tables referenced by `transforms` into a
