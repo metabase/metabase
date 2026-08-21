@@ -194,7 +194,8 @@
     (when (= mode :embedding)
       (when-not (and origin
                      (mw.security/approved-origin? origin (embed.settings/embedding-app-origins-sdk)))
-        (log/warn "Rejecting SAML embedding login: popup origin is not an approved embedding origin")
+        (log/warn "Rejecting SAML embedding login: popup origin is not an approved embedding origin"
+                  {:origin origin})
         (throw (ex-info (tru "This origin is not an approved embedding origin.")
                         {:status-code 400}))))
     (sso-utils/check-sso-redirect continue-url)
