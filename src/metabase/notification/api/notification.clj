@@ -57,6 +57,12 @@
     (when (= :email/handlebars-resource template-type)
       (throw (ex-info "invalid template" {:status-code 400})))))
 
+(defn- check-inline-channels!
+  "Validate that an inline `:channel` handler requires the same permission as creating one."
+  [handlers]
+  (when (some :channel handlers)
+    (api/check-403 (mi/can-write? :model/Channel))))
+
 (defn get-notification
   "Get a notification by id."
   [id]
@@ -289,7 +295,8 @@
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
-    (api/read-check notification)
+    ;; sending runs the notification's payload as its creator, so gate on write access rather than read access
+    (api/write-check notification)
     (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
@@ -311,6 +318,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::NotificationApiInput request]
   (check-no-resource-templates! (:handlers body))
+  (check-inline-channels! (:handlers body))
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body

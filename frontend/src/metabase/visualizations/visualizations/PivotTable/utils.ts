@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { measureText } from "metabase/utils/measure-text";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
@@ -272,12 +272,22 @@ export const leftHeaderCellSizeAndPositionGetter = (
   };
 };
 
+export const getTopHeaderRowsCount = (
+  columnIndexes: number[],
+  valueIndexes: number[],
+) => columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
+
+export const getTopHeaderRowIndex = (
+  item: Pick<HeaderItem, "maxDepthBelow">,
+  topHeaderRows: number,
+) => topHeaderRows - item.maxDepthBelow - 1;
+
 export const topHeaderCellSizeAndPositionGetter = (
   item: HeaderItem,
   topHeaderRows: number,
   valueHeaderWidths: CustomColumnWidth,
 ) => {
-  const { offset, span, maxDepthBelow } = item;
+  const { offset, span } = item;
 
   const leftOffset = getWidthForRange(valueHeaderWidths, 0, offset);
   const width = getWidthForRange(valueHeaderWidths, offset, offset + span);
@@ -286,7 +296,7 @@ export const topHeaderCellSizeAndPositionGetter = (
     height: CELL_HEIGHT,
     width,
     x: leftOffset,
-    y: (topHeaderRows - maxDepthBelow - 1) * CELL_HEIGHT,
+    y: getTopHeaderRowIndex(item, topHeaderRows) * CELL_HEIGHT,
   };
 };
 

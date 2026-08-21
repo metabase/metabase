@@ -114,7 +114,7 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const initialState = store.getState() as any;
-    expect(initialState.metabot.conversations.omnibot.visible).toBe(false);
+    expect(initialState.metabot.agents.omnibot.visible).toBe(false);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
@@ -122,6 +122,6 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const newState = store.getState() as any;
-    expect(newState.metabot.conversations.omnibot.visible).toBe(true);
+    expect(newState.metabot.agents.omnibot.visible).toBe(true);
   });
 });

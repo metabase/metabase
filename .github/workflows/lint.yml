@@ -64,6 +64,12 @@ jobs:
           fi
 
       - parallel:
+        # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
+        # path filter says .github changed would reintroduce the failure it exists to catch - and the
+        # filters here cover .github/workflows only, not the actions and scripts it also reads.
+        - name: Check cache-warm pre-resolves every alias combination CI uses
+          run: .github/scripts/check-preresolve-aliases.sh
+
         # Lint whitespace, always runs
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false

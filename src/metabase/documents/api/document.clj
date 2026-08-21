@@ -156,6 +156,10 @@
    new-collection-id :- [:or :nil ms/PositiveInt]]
   (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
     (reduce (fn [accum card]
+              ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
+              ;; collection the caller cannot read. Read-check each card before copying, mirroring
+              ;; `clone-cards-in-document!`.
+              (api/read-check card)
               (let [new-card (m.document/create-card! (-> card
                                                           (dissoc :id :entity_id :created_at :updated_at :creator_id
                                                                   :public_uuid :made_public_by_id :cache_invalidated_at)

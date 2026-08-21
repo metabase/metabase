@@ -3759,7 +3759,10 @@
 
   enterprise/serialization
   {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api metabase-enterprise.serialization.cmd metabase-enterprise.serialization.core}
+   :api  #{metabase-enterprise.serialization.api
+           metabase-enterprise.serialization.cmd
+           metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.init}
    :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
@@ -3774,6 +3777,7 @@
            premium-features
            search
            server
+           settings
            setup
            util}
    :model-imports :bypass}

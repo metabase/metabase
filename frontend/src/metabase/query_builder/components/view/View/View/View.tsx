@@ -130,7 +130,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       question,
       result,
       rawSeries,
-      databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
       isShowingAIQuestionAnalysisSidebar,
@@ -172,8 +171,8 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       isShowingSnippetSidebar,
     } = props;
 
-    // if we don't have a question at all or no databases then we are initializing, so keep it simple
-    if (!question || !databases) {
+    // no question yet means we are still initializing, so keep it simple
+    if (!question) {
       return (
         <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
       );

@@ -19,6 +19,7 @@
    [metabase.session.core :as session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
@@ -152,6 +153,14 @@
   "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
   1)
 
+(mr/def ::session-payload
+  "The unsigned client-capability hint carried in the second segment of an `Mcp-Session-Id`: the
+   payload version and whether the client can render MCP Apps UI. Server-minted and only echoed back
+   by clients; validated before we read its `:ui` flag, which is the only thing relayed onward."
+  [:map
+   [:v  :int]
+   [:ui :boolean]])
+
 (def ^:private max-session-id-length
   "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
   254)
@@ -186,34 +195,38 @@
   back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling deploy
   version skew does not invalidate the whole session."
   [payload]
-  (let [decoded-payload (decode-session-payload payload)
-        version         (:v decoded-payload)]
-    (cond
-      (nil? payload)
-      {:extended false}
+  (cond
+    (nil? payload)
+    {:extended false}
 
-      (str/blank? payload)
-      (do
-        (log/warn "MCP session id contains a blank capability payload")
-        nil)
+    (str/blank? payload)
+    (do
+      (log/warn "MCP session id contains a blank capability payload")
+      nil)
 
-      (nil? decoded-payload)
-      (do
-        (log/warn "MCP session id contains an undecodable capability payload")
-        nil)
+    :else
+    (if-let [decoded-payload (decode-session-payload payload)]
+      (let [payload-map?         (map? decoded-payload)
+            payload-version      (when payload-map? (:v decoded-payload))
+            has-payload-version? (and payload-map? (contains? decoded-payload :v))
+            known-version?       (and (integer? payload-version)
+                                      (<= payload-version session-payload-version))
+            unknown-version?     (and (integer? payload-version)
+                                      (> payload-version session-payload-version))]
+        (cond
+          (and payload-map?
+               known-version?
+               (mr/validate ::session-payload decoded-payload))
+          {:extended true
+           :payload  (select-keys decoded-payload [:ui])}
 
-      (and (integer? version)
-           (<= version session-payload-version)
-           (boolean? (:ui decoded-payload)))
-      {:extended true
-       :payload  decoded-payload}
-
-      ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
-      ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
-      (and (integer? version)
-           (> version session-payload-version))
-      {:extended true
-       :payload  {:ui false}})))
+          ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
+          ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
+          (and has-payload-version?
+               unknown-version?)
+          {:extended true
+           :payload  {:ui false}}))
+      (log/warn "MCP session id contains an undecodable capability payload"))))
 
 (defn- session-parts
   "Parse an MCP session id into a UUID correlator plus optional client-capability hint.

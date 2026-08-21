@@ -769,7 +769,7 @@
                       clause))))
         (-> query :stages first :filters)))
 
-(deftest ^:sequential chain-filter-preserves-required-partition-filter-on-joined-table-test
+(deftest ^:synchronized chain-filter-preserves-required-partition-filter-on-joined-table-test
   ;; `add-required-filters-if-needed` runs near the end of `chain-filter-mbql-query`, after joins are built. For
   ;; tables that require a partition filter (currently BigQuery partitioned tables), it adds a `[:> partition-col _]`
   ;; clause; when the partition column lives on a *joined* table, the clause references it through the join's alias.

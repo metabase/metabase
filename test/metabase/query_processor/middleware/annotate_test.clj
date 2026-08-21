@@ -349,7 +349,7 @@
                    [[""]])
                   :cols))))))
 
-(deftest ^:sequential expected-cols-no-infinite-loop-test
+(deftest ^:synchronized expected-cols-no-infinite-loop-test
   (testing "In case of a lib vs. driver column count mismatch, don't loop infinitely (#66955)"
     (let [query       (lib/query meta/metadata-provider
                                  (meta/table-metadata :orders))

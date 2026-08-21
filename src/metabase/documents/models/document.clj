@@ -9,6 +9,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
@@ -81,10 +82,18 @@
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn create-card!
-  "Checks that the query is runnable by the current user then saves"
+  "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
+  checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
+  read access to any card the parameters draw values from, and query permission on the fields the parameter targets
+  name."
   [{query :dataset_query :as card} creator]
+  (api/create-check :model/Card {:collection_id (:collection_id card)})
   (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/check-parameter-source-card-permissions (:parameters card))
+  (query-perms/check-parameter-field-permissions
+   (into []
+         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
+         (:parameters card)))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
@@ -387,10 +396,10 @@
    "table"     "Table"})
 
 (defn- id->entity-id
-  [{{:keys [model] :or {model "card"} :as attrs} :attrs type :type :as node}]
+  [{{:keys [model] :or {model "card"}} :attrs type :type :as node}]
   (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (id-key attrs)]
-    (if-let [db-model (t2/select-one (ast-model->db-model model) :id id)]
+        id (prose-mirror/node-entity-id node)]
+    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -442,6 +451,9 @@
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
+    ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
+    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
+    ;; with `node-entity-id` here.
     (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
                                               (cond
                                                 (and (= prose-mirror/smart-link-type type)
@@ -471,11 +483,11 @@
       (concat
        (for [embedded-card-id (prose-mirror/card-ids document)]
          [{:model "Card" :id embedded-card-id}])
-       (for [{model :model link-id :entityId}
+       (for [{{model :model} :attrs :as node}
              (prose-mirror/collect-ast document
-                                       #(when (= prose-mirror/smart-link-type (:type %))
-                                          (:attrs %)))
-             :when (contains? model->serdes-model model)]
+                                       #(when (= prose-mirror/smart-link-type (:type %)) %))
+             :let  [link-id (prose-mirror/node-entity-id node)]
+             :when (and link-id (contains? model->serdes-model model))]
          [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
@@ -487,10 +499,10 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
-                                                                              #(when (= prose-mirror/smart-link-type (:type %))
-                                                                                 (:attrs %)))
-                   :when (contains? model->serdes-model model)]
+             (for [{{model :model} :attrs :as node} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %)) %))
+                   :let  [link-id (prose-mirror/node-entity-id node)]
+                   :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]

@@ -17,20 +17,28 @@
 (defn native-marker?
   "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
    across legacy and MBQL 5 native forms), a legacy `:type :native`, or an MBQL 5 `:mbql.stage/native`
-   `:lib/type`. Membership tests cover the keyword and json-decoded string forms and never coerce, so
-   junk values don't throw. A legitimate serialized MBQL query carries none of these."
+   `:lib/type`. Keys and values are each matched in both their keyword and their raw-JSON-string form,
+   since a caller may hand over a payload that was decoded without keywordizing. Membership tests never
+   coerce, so junk values don't throw. A legitimate serialized MBQL query carries none of these."
   [node]
-  (and (map? node)
-       (or (contains? node :native)
-           (contains? #{:native "native"} (:type node))
-           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type node)))))
+  (boolean
+   (and (map? node)
+        (or (contains? node :native)
+            (contains? node "native")
+            (some #{:native "native"} [(:type node) (get node "type")])
+            (some #{:mbql.stage/native "mbql.stage/native"} [(:lib/type node) (get node "lib/type")])))))
 
 (defn native-query?
   "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere in its tree —
    legacy top-level `:type :native`, a legacy nested `:source-query`'s `:native`, or an MBQL 5
    `:mbql.stage/native` stage, including inside joins or nested joins.
    A whole-tree scan, because the callers are MBQL-only by scope: a native marker at any depth
-   means the payload is smuggling raw SQL, regardless of how it's nested."
+   means the payload is smuggling raw SQL, regardless of how it's nested.
+
+   Deliberately does not normalize first. `lib-be/normalize-query` swallows its own failures and returns
+   `{}`, and it needs the referenced database's metadata to resolve, so a normalize-then-inspect check
+   silently reports \"not native\" for anything it cannot parse or look up. Matching raw markers keeps the
+   guard total, independent of app-DB state, and failing closed."
   [query-map]
   (boolean (some native-marker? (tree-seq coll? seq query-map))))
 
