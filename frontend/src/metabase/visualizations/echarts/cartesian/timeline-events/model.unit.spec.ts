@@ -1,7 +1,7 @@
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
-import { mergeOverlappingTimelineEventGroups } from "./model";
+import { buildTimelineEventClusters } from "./model";
 import type { TimelineEventGroup } from "./types";
 
 const createMockTimelineEventGroup = (
@@ -20,8 +20,8 @@ const createMockTimeSeriesInterval = (
   ...opts,
 });
 
-describe("mergeOverlappingTimelineEventGroups", () => {
-  it("should not merge events that are far apart", () => {
+describe("buildTimelineEventClusters", () => {
+  it("should keep groups that are far apart as separate clusters", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
         date: "2024-01-01T00:00:00Z",
@@ -36,18 +36,18 @@ describe("mergeOverlappingTimelineEventGroups", () => {
     const interval = createMockTimeSeriesInterval({ count: 1, unit: "day" });
     const intervalWidth = 80; // 800px / 10 days
 
-    const result = mergeOverlappingTimelineEventGroups(
+    const result = buildTimelineEventClusters(
       eventGroups,
       interval,
       intervalWidth,
     );
 
     expect(result).toHaveLength(2);
-    expect(result[0].events).toEqual(eventGroups[0].events);
-    expect(result[1].events).toEqual(eventGroups[1].events);
+    expect(result[0].groups).toEqual([eventGroups[0]]);
+    expect(result[1].groups).toEqual([eventGroups[1]]);
   });
 
-  it("should merge events that are close together", () => {
+  it("should cluster groups that are close together, preserving member groups", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
         date: "2024-01-01T00:00:00Z",
@@ -62,20 +62,18 @@ describe("mergeOverlappingTimelineEventGroups", () => {
     const interval = createMockTimeSeriesInterval({ count: 1, unit: "minute" });
     const intervalWidth = 100; // 100px per minute
 
-    const result = mergeOverlappingTimelineEventGroups(
+    const result = buildTimelineEventClusters(
       eventGroups,
       interval,
       intervalWidth,
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0].events).toEqual([
-      ...eventGroups[0].events,
-      ...eventGroups[1].events,
-    ]);
+    expect(result[0].date).toBe(eventGroups[0].date);
+    expect(result[0].groups).toEqual(eventGroups);
   });
 
-  it("should merge chips that would overlap given the wider chip width", () => {
+  it("should cluster chips that would overlap given the chip width", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
         date: "2024-01-01T00:00:00Z",
@@ -89,23 +87,20 @@ describe("mergeOverlappingTimelineEventGroups", () => {
 
     const interval = createMockTimeSeriesInterval({ count: 1, unit: "minute" });
     // 25px apart: wider than the old 16px threshold but still under a chip
-    // width, so the fixed-width chips would overlap and must merge.
+    // width, so the fixed-width chips would overlap and must cluster.
     const intervalWidth = 50; // 0.5 min * 50px = 25px
 
-    const result = mergeOverlappingTimelineEventGroups(
+    const result = buildTimelineEventClusters(
       eventGroups,
       interval,
       intervalWidth,
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0].events).toEqual([
-      ...eventGroups[0].events,
-      ...eventGroups[1].events,
-    ]);
+    expect(result[0].groups).toEqual(eventGroups);
   });
 
-  it("should correctly merge events when interval count is greater than 1", () => {
+  it("should correctly cluster groups when interval count is greater than 1", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
         date: "2024-01-01T00:00:00Z",
@@ -124,17 +119,43 @@ describe("mergeOverlappingTimelineEventGroups", () => {
     const interval = createMockTimeSeriesInterval({ count: 5, unit: "minute" });
     const intervalWidth = 13; // 13px per 5-minute interval
 
-    const result = mergeOverlappingTimelineEventGroups(
+    const result = buildTimelineEventClusters(
       eventGroups,
       interval,
       intervalWidth,
     );
 
     expect(result).toHaveLength(2);
-    expect(result[0].events).toEqual([
-      ...eventGroups[0].events,
-      ...eventGroups[1].events,
+    expect(result[0].groups).toEqual([eventGroups[0], eventGroups[1]]);
+    expect(result[1].groups).toEqual([eventGroups[2]]);
+  });
+
+  it("should anchor a cluster at its earliest group's date", () => {
+    const eventGroups: TimelineEventGroup[] = [
+      createMockTimelineEventGroup({
+        date: "2024-01-03T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 2 })],
+      }),
+      createMockTimelineEventGroup({
+        date: "2024-01-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 1 })],
+      }),
+    ];
+
+    const interval = createMockTimeSeriesInterval({ count: 1, unit: "day" });
+    const intervalWidth = 10; // 2 days apart = 20px < minDistance
+
+    const result = buildTimelineEventClusters(
+      eventGroups,
+      interval,
+      intervalWidth,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe("2024-01-01T00:00:00Z");
+    expect(result[0].groups.map(({ date }) => date)).toEqual([
+      "2024-01-01T00:00:00Z",
+      "2024-01-03T00:00:00Z",
     ]);
-    expect(result[1].events).toEqual(eventGroups[2].events);
   });
 });

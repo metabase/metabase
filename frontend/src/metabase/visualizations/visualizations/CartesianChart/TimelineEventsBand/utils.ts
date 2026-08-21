@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 
 import type {
+  TimelineEventCluster,
   TimelineEventGroup,
   TimelineEventsModel,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -19,8 +20,8 @@ export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
   cloud: "cloud_12",
 } satisfies Record<TimelineIcon, IconName>;
 
-export interface PositionedTimelineEventGroup {
-  group: TimelineEventGroup;
+export interface PositionedTimelineEventCluster {
+  cluster: TimelineEventCluster;
   x: number;
 }
 
@@ -38,32 +39,32 @@ interface PositioningInput {
   xAxisIndex: number;
 }
 
-export const getPositionedTimelineEventGroups = ({
+export const getPositionedTimelineEventClusters = ({
   timelineEventsModel,
   chartInstance,
   plotBounds,
   xAxisIndex,
-}: PositioningInput): PositionedTimelineEventGroup[] => {
+}: PositioningInput): PositionedTimelineEventCluster[] => {
   const { left, right } = plotBounds;
 
-  return timelineEventsModel.flatMap((group) => {
-    const pixel = chartInstance.convertToPixel({ xAxisIndex }, group.date);
+  return timelineEventsModel.flatMap((cluster) => {
+    const pixel = chartInstance.convertToPixel({ xAxisIndex }, cluster.date);
     const x = Array.isArray(pixel) ? pixel[0] : pixel;
 
     if (!Number.isFinite(x) || x < left || x > right) {
       return [];
     }
 
-    return [{ group, x }];
+    return [{ cluster, x }];
   });
 };
 
-export const arePositionedGroupsEqual = (
-  a: PositionedTimelineEventGroup[],
-  b: PositionedTimelineEventGroup[],
+export const arePositionedClustersEqual = (
+  a: PositionedTimelineEventCluster[],
+  b: PositionedTimelineEventCluster[],
 ): boolean =>
   a.length === b.length &&
   a.every((item, index) => {
     const other = b[index];
-    return item.group === other.group && item.x === other.x;
+    return item.cluster === other.cluster && item.x === other.x;
   });

@@ -60,6 +60,30 @@
   border-color: var(--mb-color-text-brand);
 }
 
+.chipHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* invisible catcher filling the gaps between spread stack members so the
+   pointer never "leaves" the stack while moving across it */
+.stackHoverPad {
+  position: absolute;
+  pointer-events: all;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip {
+    transition: opacity 150ms ease;
+  }
+
+  .stackMember {
+    transition:
+      left 200ms ease,
+      opacity 150ms ease;
+  }
+}
+
 .listItemWrapper {
   padding: 0.75rem;
 

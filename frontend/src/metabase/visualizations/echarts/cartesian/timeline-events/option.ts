@@ -21,6 +21,7 @@ export const getTimelineEventsSelectionSeries = (
   splitPanelYExtent?: SplitPanelYExtent,
 ): LineSeriesOption | null => {
   const selectedDates = timelineEventsModel
+    .flatMap(({ groups }) => groups)
     .filter(({ events }) =>
       events.some((event) => selectedEventIds.includes(event.id)),
     )
