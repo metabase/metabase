@@ -34,9 +34,11 @@
   [user-id]
   (t2/select :model/Sandbox
              {:select    [[:pgm.group_id :group_id]
+                          [:da.permission_group_id :data_app_group_id]
                           [:s.*]]
               :from      [[:permissions_group_membership :pgm]]
-              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
+              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
+                          [:data_app :da] [:= :da.permission_group_id :pgm.group_id]]
               :where     [:and
                           [:= :pgm.user_id user-id]]}))
 

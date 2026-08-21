@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
@@ -10,10 +10,14 @@ import {
 } from "e2e/support/helpers";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
 const APP_DISPLAY_NAME = "Synced App";
+
+interface UserIdRowsResponse {
+  data: { rows: Array<[number]> };
+}
 
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
@@ -28,6 +32,7 @@ const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
 const AUTHORED_DECLARATION = [
   "import {",
   "  aggregations,",
+  "  breakout,",
   "  defineQuery,",
   '} from "@metabase/embedding-sdk-react/data-app";',
   "",
@@ -38,9 +43,19 @@ const AUTHORED_DECLARATION = [
   " * Synchronization writes `savedQuestionSourceId` in here, and the spec restores",
   " * this file afterwards.",
   " */",
+  "const OrdersUserId = {",
+  '  type: "column" as const,',
+  `  fieldId: ${ORDERS.USER_ID},`,
+  `  tableId: ${ORDERS_ID},`,
+  '  name: "USER_ID",',
+  '  displayName: "User ID",',
+  '  jsType: "number",',
+  "};",
+  "",
   "export const OrdersCount = defineQuery({",
   `  source: { type: "table", id: ${ORDERS_ID} },`,
   "  aggregations: [aggregations.count()],",
+  "  breakouts: [breakout(OrdersUserId)],",
   "});",
 ].join("\n");
 
@@ -133,13 +148,17 @@ describe("scenarios > data apps > sync-resources in production", () => {
       cy.request("POST", "/api/dataset", {
         type: "query",
         database: SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.USER_ID, null]],
+        },
       }).then(({ body: authored }) => {
         cy.request("POST", `/api/card/${cardId}/query`).then(
           ({ body: published }) => {
             expect(published.data.rows).to.deep.eq(authored.data.rows);
             expect(
-              published.data.rows[0][0],
+              published.data.rows[0][1],
               "a match on two empty results would be vacuous",
             ).to.be.greaterThan(0);
           },
@@ -164,6 +183,72 @@ describe("scenarios > data apps > sync-resources in production", () => {
             },
           );
         });
+      });
+    });
+  });
+
+  it("preserves sandboxing from other groups when data app applies table permissions", () => {
+    // A user in the orders table that should show up when sandboxed.
+    const SANDBOXED_USER_ID = Number(USERS.sandboxed.login_attributes.attr_uid);
+
+    // A user in the orders table that should not show up when sandboxed.
+    cy.request<UserIdRowsResponse>("POST", "/api/dataset", {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [["field", ORDERS.USER_ID, null]],
+        filter: ["!=", ["field", ORDERS.USER_ID, null], SANDBOXED_USER_ID],
+        limit: 1,
+      },
+    }).then(({ body }) => {
+      const nonSandboxedUserId = body.data.rows[0]?.[0];
+
+      if (nonSandboxedUserId === undefined) {
+        throw new Error("The orders table has no other user with orders.");
+      }
+
+      return cy.wrap(nonSandboxedUserId).as("nonSandboxedUserId");
+    });
+
+    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+
+    cy.request<{ id: number }>("POST", "/api/permissions/group", {
+      name: "Sandboxed data app viewer",
+    }).then(({ body: { id: sandboxGroupId } }) => {
+      cy.sandboxTable({
+        group_id: sandboxGroupId,
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+      });
+
+      addUserToGroup(sandboxGroupId, USERS.sandboxed.email);
+    });
+
+    syncApp();
+    mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+
+    dataAppPermissionGroupId(APP_SLUG).then((dataAppGroupId) =>
+      addUserToGroup(dataAppGroupId, USERS.sandboxed.email),
+    );
+
+    cy.signInAsSandboxedUser();
+    cy.visit(`/apps/${APP_SLUG}`);
+
+    dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.get<number>("@nonSandboxedUserId").then((nonSandboxedUserId) => {
+        cy.log(
+          `Should only show the sandboxed user ${SANDBOXED_USER_ID}, not ${nonSandboxedUserId}.`,
+        );
+
+        cy.findByTestId("synced-app-visible-user-ids", {
+          timeout: 30000,
+        })
+          .should("not.contain", String(nonSandboxedUserId))
+          .and("have.text", String(SANDBOXED_USER_ID));
       });
     });
   });
