@@ -15,7 +15,7 @@
                                {:field "Longitude"}
                                {:field "Latitude"}]
          :refines             "Venues parent"
-         :breakout_dimensions ["FK"]
+         :breakout_dimensions [[:dimension "FK"]]
          :metrics             {"Avg Price" {:aggregation [:avg [:dimension "Category"]]}}}
         {:name                "VenuesEnhanced"
          :required_attributes [{:field "AvgPrice"}

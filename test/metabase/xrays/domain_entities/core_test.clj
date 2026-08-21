@@ -7,10 +7,10 @@
    [toucan2.core :as t2]))
 
 (deftest ^:parallel mbql-reference-test
-  (is (= [:field (data/id :venues :price) nil]
-         (#'de/mbql-reference (t2/select-one :model/Field :id (data/id :venues :price)))))
-  (is (= [:field "PRICE" {:base-type :type/Integer}]
-         (#'de/mbql-reference (dissoc (t2/select-one :model/Field :id (data/id :venues :price)) :id)))))
+  (is (=? [:field {} (data/id :venues :price)]
+          (de/mbql-reference (t2/select-one :model/Field :id (data/id :venues :price)))))
+  (is (=? [:field {:base-type :type/Integer} "PRICE"]
+          (de/mbql-reference (dissoc (t2/select-one :model/Field :id (data/id :venues :price)) :id)))))
 
 (defn- hydrated-table
   [table-name]
@@ -18,7 +18,8 @@
       (t2/hydrate :fields)))
 
 (deftest ^:parallel satisfies-requierments?-test
-  (is (de/satisfies-requirements? (hydrated-table :venues) (test.de/test-domain-entity-specs "Venues"))))
+  (is (de/satisfies-requirements? (hydrated-table :venues)
+                                  (test.de/test-domain-entity-specs "Venues"))))
 
 (deftest ^:parallel best-match-test
   (testing "Do we correctly pick the best (most specific and most defined) candidate"
@@ -27,15 +28,22 @@
 
 (deftest ^:parallel instantiate-snippets-test
   (testing "Do all the MBQL snippets get instantiated correctly"
-    (test.de/with-test-domain-entity-specs
-      (is (= {:metrics             {"Avg Price" {:name        "Avg Price"
-                                                 :aggregation [:avg (#'de/mbql-reference (t2/select-one :model/Field :id (data/id :venues :price)))]}}
-              :segments            nil
-              :breakout_dimensions [(#'de/mbql-reference (t2/select-one :model/Field :id (data/id :venues :category_id)))]
-              :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
-                                              [(-> field (#'de/field-type) name) field]))
-              :type                :DomainEntity/Venues
-              :description         nil
-              :source_table        (data/id :venues)
-              :name                "Venues"}
-             (de/domain-entity-for-table (hydrated-table :venues)))))))
+    (let [[_ _ field-id] (de/mbql-reference
+                          (t2/select-one :model/Field :id
+                                         (data/id :venues :price)))
+          [_ _ breakout-field-id] (de/mbql-reference
+                                   (t2/select-one :model/Field :id
+                                                  (data/id :venues :category_id)))]
+      (test.de/with-test-domain-entity-specs
+        (is (=? {:metrics             {"Avg Price" {:name        "Avg Price"
+                                                    :aggregation [:avg {}
+                                                                  [:field {} field-id]]}}
+                 :segments            nil
+                 :breakout_dimensions [[:field {} breakout-field-id]]
+                 :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
+                                                 [(-> field (#'de/field-type) name) field]))
+                 :type                :DomainEntity/Venues
+                 :description         nil
+                 :source_table        (data/id :venues)
+                 :name                "Venues"}
+                (de/domain-entity-for-table (hydrated-table :venues))))))))
