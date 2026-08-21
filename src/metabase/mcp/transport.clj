@@ -16,6 +16,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -439,7 +440,17 @@
            ;; Respect the scope set attached to an authenticated request. Sessions without one
            ;; retain unrestricted access.
            session-auth
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
+           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only". Only an API key
+           ;; is refused, and 401-with-discovery rather than 403 so the client retries over OAuth.
+           (if (mcp.validation/api-key-authenticated? request)
+             (respond (json-response
+                       401
+                       (jsonrpc-error nil -32603 (str "The MCP server requires per-user OAuth authentication "
+                                                      "and does not accept API keys."))
+                       {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
+                                                                       default-ask-scopes request)}))
+             (dispatch session-auth (or token-scopes #{::scope/unrestricted})))
 
            ;; Bearer token auth — validate and extract scopes
            bearer-token
