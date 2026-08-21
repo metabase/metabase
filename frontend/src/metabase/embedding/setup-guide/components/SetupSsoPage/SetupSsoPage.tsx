@@ -13,16 +13,7 @@ import { SetupJwtStep } from "./SetupJwtStep";
 import S from "./SetupSsoPage.module.css";
 import { TestJwtStep } from "./TestJwtStep";
 
-/**
- * Mounted by the Get started guide and by the hub's Authentication tab, so the
- * back link names wherever it is nested under -- `..` already resolves to the
- * right place, only the label has to say so.
- */
-export const SetupSsoPage = ({
-  backLabel = t`Back to the setup guide`,
-}: {
-  backLabel?: string;
-} = {}) => {
+export const SetupSsoPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
 
   const { data: checklistResponse } = useGetSetupGuideChecklistQuery();
@@ -64,9 +55,7 @@ export const SetupSsoPage = ({
       <Link to=".." className={S.backLink}>
         <Group gap="xs">
           <Icon name="chevronleft" size={12} />
-          <Text size="sm" c="text-secondary">
-            {backLabel}
-          </Text>
+          <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>
         </Group>
       </Link>
 

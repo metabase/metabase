@@ -7,19 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import {
-  Button,
-  Card,
-  Flex,
-  Group,
-  Icon,
-  Image,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 const ADMIN_AUTHENTICATION_URL = "/admin/settings/authentication";
 
@@ -76,65 +64,20 @@ function AuthenticationSection({
   isJwtConfigured: boolean;
   isSamlConfigured: boolean;
 }) {
-  if (isJwtConfigured) {
-    return (
-      <>
-        <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />
-        <OtherAuthMethodsBanner />
-      </>
-    );
-  }
-
-  // No banner here: the card's own Go to Admin already points at the same
-  // page, and two links to one place read as two different destinations.
-  if (isSamlConfigured) {
+  // No banner on the SAML card: its own Go to Admin points at the same page,
+  // and two links to one place read as two different destinations.
+  if (!isJwtConfigured && isSamlConfigured) {
     return <SamlConfiguredCard />;
   }
 
+  // The standard JWT form, configured or not. Setting JWT up from scratch has
+  // its own stepped flow, but that belongs to the setup guide rather than
+  // here -- Alessio, 2026-08-21.
   return (
     <>
-      <ConfigureJwtCard />
+      <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />
       <OtherAuthMethodsBanner />
     </>
-  );
-}
-
-/**
- * Setup goes through the guide's JWT wizard rather than dropping the admin
- * straight into the form -- it is the flow Get started already uses, and it
- * covers the endpoint and the test as well as the settings. It is mounted
- * under this tab, so finishing it comes back here.
- */
-function ConfigureJwtCard() {
-  return (
-    <Card p="xl" withBorder>
-      <Flex align="center" gap="xl" wrap="wrap">
-        <Stack gap="md" align="flex-start" flex="1 1 20rem">
-          <Title order={2}>{t`Configure JWT authentication`}</Title>
-
-          <Text c="text-secondary">
-            {t`You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. Configure JWT authentication to ensure only authorized users can access your embeds.`}
-          </Text>
-
-          <Button
-            component={Link}
-            to={Urls.embeddingHubAuthenticationSsoSetup()}
-            variant="filled"
-          >
-            {t`Configure JWT`}
-          </Button>
-        </Stack>
-
-        <Paper bg="background-brand" radius="md" p="lg" flex="1 1 20rem">
-          <Image
-            src="app/assets/img/upsell-embedding-sso.svg"
-            alt=""
-            fit="contain"
-            h="13rem"
-          />
-        </Paper>
-      </Flex>
-    </Card>
   );
 }
 
