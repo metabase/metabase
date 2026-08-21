@@ -460,8 +460,6 @@ export function DashCardVisualization({
     // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
     const isVisualizerCard = isVisualizerDashboardCard(dashcard);
-    // Visualizer cards hide their edit entries in view mode (#62611)
-    const canEdit = !isVisualizerCard;
     const openUnderlyingQuestionItems =
       onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems);
 
@@ -472,7 +470,7 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
-        canEdit,
+        canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
       });
 
@@ -506,7 +504,7 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
-            canEdit={canEdit}
+            canEdit={!isVisualizerCard}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }

@@ -356,4 +356,16 @@ describe("DashCardMenu.shouldRender", () => {
       }),
     ).toBe(true);
   });
+
+  it("should not render when there are no underlying questions to open", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [],
+      }),
+    ).toBe(false);
+  });
 });
