@@ -236,3 +236,12 @@ function getGoalForeignColumnRefs(
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isGoalForeignColumnRef);
 }
+
+export function hasUnansweredGoalReferences(
+  settings: VisualizationSettings,
+  data: DatasetData | undefined,
+): boolean {
+  return getGoalForeignColumnRefs(settings).some(
+    (ref) => data == null || resolveGoalValue(data, ref).isResolving === true,
+  );
+}

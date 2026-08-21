@@ -7,6 +7,7 @@ import {
 import {
   getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
+  hasUnansweredGoalReferences,
   resolveGoalSegments,
   resolveGoalValue,
 } from "./dynamic-goals";
@@ -459,5 +460,60 @@ describe("malformed persisted segments", () => {
     expect(resolveGoalSegments(data, segments)).toEqual([
       { min: 0, max: 100, color: "red", label: undefined },
     ]);
+  });
+});
+
+describe("hasUnansweredGoalReferences", () => {
+  const settings: VisualizationSettings = {
+    "gauge.segments": [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ],
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("returns true without any result data", () => {
+    expect(hasUnansweredGoalReferences(settings, undefined)).toBe(true);
+  });
+
+  it("returns true when the result lacks the referenced entity", () => {
+    expect(hasUnansweredGoalReferences(settings, baseData)).toBe(true);
+  });
+
+  it("returns false when the reference resolved", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(settings, data)).toBe(false);
+  });
+
+  it("returns false for a failed reference: the result answered it", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(hasUnansweredGoalReferences(settings, data)).toBe(false);
+  });
+
+  it("returns false without foreign references", () => {
+    const settings: VisualizationSettings = {
+      "gauge.segments": [{ min: 0, max: 100, color: "red" }],
+    };
+
+    expect(hasUnansweredGoalReferences(settings, undefined)).toBe(false);
   });
 });
