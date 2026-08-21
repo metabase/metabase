@@ -20,7 +20,7 @@ jest.mock("metabase/parameters/utils/dashboards", () => ({
 }));
 
 jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
-  getCardUiParametersFromParamFields: jest.fn(),
+  getCardUiParameters: jest.fn(),
 }));
 
 jest.mock("metabase/redux/metadata", () => ({
@@ -44,7 +44,7 @@ const mockGetSavedDashboardUiParameters = jest.requireMock(
 ).getSavedDashboardUiParameters;
 const mockGetCardUiParameters = jest.requireMock(
   "metabase-lib/v1/parameters/utils/cards",
-).getCardUiParametersFromParamFields;
+).getCardUiParameters;
 
 const mockParameter1 = createMockParameter({
   id: "param1",

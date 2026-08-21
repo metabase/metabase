@@ -8,10 +8,10 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
-import { getCardUiParametersFromParamFields } from "./cards";
+import { getCardUiParameters } from "./cards";
 
 describe("parameters/utils/cards", () => {
-  describe("getCardUiParametersFromParamFields", () => {
+  describe("getCardUiParameters", () => {
     const dateParameter = createMockParameter({
       id: "param-1",
       name: "Created At",
@@ -42,8 +42,10 @@ describe("parameters/utils/cards", () => {
         },
       });
 
-      const [dateUiParameter, variableUiParameter] =
-        getCardUiParametersFromParamFields(card, metadata);
+      const [dateUiParameter, variableUiParameter] = getCardUiParameters(
+        card,
+        metadata,
+      );
 
       expect(dateUiParameter).toMatchObject({
         id: dateParameter.id,
@@ -66,10 +68,7 @@ describe("parameters/utils/cards", () => {
         },
       });
 
-      const [dateUiParameter] = getCardUiParametersFromParamFields(
-        card,
-        metadata,
-      );
+      const [dateUiParameter] = getCardUiParameters(card, metadata);
 
       expect(dateUiParameter).toMatchObject({
         id: dateParameter.id,
@@ -85,11 +84,9 @@ describe("parameters/utils/cards", () => {
         param_fields: {},
       });
 
-      const [dateUiParameter] = getCardUiParametersFromParamFields(
-        card,
-        metadata,
-        { [dateParameter.id]: "2026-01-01" },
-      );
+      const [dateUiParameter] = getCardUiParameters(card, metadata, {
+        [dateParameter.id]: "2026-01-01",
+      });
 
       expect(dateUiParameter).toMatchObject({
         id: dateParameter.id,
@@ -114,10 +111,7 @@ describe("parameters/utils/cards", () => {
         }),
       });
 
-      const [quantityUiParameter] = getCardUiParametersFromParamFields(
-        card,
-        SAMPLE_METADATA,
-      );
+      const [quantityUiParameter] = getCardUiParameters(card, SAMPLE_METADATA);
 
       expect(quantityUiParameter).toMatchObject({
         id: "tag-id",
@@ -130,7 +124,7 @@ describe("parameters/utils/cards", () => {
       const metadata = createMockMetadata({});
       const card = createMockCard({ parameters: undefined });
 
-      expect(getCardUiParametersFromParamFields(card, metadata)).toEqual([]);
+      expect(getCardUiParameters(card, metadata)).toEqual([]);
     });
   });
 });

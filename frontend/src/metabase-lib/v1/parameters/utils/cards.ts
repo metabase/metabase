@@ -31,7 +31,7 @@ export function getCardUiParameters(
   );
 }
 
-export function getCardUiParametersFromQuery(
+function getCardUiParametersFromQuery(
   card: Card,
   metadata: Metadata,
   parameterValues: { [key: string]: any } = {},
@@ -69,7 +69,7 @@ export function getCardUiParametersFromQuery(
 // targets against `card.dataset_query`. Public and static-embed card payloads
 // do not include the real query, so this is the only way to get parameter
 // fields there.
-export function getCardUiParametersFromParamFields(
+function getCardUiParametersFromParamFields(
   card: Card,
   metadata: Metadata,
   parameterValues: { [key: string]: any } = {},
