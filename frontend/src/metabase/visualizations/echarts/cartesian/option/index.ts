@@ -317,7 +317,7 @@ export const getCartesianChartOption = (
   };
 };
 
-function getTimelineSelectionSeries(
+export function getTimelineSelectionSeries(
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventIds: TimelineEventId[],
   chartLayout: ChartLayout,
