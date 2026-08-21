@@ -242,13 +242,3 @@ const metricBody = (input: MetricInput) => ({
   description: input.description,
   collection_id: input.collectionId,
 });
-
-const metricBody = (input: MetricInput) => ({
-  name: input.name,
-  type: "metric",
-  dataset_query: input.datasetQuery,
-  display: input.display,
-  visualization_settings: input.visualizationSettings,
-  description: input.description,
-  collection_id: input.collectionId,
-});
