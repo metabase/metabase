@@ -2,6 +2,11 @@
 ## seeded all-yes rows for the "All tenant users" magic group, which override every group-level "no" for
 ## tenant users. Clear them wherever the instance is already in group-level mode; simple mode keeps them.
 ##
+## Reading the setting row is enough to detect that mode: the only way to reach the buggy state was the
+## POST /advanced endpoint, which writes the setting to the database as it clears the All Users rows. An
+## instance that forces the setting through an env var without ever calling the endpoint still has its
+## All Users rows, so it is not in the state this migration targets.
+##
 ## Nothing to roll back to: the rows were grants the admin believed they had already removed.
 
 databaseChangeLog:
