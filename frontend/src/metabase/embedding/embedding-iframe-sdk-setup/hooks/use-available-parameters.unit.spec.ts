@@ -135,6 +135,19 @@ describe("useAvailableParameters", () => {
 
       expect(result.current.availableParameters).toEqual([mockParameter1]);
     });
+
+    it("should handle null return from getCardUiParameters", () => {
+      mockGetCardUiParameters.mockReturnValue(null);
+
+      const { result } = renderHook(() =>
+        useAvailableParameters({
+          experience: "chart",
+          resource: mockCard,
+        }),
+      );
+
+      expect(result.current.availableParameters).toEqual([]);
+    });
   });
 
   describe("resource change handling", () => {

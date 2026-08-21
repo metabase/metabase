@@ -50,7 +50,7 @@ export const useAvailableParameters = ({
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParameters(card, metadataRef.current);
+      return getCardUiParameters(card, metadataRef.current) || [];
     }
 
     return [];
