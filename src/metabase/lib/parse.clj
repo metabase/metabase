@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [metabase.lib.parse-impl :as impl]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :refer [mapv]])
   (:import
    (gleam.prelude Ok)
@@ -43,11 +44,19 @@
             {:text (:f1 piece), :token (token->keyword (:f0 piece))}))
         (impl/tokenize s handle-sql-comments)))
 
-(def ^:private error->message
-  {Unterminated "Invalid query: found \"[[\" or \"{{\" with no matching \"]]\" or \"}}\""
-   InvalidParamName "Invalid '{{...}}' clause: expected a param name"
-   EmptyParam "'{{...}}' clauses cannot be empty."
-   OptionalWithoutParam "[[...]] clauses must contain at least one '{{...}}' clause."})
+(defn- error->message
+  "The exact tru strings from parse.cljc, so messages (and their translations)
+  match the original byte for byte."
+  [error-class]
+  (condp = error-class
+    Unterminated
+    (tru "Invalid query: found ''[['' or '''{{''' with no matching '']]'' or ''}}''")
+    InvalidParamName
+    (tru "Invalid '''{{...}}''' clause: expected a param name")
+    EmptyParam
+    (tru "'''{{...}}''' clauses cannot be empty.")
+    OptionalWithoutParam
+    (tru "[[...]] clauses must contain at least one '''{{...}}''' clause.")))
 
 (defn parse
   "Attempts to parse parameters in string `s`. Parses any optional clauses or
@@ -63,5 +72,5 @@
          result (impl/parse s handle-sql-comments strict)]
      (if (instance? Ok result)
        (mapv fragment->clj (:value result))
-       (throw (ex-info (error->message (class (:value result)) "parse error")
+       (throw (ex-info (error->message (class (:value result)))
                        {:type (:parse-error-type opts)}))))))
