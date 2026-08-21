@@ -4,7 +4,6 @@ export * from "./UpsellCloud";
 export * from "./UpsellCustomViz";
 export * from "./UpsellDataApps";
 export * from "./UpsellEmailWhitelabel";
-export * from "./UpsellEmbeddingSso";
 export * from "./UpsellEmbeddingTheme";
 export * from "./UpsellHosting";
 export * from "./UpsellPermissions";
