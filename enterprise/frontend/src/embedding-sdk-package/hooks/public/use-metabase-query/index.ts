@@ -19,7 +19,6 @@ export type {
   MetabaseOrderBy,
   MetabaseQueryOptions,
   OrderByDirection,
-  QuestionColumnReference,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";

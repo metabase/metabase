@@ -18,10 +18,9 @@
     (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
     ;; `includes?` rather than `starts-with?`: instances with compactable
     ;; metrics render the pickFields helper before the first const.
-    (is (str/includes? (:body response) "const questions = "))
     (is (str/includes? (:body response) "\nconst schema = {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
-    (is (str/includes? (:body response) "\n  questions: questions"))
+    (is (not (str/includes? (:body response) "\n  questions:")))
     (is (str/includes? (:body response) "\n  tables: tables"))
     (is (str/includes? (:body response) "\n  metrics: metrics"))
     (is (str/ends-with? (:body response) "export default schema;\n"))
@@ -60,7 +59,7 @@
       (is (str/includes? schema-by-id "name: \"Venues\"")))
     (testing "a non-matching database name returns an empty semantic schema"
       (is (str/includes? missing-schema "schemaVersion: 2"))
-      (is (str/includes? missing-schema "const questions = { }"))
+      (is (not (str/includes? missing-schema "const questions = { }")))
       (is (str/includes? missing-schema "const tables = { }"))
       (is (str/includes? missing-schema "const metrics = { }")))))
 
@@ -70,3 +69,10 @@
    :get
    400
    "typed-schemas/v1/typescript?library-collections=1,2&database=1"))
+
+(deftest question-collections-query-param-is-rejected-test
+  (mt/user-http-request-full-response
+   :crowberto
+   :get
+   400
+   "typed-schemas/v1/typescript?question-collections=1"))

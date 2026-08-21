@@ -20,7 +20,6 @@ import { useAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
-type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
 
 const revenueQuery = defineQuery({
   savedQuestionSourceId: 54,
@@ -156,55 +155,6 @@ function ValidTypeFixtures() {
   useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     orderBys: [orderBy(sortFields[sortKey], "desc")],
-  });
-
-  const groupedQuestionQuery = {
-    source: TEST_SCHEMA.questions.ordersQuestion,
-    filters: [
-      filter(TEST_SCHEMA.questions.ordersQuestion.columns[0], "=", "paid"),
-    ],
-    aggregations: [count()],
-    breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
-    limit: 10,
-  } satisfies MetabaseQueryOptions<OrdersQuestion>;
-
-  const groupedQuestionResult = useMetabaseQuery(groupedQuestionQuery);
-
-  // Grouping replaces the question's result columns with the query's own.
-  const groupedQuestionCount: number | null | undefined =
-    groupedQuestionResult.data?.rows[0]?.count;
-
-  void groupedQuestionCount;
-
-  // `useMetabaseQueryObject` takes no generic, so it must accept both sources.
-  useMetabaseQueryObject({
-    source: TEST_SCHEMA.questions.ordersQuestion,
-    filters: [
-      filter(TEST_SCHEMA.questions.ordersQuestion.columns[1], ">", 100),
-    ],
-  });
-
-  // Apps without a generated schema name the question's result column by hand.
-  useMetabaseQueryObject({
-    source: { type: "card", id: 41 },
-    filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")],
-  });
-
-  useMetabaseQuery({
-    source: { type: "card", id: 41 },
-    filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")],
-    aggregations: [count()],
-    breakouts: [
-      breakout(
-        { type: "column", name: "CREATED_AT", jsType: "Date" },
-        { unit: "month" },
-      ),
-    ],
-    orderBys: [
-      orderBy({ type: "column", name: "CREATED_AT", jsType: "Date" }, "desc", {
-        unit: "month",
-      }),
-    ],
   });
 
   // A static query published as a card, with dynamic clauses layered on top.
