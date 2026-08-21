@@ -331,16 +331,15 @@ export const closeSyncResultModal = () => {
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
-  seenPolls = 0,
+  retries = 0,
 ): Cypress.Chainable => {
-  if (seenPolls > 60) {
-    throw Error(`Too many polls waiting for ${taskName}`);
+  if (retries > 10) {
+    throw Error(`Too many retries waiting for ${taskName}`);
   }
-  // The app pauses polling while the task-starting mutation is in flight, so the first poll can arrive late
   return cy.wait("@currentTask", { timeout: 30000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
-      return waitForTask({ taskName }, seenPolls + 1);
+      return waitForTask({ taskName }, retries + 1);
     }
     if (
       ["errored", "cancelled", "timed-out", "conflict"].includes(body?.status)
@@ -350,7 +349,7 @@ export const waitForTask = (
       );
     }
     if (body?.status !== "successful") {
-      return waitForTask({ taskName }, seenPolls + 1);
+      return waitForTask({ taskName }, retries + 1);
     }
     // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
     return closeSyncResultModal();

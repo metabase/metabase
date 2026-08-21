@@ -21,7 +21,6 @@ const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
 
-// Setup is scoped per describe: a shared postgres-writable restore was wasted work (and CI restore timeouts) for the describes that re-restore the default snapshot
 describe("Remote Sync", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
@@ -467,7 +466,6 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();
-      // Sign in before activateToken: the token PUT needs an authenticated session
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupGitSync();
@@ -710,81 +708,75 @@ describe("Remote Sync", () => {
       H.interceptTask();
     });
 
-    it(
-      "can change branches",
-      // The code-split app and settings section start their requests late under CI throttling
-      { requestTimeout: 15000 },
-      () => {
-        const UPDATED_REMOTE_QUESTION_NAME = "New Name";
+    it("can change branches", { requestTimeout: 15000 }, () => {
+      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
-        H.copySyncedCollectionFixture();
-        H.commitToRepo();
-        // The app never learns about imports started via cy.request; wait for it server-side
-        H.configureGitAndPullChanges("read-only");
+      H.copySyncedCollectionFixture();
+      H.commitToRepo();
+      H.configureGitAndPullChanges("read-only");
 
-        // The collection page fires two items requests; wait for both before asserting contents
-        cy.intercept("GET", "/api/collection/*/items?*").as("mainBranchItems");
-        cy.visit("/");
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "mainBranchItems",
+      );
+      cy.visit("/");
 
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: /Synced Collection/ })
-          .click();
-        cy.wait(["@mainBranchItems", "@mainBranchItems"]);
-        H.collectionTable().findByText(REMOTE_QUESTION_NAME);
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      cy.wait(["@mainBranchItems", "@mainBranchItems"]);
+      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
-        // Make a change, and commit it to the branch
-        H.checkoutSyncedCollectionBranch("test");
-        H.updateRemoteQuestion((doc) => {
-          doc.name = UPDATED_REMOTE_QUESTION_NAME;
-          return doc;
-        });
+      // Make a change, and commit it to the branch
+      H.checkoutSyncedCollectionBranch("test");
+      H.updateRemoteQuestion((doc) => {
+        doc.name = UPDATED_REMOTE_QUESTION_NAME;
+        return doc;
+      });
 
-        // Settle the queries that rebuild the form's initialValues; a late one resets the typed branch
-        cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-        cy.intercept("GET", "/api/setting").as("settingDetails");
-        cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
-        cy.intercept("GET", "/api/ee/library").as("libraryCollection");
-        cy.visit("/admin/settings/remote-sync");
-        cy.wait([
-          "@sessionProperties",
-          "@settingDetails",
-          "@rootItems",
-          "@libraryCollection",
-        ]);
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+      cy.intercept("GET", "/api/setting").as("settingDetails");
+      cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+      cy.intercept("GET", "/api/ee/library").as("libraryCollection");
+      cy.visit("/admin/settings/remote-sync");
+      cy.wait([
+        "@sessionProperties",
+        "@settingDetails",
+        "@rootItems",
+        "@libraryCollection",
+      ]);
 
-        cy.findByLabelText("Sync branch")
-          .scrollIntoView()
-          .clear()
-          .type("test")
-          .should("have.value", "test");
-        cy.findByTestId("remote-sync-submit-button").click();
+      cy.findByLabelText("Sync branch")
+        .scrollIntoView()
+        .clear()
+        .type("test")
+        .should("have.value", "test");
+      cy.findByTestId("remote-sync-submit-button").click();
 
-        cy.findByTestId("admin-layout-content")
-          .findByText("Success")
-          .should("exist");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
 
-        cy.findByRole("dialog", { name: "Switch branches?" })
-          .button("Continue")
-          .click();
+      cy.findByRole("dialog", { name: "Switch branches?" })
+        .button("Continue")
+        .click();
 
-        H.waitForTask({ taskName: "import" });
+      H.waitForTask({ taskName: "import" });
 
-        cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
-        // Confirm server-side that the branch-switch import fully settled before reloading
-        H.pollForTask({ taskName: "import" });
+      H.pollForTask({ taskName: "import" });
 
-        // Same items-request barrier as the first visit, since the reload boots the app from scratch
-        cy.intercept("GET", "/api/collection/*/items?*").as("testBranchItems");
-        cy.visit("/");
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "testBranchItems",
+      );
+      cy.visit("/");
 
-        H.navigationSidebar()
-          .findByRole("treeitem", { name: /Synced Collection/ })
-          .click();
-        cy.wait(["@testBranchItems", "@testBranchItems"]);
-        H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
-      },
-    );
+      H.navigationSidebar()
+        .findByRole("treeitem", { name: /Synced Collection/ })
+        .click();
+      cy.wait(["@testBranchItems", "@testBranchItems"]);
+      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
+    });
 
     it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
       H.copySyncedCollectionFixture();
