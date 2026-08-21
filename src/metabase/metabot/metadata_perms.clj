@@ -65,6 +65,52 @@
   [table-ids]
   (permitted-table-ids :data-accessible-table data-accessible? table-ids))
 
+(defn- row-restricted-by-db
+  "`{table-id restricted?}` for one database's `tables`, computed from a single
+  [[perms/data-access-token]] call. Impersonation and routing are per-database, not per-table, so
+  batching by database avoids recomputing them once per table.
+
+  Fails closed on error, without turning every failure into an O(table count) retry: impersonation
+  and routing are the realistic throw sources (a missing user attribute), and both are database-wide
+  -- if the batched call throws, a single cheap probe with `:table-ids #{}` (which skips the
+  per-table sandbox lookup entirely) tells us whether that's the case. Only when the probe itself
+  succeeds -- proving impersonation/routing are resolvable and the failure must be an isolated
+  per-table sandbox problem -- do we pay for a per-table retry, so a single broken table doesn't
+  drag its unrelated siblings down with it."
+  [db-id tables]
+  (let [ids (into #{} (map :id) tables)
+        restrict-all (into {} (map (fn [id] [id true])) ids)]
+    (try
+      (let [token (perms/data-access-token {:database-id db-id :table-ids ids})
+            db-wide-restricted? (boolean (or (:impersonation token) (:routing token)))]
+        (into {} (map (fn [id] [id (or db-wide-restricted? (contains? (:sandbox token) id))])) ids))
+      (catch Exception _
+        (try
+          (let [{:keys [impersonation routing]} (perms/data-access-token {:database-id db-id :table-ids #{}})]
+            (if (or impersonation routing)
+              restrict-all
+              (into {}
+                    (map (fn [id]
+                           [id (try
+                                 (boolean (seq (perms/data-access-token {:database-id db-id :table-ids #{id}})))
+                                 (catch Exception _ true))]))
+                    ids)))
+          (catch Exception _
+            restrict-all))))))
+
+(defn row-restricted-table-ids
+  "Returns the subset of `table-ids` whose current user's row access is narrowed by sandboxing,
+  connection impersonation, or database routing. Fails closed: a table whose restriction lens
+  can't be resolved (an attribute needed to compute it is missing) is included."
+  [table-ids]
+  (->> (memoized :row-restricted-table table-ids
+                 (fn [ids]
+                   (let [tables (into [] (keep (table-rows ids)) ids)]
+                     (into {} (mapcat (fn [[db-id db-tables]] (row-restricted-by-db db-id db-tables)))
+                           (group-by :db_id tables))))
+                 false)
+       (into #{} (keep (fn [[id restricted?]] (when restricted? id))))))
+
 (defn sandbox-restricted-fields
   "Returns `{table-id #{allowed-field-id}}` for the column-sandboxed subset of `table-ids`."
   [table-ids]

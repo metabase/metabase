@@ -11,6 +11,7 @@
    [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
@@ -150,24 +151,26 @@
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:entity-type :table
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-table-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:entity-type :model
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :model
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/model->xml))
 
 (defn- format-chart-config-ids
@@ -210,16 +213,18 @@
     (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
-                      #(entity-details/get-report-details {:report-id (:id entity)
-                                                           :with-field-values? false})
+                      #(do (resources-tools/check-card-resource-database (:id entity))
+                           (entity-details/get-report-details {:report-id (:id entity)
+                                                               :with-field-values? false}))
                       llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a metric:"
-                    #(entity-details/get-metric-details {:metric-id (:id entity)
-                                                         :with-field-values? false})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-metric-details {:metric-id (:id entity)
+                                                             :with-field-values? false}))
                     llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"

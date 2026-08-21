@@ -38,11 +38,16 @@
       :defaultTemporalBucket (:unit field)))))
 
 (defn- filter-readable-tables
-  "Filters tables down to the ones the current user can read."
+  "Filters tables down to the ones the current user can read, excluding any backed by a destination
+  (routed) database -- see [[schema.common/destination-db-ids]]."
   [tables]
   (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                   :table-ids (into #{} (map :id) tables)})
-  (filter mi/can-read? tables))
+  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
+        tables          (if (seq destination-ids)
+                          (remove #(contains? destination-ids (:db_id %)) tables)
+                          tables)]
+    (filter mi/can-read? tables)))
 
 (defn select-tables
   "Returns readable tables, with optional database and table-id scopes.
