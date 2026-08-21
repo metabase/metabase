@@ -30,7 +30,6 @@
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -398,19 +397,17 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
-        card-id (api.embed.common/unsigned-token->card-id unsigned)
-        lat-field (json/decode+kw latField)
-        lon-field (json/decode+kw lonField)]
+        card-id (api.embed.common/unsigned-token->card-id unsigned)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-card
        card-id
        (api.embed.common/tile-parameters-for-card
         card-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
-       zoom x y lat-field lon-field))))
+       zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -429,16 +426,14 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
-        dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
-        lat-field (json/decode+kw latField)
-        lon-field (json/decode+kw lonField)]
+        dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard
        dashboard-id dashcard-id card-id
        (api.embed.common/tile-parameters-for-dashboard
         dashboard-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
-       zoom x y lat-field lon-field))))
+       zoom x y latField lonField))))
