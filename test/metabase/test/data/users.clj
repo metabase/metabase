@@ -208,8 +208,10 @@
             (thunk)
             (catch ExceptionInfo e
               (rethrow-when-not-401 e)
-              ;; second retry: clear cached session tokens, then try again one last time
-              (clear-cached-session-tokens!)
+              ;; second retry: forget this user's token, then try again one last time. Only this user's:
+              ;; a session minted inside a transaction is rolled back with it, and clearing the whole cache
+              ;; over one such 401 would throw away the durable tokens of every other user too.
+              (swap! tokens dissoc [(mdb/unique-identifier) username])
               (try
                 (thunk)
                 (catch ExceptionInfo e
