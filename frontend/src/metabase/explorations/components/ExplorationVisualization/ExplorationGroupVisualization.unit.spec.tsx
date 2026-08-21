@@ -16,7 +16,6 @@ import type { ClickObject } from "metabase/visualizations/types";
 import type {
   Comment,
   Dataset,
-  ExplorationBlockNodeType,
   ExplorationPageNode,
   ExplorationQuery,
   HydratedExplorationExploreFilter,
@@ -235,7 +234,6 @@ interface SetupOpts {
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
   onCloseCommentsSidebar?: () => void;
-  blockType?: ExplorationBlockNodeType;
   page?: ExplorationPageNode;
   exploreFilters?: HydratedExplorationExploreFilter[] | null;
 }
@@ -251,7 +249,6 @@ function setup({
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
   onCloseCommentsSidebar = jest.fn(),
-  blockType = "metric",
   page: pageOverride,
   exploreFilters,
 }: SetupOpts) {
@@ -281,7 +278,6 @@ function setup({
               query_ids: queries.map((q) => q.id),
             }}
             queries={queries}
-            blockType={blockType}
             exploreFilters={exploreFilters}
             availableTimelines={availableTimelines}
             selectedTimelineId={selectedTimelineId}
@@ -603,7 +599,6 @@ describe("ExplorationGroupVisualization", () => {
             explorationId={1}
             page={{ ...page, query_ids: [101] }}
             queries={queries}
-            blockType="metric"
             availableTimelines={[]}
             selectedTimelineId={null}
             onSelectTimelineId={jest.fn()}
@@ -833,21 +828,12 @@ describe("ExplorationGroupVisualization", () => {
       expect(typeof lastVisualizationProps?.onBrush).toBe("function");
     });
 
-    it("includes explore further for eligible metric blocks", () => {
-      setup({ ...timeseriesSetup, blockType: "metric" });
+    it("includes explore further", () => {
+      setup({ ...timeseriesSetup });
 
       expect(screen.getByTestId("visualization-stub")).toHaveAttribute(
         "data-action-names",
         "explore-further,add-comment",
-      );
-    });
-
-    it("omits explore further for ineligible dimension blocks", () => {
-      setup({ ...timeseriesSetup, blockType: "dimension" });
-
-      expect(screen.getByTestId("visualization-stub")).toHaveAttribute(
-        "data-action-names",
-        "add-comment",
       );
     });
   });

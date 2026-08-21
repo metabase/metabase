@@ -169,18 +169,8 @@ function makeClickObject(
 describe("canExploreFurther", () => {
   it("returns false when there are no dimensions", () => {
     expect(
-      canExploreFurther(
-        makeClickObject({ dimensions: [] }),
-        "metric",
-        "default",
-      ),
+      canExploreFurther(makeClickObject({ dimensions: [] }), "default"),
     ).toBe(false);
-  });
-
-  it("returns false for dimension blocks", () => {
-    expect(canExploreFurther(makeClickObject(), "dimension", "default")).toBe(
-      false,
-    );
   });
 
   it("returns false for top-n-other clicks on the Other bucket", () => {
@@ -197,16 +187,13 @@ describe("canExploreFurther", () => {
             },
           ],
         }),
-        "metric",
         "top-n-other",
       ),
     ).toBe(false);
   });
 
   it("returns true for eligible metric-block clicks with real dimension values", () => {
-    expect(canExploreFurther(makeClickObject(), "metric", "default")).toBe(
-      true,
-    );
+    expect(canExploreFurther(makeClickObject(), "default")).toBe(true);
   });
 
   it("returns true when multiple dimensions are present", () => {
@@ -227,7 +214,6 @@ describe("canExploreFurther", () => {
             },
           ],
         }),
-        "metric",
         "default",
       ),
     ).toBe(true);
@@ -249,32 +235,9 @@ describe("canExploreFurther", () => {
           event: new MouseEvent("click"),
           settings: {},
         },
-        "metric",
         "default",
       ),
     ).toBe(true);
-  });
-
-  it("returns false for brush clicks on dimension blocks", () => {
-    expect(
-      canExploreFurther(
-        {
-          brushRange: {
-            type: "numeric",
-            start: 1,
-            end: 4,
-          },
-          column: createMockColumn({
-            name: "PRICE",
-            field_ref: ["field", 21, null],
-          }),
-          event: new MouseEvent("click"),
-          settings: {},
-        },
-        "dimension",
-        "default",
-      ),
-    ).toBe(false);
   });
 });
 
@@ -424,7 +387,7 @@ describe("getExploreFurtherFilters", () => {
     };
 
     expect(getExploreFurtherFilters(clicked)).toEqual([]);
-    expect(canExploreFurther(clicked, "metric", "default")).toBe(false);
+    expect(canExploreFurther(clicked, "default")).toBe(false);
   });
 
   it("projects a numeric brush range into a between explore filter", () => {

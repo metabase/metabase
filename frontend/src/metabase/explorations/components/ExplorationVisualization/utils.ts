@@ -35,7 +35,6 @@ import type {
   Dataset,
   DatasetColumn,
   DateTimeAbsoluteUnit,
-  ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
   ExplorationQueryType,
@@ -599,15 +598,8 @@ export function getExploreFurtherFilters(
 
 export function canExploreFurther(
   clicked: ClickObject,
-  blockType: ExplorationBlockNodeType,
   queryType: ExplorationQueryType,
 ): boolean {
-  // disable for dimension blocks - every query in a dimension block is cut by the same dimension
-  // so filtering on a single dimension value doesn't provide a new view of the data
-  if (blockType === "dimension") {
-    return false;
-  }
-
   if (isBrushClickObject(clicked)) {
     return getExploreFurtherFilters(clicked).length > 0;
   }
