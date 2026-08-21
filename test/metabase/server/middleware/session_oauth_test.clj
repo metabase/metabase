@@ -29,12 +29,28 @@
 (defn- bearer-request [token]
   {:headers {"authorization" (str "Bearer " token)}})
 
+(def ^:private test-client-id "test-client")
+
+(defn- ensure-test-client!
+  "Register the `oauth_client` row that saved tokens reference. `resolve-access-token` fails closed when a
+   token's client is gone (SEC-863), so a token only authenticates while its client exists. Idempotent."
+  []
+  (when-not (t2/exists? :model/OAuthClient :client_id test-client-id)
+    (t2/insert! :model/OAuthClient {:client_id         test-client-id
+                                    :redirect_uris     ["https://example.com/callback"]
+                                    :grant_types       ["authorization_code"]
+                                    :response_types    ["code"]
+                                    :scopes            ["openid"]
+                                    :registration_type "static"})))
+
 (defn- save-access-token!
   "Persist an OAuth access token into the live provider's token store (the one [[oauth-server/resolve-access-token]]
-   reads from) for the given user, scopes, and expiry (epoch millis)."
+   reads from) for the given user, scopes, and expiry (epoch millis). Also ensures the token's client exists so
+   the bearer bridge's client-existence check passes."
   [token user-id scopes expiry]
+  (ensure-test-client!)
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
-                                token (str user-id) "test-client" (vec scopes) expiry nil))
+                                token (str user-id) test-client-id (vec scopes) expiry nil))
 
 (defn- revoke-access-token!
   "Revoke a token in the live provider's token store, as the `/oauth/revoke` endpoint does on logout."
