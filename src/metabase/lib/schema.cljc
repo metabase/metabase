@@ -62,7 +62,9 @@
 
 (mr/def ::stage.common
   [:map
-   {:decode/normalize normalize-stage-common}
+   {:decode/normalize normalize-stage-common
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
@@ -467,13 +469,13 @@
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
+  ;;
+  ;; [[common/internal-key?]] also drops all internal namespaced keys the query processor adds, keeping `:lib` keys like
+  ;; `:lib/type`.
   (let [keys-to-remove #{:lib/metadata :info :parameters :viz-settings}]
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
-                          (or (simple-keyword? k)
-                              ;; remove all random namespaced keys like
-                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
-                              (= (namespace k) "lib"))))
+                          (not (common/internal-key? k))))
                    query)))
 
 (defn- encode-query-for-hashing [query]
@@ -495,6 +497,7 @@
    [:map
     {:description        "Valid MBQL 5 query."
      :decode/normalize   #'normalize-query
+     :decode/api         #'common/remove-internal-keys
      :encode/serialize   #'serialize-query
      :encode/for-hashing #'encode-query-for-hashing}
     [:lib/type [:=
