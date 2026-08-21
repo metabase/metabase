@@ -82,10 +82,10 @@
         redirect (get-in request [:params :redirect])]
     (cond
       ;; Embedding feature checks
-      (and is-react-sdk? (not (embed.settings/enable-embedding-sdk)))
+      (and is-react-sdk? (not (embed.settings/enable-embedding-modular)))
       (throw-react-sdk-embedding-disabled)
 
-      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
+      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-modular)))
       (throw-simple-embedding-disabled)
 
       (and is-modular-embedding? jwt)

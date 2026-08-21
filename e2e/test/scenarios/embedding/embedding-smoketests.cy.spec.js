@@ -13,7 +13,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.updateSetting("show-sdk-embed-terms", false);
+    H.updateSetting("show-modular-embed-terms", false);
   });
 
   it("should not offer to share or embed models (metabase#20815)", () => {
@@ -71,7 +71,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     };
     ["question", "dashboard"].forEach((object) => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
-        cy.request("PUT", "/api/setting/enable-embedding-static", {
+        cy.request("PUT", "/api/setting/enable-embedding-modular", {
           value: true,
         });
         const embeddableObject = object === "question" ? "card" : "dashboard";
@@ -200,7 +200,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         enable_embedding: true,
       });
 
-      cy.request("PUT", "/api/setting/enable-embedding-static", {
+      cy.request("PUT", "/api/setting/enable-embedding-modular", {
         value: true,
       });
 
@@ -231,7 +231,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should regenerate embedding token and invalidate previous embed url", () => {
-      cy.request("PUT", "/api/setting/enable-embedding-static", {
+      cy.request("PUT", "/api/setting/enable-embedding-modular", {
         value: true,
       });
 
@@ -297,7 +297,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  H.updateSetting("enable-embedding-static", false);
+  H.updateSetting("enable-embedding-modular", false);
   H.updateSetting("embedding-secret-key", null);
 }
 

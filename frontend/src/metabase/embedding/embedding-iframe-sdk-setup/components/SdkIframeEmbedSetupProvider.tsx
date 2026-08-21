@@ -43,10 +43,14 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
-  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+  // One setting backs both since 0.65.0; only the terms they gate still differ.
+  const isModularEmbeddingEnabled = useSetting("enable-embedding-modular");
+  const isSimpleEmbeddingEnabled = isModularEmbeddingEnabled;
+  const isGuestEmbedsEnabled = isModularEmbeddingEnabled;
 
-  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isSimpleEmbeddingTermsAccepted = !useSetting(
+    "show-modular-embed-terms",
+  );
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();

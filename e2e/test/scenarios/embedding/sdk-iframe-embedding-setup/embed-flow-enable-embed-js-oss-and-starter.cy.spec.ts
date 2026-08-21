@@ -23,7 +23,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
     describe("guest", () => {
       it("shows the Enable to Continue button and enables embedding on click", () => {
-        H.updateSetting("enable-embedding-static", false);
+        H.updateSetting("enable-embedding-modular", false);
         H.updateSetting("show-static-embed-terms", true);
 
         cy.visit("/admin/embedding");
@@ -99,7 +99,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
       });
 
       it("shows the enable card with fair usage terms when embedding is already enabled", () => {
-        H.updateSetting("enable-embedding-static", true);
+        H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", true);
 
         cy.visit("/admin/embedding");
@@ -139,7 +139,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
       });
 
       it("hides the enable card when embedding is already enabled", () => {
-        H.updateSetting("enable-embedding-static", true);
+        H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", false);
 
         cy.visit("/admin/embedding");
@@ -160,8 +160,8 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
 
     describe("Metabase account (sso)", () => {
       it("does not show the Enable to Continue button and disables item", () => {
-        H.updateSetting("enable-embedding-simple", false);
-        H.updateSetting("show-simple-embed-terms", true);
+        H.updateSetting("enable-embedding-modular", false);
+        H.updateSetting("show-modular-embed-terms", true);
 
         cy.visit("/admin/embedding");
 

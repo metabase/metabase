@@ -2,21 +2,14 @@ import { screen, within } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
-const setup = (opts: SetupOpts = {}) =>
-  baseSetup({
-    tokenFeatures: {
-      embedding_simple: opts.isEmbeddingSimpleEnabled,
-      embedding_sdk: opts.isEmbeddingSdkEnabled,
-    },
-    ...opts,
-  });
+const setup = (opts: SetupOpts = {}) => baseSetup(opts);
 
 describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
   it("should not tell users to upgrade or switch binaries", async () => {
     await setup({
-      isEmbeddingSdkEnabled: true,
-      isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      tokenFeatures: { embedding_sdk: true, embedding_simple: true },
+      isEmbeddingEnabled: true,
+      showModularEmbedTerms: false,
       enterprisePlugins: [
         "embedding-sdk",
         "embedding_iframe_sdk",
@@ -45,9 +38,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
   describe("Version pinning", () => {
     it("should offer users version pinning when they have a cloud instance", async () => {
       await setup({
-        isEmbeddingSdkEnabled: true,
-        isEmbeddingSimpleEnabled: true,
-        showSdkEmbedTerms: false,
+        tokenFeatures: { embedding_sdk: true, embedding_simple: true },
+        isEmbeddingEnabled: true,
+        showModularEmbedTerms: false,
         isHosted: true,
         enterprisePlugins: [
           "embedding-sdk",
@@ -68,7 +61,10 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     });
 
     it("should not offer users version pinning on self hosted instances", () => {
-      setup({ isHosted: false });
+      setup({
+        tokenFeatures: { embedding_sdk: true, embedding_simple: true },
+        isHosted: false,
+      });
 
       expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
       expect(
@@ -79,9 +75,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
 
   it("should show Security and Appearance in related settings", async () => {
     await setup({
-      isEmbeddingSdkEnabled: true,
-      isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
+      tokenFeatures: { embedding_sdk: true, embedding_simple: true },
+      isEmbeddingEnabled: true,
+      showModularEmbedTerms: false,
     });
 
     expect(screen.getByText("Security")).toBeInTheDocument();

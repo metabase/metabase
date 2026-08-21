@@ -32,8 +32,8 @@ const setup = ({
 
   const storeInitialState = createMockState({
     settings: mockSettings({
-      "enable-embedding-simple": true,
-      "show-simple-embed-terms": false,
+      "enable-embedding-modular": true,
+      "show-modular-embed-terms": false,
     }),
   });
 

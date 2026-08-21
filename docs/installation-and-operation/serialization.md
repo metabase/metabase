@@ -145,6 +145,7 @@ show-homepage-data
 show-homepage-pin-message
 show-homepage-xrays
 show-metabot
+show-modular-embed-terms
 show-sdk-embed-terms
 show-simple-embed-terms
 show-static-embed-terms
