@@ -84,23 +84,13 @@ describe("EmbeddingHubAuthenticationPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("prompts to configure JWT when no SSO is configured", async () => {
+  it("shows the JWT form when nothing is configured yet", async () => {
+    // The stepped setup flow lives in the setup guide, not here.
     setup({ hasSsoJwt: true });
 
     expect(
-      await screen.findByText("Configure JWT authentication"),
+      await screen.findByText("JWT Identity Provider URI"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("JWT Identity Provider URI"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("sends the empty state into the guide's JWT wizard", async () => {
-    setup({ hasSsoJwt: true });
-
-    expect(
-      await screen.findByRole("link", { name: "Configure JWT" }),
-    ).toHaveAttribute("href", "/embedding/authentication/sso-setup");
   });
 
   it("sends the admin to admin settings when only SAML is configured", async () => {
@@ -113,7 +103,7 @@ describe("EmbeddingHubAuthenticationPage", () => {
       "/admin/settings/authentication",
     );
     expect(
-      screen.queryByText("Configure JWT authentication"),
+      screen.queryByText("JWT Identity Provider URI"),
     ).not.toBeInTheDocument();
 
     // The card's own link goes to the same page the banner would.
