@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.channel.slack :as channel.slack]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
@@ -160,6 +161,46 @@
               (prometheus/clear! :metabase-slackbot/viz-links-dropped)
               (#'slackbot.streaming/format-viz-title "Revenue by month" "/question/42")
               (is (= 0.0 (mt/metric-value system :metabase-slackbot/viz-links-dropped))))))))))
+
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest viz-title-over-limit-without-link-is-not-a-dropped-link-test
+  (testing "an over-long title with no link to drop is elided, but not counted as a dropped link"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+        (let [long-title (apply str (repeat 4000 "T"))]
+          (is (= tu/slack-section-text-limit
+                 (count (#'slackbot.streaming/format-viz-title long-title nil)))
+              "the title itself is cut to the limit")
+          (is (= 0.0 (mt/metric-value system :metabase-slackbot/viz-links-dropped))
+              "nothing was dropped -- there was no link to begin with")
+          (mt/with-log-messages-for-level [messages [metabase.slackbot.streaming :info]]
+            (#'slackbot.streaming/format-viz-title long-title nil)
+            (is (some (fn [{:keys [message]}]
+                        (str/includes? message "no link to drop"))
+                      (messages))
+                "and the log says so, rather than claiming a link was dropped")))))))
+
+(deftest viz-image-alt-text-fits-slack-limit-test
+  (testing "alt_text is capped to Slack's tighter image limit, which a title can exceed alone (BOT-1606)"
+    (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+      (mt/with-dynamic-fn-redefs [channel.slack/upload-file! (constantly {:id "F123" :url "https://x/y.png"})]
+        ;; 2500 chars clears the 3000 section limit untouched, so only the alt_text cap catches it.
+        (let [long-title (apply str (repeat 2500 "T"))
+              blocks     (#'slackbot.streaming/viz-output->blocks
+                          {:type :image :content (byte-array [1 2 3])}
+                          "chart" long-title nil)
+              image      (second blocks)]
+          (is (= ["section" "image"] (mapv :type blocks)))
+          (is (= 2500 (count (get-in (first blocks) [:text :text])))
+              "the section text is under its own limit, so nothing there would have caught this")
+          (is (= 2000 (count (:alt_text image)))
+              "alt_text is cut to Slack's 2000-character limit")
+          (is (str/starts-with? long-title (:alt_text image)))
+          (testing "a title that fits is left alone"
+            (let [ok (#'slackbot.streaming/viz-output->blocks
+                      {:type :image :content (byte-array [1 2 3])}
+                      "chart" "Revenue by month" nil)]
+              (is (= "Revenue by month" (:alt_text (second ok)))))))))))
 
 (deftest feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
