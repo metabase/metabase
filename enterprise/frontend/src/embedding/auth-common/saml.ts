@@ -17,8 +17,10 @@ import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types
  * */
 export const openSamlLoginPopup = async (
   idpUrl: string,
+  instanceUrl: string,
 ): Promise<MetabaseEmbeddingSessionToken> => {
   return new Promise((resolve, reject) => {
+    const expectedOrigin = new URL(instanceUrl).origin;
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
@@ -40,7 +42,11 @@ export const openSamlLoginPopup = async (
         authData: MetabaseEmbeddingSessionToken;
       }>,
     ) => {
-      if (event.data && event.data.type === "SAML_AUTH_COMPLETE") {
+      if (
+        event.origin === expectedOrigin &&
+        event.source === popup &&
+        event.data?.type === "SAML_AUTH_COMPLETE"
+      ) {
         window.removeEventListener("message", messageHandler);
         if (!popup.closed) {
           popup.close();
