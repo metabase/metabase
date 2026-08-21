@@ -326,17 +326,20 @@ export const interceptTask = () =>
  * renders from the same task poll that `waitForTask` observes.
  */
 export const closeSyncResultModal = () => {
-  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
+  cy.findByTestId("sync-success-close-button").click();
 };
+
+const TASK_POLL_LIMIT = 30;
 
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 3) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
-  return cy.wait("@currentTask").then(({ response }) => {
+
+  return cy.wait("@currentTask", { timeout: 10000 }).then(({ response }) => {
     const { body } = response || {};
     if (body?.sync_task_type !== taskName) {
       return waitForTask({ taskName });
@@ -354,7 +357,7 @@ export const pollForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 30) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
 
