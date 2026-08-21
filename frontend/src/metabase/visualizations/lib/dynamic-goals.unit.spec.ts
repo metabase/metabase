@@ -1,3 +1,4 @@
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -417,5 +418,46 @@ describe("getReferencedEntitiesFromVizSettings", () => {
     });
 
     expect(referencedEntities).toEqual([]);
+  });
+});
+
+describe("malformed persisted segments", () => {
+  const data = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  const malformedSettings = [
+    { name: "a null segment", settings: { "gauge.segments": [null] } },
+    { name: "a non-object segment", settings: { "gauge.segments": [5] } },
+    { name: "a non-array value", settings: { "gauge.segments": 5 } },
+    {
+      name: "a segment with malformed bounds",
+      settings: { "gauge.segments": [{ min: {}, max: [1], color: "red" }] },
+    },
+  ].map(({ name, settings }) => ({
+    name,
+    // deliberately malformed input
+    settings: settings as unknown as VisualizationSettings,
+  }));
+
+  it.each(malformedSettings)("tolerates $name", ({ settings }) => {
+    const segments = settings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([]);
+    expect(getGoalSegmentErrors(data, segments)).toEqual([]);
+    expect(getReferencedEntitiesFromVizSettings(settings)).toEqual([]);
+  });
+
+  it("keeps the valid segments and drops the rest", () => {
+    // deliberately malformed input
+    const segments = [
+      null,
+      { min: 0, max: 100, color: "red" },
+    ] as unknown as VisualizationSettings["gauge.segments"];
+
+    expect(resolveGoalSegments(data, segments)).toEqual([
+      { min: 0, max: 100, color: "red", label: undefined },
+    ]);
   });
 });

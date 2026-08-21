@@ -57,6 +57,17 @@ describe("GAUGE_CHART_DEFINITION", () => {
       ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
     });
 
+    it("tolerates malformed persisted segments", () => {
+      // deliberately malformed input
+      const malformedSettings = {
+        "gauge.segments": [null, 5, { min: {}, max: [1], color: "red" }],
+      } as unknown as VisualizationSettings;
+
+      expect(() =>
+        checkRenderable(createSeries(), malformedSettings),
+      ).not.toThrow();
+    });
+
     it("requires a numeric column", () => {
       const series = [
         createMockSingleSeries(createMockCard({ display: "gauge" }), {
