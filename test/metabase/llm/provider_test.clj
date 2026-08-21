@@ -86,6 +86,43 @@
                                        :secret-access-key "rotated-secret"
                                        :region            "us-west-1"})))))
 
+(deftest base-url-honours-llm-allowed-networks-test
+  (testing "every connection type's `:base-url` is held to the same `llm-allowed-networks` policy -- there is
+           no carve-out for whichever type a self-hosted OpenAI-compatible proxy happens to be configured
+           under (SEC-764)"
+    (mt/with-temporary-setting-values [llm-allowed-networks :external-only]
+      (doseq [[type-name config] [["anthropic"  {:api-key "sk-ant-valid"}]
+                                  ["openai"     {:api-key "sk-valid"}]
+                                  ["openrouter" {:api-key "sk-or-v1-valid"}]
+                                  ["mistral"    {:api-key "mistral-key"}]
+                                  ["zai"        {:api-key "zai.key"}]
+                                  ["moonshot"   {:api-key "moonshot-key"}]
+                                  ["azure"      {:api-key "azure-key" :deployment-name "gpt-4.1-mini"}]]]
+        (testing type-name
+          (doseq [url ["http://localhost:4000"
+                       "http://127.0.0.1:4000"
+                       "http://169.254.169.254"                 ; cloud instance metadata
+                       "http://metadata.google.internal"
+                       "http://192.168.1.5:4000"
+                       "ftp://proxy.example.com"                ; not an http(s) URL
+                       "proxy.example.com"]]                    ; no scheme
+            (testing url
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"allowed by the .llm-allowed-networks. setting"
+                   (llm.provider/validate-config! type-name (assoc config :base-url url))))))
+          (testing "a public endpoint is still accepted"
+            (is (nil? (llm.provider/validate-config!
+                       type-name (assoc config :base-url "https://proxy.example.com/v1")))))))))
+  (testing "and every type takes a private endpoint once the operator widens the policy -- the single knob is
+           the escape hatch, in place of a per-type exemption"
+    (mt/with-temporary-setting-values [llm-allowed-networks :allow-all]
+      (doseq [[type-name config] [["anthropic" {:api-key "sk-ant-valid"}]
+                                  ["openai"    {:api-key "sk-valid"}]
+                                  ["mistral"   {:api-key "mistral-key"}]]]
+        (testing type-name
+          (is (nil? (llm.provider/validate-config!
+                     type-name (assoc config :base-url "http://192.168.1.5:4000")))))))))
+
 (deftest validate-config!-test
   (testing "an unknown provider type is rejected"
     (is (thrown-with-msg?

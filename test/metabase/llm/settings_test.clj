@@ -107,6 +107,54 @@
       (testing location
         (is (false? (llm.settings/valid-google-location? location)))))))
 
+;;; ------------------------------------------- llm-allowed-networks Tests -------------------------------------------
+
+(deftest llm-allowed-networks-default-test
+  (testing "defaults to :allow-all -- an OpenAI-compatible proxy or local model server on a private network
+           is an ordinary configuration under any provider type, so anything stricter out of the box would
+           break working instances on upgrade. The default does not vary by environment"
+    (mt/with-temporary-setting-values [llm-allowed-networks nil]
+      (doseq [features [#{:hosting} #{}]]
+        (testing (str features)
+          (mt/with-premium-features features
+            (is (= :allow-all (llm.settings/llm-allowed-networks))))))))
+  (testing "an explicit value wins over the default"
+    (mt/with-temporary-setting-values [llm-allowed-networks :external-only]
+      (is (= :external-only (llm.settings/llm-allowed-networks)))))
+  (testing "rejects a policy that is not one of the three known values"
+    (mt/discard-setting-changes [llm-allowed-networks]
+      (is (thrown? Throwable (llm.settings/llm-allowed-networks! :allow-everything))))))
+
+(deftest assert-llm-url-allowed!-test
+  (testing "under a restrictive policy an internal target is refused, whatever provider it belongs to"
+    (mt/with-temporary-setting-values [llm-allowed-networks :external-only]
+      (doseq [url ["http://localhost:4000"
+                   "http://127.0.0.1:4000"
+                   "http://169.254.169.254"                     ; cloud instance metadata
+                   "http://metadata.google.internal"
+                   "http://192.168.1.5:4000"
+                   "ftp://proxy.example.com"                    ; not an http(s) URL
+                   "proxy.example.com"]]                        ; no scheme
+        (testing url
+          (is (false? (llm.settings/llm-url-allowed? url)))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"not on a host allowed by the .llm-allowed-networks. setting"
+               (llm.settings/assert-llm-url-allowed! url)))))))
+  (testing ":allow-private admits an RFC1918 proxy but still refuses loopback"
+    (mt/with-temporary-setting-values [llm-allowed-networks :allow-private]
+      (is (true? (llm.settings/llm-url-allowed? "http://10.0.0.5:4000")))
+      (is (false? (llm.settings/llm-url-allowed? "http://127.0.0.1:4000")))))
+  (testing ":allow-all imposes nothing, and attaches no clj-http options"
+    (mt/with-temporary-setting-values [llm-allowed-networks :allow-all]
+      (is (true? (llm.settings/llm-url-allowed? "http://127.0.0.1:4000")))
+      (is (nil? (llm.settings/assert-llm-url-allowed! "http://127.0.0.1:4000")))
+      (is (empty? (llm.settings/llm-request-opts)))))
+  (testing "a restrictive policy attaches the SSRF guard and refuses redirects"
+    (mt/with-temporary-setting-values [llm-allowed-networks :external-only]
+      (let [opts (llm.settings/llm-request-opts)]
+        (is (some? (:dns-resolver opts)))
+        (is (= :none (:redirect-strategy opts)))))))
+
 ;;; ------------------------------------------- llm-bedrock credential Setter Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test

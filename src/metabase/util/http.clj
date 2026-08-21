@@ -155,9 +155,42 @@
          (every? #(address-allowed-for-network-policy? policy %)
                  (host->inet-addresses hostname))))))
 
+(defn- internal-hostname?
+  "Whether `host` is a name that can only ever designate something inside the deployment -- a cloud metadata
+  endpoint, or one of the reserved internal/mDNS suffixes. These are refused by name rather than by address:
+  they routinely fail to resolve from wherever the check runs but resolve fine on the server, and
+  [[host-allowed-for-network-policy?]] deliberately allows a host it cannot resolve."
+  [host]
+  (boolean
+   (when-let [host (some-> (not-empty (str/trim (str host)))
+                           lower-case-en
+                           (str/replace #"^\[|\]$" ""))]
+     (or (contains? blocked-fetch-hosts host)
+         (some #(str/ends-with? host %) blocked-fetch-host-suffixes)))))
+
+(defn http-url-allowed-for-network-policy?
+  "Whether `url-string` names an `http`/`https` endpoint Metabase may send a server-side request to under
+  `policy`. Rejects anything that is not an absolute http(s) URL, any host
+  [[host-allowed-for-network-policy?]] refuses, and -- under `:external-only` -- the internal-only names in
+  [[internal-hostname?]].
+
+  This is the gate for an admin-entered URL that becomes a request target: it runs once, at set time, so a
+  URL that resolves elsewhere later still gets past it. Pair it with a [[network-policy-dns-resolver]] on
+  the request itself, which is what closes the DNS-rebinding gap."
+  [policy url-string]
+  (or (= policy :allow-all)
+      (try
+        (let [url (URL. (str url-string))]
+          (and (contains? #{"http" "https"} (lower-case-en (str (.getProtocol url))))
+               (host-allowed-for-network-policy? policy (.getHost url))
+               (or (not= policy :external-only)
+                   (not (internal-hostname? (.getHost url))))))
+        (catch Throwable _ false))))
+
 (def ^DnsResolver ^:dynamic *system-dns-resolver*
   "The underlying system DNS resolver. Exposed as a dynamic var so tests can inject a fake
-  host->address mapping"
+  host->address mapping -- e.g. a public-looking name that resolves to a private address -- to
+  exercise the rebinding guard in [[network-policy-dns-resolver]] without real DNS."
   (SystemDefaultDnsResolver.))
 
 (defn network-policy-dns-resolver
@@ -165,7 +198,11 @@
   permitted by `policy`.
 
   Returns nil for `:allow-all`, which restricts nothing: callers should omit `:dns-resolver` in that case
-  and let clj-http use its default resolver."
+  and let clj-http use its default resolver.
+
+  Note that clj-http only reads `:dns-resolver` when it builds the connection manager for a request. A
+  caller that supplies its own `:connection-manager` must pass the resolver to *that* instead, or the
+  guard is silently dropped."
   ^DnsResolver [policy]
   (when-not (= policy :allow-all)
     (reify DnsResolver
@@ -176,15 +213,20 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
 
-(def ^DnsResolver ^:private ssrf-safe-dns-resolver
-  "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].
-  See [[network-policy-dns-resolver]]."
-  (network-policy-dns-resolver :external-only))
+(defn network-policy-request-opts
+  "clj-http options that hold a request inside `policy`: resolve through the guard in
+  [[network-policy-dns-resolver]], and refuse to follow a redirect (a 3xx to an internal host would sidestep
+  the guard, and would replay any `Authorization` header at the new location). Nil under `:allow-all`, which
+  restricts nothing, so merging it leaves clj-http's defaults in place."
+  [policy]
+  (when-let [resolver (network-policy-dns-resolver policy)]
+    {:dns-resolver      resolver
+     :redirect-strategy :none}))
 
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS
   hostname (not an IP literal, not localhost/metadata/internal). Note this is a cheap pre-check;
-  the resolved-IP validation in [[ssrf-safe-dns-resolver]] is what closes the rebinding gap."
+  the resolved-IP validation in [[network-policy-dns-resolver]] is what closes the rebinding gap."
   [^String url]
   (try
     (let [parsed (URL. url)
@@ -194,8 +236,7 @@
            (not (str/blank? host))
            (boolean (re-find #"[a-z]" host))    ; a real hostname has a letter; blocks decimal/octal IP forms
            (not (InetAddresses/isInetAddress host))
-           (not (contains? blocked-fetch-hosts host))
-           (not (some #(str/ends-with? host %) blocked-fetch-host-suffixes))))
+           (not (internal-hostname? host))))
     (catch Throwable _ false)))
 
 (defn- read-bounded
@@ -234,13 +275,12 @@
                 user-agent fetch-default-user-agent}}]
    (when (safe-url? url)
      (try
-       (let [resp              (http/get url {:as                 :stream
-                                              :redirect-strategy  :none
-                                              :socket-timeout     timeout-ms
-                                              :connection-timeout timeout-ms
-                                              :throw-exceptions   false
-                                              :headers            {"User-Agent" user-agent}
-                                              :dns-resolver       ssrf-safe-dns-resolver})
+       (let [resp              (http/get url (merge {:as                 :stream
+                                                     :socket-timeout     timeout-ms
+                                                     :connection-timeout timeout-ms
+                                                     :throw-exceptions   false
+                                                     :headers            {"User-Agent" user-agent}}
+                                                    (network-policy-request-opts :external-only)))
              ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try

@@ -29,6 +29,41 @@
         (when original-value
           (t2/update! :model/Setting {:key "instance-creation"} {:value original-value}))))))
 
+(deftest metaplow-url-rejects-internal-hosts-test
+  (testing "the collector URL is a server-side request target, so it may only point at an external host (SEC-764)"
+    (mt/with-temporary-setting-values [metaplow-url nil]
+      (doseq [url ["http://localhost:3000/api/send"
+                   "http://127.0.0.1/api/send"
+                   "http://169.254.169.254/api/send"       ; cloud instance metadata
+                   "http://metadata.google.internal/api/send"
+                   "http://10.0.0.1/api/send"
+                   "http://[::1]/api/send"
+                   "http://0.0.0.0/api/send"
+                   "http://100.64.0.1/api/send"            ; CGNAT
+                   "file:///etc/passwd"                     ; not an http(s) URL at all
+                   "not a url"]]
+        (testing url
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Invalid Metaplow collector URL"
+               (analytics.settings/metaplow-url! url)))
+          (is (nil? (analytics.settings/metaplow-url))
+              "a rejected URL must not be stored")))))
+  (testing "external collectors, and clearing the setting, still work"
+    (mt/with-temporary-setting-values [metaplow-url nil]
+      (doseq [url ["https://product-analytics-ingestion.metabase.com/api/send"
+                   ;; a host that does not resolve is allowed -- a DNS outage must not look like an
+                   ;; internal address, and the connection-time resolver is the real gate anyway
+                   "http://fake-metaplow/api/send"]]
+        (analytics.settings/metaplow-url! url)
+        (is (= url (analytics.settings/metaplow-url))))
+      (analytics.settings/metaplow-url! nil)
+      (is (nil? (analytics.settings/metaplow-url)))
+      (testing "a blank URL clears the setting rather than storing \"\", which reads as truthy to
+               `metaplow-tracking-enabled`"
+        (analytics.settings/metaplow-url! "https://collector.example.com/api/send")
+        (analytics.settings/metaplow-url! "   ")
+        (is (nil? (analytics.settings/metaplow-url)))))))
+
 (deftest analytics-pii-retention-enabled-feature-gate-test
   (testing "analytics-pii-retention-enabled is gated behind the :audit-app premium feature"
     (testing "with :audit-app, the setting can be read and written"

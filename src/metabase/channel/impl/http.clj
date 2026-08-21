@@ -9,7 +9,6 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
-   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -48,15 +47,14 @@
                                 {:status-code 400
                                  :url         url}
                                 e))))]
-    (when-not (u.http/host-allowed-for-network-policy? strategy url)
+    (when-not (u.http/http-url-allowed-for-network-policy? strategy (str url))
       (throw (ex-info (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")
                       {:status-code 400})))))
 
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [strategy (channel.settings/http-channel-host-strategy)
-        resolver (u.http/network-policy-dns-resolver strategy)]
+  (let [strategy (channel.settings/http-channel-host-strategy)]
     (check-url! strategy url)
     (let [req (-> (merge
                    {:accept       :json
@@ -69,9 +67,11 @@
                      (= "header" auth-method)       (update :headers merge auth-info)
                      (= "query-param" auth-method)  (update :query-params merge auth-info)))
                   (assoc :url url)
-                  ;; Remove an incoming resolver under :allow-all; rendered requests must not control
-                  ;; DNS resolution.
-                  (u/assoc-dissoc :dns-resolver resolver))]
+                  ;; A rendered request must not control its own guard, so drop whatever it carried
+                  ;; before merging the policy's opts on top -- under :allow-all there are none to merge,
+                  ;; and the dissoc is what keeps the request from supplying its own.
+                  (dissoc :dns-resolver :redirect-strategy)
+                  (merge (u.http/network-policy-request-opts strategy)))]
       (http/request (cond-> req
                       (or (map? (:body req))
                           (sequential? (:body req))) (update :body json/encode))))))

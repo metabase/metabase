@@ -378,6 +378,91 @@
               (is (= "Bearer embedding-api-key" (get-in @captured [:headers "Authorization"])))
               (is (nil? (get-in @captured [:headers "x-metabase-instance-token"]))))))))))
 
+(deftest openai-embeddings-request-is-ssrf-hardened-test
+  (let [mock-response {:data  [{:object    "embedding"
+                                :embedding (encode-floats-to-base64 [1.0 2.0 3.0 4.0])
+                                :index     0}]
+                       :model "test-model"
+                       :usage {:prompt_tokens 1 :total_tokens 1}}
+        capture-post  (fn [captured]
+                        (fn [url opts]
+                          (reset! captured (assoc opts :url url))
+                          {:status  200
+                           :headers {"Content-Type" "application/json"}
+                           :body    (json/encode mock-response)}))]
+    (testing "the openai request carries `Authorization: Bearer <key>`, so under a restrictive
+             `llm-allowed-networks` it resolves through the guard and never follows a redirect (SEC-764)"
+      (mt/with-temporary-setting-values [llm-openai-api-key   "sk-test-key"
+                                         llm-allowed-networks :external-only]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+            (embedding/get-embedding {:provider "openai" :model-name "test-model" :vector-dimensions 4}
+                                     "test text"
+                                     {:record-tokens? false}))
+          (is (= "Bearer sk-test-key" (get-in @captured [:headers "Authorization"])))
+          (is (some? (:dns-resolver @captured))
+              "an :external-only DNS resolver must be attached")
+          (is (= :none (:redirect-strategy @captured))
+              "a 3xx to an internal host would otherwise leak the key"))))
+    (testing "under :allow-all -- the self-hosted default -- nothing is imposed, so an instance pointing
+             this at an OpenAI-compatible proxy on a private network keeps working"
+      (mt/with-temporary-setting-values [llm-openai-api-key   "sk-test-key"
+                                         llm-allowed-networks :allow-all]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+            (embedding/get-embedding {:provider "openai" :model-name "test-model" :vector-dimensions 4}
+                                     "test text"
+                                     {:record-tokens? false}))
+          (is (nil? (:dns-resolver @captured)))
+          (is (nil? (:redirect-strategy @captured))))))
+    (testing "the embedding-service provider -- the one a LiteLLM proxy is configured under -- gets the same
+             treatment, not an exemption: one policy covers every provider (SEC-764)"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"
+                                         llm-allowed-networks          :external-only]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+            (embedding/get-embedding {:provider "ai-service" :model-name "test-model" :vector-dimensions 4}
+                                     "test text"
+                                     {:record-tokens? false}))
+          (is (some? (:dns-resolver @captured)))
+          (is (= :none (:redirect-strategy @captured))))))
+    (testing "and is equally unrestricted under :allow-all, which is what a private proxy is configured with"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"
+                                         llm-allowed-networks          :allow-all]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+            (embedding/get-embedding {:provider "ai-service" :model-name "test-model" :vector-dimensions 4}
+                                     "test text"
+                                     {:record-tokens? false}))
+          (is (nil? (:dns-resolver @captured))))))
+    (testing "a base URL set outside the validating setter (env var, or stored before this fix) is refused
+             before the request is built -- for the openai provider"
+      (mt/with-temporary-setting-values [llm-openai-api-key   "sk-test-key"
+                                         llm-allowed-networks :external-only]
+        (mt/with-dynamic-fn-redefs [semantic.settings/openai-api-base-url (constantly "http://169.254.169.254")]
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"not on a host allowed by the .llm-allowed-networks. setting"
+                   (embedding/get-embedding {:provider "openai" :model-name "test-model" :vector-dimensions 4}
+                                            "test text"
+                                            {:record-tokens? false}))))
+            (is (nil? @captured) "no request may be made")))))
+    (testing "...and for the embedding-service provider, on the same code path"
+      (mt/with-temporary-setting-values [llm-allowed-networks :external-only]
+        (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly "http://169.254.169.254")
+                                    semantic.settings/ee-embedding-service-api-key  (constantly "embedding-api-key")]
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [http/post (capture-post captured)]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo #"not on a host allowed by the .llm-allowed-networks. setting"
+                   (embedding/get-embedding {:provider "ai-service" :model-name "test-model" :vector-dimensions 4}
+                                            "test text"
+                                            {:record-tokens? false}))))
+            (is (nil? @captured) "no request may be made")))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"

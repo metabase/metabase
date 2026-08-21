@@ -207,6 +207,7 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    llm-allowed-networks: allow-all
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
     llm-anthropic-model: claude-opus-4-5-20251101

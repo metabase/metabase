@@ -17,6 +17,7 @@
    [metabase.analytics.settings :as analytics.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,31 +79,46 @@
                :name     event-name
                :data     enriched-data}}))
 
+(def ^:private connection-manager-opts
+  {:threads           worker-count
+   :default-per-route worker-count
+   :dns-resolver      (u.http/network-policy-dns-resolver analytics.settings/metaplow-network-policy)})
+
 (defonce ^:private
   ^{:doc "Reuses TCP/TLS connections across requests to the metaplow collector. Same idea as Snowplow's
          `PoolingHttpClientConnectionManager` setup in `metabase.analytics.snowplow`, just via clj-http's wrapper.
          Sized to `worker-count`: every request goes to one host, so `:default-per-route` is the actual parallelism
          cap. Wrapped in `delay` so the pool isn't created until the first event is sent."}
   connection-manager
-  (delay (conn-mgr/make-reusable-conn-manager {:threads           worker-count
-                                               :default-per-route worker-count})))
+  (delay (conn-mgr/make-reusable-conn-manager connection-manager-opts)))
 
 (defn- send-event!
-  "POST a single payload to the Metaplow `/api/send` endpoint. Returns a map with `:status` (HTTP status code, or -1
-  on connection failure)."
+  "POST a single payload to the Metaplow `/api/send` endpoint. Returns a map with `:status` (HTTP status code, -1
+  on connection failure, or 400 when the configured collector URL is not an allowed request target)."
   [payload]
-  (try
-    (http/post (analytics.settings/metaplow-url)
-               {:body               (json/encode payload)
-                :content-type       :json
-                :socket-timeout     5000
-                :connection-timeout 5000
-                :throw-exceptions   false
-                :connection-manager @connection-manager})
-    (catch Throwable e
-      (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
-      (log/warnf "Connection failure sending Metaplow event: %s" (ex-message e))
-      {:status -1})))
+  (let [url (analytics.settings/metaplow-url)]
+    (if-not (u.http/http-url-allowed-for-network-policy? analytics.settings/metaplow-network-policy url)
+      ;; The setter refuses these, but a URL set by env var never runs the setter, and one stored before that
+      ;; setter existed was never checked. 400 is deliberate: `retryable-response?` gives up on it, so a
+      ;; misconfigured collector doesn't burn the retry budget of every event.
+      (do
+        (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
+        (log/warn "Refusing to send Metaplow event: collector URL is not an allowed host")
+        {:status 400})
+      (try
+        (http/post url
+                   {:body               (json/encode payload)
+                    :content-type       :json
+                    :socket-timeout     5000
+                    :connection-timeout 5000
+                    :throw-exceptions   false
+                    ;; a 3xx to an internal host would sidestep the checks above
+                    :redirect-strategy  :none
+                    :connection-manager @connection-manager})
+        (catch Throwable e
+          (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
+          (log/warnf "Connection failure sending Metaplow event: %s" (ex-message e))
+          {:status -1})))))
 
 (defn- retryable-response?
   "Truthy when a `send-event!` response should trigger another attempt: non-2xx and not one of the no-retry
@@ -110,6 +126,10 @@
   [{:keys [status]}]
   (and (some? status)
        (not (<= 200 status 299))
+       ;; `send-event!` sets `:redirect-strategy :none`, so a 3xx now surfaces as a response rather than
+       ;; being followed. It means the collector URL is permanently misconfigured, not that the request
+       ;; failed transiently -- retrying would just repeat the backoff on every single event.
+       (not (<= 300 status 399))
        (not (contains? no-retry-status-codes status))))
 
 (defn- send-event-with-retries!

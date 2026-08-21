@@ -21,20 +21,22 @@
   "Validate that a URL is allowed by the current `oidc-allowed-networks` setting.
    Throws `ex-info` if the URL is blocked."
   [url]
-  (when-not (u.http/host-allowed-for-network-policy? (sso.settings/oidc-allowed-networks) url)
+  (when-not (u.http/http-url-allowed-for-network-policy? (sso.settings/oidc-allowed-networks) url)
     (log/warnf "OIDC request to %s blocked by network restrictions (oidc-allowed-networks = %s)"
                url (sso.settings/oidc-allowed-networks))
     (throw (ex-info "OIDC request blocked: address not allowed by network restrictions"
                     {:url url}))))
 
 (defn- request-opts
-  "Merge caller `opts` over the defaults, adding the connection-time SSRF `:dns-resolver` for the current
-   `oidc-allowed-networks` policy so a host that rebinds to an internal address between validation and
-   connection is still rejected. Omitted for `:allow-all`, which imposes no restriction."
+  "Merge caller `opts` over the defaults, then apply the connection-time SSRF guard for the current
+   `oidc-allowed-networks` policy: a host that rebinds to an internal address between validation and
+   connection is still rejected, and a 3xx is not followed -- OIDC token requests carry the client secret,
+   so a redirect to an attacker host would hand it over. Omitted for `:allow-all`, which imposes no
+   restriction. Applied last so caller `opts` cannot weaken it."
   [opts]
-  (let [resolver (u.http/network-policy-dns-resolver (sso.settings/oidc-allowed-networks))]
-    (cond-> (merge default-opts opts)
-      resolver (assoc :dns-resolver resolver))))
+  (merge default-opts
+         opts
+         (u.http/network-policy-request-opts (sso.settings/oidc-allowed-networks))))
 
 (defn oidc-get
   "Perform a validated GET request for OIDC operations.

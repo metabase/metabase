@@ -25,18 +25,17 @@
 
 (defn- url->geojson
   [url]
-  (let [resp (try (http/get url {:as                 :reader
-                                 :redirect-strategy  :none
-                                 :socket-timeout     connection-timeout-ms
-                                 :connection-timeout connection-timeout-ms
-                                 :throw-exceptions   false
-                                 :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
+  (let [resp (try (http/get url (merge {:as                 :reader
+                                        :socket-timeout     connection-timeout-ms
+                                        :connection-timeout connection-timeout-ms
+                                        :throw-exceptions   false}
+                                       (u.http/network-policy-request-opts :external-only)))
                   (catch Throwable e
                     (if (:ssrf (ex-data e))
                       (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
-        ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF
-        ;; protection), so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
+        ;; only 2xx is a real success — a 3xx redirect isn't followed,
+        ;; so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
         success? (<= 200 (:status resp) 299)
         allowed-content-types #{"application/geo+json"
                                 "application/vnd.geo+json"

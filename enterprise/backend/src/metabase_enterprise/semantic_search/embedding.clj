@@ -482,6 +482,9 @@
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
        [:extra-body     {:optional true} [:maybe :map]]]]
+  ;; Outside the try so a refused endpoint fails loudly rather than being wrapped as a provider outage --
+  ;; and so it fires before the credential is put on a request.
+  (llm.settings/assert-llm-url-allowed! endpoint)
   (try
     (log/debug (str "Calling " provider " embeddings API")
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
@@ -494,6 +497,7 @@
                                                              {:provider provider}))))}
                                         {"Authorization" (str "Bearer " api-key)}))
           request              (merge embedding-http-timeouts
+                                      (llm.settings/llm-request-opts)
                                       {:headers headers
                                        :body    (json/encode
                                                  (merge {:model           model-name
@@ -592,10 +596,11 @@
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
   []
-  (let [api-key (semantic-settings/openai-api-key)]
+  (let [api-key  (semantic-settings/openai-api-key)
+        base-url (semantic-settings/openai-api-base-url)]
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
-    [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
+    [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod embedder-circuit-endpoint "openai" [_]
   (first (openai-resolve-config!)))

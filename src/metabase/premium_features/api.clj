@@ -29,14 +29,21 @@
   []
   (when-let [service-base-url (llm.settings/ai-service-base-url)]
     (when-let [^String token (premium-features/premium-embedding-token)]
-      (try
-        (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
-              url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
-              response (http/post url {:throw-exceptions false})]
-          (when-not (<= 200 (:status response) 299)
-            (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
-        (catch Exception e
-          (log/warnf "Failed to invalidate LLM proxy token cache: %s" (ex-message e)))))))
+      ;; The instance token travels in the URL *path*, so this request must be held inside
+      ;; `llm-allowed-networks` like every other AI-service call: an internal base URL would hand the token
+      ;; to whatever answers, and a 3xx would carry it to the redirect target. Checked against the base URL
+      ;; rather than the built URL so the token can never reach a log line or an exception's ex-data.
+      (if-not (llm.settings/llm-url-allowed? service-base-url)
+        (log/warn "Refusing to invalidate the LLM proxy token cache: the AI service base URL is not an allowed request target")
+        (try
+          (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
+                url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
+                response (http/post url (merge {:throw-exceptions false}
+                                               (llm.settings/llm-request-opts)))]
+            (when-not (<= 200 (:status response) 299)
+              (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
+          (catch Exception e
+            (log/warnf "Failed to invalidate LLM proxy token cache: %s" (ex-message e))))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/token/refresh"

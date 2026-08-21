@@ -1052,8 +1052,14 @@
   `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
   (llm/assert-llm-host-allowed! url)
+  ;; The same `llm-allowed-networks` gate [[metabase.llm.provider/validate-config!]] applies to a
+  ;; connection's `:base-url`, re-applied here: an environment variable shadows a connection field without
+  ;; revalidating it, and DNS can change under a URL that did pass. Every adapter reaches the network
+  ;; through this fn, so no provider is exempt.
+  (llm/assert-llm-url-allowed! url)
   (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
                      :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge (llm/llm-request-opts))
                     (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

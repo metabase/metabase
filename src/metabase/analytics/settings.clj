@@ -1,10 +1,12 @@
 (ns metabase.analytics.settings
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.http :as u.http]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
 (defsetting analytics-uuid
@@ -54,12 +56,25 @@
   :visibility :public
   :doc        false)
 
+(def metaplow-network-policy
+  "Which hosts [[metaplow-url]] may point at. The collector is a server-side POST target, so an internal
+  address here turns analytics into an SSRF primitive; only externally-routable hosts are accepted."
+  :external-only)
+
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :no
   :visibility :public
   :audit      :never
-  :doc        false)
+  :doc        false
+  :setter     (fn [new-value]
+                (let [url (some-> new-value str str/trim not-empty)]
+                  (when (and url (not (u.http/http-url-allowed-for-network-policy? metaplow-network-policy url)))
+                    (throw (ex-info (tru "Invalid Metaplow collector URL: must be an http:// or https:// URL on an external host.")
+                                    {:status-code 400})))
+                  ;; a blank URL is stored as nil, not "" -- `metaplow-tracking-enabled` only checks the
+                  ;; setting for truthiness, and "" is truthy
+                  (setting/set-value-of-type! :string :metaplow-url url))))
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
