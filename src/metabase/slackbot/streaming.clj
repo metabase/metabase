@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
    [metabase.llm.provider :as llm.provider]
@@ -24,7 +25,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.string :as u.str])
   (:import
    (java.util.concurrent
     Callable
@@ -114,15 +116,26 @@
       (str/replace "|" "\u2502")))
 
 (defn- format-viz-title
-  "Build the title text for a visualization message.
-   Combines the title with a link to the query in Metabase."
+  "Build the title text for a visualization message, combining the title with a link to the query.
+   Returns nil when there is neither, and never exceeds [[slackbot.channel/section-text-limit]]."
   [title link]
-  (let [full-link (when link (str (system/site-url) link))]
-    (cond
-      (and title full-link) (str "\ud83d\udcca <" full-link "|" (escape-slack-link-text title) ">")
-      title                 title
-      full-link             (str "\ud83d\udcca <" full-link "|Open in Metabase>")
-      :else                 nil)))
+  (let [limit     slackbot.channel/section-text-limit
+        full-link (when link (str (system/site-url) link))
+        text      (cond
+                    (and title full-link) (str "\ud83d\udcca <" full-link "|" (escape-slack-link-text title) ">")
+                    title                 title
+                    full-link             (str "\ud83d\udcca <" full-link "|Open in Metabase>")
+                    :else                 nil)]
+    ;; An adhoc `/question#<base64-query>` link can run past the section limit on its own, and Slack
+    ;; then rejects the whole message (BOT-1606). A cut URL is a broken URL, so drop the link rather
+    ;; than truncate it; with no title left, `viz-output->blocks` falls back to "Query results".
+    (if (and text (> (count text) limit))
+      (do
+        (log/infof "[slackbot] viz title over limit, dropping query link (text_length=%d link_length=%d limit=%d)"
+                   (count text) (count full-link) limit)
+        (analytics/inc! :metabase-slackbot/viz-links-dropped)
+        (u.str/elide title limit))
+      text)))
 
 (defn- viz-output->blocks
   "Build blocks for a visualization to be included in the finalized stop-stream message."
