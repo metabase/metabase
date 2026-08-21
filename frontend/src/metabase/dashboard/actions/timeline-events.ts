@@ -1,4 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
@@ -41,17 +42,21 @@ export const updateDashCardsTimelineEventsVisibility =
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
     const context = getTimelineEventsVisibilityContext(state);
-    dispatch(
-      setDashCardTimelineEventsVisibility(
-        Object.fromEntries(
-          dashcardIds.map((dashcardId) => [
-            dashcardId,
-            update(
-              getDashCardTimelineEventsVisibility(state, dashcardId) ?? {},
-              context,
-            ),
-          ]),
-        ),
-      ),
+
+    const changed = dashcardIds.flatMap(
+      (dashcardId): [DashCardId, TimelineEventsVisibility][] => {
+        const visibility =
+          getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
+        const nextVisibility = update(visibility, context);
+        return _.isEqual(visibility, nextVisibility)
+          ? []
+          : [[dashcardId, nextVisibility]];
+      },
     );
+
+    if (changed.length > 0) {
+      dispatch(
+        setDashCardTimelineEventsVisibility(Object.fromEntries(changed)),
+      );
+    }
   };

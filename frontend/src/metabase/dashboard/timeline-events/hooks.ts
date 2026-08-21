@@ -26,8 +26,9 @@ import { isTimelineEventsDashCard } from "./utils";
 
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
-  const hasEventsDashCards =
-    useSelector(getTimelineEventsDashCardIds).length > 0;
+  const hasEventsDashCards = useSelector(
+    (state) => getTimelineEventsDashCardIds(state).length > 0,
+  );
 
   useListTimelinesQuery(
     { include: "events" },
