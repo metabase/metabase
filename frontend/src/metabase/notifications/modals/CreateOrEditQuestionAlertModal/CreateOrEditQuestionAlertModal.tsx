@@ -19,6 +19,7 @@ import {
 } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
+  alertHasValidTarget,
   alertIsValid,
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
@@ -294,6 +295,7 @@ export const CreateOrEditQuestionAlertModal = ({
   }
 
   const isValid = alertIsValid(notification, channelSpec);
+  const hasValidTarget = alertHasValidTarget(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
   const hasError = errorCreating || errorUpdating;
 
@@ -441,6 +443,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Button
           variant="outline"
           color="core-brand"
+          disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
         >
