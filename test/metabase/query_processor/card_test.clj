@@ -549,3 +549,27 @@
                  (row-count (run! [:dimension
                                    [:field (mt/id :venues :name) {:source-field (mt/id :venues :category_id)}]
                                    {:stage-number 1}])))))))))
+
+(deftest ^:synchronized row-limit-ignores-stored-query-options-test
+  (testing "the row limit does not change when a Card's stored query carries :middleware or :constraints"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (doseq [[label stored] [["middleware"  (assoc-in (mt/mbql-query venues) [:middleware :disable-max-results?] true)]
+                              ["constraints" (assoc (mt/mbql-query venues) :constraints {:max-results           10000
+                                                                                         :max-results-bare-rows 10000})]]]
+        (testing (str "\n" label)
+          (mt/with-temp [:model/Card card {:dataset_query stored}]
+            (testing "\nPOST /api/card/:id/query"
+              (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card))))))))
+            (testing "\nPOST /api/dashboard/:id/dashcard/:dashcard-id/card/:card-id/query"
+              (mt/with-temp [:model/Dashboard     dashboard {}
+                             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
+                (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202
+                                                               (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                       (:id dashboard) (:id dashcard) (:id card))))))))))
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (mt/with-temp [:model/Card card {:dataset_query     stored
+                                             :public_uuid       (str (random-uuid))
+                                             :made_public_by_id (mt/user->id :crowberto)}]
+              (testing "\nGET /api/public/card/:uuid/query"
+                (is (= 5 (count (mt/rows (mt/user-http-request :rasta :get 202
+                                                               (format "public/card/%s/query" (:public_uuid card)))))))))))))))
