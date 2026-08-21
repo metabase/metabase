@@ -469,7 +469,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();
-      // Sign in before activateToken — the token PUT needs an authenticated session, which the
+      // Sign in before activateToken: the token PUT needs an authenticated session, which the
       // restore above may have invalidated.
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
@@ -719,8 +719,8 @@ describe("Remote Sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
       // Read-only setup auto-triggers a server-side import. It is started via cy.request, so the
-      // app never polls for it and never refetches when it lands — a page loaded mid-import keeps
-      // a stale (empty) collection tree forever. Wait for it server-side before booting the app.
+      // app never polls for it and never refetches when it lands, so a page loaded mid-import
+      // keeps a stale (empty) collection tree forever. Wait for it server-side before booting.
       H.configureGitAndPullChanges("read-only");
 
       // The collection page fires two items requests (pinned + regular); under CI's 4g throttling
@@ -786,7 +786,7 @@ describe("Remote Sync", () => {
       // and collection contents come from the "test" branch.
       H.pollForTask({ taskName: "import" });
 
-      // Same items-request barrier as the first visit — the reload boots the app from scratch.
+      // Same items-request barrier as the first visit, since the reload boots the app from scratch.
       cy.intercept("GET", "/api/collection/*/items?*").as("testBranchItems");
       cy.visit("/");
 
