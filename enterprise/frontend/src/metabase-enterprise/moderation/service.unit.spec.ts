@@ -308,6 +308,26 @@ describe("moderation/service", () => {
           title: "A moderator removed verification",
         },
       ]);
+
+      // If the current user is the moderator on a review, expect a dedicated
+      // "You ..." string rather than "You" substituted into the third-person
+      // "{0} verified this" template, since that produces ungrammatical
+      // translations in languages with person-based verb conjugation (e.g.
+      // Spanish "Tú verificó esto" instead of "Tú verificaste esto").
+      expect(
+        getModerationTimelineEvents(reviews, FooUser),
+      ).toEqual([
+        {
+          timestamp: reviews[0].created_at,
+          icon: getStatusIcon("verified"),
+          title: "You verified this",
+        },
+        {
+          timestamp: reviews[1].created_at,
+          icon: getRemovedReviewStatusIcon(),
+          title: "A moderator removed verification",
+        },
+      ]);
     });
   });
 });
