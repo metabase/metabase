@@ -46,20 +46,26 @@
                                                        (merge pulse-default {:name "New Name"}))))
                 get-form     (fn [status]
                                (testing "get form input"
-                                 (mt/user-http-request user :get status "pulse/form_input")))]
+                                 (mt/user-http-request user :get status "pulse/form_input")))
+                test-pulse   (fn [status]
+                               (testing "test send pulse"
+                                 (mt/user-http-request user :post status "pulse/test"
+                                                       pulse-default)))]
             (testing "user's group has no subscription permissions"
               (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
                 (mt/with-premium-features #{}
                   (create-pulse 200)
                   (update-pulse 200)
-                  (get-form 200)))
+                  (get-form 200)
+                  (test-pulse 200)))
 
               (testing "should fail if `advanced-permissions` is enabled"
                 (mt/with-premium-features #{:advanced-permissions}
                   (create-pulse 403)
                   (update-pulse 403)
-                  (get-form 403))))
+                  (get-form 403)
+                  (test-pulse 403))))
 
             (testing "User's group with subscription permission"
               (perms/grant-application-permissions! group :subscription)
@@ -67,4 +73,5 @@
                 (testing "should succeed if `advanced-permissions` is enabled"
                   (create-pulse 200)
                   (update-pulse 200)
-                  (get-form 200))))))))))
+                  (get-form 200)
+                  (test-pulse 200))))))))))
