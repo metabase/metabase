@@ -151,7 +151,8 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:lib/type "mbql/query"
-                            :stages   [{:lib/type "mbql.stage/mbql"}]}
+                            :stages   [{:lib/type "mbql.stage/native"
+                                        :native   "-"}]}
    :parameters             []
    :param_fields           {}})
 
