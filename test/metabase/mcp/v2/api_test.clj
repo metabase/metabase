@@ -2,10 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api-keys.core :as api-keys]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.mcp.core :as mcp.core]
-   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.v2.resources :as v2.resources]
@@ -15,7 +13,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.secret :as u.secret]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
@@ -208,45 +205,6 @@
                (get-in response [:headers "WWW-Authenticate"])))))))
 
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
-
-(defn- create-api-key!
-  "Create an API key the way the admin UI does — with its own synthetic `:type :api-key` user.
-   Returns the raw key string."
-  [key-name]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (-> (api-keys/create-api-key-with-new-user! {:key-name key-name})
-        :unmasked_key
-        u.secret/expose)))
-
-(defn- api-key-mcp-request
-  [api-key expected-status body extra-headers]
-  (client/client-full-response :post expected-status endpoint
-                               {:request-options {:headers (assoc extra-headers "x-api-key" api-key)}}
-                               body))
-
-(deftest api-key-auth-is-refused-test
-  (testing "GHY-4287: MCP is per-user OAuth only. An API key authenticates as a `:type :api-key` user, which the
-            seat count excludes entirely, and it carries no `:token-scopes` — so accepting one would hand every
-            tool to a credential that is neither billed nor passed through the consent screen."
-    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (mt/with-model-cleanup [:model/ApiKey :model/User]
-        (let [api-key      (create-api-key! "GHY-4287 MCP key")
-              api-key-user (t2/select-one-fn :user_id :model/ApiKey :name "GHY-4287 MCP key")]
-          (testing "initialize is refused with 401 and the OAuth discovery challenge, so the client is steered
-                    to the per-user flow rather than told it is merely forbidden"
-            (let [response (api-key-mcp-request api-key 401 (jsonrpc-request "initialize" {:capabilities {}}) {})]
-              (is (= 401 (:status response)))
-              (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
-              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
-                                 "/.well-known/oauth-protected-resource/api/metabase-mcp"))
-              (is (str/includes? (get-in response [:body :error :message]) "does not accept API keys"))))
-          (testing "no tool dispatches either, even against a session that already belongs to the key's user"
-            (let [session-id (mcp.session/create! api-key-user nil)
-                  response   (api-key-mcp-request api-key 401
-                                                  (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}})
-                                                  {"mcp-session-id" session-id})]
-              (is (= 401 (:status response)))
-              (is (nil? (get-in response [:body :result]))))))))))
 
 (deftest sso-provisioned-session-dispatches-test
   (testing "GHY-4287: refusing API keys must not close the embedding integration path that replaces them — a

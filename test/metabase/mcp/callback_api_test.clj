@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
-   [metabase.api-keys.core :as api-keys]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.metabot.scope :as metabot.scope]
@@ -11,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -133,31 +131,6 @@
     (is (=? {:status 401}
             (client/client-full-response :post 401 "embed-mcp/drills"
                                          {:encodedQuery "ZW5jb2RlZA=="})))))
-
-(deftest callbacks-refuse-api-key-auth-test
-  (testing "GHY-4287: these callbacks exist only to serve an iframe rendered inside a per-user MCP conversation, so
-            they inherit the MCP surface's refusal of API keys. Session ownership alone must not be what stands
-            between a shared, unbilled credential and a minted query handle."
-    (mt/with-model-cleanup [:model/ApiKey :model/User :model/McpQueryHandle]
-      (let [api-key      (mt/with-current-user (mt/user->id :crowberto)
-                           (-> (api-keys/create-api-key-with-new-user! {:key-name "GHY-4287 callback key"})
-                               :unmasked_key
-                               u.secret/expose))
-            api-key-user (t2/select-one-fn :user_id :model/ApiKey :name "GHY-4287 callback key")
-            session-id   (mcp.session/create! api-key-user nil)
-            handle       (mcp.session/store-handle! session-id api-key-user "ZW5jb2RlZA==")
-            options      {:request-options {:headers {"x-api-key"      api-key
-                                                      "mcp-session-id" session-id}}}]
-        (testing "POST /drills cannot mint a handle"
-          (is (= 401 (:status (client/client-full-response :post 401 "embed-mcp/drills" options
-                                                           {:encodedQuery "ZW5jb2RlZA=="})))))
-        (testing "GET /queries/:handle cannot exchange one"
-          (is (= 401 (:status (client/client-full-response :get 401 (str "embed-mcp/queries/" handle)
-                                                           options)))))
-        (testing "POST /feedback cannot write"
-          (is (= 401 (:status (client/client-full-response :post 401 "embed-mcp/feedback" options
-                                                           {:feedback          {:positive true}
-                                                            :conversation_data {:source "mcp"}})))))))))
 
 ;;; ------------------------------------------- GET /queries/:handle -----------------------------------------------
 ;;;

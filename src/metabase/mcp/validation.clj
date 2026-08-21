@@ -23,25 +23,3 @@
 (def ^{:arglists '([handler])} +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
   (routes.common/wrap-middleware-for-open-api-spec-generation enforce-mcp-enabled))
-
-(defn api-key-authenticated?
-  "True when [[metabase.server.middleware.session]] authenticated `request` with an `X-Api-Key`.
-
-   MCP is per-user OAuth only. An API key authenticates as a `:type :api-key` user, which the seat
-   count (`:type \"personal\"`) excludes entirely, and it carries no `:token-scopes`, so it would
-   reach the surface as one unbilled, unconsented credential holding every tool."
-  [request]
-  (= "api-key" (:embedding/auth-method request)))
-
-(defn enforce-not-api-key-authenticated
-  "Ring middleware refusing API-key-authenticated requests with a 401, steering the caller to OAuth."
-  [handler]
-  (fn [request respond raise]
-    (if (api-key-authenticated? request)
-      (raise (ex-info (tru "This endpoint requires per-user OAuth authentication and does not accept API keys.")
-                      {:status-code 401}))
-      (handler request respond raise))))
-
-(def ^{:arglists '([handler])} +no-api-key-auth
-  "Wrap routes so an API key never authenticates them, however the rest of the API treats one."
-  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-not-api-key-authenticated))

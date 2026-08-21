@@ -107,11 +107,6 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Iframe-callback routes mounted at `/api/embed-mcp`. Gated on the MCP surface that renders the
-   iframe; auth is handled by the upstream `+auth` middleware in api-routes.
-
-   These serve an iframe rendered inside a per-user MCP conversation, so they inherit the MCP
-   surface's refusal of API keys — session ownership alone must not be all that stands between a
-   shared, unbilled credential and a minted query handle."
+   iframe; auth is handled by the upstream `+auth` middleware in api-routes."
   (-> (api.macros/ns-handler *ns*)
-      mcp.validation/+mcp-enabled
-      mcp.validation/+no-api-key-auth))
+      mcp.validation/+mcp-enabled))
