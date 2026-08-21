@@ -37,6 +37,7 @@
   maybe-unverify!
   model-supports-implicit-actions?
   model?
+  parameter-template-tag?
   sole-dashboard-id
   starting-card-schema-version
   update-card!
@@ -60,9 +61,6 @@
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/parameter-template-tag? parameter-template-tag?)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/template-tag-parameters card-template-tag-parameters)
