@@ -42,6 +42,7 @@
   do-before-commit
   do-after-commit
   do-with-independent-connection-transaction
+  gated-data-source
   in-transaction?
   quoting-style
   unique-identifier

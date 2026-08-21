@@ -109,6 +109,28 @@
     :h2       :h2
     :mysql    :mysql))
 
+(defn gated-data-source
+  "Wrap `data-source` so new connections pass through the current application database's connection read-lock gate.
+
+  Use this for any auxiliary pool built over the app db's raw data source (see
+  [[metabase.app-db.connection-pool-setup/single-connection-pool-data-source]]), so a snapshot restore that holds the
+  write lock also blocks that pool."
+  ^javax.sql.DataSource [^javax.sql.DataSource data-source]
+  (let [^ReentrantReadWriteLock lock (.lock *application-db*)]
+    (reify javax.sql.DataSource
+      (getConnection [_]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source)
+          (finally
+            (.. lock readLock unlock))))
+      (getConnection [_ user password]
+        (try
+          (.. lock readLock lock)
+          (.getConnection data-source user password)
+          (finally
+            (.. lock readLock unlock)))))))
+
 ;; TODO -- you can just use [[*application-db*]] directly, we can probably get rid of this and use that directly instead
 (defn data-source
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data

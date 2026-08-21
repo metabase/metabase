@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -71,18 +72,21 @@
   []
   (let [app-db-id (mdb/unique-identifier)]
     (locking coordination-pool
-      (let [{cached-id :app-db-id, ^PoolBackedDataSource cached-pool :pool} @coordination-pool]
+      (let [{cached-id :app-db-id, ^PoolBackedDataSource cached-pool :pool, cached-gated :gated} @coordination-pool]
         (if (= cached-id app-db-id)
-          cached-pool
-          (let [pool (mdb/single-connection-pool-data-source (mdb/db-type) (mdb/data-source))]
-            (reset! coordination-pool {:app-db-id app-db-id, :pool pool})
+          cached-gated
+          ;; The pool is built over the raw app-db data source, so gate it behind the app db's connection read lock
+          ;; ourselves; otherwise a snapshot restore could not keep heartbeats from opening connections.
+          (let [pool  (mdb/single-connection-pool-data-source (mdb/db-type) (mdb/data-source))
+                gated (mdb/gated-data-source pool)]
+            (reset! coordination-pool {:app-db-id app-db-id, :pool pool, :gated gated})
             (when cached-pool
               (try
                 (locking mdb/c3p0-pool-monitor
                   (DataSources/destroy cached-pool))
                 (catch Throwable e
                   (log/warnf "Failed to destroy the previous search lease connection pool: %s" (ex-message e)))))
-            pool))))))
+            gated))))))
 
 (defn- do-with-lifecycle-connection
   "Run a short autocommit lease lifecycle operation.
@@ -256,15 +260,20 @@
 (defn assert-current-in-transaction!
   "Fence the caller's current mutation transaction by renewing and locking its lease row."
   [conn]
-  (when-let [{:keys [claim] :as context} *lease-context*]
+  (when-let [{:keys [claim last-renewal-start-ns] :as context} *lease-context*]
     (throw-if-lost!)
     (assert-coordinate-current!)
     ;; Only a renewal that ran and matched no row proves the lease is gone. A renewal that could not run (pool
     ;; timeout, dropped connection) fails this mutation but leaves the heartbeat to decide, as it does for its own
     ;; renewal errors.
-    (when-not (renew-on-current-connection! conn claim)
-      (mark-lost! context)
-      (throw (lost-ex claim))))
+    (let [attempt-start-ns (System/nanoTime)]
+      (if (renew-on-current-connection! conn claim)
+        ;; A successful fence is a renewal too; let the heartbeat's fail-safe see it so a heartbeat that cannot reach
+        ;; the database does not abort a lease the fences keep proving live.
+        (some-> last-renewal-start-ns (swap! max attempt-start-ns))
+        (do
+          (mark-lost! context)
+          (throw (lost-ex claim))))))
   true)
 
 (defn do-in-fenced-transaction!
@@ -288,7 +297,9 @@
   A lease acquired outside any transaction fences each mutation in its own short transaction on a fresh
   connection. A lease acquired inside a caller's transaction keeps every mutation on that connection (as a nested
   transaction), so the caller decides when the work becomes visible or is rolled back; the database fence is
-  skipped there because a renewal would otherwise hold the lease row until the caller commits."
+  skipped there because a renewal would otherwise hold the lease row until the caller commits. That trades
+  cross-node fencing for transactional enlistment, which only test fixtures need, so [[do-with-lease]] refuses
+  ambient transactions outside test mode."
   [thunk]
   (if (some-> *lease-context* :ambient-transaction?)
     (do
@@ -321,7 +332,7 @@
                 (do
                   ;; Record the start, not the response time, so the local fail-safe never extends ownership beyond
                   ;; the database expiry established by this request.
-                  (reset! last-renewal-start-ns attempt-start-ns)
+                  (swap! last-renewal-start-ns max attempt-start-ns)
                   true)
                 (do
                   (mark-lost! context)
@@ -363,6 +374,11 @@
                 (throw e)))
             (recur true)))))))
 
+(defn- ambient-transactions-allowed?
+  "Only test fixtures may acquire a lease inside an ambient app-db transaction; see [[do-with-mutation-connection]]."
+  []
+  config/is-test?)
+
 (defn do-with-lease
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
@@ -371,6 +387,9 @@
   ([coordinate thunk]
    (do-with-lease coordinate thunk {}))
   ([coordinate thunk {:keys [wait?] :or {wait? true}}]
+   (when (and (mdb/in-transaction?) (not (ambient-transactions-allowed?)))
+     (throw (ex-info "Search reindex leases cannot be acquired inside an app-db transaction"
+                     {:type ::ambient-transaction, :coordinate (where-coordinate coordinate)})))
    (if-let [claim (wait-for-claim coordinate wait?)]
      (let [stopped               (promise)
            heartbeat             (volatile! nil)
@@ -398,9 +417,9 @@
              (release! claim)
              (catch Throwable e
                (record-event! claim :release-error)
-               (log/warnf "Failed to release search reindex lease for %s; it will expire at %s: %s"
+               (log/warnf "Failed to release search reindex lease for %s; it expires within %s of its last renewal: %s"
                           (select-keys claim [:engine :version :lang_code])
-                          (:expires_at claim)
+                          *lease-duration*
                           (ex-message e))))
            (observe-held-duration! claim timer))))
      {:acquired? false})))

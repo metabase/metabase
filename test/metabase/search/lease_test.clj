@@ -431,3 +431,43 @@
         (is (= [:init :reindex] @operations))
         (is (= 2 (count @coordinates)))
         (is (apply = @coordinates))))))
+
+(deftest ambient-transaction-refused-outside-test-mode-test
+  (let [coordinate (coordinate)]
+    (mt/with-dynamic-fn-redefs [lease/ambient-transactions-allowed? (constantly false)]
+      (is (thrown-with-msg?
+           Exception
+           #"cannot be acquired inside an app-db transaction"
+           (t2/with-transaction [_conn]
+             (lease/do-with-lease coordinate (fn [] (throw (Exception. "must not run")))))))
+      (is (nil? (t2/select-one :search_index_lease :engine (:engine coordinate) :version (:version coordinate)))
+          "nothing was acquired"))))
+
+(deftest successful-fence-advances-heartbeat-deadline-test
+  (let [coordinate (coordinate)
+        claim      (lease/try-acquire! coordinate)
+        deadline   (atom 0)
+        context    {:claim claim, :lost? (atom false), :last-renewal-start-ns deadline}]
+    (try
+      (binding [lease/*lease-context* context]
+        (t2/with-connection [conn (mdb/app-db)]
+          (lease/do-in-fenced-transaction! conn (fn [_conn] nil))))
+      (is (pos? @deadline) "a fenced mutation counts as a renewal for the heartbeat's fail-safe")
+      (finally
+        (lease/release! claim)
+        (delete-coordinate! coordinate)))))
+
+(deftest coordination-pool-honours-app-db-restore-gate-test
+  (let [coordinate (coordinate)
+        lock       (.lock (mdb/app-db))]
+    (.. lock writeLock lock)
+    (try
+      (let [attempt (future (t2/with-transaction [_conn] (lease/try-acquire! coordinate)))]
+        (is (= ::blocked (deref attempt 300 ::blocked))
+            "a lifecycle operation on the coordination pool waits while the restore write lock is held")
+        (.. lock writeLock unlock)
+        (is (some? (deref attempt 5000 ::blocked)) "and proceeds once it is released"))
+      (finally
+        (when (.isWriteLockedByCurrentThread lock)
+          (.. lock writeLock unlock))
+        (delete-coordinate! coordinate)))))
