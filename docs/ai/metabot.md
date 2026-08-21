@@ -64,7 +64,7 @@ Hover over Metabot's response to:
 
 ![Metabot analyzes a chart](./images/metabot-response.png)
 
-When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart. You can also open the command palette to tell Metabot to analyze the chart.
+When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart.
 
 When viewing a table of results, ask Metabot in the chat to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
