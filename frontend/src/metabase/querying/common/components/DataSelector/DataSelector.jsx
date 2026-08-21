@@ -577,7 +577,11 @@ export class UnconnectedDataSelector extends Component {
       const enabledDatabases = databases.filter(
         (db) => !databaseIsDisabled?.(db),
       );
-      if (enabledDatabases.length >= 1) {
+      // Auto-select only when there is exactly one enabled database. With
+      // several enabled databases this would silently pick the first one
+      // whenever the database list happens to load before hydration, racing
+      // the user's own choice (e.g. in the action editor's picker).
+      if (enabledDatabases.length === 1) {
         this.onChangeDatabase(enabledDatabases[0]);
       }
     }
