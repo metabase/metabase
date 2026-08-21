@@ -9,7 +9,10 @@ import { OrdersCount } from "../queries/orders.query";
  */
 export default function App() {
   const orders = useMetabaseQuery(OrdersCount);
-  const [userId, total] = orders.data?.rawRows?.[0] ?? [];
+  const rows = orders.data?.rawRows;
+
+  const total = rows?.[0]?.[1];
+  const visibleTenants = rows?.map(([userId]) => userId).join(",");
 
   return (
     <div data-testid="synced-app-content" style={{ padding: 24 }}>
@@ -19,12 +22,12 @@ export default function App() {
         <div data-testid="synced-app-error">{String(orders.error)}</div>
       ) : (
         <>
-          <div data-testid="synced-app-tenant">
-            {userId === undefined ? "" : String(userId)}
-          </div>
-
           <div data-testid="synced-app-total">
             {total === undefined ? "" : String(total)}
+          </div>
+
+          <div data-testid="synced-app-visible-user-ids">
+            {visibleTenants ?? ""}
           </div>
         </>
       )}

@@ -8,13 +8,16 @@ import {
   mockDataApp,
   syncDataAppResources,
 } from "e2e/support/helpers";
-import type { Dataset } from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
 const APP_DISPLAY_NAME = "Synced App";
+
+interface UserIdRowsResponse {
+  data: { rows: Array<[number]> };
+}
 
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
@@ -184,61 +187,68 @@ describe("scenarios > data apps > sync-resources in production", () => {
     });
   });
 
-  it("applies the app group's sandbox to the synchronized query", () => {
+  it("preserves sandboxing from other groups when data app applies table permissions", () => {
+    // A user in the orders table that should show up when sandboxed.
     const SANDBOXED_USER_ID = Number(USERS.sandboxed.login_attributes.attr_uid);
+
+    // A user in the orders table that should not show up when sandboxed.
+    cy.request<UserIdRowsResponse>("POST", "/api/dataset", {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [["field", ORDERS.USER_ID, null]],
+        filter: ["!=", ["field", ORDERS.USER_ID, null], SANDBOXED_USER_ID],
+        limit: 1,
+      },
+    }).then(({ body }) => {
+      const nonSandboxedUserId = body.data.rows[0]?.[0];
+
+      if (nonSandboxedUserId === undefined) {
+        throw new Error("The orders table has no other user with orders.");
+      }
+
+      return cy.wrap(nonSandboxedUserId).as("nonSandboxedUserId");
+    });
 
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
     H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
 
-    syncApp().then(() => {
-      cy.request<Dataset>("POST", "/api/dataset", {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.USER_ID, null]],
+    cy.request<{ id: number }>("POST", "/api/permissions/group", {
+      name: "Sandboxed data app viewer",
+    }).then(({ body: { id: sandboxGroupId } }) => {
+      cy.sandboxTable({
+        group_id: sandboxGroupId,
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
         },
-      }).then(({ body: rows }) => {
-        const userIds = Cypress._.uniq(
-          rows.data.rows.map(([userId]) => userId),
+      });
+
+      addUserToGroup(sandboxGroupId, USERS.sandboxed.email);
+    });
+
+    syncApp();
+    mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+
+    dataAppPermissionGroupId(APP_SLUG).then((dataAppGroupId) =>
+      addUserToGroup(dataAppGroupId, USERS.sandboxed.email),
+    );
+
+    cy.signInAsSandboxedUser();
+    cy.visit(`/apps/${APP_SLUG}`);
+
+    dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.get<number>("@nonSandboxedUserId").then((nonSandboxedUserId) => {
+        cy.log(
+          `Should only show the sandboxed user ${SANDBOXED_USER_ID}, not ${nonSandboxedUserId}.`,
         );
 
-        expect(
-          userIds,
-          "sample data has more than one tenant",
-        ).to.have.length.greaterThan(1);
-
-        const otherUserId = userIds.find(
-          (userId) => userId !== SANDBOXED_USER_ID,
-        );
-
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToGroup(groupId, USERS.sandboxed.email);
-
-          cy.sandboxTable({
-            group_id: groupId,
-            table_id: ORDERS_ID,
-            attribute_remappings: {
-              attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-            },
-          });
-
-          mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-
-          cy.signInAsSandboxedUser();
-          cy.visit(`/apps/${APP_SLUG}`);
-
-          dataAppIframe(APP_DISPLAY_NAME).within(() => {
-            cy.findByTestId("synced-app-tenant", { timeout: 30000 })
-              .should("have.text", String(SANDBOXED_USER_ID))
-              .and("not.have.text", String(otherUserId));
-
-            cy.findByTestId("synced-app-total", { timeout: 30000 }).should(
-              ($total) => expect(Number($total.text())).to.be.greaterThan(0),
-            );
-          });
-        });
+        cy.findByTestId("synced-app-visible-user-ids", {
+          timeout: 30000,
+        })
+          .should("not.contain", String(nonSandboxedUserId))
+          .and("have.text", String(SANDBOXED_USER_ID));
       });
     });
   });
