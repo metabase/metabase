@@ -88,7 +88,8 @@ export const ErrorDiagnosticModal = ({
 
   const handleSlackSubmit = async (values: Record<string, any>) => {
     setIsSlackSending(true);
-    const { description, ...diagnosticSelections } = values;
+    // attribution is the backend's job; the form only decides whether the report is anonymous
+    const { description, reporter, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
       (key) => diagnosticSelections[key],
@@ -101,6 +102,7 @@ export const ErrorDiagnosticModal = ({
     try {
       const response = await sendBugReport({
         diagnosticInfo: selectedInfo,
+        anonymous: !reporter,
       }).unwrap();
 
       if (response.success) {

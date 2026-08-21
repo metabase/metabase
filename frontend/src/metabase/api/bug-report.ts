@@ -10,7 +10,7 @@ export const bugReportApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     sendBugReport: builder.mutation<
       BugReportResponse,
-      { diagnosticInfo: ErrorPayload }
+      { diagnosticInfo: Omit<ErrorPayload, "reporter">; anonymous: boolean }
     >({
       query: (body) => ({
         method: "POST",
