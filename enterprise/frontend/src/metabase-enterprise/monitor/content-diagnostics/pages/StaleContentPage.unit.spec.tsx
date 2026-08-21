@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardEndpoints,
   setupListStaleFindingsEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
@@ -23,6 +24,7 @@ import type {
   ListStaleFindingsResponse,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockContentDiagnosticsCollection,
   createMockContentDiagnosticsStaleFinding,
   createMockContentDiagnosticsUser,
@@ -179,8 +181,8 @@ describe("StaleContentPage", () => {
   });
 
   it("archives the selected findings and refetches the list", async () => {
-    fetchMock.put("path:/api/card/1", { status: 200, body: {} });
-    fetchMock.put("path:/api/card/2", { status: 200, body: {} });
+    setupCardEndpoints(createMockCard({ id: 1 }));
+    setupCardEndpoints(createMockCard({ id: 2 }));
     const { store } = setup({
       findings: [
         createMockContentDiagnosticsStaleFinding({
@@ -240,7 +242,7 @@ describe("StaleContentPage", () => {
   });
 
   it("keeps items that failed to trash selected", async () => {
-    fetchMock.put("path:/api/card/1", { status: 200, body: {} });
+    setupCardEndpoints(createMockCard({ id: 1 }));
     fetchMock.put("path:/api/card/2", { status: 500, body: {} });
     const { store } = setup({
       findings: [
