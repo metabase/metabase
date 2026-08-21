@@ -54,6 +54,13 @@ describe("Cross-version questions - nested model", () => {
       cy.reload();
       cy.wait("@modelQuery");
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
+
+      cy.log("-- Pin the model so the verify step can find it --");
+      // `@saveQuestion` is the POST /api/card intercept that X.saveQuestion sets up;
+      // it is the only POST /api/card in this test, so it still holds cv3's creation.
+      cy.get<{ response: { body: { id: number } } }>("@saveQuestion").then(
+        ({ response }) => X.pinQuestion(response.body.id),
+      );
     },
   );
 

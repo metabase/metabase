@@ -14,6 +14,11 @@ export function saveQuestion(name: string) {
   cy.findByTestId("save-question-modal").should("not.exist");
 }
 
+export function pinQuestion(id: number) {
+  cy.log(`-- Pin question: ${id}`);
+  cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+}
+
 export function assertRowCount(count: string) {
   cy.findByTestId("question-row-count").should(
     "have.text",
