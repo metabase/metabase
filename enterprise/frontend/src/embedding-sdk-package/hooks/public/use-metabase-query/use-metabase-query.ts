@@ -5,7 +5,7 @@ import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-se
 import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import { isQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
-import type { QuestionSchema, TableSchema } from "../data-schema";
+import type { TableSchema } from "../data-schema";
 
 import {
   getEmbeddingSdkBundle,
@@ -21,7 +21,7 @@ import type {
 } from "./types";
 
 const useMetabaseQueryImpl = <
-  TEntity extends TableSchema | QuestionSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,

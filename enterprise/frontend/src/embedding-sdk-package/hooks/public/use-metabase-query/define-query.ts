@@ -1,4 +1,4 @@
-import type { QuestionSchema, TableSchema } from "../data-schema";
+import type { TableSchema } from "../data-schema";
 
 import type {
   MetabaseQueryOptions,
@@ -14,7 +14,7 @@ type SavedQuestionBinding = {
  * saved question.
  */
 export function defineQuery<
-  TEntity extends TableSchema | QuestionSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(

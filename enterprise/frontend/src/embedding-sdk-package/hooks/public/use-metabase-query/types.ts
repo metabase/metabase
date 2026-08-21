@@ -15,7 +15,6 @@ import type {
   InferSchema,
   MetricSchema,
   QueryData,
-  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
@@ -404,35 +403,6 @@ type TableQueryBase<TTable> = {
   SegmentReference<TTable>
 >;
 
-type QuestionResultColumn<TQuestion> = TQuestion extends {
-  columns?: infer TColumns;
-}
-  ? TupleElement<NonNullable<TColumns>>
-  : never;
-
-/**
- * What `filter`, `breakout`, and `orderBy` take on a question source. A card
- * stage exposes the question's result columns, not the fields underneath, so they
- * resolve by name — an app without a generated schema names one by hand.
- */
-export type QuestionColumnReference<TQuestion = unknown> = [
-  QuestionResultColumn<TQuestion>,
-] extends [never]
-  ? SchemaColumn & { type: "column" }
-  : QuestionResultColumn<TQuestion>;
-
-export type QuestionQuery<TQuestion = unknown> = {
-  source: TQuestion extends QuestionSchema ? TQuestion : QuestionSchema;
-
-  // A card stage returns the question's columns; there is no field list to
-  // narrow. Use the question's own `fields` upstream instead.
-  fields?: never;
-} & StageClauses<
-  QuestionColumnReference<TQuestion>,
-  DimensionAggregation<QuestionColumnReference<TQuestion>>,
-  never
->;
-
 export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
 }
@@ -444,13 +414,10 @@ export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> = [
-  TEntity,
-] extends [undefined]
-  ? TableQuery<TEntity> | QuestionQuery<TEntity>
-  : TEntity extends QuestionSchema
-    ? QuestionQuery<TEntity>
-    : TableQuery<TEntity>;
+export type MetabaseQueryOptions<
+  TEntity = unknown,
+  _TSchema = unknown,
+> = TableQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
@@ -588,7 +555,7 @@ export type UseMetabaseQueryResult<
 };
 
 export type UseMetabaseQuery = <
-  TEntity extends TableSchema | QuestionSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
   const TDynamic = undefined,
