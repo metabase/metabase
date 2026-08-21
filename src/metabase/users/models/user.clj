@@ -266,6 +266,9 @@
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))
     (sync-password-to-auth-identity! user-id)))
 
+;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
+(derive :event/user-credentials-revoked :metabase/event)
+
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
   (let [changes (t2/changes user)
@@ -281,6 +284,8 @@
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
+    (when (false? active?)
+      (events/publish-event! :event/user-credentials-revoked {:user-id id}))
     (merge user
            (normalize-user-fields (t2/changes user))
            hashed-pw

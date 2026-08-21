@@ -12,6 +12,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
@@ -150,6 +151,22 @@
           (let [req (merge-current-user-info (bearer-request token))]
             (is (nil? (:metabase-user-id req)))
             (is (nil? (:token-scopes req)))))))))
+
+(deftest bearer-bridge-deactivation-revokes-test
+  (testing "deactivating the user revokes the bearer token, and reactivating does NOT revive it (SEC-863)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [user-id (mt/user->id :rasta)
+              token   (str (random-uuid))]
+          (save-access-token! token user-id [oauth-server/full-access-scope] (in-one-hour))
+          (testing "authenticates before deactivation"
+            (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+          (t2/update! :model/User user-id {:is_active false})
+          (testing "after deactivation the token no longer authenticates"
+            (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+          (t2/update! :model/User user-id {:is_active true})
+          (testing "after reactivation the same token STILL does not authenticate"
+            (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token)))))))))))
 
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
