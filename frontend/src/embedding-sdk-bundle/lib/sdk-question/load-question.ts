@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
@@ -75,9 +77,10 @@ export const loadQuestionSdk =
       question = question.setDashboardId(targetDashboardId);
     }
 
-    // In Legacy Static Embedding we didn't have this logic,
-    // it breaks behavior when a parameter is disabled.
-    if (!isGuestEmbed) {
+    // A card with param_fields carries parameters already combined with
+    // template tags by the backend - re-applying from the (possibly stripped)
+    // query would wipe them.
+    if (_.isEmpty(card.param_fields)) {
       question = question.applyTemplateTagParameters();
     }
 

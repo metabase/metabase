@@ -71,7 +71,10 @@ export const updateQuestionSdk =
       shouldRunQueryOnQuestionChange = false;
     }
 
-    if (!isGuestEmbed) {
+    // A card with param_fields carries parameters already combined with
+    // template tags by the backend - re-applying from the (possibly stripped)
+    // query would wipe them.
+    if (_.isEmpty(nextQuestion.card().param_fields)) {
       nextQuestion = nextQuestion.applyTemplateTagParameters();
     }
 
