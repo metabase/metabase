@@ -843,3 +843,26 @@
                      first)]
         (is (= "Card" (-> node :attrs :id first :model)))
         (is (= "abc" (-> node :attrs :_id)))))))
+
+(deftest serdes-extract-query-excludes-exploration-documents-test
+  (testing "serdes never extracts an exploration Summary document"
+    (mt/with-temp [:model/Collection  {coll-id :id}    {}
+                   :model/User        {user-id :id}    {:email "serdes-doc@example.com"}
+                   :model/Exploration {expl-id :id}    {:name "Explo" :creator_id user-id}
+                   :model/Document    {plain-id :id}   {:name "Plain" :creator_id user-id
+                                                        :collection_id coll-id}
+                   :model/Document    {summary-id :id} {:name           "Summary"
+                                                        :creator_id     user-id
+                                                        :collection_id  coll-id
+                                                        :exploration_id expl-id}]
+      (let [eid       #(t2/select-one-fn :entity_id :model/Document :id %)
+            ;; A caller-supplied `:where` must still compose — this is also the shape a full
+            ;; (untargeted) export takes, where the Collection descendants filter never runs.
+            extracted (into #{}
+                            (map :entity_id)
+                            (serdes/extract-all "Document" {:where [:in :id [plain-id summary-id]]}))]
+        (is (contains? extracted (eid plain-id))
+            "an ordinary document is still exported")
+        (is (not (contains? extracted (eid summary-id)))
+            "a Summary document is never exported — it is not first-class content, and its body embeds
+             values computed under its creator's data-access lens")))))

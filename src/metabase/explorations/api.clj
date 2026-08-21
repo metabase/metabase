@@ -1148,7 +1148,7 @@
   The body `:exploration_query_ids` is the FE-rendered SeriesGroup's full set (one entry
   for single-query charts; multiple for combined cartesian / heat-map charts). The BE
   combines those source snapshots (`metabase.explorations.composite/combine`) into one
-  ephemeral `stored_result` and materialises one ephemeral `report_card` referencing it.
+  ephemeral `stored_result` and materializes one ephemeral `report_card` referencing it.
   The cardEmbed node remains single-card.
 
   - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE

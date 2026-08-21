@@ -48,6 +48,32 @@
 
 ;;;
 
+(defonce ^{:private true
+           :doc "Filter applied to comments' `:context` before they are returned, installed at init.
+
+                 A comment's context describes what was commented on, and for an exploration that
+                 includes the identity of a chart data point — values read out of the creator's
+                 result set. The target's own read check cannot adjudicate that: an Exploration is
+                 read-checked on collection permissions alone, because its data-access gate is
+                 applied by its read endpoints rather than by `can-read?`. So the owning module
+                 registers the verdict here.
+
+                 `comments` cannot call that module directly — the module graph runs one way — so
+                 the consumer registers a callback."}
+  context-gate
+  (atom (fn [_target-type _target-id comments] comments)))
+
+(defn register-context-gate!
+  "Install the comment-context gate. Called once at the consuming module's
+  init. `f` takes `[target-type target-id comments]` and returns the comments to serve."
+  [f]
+  (reset! context-gate f))
+
+(defn apply-context-gate
+  "Run the registered gate over `comments` for one target."
+  [target-type target-id comments]
+  (@context-gate target-type target-id comments))
+
 (defn- page-id-child-target?
   "Whether `child_target_id` identifies an exploration page (decimal integer string) rather than
   a Summary prose-mirror node `_id` (uuid)."

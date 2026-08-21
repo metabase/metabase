@@ -16,6 +16,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.documents.content-visibility :as content-visibility]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -431,16 +432,17 @@
 
 (defmethod ^:private post-process-collection-children :document
   [_ _ collection rows]
-  (map #(dissoc % :exploration_id)
-       (t2/hydrate (for [document rows]
-                     (-> (t2/instance :model/Document document)
-                         (assoc :location (or (when collection
-                                                (collection/children-location collection))
-                                              "/"))
-                         (dissoc :namespace)
-                         (update :archived api/bit->boolean)
-                         (update :archived_directly api/bit->boolean)))
-                   :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)))
+  (content-visibility/with-content-gate-cache
+    (map #(dissoc % :exploration_id)
+         (t2/hydrate (for [document rows]
+                       (-> (t2/instance :model/Document document)
+                           (assoc :location (or (when collection
+                                                  (collection/children-location collection))
+                                                "/"))
+                           (dissoc :namespace)
+                           (update :archived api/bit->boolean)
+                           (update :archived_directly api/bit->boolean)))
+                     :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]

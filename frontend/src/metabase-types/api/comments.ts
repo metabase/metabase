@@ -1,4 +1,7 @@
+import type { RowValue } from "./dataset";
 import type { DocumentContent } from "./document";
+import type { ExplorationQueryId } from "./exploration";
+import type { TimelineId } from "./timeline";
 import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
@@ -7,7 +10,23 @@ export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
-export type CommentContext = Record<string, unknown>;
+/** Identity of the chart point a comment is anchored to. */
+export type CommentHighlight = {
+  columnName?: string;
+  dimensions?: { value: RowValue; columnName: string }[];
+};
+
+/**
+ * Mirrors the closed `CommentContext` schema on the server: identity only, never values read out of
+ * a result set.
+ */
+export type CommentContext = {
+  timeline_id?: TimelineId | null;
+  exploration_query_ids?: ExplorationQueryId[];
+  highlighted?: CommentHighlight;
+  /** Derived by the server on read — never stored, and rejected if sent on create. */
+  highlight_label?: string;
+};
 
 export interface Comment {
   id: CommentId;

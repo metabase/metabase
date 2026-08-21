@@ -49,7 +49,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { HighlightedObject } from "metabase/visualizations/types";
 import type {
   Comment,
   CommentContext,
@@ -435,21 +434,11 @@ function CommentTags({
   const dispatch = useDispatch();
   const context = comment.context;
 
-  const highlightLabel =
-    typeof context?.highlight_label === "string"
-      ? context.highlight_label
-      : undefined;
-  // comment context is an untyped JSON blob; `highlighted` is written by us
-  // as a HighlightedObject when the comment captures a chart point
-  const highlighted = context?.highlighted as HighlightedObject | undefined;
-  const explorationQueryIds = Array.isArray(context?.exploration_query_ids)
-    ? context.exploration_query_ids.filter(
-        (id): id is number => typeof id === "number",
-      )
-    : [];
-
-  const timelineId =
-    typeof context?.timeline_id === "number" ? context.timeline_id : undefined;
+  // `highlight_label` is derived by the server on read; it is not stored on the comment.
+  const highlightLabel = context?.highlight_label;
+  const highlighted = context?.highlighted;
+  const explorationQueryIds = context?.exploration_query_ids ?? [];
+  const timelineId = context?.timeline_id ?? undefined;
   const timeline =
     timelineId != null
       ? timelines.find((entry) => entry.id === timelineId)

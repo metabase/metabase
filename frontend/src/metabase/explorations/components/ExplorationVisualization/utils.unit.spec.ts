@@ -28,7 +28,6 @@ import {
 
 import {
   buildCommentHighlightContext,
-  buildHighlightLabel,
   buildSeriesGroup,
   canExploreFurther,
   composeChartsForGroup,
@@ -792,7 +791,7 @@ describe("comment highlight create ↔ resolve contract", () => {
 
     expect(ctx?.exploration_query_ids).toEqual([102]);
     expect(ctx?.highlighted.cardId).toBeUndefined();
-    expect(ctx?.highlight_label).toBe("Gadget, EU");
+    expect(ctx).not.toHaveProperty("highlight_label");
 
     expect(
       resolveHighlightForSeries(
@@ -876,64 +875,6 @@ describe("comment highlight create ↔ resolve contract", () => {
         { 101: queriesById[101] },
       )?.cardId,
     ).toBe(999);
-  });
-});
-
-describe("buildHighlightLabel", () => {
-  const categoryColumn = createMockColumn({
-    name: "category",
-    base_type: "type/Text",
-  });
-  const tsColumn = createMockColumn({
-    name: "ts",
-    base_type: "type/DateTime",
-    unit: "month",
-  });
-
-  it("formats dimension values from the click", () => {
-    const clicked: ClickObject = {
-      value: 10,
-      column: createMockColumn({ name: "count", source: "aggregation" }),
-      dimensions: [{ column: categoryColumn, value: "Gadget" }],
-      settings: {},
-      cardId: 101,
-    };
-
-    expect(buildHighlightLabel(clicked)).toBe("Gadget");
-  });
-
-  it("appends a segment name for multi-series pages", () => {
-    const clicked: ClickObject = {
-      value: 10,
-      column: createMockColumn({ name: "count", source: "aggregation" }),
-      dimensions: [{ column: categoryColumn, value: "Gadget" }],
-      settings: {},
-      cardId: 102,
-    };
-
-    expect(buildHighlightLabel(clicked, undefined, "EU")).toBe("Gadget, EU");
-  });
-
-  it("formats dates and null values", () => {
-    expect(
-      buildHighlightLabel({
-        value: 10,
-        column: createMockColumn({ name: "count" }),
-        dimensions: [{ column: tsColumn, value: "2025-01-01T00:00:00Z" }],
-        settings: {},
-        cardId: 101,
-      }),
-    ).toMatch(/Jan/);
-
-    expect(
-      buildHighlightLabel({
-        value: 10,
-        column: createMockColumn({ name: "count" }),
-        dimensions: [{ column: tsColumn, value: null }],
-        settings: {},
-        cardId: 101,
-      }),
-    ).toBe("(empty)");
   });
 });
 

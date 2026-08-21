@@ -819,11 +819,9 @@ export function buildCommentHighlightContext(
   clicked: ClickObject,
   seriesQueryIds: ExplorationQueryId[],
   queriesById: Readonly<Record<ExplorationQueryId, ExplorationQuery>>,
-  settings?: ComputedVisualizationSettings,
 ): {
   highlighted: HighlightedObject;
   exploration_query_ids: ExplorationQueryId[];
-  highlight_label: string | null;
 } | null {
   const queryId = resolveExplorationQueryIdForClick(
     clicked,
@@ -834,15 +832,6 @@ export function buildCommentHighlightContext(
     return null;
   }
 
-  const query = queriesById[queryId];
-  const hasDiscriminatorDimension = clicked.dimensions?.some((dimension) =>
-    isDiscriminatorColumnName(dimension.column.name),
-  );
-  const segmentName =
-    !hasDiscriminatorDimension && seriesQueryIds.length > 1 && query != null
-      ? segmentNameForQuery(query)
-      : null;
-
   return {
     highlighted: {
       columnName: clicked.column?.name,
@@ -852,34 +841,7 @@ export function buildCommentHighlightContext(
       })),
     },
     exploration_query_ids: [queryId],
-    highlight_label: buildHighlightLabel(clicked, settings, segmentName),
   };
-}
-
-export function buildHighlightLabel(
-  clicked: ClickObject,
-  settings?: ComputedVisualizationSettings,
-  segmentName?: string | null,
-): string | null {
-  const labels: string[] = [];
-
-  for (const dimension of clicked.dimensions ?? []) {
-    const columnSettings = settings?.column?.(dimension.column) ?? {
-      column: dimension.column,
-    };
-    labels.push(
-      formatColumnValue(dimension.value, dimension.column, columnSettings),
-    );
-  }
-
-  const hasDiscriminatorDimension = clicked.dimensions?.some((dimension) =>
-    isDiscriminatorColumnName(dimension.column.name),
-  );
-  if (!hasDiscriminatorDimension && segmentName) {
-    labels.push(segmentName);
-  }
-
-  return labels.length > 0 ? labels.join(", ") : null;
 }
 
 export interface ExplorationChartForDocumentEmbed {

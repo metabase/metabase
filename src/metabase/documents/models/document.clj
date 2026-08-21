@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.content-visibility :as content-visibility]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -34,60 +35,20 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defonce ^{:private true
-           :doc "Predicate gating a document's *content* (not merely its existence) below
-                 collection-read, for documents whose rendered body embeds data the viewer may not
-                 be entitled to see. Installed at init.
-
-                 The only user today is `explorations`: a Summary document belongs to an
-                 exploration (the `:exploration_id` FK on this table) and embeds verbatim —
-                 possibly sandboxed/impersonated/routed — result values, so a collaborator whose
-                 data-access lens differs from the creator's must not read it.
-
-                 `documents` can't call the consumer directly — the module graph runs one way
-                 (`explorations -> documents`) — so the consumer registers a callback here."}
-  doc-content-visibility-fn
-  (atom (fn [_doc] true)))
-
-(def ^:private ^:dynamic *content-gate-pending*
-  "Document ids whose content gate is currently being evaluated on this thread.
-
-  The gate is re-entrant by construction: adjudicating a document's content runs query-permission
-  checks, and those read-check the source Cards of the queries involved — a Card scoped to a
-  Document delegates back to that Document's gate. A document whose visibility depends on itself
-  has no answer, so deny rather than recur into a stack overflow inside an authorization check."
-  #{})
-
-(defn- content-visible?
-  "Run the registered content-visibility gate for `document`, guarding against re-entry."
-  [document]
-  (let [id (:id document)]
-    (if (contains? *content-gate-pending* id)
-      false
-      (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
-        (boolean (@doc-content-visibility-fn document))))))
-
-(defn register-doc-content-visibility-fn!
-  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes a document and returns whether the current user may see its
-  rendered content."
-  [f]
-  (reset! doc-content-visibility-fn f))
-
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
 (defmethod mi/can-read? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :read instance)
-        (content-visible? instance)))
+        (content-visibility/content-visible? instance)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
 (defmethod mi/can-write? :model/Document
   ([instance]
    (and (mi/current-user-has-full-permissions? :write instance)
-        (content-visible? instance)))
+        (content-visibility/content-visible? instance)))
   ([model pk]
    (mi/can-write? (t2/select-one model pk))))
 
@@ -316,6 +277,18 @@
                :creator_id (serdes/fk :model/User)}
    :defaults {:archived          false
               :archived_directly false}})
+
+(defmethod serdes/extract-query "Document"
+  [model-name opts]
+  ;; An exploration document is not first-class content: it is reachable only through its owning
+  ;; exploration, its body embeds values computed under its creator's data-access lens, and
+  ;; `:exploration_id` is in this spec's `:skip` list — so an exported document would import as an
+  ;; ordinary, ungated document detached from any exploration.
+  ((get-method serdes/extract-query :default)
+   model-name
+   (update opts :where (fn [where]
+                         (let [clause [:= :exploration_id nil]]
+                           (if where [:and where clause] clause))))))
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

@@ -132,7 +132,7 @@
     (first tokens)))
 
 (defn create-ephemeral-card-for-exploration-queries!
-  "Materialise an ephemeral `report_card` that represents a *composite chart* — possibly
+  "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly
   built from multiple `ExplorationQuery` snapshots combined into one — for a single document
   embed.
 
@@ -142,7 +142,7 @@
                      card, dataset_query). A multi-id combine is persisted as a brand-new
                      `stored_result` row; a single id reuses the source snapshot as-is (no
                      duplicate row).
-  - `document-id`    Target document — the materialised card is scoped to it (`document_id`
+  - `document-id`    Target document — the materialized card is scoped to it (`document_id`
                      set + `collection_id` matched), which keeps it out of the regular
                      collection-browser / data-picker pickers.
   - `collection-id`  The document's collection (cards inherit perms).

@@ -207,3 +207,39 @@
 
     :else
     false))
+
+(defn gate-comment-contexts
+  "Withhold `:context` from `comments` on `exploration-id` whose data the current user may not see.
+
+  A comment's context carries the identity of the chart point it is anchored to, including dimension
+  values read out of the creator's result set — the same material
+  [[metabase.explorations.api/gate-threads-derived-data]] redacts from the exploration itself. The
+  comments endpoint cannot rely on its read check to cover that: an Exploration is read-checked on
+  collection permissions alone, since the derived-data gate is applied by its read endpoints rather
+  than by `can-read?`.
+
+  The comment itself is left in place — conversations stay visible, only the values they carry are
+  withheld. A comment anchored to a page of a thread the viewer can see keeps its context; anything
+  else (a Summary block, an unanchored comment, or a page of a gated thread) loses it."
+  [exploration-id comments]
+  (let [thread-ids (t2/select-pks-set :model/ExplorationThread :exploration_id exploration-id)]
+    (if (or (empty? thread-ids) (not-any? :context comments))
+      comments
+      (let [visible (thread-ids-with-visible-derived-data thread-ids)]
+        (if (= thread-ids visible)
+          comments
+          (let [page->thread (into {}
+                                   (map (juxt :id :thread_id))
+                                   (t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
+                                              :from   [[:exploration_page :p]]
+                                              :join   [[:exploration_block :b]
+                                                       [:= :b.id :p.exploration_block_id]]
+                                              :where  [:in :b.exploration_thread_id (vec thread-ids)]}))]
+            (mapv (fn [comment]
+                    ;; A non-numeric `child_target_id` is a Summary block uuid, and a nil one is
+                    ;; unanchored; both parse to nil and so fall through to the deny branch.
+                    (let [thread-id (get page->thread (parse-long (str (:child_target_id comment))))]
+                      (if (contains? visible thread-id)
+                        comment
+                        (dissoc comment :context))))
+                  comments)))))))

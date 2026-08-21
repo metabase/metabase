@@ -156,7 +156,7 @@
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
 
   A Card scoped to a Document is a child of it, and the Document — not the collection — is the
-  authority on who may see it. An exploration Summary materialises ephemeral Cards whose `name` and
+  authority on who may see it. An exploration Summary materializes ephemeral Cards whose `name` and
   `dataset_query` are copied from the `ExplorationQuery` they render, and those embed dimension
   values discovered under the *creator's* data-access lens (see
   [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
@@ -1538,6 +1538,30 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(def ^:private not-in-exploration-document
+  "HoneySQL predicate: this Card does not belong to an exploration Summary document.
+
+  Such a Card is materialized by the Summary itself — its `name` and `dataset_query` are copied
+  from the `ExplorationQuery` it renders, so they carry dimension values discovered under the
+  creator's data-access lens. Its parent Document is never serialized (see
+  `metabase.documents.models.document`'s `extract-query`), and this Card's
+  `deserialization-dependencies` name that Document, so exporting the Card without it would leave a
+  dangling reference even setting the lens question aside."
+  [:or
+   [:= :document_id nil]
+   [:in :document_id ^:allow-subquery {:select [:id]
+                                       :from   [:document]
+                                       :where  [:= :exploration_id nil]}]])
+
+(defmethod serdes/extract-query "Card"
+  [model-name opts]
+  ((get-method serdes/extract-query :default)
+   model-name
+   (update opts :where (fn [where]
+                         (if where
+                           [:and where not-in-exploration-document]
+                           not-in-exploration-document)))))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
   (card-deps true card))

@@ -1,6 +1,7 @@
 (ns metabase.documents.core
   (:require
    [metabase.documents.api.document]
+   [metabase.documents.content-visibility]
    [metabase.documents.models.document]
    [metabase.documents.prose-mirror]
    [metabase.documents.recent-views]
@@ -8,6 +9,7 @@
 
 (comment
   metabase.documents.api.document/keep-me
+  metabase.documents.content-visibility/keep-me
   metabase.documents.models.document/keep-me
   metabase.documents.prose-mirror/keep-me
   metabase.documents.recent-views/keep-me)
@@ -16,8 +18,9 @@
  [metabase.documents.api.document
   add-card-to-document!
   get-document]
- [metabase.documents.models.document
-  register-doc-content-visibility-fn!]
+ [metabase.documents.content-visibility
+  register-doc-content-visibility-fn!
+  with-content-gate-cache]
  [metabase.documents.prose-mirror
   insert-card-embed
   prose-mirror-content-type])

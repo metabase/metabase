@@ -2993,7 +2993,7 @@
 
 (deftest composite-checks-run-permissions-for-every-source-query-test
   (testing "`combine` copies the rows of every source into the composite, so the permission check has to cover
-            every source query — not just the first, which would let a caller materialise rows from a table
+            every source query — not just the first, which would let a caller materialize rows from a table
             they cannot read"
     (mt/with-temp [:model/User u {:email "composite-perms@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]

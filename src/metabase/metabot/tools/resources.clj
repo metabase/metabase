@@ -420,36 +420,37 @@
     (entity-result (present-collection coll))))
 
 (defn- fetch-collection-items [id-str query-params]
-  (let [coll-id        (parse-long id-str)
-        coll           (api/read-check :model/Collection coll-id)
-        cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                        :collection_id :database_id :table_id]
-                                       {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                        :order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
-        documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
-                                       :collection_id  coll-id
-                                       :archived       false
-                                       :exploration_id nil
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                        :description :personal_owner_id]
-                                       :location (str (:location coll) coll-id "/")
-                                       :archived false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        items          (concat (map present-collection subcollections)
-                               (map present-card cards)
-                               (map present-dashboard dashboards)
-                               (map present-document documents))]
-    (list-result :collection-items items query-params)))
+  (documents/with-content-gate-cache
+    (let [coll-id        (parse-long id-str)
+          coll           (api/read-check :model/Collection coll-id)
+          cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                          :collection_id :database_id :table_id]
+                                         {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
+                                          :order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
+                                         :collection_id coll-id
+                                         :archived      false
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
+          documents      (->> (t2/select [:model/Document :id :name :collection_id :exploration_id]
+                                         :collection_id  coll-id
+                                         :archived       false
+                                         :exploration_id nil
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
+                                          :description :personal_owner_id]
+                                         :location (str (:location coll) coll-id "/")
+                                         :archived false
+                                         {:order-by [[:%lower.name :asc]]})
+                              (filter mi/can-read?))
+          items          (concat (map present-collection subcollections)
+                                 (map present-card cards)
+                                 (map present-dashboard dashboards)
+                                 (map present-document documents))]
+      (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll-id (parse-long id-str)

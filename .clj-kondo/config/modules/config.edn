@@ -628,6 +628,7 @@
    :uses #{api
            app-db
            collections
+           documents
            eid-translation
            events
            lib-be
@@ -656,6 +657,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
+           metabase.comments.core
            metabase.comments.init}
    :uses #{analytics
            api
@@ -823,6 +825,7 @@
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
+           metabase.documents.content-visibility
            metabase.documents.core
            metabase.documents.init
            metabase.documents.prose-mirror
@@ -1031,6 +1034,7 @@
            api
            app-db
            collections
+           comments
            contextual-interestingness
            documents
            events
