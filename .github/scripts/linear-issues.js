@@ -75,7 +75,7 @@ async function createLinearIssue({
         },
       },
     }),
-  });  
+  });
 
   if (!response.ok) {
     return { success: false, message: `Linear API error: ${response.status}` };

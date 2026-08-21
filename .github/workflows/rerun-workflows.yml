@@ -44,6 +44,7 @@ jobs:
             const AUTHOR = process.env.AUTHOR_NAME;
             const BRANCH = process.env.BRANCH_NAME;
             const LINEAR_TEAM_ID = '2e3af6a2-9b19-4abd-b72c-4b5665054861'; // DevEx team
+            const CI_TRIAGE_LABEL_ID = '1af2175c-8ffa-4765-9bbd-5b6166def8a0'; // 'CI Triage' label
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               try {
@@ -72,40 +73,38 @@ jobs:
                 per_page: 100,
               });
 
+              // the `*-tests-result` jobs only aggregate the jobs they depend on, so an
+              // issue for one of them would just duplicate the real failures
               const failedJobs = jobs
                 .filter(job => job.status === "completed" && job.conclusion === "failure" && !job.name.includes("-tests-result"));
-
-              // don't file an issue if only the flaky job failed
-              if (failedJobs.every(job => job.name.toLowerCase().includes("flaky"))) {
-                return;
-              }
 
               const shortSha = BREAKING_COMMIT.slice(0, 7);
               const commitUrl = `https://github.com/${owner}/${repo}/commit/${BREAKING_COMMIT}`;
 
-              const description = [
-                `CI is failing on \`${owner}/${repo}@${BRANCH}\` after ${ATTEMPT} attempts.`,
-                ``,
-                `- **Author:** ${AUTHOR}`,
-                `- **Commit:** [\`${shortSha}\`](${commitUrl})`,
-                `- **Failed run:** [${FAILED_RUN_NAME}](${FAILED_RUN_URL})`,
-                ``,
-                `## Failing jobs (${failedJobs.length})`,
-                ``,
-                ...failedJobs.map(job => `- [${job.name}](${job.html_url})`),
-              ].join('\n');
+              // one issue per failing job, so they can be triaged and assigned separately
+              for (const job of failedJobs) {
+                const description = [
+                  `\`${job.name}\` is failing on \`${owner}/${repo}@${BRANCH}\` after ${ATTEMPT} attempts.`,
+                  ``,
+                  `- **Author:** ${AUTHOR}`,
+                  `- **Commit:** [\`${shortSha}\`](${commitUrl})`,
+                  `- **Failed job:** [${job.name}](${job.html_url})`,
+                  `- **Failed run:** [${FAILED_RUN_NAME}](${FAILED_RUN_URL})`,
+                ].join('\n');
 
-              const result = await createLinearIssue({
-                teamId: LINEAR_TEAM_ID,
-                labelIds: ['1af2175c-8ffa-4765-9bbd-5b6166def8a0'], // adds 'CI Triage' label
-                title: `CI is failing on ${BRANCH}: ${failedJobs.length} failing job(s) from ${shortSha}`,
-                description,
-                linearApiKey: process.env.LINEAR_API_KEY,
-              });
+                // never fail this job over Linear — it would pollute our CI stats
+                const result = await createLinearIssue({
+                  teamId: LINEAR_TEAM_ID,
+                  labelIds: [CI_TRIAGE_LABEL_ID],
+                  title: `CI failure on ${BRANCH}: ${job.name} (${shortSha})`,
+                  description,
+                  linearApiKey: process.env.LINEAR_API_KEY,
+                }).catch(error => ({ success: false, message: error.message }));
 
-              if (result.success) {
-                core.info(`Created Linear issue ${result.issue.identifier}: ${result.issue.url}`);
-              } else {
-                core.setFailed(`Could not create a Linear issue: ${result.message}`);
+                if (result.success) {
+                  core.info(`Created Linear issue ${result.issue.identifier}: ${result.issue.url}`);
+                } else {
+                  core.warning(`Could not create a Linear issue for ${job.name}: ${result.message}`);
+                }
               }
             }
