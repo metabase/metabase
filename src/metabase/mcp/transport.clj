@@ -27,8 +27,9 @@
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
-   (java.io BufferedWriter OutputStreamWriter)
-   (java.nio.charset StandardCharsets)))
+   (java.io BufferedWriter OutputStreamWriter Writer)
+   (java.nio.charset StandardCharsets)
+   (java.util.concurrent ExecutorService Executors)))
 
 (set! *warn-on-reflection* true)
 
@@ -293,6 +294,36 @@
 (def ^:private tools-list-changed-notification
   {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
 
+(def ^:private keepalive-interval-ms
+  "How often the GET stream emits an SSE comment. Clients drop an idle stream without periodic traffic, so this
+  cadence is a protocol obligation and not tunable downward for the sake of cancellation latency."
+  30000)
+
+(defonce ^:private ^ExecutorService keepalive-executor
+  ;; A keepalive stream blocks for the life of the client's connection, not the life of a query. Running it on the
+  ;; shared streaming-response pool — a fixed pool of `mb-jetty-maxthreads`/50 threads that also serves query
+  ;; downloads — lets a handful of idle MCP sessions occupy every thread and stall exports instance-wide. Virtual
+  ;; threads have no such ceiling and cost nothing while parked.
+  (Executors/newThreadPerTaskExecutor (.. (Thread/ofVirtual) (name "mcp-keepalive-" 0) factory)))
+
+(defn- keepalive-loop!
+  "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
+  Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
+  previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
+  [^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (loop [last-hash (tools-hash-fn token-scopes)]
+    (.write writer ": keepalive\n\n")
+    (.flush writer)
+    ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
+    ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
+    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
+      (when-not (= port canceled-chan)
+        (let [current-hash (tools-hash-fn token-scopes)]
+          (when (not= current-hash last-hash)
+            (.write writer ^String (sse-body [tools-list-changed-notification]))
+            (.flush writer))
+          (recur current-hash))))))
+
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
    Polls the tool manifest hash on each keepalive tick — if the visible tool set has
@@ -311,19 +342,11 @@
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
                    :headers      {"Cache-Control" "no-cache"}
-                   :status       200}
+                   :status       200
+                   :executor     keepalive-executor}
                   [os canceled-chan]
-                   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop [last-hash (tools-hash-fn token-scopes)]
-                       (when-not (a/poll! canceled-chan)
-                         (.write writer ": keepalive\n\n")
-                         (.flush writer)
-                         (Thread/sleep 30000)
-                         (let [current-hash (tools-hash-fn token-scopes)]
-                           (when (not= current-hash last-hash)
-                             (.write writer ^String (sse-body [tools-list-changed-notification]))
-                             (.flush writer))
-                           (recur current-hash))))))]
+                   (keepalive-loop! (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+                                    tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
