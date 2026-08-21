@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-keys.core :as api-keys]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.mcp.core :as mcp.core]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
@@ -246,6 +247,36 @@
                                                   {"mcp-session-id" session-id})]
               (is (= 401 (:status response)))
               (is (nil? (get-in response [:body :result]))))))))))
+
+(deftest sso-provisioned-session-dispatches-test
+  (testing "GHY-4287: refusing API keys must not close the embedding integration path that replaces them — a
+            customer's backend signs a JWT per end user, exchanges it for a Metabase session at `/auth/sso`, and
+            drives MCP with that session, so every call lands on a real, billable `:type \"personal\"` user. An
+            SSO login mints its session through `create-session-with-auth-tracking!`, which links it to the
+            user's `auth_identity` row; the session middleware then reports that row's provider as the auth
+            method, so an SSO session is classified \"jwt\", never \"api-key\", and the refusal must not catch it."
+    (mt/with-temp [:model/User user {}
+                   :model/AuthIdentity _jwt-identity {:user_id (:id user) :provider "jwt"}]
+      (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/jwt)]
+        (testing "the session really is auth-identity-linked — otherwise this degrades into a plain-session test"
+          (is (some? (:auth_identity_id session))))
+        (testing "the user is one the seat count bills, unlike the `:type :api-key` user an API key authenticates as"
+          (is (= :personal (t2/select-one-fn :type :model/User (:id user)))))
+        (let [session-key (:key session)
+              init        (client/client-full-response session-key :post 200 endpoint
+                                                       {:request-options {:headers {}}}
+                                                       (jsonrpc-request "initialize" {:capabilities {}}))
+              session-id  (get-in init [:headers "Mcp-Session-Id"])]
+          (testing "initialize is served, not met with the API-key refusal"
+            (is (= 200 (:status init)))
+            (is (some? session-id)))
+          (testing "and a tool actually dispatches — the SSO session reaches the surface, not just the handshake"
+            (let [response (client/client-full-response session-key :post 200 endpoint
+                                                        {:request-options {:headers {"mcp-session-id" session-id}}}
+                                                        (jsonrpc-request "tools/call" {:name "ping_v2" :arguments {}}))
+                  result   (get-in response [:body :result])]
+              (is (not (:isError result)))
+              (is (= {:ok true :message "pong"} (:structuredContent result))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
