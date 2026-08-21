@@ -4,19 +4,19 @@
 ;;   GLEAM_CLJ_NO_MAIN=1 gleam-to-clj build <project> <out>
 (ns metabase.lib.parse-impl
   "A typed reimplementation of metabase.lib.parse: parsing `{{param}}` and
-  `[[optional]]` clauses in native query strings, with best-effort skipping
-  of params inside SQL comments and string literals.
-  
-  Faithful port of the Clojure original:
-  - tokenization is sequential pass-by-pass splitting (pattern order
-  matters for overlaps, so a single left-to-right scan would differ)
-  - `{{` only matches when not followed by another `{` (so `{{{x}}` parses
-  as a literal `{` plus a param)
-  - inside string literals, a clause that fails to parse is backtracked to
-  literal text (the original does this with catch/rethrow; here it is a
-  Result)
-  - `strict` mirrors the original's :parse-error-type option: when false,
-  invalid (but terminated) clauses dissolve to nothing instead of erroring"
+   `[[optional]]` clauses in native query strings, with best-effort skipping
+   of params inside SQL comments and string literals.
+   
+   Faithful port of the Clojure original:
+   - tokenization is sequential pass-by-pass splitting (pattern order
+   matters for overlaps, so a single left-to-right scan would differ)
+   - `{{` only matches when not followed by another `{` (so `{{{x}}` parses
+   as a literal `{` plus a param)
+   - inside string literals, a clause that fails to parse is backtracked to
+   literal text (the original does this with catch/rethrow; here it is a
+   Result)
+   - `strict` mirrors the original's :parse-error-type option: when false,
+   invalid (but terminated) clauses dissolve to nothing instead of erroring"
   (:require
    [gleam.list :as list]
    [gleam.prelude :as p]
@@ -24,65 +24,78 @@
   (:import (gleam.prelude Ok)))
 
 ;; type Token
-(defrecord OptionalBegin [])
+(defprotocol IToken)
+(defrecord OptionalBegin [] IToken)
 (defn OptionalBegin? "True if `v` is a OptionalBegin value." [v] (instance? OptionalBegin v))
-(defrecord OptionalEnd [])
+(defrecord OptionalEnd [] IToken)
 (defn OptionalEnd? "True if `v` is a OptionalEnd value." [v] (instance? OptionalEnd v))
-(defrecord ParamBegin [])
+(defrecord ParamBegin [] IToken)
 (defn ParamBegin? "True if `v` is a ParamBegin value." [v] (instance? ParamBegin v))
-(defrecord ParamEnd [])
+(defrecord ParamEnd [] IToken)
 (defn ParamEnd? "True if `v` is a ParamEnd value." [v] (instance? ParamEnd v))
-(defrecord SingleQuote [])
+(defrecord SingleQuote [] IToken)
 (defn SingleQuote? "True if `v` is a SingleQuote value." [v] (instance? SingleQuote v))
-(defrecord BlockCommentBegin [])
+(defrecord BlockCommentBegin [] IToken)
 (defn BlockCommentBegin? "True if `v` is a BlockCommentBegin value." [v] (instance? BlockCommentBegin v))
-(defrecord BlockCommentEnd [])
+(defrecord BlockCommentEnd [] IToken)
 (defn BlockCommentEnd? "True if `v` is a BlockCommentEnd value." [v] (instance? BlockCommentEnd v))
-(defrecord LineCommentBegin [])
+(defrecord LineCommentBegin [] IToken)
 (defn LineCommentBegin? "True if `v` is a LineCommentBegin value." [v] (instance? LineCommentBegin v))
-(defrecord Newline [])
+(defrecord Newline [] IToken)
 (defn Newline? "True if `v` is a Newline value." [v] (instance? Newline v))
+(defn Token? "True if `v` is any Token value." [v] (instance? metabase.lib.parse_impl.IToken v))
 
 ;; type Piece
-(defrecord Str [value])
+(defprotocol IPiece)
+(defrecord Str [value] IPiece)
 (defn Str? "True if `v` is a Str value." [v] (instance? Str v))
-(defrecord Tok [f0 f1])
+(defrecord Tok [f0 f1] IPiece)
 (defn Tok? "True if `v` is a Tok value." [v] (instance? Tok v))
+(defn Piece? "True if `v` is any Piece value." [v] (instance? metabase.lib.parse_impl.IPiece v))
 
 ;; type Fragment
-(defrecord Literal [value])
+(defprotocol IFragment)
+(defrecord Literal [value] IFragment)
 (defn Literal? "True if `v` is a Literal value." [v] (instance? Literal v))
-(defrecord Param [value])
+(defrecord Param [value] IFragment)
 (defn Param? "True if `v` is a Param value." [v] (instance? Param v))
-(defrecord Optional [value])
+(defrecord Optional [value] IFragment)
 (defn Optional? "True if `v` is a Optional value." [v] (instance? Optional v))
+(defn Fragment? "True if `v` is any Fragment value." [v] (instance? metabase.lib.parse_impl.IFragment v))
 
 ;; type ParseError
-(defrecord Unterminated [])
+(defprotocol IParseError)
+(defrecord Unterminated [] IParseError)
 (defn Unterminated? "True if `v` is a Unterminated value." [v] (instance? Unterminated v))
-(defrecord InvalidParamName [])
+(defrecord InvalidParamName [] IParseError)
 (defn InvalidParamName? "True if `v` is a InvalidParamName value." [v] (instance? InvalidParamName v))
-(defrecord EmptyParam [])
+(defrecord EmptyParam [] IParseError)
 (defn EmptyParam? "True if `v` is a EmptyParam value." [v] (instance? EmptyParam v))
-(defrecord OptionalWithoutParam [])
+(defrecord OptionalWithoutParam [] IParseError)
 (defn OptionalWithoutParam? "True if `v` is a OptionalWithoutParam value." [v] (instance? OptionalWithoutParam v))
+(defn ParseError? "True if `v` is any ParseError value." [v] (instance? metabase.lib.parse_impl.IParseError v))
 
 ;; type Pattern
-(defrecord Lit [f0 f1])
+(defprotocol IPattern)
+(defrecord Lit [f0 f1] IPattern)
 (defn Lit? "True if `v` is a Lit value." [v] (instance? Lit v))
-(defrecord ParamBeginPattern [])
+(defrecord ParamBeginPattern [] IPattern)
 (defn ParamBeginPattern? "True if `v` is a ParamBeginPattern value." [v] (instance? ParamBeginPattern v))
+(defn Pattern? "True if `v` is any Pattern value." [v] (instance? metabase.lib.parse_impl.IPattern v))
 
 ;; type Mode
-(defrecord NoComment [])
+(defprotocol IMode)
+(defrecord NoComment [] IMode)
 (defn NoComment? "True if `v` is a NoComment value." [v] (instance? NoComment v))
-(defrecord LineMode [])
+(defrecord LineMode [] IMode)
 (defn LineMode? "True if `v` is a LineMode value." [v] (instance? LineMode v))
-(defrecord BlockMode [])
+(defrecord BlockMode [] IMode)
 (defn BlockMode? "True if `v` is a BlockMode value." [v] (instance? BlockMode v))
+(defn Mode? "True if `v` is any Mode value." [v] (instance? metabase.lib.parse_impl.IMode v))
 
 ;; type State
-(defrecord State [optional-level param-level in-string mode])
+(defprotocol IState)
+(defrecord State [optional-level param-level in-string mode] IState)
 (defn State? "True if `v` is a State value." [v] (instance? State v))
 
 (defn- base-patterns []
@@ -101,7 +114,7 @@
 
 (defn- find-param-begin
   "Find the first `{{` that is not followed by a third `{`; returns the text
-  before it and the text after it."
+   before it and the text after it."
   [s before-acc]
   (let [subject (string/split-once s "{{")]
     (if (and (instance? gleam.prelude.Error subject) (nil? (:value subject)))
@@ -135,12 +148,11 @@
 
 (defn tokenize
   "Split raw query text into an interleaved list of string fragments and
-  tokens. Patterns are applied in sequence (pass by pass), so an earlier
-  pattern's matches shadow later ones over the same span — this ordering,
-  not a single left-to-right scan, is what the original Clojure does. When
-  `handle_sql_comments` is False, comment tokens are not recognized."
-  {:malli/schema [:=> [:cat :string :boolean]
-                  [:sequential [:or [:fn Str?] [:fn Tok?]]]]}
+   tokens. Patterns are applied in sequence (pass by pass), so an earlier
+   pattern's matches shadow later ones over the same span — this ordering,
+   not a single left-to-right scan, is what the original Clojure does. When
+   `handle_sql_comments` is False, comment tokens are not recognized."
+  {:malli/schema [:=> [:cat :string :boolean] [:sequential [:fn Piece?]]]}
   [s handle-sql-comments]
   (let [patterns (if handle-sql-comments (sql-patterns) (base-patterns))]
     (list/fold patterns (list (->Str s)) apply-pattern)))
@@ -217,8 +229,8 @@
 
 (defn- enter-clause
   "Shared body of the OptionalBegin/ParamBegin cases: run the sub-parse,
-  validate it, and either splice the result in or — when inside a string
-  literal — backtrack the failed clause to literal text."
+   validate it, and either splice the result in or — when inside a string
+   literal — backtrack the failed clause to literal text."
   [strict sub validate text more strict2 state acc]
   (let [{optional-level :optional-level param-level :param-level in-string :in-string mode :mode} state
         validated (if (instance? Ok sub)
@@ -252,7 +264,7 @@
 
 (defn- parse-tokens
   "The state machine. `acc` is built in reverse. Returns the fragments of
-  the current scope plus the unconsumed tokens."
+   the current scope plus the unconsumed tokens."
   [strict tokens optional-level param-level in-string mode acc]
   (cond
     (empty? tokens)
@@ -359,10 +371,10 @@
 
 (defn parse
   "Parse parameters in `s`, returning literal text fragments interleaved
-  with `Param` and `Optional` fragments. `handle_sql_comments` skips params
-  inside `--` and `/* */` comments when True. `strict` mirrors the original
-  `:parse-error-type` option: when True an invalid clause is an `Error`;
-  when False a terminated-but-invalid clause dissolves to nothing instead."
+   with `Param` and `Optional` fragments. `handle_sql_comments` skips params
+   inside `--` and `/* */` comments when True. `strict` mirrors the original
+   `:parse-error-type` option: when True an invalid clause is an `Error`;
+   when False a terminated-but-invalid clause dissolves to nothing instead."
   {:malli/schema [:=> [:cat :string :boolean :boolean]
                   [:or [:fn p/Ok?] [:fn p/Error?]]]}
   [s handle-sql-comments strict]
