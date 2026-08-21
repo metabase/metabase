@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useSetting } from "metabase/settings";
 import { Text } from "metabase/ui";
 import { useDisableAdvancedAIControlsPermissionsMutation } from "metabase-enterprise/api";
 
@@ -14,7 +13,6 @@ export function DisableAdvancedModal({ onClose }: Props) {
   const [disableAdvanced, { isLoading: loading }] =
     useDisableAdvancedAIControlsPermissionsMutation();
   const { sendErrorToast } = useMetadataToasts();
-  const isUsingTenants = useSetting("use-tenants");
 
   const handleConfirm = async () => {
     try {
@@ -32,9 +30,7 @@ export function DisableAdvancedModal({ onClose }: Props) {
       title={t`Remove group-level access?`}
       message={
         <>
-          {isUsingTenants
-            ? t`If you don't need to set access granularly for each group, you can switch back to controlling access via just the "All internal users" and "All tenant users" groups.`
-            : t`If you don't need to set access granularly for each group, you can switch back to controlling access via just the "All Users" group.`}{" "}
+          {t`If you don't need to set access granularly for each group, you can switch back to controlling access via just the "All Users" group.`}{" "}
           <Text fw="bold" component="strong" display="inline">
             {t`This will remove access from all of your other groups.`}
           </Text>
