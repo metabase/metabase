@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getCardUiParametersFromQuery } from "metabase-lib/v1/parameters/utils/cards";
+import { getCardUiParametersFromParamFields } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 type UseParameterListProps = {
@@ -50,7 +50,7 @@ export const useAvailableParameters = ({
     } else if (experience === "chart") {
       // Unjustified type cast. FIXME
       const card = resource as Card;
-      return getCardUiParametersFromQuery(card, metadataRef.current) || [];
+      return getCardUiParametersFromParamFields(card, metadataRef.current);
     }
 
     return [];

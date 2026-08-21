@@ -20,7 +20,7 @@ jest.mock("metabase/parameters/utils/dashboards", () => ({
 }));
 
 jest.mock("metabase-lib/v1/parameters/utils/cards", () => ({
-  getCardUiParametersFromQuery: jest.fn(),
+  getCardUiParametersFromParamFields: jest.fn(),
 }));
 
 jest.mock("metabase/redux/metadata", () => ({
@@ -44,7 +44,7 @@ const mockGetSavedDashboardUiParameters = jest.requireMock(
 ).getDashboardUiParametersFromParamFields;
 const mockGetCardUiParameters = jest.requireMock(
   "metabase-lib/v1/parameters/utils/cards",
-).getCardUiParametersFromQuery;
+).getCardUiParametersFromParamFields;
 
 const mockParameter1 = createMockParameter({
   id: "param1",
@@ -134,19 +134,6 @@ describe("useAvailableParameters", () => {
       );
 
       expect(result.current.availableParameters).toEqual([mockParameter1]);
-    });
-
-    it("should handle null return from getCardUiParametersFromQuery", () => {
-      mockGetCardUiParameters.mockReturnValue(null);
-
-      const { result } = renderHook(() =>
-        useAvailableParameters({
-          experience: "chart",
-          resource: mockCard,
-        }),
-      );
-
-      expect(result.current.availableParameters).toEqual([]);
     });
   });
 
