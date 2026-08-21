@@ -1648,18 +1648,14 @@ def has_metabase_templates(sql: str) -> bool:
     """
     return bool(_METABASE_TEMPLATE_RE.search(sql))
 
-# Dialects that require identifier quoting due to case sensitivity.
-# These dialects fold unquoted identifiers to uppercase or lowercase,
-# which can cause issues when the LLM generates mixed-case identifiers.
-CASE_SENSITIVE_DIALECTS: set[str] = {
-    "snowflake",  # Folds unquoted to UPPERCASE
-    "oracle",  # Folds unquoted to UPPERCASE
-    "redshift",  # PostgreSQL-based, folds to lowercase
-    "postgres",  # Folds unquoted to lowercase
-}
-
 def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.
+
+    Identifiers keep the quoting they were written with: an unquoted identifier stays
+    unquoted, so the database folds it exactly as it would have folded the input.
+    Quoting everything (identify=True) would instead freeze the written casing, which
+    breaks on dialects that fold unquoted identifiers (Snowflake uppercases, Postgres
+    lowercases).
 
     Args:
         sql: SQL query string
@@ -1667,8 +1663,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         to_dialect: target sql dialect
 
     Returns:
-        JSON string with keys transpiled and use_identify on success.
-        On failure the object contains keys is_valid and error_message.
+        JSON string with keys transpiled_sql and status on success.
+        On failure the object contains keys status and error_message.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1681,15 +1677,11 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         result['reason'] = 'missing_dialect'
     else:
         try:
-            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
-                            or to_dialect in CASE_SENSITIVE_DIALECTS)
-
             transpiled = sqlglot.transpile(
                 sql,
                 read=from_dialect,
                 write=to_dialect,
                 pretty=True,
-                identify=use_identify,
             )
 
             if len(transpiled) > 1:
