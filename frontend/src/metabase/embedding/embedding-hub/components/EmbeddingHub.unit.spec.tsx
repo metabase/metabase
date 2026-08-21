@@ -5,6 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabaseListEndpoint,
+  setupEnginesEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -20,6 +21,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockDashboard,
+  createMockEngines,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
@@ -77,6 +79,8 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
     checklist,
     "data-isolation-strategy": null,
   });
+
+  setupEnginesEndpoint(createMockEngines());
 
   return renderWithProviders(<EmbeddingHub />, {
     storeInitialState: state,

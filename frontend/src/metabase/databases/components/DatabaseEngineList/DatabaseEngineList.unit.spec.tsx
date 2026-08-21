@@ -1,14 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   ELEVATED_ENGINES,
   MAX_INITIAL_ENGINES_SHOWN,
 } from "metabase/databases/constants";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Engine } from "metabase-types/api";
 import { createMockEngine } from "metabase-types/api/mocks";
 
@@ -45,12 +43,10 @@ const mockEngines: Record<string, Engine> = {
   }),
 };
 
-const setup = () => {
-  const state = createMockState({
-    settings: createMockSettingsState({
-      engines: mockEngines,
-    }),
-  });
+const setup = async () => {
+  setupEnginesEndpoint(mockEngines);
+
+  const state = createMockState();
 
   const onSelect = jest.fn();
 
@@ -58,12 +54,14 @@ const setup = () => {
     storeInitialState: state,
   });
 
+  await screen.findAllByRole("option");
+
   return { onSelect };
 };
 
 describe("DatabaseEngineList", () => {
-  it("should render initial list of elevated engines", () => {
-    setup();
+  it("should render initial list of elevated engines", async () => {
+    await setup();
 
     expect(screen.getAllByRole("option")).toHaveLength(
       MAX_INITIAL_ENGINES_SHOWN,
@@ -76,7 +74,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("should expand and collapse the list by clicking on the toggle button", async () => {
-    setup();
+    await setup();
 
     await userEvent.click(screen.getByText("Show more"));
     expect(screen.getAllByRole("option").length).toBeGreaterThan(
@@ -92,7 +90,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("should call `onSelect` when a database is selected", async () => {
-    const { onSelect } = setup();
+    const { onSelect } = await setup();
 
     await userEvent.click(screen.getByRole("option", { name: "PostgreSQL" }));
 
@@ -101,7 +99,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("should allow searching for databases", async () => {
-    setup();
+    await setup();
 
     const searchInput = screen.getByPlaceholderText("Search databases");
     await userEvent.type(searchInput, "mon");
@@ -112,7 +110,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("should allow keyboard navigation", async () => {
-    const { onSelect } = setup();
+    const { onSelect } = await setup();
 
     const searchInput = screen.getByPlaceholderText("Search databases");
     await userEvent.click(searchInput);
@@ -143,7 +141,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("should show no results message when search has no matches", async () => {
-    setup();
+    await setup();
 
     const searchInput = screen.getByPlaceholderText("Search databases");
     await userEvent.type(searchInput, "nonexistent");
@@ -155,7 +153,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("starting to search should automatically expand the list", async () => {
-    setup();
+    await setup();
 
     const searchInput = screen.getByPlaceholderText("Search databases");
     expect(screen.getByText("Show more")).toBeInTheDocument();
@@ -166,7 +164,7 @@ describe("DatabaseEngineList", () => {
   });
 
   it("collapsing the list while searching should clear the search value", async () => {
-    setup();
+    await setup();
 
     const searchInput = screen.getByPlaceholderText("Search databases");
 

@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { useListEnginesQuery } from "metabase/api";
 import { useParams } from "metabase/router";
-import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import {
   Title,
 } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
+import { isEngineKey } from "metabase-types/guards";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
 import {
@@ -28,21 +29,23 @@ import { trackHelpButtonClick } from "./analytics";
 
 export function DatabasePage() {
   const params = useParams<{ databaseId: string }>();
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId, engines });
   const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =
     useDisclosure(false);
-  // Unjustified type cast. FIXME
-  const [selectedEngineKey, setSelectedEngineKey] = useState<EngineKey>(
-    database?.engine as EngineKey,
-  );
+  // The database and its default engine both arrive asynchronously, so the engine
+  // the user picked is tracked separately and takes precedence once it is set.
+  const [pickedEngineKey, setPickedEngineKey] = useState<EngineKey>();
+  const databaseEngineKey = isEngineKey(database?.engine)
+    ? database.engine
+    : undefined;
+  const selectedEngineKey = pickedEngineKey ?? databaseEngineKey;
   const helpContentsExist =
     !!selectedEngineKey && !!ENGINE_DOC_MAP[selectedEngineKey];
 
   const onEngineChange = (engineKey?: string) => {
-    // Unjustified type cast. FIXME
-    setSelectedEngineKey(engineKey as EngineKey);
+    setPickedEngineKey(isEngineKey(engineKey) ? engineKey : undefined);
   };
 
   useEffect(() => {
@@ -102,7 +105,7 @@ export function DatabasePage() {
           </SettingsSection>
         </Box>
       </Box>
-      {showSidePanel && (
+      {showSidePanel && selectedEngineKey && (
         <>
           <Divider orientation="vertical" h="100%" />
           <DatabaseHelpSidePanel

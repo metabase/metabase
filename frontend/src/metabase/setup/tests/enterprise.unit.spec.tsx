@@ -179,7 +179,9 @@ describe("setup (EE build, but no token)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
       await startAiConfigStep();
       await userEvent.click(
         await screen.findByRole("button", { name: "Metabase AI service" }),

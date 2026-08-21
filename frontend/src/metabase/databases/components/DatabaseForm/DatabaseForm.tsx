@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { useListEnginesQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Form, FormProvider } from "metabase/forms";
-import { useSetting } from "metabase/settings";
 import type { DatabaseData } from "metabase-types/api";
 
 import type { FormLocation } from "../../types";
@@ -63,7 +64,7 @@ export const DatabaseForm = ({
 }: DatabaseFormProps): JSX.Element => {
   const isAdvanced = config.isAdvanced || false;
 
-  const engines = useSetting("engines");
+  const { data: engines = {}, isLoading, error } = useListEnginesQuery();
   const initialEngineKey = useMemo(() => {
     return getEngineKey(engines, initialData, isAdvanced);
   }, [engines, initialData, isAdvanced]);
@@ -95,6 +96,10 @@ export const DatabaseForm = ({
     },
     [engines, isAdvanced, onSubmit],
   );
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
     <FormProvider

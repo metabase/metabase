@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -50,9 +51,9 @@ const setup = (opts: SetupOptions) => {
         : undefined,
       "token-features": createMockTokenFeatures({ whitelabel: true }),
       "is-hosted?": true,
-      engines: createMockEngines(),
     }),
   });
+  setupEnginesEndpoint(createMockEngines());
   setupEnterprisePlugins();
 
   renderWithProviders(
@@ -75,7 +76,7 @@ describe("DatabaseHelpSidePanel", () => {
       setup({});
     });
     expect(
-      screen.getByRole("link", { name: /Read the full docs/ }),
+      await screen.findByRole("link", { name: /Read the full docs/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Invite a teammate to help you/ }),
@@ -126,7 +127,9 @@ describe("DatabaseHelpSidePanel", () => {
     });
 
     expect(onClose).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("img", { name: "close icon" }));
+    await userEvent.click(
+      await screen.findByRole("img", { name: "close icon" }),
+    );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -136,7 +139,9 @@ describe("DatabaseHelpSidePanel", () => {
       setup({ isAdmin: true });
     });
     await userEvent.click(
-      screen.getByRole("button", { name: /Invite a teammate to help you/ }),
+      await screen.findByRole("button", {
+        name: /Invite a teammate to help you/,
+      }),
     );
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();

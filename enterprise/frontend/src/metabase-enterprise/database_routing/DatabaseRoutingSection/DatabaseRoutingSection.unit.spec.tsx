@@ -1,5 +1,6 @@
 import {
   setupDatabasesEndpoints,
+  setupEnginesEndpoint,
   setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
@@ -24,24 +25,23 @@ const setup = ({ database = createMockDatabase() }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
   setupListTransformsEndpoint([]);
+  setupEnginesEndpoint(
+    createMockEngines({
+      "bigquery-cloud-sdk": createMockEngine({
+        "driver-name": "Big Query",
+        "extra-info": {
+          "db-routing-info": {
+            text: "custom db routing info.",
+          },
+        },
+      }),
+    }),
+  );
 
   renderWithProviders(<DatabaseRoutingSection database={database} />, {
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: true }),
-      settings: createMockSettingsState(
-        createMockSettings({
-          engines: createMockEngines({
-            "bigquery-cloud-sdk": createMockEngine({
-              "driver-name": "Big Query",
-              "extra-info": {
-                "db-routing-info": {
-                  text: "custom db routing info.",
-                },
-              },
-            }),
-          }),
-        }),
-      ),
+      settings: createMockSettingsState(createMockSettings()),
     },
   });
 };
@@ -65,7 +65,7 @@ describe("DatabaseRoutingSection", () => {
     expect(screen.getByLabelText("Enable database routing")).toBeEnabled();
   });
 
-  it("should render DatabaseRoutingSection with custom db_routing_info", () => {
+  it("should render DatabaseRoutingSection with custom db_routing_info", async () => {
     setup({
       database: createMockDatabase({
         engine: "bigquery-cloud-sdk",
@@ -74,7 +74,9 @@ describe("DatabaseRoutingSection", () => {
     });
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();
-    expect(screen.getByText("custom db routing info.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("custom db routing info."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Enable database routing")).toBeInTheDocument();
     expect(screen.getByLabelText("Enable database routing")).toBeEnabled();
   });

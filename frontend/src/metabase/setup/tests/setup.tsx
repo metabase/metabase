@@ -8,6 +8,7 @@ import {
 } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
+  setupEnginesEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -27,6 +28,7 @@ import type {
   UsageReason,
 } from "metabase-types/api";
 import {
+  createMockEngines,
   createMockLlmProviderField,
   createMockLlmProviderType,
   createMockSettings,
@@ -106,6 +108,8 @@ export async function setup({
   setupLlmProviderTypesEndpoint([ANTHROPIC_TYPE, METABASE_TYPE]);
   setupLlmProvidersEndpoint([]);
   setupLlmModelsEndpoint([]);
+
+  setupEnginesEndpoint(createMockEngines());
 
   renderWithProviders(<Setup />, { storeInitialState: state });
 
