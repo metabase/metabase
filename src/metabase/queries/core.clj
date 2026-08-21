@@ -62,6 +62,9 @@
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.queries.models.card/parameter-template-tag? parameter-template-tag?)
+
+#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/template-tag-parameters card-template-tag-parameters)
 
 #_{:clj-kondo/ignore [:missing-docstring]}

@@ -86,7 +86,12 @@ export const PublicOrEmbeddedQuestion = () => {
         );
       }
 
-      const parameters = getCardUiParameters(card, metadataRef.current);
+      const parameters = getCardUiParameters(
+        card,
+        metadataRef.current,
+        {},
+        card.parameters || undefined,
+      );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         parseSearchQuery(location.search),
@@ -192,7 +197,12 @@ export const PublicOrEmbeddedQuestion = () => {
       return [];
     }
 
-    return getCardUiParameters(card, metadataRef.current);
+    return getCardUiParameters(
+      card,
+      metadataRef.current,
+      {},
+      card.parameters || undefined,
+    );
   };
 
   return (

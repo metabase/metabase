@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
@@ -9,14 +7,13 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { resolveCards } from "metabase/query_builder/actions";
+import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api/card";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -77,18 +74,17 @@ export const loadQuestionSdk =
       question = question.setDashboardId(targetDashboardId);
     }
 
-    // A card with param_fields carries parameters already combined with
-    // template tags by the backend - re-applying from the (possibly stripped)
-    // query would wipe them.
-    if (_.isEmpty(card.param_fields)) {
+    // In Legacy Static Embedding we didn't have this logic,
+    // it breaks behavior when a parameter is disabled.
+    if (!isGuestEmbed) {
       question = question.applyTemplateTagParameters();
     }
 
-    const parameters = getCardUiParameters(card, metadata);
-    const parameterValues = getParameterValuesByIdFromQueryParams(
-      parameters,
-      initialSqlParameters ?? {},
-    );
+    const parameterValues = getParameterValuesForQuestion({
+      card,
+      metadata,
+      queryParams: initialSqlParameters,
+    });
 
     if (parameterValues) {
       question = question.setParameterValues(parameterValues);

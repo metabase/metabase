@@ -1,6 +1,7 @@
 (ns metabase.public-sharing-rest.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [clojure.string :as str]
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -65,12 +66,17 @@
 
 (defn- blank-dataset-query
   "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
-  filters, aggregations, etc.) are never exposed to the general public. MBQL queries keep only their source table or
-  source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can still tell MBQL
-  and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
+  filters, aggregations, etc.) are never exposed to the general public. Native queries keep their parameter template
+  tags so the frontend can still derive parameters from them. MBQL queries keep only their source table or source
+  card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can still tell MBQL and
+  native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
   [query]
   (if (lib/native? query)
-    (lib/native-query query "-")
+    (let [text (->> (lib/template-tags query)
+                    (filter queries/parameter-template-tag?)
+                    (map #(str "{{" (:name %) "}}"))
+                    (str/join " "))]
+      (lib/with-native-query query (if (str/blank? text) "-" text)))
     (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
                         (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
       (reduce lib/aggregate
