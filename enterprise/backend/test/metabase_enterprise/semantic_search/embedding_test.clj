@@ -434,7 +434,7 @@
                             (filter #(= "embedding_generation" (get-in % [:data "tag"]))))]
             (is (empty? events))))))))
 
-(deftest ^:sequential token-tracking-write-test
+(deftest ^:synchronized token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
       (doseq [provider ["openai" "ai-service"]]

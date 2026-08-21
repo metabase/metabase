@@ -330,6 +330,12 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               onRetryMessage={(id) =>
                 retryMessage(id, { profile: "explorations" })
               }
+              onContinueMessage={(prompt) =>
+                submitInput(prompt, {
+                  preventOpenSidebar: true,
+                  profile: "explorations",
+                })
+              }
               isDoingScience={isDoingScience}
               debug={false}
               conversationId={conversationId}

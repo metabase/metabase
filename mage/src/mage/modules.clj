@@ -388,6 +388,19 @@
   [s]
   (= (str/lower-case (str s)) "true"))
 
+(defn- parse-only-driver
+  "Parse the `--only-driver` CLI arg into a driver keyword, or nil when unset.
+
+  Throws on an unknown driver: a typo would otherwise read as `nil` and quietly run the normal decisions
+  instead of the one job that was asked for."
+  [s]
+  (when-not (str/blank? s)
+    (let [driver (keyword (str/trim s))]
+      (when-not (contains? (set all-drivers) driver)
+        (throw (ex-info (str "Unknown driver: " (str/trim s))
+                        {:driver driver, :known-drivers (mapv name all-drivers)})))
+      driver)))
+
 (defn- parse-labels
   "Parse comma-separated labels string into a set of label strings."
   [labels-str]
@@ -414,11 +427,21 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [force-run pr-labels skip particular-driver-changed?]}
+   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
    skipped-drivers
    updated]
   (cond
+    ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
+    ;; that driver and nothing else -- not H2/Postgres, and not the skip list, since asking for a job by
+    ;; name is a stronger signal than any rule below.
+    only-driver
+    (if (= driver only-driver)
+      {:should-run true
+       :reason     (str "requested via --only-driver=" (name only-driver))}
+      {:should-run false
+       :reason     (str "--only-driver=" (name only-driver) " requested instead")})
+
     ;; Priority 1: Global force-run. Every driver runs; the remote skip list is not consulted at
     ;; all, so a stray entry there can't silently disable a driver's tests.
     force-run
@@ -499,18 +522,21 @@
        --git-ref=master \\
        --force-run=false \\
        --pr-labels=ci:run-all-cloud-drivers,other-label \\
-       --skip=false"
+       --skip=false \\
+       --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
         force-run (parse-bool (:force-run options))
+        only-driver (parse-only-driver (:only-driver options))
         ;; Detect file changes for ALL drivers via git diff
         particular-driver-changed? (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
              :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? particular-driver-changed?}
+             :particular-driver-changed? particular-driver-changed?
+             :only-driver only-driver}
         ;; force-run decides every driver on its own, so the remote skip list is neither fetched
         ;; nor honored there.
         skipped (if force-run #{} (skip-drivers))
