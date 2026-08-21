@@ -461,7 +461,7 @@ export function DashCardVisualization({
     const result = cardResult ?? (series[0] as unknown as Dataset);
     const isVisualizerCard = isVisualizerDashboardCard(dashcard);
     const openUnderlyingQuestionItems =
-      onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems);
+      onChangeCardAndRun && !cardTitle ? titleMenuItems : undefined;
 
     const showMenu =
       question &&

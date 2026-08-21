@@ -352,7 +352,7 @@ describe("DashCardMenu.shouldRender", () => {
         dashboard,
         result: TEST_RESULT_ERROR,
         canEdit: false,
-        openUnderlyingQuestionItems: <div />,
+        openUnderlyingQuestionItems: [<div key="question" />],
       }),
     ).toBe(true);
   });

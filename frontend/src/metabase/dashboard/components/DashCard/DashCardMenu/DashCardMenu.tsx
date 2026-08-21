@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { Children, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
@@ -31,12 +31,8 @@ interface DashCardMenuProps {
   dashcard: DashboardCard;
   position?: MenuProps["position"];
   onEditVisualization?: () => void;
-  openUnderlyingQuestionItems?: React.ReactNode;
+  openUnderlyingQuestionItems?: React.ReactNode[];
   canEdit?: boolean;
-}
-
-function hasOpenUnderlyingQuestionItems(items: React.ReactNode) {
-  return Children.count(items) > 0;
 }
 
 function isDashCardMenuEmpty(
@@ -128,7 +124,7 @@ export const DashCardMenu = ({
           onEditVisualization={onEditVisualization}
           canEdit={canEdit}
         />
-        {hasOpenUnderlyingQuestionItems(openUnderlyingQuestionItems) && (
+        {!!openUnderlyingQuestionItems?.length && (
           <Menu.Sub position="right" shadow="md">
             <Menu.Sub.Target>
               <Menu.Sub.Item
@@ -198,6 +194,6 @@ DashCardMenu.shouldRender = ({
     !isInternalQuery &&
     ((canEdit && canEditQuestion(question)) ||
       canDownloadResults(result) ||
-      hasOpenUnderlyingQuestionItems(openUnderlyingQuestionItems))
+      !!openUnderlyingQuestionItems?.length)
   );
 };
