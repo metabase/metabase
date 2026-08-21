@@ -457,11 +457,11 @@
     {:should-run true
      :reason "master/release branch"}
 
-    ;; Priority 6: Cloud driver + ci:all-cloud-drivers label
+    ;; Priority 6: Cloud driver + ci:run-all-cloud-drivers label
     (and (contains? cloud-drivers driver)
-         (contains? pr-labels "ci:all-cloud-drivers"))
+         (contains? pr-labels "ci:run-all-cloud-drivers"))
     {:should-run true
-     :reason "ci:all-cloud-drivers label"}
+     :reason "ci:run-all-cloud-drivers label"}
 
     ;; Priority 7: Cloud driver + its files changed
     (and (contains? cloud-drivers driver)
@@ -506,7 +506,7 @@
      ./bin/mage -driver-decisions \\
        --git-ref=master \\
        --is-master-or-release=false \\
-       --pr-labels=ci:all-cloud-drivers,other-label \\
+       --pr-labels=ci:run-all-cloud-drivers,other-label \\
        --skip=false \\
        --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
