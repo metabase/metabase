@@ -6,10 +6,10 @@ import type {
   SendTestNotificationRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
-import { listTag } from "./tags";
+import { EnterpriseApi } from "../api/api";
+import { listTag } from "../api/tags";
 
-export const securityCenterApi = Api.injectEndpoints({
+export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listSecurityAdvisories: builder.query<ListAdvisoriesResponse, void>({
       query: () => ({
