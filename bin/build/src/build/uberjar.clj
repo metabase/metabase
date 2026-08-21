@@ -263,13 +263,20 @@
   "Build just the uberjar (no i18n, FE, or anything else). You can run this from the CLI like:
 
     clojure -X:build:build/uberjar
-    clojure -X:build:build/uberjar :edition :ee"
-  [{:keys [edition], :or {edition :oss}}]
+    clojure -X:build:build/uberjar :edition :ee
+
+  `:await-frontend!`, when provided, is called after Clojure compilation and before resources are copied into the
+  jar — the frontend build writes its output under resources/frontend_client, so a concurrently-running frontend
+  build must be joined here for its output to make it into the jar."
+  [{:keys [edition await-frontend!], :or {edition :oss}}]
   (u/step (format "Build %s uberjar" edition)
     (with-duration-ms [duration-ms]
       (clean!)
       (let [basis (create-basis edition)]
         (compile-sources! basis)
+        (when await-frontend!
+          (u/step "Wait for concurrent frontend build to finish"
+            (await-frontend!)))
         (copy-resources! basis)
         (create-uberjar! basis)
         (add-non-aot-driver-sources!)
