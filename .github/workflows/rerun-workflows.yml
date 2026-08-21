@@ -65,14 +65,14 @@ jobs:
               // find out which jobs failed
               const { owner, repo } = context.repo;
 
-              const jobInfo = await github.rest.actions.listJobsForWorkflowRun({
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
                 owner,
                 repo,
                 run_id: ${{ github.event.workflow_run.id }},
                 per_page: 100,
               });
 
-              const failedJobs = jobInfo.data.jobs
+              const failedJobs = jobs
                 .filter(job => job.status === "completed" && job.conclusion === "failure" && !job.name.includes("-tests-result"));
 
               // don't file an issue if only the flaky job failed

@@ -75,13 +75,13 @@ async function createLinearIssue({
         },
       },
     }),
-  });
-
-  const data = await response.json();
+  });  
 
   if (!response.ok) {
     return { success: false, message: `Linear API error: ${response.status}` };
   }
+
+  const data = await response.json();
 
   if (data.errors?.length) {
     return {
