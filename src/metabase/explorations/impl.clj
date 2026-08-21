@@ -425,7 +425,7 @@
    Rows are always ordered by [[rank-metrics]], so a metric doesn't move just because the
    instance grew past the cap. More than [[research-metric-index-max-metrics]] matches are
    truncated and stamped `{:truncated true :shown <n> :matched <m>}` so the model knows to narrow
-   with `:q`. A metric with no candidate dimensions still gets a row — it can anchor a group on
+   with `:q`. A metric with no candidate dimensions still gets a row — it can form a group on
    its own — but ranks below every metric that has one."
   [opts]
   (let [ranked (rank-metrics (mapv with-candidate-dimensions (index-metrics opts)))
@@ -512,69 +512,34 @@
 (defn research-groups
   "Validate Metabot's chosen research groups and return the FE picker payload for them.
 
-   `:groups` is a sequence of maps, each either
-     `{:anchor \"metric\"    :metric_id <int> :dimension_ids [<str> ...]}` (`:dimension_ids` optional)
-   or `{:anchor \"dimension\" :dimension_id <str>}`.
+   `:groups` is a sequence of `{:metric_id <int> :dimension_ids [<str> ...]}` maps
+   (`:dimension_ids` optional).
 
-   Hard-errors (throws) on any unknown/inaccessible metric id, unknown dimension id, or a
-   dimension id that isn't a candidate of its metric — one bad id fails the whole batch.
+   Hard-errors (throws) on any unknown/inaccessible metric id or a dimension id that isn't a
+   candidate of its metric — one bad id fails the whole batch.
 
    On success returns `{:metrics [...] :dimension_groups [...] :groups [...]}`, where
    `:metrics`/`:dimension_groups` are the [[exploration-data]] hydration restricted to the
-   referenced metrics (a metric anchor pulls its metric; a dimension anchor pulls every metric
-   exposing any dimension in that dimension's group), and `:groups` echoes the validated specs
-   for the FE to turn into picker blocks."
+   referenced metrics, and `:groups` echoes the validated specs for the FE to turn into picker
+   blocks."
   [{:keys [groups]}]
   (let [all          (mapv with-candidate-dimensions (hydrated-metrics {}))
-        metric-by-id (u/index-by :id all)
-        dim->metrics (dimension-id->metric-ids all)
-        all-dim-ids  (set (keys dim->metrics))
-        ;; dimension id -> the set of dimension ids in its group (same-source bundle)
-        dim->group   (into {} (mapcat (fn [g]
-                                        (let [ids (set (map :id (:dimensions g)))]
-                                          (map (fn [id] [id ids]) ids)))
-                                      (group-dimensions all)))]
+        metric-by-id (u/index-by :id all)]
     (doseq [g groups]
-      (case (:anchor g)
-        "metric"
-        (let [metric-id (:metric_id g)
-              metric    (get metric-by-id metric-id)]
-          (when (nil? metric-id)
-            (throw (ex-info "A metric-anchored group requires a metric_id" {:group g})))
-          (when-not metric
-            (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
-                            {:anchor "metric" :metric_id metric-id})))
-          (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
-            (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
-                            {:anchor "metric" :metric_id metric-id})))
-          (let [valid (set (map :id (:dimensions metric)))]
-            (doseq [d (:dimension_ids g)]
-              (when-not (contains? valid d)
-                (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
-                                {:anchor "metric" :metric_id metric-id :dimension_id d}))))))
-        "dimension"
-        (let [dimension-id (:dimension_id g)]
-          (when (nil? dimension-id)
-            (throw (ex-info "A dimension-anchored group requires a dimension_id" {:group g})))
-          (when-not (contains? all-dim-ids dimension-id)
-            (throw (ex-info (format "Unknown dimension id %s" dimension-id)
-                            {:anchor "dimension" :dimension_id dimension-id})))
-          (when-let [mids (seq (:metric_ids g))]
-            (let [related (into #{} (mapcat dim->metrics) (dim->group dimension-id))]
-              (doseq [mid mids]
-                (when-not (contains? related mid)
-                  (throw (ex-info (format "Metric %s is not related to dimension %s" mid dimension-id)
-                                  {:anchor "dimension" :dimension_id dimension-id :metric_id mid})))))))
-        (throw (ex-info (format "Unknown anchor %s" (:anchor g)) {:group g}))))
-    (let [relevant         (reduce (fn [acc g]
-                                     (case (:anchor g)
-                                       "metric"    (conj acc (:metric_id g))
-                                       "dimension" (let [related (into #{} (mapcat dim->metrics)
-                                                                       (dim->group (:dimension_id g)))]
-                                                     (into acc (if-let [mids (seq (:metric_ids g))]
-                                                                 (filter related mids)
-                                                                 related)))))
-                                   #{} groups)
+      (let [metric-id (:metric_id g)
+            metric    (get metric-by-id metric-id)]
+        (when-not metric
+          (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
+                          {:metric_id metric-id})))
+        (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
+          (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
+                          {:metric_id metric-id})))
+        (let [valid (set (map :id (:dimensions metric)))]
+          (doseq [d (:dimension_ids g)]
+            (when-not (contains? valid d)
+              (throw (ex-info (format "Dimension %s is not a candidate of metric %s" d metric-id)
+                              {:metric_id metric-id :dimension_id d})))))))
+    (let [relevant         (into #{} (map :metric_id) groups)
           relevant-metrics (filterv #(contains? relevant (:id %)) all)]
       {:metrics          (mapv slim-metric relevant-metrics)
        :dimension_groups (group-dimensions relevant-metrics)
