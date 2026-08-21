@@ -3,6 +3,20 @@
 ;; (github.com/escherize/gleam-clj). Regenerate:
 ;;   GLEAM_CLJ_NO_MAIN=1 gleam-to-clj build <project> <out>
 (ns metabase.lib.parse-impl
+  "A typed reimplementation of metabase.lib.parse: parsing `{{param}}` and
+  `[[optional]]` clauses in native query strings, with best-effort skipping
+  of params inside SQL comments and string literals.
+  
+  Faithful port of the Clojure original:
+  - tokenization is sequential pass-by-pass splitting (pattern order
+  matters for overlaps, so a single left-to-right scan would differ)
+  - `{{` only matches when not followed by another `{` (so `{{{x}}` parses
+  as a literal `{` plus a param)
+  - inside string literals, a clause that fails to parse is backtracked to
+  literal text (the original does this with catch/rethrow; here it is a
+  Result)
+  - `strict` mirrors the original's :parse-error-type option: when false,
+  invalid (but terminated) clauses dissolve to nothing instead of erroring"
   (:require
    [gleam.list :as list]
    [gleam.prelude :as p]
