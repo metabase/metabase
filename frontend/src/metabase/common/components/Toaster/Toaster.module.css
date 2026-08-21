@@ -1,29 +1,27 @@
 .toast {
   position: relative;
-  bottom: -10px;
+  bottom: -0.625rem;
   overflow-x: hidden;
-  min-width: 300px;
-  max-width: 500px;
+  min-width: 18.75rem;
+  max-width: 31.25rem;
   width: fit-content;
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mb-color-tooltip-background);
 
-  /* The 12px radius from Figma has no matching step in the Mantine radius scale (md = 8px). */
-  border-radius: 12px;
-
-  /* Figma Elevation/Light/sm — no matching --mantine-shadow-* step. */
-  box-shadow:
-    0 5px 15px 0 rgb(0 0 0 / 10%),
-    0 1px 4px 0 rgb(0 0 0 / 5%);
+  /* Radius from Figma, no matching step in Mantine. */
+  border-radius: 0.75rem;
+  box-shadow: var(--mantine-shadow-sm);
   opacity: 0;
   transition: all 200ms ease-out;
 }
 
+/* Hide the Notification's colored side line. */
+.toast::before {
+  display: none;
+}
+
 [data-mantine-color-scheme="dark"] .toast {
   border: 0.5px solid var(--mb-color-border-neutral-strong);
-
-  /* Figma Elevation/Dark/sm — no matching --mantine-shadow-* step. */
-  box-shadow:
-    0 5px 15px 0 rgb(0 0 0 / 20%),
-    0 1px 4px 0 rgb(0 0 0 / 7%);
 }
 
 .toast[data-show] {
@@ -33,17 +31,29 @@
 
 .toast[data-fixed] {
   position: fixed;
-  bottom: 10px;
-  left: 20px;
+  bottom: 0.625rem;
+  left: 1.25rem;
 }
 
 .toast[data-fixed][data-show] {
-  bottom: 20px;
+  bottom: 1.25rem;
+}
+
+.icon {
+  width: auto;
+  height: auto;
+  margin-right: var(--mantine-spacing-sm);
+  background-color: transparent;
+  color: var(--mb-color-tooltip-text);
+}
+
+.body {
+  min-width: 0;
+  margin-right: 0;
 }
 
 .message {
-  /* The 20px line height from Figma (md text style) has no matching Mantine step. */
-  line-height: 20px;
+  line-height: var(--mantine-line-height-lg);
   overflow-wrap: anywhere;
 }
 
@@ -52,16 +62,12 @@
   border-radius: var(--mantine-radius-sm);
   font-size: var(--mantine-font-size-sm);
   font-weight: bold;
-
-  /* The 16px line height from Figma (button label style) has no matching Mantine step. */
-  line-height: 16px;
+  line-height: var(--mantine-line-height-lg);
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
   transition: background-color 200ms ease;
-
-  /* Figma Elevation/Dark/xs — no matching --mantine-shadow-* step. */
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 20%);
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .button:disabled {
@@ -100,20 +106,25 @@
 }
 
 .dismiss {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 0;
+  min-height: 0;
   flex-shrink: 0;
+  margin-left: var(--mantine-spacing-lg);
   border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-tooltip-text);
   cursor: pointer;
   transition: background-color 200ms ease;
 }
 
+.toast[data-has-actions] .dismiss {
+  margin-left: var(--mantine-spacing-md);
+}
+
 .dismiss:hover {
   background-color: var(--mb-color-button-on_dark-secondary-hover);
+  color: var(--mb-color-tooltip-text);
 }
 
 .dismiss:active {

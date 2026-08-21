@@ -12,6 +12,31 @@ import { Toast, Toaster, type ToasterProps } from "./Toaster";
 export default {
   title: "App/Dashboard/Toaster",
   component: Toaster,
+  argTypes: {
+    message: { control: { type: "text" } },
+    confirmText: { control: { type: "text" } },
+    secondaryText: { control: { type: "text" } },
+    isShown: { control: { type: "boolean" } },
+    fixed: { control: { type: "boolean" } },
+    leftSection: {
+      options: ["none", "icon"],
+      mapping: {
+        none: undefined,
+        icon: <Icon name="model" size={16} c="tooltip-text" />,
+      },
+      control: { type: "radio" },
+    },
+    rightSection: {
+      options: ["none", "icon"],
+      mapping: {
+        none: undefined,
+        icon: <Icon name="gear" size={16} c="tooltip-text" />,
+      },
+      control: { type: "radio" },
+    },
+    onConfirm: { action: "confirmed" },
+    onDismiss: { action: "dismissed" },
+  },
 };
 
 const Template: StoryFn<ToasterProps> = (args) => {
@@ -24,9 +49,17 @@ export const Default = {
   args: {
     message:
       "Would you like to be notified when this dashboard is done loading?",
+    confirmText: "Turn on",
+    secondaryText: "Later",
     isShown: true,
+    fixed: false,
+    leftSection: "none",
+    rightSection: "none",
     onConfirm: () => {
       alert("Confirmed");
+    },
+    onSecondary: () => {
+      alert("Secondary");
     },
     onDismiss: () => {
       alert("Dismissed");
