@@ -12,10 +12,10 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import type { VisualizationDefinition } from "../types/definition";
 import type {
   Visualization,
   VisualizationComponent,
-  VisualizationDefinition,
 } from "../types/visualization";
 
 // The static-viz bundle registers bare definitions with no component; the app
