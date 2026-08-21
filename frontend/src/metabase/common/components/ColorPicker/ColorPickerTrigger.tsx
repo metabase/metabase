@@ -5,6 +5,8 @@ import { ColorInput } from "metabase/common/components/ColorInput";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Group } from "metabase/ui";
 
+import { usePrefetchColorPickerControls } from "./ColorPickerContent";
+
 export interface ColorPickerTriggerProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
   "onChange"
@@ -26,6 +28,8 @@ export const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   }: ColorPickerTriggerProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  usePrefetchColorPickerControls();
+
   return (
     <Group {...props} ref={ref} wrap="nowrap">
       <ColorPill color={value} isAuto={isAuto} onClick={onClick} />

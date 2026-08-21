@@ -1,4 +1,7 @@
-import { ColorPickerContent } from "metabase/common/components/ColorPicker/ColorPickerContent";
+import {
+  ColorPickerContent,
+  usePrefetchColorPickerControls,
+} from "metabase/common/components/ColorPicker/ColorPickerContent";
 import { Box, Card, Flex, Popover, Text } from "metabase/ui";
 
 interface ColorSwatchCardProps {
@@ -14,6 +17,8 @@ export function ColorSwatchCard({
   showAlpha,
   onChange,
 }: ColorSwatchCardProps) {
+  usePrefetchColorPickerControls();
+
   return (
     <Popover position="bottom" shadow="md">
       <Popover.Target>
