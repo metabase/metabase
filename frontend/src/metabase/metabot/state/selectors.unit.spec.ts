@@ -10,16 +10,16 @@ import { getMetabotInitialState } from "./reducer-utils";
 
 import {
   type MetabotChatMessage,
-  type MetabotConverstationState,
+  type MetabotConversationState,
+  getContextUsagePercent,
   getLastAgentMessageExternalId,
-  getMetabotContextWindowPercentUsage,
-  getMetabotLongChatNotice,
+  getLongChatNotice,
   getUserPromptForMessageId,
 } from "./index";
 
 function setup(
   messages: MetabotChatMessage[],
-  convoState?: Partial<Pick<MetabotConverstationState, "lastTokenUsage">>,
+  convoState?: Partial<Pick<MetabotConversationState, "lastTokenUsage">>,
 ): State {
   setupEnterprisePlugins();
 
@@ -102,7 +102,7 @@ describe("metabot selectors", () => {
     });
   });
 
-  describe("getMetabotLongChatNotice", () => {
+  describe("getLongChatNotice", () => {
     const shortMessage: MetabotChatMessage = {
       id: "1",
       role: "user",
@@ -119,46 +119,43 @@ describe("metabot selectors", () => {
         [shortMessage],
         usage((CONTEXT_WINDOW * CONTEXT_WINDOW_WARNING_PERCENT) / 100),
       );
-      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
+      expect(getLongChatNotice(state, "omnibot")).toBe("warning");
     });
 
     it("still only warns just short of the window — the whole window is usable", () => {
       const state = setup([shortMessage], usage(CONTEXT_WINDOW - 1));
-      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
+      expect(getLongChatNotice(state, "omnibot")).toBe("warning");
     });
 
     it("reports full once context tokens consume the whole window", () => {
       const state = setup([shortMessage], usage(CONTEXT_WINDOW));
-      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("full");
+      expect(getLongChatNotice(state, "omnibot")).toBe("full");
     });
 
     it("shows nothing below the warning percent or when no usage has been observed", () => {
       expect(
-        getMetabotLongChatNotice(
-          setup([shortMessage], usage(10000)),
-          "omnibot",
-        ),
+        getLongChatNotice(setup([shortMessage], usage(10000)), "omnibot"),
       ).toBeUndefined();
       expect(
-        getMetabotLongChatNotice(setup([shortMessage]), "omnibot"),
+        getLongChatNotice(setup([shortMessage]), "omnibot"),
       ).toBeUndefined();
     });
 
-    describe("getMetabotContextWindowPercentUsage", () => {
+    describe("getContextUsagePercent", () => {
       it("reports the last observed usage as a share of the window, 0-100", () => {
         const state = setup([shortMessage], usage(CONTEXT_WINDOW / 4));
-        expect(getMetabotContextWindowPercentUsage(state, "omnibot")).toBe(25);
+        expect(getContextUsagePercent(state, "omnibot")).toBe(25);
       });
 
       it("reports 0 when no usage has been observed", () => {
-        expect(
-          getMetabotContextWindowPercentUsage(setup([shortMessage]), "omnibot"),
-        ).toBe(0);
+        expect(getContextUsagePercent(setup([shortMessage]), "omnibot")).toBe(
+          0,
+        );
       });
 
       it("caps at 100 when the window is overrun", () => {
         const state = setup([shortMessage], usage(CONTEXT_WINDOW * 2));
-        expect(getMetabotContextWindowPercentUsage(state, "omnibot")).toBe(100);
+        expect(getContextUsagePercent(state, "omnibot")).toBe(100);
       });
     });
   });
