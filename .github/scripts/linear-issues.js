@@ -103,4 +103,7 @@ async function createLinearIssue({
   };
 }
 
-module.exports = { findLinearIssue, createLinearIssue, findLinearTeamId };
+module.exports = {
+  findLinearIssue,
+  createLinearIssue,
+};

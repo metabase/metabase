@@ -15,7 +15,6 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
-      AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
     steps:
       - name: Generate job summary
         run: |
@@ -98,6 +97,7 @@ jobs:
 
               const result = await createLinearIssue({
                 teamId: LINEAR_TEAM_ID,
+                labelIds: ['1af2175c-8ffa-4765-9bbd-5b6166def8a0'], // adds 'CI Triage' label
                 title: `CI is failing on ${BRANCH}: ${failedJobs.length} failing job(s) from ${shortSha}`,
                 description,
                 linearApiKey: process.env.LINEAR_API_KEY,
