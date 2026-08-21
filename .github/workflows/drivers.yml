@@ -696,6 +696,8 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
