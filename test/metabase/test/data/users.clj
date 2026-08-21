@@ -228,13 +228,20 @@
       (fetch-user user)
       (apply client-fn the-client user args))
     (let [user-id (u/the-id user)
-          session-key (session/generate-session-key)]
+          session-key (session/generate-session-key)
+          session-id (session/generate-session-id)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
-                                                 :key_hashed (session/hash-session-key session-key)
-                                                 :user_id user-id}]
-        (apply the-client session-key args)))))
+      ;; Not a `with-temp`: that would run the whole request inside a rollback-only transaction, and the
+      ;; request handler runs in-process on this thread, so every app db write it made would be discarded
+      ;; when it returned. Delete the session by hand instead.
+      (t2/insert! :model/Session {:id         session-id
+                                  :key_hashed (session/hash-session-key session-key)
+                                  :user_id    user-id})
+      (try
+        (apply the-client session-key args)
+        (finally
+          (t2/delete! :model/Session :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request
