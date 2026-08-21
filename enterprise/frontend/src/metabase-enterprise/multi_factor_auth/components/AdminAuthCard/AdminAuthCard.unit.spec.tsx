@@ -100,7 +100,16 @@ const ALLOW_LABEL = "Allow two-factor authentication";
 const ENFORCEMENT_LABEL = "Require two-factor authentication";
 
 async function selectEnforcement(label: string) {
-  await userEvent.click(await screen.findByLabelText(label));
+  const option = await screen.findByLabelText(label);
+
+  await waitFor(() => expect(option).toBeEnabled());
+  await userEvent.click(option);
+}
+
+async function confirmRequireNow() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Require now" }),
+  );
 }
 
 describe("AdminAuthCard", () => {
@@ -236,6 +245,7 @@ describe("AdminAuthCard", () => {
       setup({ enforcement: "required", deadline: chosen });
 
       await selectEnforcement("Require now");
+      await confirmRequireNow();
 
       await waitFor(async () => {
         const put = await findBulkSettingUpdate();
@@ -258,6 +268,59 @@ describe("AdminAuthCard", () => {
         expect(put?.body["mfa-enforcement"]).toBe("optional");
         expect(put?.body["mfa-requirement-deadline"]).toBeNull();
       });
+    });
+  });
+
+  describe("requiring immediately", () => {
+    it("should warn that signed-in users will be signed out", async () => {
+      setup({ enforcement: "optional" });
+
+      await selectEnforcement("Require now");
+
+      expect(
+        await screen.findByText("Require 2FA right now?"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /log back in now if they haven't logged in with 2FA before/,
+        ),
+      ).toBeInTheDocument();
+
+      expect(await findRequests("PUT")).toHaveLength(0);
+
+      await confirmRequireNow();
+
+      expect(await findRequests("PUT")).toHaveLength(1);
+    });
+
+    it("should leave enforcement alone when the warning is dismissed", async () => {
+      setup({ enforcement: "optional" });
+
+      await selectEnforcement("Require now");
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Cancel" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Require two-factor authentication now?"),
+        ).not.toBeInTheDocument();
+      });
+      expect(await findRequests("PUT")).toHaveLength(0);
+      expect(screen.getByLabelText("Don't require")).toBeChecked();
+    });
+
+    it("should not warn when a deadline is set instead", async () => {
+      setup({ enforcement: "optional" });
+
+      await selectEnforcement("Require by a certain date");
+
+      await waitFor(async () => {
+        await findBulkSettingUpdate();
+      });
+      expect(
+        screen.queryByText("Require two-factor authentication now?"),
+      ).not.toBeInTheDocument();
     });
   });
 

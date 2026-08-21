@@ -1,7 +1,9 @@
 import dayjs from "dayjs";
+import { useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
@@ -73,6 +75,7 @@ export function AdminAuthCard() {
     "enable-password-login",
   );
   const { value: isLdapEnabled } = useAdminSetting("ldap-enabled");
+  const [isConfirmingRequireNow, setIsConfirmingRequireNow] = useState(false);
 
   const enabled = enforcement != null && enforcement !== "off";
 
@@ -105,7 +108,7 @@ export function AdminAuthCard() {
     });
   };
 
-  const handleRequire = (value: EnforcementOption) => {
+  const applyEnforcement = (value: EnforcementOption) => {
     if (value === "optional") {
       updateSettings({
         "mfa-enforcement": "optional",
@@ -122,6 +125,19 @@ export function AdminAuthCard() {
         "mfa-requirement-deadline": null,
       });
     }
+  };
+
+  const handleRequire = (value: EnforcementOption) => {
+    if (value === "required") {
+      setIsConfirmingRequireNow(true);
+    } else {
+      applyEnforcement(value);
+    }
+  };
+
+  const handleConfirmRequireNow = () => {
+    applyEnforcement("required");
+    setIsConfirmingRequireNow(false);
   };
 
   const getEnforcementValue = (): EnforcementOption => {
@@ -210,6 +226,15 @@ export function AdminAuthCard() {
         </Alert>
       )}
       {enabled && overview && <EnrollmentCounts overview={overview} />}
+      <ConfirmModal
+        opened={isConfirmingRequireNow}
+        title={t`Require 2FA right now?`}
+        message={t`This will require everyone — including you — to log back in now if they haven't logged in with 2FA before. Users who haven't set up 2FA yet can do that from the log in screen.`}
+        confirmButtonText={t`Require now`}
+        confirmButtonProps={{ color: "brand" }}
+        onConfirm={handleConfirmRequireNow}
+        onClose={() => setIsConfirmingRequireNow(false)}
+      />
     </SettingsSection>
   );
 }
