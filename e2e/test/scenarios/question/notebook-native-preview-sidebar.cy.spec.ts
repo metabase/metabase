@@ -262,6 +262,7 @@ describe(
 
       cy.log("Simple question");
       openSidebar("native");
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -271,6 +272,7 @@ describe(
 
         cy.button("Convert this question to a native query").click();
       });
+      cy.wait("@dataset");
 
       cy.log("Database and table should be pre-selected (metabase#15946)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
@@ -284,12 +286,15 @@ describe(
       H.saveQuestion("foo", undefined, {
         path: ["Our analytics"],
       });
+      cy.intercept("POST", "/api/dataset").as("exploreDataset");
       cy.findByTestId("qb-header").findByText("Explore results").click();
+      cy.wait("@exploreDataset");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("The generated query should be valid (metabase#38181)");
       H.openNotebook();
       openSidebar("native");
+      cy.intercept("POST", "/api/dataset").as("dataset2");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -301,6 +306,7 @@ describe(
 
         cy.button("Convert this question to a native query").click();
       });
+      cy.wait("@dataset2");
 
       cy.log(
         "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
