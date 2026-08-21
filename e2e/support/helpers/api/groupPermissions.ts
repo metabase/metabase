@@ -1,7 +1,4 @@
-type DatabasePermissions = {
-  "view-data"?: string;
-  "create-queries"?: string;
-};
+import type { PermissionsGraph } from "metabase-types/api";
 
 export function addUserToGroup(groupId: number, email: string) {
   return cy
@@ -23,10 +20,7 @@ export function addUserToGroup(groupId: number, email: string) {
 /** The group's whole per-database entry, `create-queries` included. */
 export function getPermissionByGroup(groupId: number) {
   return cy
-    .request<{ groups: Record<string, Record<string, DatabasePermissions>> }>(
-      "GET",
-      "/api/permissions/graph",
-    )
+    .request<PermissionsGraph>("GET", "/api/permissions/graph")
     .then(({ body }) => body.groups[String(groupId)] ?? {});
 }
 

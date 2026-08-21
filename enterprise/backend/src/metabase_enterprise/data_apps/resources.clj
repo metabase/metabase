@@ -142,9 +142,9 @@
            (t2/exists? :model/Permissions :group_id id))))
 
 (defn- validate-empty-rebind!
-  [app foreign-key field resource empty?]
+  [app foreign-key field resource empty-resource?]
   (when (and (not= (foreign-key app) (:id resource))
-             (not (empty? resource)))
+             (not (empty-resource? resource)))
     (throw (ex-info (format "%s '%s' must be empty before a data app can use it."
                             (name field) (:entity_id resource))
                     {:data-app (:name app)
@@ -180,21 +180,51 @@
          (apply-resource-permissions! group collection)
          (assoc links :changed? changed?))))))
 
+(defn- view-data-permissions-match?
+  [permissions group-id database-id tables table-ids]
+  (let [current-permissions (get permissions [group-id database-id :perms/view-data])
+        selected-table-ids  (into #{} (comp (map :id) (filter table-ids)) tables)]
+    (if (empty? selected-table-ids)
+      (and (= 1 (count current-permissions))
+           (let [{:keys [table_id perm_value]} (first current-permissions)]
+             (and (nil? table_id)
+                  (= perm_value :blocked))))
+      (= (into {}
+               (map (fn [{:keys [id]}]
+                      [id (if (contains? selected-table-ids id)
+                            :unrestricted
+                            :blocked)]))
+               tables)
+         (into {}
+               (map (juxt :table_id :perm_value))
+               current-permissions)))))
+
 (defn reconcile-view-data!
-  "Make `database-ids` the authoritative view-data permission set for `app`."
-  [app database-ids]
+  "Make `table-ids` the authoritative view-data permission set for `app`."
+  [app table-ids]
   (ensure-resources! app)
   (let [app (t2/select-one :model/DataApp :id (:id app))]
     (perms/with-global-permissions-lock
       (t2/with-transaction [_conn]
         (let [group            (permission-group! app)
               all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})]
-          (doseq [database-id all-database-ids]
-            (perms/set-database-permission! permissions group database-id :perms/view-data
-                                            (if (contains? database-ids database-id)
-                                              :unrestricted
-                                              :blocked))))))))
+              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
+              tables-by-db     (group-by :db_id (t2/select :model/Table))]
+          (doseq [database-id all-database-ids
+                  :let [tables (get tables-by-db database-id [])
+                        table-permissions (into {}
+                                                (keep (fn [{:keys [id]}]
+                                                        (when (contains? table-ids id)
+                                                          [id :unrestricted])))
+                                                tables)]
+                  :when (not (view-data-permissions-match? permissions
+                                                           (:id group)
+                                                           database-id
+                                                           tables
+                                                           table-ids))]
+            (perms/set-database-permission! permissions group database-id :perms/view-data :blocked)
+            (when (seq table-permissions)
+              (perms/set-table-permissions! group :perms/view-data table-permissions))))))))
 
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."

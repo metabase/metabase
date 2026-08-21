@@ -9,8 +9,8 @@ import {
   dataAppPermissionGroupId,
   declareDataAppQueries,
   getPermissionByGroup,
-  getViewDataPermissionByGroup,
   removeDataAppQueryDeclaration,
+  resetDataAppHostAppSources,
   setDataAppCollectionAccess,
   syncDataAppResources,
 } from "e2e/support/helpers";
@@ -28,6 +28,13 @@ type AppCard = { id: number; name: string; collection_id: number | null };
 const APP_ROOT = () => dataAppHostAppRoot();
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
+const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
+
+const AUTHORED_MANIFEST = `name: Vite 6 Data App
+path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
+`;
 
 /**
  * The query half of `sync-resources`, run against the dev host app: a real vite
@@ -35,19 +42,23 @@ const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
  * the package an author actually consumes rather than a stub.
  */
 describe("Embedding SDK: data-app sync-resources (queries)", () => {
+  const resetHostAppSources = () => {
+    resetDataAppHostAppSources();
+    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    // The app is a checked-in directory, so leave no generated state behind.
-    cy.exec(`rm -rf ${APP_ROOT()}/queries ${LOCKFILE()}`);
+    // The query and actions specs share a checked-in host app, so start clean.
+    resetHostAppSources();
     createDataAppApiKey().as("apiKey");
   });
 
   after(() => {
-    cy.exec(`rm -rf ${dataAppHostAppRoot()}/queries`);
-    cy.exec(`rm -f ${dataAppHostAppRoot()}/resources_metadata.json`);
+    resetHostAppSources();
   });
 
   const sync = () =>
@@ -73,9 +84,9 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         "number",
       );
       return cy
-        .request<{ data: AppCard[] }>(
-          `/api/collection/${app.resource_collection_id}/items?models=card`,
-        )
+        .request<{
+          data: AppCard[];
+        }>(`/api/collection/${app.resource_collection_id}/items?models=card`)
         .then(({ body }) => body.data);
     });
 
@@ -453,17 +464,17 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         return cy.wrap(groupId, { log: false });
       });
 
-    // View-data alone would let a viewer author their own questions against the
-    // whole database, so synchronization also pins create-queries to "no".
-    it("gives the group data to read but no right to write queries with it", () => {
+    it("grants view-data only on the query's table and no query authoring", () => {
       syncOneQuery().then(() => {
         dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
           getPermissionByGroup(groupId).should((graph) => {
-            const database = graph[String(SAMPLE_DB_ID)];
+            const database = graph[SAMPLE_DB_ID];
 
-            expect(database?.["view-data"], "data is readable").to.eq(
-              "unrestricted",
-            );
+            expect(
+              database?.["view-data"],
+              "only orders is readable",
+            ).to.deep.eq({ PUBLIC: { [ORDERS_ID]: "unrestricted" } });
+
             // The graph reports only what departs from a group's defaults, and
             // "no" is the default — so anything else here would mean the group
             // had been granted query authoring over the whole database.
@@ -610,41 +621,29 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    it("grants the group view-data on the database its queries read", () => {
+    it("stops granting view-data once no declaration reads the table", () => {
       syncOneQuery().then(() => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase).to.eq("unrestricted");
-            },
-          );
-        });
-      });
-    });
-
-    it("stops granting view-data once no declaration reads the database", () => {
-      syncOneQuery().then(() => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase, "granted by the first sync").to.eq(
-                "unrestricted",
-              );
-            },
-          );
+        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+            expect(
+              graph.groups[app.permission_group_id][SAMPLE_DB_ID]["view-data"],
+              "granted by the first sync",
+            ).not.to.eq("unrestricted");
+          });
 
           removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
           sync();
 
           // The graph reports only what departs from a group's defaults, so a
           // database the app no longer reads drops out of it entirely.
-          getViewDataPermissionByGroup(groupId).should(
-            ({ [String(SAMPLE_DB_ID)]: sampleDatabase }) => {
-              expect(sampleDatabase, "revoked by the second sync").not.to.eq(
-                "unrestricted",
-              );
-            },
-          );
+          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+            expect(
+              graph.groups[app.permission_group_id][SAMPLE_DB_ID]?.[
+                "view-data"
+              ],
+              "revoked by the second sync",
+            ).to.be.undefined;
+          });
         });
       });
     });
