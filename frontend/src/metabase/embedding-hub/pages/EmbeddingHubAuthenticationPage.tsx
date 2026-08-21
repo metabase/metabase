@@ -1,13 +1,14 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellEmbeddingSso } from "metabase/admin/upsells";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
+
+import { AuthenticationUpsellPage } from "../upsells";
 
 const ADMIN_AUTHENTICATION_URL = "/admin/settings/authentication";
 
@@ -38,7 +39,7 @@ export function EmbeddingHubAuthenticationPage() {
   if (!hasSsoJwt) {
     return (
       <SettingsPageWrapper title={t`Authentication`}>
-        <UpsellEmbeddingSso source="embedding-hub-authentication" />
+        <AuthenticationUpsellPage source="embedding-hub-authentication" />
       </SettingsPageWrapper>
     );
   }
