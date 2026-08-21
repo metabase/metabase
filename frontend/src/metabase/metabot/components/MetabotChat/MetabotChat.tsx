@@ -11,16 +11,16 @@ import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
-import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
+import type { MetabotAgentId } from "../../state";
+import type { MetabotChatConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { useScrollManager } from "./hooks";
 
-const defaultConfig: MetabotConfig = {
-  agentId: "omnibot",
+const defaultConfig: MetabotChatConfig = {
   suggestionModels: [
     "dataset",
     "metric",
@@ -32,11 +32,17 @@ const defaultConfig: MetabotConfig = {
 };
 
 export const MetabotChat = ({
+  conversationId,
+  agentId,
+  onNewConversation,
   config = defaultConfig,
   className,
   headerActions,
 }: {
-  config?: MetabotConfig;
+  conversationId: string;
+  agentId?: MetabotAgentId;
+  onNewConversation?: () => void;
+  config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
 }) => {
@@ -47,7 +53,7 @@ export const MetabotChat = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(config.agentId);
+  const metabot = useMetabotConversation(conversationId);
   const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
@@ -178,20 +184,20 @@ export const MetabotChat = ({
                 onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
-                  metabot.loadConversation(metabot.conversationId);
+                  metabot.reloadConversation();
                 }}
                 isDoingScience={metabot.isDoingScience}
                 supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
-                agentId={config.agentId}
+                agentId={agentId}
                 conversationId={metabot.conversationId}
               />
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}
-              {metabot.isLongConversation && (
+              {metabot.isLongConversation && onNewConversation && (
                 <MetabotResetLongChatButton
-                  onResetConversation={metabot.createNewConversation}
+                  onResetConversation={onNewConversation}
                 />
               )}
             </Box>
