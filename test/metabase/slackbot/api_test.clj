@@ -209,11 +209,10 @@
 (deftest app-mention-long-answer-fits-slack-blocks-test
   (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
     (tu/with-slackbot-setup
-      (let [long-ai-text (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200)))
-            channel-id   "C-LONG-ANSWER-TEST"
-            event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
+      (let [channel-id "C-LONG-ANSWER-TEST"
+            event-body (assoc-in tu/base-mention-event [:event :channel] channel-id)]
         (tu/with-slackbot-mocks
-          {:ai-text long-ai-text}
+          {:ai-text tu/oversized-answer}
           (fn [{:keys [post-calls]}]
             (let [response (mt/client :post 200 "metabot/slack/events"
                                       (tu/slack-request-options event-body)
@@ -229,7 +228,7 @@
                 (testing "no section block is over the limit -- unlike the untruncated answer"
                   (is (nil? (tu/oversized-section-error blocks)))
                   (is (some? (tu/oversized-section-error [{:type "section"
-                                                           :text {:type "mrkdwn" :text long-ai-text}}]))
+                                                           :text {:type "mrkdwn" :text tu/oversized-answer}}]))
                       "the answer really is past the limit, so the case under test is the real one"))
                 (testing "the answer is cut to the limit, and the message says why"
                   (is (= tu/slack-section-text-limit

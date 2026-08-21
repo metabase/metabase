@@ -39,13 +39,14 @@
              :text text}}]))
 
 (defn- truncation-notice
-  "Copy explaining that an answer was cut short. `url` points at the Metabase instance; nil leaves
-   the sentence standing without a link."
+  "Copy explaining that an answer was cut short.
+   `url` points at the Metabase instance; nil leaves the sentence standing without a link."
   [url]
-  (str "_This answer was too long to post in Slack, so I cut it short._\n\n"
+  (str "_This answer was longer than " section-text-limit " characters. That is too long to post in "
+       "Slack, so I cut it short._\n\n"
        "Ask a narrower question so the answer comes back smaller"
        (if url
-         (str ", or head to <" url "|Metabase>.")
+         (str ", or head to <" url "|Metabase> and try again.")
          ".")))
 
 (defn- truncation-block
@@ -136,6 +137,8 @@
               res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
                                                                          final-text :blocks final-blocks)]
           (when truncated?
+            (log/debugf "[slackbot] channel answer truncated (answer_length=%d limit=%d)"
+                        (count answer) section-text-limit)
             (analytics/inc! :metabase-slackbot/responses-truncated))
           (when-let [res-ts (:ts res)]
             (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts))

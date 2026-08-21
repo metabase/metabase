@@ -3,9 +3,11 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [clojure.string :as str]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
+   [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
@@ -45,9 +47,15 @@
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
 
+;; Derived from the production constant, so the harness cannot drift from what the code enforces.
 (def slack-section-text-limit
   "Slack rejects a `section` block whose `text.text` exceeds this many characters."
-  3000)
+  @#'slackbot.channel/section-text-limit)
+
+(def oversized-answer
+  "An answer comfortably past [[slack-section-text-limit]], numbered line by line so a truncated
+   copy can be checked against the original."
+  (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200))))
 
 (defn oversized-section-error
   "The `chat.postMessage` rejection Slack returns when a `section` block in `blocks` is over
