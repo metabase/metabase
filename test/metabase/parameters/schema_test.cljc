@@ -36,3 +36,19 @@
                               :value  "CA"
                               :a      1
                               :a/b    2}])))))))
+
+#?(:clj
+   (deftest api-parameter-values-decode-preserves-nested-options-test
+     (testing "nested :options maps survive the JSON-string decode + strip pass with keywordized keys"
+       (is (= [{:id      "_STATE_"
+                :type    :text
+                :target  [:dimension [:template-tag "state"] {:stage-number 1}]
+                :value   "CA"
+                :options {:case-sensitive false, :include-current true}}]
+              (api.macros/decode-and-validate-params
+               :query ::parameters.schema/api.parameter-values
+               (json/encode [{:id      "_STATE_"
+                              :type    "text"
+                              :target  ["dimension" ["template-tag" "state"] {"stage-number" 1}]
+                              :value   "CA"
+                              :options {"case-sensitive" false, "include-current" true}}])))))))
