@@ -264,21 +264,6 @@
      :limit  (request/limit)
      :offset (request/offset)}))
 
-(defn- same-groups-user-ids
-  "Return a list of all user-ids in the same group with the user with id `user-id`.
-  Ignore the All-user groups."
-  [user-id]
-  (map :user_id
-       (t2/query {:select-distinct [:permissions_group_membership.user_id]
-                  :from [:permissions_group_membership]
-                  :where [:in :permissions_group_membership.group_id
-                          ;; get all the groups ids that the current user is in
-                          ^:allow-subquery
-                          {:select-distinct [:permissions_group_membership.group_id]
-                           :from  [:permissions_group_membership]
-                           :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -299,7 +284,7 @@
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
-          (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
+          (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses nil nil nil nil)
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
