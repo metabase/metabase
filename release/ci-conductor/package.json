@@ -11,7 +11,7 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
-    "@types/bun": "^1.3.14",
+    "@types/bun": "^1.4.0",
     "@types/node": "^22.10.0",
     "typescript": "^5.9.3"
   }
