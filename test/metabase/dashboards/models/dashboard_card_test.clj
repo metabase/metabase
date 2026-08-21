@@ -383,6 +383,44 @@
                                   :visualization_settings
                                   {:link {:entity {:id card-id :model "card"}}}}))))))))
 
+(deftest click-behavior-target-id-validated-on-write-test
+  (testing "a click-behavior target id must be an integer before it is stored, and a legitimate id round-trips"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+      (testing "a map target id is rejected on insert"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be an integer"
+             (t2/insert! :model/DashboardCard
+                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                          :visualization_settings
+                          {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}}))))
+      (testing "a map target id in column settings is rejected on insert"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"must be an integer"
+             (t2/insert! :model/DashboardCard
+                         {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                          :visualization_settings
+                          {:column_settings
+                           {"[\"name\",\"abc\"]"
+                            {:click_behavior {:type "link" :linkType "dashboard" :targetId {:raw "x"}}}}}}))))
+      (testing "a map target id is rejected on update too, not just insert"
+        (let [dc (t2/insert-returning-instance! :model/DashboardCard
+                                                {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                                 :visualization_settings {}})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"must be an integer"
+               (t2/update! :model/DashboardCard (:id dc)
+                           {:visualization_settings
+                            {:click_behavior {:type "link" :linkType "question" :targetId {:raw "x"}}}})))))
+      (testing "a legitimate integer target id still works"
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (some? (t2/insert! :model/DashboardCard
+                                 {:dashboard_id dash-id :row 0 :col 0 :size_x 4 :size_y 4
+                                  :visualization_settings
+                                  {:click_behavior {:type "link" :linkType "question" :targetId card-id}
+                                   :column_settings
+                                   {"[\"name\",\"abc\"]"
+                                    {:click_behavior {:type "link" :linkType "question" :targetId card-id}}}}}))))))))
+
 (deftest ^:parallel link-card-id-compiles-as-query-parameter-test
   (testing "a non-integer id is rejected when building the link-card query"
     (is (thrown-with-msg?
