@@ -573,6 +573,54 @@
           (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
                            (-> response :values set))))))))
 
+(deftest card-params-values-remapped-fields-test
+  (testing "preview embed card values/remapping endpoints work for parameters mapped to remapped fields"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-column-remappings [orders.quantity {5 "N5"}
+                                  orders.product_id products.title]
+        (mt/with-temp [:model/Card card
+                       {:dataset_query
+                        {:database (mt/id)
+                         :type     :native
+                         :native   {:query         "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}"
+                                    :template-tags {"quantity"      {:id           "quantity"
+                                                                     :name         "quantity"
+                                                                     :display-name "Internal"
+                                                                     :type         :dimension
+                                                                     :widget-type  :number/=
+                                                                     :dimension    [:field (mt/id :orders :quantity) nil]}
+                                                    "product_id_fk" {:id           "product_id_fk"
+                                                                     :name         "product_id_fk"
+                                                                     :display-name "FK"
+                                                                     :type         :dimension
+                                                                     :widget-type  :id
+                                                                     :dimension    [:field (mt/id :orders :product_id) nil]}
+                                                    "user_id_pk"    {:id           "user_id_pk"
+                                                                     :name         "user_id_pk"
+                                                                     :display-name "PK->Name"
+                                                                     :type         :dimension
+                                                                     :widget-type  :id
+                                                                     :dimension    [:field (mt/id :people :id) nil]}}}}
+                        :parameters [{:id "quantity", :name "Internal", :slug "quantity", :type "number/="
+                                      :target ["dimension" ["template-tag" "quantity"]]}
+                                     {:id "product_id_fk", :name "FK", :slug "product_id_fk", :type "id"
+                                      :target ["dimension" ["template-tag" "product_id_fk"]]}
+                                     {:id "user_id_pk", :name "PK->Name", :slug "user_id_pk", :type "id"
+                                      :target ["dimension" ["template-tag" "user_id_pk"]]}]}]
+          (let [token (embed-test/card-token card {:_embedding_params {:quantity      "enabled"
+                                                                       :product_id_fk "enabled"
+                                                                       :user_id_pk    "enabled"}})]
+            (testing "values for internally-remapped param"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "preview_embed/card/%s/params/quantity/values" token)))))
+            (testing "values for FK-remapped param"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "preview_embed/card/%s/params/product_id_fk/values" token)))))
+            (testing "remapping for PK param"
+              (is (some? (mt/user-http-request :crowberto :get 200
+                                               (format "preview_embed/card/%s/params/user_id_pk/remapping" token)
+                                               :value "1"))))))))))
+
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!
