@@ -164,29 +164,38 @@
   "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
   Close with .close, grab the vector of values with deref."
   ^Closeable [transform-id]
-  (let [states (atom [])
-        fut    (future
-                 (try
-                   (loop []
-                     (let [{:keys [message]} (get-last-run transform-id)]
-                       (cond
-                         (.isInterrupted (Thread/currentThread))
-                         nil
+  (let [states   (atom [])
+        stopped? (atom false)
+        fut      (future
+                   (try
+                     (loop []
+                       (when-not @stopped?
+                         (let [{:keys [message]} (get-last-run transform-id)]
+                           (cond
+                             (.isInterrupted (Thread/currentThread))
+                             nil
 
-                        ;; same message as last time
-                         (= message (peek @states))
-                         (recur)
+                             ;; same message as last time
+                             (= message (peek @states))
+                             (recur)
 
-                        ;; new message value
-                         :else (do (swap! states conj message)
-                                   (recur)))))
-                   (catch InterruptedException _ nil)))]
+                             ;; new message value
+                             :else (do (swap! states conj message)
+                                       (recur))))))
+                     (catch InterruptedException _ nil)))]
     (reify IDeref
       (deref [_] @states)
       Closeable
       (close [_]
-        (future-cancel fut)
-        (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
+        (reset! stopped? true)
+        ;; Join instead of cancelling: interrupting does not abort an in-flight HTTP request, and cancelling
+        ;; makes deref throw CancellationException immediately, so close would return while a poll is still
+        ;; running. That poll then lands after the transform is cleaned up and fails the enclosing test with
+        ;; an unrelated 404.
+        (let [exited? (not= :timeout (try (deref fut 5000 :timeout) (catch Throwable _ nil)))]
+          (when-not exited?
+            (future-cancel fut))
+          (assert exited? "Observation thread did not exit!"))))))
 
 (deftest python-transform-logging-test
   (letfn [(program->source [program]
