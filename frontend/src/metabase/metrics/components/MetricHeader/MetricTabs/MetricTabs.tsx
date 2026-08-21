@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
@@ -33,7 +33,7 @@ export function MetricTabs({ card, urls }: MetricTabsProps) {
     () => getTabs(card, metadata, urls, hasDimensions, canSeeDependencies),
     [card, metadata, urls, hasDimensions, canSeeDependencies],
   );
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }
 
 function getTabs(
@@ -42,8 +42,8 @@ function getTabs(
   urls: MetricUrls,
   hasDimensions: boolean,
   canSeeDependencies: boolean,
-): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [
+): PillTab[] {
+  const tabs: PillTab[] = [
     {
       label: t`About`,
       to: urls.about(card.id),
