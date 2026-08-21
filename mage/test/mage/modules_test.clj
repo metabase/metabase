@@ -271,16 +271,16 @@
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs
-  (testing "Cloud driver runs with ci:all-cloud-drivers label"
+  (testing "Cloud driver runs with ci:run-all-cloud-drivers label"
     (doseq [driver [:athena :bigquery :databricks :redshift :snowflake]]
       (let [result (mage.modules/driver-decision driver
-                                                 (make-ctx {:pr-labels #{"ci:all-cloud-drivers"}})
+                                                 (make-ctx {:pr-labels #{"ci:run-all-cloud-drivers"}})
                                                  false ; not affected
                                                  #{} ; quarantined
                                                  #{})] ; updated
         (is (true? (:should-run result))
             (str driver " should run with label"))
-        (is (= "ci:all-cloud-drivers label" (:reason result)))))))
+        (is (= "ci:run-all-cloud-drivers label" (:reason result)))))))
 
 (deftest cloud-driver-with-file-changes-runs
   (testing "Cloud driver runs when its files changed"
