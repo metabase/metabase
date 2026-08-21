@@ -13,6 +13,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -62,11 +63,22 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
+(defn- blank-dataset-query
+  "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
+  filters, aggregations, etc.) are never exposed to the general public. MBQL queries keep only their source table or
+  source card so the frontend can still tell MBQL and native queries apart (e.g. to use the pivot endpoints)."
+  [query]
+  (if (lib/native? query)
+    (lib/native-query query "-")
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+                        (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
+      (lib/query query source)
+      (lib/native-query query "-"))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
 
-  The `:dataset_query` is replaced with a blank native query against the same Database, so the query contents
-  themselves (source tables, SQL, filters, etc.) are never exposed to the general public.
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
@@ -81,7 +93,7 @@
                        :dataset_query])
          (update :dataset_query (fn [query]
                                   (cond-> query
-                                    (seq query) (lib/native-query "-"))))))))
+                                    (seq query) blank-dataset-query)))))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general

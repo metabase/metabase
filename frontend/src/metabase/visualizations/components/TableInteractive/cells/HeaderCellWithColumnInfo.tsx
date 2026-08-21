@@ -67,15 +67,13 @@ export const HeaderCellWithColumnInfo = memo(
     if (infoPopoversDisabled) {
       headerContent = cellContent;
     } else {
-      // question.query will throw when used in the visualizer
-      // we don't go down this code path in the visualizer because isDashboard is true
       const query = question?.query();
-      const queryInfo = query != null ? Lib.queryDisplayInfo(query) : undefined;
       const stageIndex = -1;
+      const aggregations =
+        query != null ? Lib.aggregations(query, stageIndex) : [];
       const columnMetadata =
         query != null &&
-        queryInfo != null &&
-        (!queryInfo.isNative || column.source === "native")
+        (column.source !== "aggregation" || aggregations.length > 0)
           ? Lib.fromLegacyColumn(query, stageIndex, column)
           : undefined;
 
