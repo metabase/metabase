@@ -153,8 +153,8 @@
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (assoc :viz-settings viz-settings)
                                           (dissoc :constraints)
+                                          (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
                                                                    ;; Allowlist the one caller-settable middleware option so a caller cannot
                                                                    ;; inject :disable-max-results?/:add-default-userland-constraints? into the
@@ -205,7 +205,9 @@
                                            [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
-    (let [query (lib-be/normalize-query (dissoc query :pretty))]
+    (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
+                    (dissoc :constraints :middleware)
+                    lib/disable-default-limit)]
       (qp.perms/check-current-user-has-adhoc-native-query-perms query)
       (qp.setup/with-qp-setup [query query]
         (binding [driver/*compile-with-inline-parameters* true]
