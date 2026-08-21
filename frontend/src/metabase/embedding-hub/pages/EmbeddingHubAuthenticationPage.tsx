@@ -35,7 +35,7 @@ export function EmbeddingHubAuthenticationPage() {
   if (!hasSsoJwt) {
     return (
       <SettingsPageWrapper title={t`Authentication`}>
-        <AuthenticationUpsellPage source="embedding-hub-authentication" />
+        <AuthenticationUpsellPage />
       </SettingsPageWrapper>
     );
   }
