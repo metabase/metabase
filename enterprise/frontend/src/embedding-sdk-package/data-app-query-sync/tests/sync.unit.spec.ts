@@ -30,7 +30,7 @@ describe("query synchronization", () => {
     );
   });
 
-  it("prepares an unpublished app and reconciles an empty database set", async () => {
+  it("prepares an unpublished app and reconciles an empty table set", async () => {
     const appRoot = makeApp();
     const slug = path.basename(appRoot);
     const requests: Array<{
@@ -73,7 +73,7 @@ describe("query synchronization", () => {
       {
         method: "PUT",
         pathname: `/api/apps/${slug}/resources/permissions`,
-        body: JSON.stringify({ database_ids: [] }),
+        body: JSON.stringify({ table_ids: [] }),
       },
     ]);
     expect(
