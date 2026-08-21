@@ -21,6 +21,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -77,7 +78,10 @@
      ;; open
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false]
+                 custom-migrations.util/*allow-temp-scheduling* false
+                 ;; this app DB is meant to stay empty (or hold only what the test loads), so a `with-temp`
+                 ;; inside it must not materialise the test-data Database via the dataset pre-warm
+                 data.impl/*skip-dataset-prewarm?* true]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
