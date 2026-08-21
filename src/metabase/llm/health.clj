@@ -8,9 +8,13 @@
 
   A failure is *fatal* when the provider answered with a 4xx that says the connection cannot work as configured — a
   rejected key, a model the account cannot reach. Those are recorded until the connection is edited or a later
-  request succeeds, because retrying changes nothing. Everything else — a 5xx, a rate limit, a timeout, a refused
+  inference succeeds, because retrying changes nothing. Everything else — a 5xx, a rate limit, a timeout, a refused
   connection — is transient and expires on its own after [[transient-failure-ttl-ms]], so an outage takes the
   connection out of rotation without an admin having to put it back.
+
+  Only inference clears a failure. Listing a provider's models can record one — a rejected key rejects the listing
+  too — but a listing that works proves nothing about inference: a provider can serve its catalog to an account it
+  will not run a request for.
 
   The record lives in memory, so each instance learns from its own traffic. Persisting it would make one node's
   network blip everybody's problem, and the cost of a second node discovering the same failure is one failed
@@ -90,7 +94,8 @@
   nil)
 
 (defn record-success!
-  "Record that a request to `conn-key` worked, clearing any failure held against it."
+  "Record that an inference request to `conn-key` worked, clearing any failure held against it. The only thing
+  besides the transient timeout that clears one; see the namespace docstring."
   [conn-key]
   (when (and conn-key (contains? @failures conn-key))
     (log/info "LLM provider connection recovered" {:connection conn-key})
