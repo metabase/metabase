@@ -10,7 +10,7 @@ import {
 } from "e2e/support/helpers";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
 const APP_DISPLAY_NAME = "Synced App";
@@ -163,6 +163,55 @@ describe("scenarios > data apps > sync-resources in production", () => {
               expect(Number($total.text())).to.be.greaterThan(0);
             },
           );
+        });
+      });
+    });
+  });
+
+  it("applies the app group's sandbox to the synchronized query", () => {
+    syncApp().then((cardId) => {
+      cy.request("POST", "/api/dataset", {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["=", ["field", ORDERS.USER_ID, null], 1],
+        },
+      }).then(({ body: expected }) => {
+        const expectedTotal = expected.data.rows[0][0];
+
+        expect(
+          expectedTotal,
+          "the sandboxed user has orders",
+        ).to.be.greaterThan(0);
+
+        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+          addUserToGroup(groupId, USERS.sandboxed.email);
+          cy.sandboxTable({
+            group_id: groupId,
+            table_id: ORDERS_ID,
+            attribute_remappings: {
+              attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+            },
+          });
+
+          cy.intercept("POST", "/api/dataset").as("dataset");
+          mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+          cy.signInAsSandboxedUser();
+          cy.visit(`/apps/${APP_SLUG}`);
+
+          dataAppIframe(APP_DISPLAY_NAME).within(() => {
+            cy.findByTestId("synced-app-total", { timeout: 30000 }).should(
+              "have.text",
+              String(expectedTotal),
+            );
+          });
+
+          cy.wait("@dataset").then(({ request, response }) => {
+            expect(request.body.stages?.[0]?.["source-card"]).to.eq(cardId);
+            expect(response?.body.data.is_sandboxed).to.eq(true);
+          });
         });
       });
     });
