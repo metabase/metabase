@@ -17,20 +17,13 @@ const SIZE_PX: Record<(typeof SIZES)[number], string> = {
   xl: "22px",
 };
 
-const TYPES = ["oval", "dots", "bars"] as const;
-
 const args = {
   size: "md",
-  type: "oval",
 };
 
 const argTypes = {
   size: {
     options: SIZES,
-    control: { type: "inline-radio" },
-  },
-  type: {
-    options: TYPES,
     control: { type: "inline-radio" },
   },
 };
@@ -71,16 +64,16 @@ const OverviewTemplate = () => (
 
     <StorySection
       title="Types"
-      description="Only “oval” is specified in Figma, and the size scale is tuned to it — dots and bars render smaller than their name suggests."
+      description="Figma specs the ring only. The size scale is tuned to it, so pin an explicit px size when using dots."
     >
       <Box style={gridStyle}>
-        {TYPES.map((type) => (
-          <Fragment key={type}>
-            <StoryJsx>{`<Loader type="${type}" />`}</StoryJsx>
-            <div />
-            <Loader type={type} />
-          </Fragment>
-        ))}
+        <StoryJsx>{`<Loader type="oval" />`}</StoryJsx>
+        <div />
+        <Loader type="oval" />
+
+        <StoryJsx>{`<Loader type="dots" size={32} />`}</StoryJsx>
+        <div />
+        <Loader type="dots" size={32} />
       </Box>
     </StorySection>
 

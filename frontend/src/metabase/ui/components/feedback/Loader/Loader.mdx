@@ -28,9 +28,10 @@ size unless the diameter is a layout dimension rather than a loader size.
 
 ## Caveats
 
-- Only use the `oval` type unless otherwise called out. The size scale above
-  is tuned to the oval; `dots` and `bars` have different geometry, so pin an
-  explicit px size if you use them.
+- `oval` (the default) is the only type Figma specs, and `dots` is the sole
+  alternative the design system offers — Mantine's `bars` is not part of the
+  API. The size scale above is tuned to the ring, so pin an explicit px size
+  when using `dots`.
 - The colour comes from the `icon-brand` token. Pass `color` (not `c`, which
   sets text colour and has no effect on the spinner) to override it.
 
