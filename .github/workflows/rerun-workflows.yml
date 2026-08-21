@@ -43,7 +43,7 @@ jobs:
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
             const AUTHOR = process.env.AUTHOR_NAME;
             const BRANCH = process.env.BRANCH_NAME;
-            const LINEAR_TEAM_ID = '2e3af6a2-9b19-4abd-b72c-4b5665054861';
+            const LINEAR_TEAM_ID = '2e3af6a2-9b19-4abd-b72c-4b5665054861'; // DevEx team
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               try {
