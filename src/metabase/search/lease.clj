@@ -103,6 +103,19 @@
                         {:type ::non-autocommit-lifecycle-connection})))
       (f conn))))
 
+(def ^:private db-now-expr
+  ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"])
+
+(defn- db-expiry-expr
+  "HoneySQL expression for the lease expiry one [[*lease-duration*]] after the app database's current time."
+  []
+  (let [millis (.toMillis ^java.time.Duration *lease-duration*)]
+    ^:allow-raw-sql
+    [:raw (case (mdb/db-type)
+            :postgres (format "CURRENT_TIMESTAMP + (%d * INTERVAL '1 millisecond')" millis)
+            :mysql    (format "TIMESTAMPADD(MICROSECOND, %d, CURRENT_TIMESTAMP)" (* millis 1000))
+            :h2       (format "DATEADD('MILLISECOND', %d, CURRENT_TIMESTAMP)" millis))]))
+
 (defn- db-times
   "Read the app database's current time and the corresponding lease expiry without converting JDBC time types."
   [conn]
@@ -181,12 +194,11 @@
          nil)))))
 
 (defn- renew-on-current-connection!
+  "Renew in one statement so a per-batch fence costs a single round trip."
   [conn {:keys [owner] :as claim}]
-  (let [{:keys [now expires_at]} (db-times conn)
-        coordinate              (where-coordinate claim)]
-    (pos? (t2/update! :conn conn :search_index_lease
-                      (assoc coordinate :owner owner :expires_at [:> now])
-                      {:last_renewed_at now, :expires_at expires_at}))))
+  (pos? (t2/update! :conn conn :search_index_lease
+                    (assoc (where-coordinate claim) :owner owner :expires_at [:> db-now-expr])
+                    {:last_renewed_at db-now-expr, :expires_at (db-expiry-expr)})))
 
 (defn renew!
   "Renew `claim` with a short autocommit operation. Returns false if it expired or changed owner."

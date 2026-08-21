@@ -407,12 +407,8 @@
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch.
 
-  `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
-  [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
-  initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
-  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
-  in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
-  rebuild stays current."
+  A full reindex passes the `reindex-table` captured by [[index-docs!]] and writes only there. Incremental and
+  in-place updates pass nil and dual-write to the active and pending tables so an in-progress rebuild stays current."
   [reindex-table documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
@@ -433,12 +429,8 @@
                       (search.lease/throw-if-lost!)
                       (let [entries (map document->entry documents)
                             updated (if reindexing?
-                                      ;; Full reindex: write only to the table captured for the whole run, so a
-                                      ;; transiently-blanked tracking atom can't redirect writes into the live
-                                      ;; active table (which would silently drop documents from the new index).
                                       (safe-batch-upsert! conn :pending (constantly reindex-table) entries)
-                                      ;; Incremental / in-place: dual-write so an in-progress rebuild stays
-                                      ;; current. Either table may legitimately be absent.
+                                      ;; Either table may legitimately be absent.
                                       (let [active-updated  (safe-batch-upsert! conn :active active-table entries)
                                             pending-updated (safe-batch-upsert! conn :pending pending-table entries)]
                                         (or active-updated pending-updated)))]
@@ -472,11 +464,10 @@
   [context document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
     (let [reindexing?   (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-          ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
-          ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
-          ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
-          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
-          ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
+          ;; Capture the destination table once for the whole reindex: the pending table when a rebuild is staging
+          ;; one, otherwise the active table (an initial build populates the freshly activated table directly).
+          ;; Resolving it per batch is unsafe: a concurrent TTL resync can transiently blank :pending, which would
+          ;; redirect writes to the live active table mid-rebuild and silently drop documents from the new index.
           reindex-table (when reindexing? (or (pending-table) (active-table)))]
       (transduce (comp (partition-all insert-batch-size)
                        (map (partial batch-update! reindex-table)))
