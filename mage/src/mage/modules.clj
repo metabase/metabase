@@ -351,6 +351,19 @@
   [s]
   (= (str/lower-case (str s)) "true"))
 
+(defn- parse-only-driver
+  "Parse the `--only-driver` CLI arg into a driver keyword, or nil when unset.
+
+  Throws on an unknown driver: a typo would otherwise read as `nil` and quietly run the normal decisions
+  instead of the one job that was asked for."
+  [s]
+  (when-not (str/blank? s)
+    (let [driver (keyword (str/trim s))]
+      (when-not (contains? (set all-drivers) driver)
+        (throw (ex-info (str "Unknown driver: " (str/trim s))
+                        {:driver driver, :known-drivers (mapv name all-drivers)})))
+      driver)))
+
 (defn- parse-labels
   "Parse comma-separated labels string into a set of label strings."
   [labels-str]
@@ -378,11 +391,21 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
+   {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose? only-driver]}
    driver-deps-affected?
    quarantined-drivers
    updated]
   (cond
+    ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
+    ;; that driver and nothing else -- not H2/Postgres, and not the skip list, since asking for a job by
+    ;; name is a stronger signal than any rule below.
+    only-driver
+    (if (= driver only-driver)
+      {:should-run true
+       :reason     (str "requested via --only-driver=" (name only-driver))}
+      {:should-run false
+       :reason     (str "--only-driver=" (name only-driver) " requested instead")})
+
     ;; Priority 1: Global skip (no backend changes)
     skip
     {:should-run false
@@ -469,11 +492,13 @@
        --git-ref=master \\
        --is-master-or-release=false \\
        --pr-labels=ci:all-cloud-drivers,other-label \\
-       --skip=false"
+       --skip=false \\
+       --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
         is-master-or-release (parse-bool (:is-master-or-release options))
+        only-driver (parse-only-driver (:only-driver options))
         ;; Detect file changes for ALL drivers via git diff
         particular-driver-changed? (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
@@ -481,7 +506,8 @@
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
-             :verbose? (not github-output-only?)}
+             :verbose? (not github-output-only?)
+             :only-driver only-driver}
         ;; On master/release we drop the remote quarantine list entirely (see
         ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
         ;; quarantine-conflict is raised.
