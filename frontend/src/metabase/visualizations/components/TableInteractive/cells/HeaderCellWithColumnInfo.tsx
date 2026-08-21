@@ -67,32 +67,23 @@ export const HeaderCellWithColumnInfo = memo(
     if (infoPopoversDisabled) {
       headerContent = cellContent;
     } else {
+      // question.query will throw when used in the visualizer
+      // we don't go down this code path in the visualizer because isDashboard is true
       const query = question?.query();
       const stageIndex = -1;
-      const aggregations =
-        query != null ? Lib.aggregations(query, stageIndex) : [];
-      const columnMetadata =
-        query != null &&
-        (column.source !== "aggregation" || aggregations.length > 0)
-          ? Lib.fromLegacyColumn(query, stageIndex, column)
-          : undefined;
-
-      headerContent =
-        columnMetadata != null ? (
-          <QueryColumnInfoPopover
-            position="bottom-start"
-            query={query}
-            stageIndex={stageIndex}
-            column={columnMetadata}
-            timezone={timezone}
-            openDelay={500}
-            showFingerprintInfo
-          >
-            {cellContent}
-          </QueryColumnInfoPopover>
-        ) : (
-          cellContent
-        );
+      headerContent = (
+        <QueryColumnInfoPopover
+          position="bottom-start"
+          query={query}
+          stageIndex={stageIndex}
+          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+          timezone={timezone}
+          openDelay={500}
+          showFingerprintInfo
+        >
+          {cellContent}
+        </QueryColumnInfoPopover>
+      );
     }
 
     return (

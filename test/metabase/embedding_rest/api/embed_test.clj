@@ -152,7 +152,8 @@
    :visualization_settings {}
    :dataset_query          {:lib/type "mbql/query"
                             :stages   [{:lib/type     "mbql.stage/mbql"
-                                        :source-table int?}]}
+                                        :source-table int?
+                                        :aggregation  [["count" {:lib/uuid string?}]]}]}
    :parameters             []
    :param_fields           {}})
 
@@ -590,11 +591,12 @@
     (with-embedding-enabled-and-new-secret-key!
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
         (let [response (client/client :get 200 (dashboard-url (:dashboard_id dashcard)))]
-          (is (= {:lib/type "mbql/query"
-                  :database (mt/id)
-                  :stages   [{:lib/type     "mbql.stage/mbql"
-                              :source-table (mt/id :venues)}]}
-                 (-> response :dashcards first :card :dataset_query))))))))
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!

@@ -149,22 +149,24 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid}]
         (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
-          (is (= {:lib/type "mbql/query"
-                  :database (mt/id)
-                  :stages   [{:lib/type     "mbql.stage/mbql"
-                              :source-table (mt/id :venues)}]}
-                 dataset_query)))))))
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  dataset_query)))))))
 
 (deftest fetch-dashboard-strips-dataset-query-test
   (testing "GET /api/public/dashboard/:uuid replaces each Card's query with a blank query so its contents are not exposed"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash _card]
         (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
-          (is (= {:lib/type "mbql/query"
-                  :database (mt/id)
-                  :stages   [{:lib/type     "mbql.stage/mbql"
-                              :source-table (mt/id :venues)}]}
-                 (-> response :dashcards first :card :dataset_query))))))))
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"

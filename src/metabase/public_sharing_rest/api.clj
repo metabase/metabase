@@ -66,13 +66,16 @@
 (defn- blank-dataset-query
   "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
   filters, aggregations, etc.) are never exposed to the general public. MBQL queries keep only their source table or
-  source card so the frontend can still tell MBQL and native queries apart (e.g. to use the pivot endpoints)."
+  source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can still tell MBQL
+  and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
   [query]
   (if (lib/native? query)
     (lib/native-query query "-")
     (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
                         (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
-      (lib/query query source)
+      (reduce lib/aggregate
+              (lib/query query source)
+              (repeatedly (count (lib/aggregations query -1)) lib/count))
       (lib/native-query query "-"))))
 
 (defn remove-card-non-public-columns
