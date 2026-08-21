@@ -15,11 +15,11 @@ export type TimelineEventModalState =
   | { type: "move"; eventId: TimelineEventId };
 
 const getModalLabel = (type: TimelineEventModalState["type"]) =>
-  match(type)
-    .with("new", () => t`New event`)
-    .with("edit", () => t`Edit event`)
-    .with("move", () => t`Move event`)
-    .exhaustive();
+  ({
+    new: t`New event`,
+    edit: t`Edit event`,
+    move: t`Move event`,
+  })[type];
 
 export function TimelineEventModals({
   modal,

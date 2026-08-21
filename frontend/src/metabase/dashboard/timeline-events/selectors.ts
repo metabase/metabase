@@ -4,6 +4,7 @@ import {
   lruMemoize,
 } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
+import { shallowEqual } from "react-redux";
 
 import {
   getCurrentDashcards,
@@ -32,11 +33,8 @@ export const getDashboardCollectionId = (state: State) =>
   getDashboard(state)?.collection_id ?? null;
 
 export const getTimelineEventsVisibilityContext = createSelector(
-  [getTransformedTimelines, getDashboardCollectionId],
-  (timelines, collectionId): TimelineEventsVisibilityContext => ({
-    timelines,
-    collectionId,
-  }),
+  [getTransformedTimelines],
+  (timelines): TimelineEventsVisibilityContext => ({ timelines }),
 );
 
 const getTimelineEventsOverrides = (state: State) =>
@@ -48,12 +46,9 @@ export const getDashCardTimelineEventsVisibility = (
 ): TimelineEventsVisibility | undefined =>
   getTimelineEventsOverrides(state)[dashcardId];
 
-const areEventListsEqual = (a: TimelineEvent[], b: TimelineEvent[]) =>
-  a === b || (a.length === b.length && a.every((event, i) => event === b[i]));
-
 const createStableEventsSelector = createSelectorCreator({
   memoize: lruMemoize,
-  memoizeOptions: { resultEqualityCheck: areEventListsEqual },
+  memoizeOptions: { resultEqualityCheck: shallowEqual },
 });
 
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
