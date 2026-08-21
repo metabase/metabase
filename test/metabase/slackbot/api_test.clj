@@ -206,6 +206,53 @@
                 (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
+(deftest app-mention-long-answer-fits-slack-blocks-test
+  (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
+    (tu/with-slackbot-setup
+      (let [;; 30 paragraphs of ~690 chars. The channel path concatenates every text part the
+            ;; agent loop emits, so a multi-round turn easily clears the 12000 characters one
+            ;; `markdown` block allows.
+            mock-ai-text (str/join "\n\n" (repeat 30 (apply str (repeat 690 "x"))))
+            channel-id   "C-LONG-ANSWER-TEST"
+            event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
+        (tu/with-slackbot-mocks
+          {:ai-text mock-ai-text}
+          (fn [{:keys [post-calls]}]
+            (let [rejections (atom [])]
+              ;; The harness's post-message accepts anything; validate blocks like Slack does.
+              (mt/with-dynamic-fn-redefs
+                [slackbot.client/post-message (fn [_client msg]
+                                                (swap! post-calls conj msg)
+                                                (if-let [rejection (tu/block-rejection (:blocks msg))]
+                                                  (do (swap! rejections conj rejection)
+                                                      rejection)
+                                                  {:ok      true
+                                                   :ts      "1700000000.000002"
+                                                   :channel (:channel msg)}))]
+                (is (= "ok" (mt/client :post 200 "metabot/slack/events"
+                                       (tu/slack-request-options event-body)
+                                       event-body)))
+                ;; Poll on the slack_msg_id backfill rather than the post call. The mock records
+                ;; the post before it decides whether to reject it, so waiting on post-calls
+                ;; unblocks before a rejection or a fallback post would be visible.
+                (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                     :channel_id channel-id :role "assistant"
+                                                     :slack_msg_id [:not= nil])
+                         :done?      some?
+                         :timeout-ms 5000})
+                ;; How the answer is cut is `blocks-test`'s job -- with no DB and no polling.
+                ;; What only this test can show is that the app_mention route reaches the channel
+                ;; path and Slack accepts what it sends.
+                (testing "Slack accepts the message"
+                  (is (= [] @rejections))
+                  (is (every? #(nil? (tu/block-rejection (:blocks %))) @post-calls))
+                  (is (= 1 (count @post-calls))
+                      "the cut answer, notice included -- one message, so one ts to record")
+                  (is (str/includes? (pr-str (:blocks (first @post-calls))) "too long to post in Slack")
+                      "the notice rides in a context block of that message")
+                  (is (not-any? #(str/includes? (str (:text %)) "could not render") @post-calls)
+                      "no fallback message was needed"))))))))))
+
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
     (tu/with-slackbot-setup

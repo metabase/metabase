@@ -654,6 +654,18 @@
            :message ""}
     external_id (assoc :externalId external_id)))
 
+(defn- with-profile
+  "Tag every chat message with the profile of the row it came from.
+
+  A conversation is not necessarily written by one profile: forking a Slack thread and continuing
+  it on the web mixes slackbot-authored rows with web-authored ones. Slack rows store their text in
+  Slack's mrkdwn, so readers have to decide per message whether to translate it -- deciding once
+  for the whole conversation un-converts the Slack half."
+  [chat-messages row]
+  (if-let [profile (:profile_id row)]
+    (mapv #(assoc % :profile_id profile) chat-messages)
+    chat-messages))
+
 (defn message->chat-messages
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
    Each message's `:data` (vector of content blocks) is flattened into typed chat messages.
@@ -674,7 +686,8 @@
                               (or (some? (:error message)) not-finished))
                        [(empty-agent-placeholder message)]
                        chat-msgs)]
-    (annotate-agent-messages with-stub message)))
+    (-> (annotate-agent-messages with-stub message)
+        (with-profile message))))
 
 (defn- errored-agent-row?
   [m]
@@ -804,6 +817,11 @@
        :created_at                  (:created_at conv)
        :title                       (:title conv)
        :user_id                     (:user_id conv)
+       ;; Taken from the last live message, matching how the list endpoint reports it, so both
+       ;; endpoints name the same profile for a conversation. This is a summary only -- readers
+       ;; deciding whether to translate Slack mrkdwn use the per-message `:profile_id` instead,
+       ;; because a conversation can mix profiles (see `with-profile`).
+       :profile_id                  (:profile_id (last messages))
        :forked_from_conversation_id (:forked_from_conversation_id conv)
        :state                       (conversation-state messages)
        :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]

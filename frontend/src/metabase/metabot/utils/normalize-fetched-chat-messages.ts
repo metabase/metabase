@@ -3,11 +3,13 @@ import type { MetabotStateContext } from "metabase-types/api";
 
 import type { MetabotAgentTurnError, MetabotChatMessage } from "../state/types";
 
-import { convertSlackChatMessage } from "./slack-mrkdwn";
+import { convertSlackChatMessage, isSlackProfile } from "./slack-mrkdwn";
 
 export type FetchedChatMessage = MetabotChatMessage & {
   finished?: boolean | null;
   error?: MetabotAgentTurnError | null;
+  /** Profile of the message's own row; see `isSlackProfile`. */
+  profile_id?: string | null;
 };
 
 /**
@@ -19,6 +21,11 @@ export type MetabotConversationDetail = {
   created_at: string;
   title: string | null;
   user_id: number | null;
+  /**
+   * Profile of the conversation's last message; a summary only. Readers decide
+   * whether to convert Slack mrkdwn from each message's own `profile_id`.
+   */
+  profile_id?: string | null;
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
   messages: FetchedChatMessage[];
@@ -35,10 +42,13 @@ export type MetabotConversationDetail = {
  */
 export function normalizeFetchedChatMessages(
   msgs: FetchedChatMessage[],
-  { isSlack = false }: { isSlack?: boolean } = {},
 ): MetabotChatMessage[] {
   return msgs.flatMap((inputMsg) => {
-    const msg = isSlack ? convertSlackChatMessage(inputMsg) : inputMsg;
+    // Decided per message, not per conversation: forking a Slack thread and
+    // continuing it on the web leaves both kinds of row in one transcript.
+    const msg = isSlackProfile(inputMsg.profile_id)
+      ? convertSlackChatMessage(inputMsg)
+      : inputMsg;
     if (inputMsg.error != null) {
       return [
         msg,

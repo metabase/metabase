@@ -31,7 +31,7 @@ const regenerated: ParentedChatMessage[] = [
 
 describe("activeResponses", () => {
   it("defaults each branch to its newest reply", () => {
-    const responses = activeResponses(regenerated, {}, { isSlack: false });
+    const responses = activeResponses(regenerated, {});
 
     expect(
       responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
@@ -39,11 +39,7 @@ describe("activeResponses", () => {
   });
 
   it("follows a selected older reply and truncates everything downstream", () => {
-    const responses = activeResponses(
-      regenerated,
-      { u1: "a1" },
-      { isSlack: false },
-    );
+    const responses = activeResponses(regenerated, { u1: "a1" });
 
     expect(
       responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
@@ -51,13 +47,7 @@ describe("activeResponses", () => {
   });
 
   it("marks a regenerated reply with its branch and alternatives", () => {
-    const [prompt, reply] = activeResponses(
-      regenerated,
-      {},
-      {
-        isSlack: false,
-      },
-    );
+    const [prompt, reply] = activeResponses(regenerated, {});
 
     expect(prompt.branch).toBeNull();
     expect(reply.branch).toEqual({
@@ -71,7 +61,6 @@ describe("activeResponses", () => {
     const [, reply] = activeResponses(
       [user("u1", null), agent("a1", "u1")],
       {},
-      { isSlack: false },
     );
 
     expect(reply.branch).toBeNull();
@@ -85,11 +74,7 @@ describe("activeResponses", () => {
       agent("a2-tool", "a2"),
       user("u2", "a2-tool"),
     ];
-    const [, reply, followUp] = activeResponses(
-      messages,
-      {},
-      { isSlack: false },
-    );
+    const [, reply, followUp] = activeResponses(messages, {});
 
     expect(reply.messages.map(({ id }) => id)).toEqual(["a2", "a2-tool"]);
     expect(reply.branch).toEqual({
@@ -109,11 +94,7 @@ describe("activeResponses", () => {
     ];
 
     it("defaults to the newest root prompt and marks it with a branch on the prompt", () => {
-      const [prompt, reply] = activeResponses(
-        rewoundAtRoot,
-        {},
-        { isSlack: false },
-      );
+      const [prompt, reply] = activeResponses(rewoundAtRoot, {});
 
       expect(prompt.messages.map(({ id }) => id)).toEqual(["uLive"]);
       expect(prompt.branch).toEqual({
@@ -125,11 +106,7 @@ describe("activeResponses", () => {
     });
 
     it("follows a selected older root prompt to reveal the rewound errored turn", () => {
-      const responses = activeResponses(
-        rewoundAtRoot,
-        { __root__: "uErr" },
-        { isSlack: false },
-      );
+      const responses = activeResponses(rewoundAtRoot, { __root__: "uErr" });
 
       expect(
         responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
@@ -146,22 +123,16 @@ describe("activeResponses", () => {
         agent("aLive", "uLive"),
       ];
 
-      const promptResponse = activeResponses(
-        messages,
-        {},
-        { isSlack: false },
-      ).find(({ messages }) => messages[0]?.id === "uLive");
+      const promptResponse = activeResponses(messages, {}).find(
+        ({ messages }) => messages[0]?.id === "uLive",
+      );
       expect(promptResponse?.branch).toEqual({
         parentId: "a1",
         currentIndex: 1,
         replyIds: ["uErr", "uLive"],
       });
 
-      const selected = activeResponses(
-        messages,
-        { a1: "uErr" },
-        { isSlack: false },
-      );
+      const selected = activeResponses(messages, { a1: "uErr" });
       expect(
         selected.flatMap(({ messages }) => messages.map(({ id }) => id)),
       ).toEqual(["u1", "a1", "uErr", "aErr"]);

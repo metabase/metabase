@@ -42,3 +42,13 @@ export function convertSlackChatMessage(
     .with({ role: "agent", type: "turn_in_progress" }, (m) => m)
     .exhaustive();
 }
+
+/**
+ * Slack-authored messages store their text in Slack's mrkdwn rather than standard
+ * markdown, so readers must convert it before rendering. Ask this per message: a
+ * conversation can mix profiles, because forking a Slack thread and continuing it
+ * on the web leaves both kinds of row in one transcript.
+ */
+export function isSlackProfile(profileId?: string | null): boolean {
+  return profileId === "slackbot" || profileId === "slack";
+}

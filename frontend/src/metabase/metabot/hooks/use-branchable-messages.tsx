@@ -9,10 +9,7 @@ import {
 
 type ActiveResponse = ReturnType<typeof activeResponses>[number];
 
-export function useBranchableMessages(
-  sourceMessages: ParentedChatMessage[],
-  { isSlack = false }: { isSlack?: boolean } = {},
-): {
+export function useBranchableMessages(sourceMessages: ParentedChatMessage[]): {
   messages: MetabotChatMessage[];
   getExtraActions: (messageId: string) => ReactNode;
 } {
@@ -26,16 +23,14 @@ export function useBranchableMessages(
         ...selected,
         [parentId]: replyId,
       }));
-    const responses = activeResponses(sourceMessages, selectedReplyByParentId, {
-      isSlack,
-    });
+    const responses = activeResponses(sourceMessages, selectedReplyByParentId);
     const branchPickers = buildBranchPickers(responses, selectBranch);
 
     return {
       messages: responses.flatMap(({ messages }) => messages),
       getExtraActions: (messageId: string) => branchPickers[messageId],
     };
-  }, [sourceMessages, selectedReplyByParentId, isSlack]);
+  }, [sourceMessages, selectedReplyByParentId]);
 }
 
 function buildBranchPickers(

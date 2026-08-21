@@ -16,6 +16,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
+   [metabase.slackbot.blocks :as slackbot.blocks]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
@@ -58,10 +59,15 @@
   "_Thinking..._")
 
 (defn- ignore-msg?
-  "True for messages that should be excluded from chat history."
+  "True for messages that should be excluded from chat history.
+
+   `viz-only-preview-text` is Slack's notification preview for a reply that was all
+   visualizations, not something the assistant said; replaying it would tell the model it once
+   answered with the words `Query results`."
   [msg]
   (and (slackbot.events/bot-message? msg)
        (or (= (:text msg) thinking-placeholder)
+           (= (:text msg) slackbot.blocks/viz-only-preview-text)
            (str/blank? (:text msg)))))
 
 (defn- thread->bot-msg-ids

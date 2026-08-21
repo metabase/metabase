@@ -245,4 +245,99 @@ describe("MetabotConversationPage", () => {
     expect(screen.queryByText("Thinking")).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
+
+  describe("slack-authored conversations", () => {
+    // A slackbot answer is stored in Slack's mrkdwn, so its links arrive as
+    // `<url|label>`. CommonMark reads that as an autolink: the label disappears and
+    // `|label` is swallowed into the href, corrupting the target.
+    const TABLE_URL =
+      "https://metabase.example.com/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7InF1ZXJ5Ijp7InNvdXJjZS10YWJsZSI6MX19fQ==";
+
+    const detailWithSlackLink = (profileId: string | null) =>
+      createMockMetabotConversationDetail({
+        conversation_id: CONVERSATION_ID,
+        profile_id: profileId,
+        messages: [
+          {
+            id: "m1",
+            role: "user",
+            type: "text",
+            message: "Describe the tables",
+            profile_id: profileId,
+          },
+          {
+            id: "m2",
+            role: "agent",
+            type: "text",
+            message: `Start with <${TABLE_URL}|PEOPLE>.`,
+            profile_id: profileId,
+          },
+        ],
+      });
+
+    it("renders the link label, not the raw url, and keeps the url intact", async () => {
+      mockConversationDetail(detailWithSlackLink("slackbot"));
+
+      setup({ metabotInitialState: createAskState() });
+
+      const link = await screen.findByRole("link", { name: "PEOPLE" });
+      expect(link).toHaveAttribute("href", TABLE_URL);
+      expect(screen.queryByText(new RegExp(TABLE_URL))).not.toBeInTheDocument();
+    });
+
+    it("leaves a web-authored conversation unconverted", async () => {
+      mockConversationDetail(detailWithSlackLink(null));
+
+      setup({ metabotInitialState: createAskState() });
+
+      expect(
+        await screen.findByText("Describe the tables"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "PEOPLE" }),
+      ).not.toBeInTheDocument();
+    });
+
+    // Forking a Slack thread copies its rows, so a follow-up asked on the web
+    // leaves one transcript holding both profiles. The conversation-level
+    // `profile_id` reports only the last row, so it cannot decide this.
+    it("converts the slack messages of a conversation continued on the web", async () => {
+      mockConversationDetail(
+        createMockMetabotConversationDetail({
+          conversation_id: CONVERSATION_ID,
+          profile_id: "embedding_next",
+          messages: [
+            {
+              id: "m1",
+              role: "user",
+              type: "text",
+              message: "Describe the tables",
+              profile_id: "slackbot",
+            },
+            {
+              id: "m2",
+              role: "agent",
+              type: "text",
+              message: `Start with <${TABLE_URL}|PEOPLE>.`,
+              profile_id: "slackbot",
+            },
+            {
+              id: "m3",
+              role: "user",
+              type: "text",
+              message: "Thanks, anything else?",
+              profile_id: "embedding_next",
+            },
+          ],
+        }),
+      );
+
+      setup({ metabotInitialState: createAskState() });
+
+      const link = await screen.findByRole("link", { name: "PEOPLE" });
+      expect(link).toHaveAttribute("href", TABLE_URL);
+      expect(screen.queryByText(new RegExp(TABLE_URL))).not.toBeInTheDocument();
+      expect(screen.getByText("Thanks, anything else?")).toBeInTheDocument();
+    });
+  });
 });

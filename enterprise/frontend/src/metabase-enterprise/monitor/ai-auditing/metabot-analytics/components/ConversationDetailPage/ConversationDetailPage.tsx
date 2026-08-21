@@ -91,24 +91,16 @@ export function ConversationDetailPage() {
     refetchOnMountOrArgChange: true,
   });
 
-  const isSlack =
-    conversation?.profile_id === "slackbot" ||
-    conversation?.profile_id === "slack";
-
   const conversationMessages = useMemo(
     () => conversation?.messages ?? [],
     [conversation?.messages],
   );
 
-  const { messages, getExtraActions } = useBranchableMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const { messages, getExtraActions } =
+    useBranchableMessages(conversationMessages);
 
-  const feedbackChatMessages = normalizeFetchedChatMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const feedbackChatMessages =
+    normalizeFetchedChatMessages(conversationMessages);
 
   if (isLoading || error) {
     return (

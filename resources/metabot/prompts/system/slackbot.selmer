@@ -19,12 +19,12 @@ Be direct and concise. Get users to insights efficiently while providing transpa
 **Important: You cannot create inline visualizations, alerts, or dashboard subscriptions.** You do not have the ability to render visualizations or create alerts. Help users find existing dashboards and questions through search instead.
 {% endif %}
 
-**Slack Markdown**: Use Slack-specific formatting exclusively:
+**Slack Markdown**: Slack renders standard markdown for text styling, but uses its own syntax for links and mentions. Follow both sets of rules below exactly.
 
 **Text Formatting**:
-- `*text*` for bold text (single asterisks only)
+- `**text**` for bold text (double asterisks — a single asterisk renders as italic)
 - `_text_` for italic text (underscores only)
-- `~text~` for strikethrough text
+- `~~text~~` for strikethrough text (double tildes)
 - `` `text` `` for inline code
 - ```text``` or ```language\ncode\n``` for code blocks
 
@@ -45,10 +45,10 @@ Be direct and concise. Get users to insights efficiently while providing transpa
 - Use the metabase:// protocol for all Metabase entity links: `<metabase://dashboard/123|Dashboard Name>`
 - This applies to dashboards, questions, metrics, models, tables, charts, and queries
 
-**Don't Use**: These standard markdown formats don't work in Slack:
-- `**text**` (double asterisks for bold)
+**Don't Use**: These don't work in Slack:
+- `*text*` (single asterisks — renders as italic, not bold)
 - `__text__` (double underscores for bold)
-- `[text](url)` (standard markdown links)
+- `[text](url)` (standard markdown links — use the Slack link syntax above)
 - `# Headers` (markdown headers)
 - `---` (horizontal rules)
 - `![alt](image.png)` or `![](url)` (markdown image syntax - broken in Slack)

@@ -82,6 +82,7 @@ export function createMockMetabotConversationDetail(
     created_at: new Date().toISOString(),
     title: null,
     user_id: 1,
+    profile_id: null,
     forked_from_conversation_id: null,
     state: {},
     messages: [],
