@@ -26,6 +26,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
 
@@ -73,6 +74,10 @@
               (#'self/parse-provider-model "moonshot/kimi-k3")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
+      (llm.tu/with-connections [(llm.tu/connection "vllm")]
+        (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
+                (#'self/parse-provider-model "vllm/mlx-community/Qwen3-14B-4bit")))))
     (testing "serves the managed connection through the wire family the model names"
       (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
               (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -93,7 +98,8 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
-    (is (fn? (#'self/resolve-adapter "google"))))
+    (is (fn? (#'self/resolve-adapter "google")))
+    (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -573,6 +579,96 @@
       (is (=? {:type :tool-output-available :toolCallId "call-d5"}
               (last result))))))
 
+;;; stringified scalar coercion tests
+
+(defn- probe-tool
+  "A tool named `probe` that declares `args-schema` and records the arguments it is called with."
+  [args-schema received]
+  {"probe" {:tool-name "probe"
+            :doc       "Records the arguments it was called with."
+            :schema    [:=> [:cat args-schema] :any]
+            :fn        (fn [args]
+                         (reset! received args)
+                         {:output "ok"})}})
+
+(defn- run-probe
+  "Run one `probe` tool call with `arguments` against `tools`.
+  Returns the last output chunk."
+  [tools arguments]
+  (let [chunks (test-util/parts->aisdk-chunks
+                [{:type :start :id "msg-coerce"}
+                 {:type :tool-input :id "call-c1" :function "probe" :arguments arguments}])]
+    (last (into [] (self.core/tool-executor-xf tools) chunks))))
+
+(defn- tool-received-args
+  "Run one `probe` tool call with `arguments` and return the arguments the tool function saw."
+  [args-schema arguments]
+  (let [received (atom nil)]
+    (run-probe (probe-tool args-schema received) arguments)
+    @received))
+
+(deftest ^:parallel tool-args-stringified-int-coerced-test
+  (testing "an integer sent as a string is parsed using the tool's schema"
+    (is (= {:limit 15}
+           (tool-received-args [:map [:limit {:optional true} [:maybe [:int {:min 1 :max 50}]]]]
+                               {:limit "15"})))))
+
+(deftest ^:parallel tool-args-stringified-scalars-in-collections-coerced-test
+  (testing "stringified scalars nested inside collections are parsed too"
+    (is (= {:ids    [1 2]
+            :nested {:ratio 0.5}}
+           (tool-received-args [:map
+                                [:ids [:sequential :int]]
+                                [:nested [:map [:ratio :double]]]]
+                               {:ids    ["1" "2"]
+                                :nested {:ratio "0.5"}})))))
+
+(deftest ^:parallel tool-args-stringified-boolean-coerced-test
+  (testing "a boolean sent as a string is parsed"
+    (is (= {:verbose true}
+           (tool-received-args [:map [:verbose :boolean]] {:verbose "true"})))))
+
+(deftest ^:parallel tool-args-strings-left-alone-test
+  (testing "strings the schema actually asks for are never reinterpreted"
+    (is (= {:keyword_queries ["15"]
+            :entity_types    ["table"]}
+           (tool-received-args [:map
+                                [:keyword_queries [:sequential :string]]
+                                [:entity_types [:sequential [:enum "table" "model"]]]]
+                               {:keyword_queries ["15"]
+                                :entity_types    ["table"]})))))
+
+(deftest ^:parallel tool-args-unparseable-scalar-left-alone-test
+  (testing "a string that isn't a number is passed through so the tool still reports the error"
+    (is (= {:limit "abc"}
+           (tool-received-args [:map [:limit [:maybe :int]]] {:limit "abc"})))))
+
+(deftest ^:parallel tool-args-coercion-tolerates-unusable-schema-test
+  (testing "a tool without a usable schema still receives its arguments"
+    (is (= {:limit "15"}
+           (tool-received-args nil {:limit "15"})))))
+
+(deftest ^:parallel tool-args-coercion-precedes-decode-test
+  (testing "coercion happens before the tool's own :decode fn, which sees a real integer"
+    (let [received (atom nil)
+          tools    (update (probe-tool [:map [:limit :int]] received)
+                           "probe" assoc :decode #(update % :limit inc))]
+      (run-probe tools {:limit "15"})
+      (is (= {:limit 16}
+             @received)))))
+
+(deftest ^:parallel tool-args-stringified-int-satisfies-tool-validation-test
+  (testing "a stringified integer no longer fails a tool that validates its own arguments"
+    (let [args-schema [:map [:limit [:maybe [:int {:min 1 :max 50}]]]]
+          tools       {"probe" {:tool-name "probe"
+                                :doc       "Validates its arguments."
+                                :schema    [:=> [:cat args-schema] :any]
+                                :fn        (mu/fn [args :- args-schema]
+                                             {:output (str "limit=" (:limit args))})}}]
+      (is (=? {:type   :tool-output-available
+               :result {:output "limit=15"}}
+              (run-probe tools {:limit "15"}))))))
+
 ;;; AI SDK SSE output tests
 
 (defn- sse-events
@@ -589,6 +685,52 @@
          (is (nil? (mr/explain ::schema.v2/ui-message-chunk event))
              (str "event does not match the wire schema: " (pr-str event))))
        events))))
+
+(defn- usage-part [finish-reason raw-finish-reason]
+  {:type              :usage
+   :model             "m"
+   :usage             {:promptTokens 1 :completionTokens 2 :totalTokens 3}
+   :finish-reason     finish-reason
+   :raw-finish-reason raw-finish-reason})
+
+(deftest parts->aisdk-sse-xf-finish-reason-test
+  (let [error-part {:type :error :error {:message "tool blew up mid-turn"}}]
+    (testing "a truncated turn emits finishReason \"length\" and without an error"
+      (is (= ["text-start" "text-delta" "text-end" "finish"]
+             (mapv :type
+                   (sse-events [{:type :text :id "t1" :text "partial"}
+                                (usage-part "length" "max_tokens")]))))
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [{:type :text :id "t1" :text "partial"}
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "an in-turn error part does not override a length finish"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [error-part
+                                 (usage-part "length" "max_tokens")])))))
+    (testing "a filtered turn emits finishReason \"content-filter\""
+      (is (=? {:type "finish" :finishReason "content-filter"}
+              (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 (usage-part "content-filter" "refusal")])))))
+    (testing "a loop stopped at max iterations emits finishReason \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "tool-calls"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a terminal-tool stop stays \"stop\" even though the provider reported \"tool-calls\""
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")
+                                 {:type :finish :finish-reason :terminal-tool}])))))
+    (testing "an in-turn error part outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "error"}
+              (last (sse-events [error-part
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a length finish outranks a max-iterations stop"
+      (is (=? {:type "finish" :finishReason "length"}
+              (last (sse-events [(usage-part "length" "max_tokens")
+                                 {:type :finish :finish-reason :max-iterations}])))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
@@ -832,7 +974,17 @@
       ;; but other stuff is not
       false (RuntimeException. "oops")
       ;; a wrapped non-transient cause stays non-retryable
-      false (ex-info "boom" {} (IllegalArgumentException. "bad")))))
+      false (ex-info "boom" {} (IllegalArgumentException. "bad"))))
+  (testing ":retryable? false outranks both the status check and the cause walk"
+    (are [x y] (= x (#'self/retryable-error? y))
+      false (ex-info "vLLM stopped responding"
+                     {:api-error true :error-code :vllm-timeout :retryable? false}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      false (ex-info "vLLM queue full" {:status 429 :retryable? false})))
+  (testing "the tag is an opt-out only — :retryable? true cannot force a retry"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429 :retryable? true})
+      false (ex-info "bad request" {:status 400 :retryable? true}))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"

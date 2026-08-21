@@ -57,6 +57,7 @@
    [:id              ms/PositiveInt]
    [:name            ms/NonBlankString]
    [:display_name    ms/NonBlankString]
+   [:description     [:maybe :string]]
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]

@@ -24,6 +24,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
@@ -45,6 +46,7 @@
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -60,6 +62,7 @@
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
@@ -141,14 +144,21 @@
   error: `rethrow-api-error!` rethrows e.g. a `Read timed out` as an
   `ExceptionInfo` (with `:error-code :provider-request-failed` and no `:status`)
   whose *cause* is the original `SocketTimeoutException`. Inspecting only the
-  top-level exception would miss it and we'd never retry a transient timeout."
+  top-level exception would miss it and we'd never retry a transient timeout.
+
+  An adapter opts a specific failure out of that default by tagging its ex-data
+  `:retryable? false` (top-level only), which wins over both checks. Note that
+  omitting `:status` does not — the cause walk still matches."
   [^Exception e]
-  (boolean
-   (or (retryable-status? (:status (ex-data e)))
-       ;; Connection errors (e.g. under load, connection refused/reset), possibly
-       ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
-       ;; levels to guard against a cyclic getCause chain.
-       (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))
+  (let [data (ex-data e)]
+    (if (false? (:retryable? data))
+      false
+      (boolean
+       (or (retryable-status? (:status data))
+           ;; Connection errors (e.g. under load, connection refused/reset), possibly
+           ;; wrapped one or more levels deep by a provider adapter. Bounded to 10
+           ;; levels to guard against a cyclic getCause chain.
+           (some connection-error? (take 10 (take-while some? (iterate #(some-> ^Throwable % .getCause) e)))))))))
 
 (defn- parse-retry-after-header
   "Extract retry-after seconds from response headers in ex-data, if present and ≤ 60s.
