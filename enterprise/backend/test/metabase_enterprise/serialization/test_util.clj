@@ -10,6 +10,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [next.jdbc]
@@ -78,7 +79,11 @@
      (with-open [_conn (.getConnection data-source)]
        (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
        (with-db data-source (mdb/finish-db-setup!))
-       (f data-source)))))
+       ;; these app DBs hold only what the test loads into them, so a `with-temp` run against one must not
+       ;; materialise the test-data Database via the dataset pre-warm -- an extract would then see an extra
+       ;; Database that no assertion expects
+       (binding [data.impl/*skip-dataset-prewarm?* true]
+         (f data-source))))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
