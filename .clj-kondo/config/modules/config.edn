@@ -1962,6 +1962,7 @@
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
               metabase.query-processor.schema
+              metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
               metabase.query-processor.streaming.common
@@ -2522,6 +2523,7 @@
            premium-features
            query-processor
            remote-sync
+           request
            revisions
            run-tracking
            search
