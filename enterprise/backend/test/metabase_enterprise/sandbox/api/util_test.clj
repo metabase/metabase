@@ -33,6 +33,18 @@
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (mt/with-full-data-perms-for-all-users!
           (is (not (sandbox.api.util/sandboxed-user?)))))))
+  (testing "A data app group's view-data access does not disable sandboxing"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/DataApp _ {:name                "sandboxes"
+                                     :display_name        "Sandboxes"
+                                     :bundle_path         "data_apps/sandboxes/index.js"
+                                     :permission_group_id group-id}
+                   :model/PermissionsGroupMembership _ {:user_id  user-id
+                                                        :group_id group-id}]
+      (met/with-gtaps-for-user! user-id {:gtaps {:venues {}}}
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (is (sandbox.api.util/sandboxed-user?)))))
   (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandboxed"
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
     ;; to fail closed
