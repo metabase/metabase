@@ -415,6 +415,13 @@
                 (mt/with-current-user (:id user)
                   (is (false? (transforms.u/source-tables-readable? joined))))))))))))
 
+(deftest source-query-permissions-check-requires-user-test
+  (testing "the source query permission check refuses to run without a bound user"
+    (let [transform {:source (native-source (mt/id) "SELECT 1" [])}]
+      (binding [api/*current-user-id* nil]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires a current user"
+                              (transforms.u/check-source-query-permissions! transform)))))))
+
 (deftest activate-table-and-mark-computed-sets-is-writable-false-test
   (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
     (let [target {:type "table" :schema nil :name "test_computed_writable"}
