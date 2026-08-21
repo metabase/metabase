@@ -67,7 +67,7 @@ import {
   selectTimelineEvents,
   setDashCardTimelineEventsVisibility,
 } from "./actions/timeline-events";
-import { INITIAL_DASHBOARD_STATE } from "./constants";
+import { INITIAL_DASHBOARD_STATE, SIDEBAR_NAME } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
@@ -236,6 +236,14 @@ export const timelineEvents = createReducer(
     );
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
+    });
+    builder.addCase<
+      string,
+      { type: string; payload: { name: DashboardSidebarName } }
+    >(SET_SIDEBAR, (state, { payload: { name } }) => {
+      if (name !== SIDEBAR_NAME.events) {
+        state.selection = null;
+      }
     });
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
