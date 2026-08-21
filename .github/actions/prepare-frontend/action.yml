@@ -16,50 +16,38 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Get cache keys
-      uses: ./.github/actions/get-cache-keys
-      id: get-cache-keys
-
-    - name: Restore M2 cache
-      uses: actions/cache/restore@v5
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
-        restore-keys: |
-          ${{ steps.get-cache-keys.outputs.m2-restore-key }}
-
-    - name: Get bun cache directory
-      id: bun-cache
-      run: |
-        BUN_CACHE_DIR=$(bun pm cache)
-        echo "Bun cache directory: $BUN_CACHE_DIR"
-        echo "dir=$BUN_CACHE_DIR" >> "$GITHUB_OUTPUT"
+    - name: Cache spec
+      id: cache-spec
       shell: bash
+      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
 
-    - name: Restore node_modules cache
+    # The spec names the store path rather than discovering it, so that a job can restore the cache
+    # before bun exists. Exported job-wide rather than per-step because every later bun invocation has
+    # to resolve against the same store. Confirm bun agreed: if the variable stopped taking effect, bun
+    # would fill its default directory and the cache would silently save an empty tree.
+    - name: Point bun at the cached store
+      shell: bash
+      env:
+        STORE: ${{ steps.cache-spec.outputs.bun-store-path }}
+      run: |
+        echo "BUN_INSTALL_CACHE_DIR=$STORE" >> "$GITHUB_ENV"
+        ACTUAL=$(BUN_INSTALL_CACHE_DIR="$STORE" bun pm cache)
+        if [ "$ACTUAL" != "$STORE" ]; then
+          echo "::error::bun reports its store at $ACTUAL, not $STORE; BUN_INSTALL_CACHE_DIR is not taking effect"
+          exit 1
+        fi
+
+    - name: Restore bun store
       uses: actions/cache/restore@v5
-      id: node-modules-cache
       with:
-        path: |
-          ${{ steps.bun-cache.outputs.dir }}
-          node_modules
-        key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
-        restore-keys: |
-          ${{ steps.get-cache-keys.outputs.node-restore-key }}
+        path: ${{ steps.cache-spec.outputs.bun-store-path }}
+        key: ${{ steps.cache-spec.outputs.bun-store-key }}
+        restore-keys: ${{ steps.cache-spec.outputs.bun-store-restore-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
-    # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
-    - name: Clean install
-      # Remove the restored node_modules before installing. The os-week cache can
-      # carry a stale tree (for example a different React major), and
-      # `--frozen-lockfile` alone does not prune it. Rebuilding from the cached bun
-      # store gives an exact, lockfile-correct node_modules with no extra download.
-      run: |
-        rm -rf node_modules
-        bun install --frozen-lockfile
+    - name: Install front-end dependencies
+      run: bun install --frozen-lockfile
       shell: bash
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
