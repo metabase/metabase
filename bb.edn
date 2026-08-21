@@ -285,7 +285,7 @@
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
-   :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
+   :examples [["./bin/mage -driver-decisions --git-ref=master --force-run=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
               ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
@@ -302,12 +302,12 @@
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
                         ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
-                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
-                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
-                        ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Driver is quarantined (PR branches)"     "SKIP" "driver is quarantined"]
-                        ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
+                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label (quarantine ignored)"]
+                        ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
+                        ["4"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
+                        ["5"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["5(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
                         ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
                         ["7"
                          "Cloud driver + its files changed"
@@ -321,8 +321,9 @@
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
                         ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
-        "\nNote: the remote quarantine list is ignored entirely on master and release-* branches\n"
-        "-- every driver runs and gates there (Priority 4 is bypassed).\n"
+        "\nNote: the remote quarantine list is ignored entirely on a force-run -- master and\n"
+        "release-* branches, or a ci:run-all label -- so every driver runs and gates there\n"
+        "(Priority 5 is bypassed).\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
@@ -333,7 +334,7 @@
         (str/join ", " (map name (sort mage.modules/all-drivers)))
         "\n")))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
-             [nil "--is-master-or-release MASTER_OR_RELEASE"]
+             [nil "--force-run FORCE_RUN" "Run every driver regardless of the diff"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
              [nil "--only-driver DRIVER" "Run only this driver's job, ignoring every other rule"]
