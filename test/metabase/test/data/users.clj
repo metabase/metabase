@@ -187,7 +187,7 @@
 
 ;; TODO (Chris 2026-08-18) -- unlike the user ids above, these are cached with no regard for transactions:
 ;; a session created inside a `with-temp` is rolled back with it while its token stays here, and the
-;; retry in `client-fn` only papers over it. Same `created-globally?` treatment would fix it.
+;; retry in `client-fn` only papers over it. Same `created-globally` treatment would fix it.
 (defn clear-cached-session-tokens!
   "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
   `401` unauthenticated response, and then retry the request."
