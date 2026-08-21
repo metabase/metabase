@@ -223,22 +223,3 @@ export const getChartSelector = (
     return `[data-card-key='${getCardKey(input.cardId)}']`;
   }
 };
-
-export const getChartImagePngDataUri = async (
-  selector: string,
-): Promise<string | undefined> => {
-  const chartRoot = document.querySelector(selector);
-
-  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
-    console.warn("No chart element found", selector);
-    return undefined;
-  }
-
-  const canvas = await getDomToCanvas(chartRoot, {
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-    },
-  });
-
-  return canvas.toDataURL("image/png");
-};
