@@ -29,6 +29,7 @@ export * from "./entity-id";
 export * from "./erd";
 export * from "./exploration";
 export * from "./field";
+export * from "./fonts";
 export * from "./formatting";
 export * from "./geojson";
 export * from "./group";
