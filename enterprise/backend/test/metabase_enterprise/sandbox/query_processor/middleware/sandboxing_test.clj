@@ -1371,6 +1371,37 @@
           (is (=? {:is_sandboxed true}
                   (qe))))))))
 
+(deftest sandbox-details-success-test
+  (testing "The sandboxes applied to a query are recorded in query_execution.sandbox_details (#71604)"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id]}}}
+                        :attributes {"user_id" 1}})
+      (let [query (mt/mbql-query orders {:aggregation [[:count]]})]
+        (testing "the sandbox structure is always recorded, but attribute values are omitted by default"
+          (process-userland-query-test/with-query-execution! [qe query]
+            (let [result (qp/process-query (qp/userland-query query))]
+              (testing "the details are stripped back out of the query results returned to the client"
+                (is (not (contains? (:data result) :sandbox_details)))))
+            (let [saved-qe (qe)]
+              (is (=? {:is_sandboxed    true
+                       :sandbox_details [{:table_id   (mt/id :orders)
+                                          :sandbox_id pos-int?
+                                          :group_id   pos-int?
+                                          :card_id    nil
+                                          :attributes {"user_id" {:field_id (mt/id :orders :user_id)}}}]}
+                      saved-qe))
+              (is (not (contains? (get-in saved-qe [:sandbox_details 0 :attributes "user_id"]) :value))))))
+        (testing "the user's attribute values are included when analytics-pii-retention-enabled is set"
+          (mt/with-additional-premium-features #{:audit-app}
+            (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+              (process-userland-query-test/with-query-execution! [qe query]
+                (qp/process-query (qp/userland-query query))
+                ;; login attribute values are stored (and therefore recorded) as strings
+                (is (=? {:sandbox_details [{:table_id   (mt/id :orders)
+                                            :attributes {"user_id" {:field_id (mt/id :orders :user_id)
+                                                                    :value    "1"}}}]}
+                        (qe)))))))))))
+
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"
     (met/with-gtaps! (mt/$ids orders
