@@ -794,7 +794,13 @@
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"
     ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
-    (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
+    ;;
+    ;; "card"/"dataset"/"metric" are deliberately absent: a Card scoped to a Document is gated by that
+    ;; Document rather than by its collection (see `metabase.queries.models.card/parent-document-permits?`),
+    ;; so `:model/Card` no longer meets the macro's collection-id-only contract and dropped its
+    ;; registration. Cards take `filter-read-permitted`'s slow path — one batched `t2/select` per result
+    ;; page — which is the price of adjudicating them correctly.
+    (is (= #{"dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test
