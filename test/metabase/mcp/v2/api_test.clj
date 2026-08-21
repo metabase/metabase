@@ -212,10 +212,15 @@
             drives MCP with that session, so every call lands on a real, billable `:type \"personal\"` user. An
             SSO login mints its session through `create-session-with-auth-tracking!`, which links it to the
             user's `auth_identity` row; the session middleware then reports that row's provider as the auth
-            method, so an SSO session is classified \"jwt\", never \"api-key\", and the refusal must not catch it."
+            method, so an SSO session is classified by provider, never \"api-key\", and a refusal keyed on
+            API-key auth must not catch it.
+
+            The customer's provider is JWT, but every provider mints its session through that one fn, and only
+            OSS providers derive `::provider/provider` in an OSS run — so this uses OIDC to hold the guarantee in
+            both editions rather than only where JWT SSO exists."
     (mt/with-temp [:model/User user {}
-                   :model/AuthIdentity _jwt-identity {:user_id (:id user) :provider "jwt"}]
-      (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/jwt)]
+                   :model/AuthIdentity _sso-identity {:user_id (:id user) :provider "oidc"}]
+      (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/oidc)]
         (testing "the session really is auth-identity-linked — otherwise this degrades into a plain-session test"
           (is (some? (:auth_identity_id session))))
         (testing "the user is one the seat count bills, unlike the `:type :api-key` user an API key authenticates as"
