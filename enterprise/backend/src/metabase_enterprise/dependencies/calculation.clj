@@ -60,10 +60,12 @@
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs))
+                                                (pos-int? (:entityId attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
-                                           (= prose-mirror/card-embed-type type)
+                                           (and (= prose-mirror/card-embed-type type)
+                                                (pos-int? (:id attrs)))
                                            [:card (:id attrs)]
 
                                            :else
