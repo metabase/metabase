@@ -32,6 +32,7 @@ export const TimelineEventRow = ({
         className={S.eventDate}
         value={event.timestamp}
         unit={event.time_matters ? "default" : "day"}
+        local={false}
       />
     </Stack>
   </Flex>

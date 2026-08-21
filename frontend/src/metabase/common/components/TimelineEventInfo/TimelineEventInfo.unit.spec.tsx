@@ -1,4 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventInfo } from "./TimelineEventInfo";
@@ -27,16 +28,22 @@ describe("TimelineEventInfo", () => {
   });
 
   it("renders the name, description and creator info", () => {
+    const createdAt = "2021-11-30T20:30:00-08:00";
     const event = createMockTimelineEvent({
       name: "v3.0 launch",
       description: "The big release",
+      created_at: createdAt,
     });
 
     renderWithProviders(<TimelineEventInfo event={event} />);
 
     expect(screen.getByText("v3.0 launch")).toBeInTheDocument();
     expect(screen.getByText("The big release")).toBeInTheDocument();
-    expect(screen.getByText(/added this on/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new RegExp(`added this on ${dayjs(createdAt).format("MMMM D, YYYY")}`),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("omits the description when the event has none", () => {
