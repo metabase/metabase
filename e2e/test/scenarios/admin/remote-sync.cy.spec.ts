@@ -469,9 +469,11 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       H.resetSnowplow();
+      // Sign in before activateToken — the token PUT needs an authenticated session, which the
+      // restore above may have invalidated.
+      cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupGitSync();
-      cy.signInAsAdmin();
       H.interceptTask();
     });
 
