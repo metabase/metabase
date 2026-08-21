@@ -1,4 +1,4 @@
-import { Ellipsified, Icon, Text, rem } from "metabase/ui";
+import { Ellipsified, Icon, Text } from "metabase/ui";
 
 import { HomeCard } from "../HomeCard";
 
@@ -22,7 +22,7 @@ export const HomeXrayCard = ({
         c="accent4"
         display="block"
         flex="0 0 auto"
-        size={rem(20)}
+        size={20}
       />
       <Ellipsified fz="md" fw="bold" ml="sm" pr="xs">
         <Text component="span" c="text-secondary">
