@@ -1169,11 +1169,20 @@
 
 (deftest ^:synchronized pivot-row-limit-ignores-request-options-test
   (testing "POST /api/dataset/pivot"
-    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
-      (let [query (-> (mt/mbql-query venues)
-                      (assoc :pivot_rows [] :pivot_cols [])
-                      (assoc-in [:middleware :disable-max-results?] true))]
-        (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset/pivot" query)))))))))
+    ;; on this branch an unaggregated pivot query does not pass through as plain rows, so cap an aggregated
+    ;; one instead (each pivot subquery is capped by :max-results / aggregated-query-row-limit)
+    (mt/with-temporary-setting-values [aggregated-query-row-limit   5
+                                       unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset/pivot" query))))
+            base      (-> (mt/mbql-query orders {:aggregation [[:count]]
+                                                 :breakout    [$product_id]})
+                          (assoc :pivot_rows [] :pivot_cols []))
+            capped    (row-count base)]
+        (testing "sanity: the row limit caps the pivot subqueries (200 products in the sample data)"
+          (is (<= capped 10)))
+        (testing ":middleware options in the request body do not change it"
+          (is (= capped (row-count (assoc-in base [:middleware :disable-max-results?] true)))))))))
 
 (deftest ^:synchronized export-row-limit-ignores-request-options-test
   (testing "POST /api/dataset/csv"
