@@ -7,6 +7,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -182,9 +183,12 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column]
   (let [field-id-or-name->filters (lib.binning.util/filters->field-map
-                                   (:filters (lib.util/query-stage query stage-number)))]
+                                   (:filters (lib.util/query-stage query stage-number)))
+        ;; key the filter lookup by the ref's own id-or-name, like the middleware does — filters on a
+        ;; card/model-sourced column reference it by *name* even though its metadata still carries an `:id`
+        [_tag _opts id-or-name]   (lib.ref/ref column)]
     (when-let [{:keys [min-value max-value], :as bounds}
-               (lib.binning.util/extract-bounds (or (:id column) (:name column))
+               (lib.binning.util/extract-bounds id-or-name
                                                 (:fingerprint column)
                                                 field-id-or-name->filters)]
       (let [[strategy options] (lib.binning.util/resolve-options query :default nil column min-value max-value)

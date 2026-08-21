@@ -349,13 +349,24 @@
   (select-keys (lib/binning (first (lib/breakouts q)))
                [:strategy :bin-width :num-bins]))
 
+(defn- products-segment-definition
+  "Inner legacy-MBQL segment `:definition` filtering PRODUCTS, built through lib.
+  `build-filter` takes a metadata provider and returns the filter clause."
+  [build-filter]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        (lib/filter (build-filter mp))
+        lib/->legacy-MBQL
+        :query)))
+
 (deftest default-segment-uniform-binning-test
   (testing "a segment that range-filters the binned dim gets the same pinned bin width as its
             unsegmented sibling — segments must not re-derive bins over their narrowed domain"
     (mt/with-temp [:model/Segment {seg-id :id} {:name       "Highly rated products"
                                                 :table_id   (mt/id :products)
-                                                :definition (:query (mt/mbql-query products
-                                                                      {:filter [:>= $rating 4]}))}]
+                                                :definition (products-segment-definition
+                                                             (fn [mp]
+                                                               (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4)))}]
       (let [mp      (mt/metadata-provider)
             card    (products-count-card 9000201)
             segment (resolve-segment mp card seg-id)
@@ -395,8 +406,9 @@
             the per-segment filter is excluded from the bin computation"
     (mt/with-temp [:model/Segment {seg-id :id} {:name       "Cheap products"
                                                 :table_id   (mt/id :products)
-                                                :definition (:query (mt/mbql-query products
-                                                                      {:filter [:< $price 30]}))}]
+                                                :definition (products-segment-definition
+                                                             (fn [mp]
+                                                               (lib/< (lib.metadata/field mp (mt/id :products :price)) 30)))}]
       (let [mp       (mt/metadata-provider)
             base-ctx {:mp mp :target (rating-target) :dim rating-dim :segment nil :params {}}
             q-full   (variants/dataset-query "default" (assoc base-ctx :card (products-count-card 9000202)))

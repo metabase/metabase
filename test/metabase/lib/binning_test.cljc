@@ -59,6 +59,24 @@
         (is (= 10.0
                (lib.binning/default-bin-width people-query -1 (meta/field-metadata :people :latitude))))))))
 
+(deftest ^:parallel default-bin-width-card-source-column-test
+  (testing "filters on a card/model-sourced column still narrow the width — their refs carry the column
+            *name* even though the metadata has an `:id`, so the lookup must key on the ref (#78060)"
+    (let [mp       (lib.tu/metadata-provider-with-card-from-query
+                    1 (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query    (-> (lib/query mp (lib.metadata/card mp 1))
+                       (lib/aggregate (lib/count)))
+          quantity (m/find-first #(= (:name %) "QUANTITY") (lib/filterable-columns query))]
+      (is (some? quantity))
+      (testing "unfiltered → width from the fingerprint's global range"
+        (is (= 12.5
+               (lib.binning/default-bin-width query -1 quantity))))
+      (testing "a range filter on the card-sourced column narrows the domain"
+        (is (= 2.5
+               (-> query
+                   (lib/filter (lib/>= quantity 80))
+                   (lib.binning/default-bin-width -1 quantity))))))))
+
 (deftest ^:parallel binning-and-bucketing-only-show-up-for-returned-and-breakout-columns
   (testing "Within the stage, binning and bucketing at breakout should be invisible, outside the stage it should be visible"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
