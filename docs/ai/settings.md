@@ -58,7 +58,6 @@ You can specify your own API key and model for Metabot from one of the supported
 
 - **Amazon Bedrock**: Claude and GPT models.
 - **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
-- **DeepSeek**: DeepSeek V4 models.
 - **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
 - **Mistral**
 - **OpenAI**: GPT models.
