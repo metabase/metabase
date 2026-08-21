@@ -1448,6 +1448,7 @@
    :api  #{metabase.metrics.api
            metabase.metrics.core}
    :uses #{api
+           app-db
            events
            lib
            lib-be

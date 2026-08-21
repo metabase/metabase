@@ -5,6 +5,7 @@
    [mb.hawk.parallel]
    [metabase.classloader.core :as classloader]
    [metabase.test.util.thread-local :as tu.thread-local]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp]))
@@ -24,9 +25,23 @@
   (classloader/require 'metabase.test.util)
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and tu.thread-local/*thread-local* (not *in-with-temp*))
-    (binding [*in-with-temp* true]
-      (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
-        (next-method model attributes f)))
+    (do
+      ;; Materialise the test-data Database before opening the transaction. Created inside it, the
+      ;; Database and its Tables are rolled back with the scope while the memoized ids in
+      ;; [[metabase.test.data.impl]] outlive it, handing out ids for rows that no longer exist -- and it
+      ;; would be rebuilt for every test, since it could never commit.
+      ;; Skipped where the app DB is deliberately empty -- creating a Database there breaks the very thing
+      ;; those helpers assert. Best effort otherwise: a dataset that cannot be built must not take an
+      ;; unrelated with-temp down with it.
+      (classloader/require 'metabase.test.data.impl)
+      (when-not @(resolve 'metabase.test.data.impl/*skip-dataset-prewarm?*)
+        (try
+          ((resolve 'metabase.test.data.impl/db-id))
+          (catch Throwable e
+            (log/debugf "Could not materialise the test dataset before with-temp: %s" (ex-message e)))))
+      (binding [*in-with-temp* true]
+        (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+          (next-method model attributes f))))
     (next-method model attributes f)))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`

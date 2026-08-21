@@ -685,6 +685,11 @@
      (some-> user-id user->personal-collection u/the-id))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
+   ;;
+   ;; TODO (Chris 2026-08-18) -- "cannot be deleted" does not hold for a transaction that rolls back: the
+   ;; collection goes away and this keeps its id for the rest of the TTL. Tests evict on the `with-temp`
+   ;; boundary (see metabase.test.util); production has no equivalent, and would want an after-rollback
+   ;; hook alongside do-before-commit/do-after-commit.
    :ttl/threshold (* 60 60 1000)))
 
 (mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]

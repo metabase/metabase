@@ -16,12 +16,15 @@
         (doall @data-perms/*sandboxes-for-user*)
         ;; make the cache wrong
         (t2/delete! :model/Sandbox :group_id (:id &group))
-        ;; subsequent calls should still use the cache, and not hit the DB at all
-        (t2/with-call-count [call-count]
-          (is (sandbox.api.util/sandboxed-user?))
-          (is (zero? (call-count)))
-          (is (= 1 (count (sandbox.api.util/enforced-sandboxes-for-tables [(mt/id :venues)]))))
-          (is (zero? (call-count))))))))
+        ;; resolved outside the call-count window: inside a transaction (`with-temp`) the test-data id
+        ;; lookup deliberately skips its cache, so `(mt/id :venues)` costs a real query of its own
+        (let [venues-id (mt/id :venues)]
+          ;; subsequent calls should still use the cache, and not hit the DB at all
+          (t2/with-call-count [call-count]
+            (is (sandbox.api.util/sandboxed-user?))
+            (is (zero? (call-count)))
+            (is (= 1 (count (sandbox.api.util/enforced-sandboxes-for-tables [venues-id]))))
+            (is (zero? (call-count)))))))))
 
 (deftest enforce-sandbox?-test
   (testing "If a user is in a single group with a sandbox, the sandbox should be enforced"

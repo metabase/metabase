@@ -24,6 +24,11 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+(def ^:dynamic *skip-dataset-prewarm?*
+  "Bound by helpers whose app DB is deliberately empty, so the with-temp boundary does not materialise the
+  test-data Database inside them. See [[metabase.test.data/with-empty-h2-app-db!]]."
+  false)
+
 (defmulti get-or-create-database!
   "Create data warehouse database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
   and sync the Database. `driver` is a keyword name of a driver that implements test extension methods (as defined in
@@ -61,9 +66,23 @@
 
   That is memoized for the current application database."
   []
-  (mdb/memoize-for-application-db
-   (fn [driver]
-     (u/the-id (get-or-create-default-dataset! driver)))))
+  (let [cached (mdb/memoize-for-application-db
+                (fn [driver]
+                  (u/the-id (get-or-create-default-dataset! driver))))]
+    (fn [driver]
+      ;; The id is memoized for the whole app db, so caching one obtained inside a transaction would outlive a
+      ;; rollback that took the Database with it. Look it up directly there instead of caching. Don't reach for a
+      ;; separate connection to make it durable: the caller's transaction may be holding cluster lock rows, and a
+      ;; second connection waiting on those deadlocks until the lock acquisition times out.
+      ;; TODO (Chris 2026-08-18) -- an in-transaction miss creates the Database on the caller's uncommitted
+      ;; connection, so a concurrent first lookup cannot see the row and may create and sync a duplicate
+      ;; ((name, engine) is not unique), and Quartz triggers from the after-insert hook can outlive the
+      ;; rollback. Left as is deliberately: creating it on its own connection deadlocks against cluster
+      ;; lock rows the caller's transaction holds, and single-flight-until-commit is a lot of machinery
+      ;; for a test path. Initialising the dataset before the transaction opens would avoid both.
+      (if (mdb/in-transaction?)
+        (u/the-id (get-or-create-default-dataset! driver))
+        (cached driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -140,11 +159,24 @@
                     :table_id table-id
                     :active   true))
 
-(def ^:private ^{:arglists '([database-id])} table-lookup-map
+;; Like the Database id above, these are memoized for the whole app db, so a map built inside a transaction
+;; would outlive a rollback that took the Tables and Fields with it and hand out ids for rows that are
+;; gone. Look them up directly there instead of caching.
+(def ^:private ^{:arglists '([database-id])} cached-table-lookup-map
   (mdb/memoize-for-application-db build-table-lookup-map))
 
-(def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
+(defn- table-lookup-map [database-id]
+  (if (mdb/in-transaction?)
+    (build-table-lookup-map database-id)
+    (cached-table-lookup-map database-id)))
+
+(def ^:private ^{:arglists '([table-id])} cached-field-lookup-map
   (mdb/memoize-for-application-db build-field-lookup-map))
+
+(defn- field-lookup-map [table-id]
+  (if (mdb/in-transaction?)
+    (build-field-lookup-map table-id)
+    (cached-field-lookup-map table-id)))
 
 (defn- cached-table-id [db-id table-name]
   (get (table-lookup-map db-id) [db-id table-name]))
@@ -393,12 +425,14 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb/memoize-for-application-db
-                           (fn [driver]
-                             (let [db (get-or-create-database! driver dbdef)]
-                               (assert db)
-                               (assert (pos-int? (:id db)))
-                               db)))
+        get-db!           (fn [driver]
+                            (let [db (get-or-create-database! driver dbdef)]
+                              (assert db)
+                              (assert (pos-int? (:id db)))
+                              db))
+        cached            (mdb/memoize-for-application-db get-db!)
+        ;; skip the cache inside a transaction -- see [[make-memoized-test-database-id-fn]]
+        get-db-for-driver #(if (mdb/in-transaction?) (get-db! %) (cached %))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*                   db-fn
               *db-id-fn*                #(u/the-id (db-fn))

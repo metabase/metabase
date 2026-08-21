@@ -182,6 +182,9 @@
         (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                    username (user->credentials username)))))))
 
+;; TODO (Chris 2026-08-18) -- unlike the user ids above, these are cached with no regard for transactions:
+;; a session created inside a `with-temp` is rolled back with it while its token stays here, and the
+;; retry in `client-fn` only papers over it. Same `created-globally` treatment would fix it.
 (defn clear-cached-session-tokens!
   "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
   `401` unauthenticated response, and then retry the request."
@@ -205,8 +208,10 @@
             (thunk)
             (catch ExceptionInfo e
               (rethrow-when-not-401 e)
-              ;; second retry: clear cached session tokens, then try again one last time
-              (clear-cached-session-tokens!)
+              ;; second retry: forget this user's token, then try again one last time. Only this user's:
+              ;; a session minted inside a transaction is rolled back with it, and clearing the whole cache
+              ;; over one such 401 would throw away the durable tokens of every other user too.
+              (swap! tokens dissoc [(mdb/unique-identifier) username])
               (try
                 (thunk)
                 (catch ExceptionInfo e
@@ -222,13 +227,20 @@
       (fetch-user user)
       (apply client-fn the-client user args))
     (let [user-id (u/the-id user)
-          session-key (session/generate-session-key)]
+          session-key (session/generate-session-key)
+          session-id (session/generate-session-id)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
-                                                 :key_hashed (session/hash-session-key session-key)
-                                                 :user_id user-id}]
-        (apply the-client session-key args)))))
+      ;; Not a `with-temp`: that would run the whole request inside a rollback-only transaction, and the
+      ;; request handler runs in-process on this thread, so every app db write it made would be discarded
+      ;; when it returned. Delete the session by hand instead.
+      (t2/insert! :model/Session {:id         session-id
+                                  :key_hashed (session/hash-session-key session-key)
+                                  :user_id    user-id})
+      (try
+        (apply the-client session-key args)
+        (finally
+          (t2/delete! :model/Session :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request

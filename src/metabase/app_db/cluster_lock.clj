@@ -22,6 +22,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.config.core :as config]
    [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,16 +38,21 @@
 
 (def ^:private cluster-lock-timeout-seconds 1)
 
+(defn- duplicate-lock-row?
+  "Whether `e` says someone else inserted this lock's row first."
+  [^Throwable e]
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
+      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))))
+
 (defn- retryable?
   "Errors that mean we failed to *acquire* the lock and should retry acquisition."
   [^Throwable e]
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
-  (or (instance? SQLIntegrityConstraintViolationException e)
-      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
-      ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
-      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
+  (or (duplicate-lock-row? e)
       (true? (::acquisition-timeout (ex-data e)))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
@@ -138,30 +144,107 @@
         (when previous
           (set-session-lock-wait-timeout! conn previous))))))
 
+(defn- lock-wait-timed-out?
+  "Whether `e` says we timed out waiting for a row lock, rather than failing for some other reason."
+  [^Throwable e]
+  (or (instance? java.sql.SQLTimeoutException e)
+      (instance? java.sql.SQLTimeoutException (ex-cause e))
+      (true? (::acquisition-timeout (ex-data e)))
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+
+(defn- insert-lock-row-out-of-band!
+  "Insert the lock's row on a connection of our own, so it is committed rather than tied to the caller's
+  transaction.
+
+  A lock row is written once and read forever after, and the usual insert leans on that: rival first-time
+  inserters block on the winner's uncommitted unique-index entry and retry once it commits. Inside a
+  `with-temp` that commit never comes -- the scope rolls back, the row is gone again, and the next
+  acquisition replays the race, on MariaDB until the lock-wait timeout expires.
+
+  This takes a second connection while the caller still holds theirs, which is worth knowing about -- but only
+  until the row exists: once it is committed the SELECT in [[acquire-lock-row!*]] finds it and this never runs
+  again for that name.
+
+  TODO (Chris 2026-08-21) -- this is reasoning, not measurement. The failures it targets are cross-connection
+  and only show up under MariaDB in CI, so it has not been reproduced locally. If the CI flakes it is aimed at
+  do not go away, this is the first thing to take back out."
+  [lock-name-str timeout]
+  (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                  :columns     [:lock_name]
+                                  :values      [[[:raw "?"]]]})]
+    (with-open [conn (.getConnection ^javax.sql.DataSource mdb.connection/*application-db*)
+                stmt (.prepareStatement conn ^String sql)]
+      (.setString stmt 1 lock-name-str)
+      (let [insert! (fn []
+                      (try
+                        (.executeUpdate stmt)
+                        (catch Exception e
+                          ;; someone else got there first, which is the outcome we wanted anyway
+                          (when-not (duplicate-lock-row? e)
+                            (throw e)))))]
+        ;; the timeout has to be bounded on *this* connection: the caller's is a different session, and a
+        ;; rival's uncommitted row would otherwise hold us here for the server's default lock wait
+        (u.connection/set-query-timeout! stmt timeout)
+        (if (u.connection/server-rejects-query-timeout? conn)
+          (do-with-lock-wait-timeout conn timeout insert!)
+          (insert!))))))
+
+(defn- insert-lock-row-in-band!
+  "Insert the lock's row on the caller's own connection, inside its transaction.
+  This record will not be visible until the tx commits, so there's no need to lock it; concurrent
+  inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
+  (under a detached lock ambient resolution would hand it a different connection) and needs the
+  same query timeout as the SELECT — concurrent first-time inserters block on the winner's
+  uncommitted unique-index entry."
+  [^Connection conn lock-name-str timeout]
+  (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                  :columns     [:lock_name]
+                                  :values      [[[:raw "?"]]]})]
+    (with-open [insert-stmt (.prepareStatement conn ^String sql)]
+      (u.connection/set-query-timeout! insert-stmt timeout)
+      (.setString insert-stmt 1 lock-name-str)
+      (.executeUpdate insert-stmt))))
+
 (defn- acquire-lock-row!*
-  [^Connection conn lock-name-str timeout mode]
-  (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
-              result-set (.executeQuery stmt)]
-    (when-not (.next result-set)
-      ;; this record will not be visible until the tx commits, so there's no need to lock it; concurrent
-      ;; inserters get a constraint violation and retry. Raw JDBC because the insert must run on `conn`
-      ;; (under a detached lock ambient resolution would hand it a different connection) and needs the
-      ;; same query timeout as the SELECT — concurrent first-time inserters block on the winner's
-      ;; uncommitted unique-index entry
-      (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
-                                      :columns     [:lock_name]
-                                      :values      [[[:raw "?"]]]})]
-        (with-open [insert-stmt (.prepareStatement conn ^String sql)]
-          (u.connection/set-query-timeout! insert-stmt timeout)
-          (.setString insert-stmt 1 lock-name-str)
-          (.executeUpdate insert-stmt)))))
+  [^Connection conn lock-name-str timeout mode ambient-transaction?]
+  (let [inserted-out-of-band?
+        (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
+                    result-set (.executeQuery stmt)]
+          (when-not (.next result-set)
+            ;; `config/is-test?` because this only matters where the ambient transaction may never commit:
+            ;; `with-temp` rolls back, so a row inserted inside it is gone again and the next acquisition
+            ;; replays a race meant to happen once. In production the caller's transaction commits the row
+            ;; the ordinary way, and `load-from-h2!` shows that production really does take cluster locks
+            ;; inside one -- so leave that path exactly as it was.
+            (if (and ambient-transaction? config/is-test?)
+              (try
+                (insert-lock-row-out-of-band! lock-name-str timeout)
+                true
+                (catch Exception e
+                  ;; A lock-wait timeout here usually means the blocker is the ambient transaction itself:
+                  ;; on MySQL/MariaDB a SELECT ... FOR UPDATE it took earlier holds a next-key lock whose gap
+                  ;; covers this row's key, and our fresh connection can never outwait our own caller (e.g.
+                  ;; load-from-h2 inserts Databases -- and so takes the batch-permissions locks -- inside one
+                  ;; big load transaction). Fall back to inserting on the caller's connection, which cannot
+                  ;; block on its own locks.
+                  (if (lock-wait-timed-out? e)
+                    (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                        false)
+                    (throw e))))
+              (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                  false))))]
+    (when inserted-out-of-band?
+      ;; the row was committed on another connection, so take its lock here now that there is one to take
+      (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
+                  result-set (.executeQuery stmt)]
+        (.next result-set))))
   (log/debugf "Obtained cluster lock: %s (%s)" lock-name-str mode))
 
 (defn- acquire-lock-row!
-  [^Connection conn lock-name-str timeout mode]
+  [^Connection conn lock-name-str timeout mode ambient-transaction?]
   (if (u.connection/server-rejects-query-timeout? conn)
-    (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode))
-    (acquire-lock-row!* conn lock-name-str timeout mode)))
+    (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?))
+    (acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?)))
 
 (def ^:private ^:dynamic *detached-locks-held*
   "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached
@@ -177,10 +260,13 @@
     (when (*detached-locks-held* lock-name-str)
       (throw (ex-info "Cluster lock is already held detached in this scope"
                       {:lock-name lock-name-str}))))
-  (t2/with-transaction [conn]
-    (doseq [{:keys [lock-name-str mode]} locks]
-      (acquire-lock-row! conn lock-name-str timeout-seconds mode))
-    (thunk)))
+  ;; captured before we open our own: what matters is whether the caller was already in one, since that is
+  ;; the transaction a rolled-back lock row would disappear with
+  (let [ambient-transaction? (mdb.connection/in-transaction?)]
+    (t2/with-transaction [conn]
+      (doseq [{:keys [lock-name-str mode]} locks]
+        (acquire-lock-row! conn lock-name-str timeout-seconds mode ambient-transaction?))
+      (thunk))))
 
 ;; ---------- h2 in-process rw locks ----------
 ;;
@@ -368,7 +454,8 @@
             (retry/with-retry config
               ;; clear the aborted transaction a failed previous attempt leaves behind
               (.rollback ^Connection conn)
-              (acquire-lock-row! conn lock-name-str timeout-seconds :exclusive))
+              ;; a detached hold owns its connection, so its row is not tied to the caller's transaction
+              (acquire-lock-row! conn lock-name-str timeout-seconds :exclusive false))
             (catch Throwable e
               (if (retryable? e)
                 (throw (ex-info (str "Failed to obtain cluster lock: " lock-name-str)
