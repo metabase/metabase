@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
@@ -89,16 +89,41 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     value: initialValue,
     updateSetting,
     isLoading,
+    isFetching,
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const [resetKey, setResetKey] = useState(0);
+  // The last value this input wrote, kept only until the refetch after the
+  // write lands. The server value is stale during that window, so comparing
+  // against it would silently drop a change that reverses one still being
+  // saved.
+  const lastSentValue = useRef<EnterpriseSettingValue>();
   const displayValue = settingDetails?.value ?? initialValue;
 
-  const handleChange = (newValue: EnterpriseSettingValue) => {
-    if (newValue === initialValue) {
+  useEffect(() => {
+    if (!isFetching) {
+      lastSentValue.current = undefined;
+    }
+  }, [isFetching]);
+
+  const handleChange = async (newValue: EnterpriseSettingValue) => {
+    const baseline =
+      lastSentValue.current !== undefined
+        ? lastSentValue.current
+        : displayValue;
+    if (newValue === baseline) {
       return;
     }
-    updateSetting({ key: name, value: newValue });
+    lastSentValue.current = newValue;
+    const response = await updateSetting({ key: name, value: newValue });
+    if (response.error) {
+      lastSentValue.current = undefined;
+      // booleans re-sync to the server value; typed values survive a rejected save
+      if (inputType === "boolean") {
+        setResetKey((key) => key + 1);
+      }
+    }
   };
 
   if (hidden || isLoading) {
@@ -117,6 +142,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <BasicAdminSettingInput
+          key={resetKey}
           name={name}
           value={displayValue}
           onChange={handleChange}
