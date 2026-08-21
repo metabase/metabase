@@ -102,7 +102,9 @@
            (throw (ex-info (format "Expected deserialized query to be a map, got ^%s %s"
                                    (.getCanonicalName (class query)) (pr-str query))
                            {:query query})))
-         (normalize-query query)))
+         (-> query
+             normalize-query
+             lib/prepare-after-deserialization)))
      (fn [e]
        (log/errorf "Error deserializing dataset_query from app DB: %s" (ex-message e))
        {}))))
