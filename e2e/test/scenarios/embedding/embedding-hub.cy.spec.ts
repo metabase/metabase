@@ -308,10 +308,9 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       cy.findByRole("heading", { name: "Authentication" }).should("be.visible");
       cy.findByRole("heading", { name: "JWT" }).should("not.exist");
 
-      H.typeAndBlurUsingLabel(
-        /JWT Identity Provider URI/i,
-        "https://jwt.example.com/auth",
-      );
+      cy.findByLabelText("JWT Identity Provider URI *")
+        .type("https://jwt.example.com/auth")
+        .blur();
 
       cy.log("the shared secret is generated through the key modal");
       cy.button("Set up key").click();
@@ -331,9 +330,12 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       });
 
       cy.log("and they survive a reload of the tab");
+      // cy.reload() does not work here: the app comes back without the hub
+      // around it, so the page renders with no "Authentication" heading and the
+      // form is never reached. Visiting the path again mounts the hub properly.
       cy.visit("/embedding/authentication");
       H.main()
-        .findByLabelText(/JWT Identity Provider URI/i)
+        .findByLabelText("JWT Identity Provider URI *")
         .should("have.value", "https://jwt.example.com/auth");
     });
 
@@ -349,7 +351,7 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
           "href",
           "/admin/settings/authentication",
         );
-        cy.findByLabelText(/JWT Identity Provider URI/i).should("not.exist");
+        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
       });
     });
   });
@@ -364,10 +366,17 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       cy.visit("/embedding/authentication");
 
       H.main().within(() => {
+        cy.findByText("Metabase Pro").should("be.visible");
         cy.findByText("Secure your embeds with single sign-on").should(
           "be.visible",
         );
-        cy.findByLabelText(/JWT Identity Provider URI/i).should("not.exist");
+        cy.findByText(
+          "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.",
+        ).should("be.visible");
+        cy.findByRole("link", { name: "Upgrade to Pro" }).should("be.visible");
+
+        cy.log("nothing configurable renders below the paywall");
+        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
       });
     });
   });
