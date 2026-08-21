@@ -1595,9 +1595,9 @@
         .container-main {
             grid-template-columns:
                 minmax(0, 1fr) minmax(0, 2.5fr) minmax(
-                    0,
-                    20rem
-                );
+                0,
+                20rem
+            );
             grid-template-areas: "sidebar content toc";
         }
 
