@@ -78,6 +78,7 @@ export const setupMockSamlEndpoints = ({
     return {
       url: providerUri,
       method: "saml",
+      "saml-popup-url": instanceUrl,
     };
   });
 

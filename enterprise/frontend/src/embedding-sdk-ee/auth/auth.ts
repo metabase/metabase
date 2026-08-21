@@ -277,9 +277,20 @@ const getRefreshToken = async ({
         headers: getSdkRequestHeaders(),
       });
 
-  const { method, url: responseUrl, hash } = urlResponseJson || {};
+  const {
+    method,
+    url: responseUrl,
+    hash,
+    "saml-popup-url": samlPopupUrl,
+  } = urlResponseJson || {};
+
   if (method === "saml") {
-    const token = await openSamlLoginPopup(responseUrl, metabaseInstanceUrl);
+    const token = await openSamlLoginPopup(
+      responseUrl,
+      metabaseInstanceUrl,
+      samlPopupUrl,
+    );
+
     samlTokenStorage.set(token);
 
     return token;
