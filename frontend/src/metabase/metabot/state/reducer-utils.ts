@@ -425,12 +425,14 @@ export const appendAgentTurnAborted = (
 export const appendAgentTurnIncomplete = (
   convo: WritableDraft<MetabotConversationState>,
   finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  contextWindowFull?: boolean,
 ) => {
   convo.messages.push({
     id: createMessageId(),
     role: "agent",
     type: "turn_incomplete",
     finishReason,
+    contextWindowFull,
     externalId: convo.pendingMessageExternalId,
   });
 };

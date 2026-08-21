@@ -85,6 +85,7 @@ export type MetabotAgentTurnIncompleteMessage = {
   role: "agent";
   type: "turn_incomplete";
   finishReason: Exclude<FinishReason, "stop" | "error">;
+  contextWindowFull?: boolean;
   externalId?: string;
 };
 
@@ -164,6 +165,11 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
+
 export interface MetabotConversationState {
   conversationId: string;
   title: string | undefined;
@@ -175,6 +181,7 @@ export interface MetabotConversationState {
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   activeChainId: string | undefined;
+  lastTokenUsage?: MetabotContextUsage;
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {

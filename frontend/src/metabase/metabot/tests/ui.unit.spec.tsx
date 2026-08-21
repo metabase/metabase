@@ -9,7 +9,7 @@ import {
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
-import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -300,46 +300,97 @@ describe("metabot > ui", () => {
     expect(secondParagraph).toBeInTheDocument();
   });
 
-  it("should warn the chat is getting long w/ ability to clear it", async () => {
-    const { store } = setup();
-    const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
+  const CONTEXT_WINDOW = 11000;
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "1",
-          type: "text",
-          message: longMsg,
-          conversationId: testConversationId("omnibot"),
-        }),
-      );
-    });
-    expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
+  const contextUsageResponse = (contextTokens: number): SSEEvent[] => [
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: "answer" },
+    { type: "text-end", id: "t1" },
+    {
+      type: "finish",
+      finishReason: "stop",
+      messageMetadata: {
+        usage: {
+          inputTokens: contextTokens,
+          outputTokens: 50,
+          totalTokens: contextTokens + 50,
+        },
+        contextTokens,
+        contextWindowTokens: CONTEXT_WINDOW,
+      },
+    },
+  ];
+
+  const chatUsingContext = async (contextTokens: number) => {
+    setup();
+    mockAgentEndpoint({ events: contextUsageResponse(contextTokens) });
+    // nothing to report before a turn completes
     expect(
-      screen.queryByText(/This chat is getting long/),
+      screen.queryByTestId("metabot-context-usage-ring"),
     ).not.toBeInTheDocument();
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "2",
-          type: "text",
-          message: longMsg,
-          conversationId: testConversationId("omnibot"),
-        }),
-      );
-    });
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
+
+    return screen.findByTestId("metabot-long-chat-notice");
+  };
+
+  it("should warn as the chat nears the context limit", async () => {
+    const notice = await chatUsingContext(CONTEXT_WINDOW * 0.95);
+
     expect(
-      await screen.findByText(/This chat is getting long/),
+      within(notice).getByText(/This chat is nearing the/),
     ).toBeInTheDocument();
-    await userEvent.click(await screen.findByTestId("metabot-reset-long-chat"));
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      "95% of the context window used",
+    );
+
+    await userEvent.hover(
+      within(notice).getByTestId("metabot-long-chat-context-limit"),
+    );
+    expect(
+      await screen.findByText(/Once a chat reaches the context limit/),
+    ).toBeInTheDocument();
+
+    // dismissing the warning keeps the conversation
+    await userEvent.click(
+      within(notice).getByTestId("metabot-long-chat-dismiss"),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-long-chat-notice"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("answer")).toBeInTheDocument();
+  });
+
+  it("should prompt for a new chat once the context limit is met", async () => {
+    const notice = await chatUsingContext(CONTEXT_WINDOW);
+
+    expect(
+      within(notice).getByText(/This chat has reached the/),
+    ).toBeInTheDocument();
+    expect(
+      within(notice).queryByTestId("metabot-long-chat-dismiss"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("metabot-context-usage-ring"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(notice).getByTestId("metabot-long-chat-new-chat"),
+    );
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/This chat is getting long/),
+        screen.queryByTestId("metabot-long-chat-notice"),
       ).not.toBeInTheDocument();
     });
-    expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    expect(screen.queryByText("answer")).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

@@ -154,7 +154,7 @@ export const lastChatMessage = async (options?: {
 }) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
-  return chatInput.querySelector('[contenteditable="true"]')!;
+  return chatInput.querySelector<HTMLElement>("[contenteditable]")!;
 };
 export const enterChatMessage = async (message: string, send = true) => {
   // using userEvent.type works locally but in CI characters are sometimes dropped

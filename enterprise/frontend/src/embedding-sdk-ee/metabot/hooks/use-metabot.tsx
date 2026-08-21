@@ -121,6 +121,8 @@ export const useMetabot = (): UseMetabotResult => {
     messages,
     errorMessages,
     isProcessing: agent.isDoingScience,
+    contextWindowPercentUsage: agent.contextWindowPercentUsage,
+    isContextWindowFull: agent.isContextWindowFull,
 
     CurrentChart,
   };

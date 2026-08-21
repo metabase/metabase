@@ -6,7 +6,7 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
@@ -18,6 +18,7 @@ import type { MetabotChatConfig } from "../Metabot";
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
+import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotChatConfig = {
@@ -84,7 +85,6 @@ export const MetabotChat = ({
     : t`New conversation`;
   const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
-  const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;
 
   return (
@@ -194,47 +194,52 @@ export const MetabotChat = ({
               />
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
-              {/* long convo warning */}
-              {metabot.isLongConversation && onNewConversation && (
-                <MetabotResetLongChatButton
-                  onResetConversation={onNewConversation}
-                />
-              )}
             </Box>
           )}
         </Box>
       </Box>
 
       {isConfigured && (
-        <Box className={Styles.textInputContainer}>
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
+        <Box className={Styles.footerContainer}>
+          <Box className={Styles.textInputContainer}>
+            {metabot.longChatNotice && onNewConversation && (
+              <MetabotLongChatNotice
+                variant={metabot.longChatNotice}
+                onNewChat={onNewConversation}
+              />
             )}
-          >
-            <MetabotChatEditor
-              ref={metabot.promptInputRef}
-              value={metabot.prompt}
-              autoFocus
-              isResponding={metabot.isDoingScience}
-              placeholder={t`How can I help? Type @ to mention items.`}
-              onChange={metabot.setPrompt}
-              onSubmit={handleEditorSubmit}
-              onStop={metabot.cancelRequest}
-              suggestionConfig={{
-                suggestionModels: config.suggestionModels,
-              }}
-            />
-          </Paper>
-          <Text
-            className={Styles.disclaimer}
-            fz="sm"
-            c="text-secondary"
-            ta="center"
-          >
-            {t`${metabotName} isn't perfect. Double-check results.`}
-          </Text>
+            <Paper
+              className={cx(
+                Styles.inputContainer,
+                metabot.isDoingScience && Styles.inputContainerLoading,
+              )}
+            >
+              <MetabotChatEditor
+                ref={metabot.promptInputRef}
+                value={metabot.prompt}
+                autoFocus
+                isResponding={metabot.isDoingScience}
+                placeholder={t`How can I help? Type @ to mention items.`}
+                onChange={metabot.setPrompt}
+                onSubmit={() => metabot.submitInput(metabot.prompt)}
+                onStop={metabot.cancelRequest}
+                suggestionConfig={{
+                  suggestionModels: config.suggestionModels,
+                }}
+              />
+            </Paper>
+          </Box>
+          <Box className={Styles.footerRow}>
+            <Text fz="sm" c="text-secondary" ta="center">
+              {t`${metabotName} isn't perfect. Double-check results.`}
+            </Text>
+            {metabot.contextWindowPercentUsage > 50 && (
+              <MetabotContextUsageRing
+                className={Styles.contextUsage}
+                percentUsage={metabot.contextWindowPercentUsage}
+              />
+            )}
+          </Box>
         </Box>
       )}
       <AIProviderConfigurationModal

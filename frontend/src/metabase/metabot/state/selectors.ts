@@ -8,11 +8,15 @@ import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
 import {
+  CONTEXT_WINDOW_WARNING_PERCENT,
   FIXED_METABOT_IDS,
-  LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
   type MetabotProfileId,
 } from "../constants";
+import {
+  getContextWindowPercentUsage,
+  isContextWindowFull,
+} from "../utils/context-usage";
 
 import type {
   MetabotAgentId,
@@ -276,12 +280,24 @@ export const getConversationChart = createSelector(
   },
 );
 
-export const getIsLongConversation = createSelector(getMessages, (messages) => {
-  const totalMessageLength = messages.reduce((sum, msg) => {
-    return sum + ("message" in msg ? msg.message.length : 0);
-  }, 0);
-  return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
-});
+export type MetabotLongChatNoticeVariant = "warning" | "full";
+
+export const getContextUsagePercent = createSelector(
+  [getConversation],
+  (convo): number => getContextWindowPercentUsage(convo.lastTokenUsage),
+);
+
+export const getLongChatNotice = createSelector(
+  [getConversation, getContextUsagePercent],
+  (convo, percentUsage): MetabotLongChatNoticeVariant | undefined => {
+    if (isContextWindowFull(convo.lastTokenUsage)) {
+      return "full";
+    }
+    return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
+      ? "warning"
+      : undefined;
+  },
+);
 
 export const getMetabotReqIdOverride = createSelector(
   getConversation,

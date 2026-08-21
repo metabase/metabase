@@ -14,11 +14,12 @@ import {
   cancelInflightConversationRequests,
   fetchConversationSnapshot,
   getActiveToolCalls,
+  getContextUsagePercent,
   getConversationForkedFrom,
   getConversationTitle,
   getDebugMode,
   getIsConversationProcessing,
-  getIsLongConversation,
+  getLongChatNotice,
   getMessages,
   getMetabotId,
   getMetabotReactionsState,
@@ -159,6 +160,10 @@ export const useMetabotConversation = (conversationId: string) => {
     dispatch(fetchConversationSnapshot(conversationId));
   }, [dispatch, conversationId]);
 
+  const longChatNotice = useSelector((state) =>
+    getLongChatNotice(state, conversationId),
+  );
+
   return {
     conversationId,
     prompt,
@@ -181,8 +186,10 @@ export const useMetabotConversation = (conversationId: string) => {
     isDoingScience: useSelector((state) =>
       getIsConversationProcessing(state, conversationId),
     ),
-    isLongConversation: useSelector((state) =>
-      getIsLongConversation(state, conversationId),
+    longChatNotice,
+    isContextWindowFull: longChatNotice === "full",
+    contextWindowPercentUsage: useSelector((state) =>
+      getContextUsagePercent(state, conversationId),
     ),
     activeToolCalls: useSelector((state) =>
       getActiveToolCalls(state, conversationId),

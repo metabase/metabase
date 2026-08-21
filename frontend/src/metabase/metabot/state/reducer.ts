@@ -18,6 +18,7 @@ import type {
 } from "metabase-types/api";
 
 import type { MetabotProfileId } from "../constants";
+import { isContextWindowFull } from "../utils/context-usage";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -485,6 +486,7 @@ export const metabot = createSlice({
       convo.activeChainId = undefined;
       convo.title = title;
       convo.forkedFromConversationId = forkedFromConversationId;
+      convo.lastTokenUsage = undefined;
       convo.isProcessing = hasInProgressMessage(messages);
       if (convo.isProcessing) {
         openChain(convo); // resuming mid-response
@@ -525,11 +527,22 @@ export const metabot = createSlice({
             convo.state = { ...action.payload.state };
           }
 
+          const metadata = action.payload?.processedResponse.messageMetadata;
+          if (metadata?.contextTokens && metadata.contextWindowTokens) {
+            convo.lastTokenUsage = {
+              contextTokens: metadata.contextTokens,
+              contextWindowTokens: metadata.contextWindowTokens,
+            };
+          }
+
           const finishReason = action.payload?.processedResponse.finishReason;
           const isResumableFinishReason =
             finishReason && finishReason !== "stop" && finishReason !== "error";
           if (isResumableFinishReason) {
-            appendAgentTurnIncomplete(convo, finishReason);
+            const contextWindowFull =
+              finishReason === "length" &&
+              isContextWindowFull(convo.lastTokenUsage);
+            appendAgentTurnIncomplete(convo, finishReason, contextWindowFull);
           }
 
           convo.activeToolCalls = [];
