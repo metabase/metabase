@@ -542,7 +542,10 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      (if (:agent-error? (ex-data e))
+      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
+      ;; and it means the user can't have the card they named rather than that anything broke.
+      (if (or (:agent-error? (ex-data e))
+              (= 403 (:status-code (ex-data e))))
         ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
         ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
         ;; is the tool's result and the LLM is expected to self-correct on the next turn.
