@@ -178,10 +178,10 @@
    "table"     "Table"})
 
 (defn- id->entity-id
-  [{{:keys [model] :or {model "card"} :as attrs} :attrs type :type :as node}]
+  [{{:keys [model] :or {model "card"}} :attrs type :type :as node}]
   (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (id-key attrs)]
-    (if-let [db-model (t2/select-one (ast-model->db-model model) :id id)]
+        id (prose-mirror/node-entity-id node)]
+    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -233,6 +233,9 @@
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
+    ;; NOTE: unlike the readers below, this feeds `serdes/dependencies`, which runs on the already-serialized
+    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
+    ;; with `node-entity-id` here.
     (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
                                               (cond
                                                 (and (= prose-mirror/smart-link-type type)
@@ -260,10 +263,10 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
-                                                                              #(when (= prose-mirror/smart-link-type (:type %))
-                                                                                 (:attrs %)))
-                   :when (contains? model->serdes-model model)]
+             (for [{{model :model} :attrs :as node} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %)) %))
+                   :let  [link-id (prose-mirror/node-entity-id node)]
+                   :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
