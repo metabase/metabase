@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { useDeleteTransformMutation } from "metabase/api";
+import { archiveAndTrack } from "metabase/archive/analytics";
 import { useSetArchive } from "metabase/archive/hooks/use-set-archive";
 import type {
   ContentDiagnosticsBaseFinding,
@@ -35,14 +36,21 @@ export function useBulkTrashFindings() {
     async (
       findings: ContentDiagnosticsBaseFinding[],
     ): Promise<BulkTrashResult> => {
-      const results = await Promise.allSettled(
-        findings.map((finding) => {
-          const model = getArchivableModel(finding);
-          return model !== null
-            ? archive({ model, id: finding.entity_id }, true, { notify: false })
-            : deleteTransform(finding.entity_id).unwrap();
-        }),
-      );
+      const trashFinding = (finding: ContentDiagnosticsBaseFinding) => {
+        const model = getArchivableModel(finding);
+        if (model === null) {
+          return deleteTransform(finding.entity_id).unwrap();
+        }
+        return archiveAndTrack({
+          archive: () =>
+            archive({ model, id: finding.entity_id }, true, { notify: false }),
+          model,
+          modelId: finding.entity_id,
+          triggeredFrom: "content_diagnostics",
+        });
+      };
+
+      const results = await Promise.allSettled(findings.map(trashFinding));
       const failed = results.filter(
         (result) => result.status === "rejected",
       ).length;

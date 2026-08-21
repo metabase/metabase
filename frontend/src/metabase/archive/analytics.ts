@@ -15,7 +15,11 @@ type MoveToTrashEventDetail =
   | "measure"
   | "exploration";
 
-type MoveToTrashTriggeredFrom = "collection" | "detail_page" | "cleanup_modal";
+type MoveToTrashTriggeredFrom =
+  | "collection"
+  | "detail_page"
+  | "cleanup_modal"
+  | "content_diagnostics";
 
 export const archiveAndTrack = async ({
   archive,
