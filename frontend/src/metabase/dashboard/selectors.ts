@@ -22,6 +22,7 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  EventsSidebarState,
   State,
   StoreDashboard,
 } from "metabase/redux/store";
@@ -74,6 +75,15 @@ function isClickBehaviorSidebar(
 ): sidebar is ClickBehaviorSidebarState {
   return sidebar.name === SIDEBAR_NAME.clickBehavior;
 }
+
+function isEventsSidebar(sidebar: SidebarState): sidebar is EventsSidebarState {
+  return sidebar.name === SIDEBAR_NAME.events;
+}
+
+export const getEventsSidebarProps = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isEventsSidebar(sidebar) ? sidebar.props : null;
+};
 
 function isEditParameterSidebar(
   sidebar: SidebarState,
