@@ -160,6 +160,7 @@
    :uses    #{api
               auth-identity
               lib
+              lib-be
               llm
               metabot
               query-processor

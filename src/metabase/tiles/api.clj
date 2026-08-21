@@ -144,7 +144,7 @@
   [:schema
    {:decode/api (fn [field]
                   (when (string? field)
-                    (let [deserialized (json/decode+kw field)]
+                    (let [deserialized (json/decode field)]
                       (when (sequential? deserialized)
                         (mbql.normalize/normalize deserialized)))))}
    [:ref ::mbql.s/field]])
@@ -217,7 +217,7 @@
   [:schema
    {:decode/api (fn [s]
                   (when (string? s)
-                    (let [deserialized (json/decode+kw s)]
+                    (let [deserialized (json/decode s)]
                       (when (map? deserialized)
                         (lib-be/normalize-query deserialized)))))}
    [:ref ::lib.schema/query]])
