@@ -94,9 +94,8 @@
     (metabot.config/check-metabot-enabled! metabot-id)
     (metabot.usage/check-metabase-managed-free-limit!)
     (let [context      (assoc
-                        (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
-                                                        {:metabot-id metabot-id
-                                                         :profile-id :document-generate-content})
+                        (metabot.context/create-context {} {:metabot-id metabot-id
+                                                            :profile-id :document-generate-content})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop
                                  {:messages      [{:role    :user
