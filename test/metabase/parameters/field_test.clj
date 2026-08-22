@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -67,6 +68,35 @@
                                              (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
                                              "Red"
                                              nil))))))
+
+(deftest search-values-from-field-id-has-more-values-test
+  (binding [qp.perms/*param-values-query* true]
+    (with-redefs [parameters.field/default-max-field-search-limit 2]
+      (let [field-id        (mt/id :venues :id)
+            returned-values (atom [[1] [2] [3]])
+            calls           (atom [])]
+        (mt/with-dynamic-fn-redefs [parameters.field/search-values (fn [_field _search-field query limit]
+                                                                      (swap! calls conj [query limit])
+                                                                      @returned-values)]
+          (testing "unfiltered field value searches report when the default result limit hides more values"
+            (is (= {:values          [[1] [2]]
+                    :has_more_values true
+                    :field_id        field-id}
+                   (parameters.field/search-values-from-field-id field-id nil))))
+          (testing "fields with exactly the default result limit are not marked as having more values"
+            (reset! returned-values [[1] [2]])
+            (is (= {:values          [[1] [2]]
+                    :has_more_values false
+                    :field_id        field-id}
+                   (parameters.field/search-values-from-field-id field-id nil))))
+          (testing "search queries continue to report that more values may exist"
+            (reset! returned-values [[1]])
+            (is (= {:values          [[1]]
+                    :has_more_values true
+                    :field_id        field-id}
+                   (parameters.field/search-values-from-field-id field-id "Red"))))
+          (is (= [[nil 3] [nil 3] ["Red" 3]]
+                 @calls)))))))
 
 (deftest search-values-with-field-and-search-field-is-fk-test
   (testing "searching on a PK field should work (#32985)"
