@@ -69,7 +69,7 @@
                :max-file-count 1}}
   [_route_params
    _query-params
-   _body
+   _body :- :any
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map
@@ -96,7 +96,7 @@
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
                        [:token ms/NonBlankString]]
-   {:keys [locale]}]
+   {:keys [locale]} :- [:map [:locale {:optional true} [:maybe :string]]]]
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale

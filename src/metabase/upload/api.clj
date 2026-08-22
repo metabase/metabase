@@ -44,7 +44,7 @@
   ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
   [_route-params
    _query-params
-   _body
+   _body :- :any
    {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
    :- [:map
        [:multipart-params

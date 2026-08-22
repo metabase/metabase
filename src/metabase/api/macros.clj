@@ -237,16 +237,23 @@
      :respond-raise (s/? (s/cat :respond symbol?
                                 :raise   symbol?))))))
 
+(def ^:private default-params-schema
+  "Schema for route params, query params, and the request body when an endpoint binds them without declaring one. A
+  bare `:map` strips every key on decode, so endpoints have to declare the keys they read."
+  [:map])
+
 (mu/defn- parse-params :- ::params
   [params]
-  (letfn [(parse-schema [param]
-            (cond-> param
-              (:schema param) (update :schema :schema)))]
+  (letfn [(parse-schema [k param]
+            (cond
+              (:schema param)                      (update param :schema :schema)
+              (contains? #{:route :query :body} k) (assoc param :schema default-params-schema)
+              :else                                param))]
     (merge
      (reduce
       (fn [params k]
         (cond-> params
-          (k params) (update k parse-schema)))
+          (k params) (update k #(parse-schema k %))))
       (dissoc params :respond-raise)
       [:route :query :body :request])
      (when-let [{:keys [respond raise]} (:respond-raise params)]

@@ -141,7 +141,7 @@
                :max-file-count 1}}
   [_route-params
    _query-params
-   _body
+   _body :- :any
    {{file "file"} :multipart-params, :as _request} :- BundleUploadRequest]
   (api/check-superuser)
   (let [tempfile (check-upload! file)]
@@ -251,7 +251,7 @@
                :max-file-count 1}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   _body
+   _body :- :any
    {{file "file"} :multipart-params, :as _request} :- BundleUploadRequest]
   (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
         tempfile (check-upload! file)]
@@ -277,7 +277,7 @@
    In dev mode, proxies from `dev_bundle_url` if set."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
-   _body
+   _body :- :any
    _request
    respond
    raise]
@@ -309,7 +309,7 @@
    In dev mode, proxies from the dev base URL if set."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [path]} :- [:map [:path ms/NonBlankString]]
-   _body
+   _body :- :any
    _request
    respond
    raise]
