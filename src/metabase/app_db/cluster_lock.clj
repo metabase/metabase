@@ -83,7 +83,7 @@
   (delay
     (first (mdb.query/compile {:select [:lock.lock_name]
                                :from [[:metabase_cluster_lock :lock]]
-                               :where [:= :lock.lock_name [:raw "?"]]}))))
+                               :where [:= :lock.lock_name ^:allow-raw-sql [:raw "?"]]}))))
 
 (defn- lock-sql ^String [mode]
   (str @base-lock-sql (lock-clause mode)))
@@ -150,7 +150,7 @@
       ;; uncommitted unique-index entry
       (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
                                       :columns     [:lock_name]
-                                      :values      [[[:raw "?"]]]})]
+                                      :values      [[^:allow-raw-sql [:raw "?"]]]})]
         (with-open [insert-stmt (.prepareStatement conn ^String sql)]
           (u.connection/set-query-timeout! insert-stmt timeout)
           (.setString insert-stmt 1 lock-name-str)

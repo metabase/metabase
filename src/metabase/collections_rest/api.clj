@@ -442,32 +442,32 @@
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:document.id
-                :document.name
-                :document.collection_id
-                :document.collection_position
-                :document.archived
-                :document.archived_directly
-                [:u.id :last_edit_user]
-                [:u.email :last_edit_email]
-                [:u.first_name :last_edit_first_name]
-                [:u.last_name :last_edit_last_name]
-                [:r.timestamp :last_edit_timestamp]
-                [(h2x/literal "document") :model]]
-       :from [[:document :document]]
-       :left-join [[:revision :r] [:and
-                                   [:= :r.model_id :document.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Document")]]
-                   [:core_user :u] [:= :u.id :r.user_id]]
-       :where [:and
-               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
-               (if (collection/is-trash? collection)
-                 [:= :document.archived_directly true]
-                 [:and
-                  [:= :document.collection_id (:id collection)]
-                  [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
+  (-> ^:allow-subquery {:select [:document.id
+                                 :document.name
+                                 :document.collection_id
+                                 :document.collection_position
+                                 :document.archived
+                                 :document.archived_directly
+                                 [:u.id :last_edit_user]
+                                 [:u.email :last_edit_email]
+                                 [:u.first_name :last_edit_first_name]
+                                 [:u.last_name :last_edit_last_name]
+                                 [:r.timestamp :last_edit_timestamp]
+                                 [(h2x/literal "document") :model]]
+                        :from [[:document :document]]
+                        :left-join [[:revision :r] [:and
+                                                    [:= :r.model_id :document.id]
+                                                    [:= :r.most_recent true]
+                                                    [:= :r.model (h2x/literal "Document")]]
+                                    [:core_user :u] [:= :u.id :r.user_id]]
+                        :where [:and
+                                (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
+                                (if (collection/is-trash? collection)
+                                  [:= :document.archived_directly true]
+                                  [:and
+                                   [:= :document.collection_id (:id collection)]
+                                   [:= :document.archived_directly false]])
+                                [:= :document.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
 
 (defmethod ^:private post-process-collection-children :exploration
@@ -501,53 +501,53 @@
 
 (defmethod collection-children-query :exploration
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:exploration.id
-                :exploration.name
-                :exploration.description
-                :exploration.entity_id
-                :exploration.collection_id
-                :exploration.collection_position
-                :exploration.archived
-                :exploration.archived_directly
-                [:u.id         :last_edit_user]
-                [:u.email      :last_edit_email]
-                [:u.first_name :last_edit_first_name]
-                [:u.last_name  :last_edit_last_name]
-                [:ere.timestamp :last_edit_timestamp]
-                [(h2x/literal "exploration") :model]]
-       :from [[:exploration :exploration]]
-       :left-join [[exploration-recent-edits-subquery :ere]
-                   [:and
-                    [:= :ere.exploration_id :exploration.id]
-                    [:= :ere.rn [:inline 1]]]
-                   [:core_user :u] [:= :u.id :ere.user_id]]
-       :where [:and
-               (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
-               (if (collection/is-trash? collection)
-                 [:= :exploration.archived_directly true]
-                 [:and
-                  [:= :exploration.collection_id (:id collection)]
-                  [:= :exploration.archived_directly false]])
-               [:= :exploration.archived (boolean archived?)]]}
+  (-> ^:allow-subquery {:select [:exploration.id
+                                 :exploration.name
+                                 :exploration.description
+                                 :exploration.entity_id
+                                 :exploration.collection_id
+                                 :exploration.collection_position
+                                 :exploration.archived
+                                 :exploration.archived_directly
+                                 [:u.id         :last_edit_user]
+                                 [:u.email      :last_edit_email]
+                                 [:u.first_name :last_edit_first_name]
+                                 [:u.last_name  :last_edit_last_name]
+                                 [:ere.timestamp :last_edit_timestamp]
+                                 [(h2x/literal "exploration") :model]]
+                        :from [[:exploration :exploration]]
+                        :left-join [[exploration-recent-edits-subquery :ere]
+                                    [:and
+                                     [:= :ere.exploration_id :exploration.id]
+                                     [:= :ere.rn [:inline 1]]]
+                                    [:core_user :u] [:= :u.id :ere.user_id]]
+                        :where [:and
+                                (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
+                                (if (collection/is-trash? collection)
+                                  [:= :exploration.archived_directly true]
+                                  [:and
+                                   [:= :exploration.collection_id (:id collection)]
+                                   [:= :exploration.archived_directly false]])
+                                [:= :exploration.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state :exploration.collection_position))))
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select-distinct [:p.id
-                         :p.name
-                         :p.entity_id
-                         :p.collection_position
-                         :p.collection_id
-                         [(h2x/literal "pulse") :model]]
-       :from            [[:pulse :p]]
-       :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-       :where           [:and
-                         [:= :p.collection_id      (:id collection)]
-                         [:= :p.archived           (boolean archived?)]
-                         ;; exclude alerts
-                         [:= :p.alert_condition    nil]
-                         ;; exclude dashboard subscriptions
-                         [:= :p.dashboard_id nil]]}
+  (-> ^:allow-subquery {:select-distinct [:p.id
+                                          :p.name
+                                          :p.entity_id
+                                          :p.collection_position
+                                          :p.collection_id
+                                          [(h2x/literal "pulse") :model]]
+                        :from            [[:pulse :p]]
+                        :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                        :where           [:and
+                                          [:= :p.collection_id      (:id collection)]
+                                          [:= :p.archived           (boolean archived?)]
+                                          ;; exclude alerts
+                                          [:= :p.alert_condition    nil]
+                                          ;; exclude dashboard subscriptions
+                                          [:= :p.dashboard_id nil]]}
       (sql.helpers/where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod post-process-collection-children :pulse
@@ -562,9 +562,9 @@
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
   [_collection {:keys [archived?]}]
-  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
-   :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+  ^:allow-subquery {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
+                    :from   [[:native_query_snippet :nqs]]
+                    :where  [:= :archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]
@@ -572,26 +572,26 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
-   :from   [[:timeline :timeline]]
-   :where  [:and
-            (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+  ^:allow-subquery {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+                    :from   [[:timeline :timeline]]
+                    :where  [:and
+                             (poison-when-pinned-clause pinned-state)
+                             [:= :collection_id (:id collection)]
+                             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
-    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-     :from   [[:transform :transform]]
-     :where  [:and
-              (poison-when-pinned-clause pinned-state)
-              [:= :collection_id (:id collection)]
-              (if (seq enabled-types)
-                [:in :source_type enabled-types]
-                [:=
-                 [:inline 0]
-                 [:inline 1]])]}))
+    ^:allow-subquery {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+                      :from   [[:transform :transform]]
+                      :where  [:and
+                               (poison-when-pinned-clause pinned-state)
+                               [:= :collection_id (:id collection)]
+                               (if (seq enabled-types)
+                                 [:in :source_type enabled-types]
+                                 [:=
+                                  [:inline 0]
+                                  [:inline 1]])]}))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -610,56 +610,56 @@
         (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions?]}]
-  (-> {:select    (cond->
-                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                    :dashboard_id
-                    :last_used_at
-                    :c.collection_id
-                    :c.archived_directly
-                    :c.archived
-                    :c.dataset_query
-                    [(h2x/literal (case card-type
-                                    :model "dataset"
-                                    :metric  "metric"
-                                    "card"))
-                     :model]
-                    [:u.id :last_edit_user]
-                    [:u.email :last_edit_email]
-                    [:u.first_name :last_edit_first_name]
-                    [:u.last_name :last_edit_last_name]
-                    [:r.timestamp :last_edit_timestamp]
-                    [:mr.status :moderated_status]]
-                    (#{:question :model} card-type)
-                    (conj :c.database_id))
-       :from      [[:report_card :c]]
-       :left-join [[:revision :r] [:and
-                                   [:= :r.model_id :c.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Card")]]
-                   [:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :c.id]
-                                             [:= :mr.most_recent true]
-                                             [:= :mr.moderated_item_type (h2x/literal "card")]]
-                   [:core_user :u] [:= :u.id :r.user_id]]
-       :where     [:and
-                   (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
-                   (if (collection/is-trash? collection)
-                     [:= :c.archived_directly true]
-                     [:and
-                      [:= :c.collection_id (:id collection)]
-                      [:= :c.archived_directly false]])
-                   (when-not show-dashboard-questions?
-                     [:= :c.dashboard_id nil])
-                   [:= :c.document_id nil]
-                   [:= :c.archived (boolean archived?)]
-                   (case card-type
-                     :model
-                     [:= :c.type (h2x/literal "model")]
+  (-> ^:allow-subquery {:select    (cond->
+                                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                                     :dashboard_id
+                                     :last_used_at
+                                     :c.collection_id
+                                     :c.archived_directly
+                                     :c.archived
+                                     :c.dataset_query
+                                     [(h2x/literal (case card-type
+                                                     :model "dataset"
+                                                     :metric  "metric"
+                                                     "card"))
+                                      :model]
+                                     [:u.id :last_edit_user]
+                                     [:u.email :last_edit_email]
+                                     [:u.first_name :last_edit_first_name]
+                                     [:u.last_name :last_edit_last_name]
+                                     [:r.timestamp :last_edit_timestamp]
+                                     [:mr.status :moderated_status]]
+                                     (#{:question :model} card-type)
+                                     (conj :c.database_id))
+                        :from      [[:report_card :c]]
+                        :left-join [[:revision :r] [:and
+                                                    [:= :r.model_id :c.id]
+                                                    [:= :r.most_recent true]
+                                                    [:= :r.model (h2x/literal "Card")]]
+                                    [:moderation_review :mr] [:and
+                                                              [:= :mr.moderated_item_id :c.id]
+                                                              [:= :mr.most_recent true]
+                                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
+                                    [:core_user :u] [:= :u.id :r.user_id]]
+                        :where     [:and
+                                    (collection/visible-collection-filter-clause :c.collection_id {:cte-name :visible_collection_ids})
+                                    (if (collection/is-trash? collection)
+                                      [:= :c.archived_directly true]
+                                      [:and
+                                       [:= :c.collection_id (:id collection)]
+                                       [:= :c.archived_directly false]])
+                                    (when-not show-dashboard-questions?
+                                      [:= :c.dashboard_id nil])
+                                    [:= :c.document_id nil]
+                                    [:= :c.archived (boolean archived?)]
+                                    (case card-type
+                                      :model
+                                      [:= :c.type (h2x/literal "model")]
 
-                     :metric
-                     [:= :c.type (h2x/literal "metric")]
+                                      :metric
+                                      [:= :c.type (h2x/literal "metric")]
 
-                     [:= :c.type (h2x/literal "question")])]}
+                                      [:= :c.type (h2x/literal "question")])]}
       (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
@@ -717,36 +717,36 @@
   (post-process-card-like (assoc options :hydrate-based-on-upload true) rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
-                   [:last_viewed_at :last_used_at]
-                   :d.collection_id
-                   :d.archived_directly
-                   [(h2x/literal "dashboard") :model]
-                   [:u.id :last_edit_user]
-                   :d.archived
-                   [:u.email :last_edit_email]
-                   [:u.first_name :last_edit_first_name]
-                   [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [:mr.status :moderated_status]]
-       :from      [[:report_dashboard :d]]
-       :left-join [[:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :d.id]
-                                             [:= :mr.most_recent true]
-                                             [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
-                   [:revision :r] [:and
-                                   [:= :r.model_id :d.id]
-                                   [:= :r.most_recent true]
-                                   [:= :r.model (h2x/literal "Dashboard")]]
-                   [:core_user :u] [:= :u.id :r.user_id]]
-       :where     [:and
-                   (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
-                   (if (collection/is-trash? collection)
-                     [:= :d.archived_directly true]
-                     [:and
-                      [:= :d.collection_id (:id collection)]
-                      [:not= :d.archived_directly true]])
-                   [:= :d.archived (boolean archived?)]]}
+  (-> ^:allow-subquery {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                                    [:last_viewed_at :last_used_at]
+                                    :d.collection_id
+                                    :d.archived_directly
+                                    [(h2x/literal "dashboard") :model]
+                                    [:u.id :last_edit_user]
+                                    :d.archived
+                                    [:u.email :last_edit_email]
+                                    [:u.first_name :last_edit_first_name]
+                                    [:u.last_name :last_edit_last_name]
+                                    [:r.timestamp :last_edit_timestamp]
+                                    [:mr.status :moderated_status]]
+                        :from      [[:report_dashboard :d]]
+                        :left-join [[:moderation_review :mr] [:and
+                                                              [:= :mr.moderated_item_id :d.id]
+                                                              [:= :mr.most_recent true]
+                                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                                    [:revision :r] [:and
+                                                    [:= :r.model_id :d.id]
+                                                    [:= :r.most_recent true]
+                                                    [:= :r.model (h2x/literal "Dashboard")]]
+                                    [:core_user :u] [:= :u.id :r.user_id]]
+                        :where     [:and
+                                    (collection/visible-collection-filter-clause :d.collection_id {:cte-name :visible_collection_ids})
+                                    (if (collection/is-trash? collection)
+                                      [:= :d.archived_directly true]
+                                      [:and
+                                       [:= :d.collection_id (:id collection)]
+                                       [:not= :d.archived_directly true]])
+                                    [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -850,24 +850,24 @@
                                                                user-info
                                                                {:perms/view-data :unrestricted})]
                                                    published-clause]))]
-    {:select [:t.id
-              [:t.id :table_id]
-              [:t.display_name :name]
-              :t.description
-              :t.collection_id
-              [:t.db_id :database_id]
-              [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
-     :from   [[:metabase_table :t]]
-     :where  [:and
-              [:= :t.is_published true]
-              (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-              queryable-clause
-              [:= :t.collection_id (:id collection)]
-              (if archived?
-                [:!= :t.archived_at nil]
-                [:= :t.archived_at nil])]}))
+    ^:allow-subquery {:select [:t.id
+                               [:t.id :table_id]
+                               [:t.display_name :name]
+                               :t.description
+                               :t.collection_id
+                               [:t.db_id :database_id]
+                               [[:!= :t.archived_at nil] :archived]
+                               [(h2x/literal "table") :model]]
+                      :from   [[:metabase_table :t]]
+                      :where  [:and
+                               [:= :t.is_published true]
+                               (poison-when-pinned-clause pinned-state)
+                               (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+                               queryable-clause
+                               [:= :t.collection_id (:id collection)]
+                               (if archived?
+                                 [:!= :t.archived_at nil]
+                                 [:= :t.archived_at nil])]}))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
