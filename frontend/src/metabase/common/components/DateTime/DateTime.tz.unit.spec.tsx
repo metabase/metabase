@@ -1,4 +1,7 @@
-import { renderWithProviders, screen } from "__support__/ui";
+// plain RTL render: the timezone CI job runs without the compiled cljs bundle
+// that __support__/ui transitively requires
+import { render, screen } from "@testing-library/react";
+
 import {
   DateTime,
   getFormattedTime,
@@ -9,7 +12,7 @@ const DEFAULT_FORMAT = "MMMM D, YYYY, h:mm A";
 const DAY_FORMAT = "MMMM D, YYYY";
 
 function renderDateTime(props: React.ComponentProps<typeof DateTime>) {
-  renderWithProviders(<DateTime {...props} data-testid="date-time" />);
+  render(<DateTime {...props} data-testid="date-time" />);
   return screen.getByTestId("date-time").textContent;
 }
 
