@@ -91,7 +91,7 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         with:
           script: |
-            const { findLinearIssue } = require('./.github/scripts/find-linear-issue.js');
+            const { findLinearIssue } = require('./.github/scripts/linear-issues.js');
 
             const title = context.payload.issue.title;
             const issueUrl = context.payload.issue.html_url;

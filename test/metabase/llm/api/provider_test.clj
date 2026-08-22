@@ -1,5 +1,6 @@
 (ns metabase.llm.api.provider-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
@@ -30,9 +31,10 @@
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "vllm"
+               "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "vllm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -233,6 +235,97 @@
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type "openai" :config {:api-key "sk-valid"}})
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest create-vllm-connection-adopts-the-model-its-probe-exercised-test
+  (testing (str "A vLLM server serves whatever the operator loaded, so there is no default model to select: "
+                "connecting adopts the model the connect-time probe actually ran the agent-loop contract "
+                "against, and records what that probe could only learn by running.")
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models         [{:id "vllm-test" :display_name "vllm-test"}
+                                                      {:id "other" :display_name "other"}]
+                                     :probed-model   "vllm-test"
+                                     :learned-config {:model-reasoning "true"}})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (is (=? {:key    "vllm"
+                     :type   "vllm"
+                     :usable true
+                     :config {:base-url "http://vllm.internal:8000/v1"}}
+                    (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                          {:type   "vllm"
+                                           :config {:base-url "http://vllm.internal:8000/v1"}})))
+            (testing "the connection is verified by a probe, not by a plain listing"
+              (is (=? {:credentials {:base-url "http://vllm.internal:8000/v1"} :probe? true} @opts)))
+            (is (= "vllm/vllm-test" (metabot.settings/llm-metabot-provider)))
+            (testing "and what the probe learned is stored on the connection, where the request path reads it"
+              (is (= {:base-url        "http://vllm.internal:8000/v1"
+                      :model-reasoning "true"}
+                     (stored-config "vllm")))
+              (is (true? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
+
+(deftest create-vllm-connection-is-rejected-when-the-probe-fails-test
+  (testing "a server that cannot drive the agent loop is not saved, so nothing points Metabot at it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _]
+                                  (throw (ex-info "The vLLM server answered with text instead of calling a tool."
+                                                  {:api-error true :status-code 400})))]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (=? {:message "The vLLM server answered with text instead of calling a tool."}
+                (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                      {:type   "vllm"
+                                       :config {:base-url "http://vllm.internal:8000/v1"}})))
+        (is (= [] (llm.provider/connections)))))))
+
+(deftest create-vllm-connection-rejects-an-unreachable-base-url-test
+  (testing (str "vLLM is the one provider whose base URL the admin types, so a typo has to come back as the "
+                "adapter's message on the form — not as the 500 an untagged transport failure would produce.")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (java.net.ConnectException. "Connection refused")))]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (= (str "Could not reach the vLLM server at http://vllm.internal:8000/v1. "
+                    "Check that it is running and that the base URL is correct.")
+               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                               {:type   "vllm"
+                                                :config {:base-url "http://vllm.internal:8000/v1"}}))))
+        (is (= [] (llm.provider/connections)))))))
+
+(deftest models-listing-does-not-probe-test
+  (testing "listing models is a page load; only a write may spend a generation on the operator's server"
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models [{:id "vllm-test" :display_name "vllm-test"}]})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                      {:base-url "http://vllm.internal:8000/v1"})]]
+          (is (=? [{:key "vllm" :models [{:id "vllm-test"}]}]
+                  (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (not (:probe? @opts))))))))
+
+(deftest update-verifies-against-the-model-the-connection-serves-test
+  (testing (str "An edit that names no model is verified against the model this connection is actually serving "
+                "Metabot, rather than whichever one the provider happens to list first.")
+    (let [opts (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider o]
+                                    (reset! opts o)
+                                    {:models         [{:id "served-a" :display_name "served-a"}]
+                                     :probed-model   "served-b"
+                                     :learned-config {:model-reasoning "false"}})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                      {:base-url        "http://old.internal:8000/v1"
+                                                                       :model-reasoning "true"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "vllm/served-b"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/vllm"
+                                  {:config {:base-url "http://vllm.internal:8000/v1"}})
+            (is (=? {:model "served-b" :probe? true} @opts))
+            (testing "and the probe's fresh verdict replaces the one the connection was carrying"
+              (is (= {:base-url        "http://vllm.internal:8000/v1"
+                      :model-reasoning "false"}
+                     (stored-config "vllm")))
+              (is (false? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
 
 (deftest create-selects-a-model-composed-from-the-config-test
   (testing (str "Azure names its deployment in `:config` rather than listing models, and the form leaves a field it "

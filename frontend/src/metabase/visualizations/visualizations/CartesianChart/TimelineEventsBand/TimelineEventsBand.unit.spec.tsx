@@ -1,30 +1,11 @@
 import type { EChartsType } from "echarts/core";
 
+import { createMockChartLayout } from "__support__/echarts";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
-
-const createChartLayout = (): ChartLayout => ({
-  padding: { top: 10, left: 50, bottom: 40, right: 10 },
-  bounds: { top: 10, left: 50, bottom: 160, right: 450 },
-  boundaryWidth: 400,
-  outerWidth: 500,
-  outerHeight: 200,
-  axisEnabledSetting: true,
-  panelGap: 0,
-  ticksDimensions: {
-    yTicksWidthLeft: 0,
-    yTicksWidthRight: 0,
-    xTicksHeight: 40,
-    xTickWidthCap: 0,
-    firstXTickWidth: 0,
-    lastXTickWidth: 0,
-    getXTickWidth: () => 0,
-  },
-});
 
 const createChartInstance = (
   pixelByDate: Record<string, number>,
@@ -71,7 +52,14 @@ const setup = (opts: SetupOpts = {}) => {
       chartInstance={chartInstance}
       chartSize={{ width: 500, height: 200 }}
       timelineEventsModel={model}
-      chartLayout={createChartLayout()}
+      chartLayout={createMockChartLayout({
+        padding: { top: 10, left: 50, bottom: 40, right: 10 },
+        bounds: { top: 10, left: 50, bottom: 160, right: 450 },
+        boundaryWidth: 400,
+        outerWidth: 500,
+        outerHeight: 200,
+        ticksDimensions: { xTicksHeight: 40, getXTickWidth: () => 0 },
+      })}
       xAxisIndex={0}
       selectedTimelineEventIds={opts.selectedTimelineEventIds}
     />,
