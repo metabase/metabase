@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
@@ -65,33 +66,21 @@
            :name)
       (catch Exception _ nil))))
 
-(defn- dimension-display-name
-  "Combination name shown in the UI for a dimension: '<group display name> - <dimension display name>'
-   when the dimension has a group, otherwise just the dimension's display name."
-  [d]
-  (let [dn       (or (:display-name d) (:name d) "")
-        group-dn (some-> d :group :display-name)]
-    (if (str/blank? group-dn)
-      dn
-      (str group-dn " - " dn))))
-
 (defn- metric-matches-search?
   "Case-insensitive match of `q-lower` against the metric's name or any of its dimensions'
-   *displayed* names — the `<group> - <dimension>` combination the picker shows (see
-   [[dimension-display-name]]), so searching a group name, a dimension name, or the combined
-   string all match what the user sees."
+   curated [[block/dimension-label]]s — the same text the picker surfaces."
   [metric q-lower]
   (or (str/includes? (u/lower-case-en (or (:name metric) "")) q-lower)
       (some (fn [d]
-              (str/includes? (u/lower-case-en (dimension-display-name d)) q-lower))
+              (str/includes? (u/lower-case-en (or (block/dimension-label d) "")) q-lower))
             (:dimensions metric))))
 
 (defn- group-dimensions
   "Collapse dimensions across the supplied metrics into a list of dimension groups. Dimensions that
    share at least one source entry are unioned into the same group (matching the semantics of
-   `lib-metric/same-source?`). Each group exposes the user-facing combination name, a representative
-   interestingness, and the list of underlying dimensions that callers must echo back to
-   `POST /api/exploration` when the user starts an exploration."
+   `lib-metric/same-source?`). Each group exposes the curated [[block/dimension-label]], a
+   representative interestingness, and the list of underlying dimensions that callers must echo
+   back to `POST /api/exploration` when the user starts an exploration."
   [metrics]
   (let [;; Flatten + filter once. Keep dims whose interestingness is nil (didn't score) or above
         ;; the threshold
@@ -105,7 +94,7 @@
          (mapv (fn [dims]
                  (let [head   (first dims)
                        scores (keep :dimension-interestingness dims)]
-                   {:name                      (dimension-display-name head)
+                   {:name                      (or (block/dimension-label head) "")
                     :dimension_interestingness (when (seq scores) (apply max scores))
                     :dimensions                (vec dims)})))
          (sort-by (fn [g]

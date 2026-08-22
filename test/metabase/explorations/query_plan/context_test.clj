@@ -366,12 +366,8 @@
         (is (= :default (:strategy (lib/binning lhs)))
             "click ref's default binning is applied to the explore filter target")))))
 
-(deftest enrich-explore-filters-disambiguates-same-named-dimensions-test
-  (testing "enrich-explore-filters qualifies ambiguous explore-filter dimension_names with the dim's group"
-    ;; Block snapshots don't carry :group — it lives on the metric Card's :dimensions. When two
-    ;; block dims share a display_name, explore-filter labels should mirror query :dimension_name
-    ;; disambiguation (e.g. \"Users → Created At\"), not fall back to the bare name or the raw
-    ;; column display name.
+(deftest enrich-explore-filters-uses-curated-dimension-name-test
+  (testing "enrich-explore-filters labels explore-filter dimension_names with the curated display_name"
     (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
           orders-created "00000000-0000-0000-0000-00000000bbbb"
           users-field    (mt/id :venues :latitude)
@@ -395,8 +391,8 @@
                                                       :target ["field" {} orders-field]}]}
               filter-spec     {:operator "=" :field_ref ["field" {} users-field] :value 40.7}
               [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter-spec])]
-          (is (= "Users → Created At" (:dimension_name enriched))
-              "the clicked filter is labeled with the dim's group when the display_name is shared"))))))
+          (is (= "Created At" (:dimension_name enriched))
+              "the clicked filter is labeled with the curated display_name"))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; build-row-context — "Explore further" filter edge cases
