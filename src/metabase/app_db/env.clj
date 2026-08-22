@@ -139,7 +139,7 @@
    (env-defaults db-type)))
 
 (def env
-  "Metabase Database environment. Used to setup *application-db* and audit-db for enterprise users."
+  "Metabase Database environment. Used to setup the application DB and audit-db for enterprise users."
   (env* (config/config-kw :mb-db-type)))
 
 (def db-type
