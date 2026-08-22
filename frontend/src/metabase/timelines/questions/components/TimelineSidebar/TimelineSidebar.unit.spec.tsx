@@ -1,10 +1,18 @@
+import userEvent from "@testing-library/user-event";
+
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks/collection";
+import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
+import { renderWithProviders, screen } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import {
+  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
 import {
+  TimelineSidebar,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
@@ -86,9 +94,9 @@ describe("getEventsXDomain", () => {
 });
 
 describe("formatTitle", () => {
-  const june3 = dayjs("2027-06-03T00:00:00Z");
-  const june27 = dayjs("2027-06-27T00:00:00Z");
-  const july5 = dayjs("2027-07-05T00:00:00Z");
+  const june3 = dayjs.utc("2027-06-03T00:00:00Z");
+  const june27 = dayjs.utc("2027-06-27T00:00:00Z");
+  const july5 = dayjs.utc("2027-07-05T00:00:00Z");
 
   it("returns a generic title without a domain", () => {
     expect(formatTitle()).toBe("Events");
@@ -122,5 +130,40 @@ describe("formatTitle", () => {
     expect(formatTitle([june3, june27])).toBe(
       "Events between Jun 3, 2027 and Jun 27, 2027",
     );
+  });
+});
+
+describe("TimelineSidebar", () => {
+  beforeEach(() => {
+    setupCollectionByIdEndpoint({
+      collections: [
+        createMockCollection({ ...ROOT_COLLECTION, can_write: true }),
+      ],
+    });
+  });
+
+  it("renders Edit/Move/New modals internally when onOpenModal is absent", async () => {
+    const timeline = createMockTimeline({
+      id: 1,
+      name: "Releases",
+      collection: createMockCollection({ can_write: true }),
+      events: [createMockTimelineEvent({ id: 1, name: "RC1", timeline_id: 1 })],
+    });
+    setupTimelinesEndpoints([timeline]);
+
+    renderWithProviders(
+      <TimelineSidebar
+        collectionId="root"
+        timelines={[timeline]}
+        visibleTimelineEventIds={[1]}
+        selectedTimelineEventIds={[]}
+        onShowTimelineEvents={jest.fn()}
+        onHideTimelineEvents={jest.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Create event")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Create event"));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 });

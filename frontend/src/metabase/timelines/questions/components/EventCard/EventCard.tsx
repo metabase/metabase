@@ -108,17 +108,29 @@ const getMenuItems = (
     return [];
   }
 
-  return [
-    <Menu.Item key="edit-event" onClick={() => onEdit?.(event)}>
-      {t`Edit event`}
-    </Menu.Item>,
-    <Menu.Item key="move-event" onClick={() => onMove?.(event)}>
-      {t`Move event`}
-    </Menu.Item>,
-    <Menu.Item key="archive-event" onClick={() => onArchive?.(event)}>
-      {t`Archive event`}
-    </Menu.Item>,
-  ];
+  const items = [];
+  if (onEdit) {
+    items.push(
+      <Menu.Item key="edit-event" onClick={() => onEdit(event)}>
+        {t`Edit event`}
+      </Menu.Item>,
+    );
+  }
+  if (onMove) {
+    items.push(
+      <Menu.Item key="move-event" onClick={() => onMove(event)}>
+        {t`Move event`}
+      </Menu.Item>,
+    );
+  }
+  if (onArchive) {
+    items.push(
+      <Menu.Item key="archive-event" onClick={() => onArchive(event)}>
+        {t`Archive event`}
+      </Menu.Item>,
+    );
+  }
+  return items;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

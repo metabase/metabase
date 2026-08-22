@@ -1,6 +1,7 @@
 (ns metabase.comments.api
   "`/api/comment/` routes"
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
@@ -63,15 +64,27 @@
     ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
 
+(def ^:private CommentHighlight
+  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
+  pick out the point — so the client can re-find it in a result set it is separately authorized to
+  read."
+  [:map {:closed true}
+   [:columnName {:optional true} [:maybe :string]]
+   [:dimensions {:optional true}
+    [:maybe [:sequential [:map {:closed true}
+                          [:columnName {:optional true} [:maybe :string]]
+                          [:value      {:optional true} :any]]]]]])
+
 (def CommentContext
-  "Context stored alongside a comment: a JSON blob whose shape depends on what was commented on. Only `timeline_id` is
-  read back, by [[metabase.comments.models.comment]] when building an exploration comment URL."
+  "Context stored alongside a comment"
   (mu/with-api-error-message
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map {:closed false}
-     [:timeline_id {:optional true} ms/PositiveInt]]]
+    [:map {:closed true}
+     [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
+     [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+     [:highlighted           {:optional true} [:maybe CommentHighlight]]]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
@@ -91,6 +104,25 @@
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
+
+(defn- highlight-label
+  "Label for the data point a comment is anchored to, derived from its stored `:context`.
+
+  A composite chart carries its series in one of the dimensions, so the discriminator value is
+  already among the values joined here."
+  [context]
+  (when-let [values (not-empty (->> (get-in context [:highlighted :dimensions])
+                                    (map :value)
+                                    (remove nil?)
+                                    (map str)))]
+    (str/join ", " values)))
+
+(defn- with-derived-context
+  "Attach the read-time-derived parts of `:context` (see [[highlight-label]])."
+  [comment]
+  (if-let [label (highlight-label (:context comment))]
+    (assoc-in comment [:context :highlight_label] label)
+    comment))
 
 (defn- render-comments
   "Process comments to prepare them for the world:
@@ -112,6 +144,7 @@
                                                           :users (take 10 users)})))))]
     (into [] (comp (map #(dissoc % :content_html))
                    (map render-reactions)
+                   (map with-derived-context)
                    (keep delete-comment))
           comments)))
 
@@ -141,7 +174,10 @@
                                               [:= :target_id target_id]]
                                    :order-by [[:created_at :asc]]})
                        (t2/hydrate :creator :reactions))]
-      {:comments (render-comments comments)})))
+      ;; Gate before rendering: the read check above only proves the viewer may see the *target*,
+      ;; and for an exploration that is collection permissions alone.
+      ;; Running first also means no label is derived from a context the viewer may not see.
+      {:comments (render-comments (comment/apply-context-gate target_type target_id comments))})))
 
 (defn- mentioned-ids-who-can-read
   "Restrict mentioned user ids to active users who can themselves read `entity`."

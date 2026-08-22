@@ -176,3 +176,27 @@
         (testing "no longer found by the replaced body term"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
             (is (not (contains? (set (map :id (:data results))) doc-id)))))))))
+
+(deftest exploration-document-search-exclusion-test
+  (testing "Documents attached to an exploration are excluded from search"
+    (let [tag (mt/random-name)]
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/User u {}
+                       :model/Exploration e {:name "expl" :creator_id (:id u)}
+                       :model/Document    exploration-doc {:name (str tag "-exploration")
+                                                           :document (documents.test-util/text->prose-mirror-ast "")
+                                                           :creator_id (:id u)
+                                                           :exploration_id (:id e)}
+                       :model/Document    standalone {:name (str tag "-standalone")
+                                                      :document (documents.test-util/text->prose-mirror-ast "")
+                                                      :creator_id (:id u)}]
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")
+                ids    (set (map :id (:data results)))]
+            (is (contains? ids (u/the-id standalone))
+                "Standalone document should appear")
+            (is (not (contains? ids (u/the-id exploration-doc)))
+                "Exploration-attached document should NOT appear"))
+          (testing "result rows don't leak the internal :exploration_id column"
+            (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")]
+              (is (every? (complement #(contains? % :exploration_id))
+                          (:data results))))))))))

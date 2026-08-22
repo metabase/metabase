@@ -628,6 +628,7 @@
    :uses #{api
            app-db
            collections
+           documents
            eid-translation
            events
            lib-be
@@ -656,6 +657,7 @@
   comments
   {:team "UX West"
    :api  #{metabase.comments.api
+           metabase.comments.core
            metabase.comments.init}
    :uses #{analytics
            api
@@ -1031,7 +1033,9 @@
            api
            app-db
            collections
+           comments
            contextual-interestingness
+           documents
            events
            interestingness
            lib
@@ -1056,6 +1060,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Comment
+                    :model/Document
                     :model/Segment
                     :model/StoredResult
                     :model/StoredResultUse
@@ -1919,6 +1924,8 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/StoredResult
+                    :model/StoredResultUse
                     :model/Table}}
 
   query-permissions
@@ -1960,6 +1967,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.store
               metabase.query-processor.streaming

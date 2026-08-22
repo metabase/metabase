@@ -13,10 +13,7 @@ import {
 } from "metabase/app/selectors";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { getUser } from "metabase/current-user";
-import {
-  getCommentSidebarOpen,
-  getSidebarOpen,
-} from "metabase/documents/selectors";
+import { getIsSidebarOpen } from "metabase/documents/selectors";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
@@ -72,8 +69,7 @@ export function AppBarContainer() {
   const isMetabotVisible = useSelector((state) =>
     getMetabotVisible(state, "omnibot"),
   );
-  const isDocumentSidebarOpen = useSelector(getSidebarOpen);
-  const isCommentSidebarOpen = useSelector(getCommentSidebarOpen);
+  const isDocumentSidebarOpen = useSelector(getIsSidebarOpen);
   const isLogoVisible = useSelector(getIsLogoVisible);
   const isSearchVisible = useSelector(getIsSearchVisible);
   const isEmbeddingIframe = isWithinIframe();
@@ -129,7 +125,6 @@ export function AppBarContainer() {
       isNavBarEnabled={isNavBarEnabled}
       isMetabotVisible={isMetabotVisible}
       isDocumentSidebarOpen={isDocumentSidebarOpen}
-      isCommentSidebarOpen={isCommentSidebarOpen}
       isLogoVisible={isLogoVisible}
       isSearchVisible={isSearchVisible}
       isEmbeddingIframe={isEmbeddingIframe}

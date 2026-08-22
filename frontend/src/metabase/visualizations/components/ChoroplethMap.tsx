@@ -409,7 +409,9 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
   };
 
-  const isSeriesHighlighted = card.id === highlighted?.cardId;
+  const isSeriesHighlighted =
+    highlighted != null &&
+    (highlighted.cardId == null || highlighted.cardId === card.id);
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );
