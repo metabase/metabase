@@ -181,9 +181,8 @@
         (let [{:keys [dataset_query]} (client/client :get 200 (card-url card))]
           (is (= {:lib/type "mbql/query"
                   :database (mt/id)
-                  :stages   [{:lib/type      "mbql.stage/native"
-                              :native        "-"
-                              :template-tags []}]}
+                  :stages   [{:lib/type "mbql.stage/native"
+                              :native   "-"}]}
                  dataset_query)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
