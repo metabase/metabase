@@ -453,6 +453,7 @@
  [lib.segment
   available-segments]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage

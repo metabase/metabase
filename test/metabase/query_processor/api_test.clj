@@ -20,12 +20,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.settings :as qp.settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -306,6 +308,40 @@
                        (update-in [:data :native_form :query]
                                   #(str/split-lines (or (driver/prettify-native-form :h2 %)
                                                         "error: no query generated")))))))))))))
+
+(deftest native-checks-source-card-read-permission-test
+  (testing "POST /api/dataset/native requires read permission on a referenced source Card"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)
+                                           :database_id   (mt/id)
+                                           :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (testing "source-table card__N"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}})))
+        (testing "card template tag"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query "SELECT * FROM {{#c}}"
+                                                :template-tags {"#c" {:id "x" :name "#c" :display-name "c"
+                                                                      :type "card" :card-id (:id card)}}}})))))))
+
+(deftest native-compiles-readable-source-card-test
+  (testing "POST /api/dataset/native returns the compiled query when the user can read the source Card"
+    (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                     :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (is (=? {:query some?}
+              (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}}))))))
 
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
@@ -1116,3 +1152,45 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest ^:synchronized row-limit-ignores-request-options-test
+  (testing "POST /api/dataset"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))
+            base      (mt/mbql-query venues)]
+        (testing "the row limit applies to an ordinary query"
+          (is (= 5 (row-count base))))
+        (testing ":middleware options in the request body do not change it"
+          (is (= 5 (row-count (assoc-in base [:middleware :disable-max-results?] true)))))
+        (testing ":constraints in the request body do not change it either"
+          (is (= 5 (row-count (assoc base :constraints {:max-results           10000
+                                                        :max-results-bare-rows 10000})))))))))
+
+(deftest ^:synchronized pivot-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/pivot"
+    ;; on this branch an unaggregated pivot query does not pass through as plain rows, so cap an aggregated
+    ;; one instead (each pivot subquery is capped by :max-results / aggregated-query-row-limit)
+    (mt/with-temporary-setting-values [aggregated-query-row-limit   5
+                                       unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset/pivot" query))))
+            base      (-> (mt/mbql-query orders {:aggregation [[:count]]
+                                                 :breakout    [$product_id]})
+                          (assoc :pivot_rows [] :pivot_cols []))
+            capped    (row-count base)]
+        (testing "sanity: the row limit caps the pivot subqueries (200 products in the sample data)"
+          (is (<= capped 10)))
+        (testing ":middleware options in the request body do not change it"
+          (is (= capped (row-count (assoc-in base [:middleware :disable-max-results?] true)))))))))
+
+(deftest ^:synchronized export-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/csv"
+    (binding [qp.settings/*minimum-download-row-limit* 5]
+      (mt/with-temporary-setting-values [download-row-limit 5]
+        (let [query (-> (mt/mbql-query venues)
+                        (assoc-in [:middleware :disable-max-results?] true))
+              rows  (csv/read-csv (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                                        {:query (json/encode query)}))]
+          (testing "the download limit applies, not counting the header row"
+            (is (= 5 (dec (count rows))))))))))

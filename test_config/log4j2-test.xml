@@ -7,12 +7,6 @@
         <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
-    <Console name="ConsoleInfoLevel" target="SYSTEM_OUT" follow="true">
-      <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
-      <Filters>
-        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
-      </Filters>
-    </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
       <JsonLayout locationInfo="false" properties="true" compact="true" eventEol="true"/>
       <Filters>
@@ -24,12 +18,6 @@
     <Logger name="liquibase" level="INFO"/>
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
-
-    <Logger name="metabase.test.gentest" level="INFO" additivity="false">
-      <AppenderRef ref="ConsoleInfoLevel"/>
-      <AppenderRef ref="Console"/>
-      <AppenderRef ref="File"/>
-    </Logger>
 
     <Root level="INFO">
       <AppenderRef ref="Console"/>

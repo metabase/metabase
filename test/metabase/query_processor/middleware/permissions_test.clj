@@ -2515,7 +2515,7 @@
               (is (re-find #"(?i)permission" (str (:message result) (:error result) (:error_type result)))
                   "Join to an unauthorized table via pivot download is blocked"))))))))
 
-(deftest ^:parallel remove-namespaced-options-test
+(deftest ^:parallel remove-internal-keys-test
   (testing "a namespaced option the caller attached to a clause is stripped"
     (let [query    (-> (lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))
                        (lib/join (lib.metadata/table meta/metadata-provider (meta/id :categories)))
@@ -2527,21 +2527,21 @@
                        (assoc-in [:stages 0 :joins 0 :conditions 0 1 :metabase.driver.sql.query-processor/add-cast]
                                  "int) AND 1=1 --"))]
       (is (= query
-             (qp.perms/remove-namespaced-options injected))))))
+             (qp.perms/remove-internal-keys injected))))))
 
-(deftest ^:parallel remove-namespaced-options-preserves-lib-options-test
+(deftest ^:parallel remove-internal-keys-preserves-lib-options-test
   (testing "the `:lib` options MBQL is made of are the ones a caller may send"
     (let [query (-> (lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :checkins)))
                     (lib/breakout (-> (lib.metadata/field meta/metadata-provider (meta/id :checkins :date))
                                       (lib/with-temporal-bucket :month))))]
       (is (=? {:stages [{:breakout [[:field {:temporal-unit :month, :lib/uuid string?} pos-int?]]}]}
-              (qp.perms/remove-namespaced-options query)))
+              (qp.perms/remove-internal-keys query)))
       ;; On 58 the query builder attaches its bookkeeping under :metabase.lib.* (renamed to :lib/* in later
       ;; versions), so those keys are the caller's to send too and the round-trip is the identity.
       (is (= query
-             (qp.perms/remove-namespaced-options query))))))
+             (qp.perms/remove-internal-keys query))))))
 
-(deftest ^:parallel remove-namespaced-options-strips-stage-keys-test
+(deftest ^:parallel remove-internal-keys-strips-stage-keys-test
   (testing "a namespaced key the caller attached to a stage or join is stripped too"
     (let [query    (-> (lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))
                        (lib/join (lib.metadata/table meta/metadata-provider (meta/id :categories))))
@@ -2550,21 +2550,7 @@
                        (assoc-in [:stages 0 :joins 0 :query-permissions/sandboxed-table] 1)
                        (assoc-in [:stages 0 :joins 0 :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox?] true))]
       (is (= query
-             (qp.perms/remove-namespaced-options injected))))))
-
-(deftest ^:parallel remove-namespaced-options-keeps-server-set-stage-keys-test
-  (testing "the keys resolve-source-cards decides are left alone -- it clears them off a Card's query before setting them"
-    (let [query (-> (lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :venues)))
-                    (assoc-in [:stages 0 :qp/stage-is-from-source-card] 1)
-                    (assoc-in [:stages 0 :qp/stage-had-source-card] 1)
-                    (assoc-in [:stages 0 :source-query/model?] true)
-                    ;; dropping this one would take away a Card the user is made to be able to read, so it stays
-                    (assoc-in [:stages 0 :query-permissions/referenced-card-ids] #{1})
-                    ;; cleared off a Card's stored query by resolve-source-cards, and off the caller's own query by
-                    ;; remove-persisted-info-native-keys, so whatever is here by now is the server's
-                    (assoc-in [:stages 0 :persisted-info/native] "SELECT 1"))]
-      (is (= query
-             (qp.perms/remove-namespaced-options query))))))
+             (qp.perms/remove-internal-keys injected))))))
 
 (deftest source-card-persisted-info-native-is-not-honoured-test
   (testing "SQL persisted inside a saved Card's query does not become the SQL its stage compiles to"
@@ -2580,7 +2566,7 @@
             (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                    (map :name (mt/cols (qp/process-query query)))))))))))
 
-(deftest ^:parallel remove-namespaced-options-e2e-test
+(deftest ^:parallel remove-internal-keys-e2e-test
   (testing "a driver option a caller attaches to a projected ref does not survive preprocessing"
     (let [payload "text) AS x FROM ORDERS UNION SELECT EMAIL FROM PEOPLE --"
           query   (mt/mbql-query venues

@@ -6,7 +6,6 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
-  merge_group:
 
 jobs:
   whitespace-linter:

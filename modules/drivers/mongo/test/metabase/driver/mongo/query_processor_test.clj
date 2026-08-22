@@ -563,6 +563,29 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
+(deftest ^:parallel filter-value-compilation-test
+  (testing "literal filter values compile as plain values"
+    (let [email [:field "EMAIL" nil]]
+      (testing "simple comparisons use the direct match form"
+        (is (= {"EMAIL" "$abc"}
+               (mongo.qp/compile-filter [:= email [:value "$abc" {:base_type :type/Text}]])))
+        (is (= {"EMAIL" {"$ne" "$abc"}}
+               (mongo.qp/compile-filter [:!= email [:value "$abc" {:base_type :type/Text}]])))
+        (is (= {"EMAIL" {"$gte" "$$abc"}}
+               (mongo.qp/compile-filter [:>= email [:value "$$abc" {:base_type :type/Text}]])))
+        (is (= {"EMAIL" "$$abc"}
+               (mongo.qp/compile-filter [:= email [:value "$$abc" {:base_type :type/Text}]]))))
+      (testing "literals not wrapped in a :value clause are treated the same way"
+        (is (= {"EMAIL" "$abc"}
+               (mongo.qp/compile-filter [:= email "$abc"]))))
+      (testing "when the comparison needs `$expr`, the value is wrapped with `$literal`"
+        (is (= {"$expr" {"$eq" [{"$concat" ["$EMAIL" "!"]}
+                                {"$literal" "$abc"}]}}
+               (mongo.qp/compile-filter [:= [:concat email "!"] [:value "$abc" {:base_type :type/Text}]]))))
+      (testing "comparisons against fields compile to field paths"
+        (is (= {"$expr" {"$eq" ["$EMAIL" "$EMAIL"]}}
+               (mongo.qp/compile-filter [:= email email])))))))
+
 (deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
