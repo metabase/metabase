@@ -8,12 +8,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -231,32 +231,6 @@
 
 ;;; Viewing Context Formatting
 
-(defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider,
-  so gate it like the metabase://chart|query resources do. Queries with no :database
-  only ever pprint (no name resolution), so they pass through."
-  [query]
-  (let [database-id (and (map? query) (:database query))]
-    (when (or (not database-id)
-              (mi/can-read? :model/Database database-id))
-      query)))
-
-;; Format adhoc query (notebook editor) viewing context.
-(defmethod format-entity "adhoc"
-  [item]
-  (if (native-query-item? item)
-    (format-native-query item)
-    (te/lines "The user is currently in the notebook editor viewing a query."
-              (te/field "Query ID" (:id item))
-              (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
-              (when-let [config-ids (format-chart-config-ids item)]
-                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-              (te/field "Tables used" (some->> (:used_tables item)
-                                               (map format-entity)
-                                               te/lines)))))
-
 (def ^:private exported-table-id-keys
   [:source-table :source_table])
 
@@ -288,22 +262,6 @@
      {:table #{} :card #{} :field #{}}
      (tree-seq coll? seq normalized))))
 
-(defn- native-stage?
-  [normalized]
-  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
-                 (tree-seq coll? seq normalized))))
-
-(defn- native-sql-table-ids
-  [normalized]
-  (try
-    (into #{}
-          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
-          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
-    (catch Exception e
-      (log/debugf "Could not analyze a viewing-context native query for permission gating: %s"
-                  (ex-message e))
-      #{})))
-
 (defn- sandbox-visible-fields?
   [field-id->table-id]
   (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
@@ -321,11 +279,10 @@
         (let [normalized  (lib-be/normalize-query query)
               database-id (:database normalized)]
           (when (and (pos-int? database-id)
-                     (mi/can-query? :model/Database database-id))
+                     (query-perms/can-run-query? normalized))
             (let [{:keys [table card field]} (exported-entity-ids normalized)
                   field-table (metabot.perms/field-id->table-id field)
-                  table-ids   (cond-> (into (set table) (vals field-table))
-                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
+                  table-ids   (into (set table) (vals field-table))]
               (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
                          (sandbox-visible-fields? field-table)
                          (every? #(mi/can-read? :model/Card %) card))
@@ -335,14 +292,33 @@
                       (ex-message e))
           nil)))))
 
-(defn- transform-query-source-text
-  "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]."
-  [source]
-  (let [query (:query source)]
-    (when (or (not (and (map? query) (:database query)))
-              (queryable-normalized-query query))
-      (llm-shape/export-query-for-llm query))))
+(defn exportable-query?
+  "May the current user run `query`? Queries with no :database only ever pprint
+  (no name resolution), so they pass."
+  [query]
+  (or (not (and (map? query) (:database query)))
+      (some? (queryable-normalized-query query))))
+
+(defn- exported-query-text
+  "Render a query for the LLM when the user may query it."
+  [query]
+  (when (exportable-query? query)
+    (llm-shape/export-query-for-llm query)))
+
+;; Format adhoc query (notebook editor) viewing context.
+(defmethod format-entity "adhoc"
+  [item]
+  (if (native-query-item? item)
+    (format-native-query item)
+    (te/lines "The user is currently in the notebook editor viewing a query."
+              (te/field "Query ID" (:id item))
+              (te/field "Database ID" (get-in item [:query :database]))
+              (te/field "Query" (exported-query-text (:query item)))
+              (when-let [config-ids (format-chart-config-ids item)]
+                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+              (te/field "Tables used" (some->> (:used_tables item)
+                                               (map format-entity)
+                                               te/lines)))))
 
 (defn- transform-source-type
   [source]
@@ -362,7 +338,7 @@
 
 (defmethod format-transform-source "query"
   [source]
-  (let [source-text (transform-query-source-text source)]
+  (let [source-text (exported-query-text (:query source))]
     (te/lines "Transform source"
               (te/field "Type" (:type source))
               (te/field "Query type" (:transform-source-type source))
