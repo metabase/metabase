@@ -1701,7 +1701,7 @@
                                             :dimension    [:field 2 nil]}}}))))
 
 (deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
-  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> pMBQL round-trip"
+  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> MBQL 5 round-trip"
     ;; OFFSET retains a random :lib/uuid in its (mbql5-style) options, so exact round-trip equality is not
     ;; possible; instead assert the conversion happens without an "Error normalizing" exception and that the
     ;; clause shape is preserved in both directions.

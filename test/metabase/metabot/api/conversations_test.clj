@@ -662,3 +662,20 @@
           (mt/user-http-request :crowberto :post 404
                                 (str "metabot/conversations/" (random-uuid) "/saved-entity")
                                 body))))))
+
+(deftest record-saved-entity-strips-extra-query-keys-test
+  (testing "POST /api/metabot/conversations/:id/saved-entity validates and strips undeclared keys from :dataset_query"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (let [created (mt/user-http-request :crowberto :post 200
+                                              (str "metabot/conversations/" convo-id "/saved-entity")
+                                              {:chart_id "chart-1"
+                                               :card     {:name          "Venues"
+                                                          :dataset_query (assoc (venues-query) :a 1 :a/b 2)
+                                                          :display       "bar"}})
+                stored  (:dataset_query (t2/select-one :model/Card :id (:id created)))]
+            (is (= :mbql/query (:lib/type stored)))
+            (is (not (contains? stored :a)))
+            (is (not (contains? stored :a/b)))))))))

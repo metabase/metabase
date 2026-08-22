@@ -141,6 +141,13 @@ function diffRegistry(registry, effectFiles) {
   return { missing, stale };
 }
 
+// The stale entries the registry spec fails on: the rule rejects imports of a file classified
+// "global" or "entry", so a stale entry keeps rejecting imports of a file that is now clean,
+// while a stale "self" entry affects nothing and can wait for an --update sweep.
+function enforcedStale(registry, stale) {
+  return stale.filter((file) => classify(registry, file) !== "self");
+}
+
 function updateRegistry(registryPath, { missing, stale }) {
   const raw = JSON.parse(fs.readFileSync(registryPath, "utf8"));
   const staleSet = new Set(stale);
@@ -211,6 +218,7 @@ module.exports = {
   listSourceFiles,
   scanEffectFiles,
   diffRegistry,
+  enforcedStale,
   unimportedPackages,
 };
 
