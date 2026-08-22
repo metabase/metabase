@@ -151,6 +151,10 @@
   #{:reasoning :text :tool-input})
 
 (defn- signed-reasoning?
+  "Whether `part` is a thinking block DeepSeek will accept back. A signature is the only
+  provenance it recognizes: [[claude/parts->claude-messages]] also vouches for a part carrying
+  `:redactedData`, but `redacted_thinking` is one of the block types DeepSeek does not support, and
+  DeepSeek never emits one for us to replay."
   [part]
   (and (= :reasoning (:type part))
        (some? (get-in part [:provider-metadata :anthropic :signature]))))
@@ -183,9 +187,13 @@
 (mu/defn deepseek-request-body
   "Build the Anthropic Messages request body for an LLM request.
 
-  DeepSeek's Anthropic surface takes what [[claude/claude-request-body]] emits verbatim — including
-  all three prompt-cache markers — so the only DeepSeek-specific work is the thinking directive,
-  which must always be present: an omitted directive leaves thinking on.
+  DeepSeek's Anthropic surface accepts what [[claude/claude-request-body]] emits as-is, so the only
+  DeepSeek-specific work is the thinking directive, which must always be present: an omitted
+  directive leaves thinking on.
+
+  The three `cache_control` markers are inert here: DeepSeek lists the field among those it ignores
+  and caches input prefixes on its own, with no request parameter to set. Hits are still reported,
+  on the Anthropic-shaped `cache_read_input_tokens`.
 
   Where thinking is allowed this diverges from `claude-request-body` deliberately: DeepSeek accepts
   `tool_choice {:type \"any\"}` with thinking on, so the profiles that force a tool call keep their
@@ -195,9 +203,9 @@
   (let [thinking? (thinking-enabled? opts)]
     (cond-> (claude/claude-request-body
              (assoc opts
-                    :model           model
-                    :reasoning?      thinking?
-                    :thinking-config (when thinking? thinking-enabled-payload)))
+                    :model            model
+                    :reasoning?       thinking?
+                    :reasoning-config (when thinking? thinking-enabled-payload)))
       (not thinking?) (assoc :thinking thinking-disabled-payload))))
 
 (mu/defn deepseek-raw

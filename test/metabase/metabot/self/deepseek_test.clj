@@ -373,22 +373,22 @@
 ;;; The shared claude.clj hook
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel claude-request-body-unchanged-without-thinking-config-test
+(deftest ^:parallel claude-request-body-unchanged-without-reasoning-config-test
   (doseq [opts [{:model "claude-sonnet-4-6" :input [user-message]}
                 {:model "claude-sonnet-4-6" :input [user-message] :schema {:type "object"}}
                 {:model "claude-sonnet-4-6" :input [user-message] :tool_choice "required"
                  :tools [(metabot.tu/get-time-tool)]}
                 {:model "claude-haiku-4-5-20251001" :input [user-message]}]]
     (is (= (dissoc (claude/claude-request-body opts) :thinking)
-           (dissoc (claude/claude-request-body (assoc opts :thinking-config nil)) :thinking))
+           (dissoc (claude/claude-request-body (assoc opts :reasoning-config nil)) :thinking))
         (pr-str opts))))
 
-(deftest ^:parallel claude-request-body-thinking-config-overrides-suppression-test
+(deftest ^:parallel claude-request-body-reasoning-config-overrides-suppression-test
   (testing "an explicit config survives the rules that would otherwise suppress thinking"
     (doseq [opts [{:model "claude-sonnet-4-6" :input [user-message] :schema {:type "object"}}
                   {:model "claude-sonnet-4-6" :input [user-message] :tool_choice "required"
                    :tools [(metabot.tu/get-time-tool)]}
                   {:model "not-a-claude-model" :input [user-message]}]]
       (is (= {:type "enabled"}
-             (:thinking (claude/claude-request-body (assoc opts :thinking-config {:type "enabled"}))))
+             (:thinking (claude/claude-request-body (assoc opts :reasoning-config {:type "enabled"}))))
           (pr-str opts)))))
