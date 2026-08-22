@@ -6,6 +6,46 @@ on:
       skip:
         type: boolean
         default: false
+  # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
+  # Everything else about the job -- credentials, services, test args, quarantine gating -- is
+  # whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      driver:
+        description: 'Which driver job to run. Only this one runs; the usual decision rules are bypassed.'
+        type: choice
+        required: true
+        options:
+          - athena
+          - bigquery
+          - clickhouse
+          - databricks
+          - druid
+          - druid-jdbc
+          - h2
+          - mongo
+          - mongo-sharded-cluster
+          - mongo-ssl
+          - mysql-mariadb
+          - oracle
+          - postgres
+          - presto-jdbc
+          - redshift
+          - snowflake
+          - sparksql
+          - sqlite
+          - sqlserver
+          - vertica
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.driver.bigquery-cloud-sdk-test/sync-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -17,6 +57,14 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per driver.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
+  # the whole list -- BigQuery, for instance, has three legs.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   # This job determines which driver tests should run based on PR context.
@@ -83,6 +131,7 @@ jobs:
             --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
+            --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[@]}"
@@ -94,6 +143,8 @@ jobs:
           echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
+        env:
+          ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
   be-tests-athena-ee:
@@ -645,6 +696,8 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:

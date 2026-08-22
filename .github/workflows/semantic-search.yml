@@ -7,6 +7,31 @@ on:
         type: boolean
         default: false
 
+  # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
+  # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
+  # is whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which semantic-search job to run. Only this one runs; the others are skipped.'
+        type: choice
+        required: true
+        options:
+          - h2
+          - mariadb
+          - mysql
+          - postgres
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase-enterprise.semantic-search.index-test/some-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
   cancel-in-progress: true
@@ -17,10 +42,18 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per job.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job runs the
+  # whole list.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'h2') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -77,7 +110,7 @@ jobs:
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -110,6 +143,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mariadb-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -153,7 +188,7 @@ jobs:
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -193,6 +228,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mysql-image }}
+        # disposable CI database: a RAM-backed datadir makes DDL/insert fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
@@ -236,7 +273,7 @@ jobs:
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

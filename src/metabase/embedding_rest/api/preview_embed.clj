@@ -17,7 +17,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
-   [metabase.util.json :as json]
+   [metabase.tiles.api :as api.tiles]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -234,19 +234,17 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
-        card       (api/check-404 (t2/select-one :model/Card card-id))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+        card       (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
       (api.embed.common/process-tiles-query-for-card
        card-id
        (api.embed.common/tile-parameters-for-card
         card (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
-       zoom x y lat-field lon-field))))
+       zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -265,16 +263,14 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-        lat-field        (json/decode+kw latField)
-        lon-field        (json/decode+kw lonField)]
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))]
     (request/as-admin
       (api.embed.common/process-tiles-query-for-dashcard
        dashboard-id dashcard-id card-id
        (api.embed.common/tile-parameters-for-dashboard
         dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
-       zoom x y lat-field lon-field))))
+       zoom x y latField lonField))))
