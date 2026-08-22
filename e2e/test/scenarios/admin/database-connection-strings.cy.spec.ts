@@ -32,7 +32,7 @@ const databaseTestCases = [
     connectionString:
       "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;",
     expectedFields: [
-      { label: "Project ID (override)", value: "MyBigQueryProject" },
+      { label: "Data project ID", value: "MyBigQueryProject" },
       { label: "Display name", value: "MyBigQueryProject" },
     ],
   },
