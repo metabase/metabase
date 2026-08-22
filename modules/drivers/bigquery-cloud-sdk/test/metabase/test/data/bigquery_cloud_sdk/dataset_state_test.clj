@@ -1,9 +1,10 @@
 (ns metabase.test.data.bigquery-cloud-sdk.dataset-state-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.test.data.bigquery-cloud-sdk.dataset-state :as dataset-state])
   (:import
-   (java.time LocalDate)))
+   (java.time Duration LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -13,9 +14,9 @@
   (.minusDays today n))
 
 (deftest ^:parallel day-stamp-test
-  (testing "label values may not start with a digit, so the stamp is prefixed"
-    (is (= "d20260822" (dataset-state/day-stamp today)))
-    (is (= "d20260101" (dataset-state/day-stamp (LocalDate/of 2026 1 1))))))
+  (testing "label values may not start with a digit, so the ISO date is prefixed"
+    (is (= "d2026-08-22" (dataset-state/day-stamp today)))
+    (is (= "d2026-01-01" (dataset-state/day-stamp (LocalDate/of 2026 1 1))))))
 
 (deftest ^:parallel building-is-not-ready-test
   (testing "a dataset is not usable until every table is loaded, so creation must not mark it ready"
@@ -46,21 +47,21 @@
     (let [ready   (dataset-state/ready-labels {:ephemeral? false, :today (days-ago 5)})
           touched (dataset-state/touched-labels ready today)]
       (is (dataset-state/ready? touched))
-      (is (= "d20260822" (get touched "last_used"))))))
+      (is (= "d2026-08-22" (get touched "last_used"))))))
 
 (deftest ^:parallel needs-touch-test
   (let [labels #(assoc (dataset-state/ready-labels {:ephemeral? false, :today (days-ago %)}) :ignored 1)]
     (testing "within the interval, no write"
-      (is (not (dataset-state/needs-touch? (labels 0) today 1)))
-      (is (not (dataset-state/needs-touch? (labels 1) today 1))))
+      (is (not (dataset-state/needs-touch? (labels 0) today (t/duration 1 :days))))
+      (is (not (dataset-state/needs-touch? (labels 1) today (t/duration 1 :days)))))
     (testing "past interval + jitter, one write"
-      (is (dataset-state/needs-touch? (labels 2) today 1))
-      (is (dataset-state/needs-touch? (labels 30) today 1)))
+      (is (dataset-state/needs-touch? (labels 2) today (t/duration 1 :days)))
+      (is (dataset-state/needs-touch? (labels 30) today (t/duration 1 :days))))
     (testing "jitter staggers the write across processes rather than all firing the same day"
-      (is (not (dataset-state/needs-touch? (labels 2) today 2)))
-      (is (dataset-state/needs-touch? (labels 3) today 2)))
+      (is (not (dataset-state/needs-touch? (labels 2) today (t/duration 2 :days))))
+      (is (dataset-state/needs-touch? (labels 3) today (t/duration 2 :days))))
     (testing "never touched -> touch"
-      (is (dataset-state/needs-touch? {} today 1)))))
+      (is (dataset-state/needs-touch? {} today (t/duration 1 :days))))))
 
 (deftest ^:parallel reapable-test
   (let [gold #(dataset-state/ready-labels {:ephemeral? false, :today (days-ago %)})
@@ -82,10 +83,16 @@
       (is (not (dataset-state/reapable? (dataset-state/touched-labels (gold 30) today) today))))))
 
 (deftest ^:parallel retention-outlasts-touch-cadence-test
-  (let [{:keys [gold-retention-days work-retention-days touch-interval-days touch-jitter-days]}
-        dataset-state/retention]
+  (let [{:keys [gold-retention work-retention touch-interval touch-jitter]} dataset-state/retention]
     (testing "gold retention must exceed the longest gap between touches, or a dataset still in use is reaped between them"
-      (is (> gold-retention-days (+ touch-interval-days touch-jitter-days))))
+      (is (pos? (.compareTo ^Duration gold-retention (.plus ^Duration touch-interval ^Duration touch-jitter)))))
     (testing "work datasets are never re-touched - one test creates and drops them - so their `last_used` stays the
              creation day and retention only has to outlast a single test run"
-      (is (>= work-retention-days 1)))))
+      (is (not (neg? (.compareTo ^Duration work-retention (t/duration 1 :days))))))))
+
+(deftest ^:parallel random-touch-jitter-stays-in-window-test
+  (testing "jitter must not push a touch past retention; it is a slice of the configured window, not unbounded"
+    (dotimes [_ 50]
+      (let [jitter (dataset-state/random-touch-jitter)]
+        (is (not (neg? (.compareTo ^Duration jitter Duration/ZERO))))
+        (is (not (pos? (.compareTo ^Duration jitter ^Duration (:touch-jitter dataset-state/retention)))))))))

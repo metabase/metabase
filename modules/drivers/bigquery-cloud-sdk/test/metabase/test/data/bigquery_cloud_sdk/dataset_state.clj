@@ -12,45 +12,46 @@
   `state` is what makes publishing atomic. A dataset exists from the moment loading starts, so its existence says
   nothing about whether its tables have rows; only the flip to `ready` does, and that is a single metadata write.
 
-  Deliberately depends on nothing outside `clojure.core` and `java.time`, so the reaper can load it under Babashka
-  without pulling in Metabase."
+  Depends on nothing from Metabase, so a scheduled reaper can load it without starting the app."
+  (:require
+   [clojure.string :as str]
+   [java-time.api :as t])
   (:import
-   (java.time LocalDate)
-   (java.time.format DateTimeParseException)))
+   (java.time Duration LocalDate)))
 
 (set! *warn-on-reflection* true)
 
 (def retention
   "How long each kind of dataset is kept, and how often a gold dataset records that it is still in use.
 
-  `touch-interval-days` bounds how often `last_used` is rewritten; `touch-jitter-days` spreads that write out across
-  processes so they do not all rewrite the same dataset the moment the interval lapses. Retention must stay well
-  above the two combined, or a dataset in active use can be reaped between touches."
-  {:gold-retention-days 14
-   :work-retention-days 1
-   :touch-interval-days 1
-   :touch-jitter-days   1})
+  `touch-interval` bounds how often `last_used` is rewritten; `touch-jitter` spreads that write out across processes
+  so they do not all rewrite the same dataset the moment the interval lapses. Gold retention must stay above the two
+  combined, or a dataset in active use can be reaped between touches - [[dataset-state-test]] asserts this."
+  {:gold-retention (t/duration 14 :days)
+   :work-retention (t/duration 1 :days)
+   :touch-interval (t/duration 1 :days)
+   :touch-jitter   (t/duration 1 :days)})
 
 (def ^:private state-label "state")
 (def ^:private ephemeral-label "ephemeral")
 (def ^:private last-used-label "last_used")
 
-(defn day-stamp
-  "`date` as a dataset label value.
+(def ^:private day-stamp-prefix
+  "Label values may not begin with a digit, so an ISO date needs a leading letter to be legal."
+  "d")
 
-  Label values admit only lowercase alphanumerics, dashes and underscores, so the leading `d` is load-bearing: a bare
-  `20260822` is rejected by BigQuery."
-  [^LocalDate date]
-  (format "d%04d%02d%02d" (.getYear date) (.getMonthValue date) (.getDayOfMonth date)))
+(defn day-stamp
+  "`date` as a dataset label value: an ISO date behind [[day-stamp-prefix]].
+
+  ISO keeps the value inside BigQuery's charset for labels, which allows dashes."
+  [date]
+  (str day-stamp-prefix (t/format :iso-local-date date)))
 
 (defn- parse-day-stamp ^LocalDate [s]
-  (when (and (string? s) (re-matches #"d\d{8}" s))
+  (when (and (string? s) (str/starts-with? s day-stamp-prefix))
     (try
-      (LocalDate/of (Integer/parseInt (subs s 1 5))
-                    (Integer/parseInt (subs s 5 7))
-                    (Integer/parseInt (subs s 7 9)))
-      (catch DateTimeParseException _ nil)
-      (catch java.time.DateTimeException _ nil))))
+      (t/local-date (str/replace-first s day-stamp-prefix ""))
+      (catch Exception _ nil))))
 
 (defn building-labels
   "Labels a dataset is created with, before any table exists in it."
@@ -90,18 +91,33 @@
   [labels]
   (= "true" (get labels ephemeral-label)))
 
-(defn- days-since [labels ^LocalDate today]
-  (when-let [^LocalDate stamp (parse-day-stamp (get labels last-used-label))]
-    (- (.toEpochDay today) (.toEpochDay stamp))))
+(defn- at-least?
+  "Whether `actual` is `threshold` or longer.
+
+  `java-time`'s ordering predicates are built on its `Ordered` protocol, which is not extended to `Duration`, so
+  comparison goes through `Comparable` instead."
+  [^Duration actual ^Duration threshold]
+  (>= (.compareTo actual threshold) 0))
+
+(defn- since-last-use
+  "How long since `labels` recorded a use, or `nil` if they never did."
+  ^Duration [labels today]
+  (when-let [stamp (parse-day-stamp (get labels last-used-label))]
+    (t/duration (t/time-between stamp today :days) :days)))
+
+(defn random-touch-jitter
+  "A random slice of the jitter window, for [[needs-touch?]].
+
+  Drawn here rather than inside [[needs-touch?]] so that stays pure, and per process so that processes crossing the
+  interval together do not all write at once."
+  ^Duration []
+  (t/duration (rand-int (inc (.toDays ^Duration (:touch-jitter retention)))) :days))
 
 (defn needs-touch?
-  "Whether `last_used` should be rewritten today.
-
-  `jitter-days` is supplied by the caller (rather than drawn here) both to keep this pure and so every process picks
-  its own: without it they all cross the interval on the same day and write at once."
-  [labels ^LocalDate today jitter-days]
-  (if-let [elapsed (days-since labels today)]
-    (>= elapsed (+ (:touch-interval-days retention) jitter-days))
+  "Whether `last_used` should be rewritten today."
+  [labels today ^Duration jitter]
+  (if-let [elapsed (since-last-use labels today)]
+    (at-least? elapsed (.plus ^Duration (:touch-interval retention) jitter))
     true))
 
 (defn reapable?
@@ -110,10 +126,10 @@
   Three ways to qualify: a work dataset whose test is long gone, a gold dataset nothing has used in a fortnight, and
   a dataset still marked `building` well past any plausible load - the residue of a process that died mid-build,
   which nothing will ever finish and [[ready?]] will never accept."
-  [labels ^LocalDate today]
-  (let [elapsed (days-since labels today)]
-    (cond
-      (nil? elapsed)      false ; unlabelled datasets predate this scheme; leave them to a deliberate sweep
-      (ephemeral? labels) (>= elapsed (:work-retention-days retention))
-      (not (ready? labels)) (>= elapsed (:work-retention-days retention))
-      :else               (>= elapsed (:gold-retention-days retention)))))
+  [labels today]
+  (if-let [elapsed (since-last-use labels today)]
+    (at-least? elapsed (if (or (ephemeral? labels) (not (ready? labels)))
+                         (:work-retention retention)
+                         (:gold-retention retention)))
+    ;; unlabelled datasets predate this scheme; leave them to a deliberate sweep
+    false))

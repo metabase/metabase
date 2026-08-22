@@ -40,7 +40,7 @@
     StandardTableDefinition
     TableId
     TableInfo)
-   (java.time LocalDate)))
+   (java.time Duration LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -127,7 +127,8 @@
   (str/replace table-or-field-name #"-" "_"))
 
 (def ^:private work-dataset-lifetime-ms
-  (* (:work-retention-days dataset-state/retention) 24 60 60 1000))
+  "[[dataset-state/retention]]'s work lifetime as the bare millis `setDefaultTableLifetime` takes."
+  (.toMillis ^Duration (:work-retention dataset-state/retention)))
 
 (mu/defn- create-dataset!
   "Create `dataset-id` carrying `labels`, which [[dataset-state]] reads back to decide whether it is usable.
@@ -417,7 +418,7 @@
   (let [dataset-id (test-dataset-id db-def)
         today      (LocalDate/now)
         labels     (dataset-labels dataset-id)
-        jitter     (rand-int (inc (:touch-jitter-days dataset-state/retention)))]
+        jitter     (dataset-state/random-touch-jitter)]
     (when (and (seq labels) (dataset-state/needs-touch? labels today jitter))
       ;; Best-effort. A lost race or a rejected write only means another test records the use a bit later, whereas
       ;; failing the test over it would turn retention bookkeeping into a source of flakes.
