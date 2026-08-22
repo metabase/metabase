@@ -1,7 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}
-                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -17,11 +15,16 @@
 
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
 (defn- venues-cols-from-query []
-  (-> (mt/run-mbql-query venues
-        {:order-by [[:asc $id]]
-         :limit    1})
-      mt/cols
-      set))
+  (let [mp        (mt/metadata-provider)
+        venues    (lib.metadata/table mp (mt/id :venues))
+        venues-id (lib.metadata/field mp (mt/id :venues :id))
+        query     (-> (lib/query mp venues)
+                      (lib/order-by venues-id)
+                      (lib/limit 1))]
+    (mt/with-native-query-testing-context query
+      (-> (qp/process-query query)
+          mt/cols
+          set))))
 
 (deftest details-only-fields-test
   (mt/test-drivers (mt/normal-drivers)
@@ -39,28 +42,33 @@
 (deftest ^:parallel sensitive-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
-      (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
-               :rows [[1 "Plato Yeshua"]
-                      [2 "Felipinho Asklepios"]
-                      [3 "Kaneonuskatew Eiran"]
-                      [4 "Simcha Yan"]
-                      [5 "Quentin Sören"]
-                      [6 "Shad Ferdynand"]
-                      [7 "Conchúr Tihomir"]
-                      [8 "Szymon Theutrich"]
-                      [9 "Nils Gotam"]
-                      [10 "Frans Hevel"]
-                      [11 "Spiros Teofil"]
-                      [12 "Kfir Caj"]
-                      [13 "Dwight Gresham"]
-                      [14 "Broen Olujimi"]
-                      [15 "Rüstem Hebel"]]}
-              ;; Filter out the timestamps from the results since they're hard to test :/
-              (mt/format-rows-by
-               [int identity]
-               (qp.test-util/rows-and-cols
-                (mt/run-mbql-query users
-                  {:order-by [[:asc $id]]}))))))))
+      (let [mp       (mt/metadata-provider)
+            users    (lib.metadata/table mp (mt/id :users))
+            users-id (lib.metadata/field mp (mt/id :users :id))
+            query    (-> (lib/query mp users)
+                         (lib/order-by users-id))]
+        (mt/with-native-query-testing-context query
+          (is (=? {:cols (qp.test-util/expected-cols :users [:id :name :last_login])
+                   :rows [[1 "Plato Yeshua"]
+                          [2 "Felipinho Asklepios"]
+                          [3 "Kaneonuskatew Eiran"]
+                          [4 "Simcha Yan"]
+                          [5 "Quentin Sören"]
+                          [6 "Shad Ferdynand"]
+                          [7 "Conchúr Tihomir"]
+                          [8 "Szymon Theutrich"]
+                          [9 "Nils Gotam"]
+                          [10 "Frans Hevel"]
+                          [11 "Spiros Teofil"]
+                          [12 "Kfir Caj"]
+                          [13 "Dwight Gresham"]
+                          [14 "Broen Olujimi"]
+                          [15 "Rüstem Hebel"]]}
+                  ;; Filter out the timestamps from the results since they're hard to test :/
+                  (mt/format-rows-by
+                   [int identity]
+                   (qp.test-util/rows-and-cols
+                    (qp/process-query query))))))))))
 
 (deftest ^:parallel sensitive-field-hidden-in-model-query-test
   (testing "a model whose stored result_metadata still lists a field made :sensitive after creation drops that column (#45919)"
