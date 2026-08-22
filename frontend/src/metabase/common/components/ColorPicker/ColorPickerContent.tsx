@@ -1,14 +1,45 @@
 import Color from "color";
 import type { HTMLAttributes, Ref } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { Suspense, forwardRef, lazy, useCallback, useMemo } from "react";
 import type { ColorState } from "react-color";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { ColorInput } from "metabase/common/components/ColorInput";
 import { Group, NumberInput } from "metabase/ui";
 
-import { ContentContainer } from "./ColorPicker.styled";
-import { ColorPickerControls } from "./ColorPickerControls";
+import { ContentContainer, ControlsPlaceholder } from "./ColorPicker.styled";
+
+/**
+ * The saturation and hue controls carry `react-color`, which nothing else in the
+ * app uses. They only render once a picker is open, so they load then.
+ */
+const loadColorPickerControls = () =>
+  import(
+    /* webpackChunkName: "color-picker-controls" */ "./ColorPickerControls"
+  );
+
+const ColorPickerControls = lazy(() =>
+  loadColorPickerControls().then(({ ColorPickerControls }) => ({
+    default: ColorPickerControls,
+  })),
+);
+
+/**
+ * Start the controls chunk while the picker is still closed.
+ *
+ * A picker lives in a popover, so its content mounts on the click that opens it,
+ * which is too late to hide the load behind anything. Call this from whatever
+ * renders the popover target, and the placeholder only shows on a slow
+ * connection.
+ */
+export function usePrefetchColorPickerControls() {
+  useMount(() => {
+    loadColorPickerControls().catch(() => {
+      // The picker loads the chunk again when it opens, and reports the failure there.
+    });
+  });
+}
 
 export type ColorPickerContentAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -65,7 +96,9 @@ export const ColorPickerContent = forwardRef(function ColorPickerContent(
 
   return (
     <ContentContainer {...props} ref={ref}>
-      <ColorPickerControls color={value} onChange={handlePickerChange} />
+      <Suspense fallback={<ControlsPlaceholder />}>
+        <ColorPickerControls color={value} onChange={handlePickerChange} />
+      </Suspense>
       {showAlpha ? (
         <Group gap="sm" wrap="nowrap" align="flex-start">
           <ColorInput value={value} fullWidth onChange={handleHexChange} />

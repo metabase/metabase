@@ -6,7 +6,10 @@ import { Group, Popover } from "metabase/ui";
 import { ColorPill } from "../ColorPill";
 
 import type { ColorPickerAttributes } from "./ColorPicker";
-import { ColorPickerContent } from "./ColorPickerContent";
+import {
+  ColorPickerContent,
+  usePrefetchColorPickerControls,
+} from "./ColorPickerContent";
 import S from "./ColorPillPicker.module.css";
 
 export interface ColorPillPickerProps extends ColorPickerAttributes {
@@ -42,6 +45,8 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
   }: ColorPillPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  usePrefetchColorPickerControls();
+
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
   const color = previewValue ?? originalColor;
   const [isOpened, { open, close }] = useDisclosure(false);
