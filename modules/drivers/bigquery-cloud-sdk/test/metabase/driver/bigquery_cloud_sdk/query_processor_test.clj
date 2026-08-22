@@ -21,7 +21,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -568,41 +567,31 @@
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
 
-(defn- do-with-datetime-timestamp-table [f]
-  (driver/with-driver :bigquery-cloud-sdk
-    (let [table-name (format "table_%s" (mt/random-name))]
-      (mt/with-temp-copy-of-db
-        (try
-          (bigquery.tx/execute!
-           (with-test-db-name
-             (format "CREATE TABLE `v4_test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name)))
-          (bigquery.tx/execute!
-           (with-test-db-name
-             (format "INSERT INTO `v4_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
-                     table-name)))
-          (sync/sync-database! (mt/db))
-          (f table-name)
-          (finally
-            (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v4_test_data.%s`") table-name)))))))
+;;; `ts` lands in BigQuery as TIMESTAMP and `dt` as DATETIME, which is the distinction #11222 is about — see
+;;; [[metabase.test.data.bigquery-cloud-sdk/base-type->bigquery-type]].
+(mt/defdataset datetime-timestamp-dataset
+  [["datetime_timestamp"
+    [{:field-name "ts", :base-type :type/DateTimeWithTZ}
+     {:field-name "dt", :base-type :type/DateTime}]
+    [[#t "2020-01-01 00:00:00Z" #t "2020-01-01 00:00:00"]]]])
 
 (deftest ^:parallel filter-by-datetime-timestamp-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure we can filter against different types of BigQuery temporal columns (#11222)"
-      (do-with-datetime-timestamp-table
-       (fn [table-name]
-         (doseq [column [:ts :dt]]
-           (testing (format "Filtering against %s column" column)
-             (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
-                     field [[:field (mt/id table-name column) nil]
-                            [:field (mt/id table-name column) {:temporal-unit :default}]
-                            [:field (mt/id table-name column) {:temporal-unit :day}]]
-                     :let [filter-clause [:= field s]]]
-               (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
-                 (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
-                        (mt/rows
-                         (mt/run-mbql-query nil
-                           {:source-table (mt/id table-name)
-                            :filter       filter-clause})))))))))))))
+      (mt/dataset datetime-timestamp-dataset
+        (doseq [column [:ts :dt]]
+          (testing (format "Filtering against %s column" column)
+            (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
+                    field [[:field (mt/id :datetime_timestamp column) nil]
+                           [:field (mt/id :datetime_timestamp column) {:temporal-unit :default}]
+                           [:field (mt/id :datetime_timestamp column) {:temporal-unit :day}]]
+                    :let [filter-clause [:= field s]]]
+              (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
+                (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
+                       (mt/rows
+                        (mt/run-mbql-query datetime_timestamp
+                          {:fields [$ts $dt]
+                           :filter filter-clause}))))))))))))
 
 (deftest ^:parallel datetime-parameterized-sql-test
   (mt/test-driver :bigquery-cloud-sdk
