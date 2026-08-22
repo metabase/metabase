@@ -69,24 +69,20 @@
                :max-file-count 1}}
   [_route_params
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:size     :int]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+   {{:keys [tempfile size]} :file} :- [:map
+                                       [:file
+                                        [:map
+                                         [:filename :string]
+                                         [:size     :int]
+                                         [:tempfile (ms/InstanceOfClass java.io.File)]]]]]
   (api/check-superuser)
-  (let [file (get-in multipart-params ["file" :tempfile])]
-    (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
-      (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
-                      {:status-code http-status-content-too-large})))
-    (when-not (instance? java.io.File file)
-      (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (dictionary/read-and-import-csv! file)
-    {:success true}))
+  (when (> size max-content-translation-dictionary-size-bytes)
+    (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
+                    {:status-code http-status-content-too-large})))
+  (when-not (instance? java.io.File tempfile)
+    (throw (ex-info (tru "No file provided") {:status-code 400})))
+  (dictionary/read-and-import-csv! tempfile)
+  {:success true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

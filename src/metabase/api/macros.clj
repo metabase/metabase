@@ -614,10 +614,12 @@
     :query (some-> (:query-params request) (update-keys keyword))))
 
 (mu/defn- request-body
+  "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
+  JSON body. An unparsed body (an `InputStream`) is not a param map."
   [request :- :map]
-  (or (some-> (not-empty (:form-params request)) (update-keys keyword))
+  (or (some-> (not-empty (:multipart-params request)) (update-keys keyword))
+      (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
-        ;; an unparsed body, e.g. the raw body of a multipart request, is not a param map
         (when-not (instance? java.io.InputStream body)
           body))))
 
