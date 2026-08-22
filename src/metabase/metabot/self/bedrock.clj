@@ -13,11 +13,11 @@
   [[openai/openai-request-body]] + [[openai/openai->aisdk-chunks-xf]]; the vendor prefix on the
   model id (e.g. `anthropic.claude-haiku-4-5`, `openai.gpt-5.5`) selects the API family.
 
-  Requests are authenticated with AWS Signature Version 4 computed from the `llm-bedrock-*` settings:
+  Requests are authenticated with AWS Signature Version 4 computed from the connection's access key pair, or,
+  when no pair is configured, from the AWS SDK default credentials chain (IRSA, EKS Pod Identity, instance profile):
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
    [clojure.string :as str]
-   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
@@ -31,6 +31,8 @@
   (:import
    (java.net URI)
    (java.util.function Consumer)
+   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
+   (software.amazon.awssdk.core.exception SdkException)
    (software.amazon.awssdk.http ContentStreamProvider SdkHttpMethod SdkHttpRequest SdkHttpRequest$Builder)
    (software.amazon.awssdk.http.auth.aws.signer AwsV4HttpSigner)
    (software.amazon.awssdk.http.auth.spi.signer SignRequest$Builder SignedRequest)
@@ -40,11 +42,35 @@
 
 ;;; ------------------------------------------ AWS Signature Version 4 ------------------------------------------
 
+(defn- chain-credentials-unavailable-ex [cause]
+  (ex-info (tru "AWS Bedrock credentials are not configured, and none were found by the AWS default credentials chain")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}
+           cause))
+
+(defn- chain-credentials
+  "Credentials resolved from the AWS SDK default provider chain: environment, web identity token (IRSA), EKS Pod
+  Identity, ECS task role, EC2 instance profile. `create` returns the SDK's shared chain; its delegates cache what
+  they resolve, so short-lived role credentials rotate without a restart."
+  ^AwsCredentialsIdentity []
+  (.resolveCredentials (DefaultCredentialsProvider/create)))
+
 (defn- aws-identity
-  "An AWS credentials identity, carrying the session token when one is present."
-  [{:keys [access-key-id secret-access-key session-token]}]
-  (if session-token
+  "The AWS credentials identity to sign with: the connection's access key pair, carrying the session token when one
+  is present, or, when no pair is configured, whatever the default credentials chain resolves."
+  ^AwsCredentialsIdentity [{:keys [access-key-id secret-access-key session-token]}]
+  (cond
+    (not (and access-key-id secret-access-key))
+    (try
+      (chain-credentials)
+      (catch SdkException e
+        (throw (chain-credentials-unavailable-ex e))))
+
+    session-token
     (AwsSessionCredentialsIdentity/create access-key-id secret-access-key session-token)
+
+    :else
     (AwsCredentialsIdentity/create access-key-id secret-access-key)))
 
 (defn- unsigned-request
@@ -100,8 +126,14 @@
     (throw (invalid-region-ex region)))
   region)
 
-(defn- missing-credentials-ex []
-  (ex-info (tru "AWS Bedrock credentials are not configured")
+(defn- token-without-pair-ex []
+  (ex-info (tru "AWS Bedrock cannot use a session token without its access key pair")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}))
+
+(defn- incomplete-credentials-ex []
+  (ex-info (tru "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain")
            {:api-error   true
             :error-code  :api-key-missing
             :status-code 403}))
@@ -113,11 +145,21 @@
 
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
-  Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
+  No access key pair at all is fine, signing falls back to the AWS default credentials chain, but half a pair
+  throws, as does a session token without the pair and an unknown region; the region defaults to us-east-1."
   [credentials]
-  (when-not (llm.provider/config-complete? "bedrock" credentials)
-    (throw (missing-credentials-ex)))
-  (update credentials :region #(validate-region (or (not-empty %) "us-east-1"))))
+  (let [key-id (u/trimmed-string (:access-key-id credentials))
+        secret (u/trimmed-string (:secret-access-key credentials))
+        token  (u/trimmed-string (:session-token credentials))]
+    (when (not= (some? key-id) (some? secret))
+      (throw (incomplete-credentials-ex)))
+    (when (and token (not key-id))
+      (throw (token-without-pair-ex)))
+    (-> credentials
+        (u/assoc-dissoc :access-key-id key-id)
+        (u/assoc-dissoc :secret-access-key secret)
+        (u/assoc-dissoc :session-token token)
+        (update :region #(validate-region (or (not-empty %) "us-east-1"))))))
 
 (defn- bedrock-error-msg
   "Canonical, status-specific Bedrock error message."
@@ -206,9 +248,9 @@
 
 (defn list-models
   "List the Bedrock models supported by this adapter (see [[supported-models]]).
-  No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
-  `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`, plus `:ai-proxy?`,
-  which is not supported for Bedrock and throws when true."
+  The opts map supports `:credentials`, a map of `:access-key-id`, `:secret-access-key`, `:region`, and (for
+  temporary credentials) `:session-token`, plus `:ai-proxy?`, which is not supported for Bedrock and throws when
+  true. With no access key pair, requests are signed with whatever the AWS default credentials chain resolves."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -245,9 +287,10 @@
 
 (mu/defn bedrock-raw
   "Perform a streaming request to the Bedrock mantle endpoint.
-  Opts map takes `:credentials` from the connection serving this request — `:access-key-id`, `:secret-access-key`,
-  `:region`, and (for temporary credentials) `:session-token` — and throws when they are missing.
-  `:ai-proxy?` is not supported for Bedrock and throws when true."
+  Opts map takes `:credentials` from the connection serving this request: `:access-key-id`, `:secret-access-key`,
+  `:region`, and (for temporary credentials) `:session-token`. With no access key pair, requests are signed with
+  whatever the AWS default credentials chain resolves. `:ai-proxy?` is not supported for Bedrock and throws when
+  true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model :reasoning? false)

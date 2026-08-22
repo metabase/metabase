@@ -98,18 +98,22 @@ const AZURE_TYPE = createMockLlmProviderType({
 const BEDROCK_TYPE = createMockLlmProviderType({
   type: "bedrock",
   label: "Amazon Bedrock",
+  all_or_none: [["access-key-id", "secret-access-key"]],
   fields: [
     createMockLlmProviderField({
       key: "access-key-id",
       label: "Access key ID",
       type: "password",
-      required: true,
+      required: false,
+      help: "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).",
+      docs_url:
+        "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
     }),
     createMockLlmProviderField({
       key: "secret-access-key",
       label: "Secret access key",
       type: "password",
-      required: true,
+      required: false,
     }),
     createMockLlmProviderField({
       key: "region",
@@ -531,6 +535,44 @@ describe("AIProviderSettingsSection", () => {
     expect(within(modal).getByLabelText(/Secret access key/)).toBeVisible();
     expect(within(modal).getByLabelText("Region")).toBeVisible();
     expect(within(modal).getByLabelText("Session token")).not.toBeVisible();
+  });
+
+  it("connects with the whole Bedrock key pair or with none of it", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Amazon Bedrock" }),
+    );
+
+    expect(within(modal).getByText(/Leave the keys blank/)).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("link", { name: "Where do I find this?" }),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
+
+    await userEvent.type(
+      within(modal).getByLabelText(/Access key ID/),
+      "AKIA123",
+    );
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeDisabled();
+
+    await userEvent.type(
+      within(modal).getByLabelText(/Secret access key/),
+      "secret123",
+    );
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
+
+    await userEvent.clear(within(modal).getByLabelText(/Access key ID/));
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeDisabled();
   });
 
   it("opens advanced settings for a connection that already customized one", async () => {

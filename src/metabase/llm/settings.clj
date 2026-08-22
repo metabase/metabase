@@ -312,7 +312,7 @@
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
-  (deferred-tru "The AWS Access Key ID for Amazon Bedrock.")
+  (deferred-tru "The AWS Access Key ID for Amazon Bedrock. Leave unset, together with the secret access key, to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
@@ -321,7 +321,7 @@
   :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-bedrock-secret-access-key
-  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
+  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock. Leave unset, together with the access key ID, to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
@@ -346,7 +346,7 @@
   :export?     false
   :getter      (connection-field-getter :llm-bedrock-region)
   :setter      (connection-field-setter :llm-bedrock-region)
-  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. Setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.")
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 

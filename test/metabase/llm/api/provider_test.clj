@@ -84,7 +84,13 @@
                     (filter #(= "bedrock" (:type %)))
                     first
                     :fields
-                    (into {} (map (juxt :key :advanced))))))))))
+                    (into {} (map (juxt :key :advanced)))))))
+      (testing "Bedrock's key pair travels as an all-or-none group, which the form uses to gate half a pair"
+        (is (= [["access-key-id" "secret-access-key"]]
+               (->> types
+                    (filter #(= "bedrock" (:type %)))
+                    first
+                    :all_or_none)))))))
 
 (deftest provider-types-google-fields-test
   (testing "Google's credentials hang off the authentication method it is asked for, and its models are a fixed list"

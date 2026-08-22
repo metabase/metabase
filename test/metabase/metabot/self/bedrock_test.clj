@@ -8,7 +8,10 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (software.amazon.awssdk.core.exception SdkClientException SdkException)
+   (software.amazon.awssdk.identity.spi AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,19 +73,52 @@
       (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models {:credentials credentials}))))))
 
-(deftest list-models-missing-credentials-test
-  (testing "a connection with no credentials fails rather than picking up the single-provider settings"
+(deftest list-models-missing-credentials-uses-default-chain-test
+  (testing "a connection with no credentials signs with the AWS default chain rather than picking up the single-provider settings"
     (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                        llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI"]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                    (constantly (AwsSessionCredentialsIdentity/create
+                                                 "AKIACHAINCHAINCHAIN1" "chain-secret" "chain-token"))]
+          (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+            (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                              {:id "anthropic.claude-haiku-4-5"}
+                              {:id "anthropic.claude-opus-4-8"}
+                              {:id "openai.gpt-5.4"}
+                              {:id "openai.gpt-5.5"}]}
+                    (bedrock/list-models)))
+            (is (=? {:url     "https://bedrock-mantle.us-east-1.api.aws/v1/models"
+                     :headers {"Authorization"        #".*Credential=AKIACHAINCHAINCHAIN1/.*"
+                               "X-Amz-Security-Token" "chain-token"}}
+                    @captured))))))))
+
+(deftest list-models-empty-default-chain-test
+  (testing "no configured credentials and nothing in the default chain surface a provider-friendly error"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (SdkClientException/create "Unable to load credentials")))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AWS Bedrock credentials are not configured"
-           (bedrock/list-models)))))
-  (deftest list-models-requires-both-keys-test
+           #"none were found by the AWS default credentials chain"
+           (bedrock/list-models))))))
+
+(deftest list-models-chain-refresh-failure-test
+  (testing "a chain failure that is not an SdkClientException (an STS rejection on refresh) gets the same translation"
+    (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
+                                (fn [] (throw (-> (SdkException/builder)
+                                                  (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
+                                                  (.build))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"none were found by the AWS default credentials chain"
+           (bedrock/list-models))))))
+
+(deftest list-models-session-token-without-pair-test
+  (testing "a session token without its key pair throws instead of silently signing as the ambient identity"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
-         (bedrock/list-models)))))
+         #"session token without its access key pair"
+         (bedrock/list-models {:credentials {:session-token "FwoGZXIvYXdzEXAMPLE"}})))))
 
 (deftest list-models-accepts-credentials-override-test
   (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
@@ -105,10 +141,10 @@
                   @captured)))))))
 
 (deftest list-models-credentials-override-must-be-complete-test
-  (testing "an override missing the secret access key throws without falling back to saved settings"
+  (testing "an override missing the secret access key throws without falling back to saved settings or the chain"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"AWS Bedrock credentials are not configured"
+         #"AWS Bedrock needs both an access key ID and a secret access key"
          (bedrock/list-models {:credentials {:access-key-id "AKIAOVERRIDEOVERRID1"}})))))
 
 (deftest list-models-credentials-override-region-validated-test
