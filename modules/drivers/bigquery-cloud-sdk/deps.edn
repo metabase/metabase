@@ -21,4 +21,7 @@
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
   io.netty/netty-common                  {:mvn/version "4.2.16.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.16.Final"}}}
+  io.netty/netty-buffer                  {:mvn/version "4.2.16.Final"}
+  ;; Need gson ≥ 2.9.0 for JsonWriter.value(float) used in
+  ;; BigQueryRetryAlgorithm error handling (#73736).
+  com.google.code.gson/gson {:mvn/version "2.12.1"}}}

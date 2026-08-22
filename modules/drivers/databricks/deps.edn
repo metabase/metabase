@@ -2,7 +2,8 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.7"}
+ {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.7"
+                                       :exclusions  [org.slf4j/slf4j-jdk14]} ;; conflicts with our log4j2 SLF4J provider
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
   org.bouncycastle/bcpkix-jdk18on     {:mvn/version "1.84"}
   org.bouncycastle/bcprov-jdk18on     {:mvn/version "1.84"}}}
