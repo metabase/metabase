@@ -16,7 +16,7 @@ import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 
-const DISMISSED_KEY = "security-center-promo-dismissed";
+const SECURITY_CENTER_PROMO_ID = "security-center-promo";
 
 interface SetupOpts {
   isAdmin?: boolean;
@@ -24,6 +24,7 @@ interface SetupOpts {
   emailConfigured?: boolean;
   slackConfigured?: boolean;
   advisories?: Advisory[];
+  dismissed?: boolean;
 }
 
 function setup({
@@ -32,6 +33,7 @@ function setup({
   emailConfigured = false,
   slackConfigured = false,
   advisories = [],
+  dismissed = false,
 }: SetupOpts = {}) {
   const tokenFeatures = createMockTokenFeatures(
     isProSelfHosted
@@ -49,10 +51,13 @@ function setup({
     advisories,
   });
 
+  fetchMock.put("path:/api/setting/dismissed-notification-ids", 200);
+
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "token-features": tokenFeatures,
+      "dismissed-notification-ids": dismissed ? [SECURITY_CENTER_PROMO_ID] : [],
     }),
   });
 
@@ -95,10 +100,6 @@ function expectAdminQueriesToBeSkipped({ store }: SetupResult) {
 }
 
 describe("SecurityCenterPromoCard", () => {
-  afterEach(() => {
-    localStorage.removeItem(DISMISSED_KEY);
-  });
-
   it("renders the promo when no channels are configured and no active advisory", async () => {
     setup();
 
@@ -162,7 +163,7 @@ describe("SecurityCenterPromoCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("is dismissible", async () => {
+  it("is dismissible and records the dismissal in the user setting", async () => {
     setup();
 
     await screen.findByText(/Stay safe with security alerts/);
@@ -174,13 +175,19 @@ describe("SecurityCenterPromoCard", () => {
         screen.queryByText(/Stay safe with security alerts/),
       ).not.toBeInTheDocument();
     });
-    expect(localStorage.getItem(DISMISSED_KEY)).toBe("true");
+
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/setting/dismissed-notification-ids",
+    );
+    expect(calls).toHaveLength(1);
+    // fetch-mock types the recorded body loosely; the update mutation sends a JSON string.
+    expect(JSON.parse(calls[0].options.body as string)).toEqual({
+      value: [SECURITY_CENTER_PROMO_ID],
+    });
   });
 
   it("stays hidden after dismissal", async () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-
-    const view = setup();
+    const view = setup({ dismissed: true });
 
     await waitForAdminQueriesToFinish(view);
     expect(
