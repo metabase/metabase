@@ -47,6 +47,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Derive union types from constants** (`as const` + `typeof`/`keyof`) so the type and the values can't drift.
 - **`readonly` / immutability where mutation isn't intended** — component props, shared constants, exported config. Prefer `readonly T[]` / `ReadonlyArray<T>` for inputs you don't mutate.
 - **Type async and error states explicitly** (a discriminated union or the data-layer's typed result) — never leave loading/error/empty implicit.
+- **Use the ambient `React` namespace for React types.** Reference React types via the global namespace (`React.CSSProperties`, `React.ReactNode`, `React.ComponentType`, …) without importing them — the namespace is ambient and this is preferred over named type imports from `"react"`.
 
 ## Null and undefined
 
