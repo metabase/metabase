@@ -69,7 +69,7 @@
                :max-file-count 1}}
   [_route_params
    _query-params
-   _body :- :any
+   _body
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map

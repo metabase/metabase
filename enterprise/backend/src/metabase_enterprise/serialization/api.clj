@@ -293,7 +293,7 @@
        ;;      ideally we'd fix the underlying issue (by delaying realtime indexing updates until the tx closes)
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
-   _body :- :any
+   _body
    {{:strs [file]} :multipart-params, :as _request} :- [:map
                                                         [:multipart-params
                                                          [:map

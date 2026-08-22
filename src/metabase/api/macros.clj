@@ -617,7 +617,8 @@
   [request :- :map]
   (or (some-> (not-empty (:form-params request)) (update-keys keyword))
       (when-let [body (:body request)]
-        (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
+        ;; an unparsed body, e.g. the raw body of a multipart request, is not a param map
+        (when-not (instance? java.io.InputStream body)
           body))))
 
 (defn- delete-multipart-tempfiles!

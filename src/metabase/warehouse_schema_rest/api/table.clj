@@ -502,7 +502,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body :- :any
+   _body
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
@@ -524,7 +524,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body :- :any
+   _body
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
