@@ -113,7 +113,9 @@
                [:native-ddl {:optional true} [:sequential :any]]
                ;; When true, drivers that support it (e.g., MySQL) will disable FK checks during data loading.
                ;; Useful for datasets with self-referencing FKs that need to be inserted in a single batch.
-               [:disable-fk-checks {:optional true} :boolean]]]]
+               [:disable-fk-checks {:optional true} :boolean]
+               ;; Set by [[ephemeral]]. See it for what drivers may do with it.
+               [:ephemeral? {:optional true} :boolean]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -628,6 +630,20 @@
                        ~value
                        (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
        ~@body)))
+
+(defn ephemeral
+  "Mark `dbdef` as belonging to a single test, which destroys it before the run ends.
+
+  Drivers whose warehouse is shared between runs use this to tell the two tiers of test dataset apart: a dataset that
+  outlives the run has to be kept discoverable and reapable, while an ephemeral one can be given a short expiry and
+  left to clean itself up if the process dies."
+  [dbdef]
+  (assoc-in (get-dataset-definition dbdef) [:options :ephemeral?] true))
+
+(defn ephemeral?
+  "Whether `dbdef` was marked by [[ephemeral]]."
+  [dbdef]
+  (boolean (get-in dbdef [:options :ephemeral?])))
 
 (defmulti track-dataset
   "Track the creation or the usage of the database.

@@ -1,6 +1,5 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -8,6 +7,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.test.data.bigquery-cloud-sdk.dataset-state :as dataset-state]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -18,17 +18,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.google.api.client.googleapis.json
-    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
+    BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$TableListOption
     BigQuery$TableOption
     BigQueryException
+    Dataset
     DatasetId
     DatasetInfo
+    DatasetInfo$Builder
     Field
     Field$Mode
     InsertAllRequest
@@ -38,7 +39,8 @@
     Schema
     StandardTableDefinition
     TableId
-    TableInfo)))
+    TableInfo)
+   (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
 
@@ -124,9 +126,37 @@
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
-  (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
-  (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
+(def ^:private work-dataset-lifetime-ms
+  (* (:work-retention-days dataset-state/retention) 24 60 60 1000))
+
+(mu/defn- create-dataset!
+  "Create `dataset-id` carrying `labels`, which [[dataset-state]] reads back to decide whether it is usable.
+
+  A dataset labelled ephemeral also gets a default table lifetime, so a process killed before its `finally` runs
+  leaves nothing behind that costs storage. BigQuery has no dataset-level expiry, so the empty dataset does survive
+  and is left to [[delete-old-datasets!]]."
+  [^String dataset-id :- ::dataset-id labels]
+  (let [^DatasetInfo$Builder builder (DatasetInfo/newBuilder (DatasetId/of (project-id) dataset-id))]
+    (.setLabels builder labels)
+    (when (dataset-state/ephemeral? labels)
+      (.setDefaultTableLifetime builder (long work-dataset-lifetime-ms)))
+    (.create (bigquery) (.build builder) (u/varargs BigQuery$DatasetOption)))
+  (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s` %s." (project-id) dataset-id (pr-str labels))))
+
+(defn- dataset-labels
+  "Labels on `dataset-id`, or `nil` if there is no such dataset. `nil` and `{}` mean different things to
+  [[tx/create-db!]]: absent versus present-but-unpublished."
+  [^String dataset-id]
+  (when-let [^Dataset dataset (.getDataset (bigquery) dataset-id (u/varargs BigQuery$DatasetOption))]
+    (into {} (.getLabels dataset))))
+
+(defn- set-dataset-labels!
+  "Replace the labels on `dataset-id`. Callers pass a complete set, so this is correct whether BigQuery merges or
+  replaces the map."
+  [^String dataset-id labels]
+  (let [^DatasetInfo$Builder builder (DatasetInfo/newBuilder (DatasetId/of (project-id) dataset-id))]
+    (.setLabels builder labels)
+    (.update (bigquery) (.build builder) (u/varargs BigQuery$DatasetOption))))
 
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -147,6 +177,18 @@
     (flush)
     (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil)))
 
+(defn- delete-dataset!
+  "Delete `dataset-id` and everything in it, with no regard for what it holds.
+
+  Separate from [[destroy-dataset!]] because the guard there protects the shared `test-data` dataset from tests, and
+  two callers legitimately need to delete it anyway: a build that failed partway through, and the reaper."
+  [^String dataset-id]
+  {:pre [(seq dataset-id)]}
+  (.delete (bigquery) dataset-id (u/varargs
+                                  BigQuery$DatasetDeleteOption
+                                  [(BigQuery$DatasetDeleteOption/deleteContents)]))
+  (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
+
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   ;; the printlns below are on purpose because we want them to show up when running tests, even on CI, to make sure this
@@ -156,14 +198,7 @@
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (throw (Exception. "tried to delete test-data")))
-  (.delete (bigquery) dataset-id (u/varargs
-                                   BigQuery$DatasetDeleteOption
-                                   [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (execute-params!
-   (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
-           (project-id))
-   [dataset-id])
-  (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
+  (delete-dataset! dataset-id))
 
 (defn base-type->bigquery-type [base-type]
   (let [types {:type/BigInteger     :INTEGER
@@ -348,64 +383,21 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets! []
-  (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
-                           " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
-                             and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
-                      (project-id)
-                      (project-id)
-                      (project-id))]
-    (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
-      (destroy-dataset! outdated))))
+(defn delete-old-datasets!
+  "Delete every test dataset the retention policy has given up on: work datasets whose test is long gone, gold
+  datasets nothing has used in a fortnight, and datasets abandoned part-way through a build.
 
-(defonce ^:private deleted-old-datasets?
-  (atom false))
-
-(defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]], only if we haven't done so already."
+  Meant to run out of band on a schedule rather than from a test. It reads dataset labels only, so it costs one
+  `datasets.list` and no query jobs, and it is safe to run while tests are going: a dataset in use is touched
+  by [[tx/track-dataset]] well inside its retention window."
   []
-  (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)))
-
-(defn- setup-tracking-dataset!
-  "Idempotently create test tracking database"
-  []
-  (let [dataset-id "metabase_test_tracking"]
-    (try
-      (create-dataset! dataset-id)
-      (catch BigQueryException e
-        ;; Already exists, ignore
-        (when-not (= (.getCode e) 409)
-          (throw e))))
-    (try
-      (create-table*! dataset-id "datasets" [{:field-name "hash"
-                                              :base-type  :type/Text}
-                                             {:field-name "name"
-                                              :base-type  :type/Text}
-                                             {:field-name "accessed_at"
-                                              :base-type  :type/DateTimeWithTZ}
-                                             {:field-name "access_note"
-                                              :base-type  :type/Text}])
-      (catch BigQueryException e
-        ;; Already exists, ignore
-        (when-not (= (.getCode e) 409)
-          (throw e))))))
-
-(defn- dataset-tracked?!
-  [db-def]
-  (->
-   (execute-params!
-    (format "SELECT true FROM `%s.metabase_test_tracking.datasets` WHERE `hash` = ? and `name` = ?"
-            (project-id))
-    [(tx/hash-dataset db-def)
-     (test-dataset-id db-def)])
-   ffirst))
+  (let [today (LocalDate/now)]
+    (doseq [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (project-id) (u/varargs BigQuery$DatasetListOption)))
+            :let  [dataset-id (.getDataset (.getDatasetId dataset))
+                   labels     (into {} (.getLabels dataset))]
+            :when (dataset-state/reapable? labels today)]
+      (log/info (u/format-color 'blue "Reaping BigQuery dataset %s %s" dataset-id (pr-str labels)))
+      (u/ignore-exceptions (delete-dataset! dataset-id)))))
 
 (defn database-exists?!
   [db-def]
@@ -416,55 +408,116 @@
     [(test-dataset-id db-def)])
    ffirst))
 
-(defn- get-existing-tables [dataset-id]
-  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
-                    (project-id) dataset-id)]
-    (set (map first (execute! sql)))))
-
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (and (database-exists?! db-def)
-       (set/subset? (set (map :table-name (:table-definitions db-def)))
-                    (set (get-existing-tables (test-dataset-id db-def))))))
+  (dataset-state/ready? (dataset-labels (test-dataset-id db-def))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
+  (let [dataset-id (test-dataset-id db-def)
+        today      (LocalDate/now)
+        labels     (dataset-labels dataset-id)
+        jitter     (rand-int (inc (:touch-jitter-days dataset-state/retention)))]
+    (when (and (seq labels) (dataset-state/needs-touch? labels today jitter))
+      ;; Best-effort. A lost race or a rejected write only means another test records the use a bit later, whereas
+      ;; failing the test over it would turn retention bookkeeping into a source of flakes.
+      (u/ignore-exceptions
+       (set-dataset-labels! dataset-id (dataset-state/touched-labels labels today))))))
+
+(def ^:private publish-timeout-ms
+  "How long to wait for another process to finish loading a dataset. Generous because loading `test-data` into a cold
+  project takes minutes."
+  (u/minutes->ms 20))
+
+(defn- wait-for-publish!
+  "Block until `dataset-id` is published by whoever is building it.
+
+  Returns `:ready`, or `:discarded` if the dataset disappears - that build failed and cleaned up after itself, so the
+  caller should build it rather than wait out the timeout on work nobody is doing."
+  [^String dataset-id]
+  (log/infof "Waiting for another process to finish loading BigQuery dataset %s" dataset-id)
+  (let [deadline (+ (System/currentTimeMillis) publish-timeout-ms)]
+    (loop []
+      (let [labels (dataset-labels dataset-id)]
+        (cond
+          (nil? labels)                 :discarded
+          (dataset-state/ready? labels) :ready
+
+          (> (System/currentTimeMillis) deadline)
+          (throw (ex-info "Timed out waiting for a BigQuery test dataset to be published"
+                          {:dataset-id dataset-id, :timeout-ms publish-timeout-ms}))
+
+          :else
+          (do (Thread/sleep 2000) (recur)))))))
+
+(defn- load-dataset!
+  [driver ^String dataset-id {:keys [table-definitions options]}]
+  (doseq [tabledef table-definitions]
+    (load-tabledef! dataset-id tabledef))
+  (doseq [native-ddl (:native-ddl options)]
+    (apply execute! (sql.tx/compile-native-ddl driver native-ddl))))
+
+(defn- build-dataset!
+  "Create, load and publish `dataset-id`.
+
+  A failed load discards the whole dataset instead of leaving it to be finished later: nothing here can tell a table
+  whose rows all landed from one whose insert died half way, so resuming would quietly yield a dataset short some
+  rows. Publishing is the single label write at the end, and that write is the only thing that makes the dataset
+  visible to [[tx/dataset-already-loaded?]] - until it lands, a concurrent process waits rather than reading tables
+  that exist but are still filling."
+  [driver ^String dataset-id db-def ephemeral? ^LocalDate today attempts]
+  (let [created? (try
+                   (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? ephemeral?, :today today}))
+                   true
+                   (catch BigQueryException e
+                     (if (= 409 (.getCode e))
+                       false
+                       (throw e))))]
+    (cond
+      created?
+      (try
+        (load-dataset! driver dataset-id db-def)
+        (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :today today}))
+        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
+        (catch Throwable e
+          (log/warnf e "Failed to load BigQuery dataset %s; discarding it so the next attempt starts clean" dataset-id)
+          (u/ignore-exceptions (delete-dataset! dataset-id))
+          (throw e)))
+
+      ;; lost the race to create it, so the winner is loading it and will publish
+      (= :ready (wait-for-publish! dataset-id))
+      nil
+
+      (pos? attempts)
+      (build-dataset! driver dataset-id db-def ephemeral? today (dec attempts))
+
+      :else
+      (throw (ex-info "BigQuery test dataset was discarded by every process that tried to build it"
+                      {:dataset-id dataset-id})))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
-  [driver {:keys [database-name table-definitions options] :as db-def} & _]
+  [driver {:keys [database-name table-definitions] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  ;; re-enable this again once things are stable; for now let's just completely
-  ;; excise this potential source of unreliability
-  (comment (delete-old-datasets-if-needed!))
-  (let [dataset-id (test-dataset-id db-def)]
-    (when-not (database-exists?! db-def)
-      (create-dataset! dataset-id))
-    ;; now create tables and load data.
-    (let [existing-tables (get-existing-tables dataset-id)]
-      (doseq [tabledef table-definitions
-              :when (not (existing-tables (:table-name tabledef)))]
-        (try
-          (load-tabledef! dataset-id tabledef)
-          (catch BigQueryException e
-            (when-not (= 409 (.getCode e))
-              (throw e)))
-          (catch GoogleJsonResponseException e
-            (when-not (= 409 (.getCode (.getDetails e)))
-              (throw e))))))
-    (doseq [native-ddl (:native-ddl options)]
-      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
+  (let [dataset-id (test-dataset-id db-def)
+        ephemeral? (tx/ephemeral? db-def)
+        today      (LocalDate/now)
+        labels     (dataset-labels dataset-id)]
+    (cond
+      (dataset-state/ready? labels)
+      (log/infof "BigQuery dataset %s is already published; not reloading." dataset-id)
+
+      (dataset-state/building? labels)
+      (when (= :discarded (wait-for-publish! dataset-id))
+        (build-dataset! driver dataset-id db-def ephemeral? today 1))
+
+      ;; It exists but says nothing about itself: either it predates this scheme or its publish never landed. Its
+      ;; tables cannot be trusted either way, and the cost of being wrong is a silently short dataset, so start over.
+      (some? labels)
+      (do (delete-dataset! dataset-id)
+          (build-dataset! driver dataset-id db-def ephemeral? today 1))
+
+      :else
+      (build-dataset! driver dataset-id db-def ephemeral? today 1))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
@@ -500,13 +553,10 @@
 
 (comment
   "REPL utilities for static datasets"
-  (setup-tracking-dataset!)
-  (destroy-dataset! "metabase_test_tracking")
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
   (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data)))
-  (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
-
-  (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
+  (dataset-labels (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+  (delete-old-datasets!)
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
 
 (defn ^:private get-test-data-name

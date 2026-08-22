@@ -91,7 +91,9 @@
   ;; use a unique DB name each time so this is thread-safe
   (let [db                 (atom nil)
         dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
-        dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
+        dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))
+        ;; the `finally` below destroys it, so it never has to survive this run
+        dataset-definition (tx/ephemeral dataset-definition)]
     (when (or (nil? driver/*driver*)
               (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
       (try
