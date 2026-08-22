@@ -28,11 +28,11 @@ export function InfoSection({ run }: InfoSectionProps) {
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <SidebarInfoRow label={t`Started at`}>
-        <DateTime value={run.start_time} unit="minute" />
+        <DateTime value={run.start_time} unit="minute" local={false} />
       </SidebarInfoRow>
       {run.end_time != null && (
         <SidebarInfoRow label={t`Ended at`}>
-          <DateTime value={run.end_time} unit="minute" />
+          <DateTime value={run.end_time} unit="minute" local={false} />
         </SidebarInfoRow>
       )}
       <SidebarInfoRow label={t`Status`}>

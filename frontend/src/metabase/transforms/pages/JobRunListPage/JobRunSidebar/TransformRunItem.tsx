@@ -109,11 +109,11 @@ type TransformRunTimesProps = {
 function TransformRunTimes({ run }: TransformRunTimesProps) {
   return (
     <Group gap="xs" wrap="nowrap">
-      <DateTime value={run.start_time} unit="minute" />
+      <DateTime value={run.start_time} unit="minute" local={false} />
       {run.end_time != null && (
         <>
           {"–"}
-          <DateTime value={run.end_time} unit="minute" />
+          <DateTime value={run.end_time} unit="minute" local={false} />
         </>
       )}
     </Group>

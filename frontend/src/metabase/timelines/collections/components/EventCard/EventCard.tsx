@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { t } from "ttag";
 
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -137,8 +138,7 @@ const getDateMessage = (event: TimelineEvent) => {
 };
 
 const getCreatorMessage = (event: TimelineEvent) => {
-  const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
+  const createdAt = getFormattedTime(event.created_at, "day");
 
   if (event.creator) {
     return t`${event.creator.common_name} added this on ${createdAt}`;

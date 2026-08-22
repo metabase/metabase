@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockCollection,
   createMockTimeline,
@@ -39,19 +40,22 @@ describe("EventCard", () => {
   });
 
   it("should format an event with the user who created the event", () => {
+    const createdAt = "2020-12-20T20:30:00-08:00";
     const props = getProps({
       event: createMockTimelineEvent({
         creator: createMockUser({
           common_name: "Testy Test",
         }),
-        created_at: "2020-12-20T10:00:00Z",
+        created_at: createdAt,
       }),
     });
 
     render(<EventCard {...props} />);
 
     expect(
-      screen.getByText("Testy Test added this on December 20, 2020"),
+      screen.getByText(
+        `Testy Test added this on ${dayjs(createdAt).format("MMMM D, YYYY")}`,
+      ),
     ).toBeInTheDocument();
   });
 

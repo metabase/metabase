@@ -15,7 +15,7 @@ export function isInterestingDimension(dimension: MetricDimension): boolean {
 export const EXPLORATION_NAME_MAX_LENGTH = 254;
 
 export function getDefaultExplorationName() {
-  return t`New research - ${getFormattedTime(new Date(), "day", { local: true })}`;
+  return t`New research - ${getFormattedTime(new Date(), "day")}`;
 }
 
 // keep in sync with backend other-bucket-label

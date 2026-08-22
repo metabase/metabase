@@ -69,7 +69,10 @@ export const JobListPage = () => {
               {row.original.last_run.status === "failed"
                 ? t`Failed`
                 : t`Last run`}{" "}
-              <DateTime value={row.original.last_run.start_time} />
+              <DateTime
+                value={row.original.last_run.start_time}
+                local={false}
+              />
             </Ellipsified>
           ) : null,
       },

@@ -16,6 +16,7 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
+import { dayjs } from "metabase/dayjs";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { Route } from "metabase/router";
@@ -641,22 +642,23 @@ describe("TaskListPage", () => {
   });
 
   it("should display formatted datetime for started_at and ended_at", async () => {
+    const startedAt = "2023-03-04T01:45:26.005475-08:00";
+    const endedAt = "2023-03-04T01:46:26.518597-08:00";
     setup({
       tasksResponse: createMockTasksResponse({
-        data: [
-          createMockTask({
-            started_at: "2023-03-04T01:45:26.005475-08:00",
-            ended_at: "2023-03-04T01:46:26.518597-08:00",
-          }),
-        ],
+        data: [createMockTask({ started_at: startedAt, ended_at: endedAt })],
       }),
     });
 
     const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
     const endedAtElement = within(row).getByTestId("ended-at");
-    expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
-    expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
+    expect(startedAtElement).toHaveTextContent(
+      dayjs(startedAt).format("MMMM D, YYYY, h:mm A"),
+    );
+    expect(endedAtElement).toHaveTextContent(
+      dayjs(endedAt).format("MMMM D, YYYY, h:mm A"),
+    );
   });
 
   it("should show raw ISO timestamp in tooltip on hover", async () => {

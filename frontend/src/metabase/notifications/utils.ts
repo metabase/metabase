@@ -1,6 +1,7 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import type {
   ScheduleBuilderValue,
@@ -155,7 +156,6 @@ export const formatCreatorMessage = (
   userId: UserId,
 ) => {
   let creatorString = "";
-  const options = MetabaseSettings.formattingOptions();
 
   if (userId === item.creator?.id) {
     creatorString += t`Created by you`;
@@ -166,7 +166,7 @@ export const formatCreatorMessage = (
   }
 
   if (item.created_at) {
-    const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+    const createdAt = getFormattedTime(item.created_at, "day");
     creatorString += t` on ${createdAt}`;
   }
 

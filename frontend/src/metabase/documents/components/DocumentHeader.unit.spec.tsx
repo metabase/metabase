@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import {
   PrintContext,
   type PrintContextValue,
@@ -14,7 +15,7 @@ import { DocumentHeader } from "./DocumentHeader";
 
 const defaultDocument = createMockDocument({
   creator: createMockUser({ common_name: "John Doe" }),
-  updated_at: "2024-01-15T10:30:00Z",
+  updated_at: "2024-01-15T20:30:00-08:00",
 });
 
 const setup = ({
@@ -118,7 +119,11 @@ describe("DocumentHeader", () => {
     it("should show creator name and update time for existing documents", () => {
       setup();
       expect(screen.getByText("John Doe")).toBeInTheDocument();
-      expect(screen.getByText("January 15, 2024")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          dayjs("2024-01-15T20:30:00-08:00").format("MMMM D, YYYY"),
+        ),
+      ).toBeInTheDocument();
     });
   });
 

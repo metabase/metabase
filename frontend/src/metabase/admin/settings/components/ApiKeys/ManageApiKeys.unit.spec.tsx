@@ -14,6 +14,7 @@ import {
   within,
 } from "__support__/ui";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
+import { dayjs } from "metabase/dayjs";
 import type { ApiKey } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
@@ -24,6 +25,8 @@ const GROUPS = [
   createMockGroup({ id: 4, name: "bar" }),
   createMockGroup({ id: 5, name: "flamingos" }),
 ];
+
+const UPDATED_AT = "2010-08-10T20:30:00-08:00";
 
 const testApiKeys: ApiKey[] = [
   {
@@ -36,7 +39,7 @@ const testApiKeys: ApiKey[] = [
     creator_id: 1,
     masked_key: "asdfasdfa",
     created_at: "2010-08-10",
-    updated_at: "2010-08-10",
+    updated_at: UPDATED_AT,
     updated_by: {
       common_name: "John Doe",
       id: 10,
@@ -99,6 +102,13 @@ describe("ManageApiKeys", () => {
   it("should load API keys from api", async () => {
     await setup();
     expect(await screen.findByText("Development API Key")).toBeInTheDocument();
+  });
+
+  it("should show the last modified time in the browser's timezone", async () => {
+    await setup();
+    expect(
+      await screen.findByText(dayjs(UPDATED_AT).format("MMMM D, YYYY, h:mm A")),
+    ).toBeInTheDocument();
   });
 
   it("should create a new API key", async () => {
