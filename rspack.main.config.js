@@ -203,7 +203,7 @@ const config = {
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "xxhash64",
-    clean: !isDevMode,
+    clean: true,
   },
 
   module: {
