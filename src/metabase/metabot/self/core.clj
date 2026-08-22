@@ -308,15 +308,23 @@
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
 
-  Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
+  Input: `usage-by-model` is `{\"provider/model\" {:promptTokens N :completionTokens N}}`
+  cumulative over the turn; `last-call` is `{:promptTokens N :completionTokens N}` for the
+  turn's final LLM call alone.
 
   Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
                     :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
-            :usageByModel {\"provider/model\" {…}}}`
+            :usageByModel {\"provider/model\" {…}}
+            :contextWindowTokens N
+            :contextTokens N}`
+
+  `:contextTokens` is the final call's prompt + completion — how much of the window the
+  conversation now occupies, measured against the same model `:contextWindowTokens`
+  describes. Both context keys are omitted when unknown.
 
   Returns nil if no usage was observed. The cache counts are a subset of
   :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
-  [usage-by-model]
+  [usage-by-model last-call context-window-tokens]
   (when (seq usage-by-model)
     (let [by-model (update-vals
                     usage-by-model
@@ -334,9 +342,25 @@
                            {:inputTokens 0 :outputTokens 0 :totalTokens 0
                             :cacheCreationTokens 0 :cacheReadTokens 0
                             :cachedInputTokens 0}
-                           (vals by-model))]
-      {:usage        totals
-       :usageByModel by-model})))
+                           (vals by-model))
+          {:keys [promptTokens completionTokens]} last-call]
+      (cond-> {:usage        totals
+               :usageByModel by-model}
+        context-window-tokens (assoc :contextWindowTokens context-window-tokens)
+        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
+
+(defn- completion-finish-reason
+  "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
+  `stop`: a turn that ends on a terminal tool call is a normal completion, not an incomplete
+  one. A loop stopped at max iterations surfaces as `tool-calls` instead, so the client can
+  offer to continue."
+  [finish-reason error? loop-finish-reason]
+  (cond
+    (= finish-reason "length")             "length"
+    error?                                 "error"
+    (= finish-reason "content-filter")     "content-filter"
+    (= loop-finish-reason :max-iterations) "tool-calls"
+    :else                                  "stop"))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
@@ -363,9 +387,10 @@
   non-text part (or end of stream) closes the open block first.
 
   Options:
-    :message-id       - When set, force this id into the `start` event so the client
-                        sees the same id we persist as `metabot_message.external_id`.
-    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
+    :message-id            - When set, force this id into the `start` event so the client
+                             sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
+    :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -381,7 +406,7 @@
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id message-metadata]}]
+  ([{:keys [message-id message-metadata context-window-tokens]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -389,6 +414,9 @@
            loop-finish-reason (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
+           ;; usage of the latest LLM call alone — the delta between consecutive
+           ;; cumulative snapshots for that call's model
+           last-call         (volatile! nil)
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
@@ -422,21 +450,16 @@
        (fn
          ([] (rf))
          ([result]
-          (let [metadata (merge (->message-metadata @usage-by-model)
-                                (when @finish-error-code {:errorCode @finish-error-code}))]
+          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
+                                (when @finish-error-code {:errorCode @finish-error-code}))
+                finish   (cond-> {:type         "finish"
+                                  :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
+                           (seq metadata) (assoc :messageMetadata metadata))]
             (-> result
                 close-text-block
                 close-reasoning-block
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
-                (rf (format-sse-event
-                     (cond-> {:type         "finish"
-                              :finishReason (cond
-                                              (= @finish-reason "length")              "length"
-                                              @error?                                  "error"
-                                              (= @finish-reason "content-filter")      "content-filter"
-                                              (= @loop-finish-reason :max-iterations)  "tool-calls"
-                                              :else                                    "stop")}
-                       (seq metadata) (assoc :messageMetadata metadata))))
+                (rf (format-sse-event finish))
                 (rf done-sse-line)
                 (rf))))
          ([result part]
@@ -526,8 +549,13 @@
 
               :usage
               ;; cumulative per-model snapshot; last-wins, emitted on finish
-              (do
-                (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+              (let [model (or (:model part) "unknown")
+                    usage (:usage part)
+                    prev  (get @usage-by-model model)]
+                (vreset! last-call
+                         {:promptTokens     (- (:promptTokens usage 0) (:promptTokens prev 0))
+                          :completionTokens (- (:completionTokens usage 0) (:completionTokens prev 0))})
+                (vswap! usage-by-model assoc model usage)
                 (when-let [fr (:finish-reason part)]
                   (vreset! finish-reason fr))
                 result)

@@ -87,7 +87,6 @@ export type MetabotSeriesConfig = {
 };
 
 export type MetabotChartConfig = {
-  image_base_64?: string;
   title?: string | null;
   description?: string | null;
   data?: Array<{
