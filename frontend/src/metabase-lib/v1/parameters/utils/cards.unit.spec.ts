@@ -130,6 +130,29 @@ describe("parameters/utils/cards", () => {
       });
     });
 
+    describe("saved cards opened from a dashboard", () => {
+      it("should resolve parameter fields from the query", () => {
+        const card = createMockCard({
+          id: 1,
+          dashboardId: 1,
+          parameters: [],
+          param_fields: {},
+          dataset_query: quantityTagQuery,
+        });
+
+        const [quantityUiParameter] = getCardUiParameters(
+          card,
+          SAMPLE_METADATA,
+        );
+
+        expect(quantityUiParameter).toMatchObject({
+          id: "tag-id",
+          fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
+          hasVariableTemplateTagTarget: false,
+        });
+      });
+    });
+
     describe("unsaved cards", () => {
       it("should resolve parameter fields from the query", () => {
         const card = createMockCard({

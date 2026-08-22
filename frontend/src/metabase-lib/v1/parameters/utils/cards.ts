@@ -34,13 +34,17 @@ export function getCardUiParameters(
       values: parameterValues,
     });
 
-  return isSavedCard(card)
+  return hasParamFields(card)
     ? getSavedCardUiParameters(card, metadata, valuePopulatedParameters)
     : getUnsavedCardUiParameters(card, metadata, valuePopulatedParameters);
 }
 
-function isSavedCard(card: Card) {
-  return card.id != null;
+/**
+ * A question opened from a dashboard shows the dashboard's parameters, which
+ * the card's own `param_fields` do not cover.
+ */
+function hasParamFields(card: Card) {
+  return card.id != null && card.dashboardId == null;
 }
 
 /**
