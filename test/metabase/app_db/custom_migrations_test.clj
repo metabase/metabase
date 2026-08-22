@@ -2966,3 +2966,31 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest encrypt-dwh-derived-columns-rollback-test
+  (testing "v64.2026-08-19T00:00:00: rollback hands columns back as plaintext an older version can read.
+            The forward direction is a no-op here on purpose: encrypting happens off the boot path in
+            metabase.app-db.task.encryption-backfill."
+    (impl/test-migrations ["v64.2026-08-19T00:00:00"] [migrate!]
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
+            table-id  (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            plaintext (json/encode {:global {:distinct-count 41}})
+            stored    (fn [id] (:fingerprint (t2/query-one {:select [:fingerprint]
+                                                            :from   [:metabase_field]
+                                                            :where  [:= :id id]})))]
+        (encryption-test/with-secret-key "encrypt-dwh-derived-columns-rollback-key"
+          (let [field-id (t2/insert-returning-pk! :metabase_field
+                                                  {:name          "sightings"
+                                                   :table_id      table-id
+                                                   :base_type     "type/Integer"
+                                                   :database_type "INTEGER"
+                                                   :active        true
+                                                   :fingerprint   (encryption/maybe-encrypt plaintext)
+                                                   :created_at    :%now
+                                                   :updated_at    :%now})]
+            (migrate!)
+            (testing "forward leaves the row alone"
+              (is (not= plaintext (stored field-id))))
+            (when (not= driver/*driver* :mysql) ; rollback flakes on mysql, see metabase#37434
+              (migrate! :down 63)
+              (is (= plaintext (stored field-id))))))))))

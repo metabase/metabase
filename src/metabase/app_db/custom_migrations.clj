@@ -28,6 +28,7 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
@@ -2242,3 +2243,28 @@
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
+
+;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, because
+;; `metabase_field` can hold millions of rows and a migration that long blocks startup. Rollback has to stay here
+;; though, since a downgraded version needs to find plaintext the moment it starts.
+;;
+;; Sharing the sweep with `app-db.encryption` rather than freezing a copy here: decrypting is idempotent, and rolling
+;; back past this point should decrypt every column encrypted since, not just the ones known when it was written.
+;;
+;; Intentionally not using define-reversible-migration, to avoid wrapping that rollback in one transaction. Partial
+;; completion is safe either way: `maybe-decrypt` reads plaintext and ciphertext alike.
+(defrecord EncryptDwhDerivedColumns []
+  CustomTaskChange
+  (execute [_ _database])
+  (getConfirmationMessage [_]
+    "Custom migration: EncryptDwhDerivedColumns")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  ;; hand these back to the older version as plaintext it can read
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt nil nil 500))))

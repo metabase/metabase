@@ -1,0 +1,15 @@
+## Encrypt the warehouse-derived columns that became encrypted at rest in v64. Instances that already had
+## MB_ENCRYPTION_SECRET_KEY set never re-run `encrypt-db` on upgrade, so without this their existing rows would stay
+## in the clear until something rewrote them individually. Fingerprints in particular are only rewritten when a field
+## is re-analyzed, which for a stable schema may never happen.
+##
+## The rollback decrypts them again, so `migrate down` hands an older version data it can still read.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-19T00:00:00
+      author: qnkhuat
+      comment: Encrypt fingerprints, field values, result metadata and saved parameter values
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.EncryptDwhDerivedColumns"

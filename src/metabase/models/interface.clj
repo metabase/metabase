@@ -327,6 +327,17 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+(defn transform-encrypted
+  "Wrap `transform` so its serialized value is encrypted at rest. Reading is unchanged for rows written before the
+  column was encrypted: [[encryption/maybe-decrypt]] passes plaintext through."
+  [transform]
+  {:in  (fn [v]
+          (let [serialized ((:in transform) v)]
+            ;; `maybe-encrypt` returns nil for an empty string, which would null the column instead of storing it
+            (cond-> serialized
+              (seq serialized) encryption/maybe-encrypt)))
+   :out (comp (:out transform) encryption/maybe-decrypt)})
+
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
 (mr/def ::viz-settings-ref

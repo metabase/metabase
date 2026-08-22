@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.memoize :as u.memo]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
@@ -101,6 +102,12 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
+;; the metadata provider reads this for every field of every table in a query, so decrypting it uncached shows up
+;; on the hot path. Keyed on the stored value, which only changes when a field is re-analyzed.
+(def ^:private cached-encrypted-fingerprints
+  (update (mi/transform-encrypted transform-json-fingerprints)
+          :out u.memo/fast-bounded :bounded/threshold 10000))
+
 (t2/deftransforms :model/Field
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
@@ -108,7 +115,7 @@
    :semantic_type     transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
-   :fingerprint       transform-json-fingerprints
+   :fingerprint       cached-encrypted-fingerprints
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 

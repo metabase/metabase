@@ -1,12 +1,15 @@
 (ns metabase.warehouse-schema.models.field-test
   "Tests for specific behavior related to the Field model."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -309,3 +312,49 @@
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(def ^:private warehouse-fingerprint
+  {:global {:distinct-count 42 :nil% 0.0}
+   :type   {:type/Number {:min 3.5 :max 987654.25 :avg 120.0 :q1 10.0 :q3 300.0 :sd 5.5}}})
+
+(deftest fingerprint-is-encrypted-at-rest-test
+  (testing "fingerprints hold warehouse values (a column's real min/max), so they must not sit in the clear"
+    (encryption-test/with-secret-key "field-fingerprint-encryption-test-key"
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    table {:db_id (u/the-id db)}
+                     :model/Field    field {:table_id (u/the-id table) :fingerprint warehouse-fingerprint}]
+        (let [raw (:fingerprint (t2/query-one {:select [:fingerprint]
+                                               :from   [:metabase_field]
+                                               :where  [:= :id (u/the-id field)]}))]
+          (testing "the stored value does not contain the warehouse number"
+            (is (string? raw))
+            (is (not (str/includes? raw "987654.25"))
+                "fingerprint values were stored in plaintext"))
+          (testing "and it still decrypts back to the original fingerprint"
+            (is (= warehouse-fingerprint
+                   (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))))))))
+
+(deftest fingerprint-reads-pre-encryption-plaintext-test
+  (testing "fingerprints written before this column was encrypted keep reading, so no migration is needed"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    table {:db_id (u/the-id db)}
+                   :model/Field    field {:table_id (u/the-id table)}]
+      (t2/query-one {:update :metabase_field
+                     :set    {:fingerprint (json/encode warehouse-fingerprint)}
+                     :where  [:= :id (u/the-id field)]})
+      (encryption-test/with-secret-key "field-fingerprint-encryption-test-key"
+        (is (= warehouse-fingerprint
+               (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))))))
+
+(deftest fingerprint-cache-tracks-updates-test
+  (testing "the decrypt cache is keyed on the stored value, so re-analyzing a field is reflected on the next read"
+    (encryption-test/with-secret-key "field-fingerprint-encryption-test-key"
+      (mt/with-temp [:model/Database db {}
+                     :model/Table    table {:db_id (u/the-id db)}
+                     :model/Field    field {:table_id (u/the-id table) :fingerprint warehouse-fingerprint}]
+        (is (= warehouse-fingerprint
+               (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field))))
+        (let [refingerprinted (assoc-in warehouse-fingerprint [:global :distinct-count] 99)]
+          (t2/update! :model/Field (u/the-id field) {:fingerprint refingerprinted})
+          (is (= refingerprinted
+                 (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))))))
