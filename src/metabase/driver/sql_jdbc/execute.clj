@@ -31,7 +31,7 @@
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 PooledDataSource)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -825,6 +825,45 @@
                             :pulse}]
     (boolean (download-contexts context))))
 
+(defn- cancel-statement!
+  "Cancel `stmt` on the DBMS side. Returns whether a cancelation was actually issued."
+  [driver ^Statement stmt]
+  (try
+    (when-not (.isClosed stmt)
+      (.cancel stmt)
+      true)
+    (catch SQLFeatureNotSupportedException _
+      (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                 (name driver))
+      false)
+    (catch Throwable e
+      (log/infof "Statement cancelation failed: %s" (ex-message e))
+      false)))
+
+(def ^:private raw-connection-close-method
+  (.getMethod Connection "close" (make-array Class 0)))
+
+(defn- discard-pooled-connection!
+  "Close the physical Connection behind a c3p0 proxy, so the pool destroys it on check-in and acquires a fresh one
+  rather than handing this one to the next query.
+
+  Canceling a Statement abandons a result set the server is still producing, which can leave protocol state pending on
+  the connection that the pool does not clear: c3p0 resets `autoCommit`/`readOnly`/holdability on check-in, not
+  driver-level wire state. On SQL Server `.cancel` sends an out-of-band TDS attention packet whose acknowledgement is
+  not drained before check-in, and it surfaces later as `The result set is closed.` while an unrelated query is reading
+  rows on the recycled connection.
+
+  A non-pooled Connection has no next query to poison, so it is left alone."
+  [conn]
+  (when (instance? C3P0ProxyConnection conn)
+    (try
+      (.rawConnectionOperation ^C3P0ProxyConnection conn
+                               raw-connection-close-method
+                               C3P0ProxyConnection/RAW_CONNECTION
+                               (make-array Object 0))
+      (catch Throwable e
+        (log/debugf "Discarding pooled connection after statement cancelation failed: %s" (ex-message e))))))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -858,24 +897,32 @@
                                                          (assoc :query/query-canceled? true))
                                                        e))))]
            (let [rsmeta           (.getMetaData rs)
-                 results-metadata {:cols (column-metadata driver rsmeta)}]
-             (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
+                 results-metadata {:cols (column-metadata driver rsmeta)}
+                 ;; whether the ResultSet ran out of rows is only observable while reducing, but it is needed after
+                 ;; reduction has finished, so the row thunk records it on the way past
+                 exhausted?       (volatile! false)
+                 next-row         (row-thunk driver rs rsmeta)
+                 rows             (driver-api/reducible-rows
+                                   (fn []
+                                     (let [row (next-row)]
+                                       (when-not row
+                                         (vreset! exhausted? true))
+                                       row))
+                                   (driver-api/canceled-chan))]
+             (try (respond results-metadata rows)
                   ;; Following cancels the statement on the dbms side.
                   ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
                   ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                   ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                   ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
+                  ;; An exhausted ResultSet has nothing left to cancel, and the cancelation is itself what forces the
+                  ;; pooled connection to be thrown away, so skip both when the rows simply ran out.
                   (finally
                     ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
                     ;;       It should be removed afterwards!
-                    (when-not (= :vertica driver)
-                      (try (when-not (.isClosed stmt)
-                             (.cancel stmt))
-                           (catch SQLFeatureNotSupportedException _
-                             (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                        (name driver)))
-                           (catch Throwable e
-                             (log/infof "Statement cancelation failed: %s" (ex-message e))))))))))))))
+                    (when-not (or @exhausted? (= :vertica driver))
+                      (when (cancel-statement! driver stmt)
+                        (discard-pooled-connection! conn))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
