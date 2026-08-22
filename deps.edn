@@ -347,6 +347,10 @@
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-paths ["test_config"]
+   ;; starts the pinned server an app DB snapshot is generated from; see
+   ;; metabase.app-db.snapshot-test-util.server. Used for that alone -- every other test DB is started outside the
+   ;; JVM and reached through MB_<DB>_TEST_*.
+   :extra-deps  {org.testcontainers/testcontainers {:mvn/version "1.21.4"}}
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
