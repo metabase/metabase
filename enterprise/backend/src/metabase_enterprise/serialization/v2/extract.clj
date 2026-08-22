@@ -78,7 +78,16 @@
                       {:status-code 400
                        :model       model-name
                        :entity-id   id})))
-    target))
+    ;; a numeric id that doesn't exist used to sail through unchecked here, then blow up downstream as an
+    ;; opaque NullPointerException (some later step tries to split a field -- e.g. a Collection's `:location`
+    ;; -- that's nil because the row was never found). Fail the same clean, actionable way the entity-id
+    ;; branch above already does (metabase#75167).
+    (if (t2/exists? (keyword "model" model-name) id)
+      target
+      (throw (ex-info (format "Could not find %s with ID: %s" model-name id)
+                      {:status-code 400
+                       :model       model-name
+                       :id          id})))))
 
 (defn- analytics-collection-ids
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
