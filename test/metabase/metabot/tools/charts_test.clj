@@ -8,7 +8,7 @@
    [metabase.metabot.tools.shared :as shared]))
 
 ;; create-chart only needs the query present in queries-state; the link builder
-;; json-encodes it and `->legacy-mbql` passes a non-pMBQL value through unchanged,
+;; json-encodes it and `->legacy-mbql` passes a non-MBQL 5 value through unchanged,
 ;; so a stub query is enough to exercise the emission branch without a database.
 (def ^:private stub-query
   {:database 1 :type "query" :query {:source-table 1}})

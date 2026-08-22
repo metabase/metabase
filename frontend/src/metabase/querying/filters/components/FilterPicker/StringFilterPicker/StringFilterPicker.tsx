@@ -2,10 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { hasFeature } from "metabase/databases";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -37,12 +36,15 @@ export function StringFilterPicker({
     [query, stageIndex, column],
   );
 
-  const metadata = useSelector(getMetadata);
-  const database = metadata.database(Lib.databaseID(query));
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+  // An unknown database keeps the option available rather than hiding a
+  // control the database probably supports.
   const supportsCaseSensitivity =
-    (database != null &&
-      hasFeature(database, "case-sensitivity-string-filter-options")) ||
-    database == null;
+    database == null ||
+    hasFeature(database, "case-sensitivity-string-filter-options");
 
   const {
     type,

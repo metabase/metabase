@@ -101,7 +101,21 @@ runs:
       # vector reaches clojure -X as a single argument.
       run: |
         BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
-        if [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+        # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
+        # The `profiled` output is what the collection steps below key off, so that the decision is
+        # recorded by the step that acts on it rather than re-derived from the environment.
+        if [ "$PROFILE_TESTS" = "true" ]; then
+          echo "Profiling this run; a flamegraph will be attached to the job."
+          echo "profiled=true" >> "$GITHUB_OUTPUT"
+          BASE="$BASE:profile-tests"
+        fi
+        # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
+        # attempt. Names may be separated by commas or spaces; hawk wants them as one vector argument.
+        if [ -n "$ONLY_TESTS" ]; then
+          ONLY="[$(echo "$ONLY_TESTS" | tr ',' ' ')]"
+          echo "Running only: $ONLY"
+          $BASE :only "$ONLY"
+        elif [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
           echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
           $BASE :only "$(cat target/failed-tests)"
         else
@@ -113,8 +127,15 @@ runs:
       # ultimately fails.
       continue-on-error: true
 
+    - name: Collect profile
+      if: ${{ !cancelled() }}
+      uses: ./.github/actions/collect-profile
+      with:
+        profiled: ${{ steps.run-test.outputs.profiled }}
+        artifact-name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+
     - name: Report failed tests to ci-conductor
-      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      if: ${{ !cancelled() && ( steps.run-test.outcome == 'failure' || github.run_attempt != '1' ) }}
       # This step should NEVER fail the job!
       continue-on-error: true
       uses: ./.github/actions/report-failures-to-ci-conductor
