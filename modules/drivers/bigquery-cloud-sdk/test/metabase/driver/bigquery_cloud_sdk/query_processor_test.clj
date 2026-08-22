@@ -1325,7 +1325,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"sha_[a-z0-9_]+_test_data" "test_data")
+                 (str/replace (re-pattern (str bigquery.tx/dataset-id-prefix "[a-z0-9_]+_test_data")) "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test

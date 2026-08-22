@@ -60,17 +60,27 @@
     {:error/message "Dataset IDs must be alphanumeric (plus underscores)"}
     #"^[\w_]+$"]])
 
+(def dataset-id-prefix
+  "Namespace owned by the labelled-dataset scheme in [[metabase.test.data.bigquery-cloud-sdk.dataset-state]].
+
+  The generation digit is what lets this branch share a project with branches still running the previous scheme:
+  those datasets are named `sha_...` and are neither read nor deleted here, and ours are invisible to them. Bump the
+  digit again if the lifecycle rules ever change in a way that makes existing datasets unusable, rather than
+  migrating or deleting them in place - deleting a dataset another branch's CI is reading is the failure this whole
+  change exists to prevent."
+  "mbds1_")
+
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (cond (str/starts-with? database-name "sha_")
+  (cond (str/starts-with? database-name dataset-id-prefix)
         database-name
         ;; releases get their own isolated datasets
         (tx/on-master-or-release-branch?)
-        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        (str dataset-id-prefix "rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
         :else
-        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+        (str dataset-id-prefix "pr_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -109,7 +119,7 @@
 
 (mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
   ([driver db-name]
-   (if (some-> db-name (str/starts-with? "sha_"))
+   (if (some-> db-name (str/starts-with? dataset-id-prefix))
      [db-name]
      [(test-dataset-id (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver))))]))
   ([driver
@@ -384,6 +394,16 @@
               (recur (dec num-retries))
               (throw e))))))))
 
+(defn datasets-with-labels
+  "Every dataset in the test project, as `{:dataset-id .. :labels ..}`.
+
+  One `datasets.list` and no query jobs, which is what keeps the reaper off the DML path that the tracking table
+  used to sit on."
+  []
+  (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (project-id) (u/varargs BigQuery$DatasetListOption)))]
+    {:dataset-id (.getDataset (.getDatasetId dataset))
+     :labels     (into {} (.getLabels dataset))}))
+
 (defn delete-old-datasets!
   "Delete every test dataset the retention policy has given up on: work datasets whose test is long gone, gold
   datasets nothing has used in a fortnight, and datasets abandoned part-way through a build.
@@ -393,9 +413,7 @@
   by [[tx/track-dataset]] well inside its retention window."
   []
   (let [today (LocalDate/now)]
-    (doseq [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (project-id) (u/varargs BigQuery$DatasetListOption)))
-            :let  [dataset-id (.getDataset (.getDatasetId dataset))
-                   labels     (into {} (.getLabels dataset))]
+    (doseq [{:keys [dataset-id labels]} (datasets-with-labels)
             :when (dataset-state/reapable? labels today)]
       (log/info (u/format-color 'blue "Reaping BigQuery dataset %s %s" dataset-id (pr-str labels)))
       (u/ignore-exceptions (delete-dataset! dataset-id)))))
@@ -477,9 +495,17 @@
     (cond
       created?
       (try
-        (load-dataset! driver dataset-id db-def)
-        (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :today today}))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
+        (let [start (System/nanoTime)]
+          (load-dataset! driver dataset-id db-def)
+          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :today today}))
+          ;; Greppable on purpose: how long a rebuild costs decides how hard the retention policy should work to
+          ;; avoid one. Grep CI logs for `[bq-dataset-build]`.
+          (log/info (u/format-color 'green "[bq-dataset-build] %s %s built in %s (%d tables, %d rows)"
+                                    (if ephemeral? "work" "gold")
+                                    dataset-id
+                                    (u/format-nanoseconds (- (System/nanoTime) start))
+                                    (count (:table-definitions db-def))
+                                    (reduce + 0 (map (comp count :rows) (:table-definitions db-def))))))
         (catch Throwable e
           (log/warnf e "Failed to load BigQuery dataset %s; discarding it so the next attempt starts clean" dataset-id)
           (u/ignore-exceptions (delete-dataset! dataset-id))
