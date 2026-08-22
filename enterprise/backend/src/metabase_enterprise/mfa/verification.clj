@@ -15,6 +15,7 @@
   (:require
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2])
   (:import
@@ -24,7 +25,7 @@
 
 ;; Register "totp" in the AuthIdentity provider hierarchy so the model's before-insert/-update
 ;; validation accepts its rows (the default `validate` method applies).
-(derive :provider/totp :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/totp :metabase.auth-identity.provider/provider)
 
 (def ^:private provider-name "totp")
 

@@ -17,9 +17,9 @@
 (set! *warn-on-reflection* true)
 
 ;; Register SAML provider
-(derive :provider/saml :metabase.auth-identity.provider/provider)
-(derive :provider/saml :metabase.auth-identity.provider/create-user-if-not-exists)
-(derive :provider/saml :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
+(auth-identity/derive! :provider/saml :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/saml :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/saml :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 (defn- acs-url
   "Get the Assertion Consumer Service URL."
