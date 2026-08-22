@@ -73,15 +73,36 @@
   [query ref-clause]
   (boolean (seq (lib/available-binning-strategies query -1 ref-clause))))
 
+(defn- pinned-default-binning
+  "Explicit `:bin-width` binning equivalent to what the QP's `:default` strategy
+  would resolve for `ref-clause` against `query` as given — i.e. before any
+  per-segment filter is added. Exploration charts fan one query out into
+  several segment-filtered variants that share an x-axis; left as
+  `{:strategy :default}`, the QP re-derives the bin width per variant from that
+  variant's own filters, so a segment that range-filters the binned column gets
+  a different bin size than its siblings. Pinning the width keeps every variant
+  on the same bin grid, while the card's own filters (shared by all variants)
+  still narrow the domain. Falls back to `{:strategy :default}` when no width
+  can be resolved."
+  [query ref-clause]
+  (let [col (lib/find-matching-column query -1 ref-clause
+                                      (lib/breakoutable-columns query))]
+    (if-let [width (when col (lib/default-bin-width query -1 col))]
+      {:strategy :bin-width, :bin-width width}
+      {:strategy :default})))
+
 (defn apply-default-bucket
   "Return `ref-clause` with this dim's default temporal bucket or binning applied. Unchanged
-  when the dim has no default, or when the column can't be binned. See [[binnable-ref?]]"
+  when the dim has no default, or when the column can't be binned. See [[binnable-ref?]].
+  Numeric binning is pinned to an explicit bin width (see [[pinned-default-binning]])
+  so all segment variants of a chart share the same bins."
   [query ref-clause dim]
   (let [[kind v] (default-bucket-for-dim dim)]
     (case kind
       :temporal (lib/with-temporal-bucket ref-clause v)
       :binning  (cond-> ref-clause
-                  (binnable-ref? query ref-clause) (lib/with-binning v))
+                  (binnable-ref? query ref-clause)
+                  (lib/with-binning (pinned-default-binning query ref-clause)))
       nil       ref-clause)))
 
 (defn normalize-target-ref

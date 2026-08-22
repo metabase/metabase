@@ -17,7 +17,6 @@ import {
   CANCEL_QUESTION_CHANGES,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
   CLOSE_CHART_TYPE,
   CLOSE_QB,
@@ -32,7 +31,6 @@ import {
   INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
   OPEN_DATA_REFERENCE_AT_QUESTION,
@@ -258,15 +256,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       }))
-      .addCase(OPEN_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingAIQuestionAnalysisSidebar: true,
-      }))
-      .addCase(CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      }))
       .addCase<
         string,
         {
@@ -451,7 +440,12 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
       QUERY_COMPLETED,
       (_state, action) => action.payload.card,
     )
-    .addCase(QUERY_ERRORED, () => null);
+    // A null payload means the run was cancelled and the rendered result is
+    // still valid, so keep the card; a real error clears it
+    .addCase<string, { type: string; payload: unknown }>(
+      QUERY_ERRORED,
+      (_state, action) => (action.payload ? null : undefined),
+    );
 });
 
 // The results of a query execution. optionally an error if the query fails to complete successfully.

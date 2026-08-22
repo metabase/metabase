@@ -42,37 +42,47 @@
       (tru "OpenRouter API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "OpenRouter models offered in the Metabot model picker, as a map of model id -> display name.
+  "OpenRouter models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/v1/models` catalog.
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
-  Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
-  {"anthropic/claude-fable-5"        "Claude Fable 5"
-   "anthropic/claude-opus-5"         "Claude Opus 5"
-   "anthropic/claude-opus-4.8"       "Claude Opus 4.8"
-   "anthropic/claude-opus-4.7"       "Claude Opus 4.7"
-   "anthropic/claude-opus-4.6"       "Claude Opus 4.6"
-   "anthropic/claude-opus-4.5"       "Claude Opus 4.5"
-   "anthropic/claude-opus-4.1"       "Claude Opus 4.1"
-   "anthropic/claude-sonnet-5"       "Claude Sonnet 5"
-   "anthropic/claude-sonnet-4.6"     "Claude Sonnet 4.6"
-   "anthropic/claude-sonnet-4.5"     "Claude Sonnet 4.5"
-   "anthropic/claude-haiku-4.5"      "Claude Haiku 4.5"
-   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro 0423"
-   "deepseek/deepseek-v4-pro-0813"   "DeepSeek V4 Pro 0813"
-   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash 0731"
-   "mistralai/mistral-medium-3-5"    "Mistral Medium 3.5"
-   "moonshotai/kimi-k3"              "Kimi K3"
-   "openai/gpt-5.6-sol"              "GPT-5.6 Sol"
-   "openai/gpt-5.6-terra"            "GPT-5.6 Terra"
-   "openai/gpt-5.6-luna"             "GPT-5.6 Luna"
-   "openai/gpt-5.5"                  "GPT-5.5"
-   "openai/gpt-5.5-pro"              "GPT-5.5 Pro"
-   "openai/gpt-5.4"                  "GPT-5.4"
-   "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
-   "qwen/qwen3.8-max"                "Qwen3.8 Max"
-   "z-ai/glm-5.2"                    "GLM-5.2"})
+  Anthropic API's hyphenated IDs (`claude-haiku-4-5`). Context windows are OpenRouter's
+  serving limits, which can differ from the model's direct-provider window; they come from
+  https://openrouter.ai/api/v1/models, taking the lower of `context_length` and
+  `top_provider.context_length` since a request can be routed to any backing provider.
+  OpenAI rows subtract the 128k max output from that total, recording max input like
+  the direct openai adapter."
+  {"anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000}
+   "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000}
+   "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000}
+   "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000}
+   "anthropic/claude-opus-4.6"       {:display-name "Claude Opus 4.6"         :context-window 1000000}
+   "anthropic/claude-opus-4.5"       {:display-name "Claude Opus 4.5"         :context-window  200000}
+   "anthropic/claude-opus-4.1"       {:display-name "Claude Opus 4.1"         :context-window  200000}
+   "anthropic/claude-sonnet-5"       {:display-name "Claude Sonnet 5"         :context-window 1000000}
+   "anthropic/claude-sonnet-4.6"     {:display-name "Claude Sonnet 4.6"       :context-window 1000000}
+   "anthropic/claude-sonnet-4.5"     {:display-name "Claude Sonnet 4.5"       :context-window 1000000}
+   "anthropic/claude-haiku-4.5"      {:display-name "Claude Haiku 4.5"        :context-window  200000}
+   "deepseek/deepseek-v4-pro"        {:display-name "DeepSeek V4 Pro 0423"    :context-window 1048576}
+   "deepseek/deepseek-v4-pro-0813"   {:display-name "DeepSeek V4 Pro 0813"    :context-window 1048575}
+   "deepseek/deepseek-v4-flash-0731" {:display-name "DeepSeek V4 Flash 0731"  :context-window 1048576}
+   "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144}
+   "moonshotai/kimi-k3"              {:display-name "Kimi K3"                 :context-window 1048576}
+   "openai/gpt-5.6-sol"              {:display-name "GPT-5.6 Sol"             :context-window  922000}
+   "openai/gpt-5.6-terra"            {:display-name "GPT-5.6 Terra"           :context-window  922000}
+   "openai/gpt-5.6-luna"             {:display-name "GPT-5.6 Luna"            :context-window  922000}
+   "openai/gpt-5.5"                  {:display-name "GPT-5.5"                 :context-window  922000}
+   "openai/gpt-5.5-pro"              {:display-name "GPT-5.5 Pro"             :context-window  922000}
+   "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000}
+   "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000}
+   "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000}
+   "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000}
+   "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576}})
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [model :context-window]))
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -112,7 +122,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id] :as model}]
-                         {:id id :display_name (or (:name model) (supported-models id))})))}))
+                         {:id id :display_name (or (:name model) (get-in supported-models [id :display-name]))})))}))
 
 ;;; Streaming response → AISDK v5 chunks
 

@@ -42,7 +42,7 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
 };
 
 function isPredefinedFontName(font: string): font is PredefinedFontName {
-  return font in PREDEFINED_FONT_FAMILIES_FALLBACK_MAP;
+  return Object.hasOwn(PREDEFINED_FONT_FAMILIES_FALLBACK_MAP, font);
 }
 
 // Every font Metabase ships is Latin-only, so RTL scripts would otherwise fall
@@ -53,8 +53,20 @@ function isPredefinedFontName(font: string): font is PredefinedFontName {
 const RTL_SCRIPT_FALLBACKS = '"IBM Plex Sans Arabic", "IBM Plex Sans Hebrew"';
 
 export function getFontFamilyValue(font: string): string {
-  const fallback = isPredefinedFontName(font)
-    ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[font]
-    : "sans-serif";
-  return `"${font}", ${RTL_SCRIPT_FALLBACKS}, ${fallback}`;
+  const families = (font ?? "")
+    .split(",")
+    .map((name) => name.replaceAll(/["']/g, "").trim())
+    .filter(Boolean);
+
+  const [firstFamily] = families;
+  const fallback =
+    firstFamily !== undefined && isPredefinedFontName(firstFamily)
+      ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[firstFamily]
+      : "sans-serif";
+
+  return [
+    ...families.map((name) => JSON.stringify(name)),
+    RTL_SCRIPT_FALLBACKS,
+    fallback,
+  ].join(", ");
 }

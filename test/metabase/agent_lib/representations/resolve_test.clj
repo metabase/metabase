@@ -88,7 +88,7 @@
       (is (schema-valid? q)))))
 
 (deftest export-query-round-trip-shape-test
-  (testing "resolved numeric pMBQL exports back to the portable string-keyed representations form"
+  (testing "resolved numeric MBQL 5 exports back to the portable string-keyed representations form"
     (let [parsed  {"lib/type" "mbql/query"
                    "database" "Sample"
                    "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -556,7 +556,7 @@
 ;;; ============================================================
 
 (deftest try-export-query-structured-test
-  (testing "structured pMBQL exports to a portable repr-form map with portable FKs and string keys"
+  (testing "structured MBQL 5 exports to a portable repr-form map with portable FKs and string keys"
     (let [parsed {"lib/type" "mbql/query"
                   "database" "Sample"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
