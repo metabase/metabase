@@ -31,6 +31,7 @@ export const AddRow = ({
     p="0.5rem"
     display="relative"
     align="center"
+    wrap="wrap"
     bd="1px solid var(--mb-color-core-brand)"
     style={{ borderRadius: "0.5rem" }}
   >
@@ -38,7 +39,8 @@ export const AddRow = ({
     <Input
       type="text"
       variant="unstyled"
-      flex="1 0 auto"
+      flex="1 1 auto"
+      miw={0}
       fz="lg"
       styles={{ input: { background: "transparent" } }}
       value={value}
@@ -48,11 +50,18 @@ export const AddRow = ({
       onKeyDown={onKeyDown}
       onChange={onChange}
     />
-    <Button variant="subtle" bg="transparent" onClick={onCancel} mr="sm">
+    <Button
+      variant="subtle"
+      bg="transparent"
+      flex="0 0 auto"
+      onClick={onCancel}
+      mr="sm"
+    >
       {t`Cancel`}
     </Button>
     <Button
       variant={isValid ? "filled" : "outline"}
+      flex="0 0 auto"
       disabled={!isValid}
       onClick={onDone}
     >
