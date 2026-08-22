@@ -1,5 +1,6 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
+   [metabase.actions.hierarchy :as actions.hierarchy]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -14,19 +15,22 @@
 
     (action-arg-map-schema :model.row/create) => :actions.args.crud/row.create"
   {:arglists '([action]), :added "0.44.0"}
-  keyword)
+  keyword
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
   {:arglists '([action arg-map]), :added "0.44.0"}
   (fn [action _arg-map]
-    (keyword action)))
+    (keyword action))
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmulti validate-inputs!
   "Check whether the given action is supported for the given inputs, and if not throw an error."
   {:arglists '([action inputs]), :added "0.57.0"}
   (fn [action _inputs]
-    (keyword action)))
+    (keyword action))
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmethod normalize-action-arg-map :default
   [_action arg-map]
@@ -156,9 +160,9 @@
 
 ;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(derive :table.row/create :table.row/common)
-(derive :table.row/update :table.row/common)
-(derive :table.row/delete :table.row/common)
+(actions.hierarchy/derive! :table.row/create :table.row/common)
+(actions.hierarchy/derive! :table.row/update :table.row/common)
+(actions.hierarchy/derive! :table.row/delete :table.row/common)
 
 (defmethod action-arg-map-schema :table.row/common
   [_action]

@@ -4,6 +4,7 @@
    [malli.error :as me]
    [metabase.actions.args :as actions.args]
    [metabase.actions.events :as actions.events]
+   [metabase.actions.hierarchy :as actions.hierarchy]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
@@ -31,7 +32,8 @@
   "Allow actions to dynamically generating a :mapping, in none has been configured."
   {:arglists '([action-kw scope]), :added "0.57.0"}
   (fn [action-kw _scope]
-    action-kw))
+    action-kw)
+  :hierarchy #'actions.hierarchy/hierarchy)
 
 (defmethod default-mapping :default [_ _])
 
