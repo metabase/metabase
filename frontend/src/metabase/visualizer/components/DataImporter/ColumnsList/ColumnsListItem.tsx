@@ -63,14 +63,14 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
           <Icon
             className={S.grabber}
             name="grabber"
-            mr={4}
+            me={4}
             size={16}
             miw={16}
           />
           <Icon
             // Unjustified type cast. FIXME
             name={getIconForField(column) as IconName}
-            mr={4}
+            me={4}
             size={16}
             miw={16}
           />

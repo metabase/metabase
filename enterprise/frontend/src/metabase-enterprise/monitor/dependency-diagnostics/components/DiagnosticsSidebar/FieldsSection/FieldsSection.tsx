@@ -69,8 +69,8 @@ function FieldListItem({ field }: FieldListItemProps) {
       <Box
         className={cx(CS.textWrap, CS.textMonospace)}
         c="text-secondary"
-        ml="md"
-        pl="xs"
+        ms="md"
+        ps="xs"
         fz="sm"
         lh="1rem"
       >

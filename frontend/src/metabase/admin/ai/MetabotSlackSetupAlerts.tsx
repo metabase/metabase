@@ -34,13 +34,13 @@ export function MissingScopesAlert({
             target={
               <button type="button" className={S.copyButton}>
                 <span>{t`Copy manifest`}</span>
-                <Icon name="copy" size={16} ml="sm" />
+                <Icon name="copy" size={16} ms="sm" />
               </button>
             }
           />
           <ButtonLink href={slackUrl}>
             <span>{t`Open Slack settings`}</span>
-            <Icon name="external" size={16} ml="sm" />
+            <Icon name="external" size={16} ms="sm" />
           </ButtonLink>
         </Group>
       </Stack>

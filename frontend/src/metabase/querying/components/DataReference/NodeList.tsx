@@ -33,7 +33,7 @@ const NodeListContainer = ({ children, ...rest }: BoxPropsWithChildren) => {
 
 const NodeListTitleText = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
-    <Box component="span" ml="sm" {...rest}>
+    <Box component="span" ms="sm" {...rest}>
       {children}
     </Box>
   );
@@ -44,7 +44,7 @@ const NodeListItemId = ({ children, ...rest }: BoxPropsWithChildren) => {
     <Box
       component="span"
       fz="0.75em"
-      ml="xs"
+      ms="xs"
       className={S.NodeListItemId}
       {...rest}
     >
@@ -55,7 +55,7 @@ const NodeListItemId = ({ children, ...rest }: BoxPropsWithChildren) => {
 
 const NodeListItemName = ({ children, ...rest }: BoxPropsWithChildren) => {
   return (
-    <Box component="span" fw={700} ml="sm" {...rest}>
+    <Box component="span" fw={700} ms="sm" {...rest}>
       {children}
     </Box>
   );

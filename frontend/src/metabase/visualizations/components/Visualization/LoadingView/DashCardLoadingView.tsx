@@ -55,7 +55,7 @@ export const DashCardLoadingView = ({
                   <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8}>
+              <HoverCard.Dropdown ms={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
                   <Text lh="1.5" mt={4}>

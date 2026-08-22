@@ -113,7 +113,7 @@
 .accordion .chevron {
   width: auto;
   height: auto;
-  margin-left: var(--mantine-spacing-sm);
+  margin-inline-start: var(--mantine-spacing-sm);
   border: none;
   border-radius: 0;
   color: var(--mb-color-text-secondary);

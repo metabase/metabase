@@ -91,6 +91,7 @@ export function GeneralSettingsPage() {
             </>
           }
           inputType="textarea"
+          inputDir="ltr"
         />
 
         <AdminSettingInput

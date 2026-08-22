@@ -18,7 +18,7 @@ function ItemIcon({ className, ...props }: { className?: string } & IconProps) {
       align="center"
       w="36px"
       h="36px"
-      mr="10px"
+      me="10px"
       className={cx(S.IconContainer, className)}
     >
       <Icon {...props} />
@@ -36,7 +36,7 @@ function CloseIcon({
   return (
     <Box
       p="md"
-      ml="auto"
+      ms="auto"
       component="span"
       className={cx(S.CloseIconContainer, className)}
       onClick={onClick}

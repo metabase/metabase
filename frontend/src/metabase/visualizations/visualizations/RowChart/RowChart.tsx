@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { useIsRtl } from "metabase/common/hooks/use-is-rtl";
 import CS from "metabase/css/core/index.css";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
@@ -244,6 +245,8 @@ const RowChartVisualization = ({
     [settings],
   );
 
+  const isRtl = useIsRtl();
+
   const textMeasurer = useMemo(() => {
     return (text: string, style: FontStyle) =>
       measureTextWidth(text, {
@@ -303,6 +306,7 @@ const RowChartVisualization = ({
           labelledSeries={labelledSeries}
           hasXAxis={hasXAxis}
           hasYAxis={hasYAxis}
+          isRtl={isRtl}
         />
       </RowChartLegendLayout>
     </RowVisualizationRoot>

@@ -43,7 +43,7 @@ const SdkInternalNavigationBackButtonInner = ({
       size="sm"
       leftSection={<Icon name="chevronleft" />}
       onClick={pop}
-      pl={0}
+      ps={0}
       style={style}
       className={cx(className, S.backButton)}
       aria-label={label}

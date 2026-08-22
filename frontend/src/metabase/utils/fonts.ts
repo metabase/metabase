@@ -45,6 +45,13 @@ function isPredefinedFontName(font: string): font is PredefinedFontName {
   return Object.hasOwn(PREDEFINED_FONT_FAMILIES_FALLBACK_MAP, font);
 }
 
+// Every font Metabase ships is Latin-only, so RTL scripts would otherwise fall
+// back to whatever the OS provides. These faces are declared with a
+// `unicode-range` covering only Arabic and Hebrew, so the browser never
+// downloads them unless such text is actually rendered — and they sit ahead of
+// the Latin fallbacks so a system font can't win for those glyphs.
+const RTL_SCRIPT_FALLBACKS = '"IBM Plex Sans Arabic", "IBM Plex Sans Hebrew"';
+
 export function getFontFamilyValue(font: string): string {
   const families = (font ?? "")
     .split(",")
@@ -57,5 +64,9 @@ export function getFontFamilyValue(font: string): string {
       ? PREDEFINED_FONT_FAMILIES_FALLBACK_MAP[firstFamily]
       : "sans-serif";
 
-  return [...families.map((name) => JSON.stringify(name)), fallback].join(", ");
+  return [
+    ...families.map((name) => JSON.stringify(name)),
+    RTL_SCRIPT_FALLBACKS,
+    fallback,
+  ].join(", ");
 }

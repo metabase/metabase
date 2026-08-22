@@ -102,7 +102,7 @@ export const SearchUserPicker = ({
             })}
             <UserPickerInput
               variant="subtle"
-              pl="sm"
+              ps="sm"
               size="md"
               placeholder={t`Search for someone…`}
               value={userFilter}

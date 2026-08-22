@@ -20,7 +20,7 @@ export const CommandPaletteTrigger = ({
         fw={700}
         fz="8pt"
         lh="8pt"
-        mr="0.5rem"
+        me="0.5rem"
         style={{
           borderRadius: "0.25rem",
           border: "1px solid var(--mb-color-border-neutral)",

@@ -151,7 +151,7 @@ const LibraryTableList = ({
   return (
     <li data-testid={dataTestId}>
       <NodeListTitle mt={mt}>
-        <NodeListTitleText ml={undefined}>{title}</NodeListTitleText>
+        <NodeListTitleText ms={undefined}>{title}</NodeListTitleText>
       </NodeListTitle>
       {tables.length > 0 ? (
         <ul>
@@ -172,7 +172,7 @@ const LibraryTableList = ({
                     name="table"
                     style={{ flexShrink: 0 }}
                   />
-                  <Ellipsified fw={700} ml="sm">
+                  <Ellipsified fw={700} ms="sm">
                     {table.name}
                   </Ellipsified>
                   {showDatabaseName && table.database_name && (
@@ -180,7 +180,7 @@ const LibraryTableList = ({
                       c="text-secondary"
                       fw="normal"
                       fz="sm"
-                      ml="sm"
+                      ms="sm"
                       flex={"1 0 30%"}
                     >
                       {table.database_name}

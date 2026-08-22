@@ -98,7 +98,7 @@ export function BreakoutColumnListItem({
       >
         <Flex
           align="center"
-          ml="sm"
+          ms="sm"
           p="0.5rem 0"
           className={BreakoutColumnListItemS.TitleContainer}
         >

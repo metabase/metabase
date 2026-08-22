@@ -28,7 +28,7 @@ export function SourceColorIndicator({
             data-testid="color-indicator"
             w={size}
             h={size}
-            ml={index === 0 ? 0 : -overlap}
+            ms={index === 0 ? 0 : -overlap}
             style={{ backgroundColor: color, zIndex: capped.length - index }}
           />
         ))}

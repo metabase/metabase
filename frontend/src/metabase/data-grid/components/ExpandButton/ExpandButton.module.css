@@ -2,8 +2,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-left: 0.25rem;
-  margin-left: auto;
+  padding-inline-start: 0.25rem;
+  margin-inline-start: auto;
 }
 
 .button {

@@ -42,7 +42,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       }}
       leftSection={
         <Box>
-          <Icon c="inherit" className={S.TableIcon} name="table2" mr="xs" />
+          <Icon c="inherit" className={S.TableIcon} name="table2" me="xs" />
           {item.notRecommended && (
             <Tooltip
               label={t`This dataset might not be fully compatible with your current selection.`}

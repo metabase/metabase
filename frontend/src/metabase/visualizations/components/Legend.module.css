@@ -24,7 +24,7 @@ fullscreen dashboard mode
 .Legend.vertical {
   display: flex;
   flex-direction: column;
-  margin-right: 1em;
+  margin-inline-end: 1em;
   gap: 0.25rem;
 }
 

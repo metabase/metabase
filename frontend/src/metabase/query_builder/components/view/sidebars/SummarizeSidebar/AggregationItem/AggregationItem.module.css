@@ -28,13 +28,13 @@
 }
 
 .AggregationName {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
+  margin-inline-start: 0.5rem;
+  margin-inline-end: 0.5rem;
 }
 
 .RemoveIcon {
   display: flex;
-  margin-left: auto;
+  margin-inline-start: auto;
   opacity: 0.4;
   transition: opacity 0.3s;
 

@@ -20,7 +20,7 @@ export function ErrorSection({ run, showTitle = true }: ErrorSectionProps) {
   return (
     <Stack role="region" aria-label={t`Error`} gap="sm">
       {showTitle && <Title order={5}>{t`Error`}</Title>}
-      <Box className={S.codeContainer} pos="relative" pr="lg">
+      <Box className={S.codeContainer} pos="relative" pe="lg">
         <CodeEditor value={run.message} readOnly />
         <Box p="sm" pos="absolute" right={0} top={0}>
           <CopyButton value={run.message} />

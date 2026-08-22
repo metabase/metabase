@@ -141,7 +141,7 @@ export const LegendCaption = ({
             name="info"
             className={cx(CS.hoverChild, CS.hoverChildSmooth)}
             mt="3px"
-            mr="md"
+            me="md"
           />
         </Tooltip>
       )}

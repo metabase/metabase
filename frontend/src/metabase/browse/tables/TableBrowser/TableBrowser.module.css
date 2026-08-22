@@ -2,5 +2,5 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  right: 0.5rem;
+  inset-inline-end: 0.5rem;
 }

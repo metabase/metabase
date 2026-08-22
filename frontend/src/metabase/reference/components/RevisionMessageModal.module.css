@@ -2,8 +2,8 @@
   align-items: center;
   justify-content: center;
   display: flex;
-  padding-left: 32px;
-  padding-right: 32px;
+  padding-inline-start: 32px;
+  padding-inline-end: 32px;
   padding-bottom: 32px;
 }
 

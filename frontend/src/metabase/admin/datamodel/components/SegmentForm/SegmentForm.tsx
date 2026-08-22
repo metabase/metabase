@@ -165,7 +165,7 @@ const SegmentFormActions = ({
         variant="filled"
         size="sm"
         disabled={!isValid}
-        mr="md"
+        me="md"
       >
         {t`Save changes`}
       </Button>

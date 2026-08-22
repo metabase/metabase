@@ -79,7 +79,7 @@ export const EnableGuestEmbedsSection = ({
   }
 
   return (
-    <Stack gap={0} pl="xl" data-testid="enable-embedding-card" mt="xs" mb="sm">
+    <Stack gap={0} ps="xl" data-testid="enable-embedding-card" mt="xs" mb="sm">
       <Text fz="md" c="text-primary">
         {title}
 

@@ -83,7 +83,7 @@ export function UpgradeModalInitial({
           <List
             spacing="xs"
             icon={<Icon name="check" c="text-primary" size={16} />}
-            pl={0}
+            ps={0}
           >
             {proFeatures.map((feature) => (
               <List.Item key={feature}>

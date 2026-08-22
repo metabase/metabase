@@ -54,8 +54,8 @@
  */
 .accordion .icon {
   background-color: var(--mb-color-background_surface-brand-subtle);
-  border-top-left-radius: 0.4375rem;
-  border-bottom-left-radius: 0.4375rem;
+  border-start-start-radius: 0.4375rem;
+  border-end-start-radius: 0.4375rem;
   color: var(--mb-color-core-brand);
   flex: 0 0 auto;
   height: 2.875rem;

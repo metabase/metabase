@@ -104,7 +104,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
     <Box
       ref={ref}
       mt="xs"
-      ml="-sm"
+      ms="-sm"
       pos="absolute"
       style={hoverPosition}
       onMouseEnter={() => clearHoverTimeout()}
@@ -126,7 +126,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
           </Ellipsified>
           {editable && (
             <ActionIcon
-              ml="sm"
+              ms="sm"
               c="text-secondary"
               onClick={() => {
                 editor.commands.focus();

@@ -1,7 +1,7 @@
 .sdkDebugInfo {
   position: fixed;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -14,5 +14,5 @@
     transparent
   );
   font-size: 12px;
-  text-align: left;
+  text-align: start;
 }

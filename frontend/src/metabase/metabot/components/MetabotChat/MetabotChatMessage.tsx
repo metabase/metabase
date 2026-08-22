@@ -403,7 +403,7 @@ const AgentTurnAlert = ({
     {debugDetails && (
       <Card
         bdrs="xs"
-        ml="lg"
+        ms="lg"
         p="sm"
         withBorder
         shadow="none"
@@ -416,7 +416,7 @@ const AgentTurnAlert = ({
         {JSON.stringify(debugDetails, null, 2)}
       </Card>
     )}
-    {footer && <Box ml="lg">{footer}</Box>}
+    {footer && <Box ms="lg">{footer}</Box>}
   </Flex>
 );
 

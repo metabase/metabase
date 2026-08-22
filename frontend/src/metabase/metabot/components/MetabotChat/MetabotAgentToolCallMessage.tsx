@@ -179,7 +179,7 @@ export const AgentToolCallMessage = ({
     <>
       <Flex
         p="sm"
-        pl="md"
+        ps="md"
         bd="1px solid var(--mb-color-border-neutral)"
         bdrs="sm"
         direction="row"
@@ -197,7 +197,7 @@ export const AgentToolCallMessage = ({
         }}
       >
         <Flex align="center">
-          <Icon name="gear" c="text-secondary" mr="sm" />
+          <Icon name="gear" c="text-secondary" me="sm" />
           <Text fw="bold">{message.name}</Text>
         </Flex>
         <Flex align="center" gap="xs" className={Styles.agentPartActions}>

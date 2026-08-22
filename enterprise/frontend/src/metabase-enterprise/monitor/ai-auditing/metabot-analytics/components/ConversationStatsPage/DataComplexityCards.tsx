@@ -179,7 +179,7 @@ function DataComplexityBreakdown({
               <Text fw={700} lh="1rem">
                 {title}
               </Text>
-              <ScoreDisplayInline withTitle score={group} mr="2.75rem" />
+              <ScoreDisplayInline withTitle score={group} me="2.75rem" />
             </Flex>
 
             <Accordion
@@ -384,7 +384,7 @@ function ScoreDisplayInline({
 } & MantineStyleProps) {
   return match(score)
     .with({ score: P.nullish }, { error: P.nonNullable }, () => (
-      <Text c="feedback-negative" fw={700} lh="1rem" ml="auto" {...rest}>
+      <Text c="feedback-negative" fw={700} lh="1rem" ms="auto" {...rest}>
         {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
     ))
@@ -393,7 +393,7 @@ function ScoreDisplayInline({
 
       return (
         <Flex
-          ml="auto"
+          ms="auto"
           px={8}
           py={4}
           bdrs="sm"

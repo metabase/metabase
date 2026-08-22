@@ -210,7 +210,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
       />
 
       <LayoutFooter>
-        <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
+        <Flex gap="xs" align="center" justify="end" p="0" pe="sm">
           {withName && (
             <NameInput
               value={name}
@@ -220,7 +220,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               readOnly={readOnly}
             />
           )}
-          <Flex py="sm" pr="sm" gap="sm">
+          <Flex py="sm" pe="sm" gap="sm">
             {onClose && !readOnly && (
               <Button
                 onClick={onClose}

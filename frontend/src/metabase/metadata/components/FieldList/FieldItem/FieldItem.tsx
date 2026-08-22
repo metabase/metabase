@@ -117,7 +117,7 @@ const FieldItemBase = ({
           w="100%"
           wrap="nowrap"
         >
-          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
+          <Icon className={S.icon} flex="0 0 auto" me="sm" name={icon} />
 
           {parent && (
             <Box
@@ -126,7 +126,7 @@ const FieldItemBase = ({
               lh="normal"
               maw="50%"
               mb={rem(-4)}
-              mr="xs"
+              me="xs"
               mt={rem(-3)}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>
@@ -143,7 +143,7 @@ const FieldItemBase = ({
             initialValue={field.display_name}
             maxLength={254}
             mb={rem(-4)}
-            ml={rem(-2)}
+            ms={rem(-2)}
             mt={rem(-3)}
             placeholder={t`Give this field a name`}
             px={rem(1)}

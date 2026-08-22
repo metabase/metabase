@@ -286,6 +286,39 @@ export const useDataGridInstance = <TData, TValue>({
     getRowHeight,
   });
 
+  // Resize direction must follow the grid's *scoped* direction: an RTL SDK embed
+  // sets dir="rtl" on its wrapper without touching the host <html>, so we read the
+  // grid element's computed direction rather than document.documentElement, and
+  // re-read if the nearest dir ancestor flips (e.g. a live locale switch).
+  const [columnResizeDirection, setColumnResizeDirection] = useState<
+    "ltr" | "rtl"
+  >("ltr");
+  useLayoutEffect(() => {
+    const element = gridRef.current;
+    if (!element) {
+      return;
+    }
+    const readDirection = () => {
+      const direction =
+        getComputedStyle(element).direction === "rtl" ? "rtl" : "ltr";
+      setColumnResizeDirection((prev) =>
+        prev === direction ? prev : direction,
+      );
+    };
+    readDirection();
+
+    const dirAncestor = element.closest("[dir]");
+    if (!dirAncestor) {
+      return;
+    }
+    const observer = new MutationObserver(readDirection);
+    observer.observe(dirAncestor, {
+      attributes: true,
+      attributeFilter: ["dir"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const table = useReactTable({
     data,
     columns,
@@ -304,6 +337,8 @@ export const useDataGridInstance = <TData, TValue>({
       ? getPaginationRowModel()
       : undefined,
     columnResizeMode: "onChange",
+    // Match the grid direction so resize deltas use the correct sign in RTL
+    columnResizeDirection,
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
@@ -321,6 +356,7 @@ export const useDataGridInstance = <TData, TValue>({
     getRowHeight,
     datasetIndexAttributeName,
     virtualIndexAttributeName,
+    isRtl: columnResizeDirection === "rtl",
   });
 
   const measureColumnWidths = useMeasureColumnWidths(

@@ -3,8 +3,8 @@
   align-items: center;
   height: 100%;
   flex-shrink: 0;
-  padding-left: 1rem;
-  padding-right: 0.25rem;
+  padding-inline-start: 1rem;
+  padding-inline-end: 0.25rem;
 }
 
 .searchTextButton {

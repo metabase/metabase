@@ -19,7 +19,7 @@ export function FilterPickerHeader({
     <Flex px="md" pt="md" justify="space-between">
       {onBack && (
         <PopoverBackButton
-          pr="md"
+          pe="md"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}

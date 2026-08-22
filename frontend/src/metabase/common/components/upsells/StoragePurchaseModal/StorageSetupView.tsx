@@ -6,7 +6,7 @@ import { StorageSetupStatusView } from "./StorageSetupStatusView";
 
 export const StorageSetupView = () => (
   <StorageSetupStatusView
-    badge={<Loader size="xs" ml={1} mt={1} />}
+    badge={<Loader size="xs" ms={1} mt={1} />}
     title={t`Setting up storage`}
     description={t`This can take a few minutes.`}
   />

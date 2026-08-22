@@ -66,7 +66,7 @@ export function MetabotSettingUpModal({
                 boxShadow: `0 1px 6px 0 var(--mb-color-shadow-default)`,
               }}
             >
-              <Loader size="xs" ml={1} mt={1} />
+              <Loader size="xs" ms={1} mt={1} />
             </Flex>
           )}
         </Box>

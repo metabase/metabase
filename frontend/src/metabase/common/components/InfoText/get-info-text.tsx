@@ -40,7 +40,7 @@ const getCardInfoText = (result: SearchResult): InfoTextData => {
     return {
       label: result.dashboard.name,
       icon: (
-        <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
+        <Box ms="-1.5px" display="inherit" pos="relative" top="-0.5px">
           <Icon name="dashboard" size={12} />
         </Box>
       ),
@@ -86,7 +86,7 @@ const getCollectionResult = (result: SearchResult): InfoTextData => {
     ? {
         icon:
           "authority_level" in collection && collection.authority_level ? (
-            <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
+            <Box ms="-1.5px" display="inherit" pos="relative" top="-0.5px">
               <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
                 size={12}
                 collection={collection}

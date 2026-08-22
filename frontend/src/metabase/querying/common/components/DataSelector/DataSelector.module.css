@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  right: -1px;
+  inset-inline-end: -1px;
   top: 0;
   width: 2.5rem;
   height: 100%;
@@ -29,7 +29,7 @@
 .BackButtonLabel {
   font-size: 16px;
   color: var(--mb-color-text-primary);
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;

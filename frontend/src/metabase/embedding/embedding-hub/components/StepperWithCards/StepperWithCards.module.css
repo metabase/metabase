@@ -32,7 +32,7 @@
 }
 
 .stepWrapper {
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 }
 
 .stepBody {
@@ -53,7 +53,7 @@
     border 250ms ease;
   padding: 0.94rem 1.25rem;
   height: 8.75rem;
-  text-align: left;
+  text-align: start;
   width: 100%;
   box-shadow: none;
 }

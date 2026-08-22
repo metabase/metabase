@@ -9,7 +9,7 @@ import SkeletonCaption from "metabase/visualizations/components/skeletons/Skelet
 export const PositionedActionMenu = styled.div`
   position: absolute;
   top: 0.3125rem;
-  right: 0.3125rem;
+  inset-inline-end: 0.3125rem;
   z-index: 3;
   color: #6e7680;
   visibility: hidden;

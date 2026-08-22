@@ -35,7 +35,7 @@ const ChartSettingsWidgetList = ({
       return (
         <div key={`group-${groupIndex}`}>
           {group && (
-            <Badge color="brand" mb="lg" ml="lg" size="sm" variant="light">
+            <Badge color="brand" mb="lg" ms="lg" size="sm" variant="light">
               {group}
             </Badge>
           )}

@@ -36,6 +36,44 @@ function setLanguage(translationsObject: LocaleDataWithLanguage): void {
 
 const ARABIC_LOCALES = ["ar", "ar-sa"];
 
+// BCP-47 base language codes written in a right-to-left script. Used to set the
+// document `dir` attribute so CSS logical properties resolve to their RTL
+// mapping (e.g. `margin-inline-start` -> `margin-right`).
+const RTL_LANGUAGES = new Set([
+  "ar", // Arabic
+  "he", // Hebrew
+  "fa", // Persian / Farsi
+  "ur", // Urdu
+  "ps", // Pashto
+  "sd", // Sindhi
+  "ug", // Uyghur
+  "yi", // Yiddish
+  "dv", // Divehi
+]);
+
+export function isRTLLocale(language = ""): boolean {
+  const base = language.toLowerCase().split(/[-_]/)[0];
+  return RTL_LANGUAGES.has(base);
+}
+
+/**
+ * Reflect the active locale's writing direction on the root `<html>` element.
+ * This is what actually activates the CSS logical properties migration: with
+ * `dir="rtl"` the whole layout mirrors, while `dir="ltr"` is unchanged.
+ */
+export function applyLocaleDirection(language = ""): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const html = document.documentElement;
+  html.setAttribute("dir", isRTLLocale(language) ? "rtl" : "ltr");
+  if (language) {
+    // `language` is a gettext header like `en`, `pt_BR` or `ar_SA`. Emit a valid
+    // BCP-47 `lang` (hyphen-separated) rather than the Day.js normalization form.
+    html.setAttribute("lang", language.replace(/_/g, "-"));
+  }
+}
+
 export function setLocalization(
   translationsObject: LocaleDataWithLanguage,
 ): void {
@@ -158,7 +196,10 @@ if (window.MetabaseSiteLocalization) {
   addLocale(locale, translationsObject);
 }
 
-// set the initial localization to user locale
+// set the initial localization to user locale. This branch only runs in the main
+// app (the embedding SDK never sets window.MetabaseUserLocalization), so it is safe
+// to reflect the direction on the host <html> here.
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
+  applyLocaleDirection(window.MetabaseUserLocalization.headers.language);
 }

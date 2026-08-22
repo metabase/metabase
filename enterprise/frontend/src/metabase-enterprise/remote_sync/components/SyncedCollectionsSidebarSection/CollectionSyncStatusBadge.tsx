@@ -9,7 +9,7 @@ export const CollectionSyncStatusBadge = () => (
       bg="feedback-warning"
       h="0.5rem"
       w="0.5rem"
-      mr="xs"
+      me="xs"
       flex="0 0 auto"
       data-testid="remote-sync-status"
     />

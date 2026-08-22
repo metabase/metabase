@@ -43,7 +43,7 @@ const DefaultExample = () => {
   };
 
   return (
-    <Box maw={600} ml="xl">
+    <Box maw={600} ms="xl">
       <OnboardingStepper completedSteps={completedSteps} lockedSteps={{}}>
         <OnboardingStepper.Step
           stepId="step-1"
@@ -124,7 +124,7 @@ export const Default = {
 
 const LockedStepsExample = () => {
   return (
-    <Box maw={600} ml="xl">
+    <Box maw={600} ms="xl">
       <OnboardingStepper
         completedSteps={{ "step-1": true }}
         lockedSteps={{ "step-3": true, "step-4": true, "step-5": true }}

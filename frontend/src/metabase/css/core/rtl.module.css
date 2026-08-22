@@ -1,0 +1,47 @@
+/*
+ * RTL icon mirroring.
+ *
+ * Directional navigation icons (left/right chevrons, arrows and triangles) point
+ * the wrong way once the layout is mirrored, so flip them on the horizontal axis.
+ * Only unambiguously horizontal, direction-of-travel icons are listed here —
+ * vertical ones (chevronup/down) and icons whose shape carries a fixed meaning
+ * (e.g. join_left_outer/join_right_outer) are intentionally left untouched.
+ *
+ * Note: `:dir(rtl)` would express this more directly, but it needs Chrome 120+
+ * and our build target (browserslist) is Chrome 89, so lightningcss strips those
+ * rules from the bundle entirely. We therefore match on a `[dir="rtl"]` ancestor
+ * and exclude anything inside a nested `dir="ltr"` subtree — which is how an
+ * LTR-locale SDK embed inside an RTL host page keeps its icons unmirrored.
+ *
+ * Everything is wrapped in `:where()` so the selector keeps the specificity of a
+ * single class: a component that statefully transforms one of these icons (e.g.
+ * an expand caret rotated 90deg) still wins and keeps its own transform.
+ */
+:global(:where([dir="rtl"]) .Icon-chevronleft:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-chevronright:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_left:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_right:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-arrow_left_to_line:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-triangle_left:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-triangle_right:where(:not([dir="ltr"] *))),
+/* `play` is only ever a run/execute affordance in Metabase (run query, run
+ * action, run job) — never a media transport control, which convention says to
+ * leave unmirrored — so it points along the reading direction. `send` is likewise
+ * a directional submit affordance (send comment, send prompt). */
+:global(:where([dir="rtl"]) .Icon-play:where(:not([dir="ltr"] *))),
+:global(:where([dir="rtl"]) .Icon-send:where(:not([dir="ltr"] *))) {
+  transform: scaleX(-1);
+}
+
+/*
+ * react-grid-layout (dashboard grid) positions each card with
+ * `transform: translate(x, y)` measured from the container's left edge, but it
+ * never sets `left`. An absolutely positioned element with no inset resolves to
+ * its static position, which in RTL is the *right* edge — so every dashcard gets
+ * pushed off-canvas and clipped. Pin the items to the physical left so the
+ * library's own math stays correct; card contents still inherit RTL.
+ */
+:global([dir="rtl"] .react-grid-item) {
+  left: 0;
+  right: auto;
+}

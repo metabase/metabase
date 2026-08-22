@@ -37,7 +37,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         data-testid="comments-menu"
         draggable={false}
         mt={rem(-2)}
-        pl="lg"
+        ps="lg"
         ref={ref}
         style={style}
       >

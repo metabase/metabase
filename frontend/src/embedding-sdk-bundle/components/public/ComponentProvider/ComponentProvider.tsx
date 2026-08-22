@@ -158,6 +158,11 @@ export const ComponentProviderInternal = (
                   {isInstanceToRender && pluginsReady && (
                     <ContentTranslationsProvider />
                   )}
+
+                  {/* Rendered inside LocaleProvider so the portal's styles wrapper
+                      inherits the SDK writing direction (RTL/LTR) from
+                      FrontendLocaleContext, matching the main SDK content. */}
+                  {isInstanceToRender && <PortalContainer />}
                 </LocaleProvider>
 
                 {isInstanceToRender && (
@@ -173,8 +178,6 @@ export const ComponentProviderInternal = (
                       allowConsoleLog={allowConsoleLog}
                       isLocalHost={isLocalHost}
                     />
-
-                    <PortalContainer />
                   </>
                 )}
               </>

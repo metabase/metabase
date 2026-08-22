@@ -53,6 +53,20 @@
   }
 }
 
+/* RTL counterpart of slide-left: panels anchored to the inline-end edge sit on the
+ * left in RTL, so they must enter from the left instead of the right. */
+@keyframes slide-left-rtl {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes pop-toast {
   from {
     opacity: 0;
@@ -72,6 +86,10 @@
 
 .slideLeft {
   animation: 0.15s ease-out 0s 1 slide-left;
+}
+
+[dir="rtl"] .slideLeft {
+  animation-name: slide-left-rtl;
 }
 
 .popToast {

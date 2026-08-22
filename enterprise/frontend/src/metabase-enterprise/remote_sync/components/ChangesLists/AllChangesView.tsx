@@ -159,15 +159,15 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                         c={getSyncStatusColor(
                           group.collectionEntity.sync_status,
                         )}
-                        ml="auto"
+                        ms="auto"
                       />
                     )}
                   </Group>
                   {hasItems && (
                     <Stack
                       gap="0.75rem"
-                      ml="md"
-                      pl="xs"
+                      ms="md"
+                      ps="xs"
                       style={{
                         borderLeft: "2px solid var(--mb-color-border-neutral)",
                       }}
@@ -188,8 +188,8 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                           {tableGroup.children.length > 0 && (
                             <Stack
                               gap="0.75rem"
-                              ml="md"
-                              pl="xs"
+                              ms="md"
+                              ps="xs"
                               mt="0.75rem"
                               style={{
                                 borderLeft:

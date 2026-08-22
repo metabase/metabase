@@ -113,11 +113,11 @@
       padding: 0;
 
       &:not(:first-of-type) {
-        padding-left: var(--horizontal-padding);
+        padding-inline-start: var(--horizontal-padding);
       }
 
       &:not(:last-of-type) {
-        padding-right: var(--horizontal-padding);
+        padding-inline-end: var(--horizontal-padding);
       }
     }
   }
@@ -143,11 +143,11 @@
       padding: 0;
 
       &:not(:first-of-type) {
-        padding-left: var(--horizontal-padding);
+        padding-inline-start: var(--horizontal-padding);
       }
 
       &:not(:last-of-type) {
-        padding-right: var(--horizontal-padding);
+        padding-inline-end: var(--horizontal-padding);
       }
     }
   }

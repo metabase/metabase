@@ -1,6 +1,11 @@
 import { dayjs } from "metabase/dayjs";
 
-import { type LocaleDataWithLanguage, setLocalization } from "./i18n";
+import {
+  type LocaleDataWithLanguage,
+  applyLocaleDirection,
+  isRTLLocale,
+  setLocalization,
+} from "./i18n";
 
 function setup(language: string) {
   setLocalization({
@@ -59,5 +64,45 @@ describe("setLocalization", () => {
     expect(() => setLocalization(localeData)).not.toThrow();
     expect(translations[""].Year.msgid).toBe("Year");
     expect(translations[context].Year.msgid).toBe("Year");
+  });
+});
+
+describe("isRTLLocale", () => {
+  it.each(["ar", "ar-SA", "he", "fa", "ur", "AR"])(
+    "should treat %s as right-to-left",
+    (locale) => {
+      expect(isRTLLocale(locale)).toBe(true);
+    },
+  );
+
+  it.each(["en", "de", "zh-CN", "fr", "", "es"])(
+    "should treat %s as left-to-right",
+    (locale) => {
+      expect(isRTLLocale(locale)).toBe(false);
+    },
+  );
+});
+
+describe("applyLocaleDirection", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("dir");
+    document.documentElement.removeAttribute("lang");
+  });
+
+  it("sets dir=rtl on <html> for Arabic", () => {
+    applyLocaleDirection("ar");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
+  });
+
+  it("sets dir=ltr on <html> for English", () => {
+    applyLocaleDirection("en");
+    expect(document.documentElement).toHaveAttribute("dir", "ltr");
+  });
+
+  it("writes a valid BCP-47 lang tag (hyphenated, region case preserved)", () => {
+    applyLocaleDirection("pt_BR");
+    expect(document.documentElement).toHaveAttribute("lang", "pt-BR");
+    applyLocaleDirection("ar_SA");
+    expect(document.documentElement).toHaveAttribute("lang", "ar-SA");
   });
 });

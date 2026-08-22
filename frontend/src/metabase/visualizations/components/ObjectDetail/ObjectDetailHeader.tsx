@@ -39,7 +39,7 @@ export function ObjectDetailHeader({
         <h2 className={CS.p3}>
           {objectName}
           {objectId !== null && (
-            <Text component="span" c="text-secondary" ml="sm">
+            <Text component="span" c="text-secondary" ms="sm">
               {" "}
               {objectId}
             </Text>
@@ -95,7 +95,7 @@ export function ObjectDetailHeader({
             </Menu>
           )}
 
-          <Flex ml="md" pl="md" className={S.closeButton}>
+          <Flex ms="md" ps="md" className={S.closeButton}>
             <ActionIcon
               variant="viewHeader"
               data-testid="object-detail-close-button"

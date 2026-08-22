@@ -97,7 +97,7 @@ class SnippetSidebarInner extends Component<
       p="md"
       onClick={() => this.setState({ showArchived: true })}
     >
-      <Icon mr="sm" name="view_archive" />
+      <Icon me="sm" name="view_archive" />
       {t`Archived snippets`}
     </Flex>
   );
@@ -176,7 +176,7 @@ class SnippetSidebarInner extends Component<
           />
         ) : (
           <>
-            <Flex align="center" justify="space-between" p="md" pl="lg" pr="sm">
+            <Flex align="center" justify="space-between" p="md" ps="lg" pe="sm">
               {showSearch ? (
                 <>
                   <input
