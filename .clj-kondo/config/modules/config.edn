@@ -1267,6 +1267,7 @@
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
+           metabase.llm.health
            metabase.llm.init
            metabase.llm.provider
            metabase.llm.settings
@@ -1368,6 +1369,7 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
+              metabase.metabot.self.catalog
               metabase.metabot.settings
               metabase.metabot.tools.entity-details}
    :friends #{agent-api

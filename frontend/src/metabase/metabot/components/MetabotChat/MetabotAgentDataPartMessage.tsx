@@ -11,7 +11,10 @@ import {
   useGetDashboardQuery,
   useGetDocumentQuery,
 } from "metabase/api";
-import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
+import type {
+  EntitySavedValue,
+  ModelFallbackValue,
+} from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
@@ -29,6 +32,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import {
   CodeEditTablePills,
   GeneratedCardTablePills,
@@ -122,6 +126,9 @@ export const AgentDataPartMessage = ({
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
       </Stack>
+    ))
+    .with({ part: { type: "data-model_fallback" } }, ({ part }) => (
+      <ModelFallbackMessage value={part.data} />
     ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
@@ -217,6 +224,25 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
           : jt`Chart ${chartName} saved`}
       </Text>
     </Flex>
+  );
+};
+
+const ModelFallbackMessage = ({ value }: { value: ModelFallbackValue }) => {
+  const previousProvider = value.previous_provider_name ?? value.previous_model;
+  const provider = value.provider_name ?? value.model;
+  const model = value.model_name ?? value.model;
+
+  return (
+    <AgentTurnAlert
+      variant="info"
+      message={
+        <span data-testid="model-fallback-message">
+          {jt`${previousProvider} isn't responding, so this answer is coming from ${(
+            <strong key="provider">{provider}</strong>
+          )} using ${<strong key="model">{model}</strong>}.`}
+        </span>
+      }
+    />
   );
 };
 

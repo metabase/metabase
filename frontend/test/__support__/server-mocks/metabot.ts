@@ -5,6 +5,7 @@ import fetchMock, {
 
 import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  LlmActiveModel,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
@@ -22,7 +23,10 @@ import type {
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
-import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
+import {
+  createMockLlmActiveModel,
+  createMockLlmProviderConnection,
+} from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
@@ -249,6 +253,28 @@ export function setupLlmModelsEndpoint(
   fetchMock.removeRoute(LLM_MODELS_ROUTE_NAME);
   fetchMock.get("path:/api/llm/models", connections, {
     name: LLM_MODELS_ROUTE_NAME,
+  });
+}
+
+const LLM_ACTIVE_MODEL_ROUTE_NAME = "llm-active-model";
+
+export function setupLlmActiveModelEndpoint(
+  activeModel: LlmActiveModel = createMockLlmActiveModel(),
+) {
+  fetchMock.removeRoute(LLM_ACTIVE_MODEL_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/active-model", activeModel, {
+    name: LLM_ACTIVE_MODEL_ROUTE_NAME,
+  });
+}
+
+const REORDER_LLM_PROVIDERS_ROUTE_NAME = "reorder-llm-providers";
+
+export function setupReorderLlmProvidersEndpoint(
+  connections: LlmProviderConnection[] = [],
+) {
+  fetchMock.removeRoute(REORDER_LLM_PROVIDERS_ROUTE_NAME);
+  fetchMock.put("path:/api/llm/provider-order", connections, {
+    name: REORDER_LLM_PROVIDERS_ROUTE_NAME,
   });
 }
 

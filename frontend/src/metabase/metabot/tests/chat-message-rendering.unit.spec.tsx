@@ -238,6 +238,35 @@ describe("AgentMessage", () => {
     });
   });
 
+  describe("model_fallback", () => {
+    it("says which provider the answer came from and why", async () => {
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-model_fallback",
+          data: {
+            model: "openai/gpt-5.4",
+            model_name: "GPT-5.4",
+            provider_name: "OpenAI",
+            previous_model: "anthropic/claude-sonnet-4-6",
+            previous_provider_name: "Anthropic",
+          },
+        },
+      });
+
+      expect(
+        await screen.findByTestId("model-fallback-message"),
+      ).toHaveTextContent(
+        "Anthropic isn't responding, so this answer is coming from OpenAI using GPT-5.4.",
+      );
+      expect(
+        screen.getByTestId("metabot-chat-message-turn-alert"),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("turn_errored", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({
@@ -280,6 +309,58 @@ describe("AgentMessage", () => {
         screen.getByText(/The model is overloaded, please try again\./),
       ).toBeInTheDocument();
     });
+
+    it("shows the provider's own message with a Retry for provider_error turns", async () => {
+      const onRetry = jest.fn();
+      setup(
+        {
+          id: "msg",
+          role: "agent",
+          type: "turn_errored",
+          error: {
+            type: "provider_error",
+            message:
+              "Anthropic API error (HTTP 400) — Your credit balance is too low",
+          },
+          display: {
+            type: "message",
+            message:
+              "Anthropic API error (HTTP 400) — Your credit balance is too low",
+          },
+        },
+        { onRetry },
+      );
+
+      expect(
+        screen.getByText(/Your credit balance is too low/),
+      ).toBeInTheDocument();
+
+      const alert = screen.getByTestId("metabot-chat-message-turn-alert");
+      await userEvent.click(
+        within(alert).getByTestId("metabot-chat-message-retry"),
+      );
+      expect(onRetry).toHaveBeenCalledWith("msg");
+    });
+
+    it.each(["metabase_ai_managed_locked", "ai_usage_limit_reached"])(
+      "offers no Retry for %s, which re-sending cannot fix",
+      (type) => {
+        setup(
+          {
+            id: "msg",
+            role: "agent",
+            type: "turn_errored",
+            error: { type },
+          },
+          { onRetry: jest.fn() },
+        );
+
+        const alert = screen.getByTestId("metabot-chat-message-turn-alert");
+        expect(
+          within(alert).queryByTestId("metabot-chat-message-retry"),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     it("shows generic alert message when display message is missing", () => {
       setup({

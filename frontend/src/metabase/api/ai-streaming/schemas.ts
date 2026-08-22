@@ -47,6 +47,7 @@ export const knownDataPartTypes = [
   "data-search_results",
   "data-tool_title",
   "data-conversation-title",
+  "data-model_fallback",
 ] as const satisfies readonly KnownDataPart["type"][];
 
 export type SearchResultItem = {
@@ -120,6 +121,14 @@ export type ToolTitleData = {
   title: string;
 };
 
+export type ModelFallbackValue = {
+  model: string;
+  model_name: string | null;
+  provider_name: string | null;
+  previous_model: string;
+  previous_provider_name: string | null;
+};
+
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
@@ -132,7 +141,8 @@ export type KnownDataPart =
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }
   | { type: "data-tool_title"; data: ToolTitleData }
-  | { type: "data-conversation-title"; data: string };
+  | { type: "data-conversation-title"; data: string }
+  | { type: "data-model_fallback"; data: ModelFallbackValue };
 
 export const isKnownDataPart = (part: {
   type: string;

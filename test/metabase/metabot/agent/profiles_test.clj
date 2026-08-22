@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
@@ -11,90 +12,95 @@
    [metabase.test :as mt]))
 
 (deftest get-profile-test
-  (letfn [(tool-names [profile]
-            (set (map #(:tool-name (meta %)) (:tools profile))))]
-    (testing "retrieves embedding_next profile with default provider"
-      (let [profile (profiles/get-profile :embedding_next)]
-        (is (some? profile))
-        (is (= :embedding_next (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        (is (contains? (tool-names profile) "construct_notebook_query"))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "create_chart"))
-        (is (contains? (tool-names profile) "edit_chart"))))
-    (testing "retrieves internal profile with default provider"
-      (let [profile (profiles/get-profile :internal)]
-        (is (some? profile))
-        (is (= :internal (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        ;; Should have more tools than embedding_next profile
-        (is (> (count (:tools profile)) 5))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "create_sql_query"))
-        (is (contains? (tool-names profile) "create_chart"))))
-    (testing "retrieves transforms_codegen profile"
-      (let [profile (profiles/get-profile :transforms_codegen)]
-        (is (some? profile))
-        (is (= :transforms_codegen (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 30 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "list_available_fields"))))
-    (testing "retrieves sql profile"
-      (let [profile (profiles/get-profile :sql)]
-        (is (=? {:name :sql
-                 :model "anthropic/claude-sonnet-4-6"
-                 :max-iterations int?
-                 :required-tool-call? true}
-                profile))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "create_sql_query"))))
-    (testing "retrieves nlq profile"
-      (let [profile (profiles/get-profile :nlq)]
-        (is (some? profile))
-        ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
-        (is (= :nlq (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
-        ;; In tests the library index can't answer, so :nlq is transparently served the general-search
-        ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
-        (is (contains? (tool-names profile) "search"))
-        (is (not (contains? (tool-names profile) "retrieve_library_entities")))
-        (is (contains? (tool-names profile) "construct_notebook_query"))))
-    (testing "retrieves slackbot profile"
-      (let [profile (profiles/get-profile :slackbot)]
-        (is (some? profile))
-        (is (= :slackbot (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "construct_notebook_query"))
-        (is (contains? (tool-names profile) "static_viz"))
-        (is (contains? (tool-names profile) "create_alert"))
-        (is (contains? (tool-names profile) "create_dashboard_subscription"))))
-    (testing "returns nil for unknown profile"
-      (is (nil? (profiles/get-profile :unknown-profile))))
-    (testing "all profiles have required keys"
-      (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
-        (let [profile (profiles/get-profile profile-id)]
-          (is (= profile-id (:name profile)))
-          (is (contains? profile :model))
-          (is (contains? profile :max-iterations))
-          (is (contains? profile :tools))
-          (is (every? var? (:tools profile))))))))
+  ;; The model a profile reports is the one the instance can actually run: with no connection behind the selected
+  ;; model reference, it resolves to whichever connection can serve the request. Pin the list so these assertions
+  ;; are about profile resolution rather than about whatever connections the app DB happens to hold.
+  (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections]
+    (letfn [(tool-names [profile]
+              (set (map #(:tool-name (meta %)) (:tools profile))))]
+      (testing "retrieves embedding_next profile with default provider"
+        (let [profile (profiles/get-profile :embedding_next)]
+          (is (some? profile))
+          (is (= :embedding_next (:name profile)))
+          (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
+          (is (= 15 (:max-iterations profile)))
+          (is (vector? (:tools profile)))
+          (is (contains? (tool-names profile) "construct_notebook_query"))
+          (is (contains? (tool-names profile) "search"))
+          (is (contains? (tool-names profile) "create_chart"))
+          (is (contains? (tool-names profile) "edit_chart"))))
+      (testing "retrieves internal profile with default provider"
+        (let [profile (profiles/get-profile :internal)]
+          (is (some? profile))
+          (is (= :internal (:name profile)))
+          (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
+          (is (= 15 (:max-iterations profile)))
+          (is (vector? (:tools profile)))
+          ;; Should have more tools than embedding_next profile
+          (is (> (count (:tools profile)) 5))
+          (is (contains? (tool-names profile) "search"))
+          (is (contains? (tool-names profile) "create_sql_query"))
+          (is (contains? (tool-names profile) "create_chart"))))
+      (testing "retrieves transforms_codegen profile"
+        (let [profile (profiles/get-profile :transforms_codegen)]
+          (is (some? profile))
+          (is (= :transforms_codegen (:name profile)))
+          (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
+          (is (= 30 (:max-iterations profile)))
+          (is (vector? (:tools profile)))
+          (is (contains? (tool-names profile) "search"))
+          (is (contains? (tool-names profile) "list_available_fields"))))
+      (testing "retrieves sql profile"
+        (let [profile (profiles/get-profile :sql)]
+          (is (=? {:name :sql
+                   :model "anthropic/claude-sonnet-4-6"
+                   :max-iterations int?
+                   :required-tool-call? true}
+                  profile))
+          (is (contains? (tool-names profile) "search"))
+          (is (contains? (tool-names profile) "create_sql_query"))))
+      (testing "retrieves nlq profile"
+        (let [profile (profiles/get-profile :nlq)]
+          (is (some? profile))
+          ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
+          (is (= :nlq (:name profile)))
+          (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
+          (is (= 15 (:max-iterations profile)))
+          ;; In tests the library index can't answer, so :nlq is transparently served the general-search
+          ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
+          (is (contains? (tool-names profile) "search"))
+          (is (not (contains? (tool-names profile) "retrieve_library_entities")))
+          (is (contains? (tool-names profile) "construct_notebook_query"))))
+      (testing "retrieves slackbot profile"
+        (let [profile (profiles/get-profile :slackbot)]
+          (is (some? profile))
+          (is (= :slackbot (:name profile)))
+          (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
+          (is (= 15 (:max-iterations profile)))
+          (is (vector? (:tools profile)))
+          (is (contains? (tool-names profile) "search"))
+          (is (contains? (tool-names profile) "construct_notebook_query"))
+          (is (contains? (tool-names profile) "static_viz"))
+          (is (contains? (tool-names profile) "create_alert"))
+          (is (contains? (tool-names profile) "create_dashboard_subscription"))))
+      (testing "returns nil for unknown profile"
+        (is (nil? (profiles/get-profile :unknown-profile))))
+      (testing "all profiles have required keys"
+        (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
+          (let [profile (profiles/get-profile profile-id)]
+            (is (= profile-id (:name profile)))
+            (is (contains? profile :model))
+            (is (contains? profile :max-iterations))
+            (is (contains? profile :tools))
+            (is (every? var? (:tools profile)))))))))
 
 (deftest get-profile-respects-provider-setting-test
   (testing "model reflects llm-metabot-provider setting"
-    (mt/with-temporary-setting-values [llm-metabot-provider "openai/gpt-4.1-mini"]
-      (is (= "openai/gpt-4.1-mini" (:model (profiles/get-profile :internal)))))
-    (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/google/gemini-2.5-flash"]
-      (is (= "openrouter/google/gemini-2.5-flash" (:model (profiles/get-profile :embedding_next)))))))
+    (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections]
+      (mt/with-temporary-setting-values [llm-metabot-provider "openai/gpt-4.1-mini"]
+        (is (= "openai/gpt-4.1-mini" (:model (profiles/get-profile :internal)))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/google/gemini-2.5-flash"]
+        (is (= "openrouter/google/gemini-2.5-flash" (:model (profiles/get-profile :embedding_next))))))))
 
 (deftest get-tools-for-profile-excludes-capability-gated-tools-test
   (binding [scope/*current-user-scope* api-scope/unrestricted]

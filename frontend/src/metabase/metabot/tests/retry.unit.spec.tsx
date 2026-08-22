@@ -31,6 +31,13 @@ import {
   whoIsYourFavoriteResponse,
 } from "./utils";
 
+// an errored turn offers Retry twice — inline in the alert and as the hover icon in the actions
+// bar — so target the alert's
+const alertRetryButton = async () =>
+  within(
+    await screen.findByTestId("metabot-chat-message-turn-alert"),
+  ).findByTestId("metabot-chat-message-retry");
+
 const emptyContext = {
   user_is_viewing: [],
   current_time_with_timezone: "",
@@ -173,9 +180,7 @@ describe("metabot > retry", () => {
 
     const lastMessage = await lastChatMessage();
     expect(lastMessage).toHaveTextContent(/Something went wrong/);
-    expect(
-      within(lastMessage!).getByTestId("metabot-chat-message-retry"),
-    ).toBeInTheDocument();
+    expect(await alertRetryButton()).toBeInTheDocument();
   });
 
   it("should only offer retry on the last turn", async () => {
@@ -365,9 +370,7 @@ describe("metabot > retry", () => {
     expect(await screen.findByText(/Something went wrong/)).toBeInTheDocument();
 
     const retrySpy = mockAgentEndpoint({ events: [] });
-    await userEvent.click(
-      await screen.findByTestId("metabot-chat-message-retry"),
-    );
+    await userEvent.click(await alertRetryButton());
 
     const body = await lastReqBody(retrySpy);
     expect(body.retry_message_id).toBe("user_msg_err");
@@ -440,6 +443,41 @@ describe("metabot > retry", () => {
     expect(body.retry_message_id).toBe(firstReqBody.user_message_id);
   });
 
+  it("should show the provider's message on a provider_error turn and retry from the alert", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "start",
+          messageId: "msg_prov",
+          messageMetadata: { userMessageId: "user_msg_prov" },
+        },
+        {
+          type: "error",
+          errorText:
+            "Anthropic API error (HTTP 400) — Your credit balance is too low",
+        },
+        {
+          type: "finish",
+          finishReason: "error",
+          messageMetadata: { errorCode: "provider_error" },
+        },
+      ],
+    });
+    await enterChatMessage("first prompt");
+
+    expect(
+      await screen.findByText(/Your credit balance is too low/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
+
+    const retrySpy = mockAgentEndpoint({ events: [] });
+    await userEvent.click(await alertRetryButton());
+
+    const body = await lastReqBody(retrySpy);
+    expect(body.retry_message_id).toBe("user_msg_prov");
+  });
+
   it("should fall back to a plain send when the failed turn has no userMessageId", async () => {
     setup();
     mockAgentEndpoint({
@@ -449,9 +487,7 @@ describe("metabot > retry", () => {
     expect(await screen.findByText(/Something went wrong/)).toBeInTheDocument();
 
     const retrySpy = mockAgentEndpoint({ events: [] });
-    await userEvent.click(
-      await screen.findByTestId("metabot-chat-message-retry"),
-    );
+    await userEvent.click(await alertRetryButton());
 
     const body = await lastReqBody(retrySpy);
     expect(body.retry_message_id).toBeUndefined();

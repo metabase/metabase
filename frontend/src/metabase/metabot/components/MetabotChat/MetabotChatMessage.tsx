@@ -12,7 +12,6 @@ import {
   type MetabotAgentDataPartMessage,
   type MetabotAgentId,
   type MetabotAgentTextChatMessage,
-  type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
   type MetabotAgentTurnIncompleteMessage,
   type MetabotChatMessage,
@@ -26,14 +25,11 @@ import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
-  Box,
   Button,
-  Card,
   Flex,
   type FlexProps,
   Icon,
   Loader,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
@@ -41,6 +37,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import {
@@ -58,6 +55,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
     .with({ type: "data-entity_saved" }, () => true)
+    .with({ type: "data-model_fallback" }, () => true)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
@@ -284,6 +282,7 @@ export const AgentMessage = ({
           <AgentErroredTurnAlert
             message={m}
             debug={debug}
+            onRetry={onRetry}
             onRefreshConversation={onRefreshConversation}
           />
         ))
@@ -366,70 +365,32 @@ export const AgentMessage = ({
   );
 };
 
-const AgentTurnAlert = ({
-  variant,
-  message,
-  cta,
-  footer,
-  debugDetails,
-}: {
-  variant: "error" | "info";
-  message: string;
-  cta?: ReactNode;
-  footer?: ReactNode;
-  debugDetails?: MetabotAgentTurnError;
-}) => (
-  <Flex
-    direction="column"
-    gap="xs"
-    p="sm"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
-    data-testid="metabot-chat-message-turn-alert"
-    bg="background_page-primary"
-  >
-    <Flex align="center" gap="sm">
-      <Icon
-        name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "feedback-negative" : "text-secondary"}
-        size="1rem"
-        flex="0 0 auto"
-      />
-      <Text c="text-secondary" size="sm" flex="1">
-        {message}
-      </Text>
-      {cta}
-    </Flex>
-    {debugDetails && (
-      <Card
-        bdrs="xs"
-        ml="lg"
-        p="sm"
-        withBorder
-        shadow="none"
-        c="text-secondary"
-        fz="xs"
-        ff="monospace"
-        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-        data-testid="metabot-chat-message-turn-alert-debug"
-      >
-        {JSON.stringify(debugDetails, null, 2)}
-      </Card>
-    )}
-    {footer && <Box ml="lg">{footer}</Box>}
-  </Flex>
-);
+// Errors where re-sending the same turn cannot end differently: the conversation needs a refresh, the
+// subscription an upgrade, the quota a reset, the user a permission. Everything else gets a Retry —
+// most usefully a provider failure, whose retry resolves to the fallback provider because the failure
+// was recorded when the turn died.
+const UNRETRIABLE_ERROR_TYPES = [
+  "conversation_out_of_sync",
+  "metabase_ai_managed_locked",
+  "ai_usage_limit_reached",
+  "permission_denied",
+];
 
 const AgentErroredTurnAlert = ({
   message,
   debug,
+  onRetry,
   onRefreshConversation,
 }: {
   message: MetabotAgentTurnErroredMessage;
   debug: boolean;
+  onRetry?: (messageId: string) => void;
   onRefreshConversation?: () => void;
 }) => {
   const isOutOfSync = message.error.type === "conversation_out_of_sync";
+  const canRetry =
+    onRetry != null &&
+    !UNRETRIABLE_ERROR_TYPES.includes(message.error.type ?? "");
 
   return (
     <AgentTurnAlert
@@ -445,6 +406,16 @@ const AgentErroredTurnAlert = ({
             data-testid="metabot-chat-message-refresh"
           >
             {t`Refresh`}
+          </Button>
+        ) : canRetry ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={() => onRetry(message.id)}
+            data-testid="metabot-chat-message-retry"
+          >
+            {t`Retry`}
           </Button>
         ) : undefined
       }
