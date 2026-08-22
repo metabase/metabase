@@ -330,6 +330,30 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
   });
 
+  it("should allow toggling grand totals row independently of column totals", () => {
+    createTestQuestion();
+
+    // Grand totals row should be visible by default
+    cy.findByText("Grand totals").should("exist");
+
+    H.openVizSettingsSidebar();
+
+    // "Show grand totals" toggle should be visible when column totals are on
+    cy.findByLabelText("Show grand totals").should("exist");
+
+    // Turn off grand totals — row should disappear
+    cy.findByLabelText("Show grand totals").click({ force: true });
+    cy.findByText("Grand totals").should("not.exist");
+
+    // Turn grand totals back on — row should reappear
+    cy.findByLabelText("Show grand totals").click({ force: true });
+    cy.findByText("Grand totals").should("exist");
+
+    // Turning off column totals should hide the "Show grand totals" toggle
+    cy.findByLabelText("Show column totals").click({ force: true });
+    cy.findByLabelText("Show grand totals").should("not.exist");
+  });
+
   it("should uncollapse a value when hiding the subtotals", () => {
     const rows = ["SOURCE", "CATEGORY"];
     H.visitQuestionAdhoc({

@@ -338,6 +338,10 @@
   [settings]
   (get settings :pivot.show_column_totals true))
 
+(defn- should-show-grand-totals?
+  [settings]
+  (get settings :pivot.show_grand_totals true))
+
 (defn- maybe-add-row-totals-column
   "If needed, adds a column header to the end of the column tree for the column containing row totals"
   [col-tree settings]
@@ -354,7 +358,8 @@
 (defn- maybe-add-grand-totals-row
   "If needed, adds a row header to the end of the row tree for the row containing the grand total at the bottom-right of the table."
   [row-tree settings]
-  (if (should-show-column-totals? settings)
+  (if (and (should-show-column-totals? settings)
+           (should-show-grand-totals? settings))
     (conj
      row-tree
      {:value (i18n/tru "Grand totals")
