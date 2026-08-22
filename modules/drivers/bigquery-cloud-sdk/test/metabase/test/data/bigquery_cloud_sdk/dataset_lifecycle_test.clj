@@ -1,116 +1,123 @@
-(ns metabase.test.data.bigquery-cloud-sdk.dataset-lifecycle-test
-  "Integration coverage for the dataset lifecycle, run against a local BigQuery emulator.
+(ns ^:mb/driver-tests metabase.test.data.bigquery-cloud-sdk.dataset-lifecycle-test
+  "Checks the dataset lifecycle against real BigQuery.
 
-  The emulator does not persist label *mutations* - it accepts an update and then serves the original labels back -
-  so everything downstream of the publish write (marking a dataset ready, touching `last_used`) is verified by the
-  pure tests in [[metabase.test.data.bigquery-cloud-sdk.dataset-state-test]] and still needs a real BigQuery run.
-  What is covered here is everything reachable without mutating a label: labels written at creation, reading them
-  back, the reaper's decisions, and dataset teardown."
+  The decision logic is pure and covered by [[metabase.test.data.bigquery-cloud-sdk.dataset-state-test]]. What can
+  only be established against the real service is that the label reads and writes those decisions rest on actually
+  behave: that a label written at creation comes back, that *changing* a label sticks, that a listing projects
+  labels, and that an ephemeral dataset really gets a table lifetime. If the publish write silently did nothing,
+  every dataset would sit unpublished and every run would block until [[bigquery.tx/wait-for-publish!]] timed out.
+
+  Everything here works on freshly named scratch datasets and deletes them again. Nothing calls
+  [[bigquery.tx/delete-old-datasets!]]: it sweeps the whole project, and the project is shared with running CI."
   (:require
-   [clojure.java.shell :as shell]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.bigquery-cloud-sdk.dataset-state :as dataset-state]
-   [metabase.test.data.bigquery-emulator :as bq-emu]
-   [metabase.util.log :as log])
+   [metabase.util :as u])
   (:import
+   (com.google.cloud.bigquery BigQuery BigQuery$DatasetOption Dataset)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private create-dataset! #'bigquery.tx/create-dataset!)
 (def ^:private dataset-labels #'bigquery.tx/dataset-labels)
+(def ^:private set-dataset-labels! #'bigquery.tx/set-dataset-labels!)
 (def ^:private delete-dataset! #'bigquery.tx/delete-dataset!)
 
-(defn- docker-available? []
-  (try
-    (zero? (:exit (shell/sh "docker" "version")))
-    (catch Exception _
-      false)))
+(defn- scratch-dataset-id
+  "A dataset id nothing else will pick.
 
-(defn- with-emulator! [thunk]
-  (if-not (docker-available?)
-    (log/warn "Skipping BigQuery dataset lifecycle tests: no docker")
-    (do (bq-emu/start!)
-        (thunk))))
+  Inside [[bigquery.tx/dataset-id-prefix]] and labelled ephemeral by every caller here, so one leaked by a killed JVM
+  still expires on its own instead of accumulating in the shared project."
+  []
+  (str bigquery.tx/dataset-id-prefix "lifecycle_" (str/replace (str (random-uuid)) "-" "")))
 
-(defn- drop-quietly! [dataset-id]
-  (try (delete-dataset! dataset-id) (catch Exception _ nil)))
+(defn- default-table-lifetime-ms [dataset-id]
+  (let [^BigQuery client (#'bigquery.tx/bigquery)
+        ^Dataset dataset (.getDataset client ^String dataset-id (u/varargs BigQuery$DatasetOption))]
+    (.getDefaultTableLifetime dataset)))
 
-(defn- days-ago [n]
-  (.minusDays (LocalDate/now) n))
+(defn- do-with-scratch-dataset! [labels f]
+  (let [dataset-id (scratch-dataset-id)]
+    (create-dataset! dataset-id labels)
+    (try
+      (f dataset-id)
+      (finally
+        (u/ignore-exceptions (delete-dataset! dataset-id))))))
 
-(deftest ^:synchronized labels-written-at-creation-test
-  (with-emulator!
-    (fn []
-      (let [gold "emu_labels_gold"
-            work "emu_labels_work"]
-        (drop-quietly! gold)
-        (drop-quietly! work)
-        (try
-          (testing "a dataset is created unpublished, so a concurrent process cannot mistake it for loaded"
-            (create-dataset! gold (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)}))
-            (let [labels (dataset-labels gold)]
-              (is (dataset-state/building? labels))
-              (is (not (dataset-state/ready? labels)))
-              (is (not (dataset-state/ephemeral? labels)))))
-          (testing "a work dataset carries the marker the reaper keys on"
-            (create-dataset! work (dataset-state/building-labels {:ephemeral? true, :today (LocalDate/now)}))
-            (is (dataset-state/ephemeral? (dataset-labels work))))
-          (finally
-            (drop-quietly! gold)
-            (drop-quietly! work)))))))
+(deftest ^:synchronized labels-survive-creation-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a dataset is created unpublished, so a concurrent run cannot mistake it for loaded"
+      (do-with-scratch-dataset!
+       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (fn [dataset-id]
+         (let [labels (dataset-labels dataset-id)]
+           (is (dataset-state/building? labels))
+           (is (not (dataset-state/ready? labels)))
+           (is (not (dataset-state/ephemeral? labels)))))))))
 
-(deftest ^:synchronized absent-dataset-reads-as-nil-test
-  (with-emulator!
-    (fn []
-      (testing "absent and unpublished must be distinguishable: one is built, the other waited on"
-        (drop-quietly! "emu_absent")
-        (is (nil? (dataset-labels "emu_absent")))))))
+(deftest ^:synchronized publish-write-persists-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "the publish write is the whole gate: if changing a label does not stick, nothing is ever published"
+      (do-with-scratch-dataset!
+       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (fn [dataset-id]
+         (is (not (dataset-state/ready? (dataset-labels dataset-id))))
+         (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? false, :today (LocalDate/now)}))
+         (let [labels (dataset-labels dataset-id)]
+           (is (dataset-state/ready? labels))
+           (is (not (dataset-state/building? labels)))
+           (testing "the rest of the set survives the write, so publishing cannot lose the reaper's markers"
+             (is (not (dataset-state/ephemeral? labels)))
+             (is (some? (get labels "last_used"))))))))))
 
-(deftest ^:synchronized deleted-dataset-reads-as-nil-test
-  (with-emulator!
-    (fn []
-      (testing "a dataset discarded by a failed build reads as absent, which is what lets a waiter stop waiting"
-        (drop-quietly! "emu_discarded")
-        (create-dataset! "emu_discarded" (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)}))
-        (is (some? (dataset-labels "emu_discarded")))
-        (delete-dataset! "emu_discarded")
-        (is (nil? (dataset-labels "emu_discarded")))))))
+(deftest ^:synchronized touch-write-persists-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "recording use must move `last_used` and must not un-publish the dataset"
+      (let [old-day (.minusDays (LocalDate/now) 5)]
+        (do-with-scratch-dataset!
+         (dataset-state/ready-labels {:ephemeral? false, :today old-day})
+         (fn [dataset-id]
+           (let [before (dataset-labels dataset-id)]
+             (is (= (dataset-state/day-stamp old-day) (get before "last_used")))
+             (set-dataset-labels! dataset-id (dataset-state/touched-labels before (LocalDate/now)))
+             (let [after (dataset-labels dataset-id)]
+               (is (= (dataset-state/day-stamp (LocalDate/now)) (get after "last_used")))
+               (is (dataset-state/ready? after))))))))))
 
-(deftest ^:synchronized reaper-deletes-only-expired-datasets-test
-  (with-emulator!
-    (fn []
-      (let [fresh-gold "emu_reap_gold_fresh"
-            stale-gold "emu_reap_gold_stale"
-            stale-work "emu_reap_work_stale"
-            fresh-work "emu_reap_work_fresh"
-            all        [fresh-gold stale-gold stale-work fresh-work]]
-        (run! drop-quietly! all)
-        (try
-          (create-dataset! fresh-gold (dataset-state/ready-labels {:ephemeral? false, :today (days-ago 1)}))
-          (create-dataset! stale-gold (dataset-state/ready-labels {:ephemeral? false, :today (days-ago 30)}))
-          (create-dataset! fresh-work (dataset-state/ready-labels {:ephemeral? true, :today (LocalDate/now)}))
-          (create-dataset! stale-work (dataset-state/ready-labels {:ephemeral? true, :today (days-ago 3)}))
-          (bigquery.tx/delete-old-datasets!)
-          (testing "a gold dataset in active use survives; one nothing has touched in a fortnight does not"
-            (is (some? (dataset-labels fresh-gold)))
-            (is (nil? (dataset-labels stale-gold))))
-          (testing "a work dataset outliving its test is reaped; one created today belongs to a running test"
-            (is (some? (dataset-labels fresh-work)))
-            (is (nil? (dataset-labels stale-work))))
-          (finally
-            (run! drop-quietly! all)))))))
+(deftest ^:synchronized ephemeral-dataset-gets-table-lifetime-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a work dataset expires its own tables, so a killed test run leaves nothing costing storage"
+      (do-with-scratch-dataset!
+       (dataset-state/building-labels {:ephemeral? true, :today (LocalDate/now)})
+       (fn [dataset-id]
+         (is (dataset-state/ephemeral? (dataset-labels dataset-id)))
+         (is (pos? (or (default-table-lifetime-ms dataset-id) 0))))))
+    (testing "a shared dataset gets none: its tables must not vanish under a run that is using them"
+      (do-with-scratch-dataset!
+       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (fn [dataset-id]
+         (is (nil? (default-table-lifetime-ms dataset-id))))))))
 
-(deftest ^:synchronized reaper-leaves-unlabelled-datasets-alone-test
-  (with-emulator!
-    (fn []
-      (let [dataset-id "emu_reap_unlabelled"]
-        (drop-quietly! dataset-id)
-        (try
-          (create-dataset! dataset-id {})
-          (bigquery.tx/delete-old-datasets!)
-          (testing "datasets predating this scheme are not reaped by surprise; they need a deliberate sweep"
-            (is (some? (dataset-labels dataset-id))))
-          (finally
-            (drop-quietly! dataset-id)))))))
+(deftest ^:synchronized listing-projects-labels-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "the reaper decides from the listing alone; if labels are not projected it silently reaps nothing"
+      (do-with-scratch-dataset!
+       (dataset-state/ready-labels {:ephemeral? true, :today (LocalDate/now)})
+       (fn [dataset-id]
+         (let [listed (first (filter (comp #{dataset-id} :dataset-id) (bigquery.tx/datasets-with-labels)))]
+           (is (some? listed) "scratch dataset missing from datasets.list")
+           (is (dataset-state/ready? (:labels listed)))
+           (is (dataset-state/ephemeral? (:labels listed)))))))))
+
+(deftest ^:synchronized deleted-dataset-reads-as-absent-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a dataset discarded by a failed build reads as absent, which is what lets a waiter stop waiting"
+      (let [dataset-id (scratch-dataset-id)]
+        (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? true, :today (LocalDate/now)}))
+        (is (some? (dataset-labels dataset-id)))
+        (delete-dataset! dataset-id)
+        (is (nil? (dataset-labels dataset-id)))))))
