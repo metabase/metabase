@@ -28,7 +28,8 @@
    [clojure.string :as str]
    [java-time.api :as t])
   (:import
-   (java.time Duration LocalDate)))
+   (java.time Duration Instant LocalDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -38,7 +39,10 @@
   `gold-lifetime` is when a shared dataset is rebuilt, `gold-reap` when one nobody rebuilt is deleted. `gold-reap`
   must stay comfortably above `gold-lifetime` - that gap is the entire evidence that a reaped dataset was unused, and
   it is also the window in which a rebuild may race a job still reading the old dataset. Rebuilding costs seconds,
-  so prefer widening the gap over narrowing it."
+  so prefer widening the gap over narrowing it.
+
+  `work-lifetime` has to outlast the longest single test, since it is what stops the reaper deleting a work dataset
+  from under the test that made it."
   {:gold-lifetime (t/duration 30 :days)
    :gold-reap     (t/duration 60 :days)
    :work-lifetime (t/duration 1 :days)})
@@ -47,36 +51,45 @@
 (def ^:private ephemeral-label "ephemeral")
 (def ^:private created-label "created")
 
-(def ^:private day-stamp-prefix
-  "Label values may not begin with a digit, so an ISO date needs a leading letter to be legal."
+(def ^:private stamp-prefix
+  "Label values may not begin with a digit, so a timestamp needs a leading letter to be legal."
   "d")
 
-(defn day-stamp
-  "`date` as a dataset label value: an ISO date behind [[day-stamp-prefix]].
+(def ^:private ^DateTimeFormatter stamp-formatter
+  "Basic-format ISO 8601 in UTC, lowercased.
 
-  ISO keeps the value inside BigQuery's charset for labels, which allows dashes."
-  [date]
-  (str day-stamp-prefix (t/format :iso-local-date date)))
+  Label values admit only lowercase alphanumerics, dashes and underscores, so the `:` of an ordinary ISO timestamp
+  is out and the `T` has to be lowercase.
 
-(defn- parse-day-stamp ^LocalDate [s]
-  (when (and (string? s) (str/starts-with? s day-stamp-prefix))
+  Seconds rather than days because `work-lifetime` is a single day: at day granularity a work dataset created at
+  23:59 would be a day old one minute later, and the reaper would delete it out from under the test that made it."
+  (DateTimeFormatter/ofPattern "yyyyMMdd't'HHmmss"))
+
+(defn stamp
+  "`instant` as a dataset label value."
+  [^Instant instant]
+  (str stamp-prefix (.format stamp-formatter (LocalDateTime/ofInstant instant ZoneOffset/UTC))))
+
+(defn- parse-stamp ^Instant [s]
+  (when (and (string? s) (str/starts-with? s stamp-prefix))
     (try
-      (t/local-date (str/replace-first s day-stamp-prefix ""))
+      (.toInstant (.atOffset (LocalDateTime/parse (str/replace-first s stamp-prefix "") stamp-formatter)
+                             ZoneOffset/UTC))
       (catch Exception _ nil))))
 
 (defn building-labels
   "Labels a dataset is created with, before any table exists in it. Every value here is final except `state`."
-  [{:keys [ephemeral? today]}]
+  [{:keys [ephemeral? now]}]
   {state-label     "building"
    ephemeral-label (if ephemeral? "true" "false")
-   created-label   (day-stamp today)})
+   created-label   (stamp now)})
 
 (defn ready-labels
   "Labels that publish a dataset. Written as a complete set rather than a delta, so it does not matter whether
-  BigQuery merges or replaces labels on update. `created` must be the value the dataset was built with, not today,
-  or publishing would silently reset its age."
+  BigQuery merges or replaces labels on update. `created` must be the value the dataset was built with, not now, or
+  publishing would silently reset its age."
   [{:keys [ephemeral? created]}]
-  (assoc (building-labels {:ephemeral? ephemeral?, :today created})
+  (assoc (building-labels {:ephemeral? ephemeral?, :now created})
          state-label "ready"))
 
 (defn ready?
@@ -99,23 +112,22 @@
   (= "true" (get labels ephemeral-label)))
 
 (defn created
-  "The day the dataset was built, or `nil` if it carries no `created` label."
-  ^LocalDate [labels]
-  (parse-day-stamp (get labels created-label)))
+  "When the dataset was built, or `nil` if it carries no readable `created` label."
+  ^Instant [labels]
+  (parse-stamp (get labels created-label)))
 
-(defn- older-than? [labels ^LocalDate today ^Duration limit]
-  (when-let [^LocalDate born (created labels)]
-    (let [age (t/duration (t/time-between born today :days) :days)]
-      ;; `java-time`'s ordering predicates are built on its `Ordered` protocol, which is not extended to `Duration`,
-      ;; so comparison goes through `Comparable` instead.
-      (>= (.compareTo age limit) 0))))
+(defn- older-than? [labels ^Instant now ^Duration limit]
+  (when-let [^Instant born (created labels)]
+    ;; `java-time`'s ordering predicates are built on its `Ordered` protocol, which is not extended to `Duration`,
+    ;; so comparison goes through `Comparable` instead.
+    (>= (.compareTo (Duration/between born now) limit) 0)))
 
 (defn stale?
   "Whether a published gold dataset is old enough to rebuild.
 
   Only meaningful for gold: a work dataset is dropped by the test that made it and never lives long enough to age."
-  [labels today]
-  (boolean (older-than? labels today (:gold-lifetime retention))))
+  [labels now]
+  (boolean (older-than? labels now (:gold-lifetime retention))))
 
 (defn reapable?
   "Whether a dataset carrying `labels` should be deleted.
@@ -124,8 +136,8 @@
   plausible load - the residue of a process that died mid-build, which nothing will ever finish and [[ready?]] will
   never accept - and a gold dataset that has gone a full lifetime past the point where anything using it would have
   rebuilt it."
-  [labels today]
+  [labels now]
   (boolean
    (if (or (ephemeral? labels) (not (ready? labels)))
-     (older-than? labels today (:work-lifetime retention))
-     (older-than? labels today (:gold-reap retention)))))
+     (older-than? labels now (:work-lifetime retention))
+     (older-than? labels now (:gold-reap retention)))))

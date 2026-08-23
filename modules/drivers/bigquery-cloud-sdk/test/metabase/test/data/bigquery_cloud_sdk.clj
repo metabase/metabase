@@ -40,7 +40,7 @@
     StandardTableDefinition
     TableId
     TableInfo)
-   (java.time Duration LocalDate)))
+   (java.time Duration Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -434,9 +434,9 @@
   `datasets.list` and no query jobs, and it is safe to run while tests are going: a dataset in use is touched
   rebuilt by [[tx/create-db!]] long before it reaches the reaping age."
   []
-  (let [today (LocalDate/now)]
+  (let [now (Instant/now)]
     (doseq [{:keys [dataset-id labels]} (datasets-with-labels)
-            :when (dataset-state/reapable? labels today)]
+            :when (dataset-state/reapable? labels now)]
       (log/info (u/format-color 'blue "Reaping BigQuery dataset %s %s" dataset-id (pr-str labels)))
       (u/ignore-exceptions (delete-dataset! dataset-id)))))
 
@@ -455,7 +455,7 @@
     (and (dataset-state/ready? labels)
          ;; A dataset past its lifetime is rebuilt rather than reused, which is what keeps `created` meaning
          ;; "recently wanted" and lets the reaper delete on age alone. See [[dataset-state]].
-         (not (dataset-state/stale? labels (LocalDate/now))))))
+         (not (dataset-state/stale? labels (Instant/now))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver _db-def]
@@ -507,9 +507,9 @@
   rows. Publishing is the single label write at the end, and that write is the only thing that makes the dataset
   visible to [[tx/dataset-already-loaded?]] - until it lands, a concurrent process waits rather than reading tables
   that exist but are still filling."
-  [driver ^String dataset-id db-def ephemeral? ^LocalDate today attempts]
+  [driver ^String dataset-id db-def ephemeral? ^Instant created-at attempts]
   (let [created? (try
-                   (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? ephemeral?, :today today}))
+                   (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? ephemeral?, :now created-at}))
                    true
                    (catch BigQueryException e
                      (if (= 409 (.getCode e))
@@ -520,7 +520,7 @@
       (try
         (let [start (System/nanoTime)]
           (load-dataset! driver dataset-id db-def)
-          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :created today}))
+          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :created created-at}))
           ;; `println` rather than `log/info`, for the same reason as the one in [[destroy-dataset!]]: the console
           ;; appender in `test_config/log4j2-test.xml` filters at FATAL, and the appender that does accept INFO
           ;; writes `logs/test-log.json`, which `drivers.yml` never uploads. A logged line would be unreadable on CI,
@@ -544,7 +544,7 @@
       nil
 
       (pos? attempts)
-      (build-dataset! driver dataset-id db-def ephemeral? today (dec attempts))
+      (build-dataset! driver dataset-id db-def ephemeral? created-at (dec attempts))
 
       :else
       (throw (ex-info "BigQuery test dataset was discarded by every process that tried to build it"
@@ -559,15 +559,15 @@
         ;; substance whatever the dbdef says. Labelling it so gives it the one-day table lifetime, which is what
         ;; keeps this experiment from leaving a fresh set of permanent datasets behind on every push.
         ephemeral? (or (tx/ephemeral? db-def) (boolean (measuring-build-time?)))
-        today      (LocalDate/now)
+        now        (Instant/now)
         labels     (dataset-labels dataset-id)]
     (cond
-      (and (dataset-state/ready? labels) (not (dataset-state/stale? labels today)))
+      (and (dataset-state/ready? labels) (not (dataset-state/stale? labels now)))
       (log/infof "BigQuery dataset %s is already published; not reloading." dataset-id)
 
       (dataset-state/building? labels)
       (when (= :discarded (wait-for-publish! dataset-id))
-        (build-dataset! driver dataset-id db-def ephemeral? today 1))
+        (build-dataset! driver dataset-id db-def ephemeral? now 1))
 
       ;; Everything else that exists gets rebuilt from scratch:
       ;;
@@ -578,10 +578,10 @@
       ;;   concluded about its tables, and the cost of being wrong is a silently short dataset.
       (some? labels)
       (do (delete-dataset! dataset-id)
-          (build-dataset! driver dataset-id db-def ephemeral? today 1))
+          (build-dataset! driver dataset-id db-def ephemeral? now 1))
 
       :else
-      (build-dataset! driver dataset-id db-def ephemeral? today 1))))
+      (build-dataset! driver dataset-id db-def ephemeral? now 1))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]

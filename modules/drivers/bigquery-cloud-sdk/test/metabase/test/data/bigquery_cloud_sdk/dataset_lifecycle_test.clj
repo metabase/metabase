@@ -18,7 +18,7 @@
    [metabase.util :as u])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetOption Dataset)
-   (java.time LocalDate)))
+   (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +52,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "a dataset is created unpublished, so a concurrent run cannot mistake it for loaded"
       (do-with-scratch-dataset!
-       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (dataset-state/building-labels {:ephemeral? false, :now (Instant/now)})
        (fn [dataset-id]
          (let [labels (dataset-labels dataset-id)]
            (is (dataset-state/building? labels))
@@ -63,7 +63,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "the publish write is the whole gate: if changing a label does not stick, nothing is ever published"
       (do-with-scratch-dataset!
-       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (dataset-state/building-labels {:ephemeral? false, :now (Instant/now)})
        (fn [dataset-id]
          (is (not (dataset-state/ready? (dataset-labels dataset-id))))
          (let [born (dataset-state/created (dataset-labels dataset-id))]
@@ -80,13 +80,13 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "a work dataset expires its own tables, so a killed test run leaves nothing costing storage"
       (do-with-scratch-dataset!
-       (dataset-state/building-labels {:ephemeral? true, :today (LocalDate/now)})
+       (dataset-state/building-labels {:ephemeral? true, :now (Instant/now)})
        (fn [dataset-id]
          (is (dataset-state/ephemeral? (dataset-labels dataset-id)))
          (is (pos? (or (default-table-lifetime-ms dataset-id) 0))))))
     (testing "a shared dataset gets none: its tables must not vanish under a run that is using them"
       (do-with-scratch-dataset!
-       (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
+       (dataset-state/building-labels {:ephemeral? false, :now (Instant/now)})
        (fn [dataset-id]
          (is (nil? (default-table-lifetime-ms dataset-id))))))))
 
@@ -94,7 +94,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "the reaper decides from the listing alone; if labels are not projected it silently reaps nothing"
       (do-with-scratch-dataset!
-       (dataset-state/ready-labels {:ephemeral? true, :created (LocalDate/now)})
+       (dataset-state/ready-labels {:ephemeral? true, :created (Instant/now)})
        (fn [dataset-id]
          (let [listed (first (filter (comp #{dataset-id} :dataset-id) (bigquery.tx/datasets-with-labels)))]
            (is (some? listed) "scratch dataset missing from datasets.list")
@@ -105,7 +105,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "a dataset discarded by a failed build reads as absent, which is what lets a waiter stop waiting"
       (let [dataset-id (scratch-dataset-id)]
-        (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? true, :today (LocalDate/now)}))
+        (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? true, :now (Instant/now)}))
         (is (some? (dataset-labels dataset-id)))
         (delete-dataset! dataset-id)
         (is (nil? (dataset-labels dataset-id)))))))
