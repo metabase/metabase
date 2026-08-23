@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private now
+(def ^:private ^Instant now
   (.toInstant (.atOffset (LocalDateTime/of 2026 8 22 12 0 0) ZoneOffset/UTC)))
 
 (defn- ago ^Instant [^Duration d]

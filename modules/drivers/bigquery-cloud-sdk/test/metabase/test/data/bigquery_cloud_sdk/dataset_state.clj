@@ -116,18 +116,22 @@
   ^Instant [labels]
   (parse-stamp (get labels created-label)))
 
-(defn- older-than? [labels ^Instant now ^Duration limit]
-  (when-let [^Instant born (created labels)]
+(defn- older-than?
+  "Whether `labels` were written more than `limit` ago. False when they carry no readable `created`: an age that
+  cannot be measured must not be treated as old, or an unrecognised dataset would be rebuilt or reaped on sight."
+  [labels ^Instant now ^Duration limit]
+  (if-let [^Instant born (created labels)]
     ;; `java-time`'s ordering predicates are built on its `Ordered` protocol, which is not extended to `Duration`,
     ;; so comparison goes through `Comparable` instead.
-    (>= (.compareTo (Duration/between born now) limit) 0)))
+    (>= (.compareTo (Duration/between born now) limit) 0)
+    false))
 
 (defn stale?
   "Whether a published gold dataset is old enough to rebuild.
 
   Only meaningful for gold: a work dataset is dropped by the test that made it and never lives long enough to age."
   [labels now]
-  (boolean (older-than? labels now (:gold-lifetime retention))))
+  (older-than? labels now (:gold-lifetime retention)))
 
 (defn reapable?
   "Whether a dataset carrying `labels` should be deleted.
@@ -137,7 +141,6 @@
   never accept - and a gold dataset that has gone a full lifetime past the point where anything using it would have
   rebuilt it."
   [labels now]
-  (boolean
-   (if (or (ephemeral? labels) (not (ready? labels)))
-     (older-than? labels now (:work-lifetime retention))
-     (older-than? labels now (:gold-reap retention)))))
+  (older-than? labels now (if (or (ephemeral? labels) (not (ready? labels)))
+                            (:work-lifetime retention)
+                            (:gold-reap retention))))

@@ -1,6 +1,7 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
    [clojure.string :as str]
+   [diehard.core :as dh]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -184,15 +185,6 @@
       (flush)
       (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
 
-(defn execute-params!
-  "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
-  an Exception if it fails."
-  [sql params]
-  (driver/with-driver :bigquery-cloud-sdk
-    (log/infof "[BigQuery] %s\n" sql)
-    (flush)
-    (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil)))
-
 (defn- delete-dataset!
   "Delete `dataset-id` and everything in it, with no regard for what it holds.
 
@@ -201,8 +193,8 @@
   [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.delete (bigquery) dataset-id (u/varargs
-                                  BigQuery$DatasetDeleteOption
-                                  [(BigQuery$DatasetDeleteOption/deleteContents)]))
+                                   BigQuery$DatasetDeleteOption
+                                   [(BigQuery$DatasetDeleteOption/deleteContents)]))
   (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
 
 (defn- destroy-dataset! [^String dataset-id]
@@ -423,15 +415,6 @@
       (log/info (u/format-color 'blue "Reaping BigQuery dataset %s %s" dataset-id (pr-str labels)))
       (u/ignore-exceptions (delete-dataset! dataset-id)))))
 
-(defn database-exists?!
-  [db-def]
-  (->>
-   (execute-params!
-    (format "select true from `%s`.INFORMATION_SCHEMA.SCHEMATA where schema_name = ?"
-            (project-id))
-    [(test-dataset-id db-def)])
-   ffirst))
-
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
   (let [labels (dataset-labels (test-dataset-id db-def))]
@@ -454,26 +437,34 @@
   project takes minutes."
   (u/minutes->ms 20))
 
-(defn- wait-for-publish!
-  "Block until `dataset-id` is published by whoever is building it.
+(def ^:private publish-poll-interval-ms
+  "How often to re-read the labels while waiting. Metadata reads are cheap; the cost of polling faster is API
+  requests, the cost of polling slower is idle time on every process that lost the claim."
+  2000)
 
-  Returns `:ready`, or `:discarded` if the dataset disappears - that build failed and cleaned up after itself, so the
-  caller should build it rather than wait out the timeout on work nobody is doing."
+(defn- await-publish!
+  "Block until `dataset-id` is published by whoever is building it, and say whether it got there.
+
+  False means the dataset disappeared: that build failed and cleaned up after itself, so the caller should build it
+  rather than wait out the timeout on work nobody is doing."
   [^String dataset-id]
   (log/infof "Waiting for another process to finish loading BigQuery dataset %s" dataset-id)
-  (let [deadline (+ (System/currentTimeMillis) publish-timeout-ms)]
-    (loop []
-      (let [labels (dataset-labels dataset-id)]
-        (cond
-          (nil? labels)                 :discarded
-          (dataset-state/ready? labels) :ready
-
-          (> (System/currentTimeMillis) deadline)
-          (throw (ex-info "Timed out waiting for a BigQuery test dataset to be published"
-                          {:dataset-id dataset-id, :timeout-ms publish-timeout-ms}))
-
-          :else
-          (do (Thread/sleep 2000) (recur)))))))
+  (let [result (dh/with-retry {:retry-if        (fn [result _] (= result ::building))
+                               :delay-ms        publish-poll-interval-ms
+                               ;; bounded by duration rather than attempts, and `-1` is what lifts the attempt cap
+                               :max-retries     -1
+                               :max-duration-ms publish-timeout-ms}
+                 (let [labels (dataset-labels dataset-id)]
+                   (cond
+                     (nil? labels)                 false
+                     (dataset-state/ready? labels) true
+                     :else                         ::building)))]
+    ;; `with-retry` hands back the last value when it runs out of time rather than throwing, so the timeout is only
+    ;; an error because we say so here.
+    (when (= result ::building)
+      (throw (ex-info "Timed out waiting for a BigQuery test dataset to be published"
+                      {:dataset-id dataset-id, :timeout-ms publish-timeout-ms})))
+    result))
 
 (defn- load-dataset!
   [driver ^String dataset-id {:keys [table-definitions options]}]
@@ -482,83 +473,94 @@
   (doseq [native-ddl (:native-ddl options)]
     (apply execute! (sql.tx/compile-native-ddl driver native-ddl))))
 
-(defn- build-dataset!
-  "Create, load and publish `dataset-id`.
+(def ^:private build-retries
+  "How many times to start over after losing the claim to a process that then failed, which leaves the dataset absent
+  again and the next attempt ours to win."
+  1)
+
+(defn- claim-dataset!
+  "Create `dataset-id` unpublished, returning whether we were the one who created it. False means another process got
+  there first and is loading it."
+  [^String dataset-id ephemeral? ^Instant created-at]
+  (try
+    (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? ephemeral?, :now created-at}))
+    true
+    (catch BigQueryException e
+      (if (= 409 (.getCode e))
+        false
+        (throw e)))))
+
+(defn- log-build!
+  [^String dataset-id ephemeral? db-def elapsed-ns]
+  ;; The console appender in `test_config/log4j2-test.xml` filters at FATAL, so this does not show up in the CI job
+  ;; log; look for it in the `logs/test-log.json` artifact. Tagged for grepping because a rebuild should be rare,
+  ;; and how long one costs is what decides how hard retention works to avoid it.
+  (log/info (u/format-color 'green "[bq-dataset-build] %s %s built in %s (%d tables, %d rows)"
+                            (if ephemeral? "work" "gold")
+                            dataset-id
+                            (u/format-nanoseconds elapsed-ns)
+                            (count (:table-definitions db-def))
+                            (reduce + 0 (map (comp count :rows) (:table-definitions db-def))))))
+
+(defn- load-and-publish!
+  "Fill the dataset we just claimed, then publish it.
 
   A failed load discards the whole dataset instead of leaving it to be finished later: nothing here can tell a table
   whose rows all landed from one whose insert died half way, so resuming would quietly yield a dataset short some
   rows. Publishing is the single label write at the end, and that write is the only thing that makes the dataset
   visible to [[tx/dataset-already-loaded?]] - until it lands, a concurrent process waits rather than reading tables
   that exist but are still filling."
-  [driver ^String dataset-id db-def ephemeral? ^Instant created-at attempts]
-  (let [created? (try
-                   (create-dataset! dataset-id (dataset-state/building-labels {:ephemeral? ephemeral?, :now created-at}))
-                   true
-                   (catch BigQueryException e
-                     (if (= 409 (.getCode e))
-                       false
-                       (throw e))))]
-    (cond
-      created?
-      (try
-        (let [start (System/nanoTime)]
-          (load-dataset! driver dataset-id db-def)
-          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :created created-at}))
-          ;; `println` rather than `log/info`, for the same reason as the one in [[destroy-dataset!]]: the console
-          ;; appender in `test_config/log4j2-test.xml` filters at FATAL, and the appender that does accept INFO
-          ;; writes `logs/test-log.json`, which `drivers.yml` never uploads. A logged line would be unreadable on CI,
-          ;; and how long a rebuild costs is the number that decides how hard retention should work to avoid one.
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println (u/format-color 'green "[bq-dataset-build] %s %s built in %s (%d tables, %d rows)"
-                                   (if ephemeral? "work" "gold")
-                                   dataset-id
-                                   (u/format-nanoseconds (- (System/nanoTime) start))
-                                   (count (:table-definitions db-def))
-                                   (reduce + 0 (map (comp count :rows) (:table-definitions db-def))))))
-        (catch Throwable e
-          (log/warnf e "Failed to load BigQuery dataset %s; discarding it so the next attempt starts clean" dataset-id)
-          (u/ignore-exceptions (delete-dataset! dataset-id))
-          (throw e)))
+  [driver ^String dataset-id db-def ephemeral? ^Instant created-at]
+  (let [start (System/nanoTime)]
+    (try
+      (load-dataset! driver dataset-id db-def)
+      (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :created created-at}))
+      (log-build! dataset-id ephemeral? db-def (- (System/nanoTime) start))
+      (catch Throwable e
+        (log/warnf e "Failed to load BigQuery dataset %s; discarding it so the next attempt starts clean" dataset-id)
+        (u/ignore-exceptions (delete-dataset! dataset-id))
+        (throw e)))))
 
-      ;; lost the race to create it, so the winner is loading it and will publish
-      (= :ready (wait-for-publish! dataset-id))
-      nil
+(defn- build-dataset!
+  "Get `dataset-id` to `ready`, by building it or by waiting for whoever is already building it."
+  [driver ^String dataset-id db-def ephemeral?]
+  (let [result (dh/with-retry {:retry-if    (fn [result _] (= result ::discarded))
+                               :max-retries build-retries}
+                 (let [created-at (Instant/now)]
+                   (cond
+                     (claim-dataset! dataset-id ephemeral? created-at)
+                     (load-and-publish! driver dataset-id db-def ephemeral? created-at)
 
-      (pos? attempts)
-      (build-dataset! driver dataset-id db-def ephemeral? created-at (dec attempts))
+                     ;; someone else claimed it, so they publish - unless their load failed and discarded it
+                     (await-publish! dataset-id)
+                     nil
 
-      :else
+                     :else
+                     ::discarded)))]
+    ;; `with-retry` hands back the last value when it runs out of attempts rather than throwing.
+    (when (= result ::discarded)
       (throw (ex-info "BigQuery test dataset was discarded by every process that tried to build it"
-                      {:dataset-id dataset-id})))))
+                      {:dataset-id dataset-id})))
+    result))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [dataset-id (test-dataset-id db-def)
-        ephemeral? (tx/ephemeral? db-def)
-        now        (Instant/now)
         labels     (dataset-labels dataset-id)]
-    (cond
-      (and (dataset-state/ready? labels) (not (dataset-state/stale? labels now)))
+    (if (and (dataset-state/ready? labels) (not (dataset-state/stale? labels (Instant/now))))
       (log/infof "BigQuery dataset %s is already published; not reloading." dataset-id)
-
-      (dataset-state/building? labels)
-      (when (= :discarded (wait-for-publish! dataset-id))
-        (build-dataset! driver dataset-id db-def ephemeral? now 1))
-
-      ;; Everything else that exists gets rebuilt from scratch:
-      ;;
-      ;; - published but past its lifetime. Rebuilding is what resets `created`, and that is the only reason a
-      ;;   dataset still in use never reaches the reaping age. Skipping it here would let the reaper delete a
-      ;;   dataset that tests are still reading.
-      ;; - carrying no state at all: it predates this scheme, or its publish never landed. Either way nothing can be
-      ;;   concluded about its tables, and the cost of being wrong is a silently short dataset.
-      (some? labels)
-      (do (delete-dataset! dataset-id)
-          (build-dataset! driver dataset-id db-def ephemeral? now 1))
-
-      :else
-      (build-dataset! driver dataset-id db-def ephemeral? now 1))))
+      (do
+        ;; Anything that exists but is neither usable nor being built is rubble, and clearing it is what lets the
+        ;; rebuild start from nothing:
+        ;;
+        ;; - published but past its lifetime. Rebuilding is what resets `created`, and that is the only reason a
+        ;;   dataset still in use never reaches the reaping age.
+        ;; - carrying no state at all: it predates this scheme, or its publish never landed. Either way nothing can
+        ;;   be concluded about its tables, and the cost of being wrong is a silently short dataset.
+        (when (and (some? labels) (not (dataset-state/building? labels)))
+          (delete-dataset! dataset-id))
+        (build-dataset! driver dataset-id db-def (tx/ephemeral? db-def))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
@@ -596,8 +598,7 @@
   "REPL utilities for static datasets"
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
   (dataset-labels (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-  (delete-old-datasets!)
-  (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+  (delete-old-datasets!))
 
 (defn ^:private get-test-data-name
   []
