@@ -8,10 +8,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private today (LocalDate/of 2026 8 22))
+(def ^:private ^LocalDate today (LocalDate/of 2026 8 22))
 
-(defn- days-ago [n]
-  (.minusDays today n))
+(defn- days-ago ^LocalDate [n]
+  (.minusDays today (long n)))
 
 (deftest ^:parallel day-stamp-test
   (testing "label values may not start with a digit, so the ISO date is prefixed"
