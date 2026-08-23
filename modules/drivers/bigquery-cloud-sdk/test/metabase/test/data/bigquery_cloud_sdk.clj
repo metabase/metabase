@@ -70,28 +70,6 @@
   change exists to prevent."
   "mbds1_")
 
-(def ^:private measuring-build-time-segment
-  "TEMPORARY: build-timing experiment. REVERT BEFORE SHIPPING - remove this var and its three use sites.
-
-  Scopes dataset names to one CI run, so every push builds its gold datasets from scratch and
-  `[bq-dataset-build]` reports a cold build time each time instead of only on the first push.
-
-  Deliberately not implemented by deleting the existing datasets: a delete would race the other partition of the
-  same run, and any concurrent branch, which is the failure this whole change exists to prevent. Giving each run its
-  own names gets a cold build with nothing destructive. Both partitions of a run share the segment, so they still
-  exercise the build/wait race rather than each building a private copy.
-
-  Empty outside GitHub Actions, so local runs keep reusing their datasets. `GITHUB_RUN_ATTEMPT` is included so that
-  re-running a workflow measures a cold build too."
-  (if-let [run-id (System/getenv "GITHUB_RUN_ID")]
-    (format "run%s_%s_" run-id (or (System/getenv "GITHUB_RUN_ATTEMPT") "1"))
-    ""))
-
-(defn- measuring-build-time?
-  "TEMPORARY: build-timing experiment. REVERT BEFORE SHIPPING."
-  []
-  (seq measuring-build-time-segment))
-
 (mu/defn test-dataset-id :- ::dataset-id
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
@@ -100,9 +78,9 @@
         database-name
         ;; releases get their own isolated datasets
         (tx/on-master-or-release-branch?)
-        (str dataset-id-prefix measuring-build-time-segment "rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        (str dataset-id-prefix "rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
         :else
-        (str dataset-id-prefix measuring-build-time-segment "pr_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+        (str dataset-id-prefix "pr_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -527,9 +505,7 @@
           ;; and how long a rebuild costs is the number that decides how hard retention should work to avoid one.
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println (u/format-color 'green "[bq-dataset-build] %s %s built in %s (%d tables, %d rows)"
-                                   ;; the tier the definition asks for, not the `ephemeral?` flag, which the
-                                   ;; build-timing experiment also forces on for run-scoped gold datasets
-                                   (if (tx/ephemeral? db-def) "work" "gold")
+                                   (if ephemeral? "work" "gold")
                                    dataset-id
                                    (u/format-nanoseconds (- (System/nanoTime) start))
                                    (count (:table-definitions db-def))
@@ -554,11 +530,7 @@
   [driver {:keys [database-name table-definitions] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [dataset-id (test-dataset-id db-def)
-        ;; TEMPORARY: build-timing experiment. REVERT BEFORE SHIPPING - drop the `or` and keep `tx/ephemeral?`.
-        ;; A run-scoped dataset is used by exactly one CI run and never looked up again, so it is ephemeral in
-        ;; substance whatever the dbdef says. Labelling it so gives it the one-day table lifetime, which is what
-        ;; keeps this experiment from leaving a fresh set of permanent datasets behind on every push.
-        ephemeral? (or (tx/ephemeral? db-def) (boolean (measuring-build-time?)))
+        ephemeral? (tx/ephemeral? db-def)
         now        (Instant/now)
         labels     (dataset-labels dataset-id)]
     (cond
