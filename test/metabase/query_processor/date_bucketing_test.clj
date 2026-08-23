@@ -1208,7 +1208,11 @@
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)
         intervalCount (.intervalCount this)]
-    (mt/dataset-definition
+    ;; Ephemeral because the rows below are computed relative to *now*, so this returns different content on every
+    ;; call and can never be reused. Drivers that name datasets by a content hash would otherwise accumulate a fresh
+    ;; permanent dataset per call, forever.
+    (tx/ephemeral
+     (mt/dataset-definition
      (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (.randomName this))
      [["checkins"
        [{:field-name "timestamp"
@@ -1235,7 +1239,7 @@
              (let [shift (quot intervalCount 2)
                    lower-bound (- shift)
                    upper-bound (- intervalCount shift)]
-               (range lower-bound upper-bound)))]])))
+               (range lower-bound upper-bound)))]]))))
 
 (defn- dataset-def-with-timestamps
   ([interval-seconds]
