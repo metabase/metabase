@@ -353,8 +353,12 @@
                                  ;; depends on faulty transform
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
-                                                               :query (lib/native-query mp (format "SELECT * FROM %s"
-                                                                                                   (sql.u/quote-name driver/*driver* :table (:schema target1) (:name target1))))}
+                                                               :query (lib/native-query mp (if (= driver/*driver* :bigquery-cloud-sdk)
+                                                                                             ;; pre-sqlglot (07fbc6997e4) dependency detection for bigquery only
+                                                                                             ;; understands the `dataset.table` quoting convention
+                                                                                             (format "SELECT * FROM `%s.%s`" (:schema target1) (:name target1))
+                                                                                             (format "SELECT * FROM %s"
+                                                                                                     (sql.u/quote-name driver/*driver* :table (:schema target1) (:name target1)))))}
                                                       :creator_id (mt/user->id :crowberto)
                                                       :target target2}
                                  :model/TransformTransformTag _tag2 {:transform_id (:id t2)
