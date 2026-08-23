@@ -114,12 +114,7 @@
          :include-user-id-and-hash true))
 
 (defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
-  [_driver _feature _database]
-  ;; Turned off in #76363 for being a cloud DB, when a dataset loaded on demand was a dataset kept forever: a
-  ;; definition computed at runtime hashes differently on every call, so each one left another permanent dataset
-  ;; behind. Datasets now carry a lifetime, and definitions that cannot be reused say so via [[tx/ephemeral]], so
-  ;; the ones this feature creates clean themselves up.
-  true)
+  [_driver _feature _database] false)
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
