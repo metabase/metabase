@@ -134,7 +134,10 @@ export const ChartSettingSeriesOrder = ({
     [hiddenItems, toggleDisplay],
   );
 
-  const getId = useCallback((item: ChartSettingSeriesOrderItem) => item.key, []);
+  const getId = useCallback(
+    (item: ChartSettingSeriesOrderItem) => item.key,
+    [],
+  );
 
   const handleOtherSeriesSettingsClick = useCallback(
     (e: React.MouseEvent) => {

@@ -22,9 +22,7 @@ import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getPieDimensions } from "metabase/visualizations/shared/settings/pie";
-import type {
-  DimensionsWidgetProps,
-} from "metabase/visualizations/types";
+import type { DimensionsWidgetProps } from "metabase/visualizations/types";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 
 import Styles from "./DimensionsWidget.module.css";

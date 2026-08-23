@@ -4,7 +4,6 @@ import { fireEvent, render, screen, within } from "__support__/ui";
 import type { ChartSettingSegmentsEditorProps } from "metabase/visualizations/types";
 import type { ScalarSegment } from "metabase-types/api";
 
-
 import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
 
 const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
