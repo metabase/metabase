@@ -66,27 +66,15 @@
        (dataset-state/building-labels {:ephemeral? false, :today (LocalDate/now)})
        (fn [dataset-id]
          (is (not (dataset-state/ready? (dataset-labels dataset-id))))
-         (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? false, :today (LocalDate/now)}))
-         (let [labels (dataset-labels dataset-id)]
-           (is (dataset-state/ready? labels))
-           (is (not (dataset-state/building? labels)))
-           (testing "the rest of the set survives the write, so publishing cannot lose the reaper's markers"
-             (is (not (dataset-state/ephemeral? labels)))
-             (is (some? (get labels "last_used"))))))))))
-
-(deftest ^:synchronized touch-write-persists-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (testing "recording use must move `last_used` and must not un-publish the dataset"
-      (let [old-day (.minusDays (LocalDate/now) 5)]
-        (do-with-scratch-dataset!
-         (dataset-state/ready-labels {:ephemeral? false, :today old-day})
-         (fn [dataset-id]
-           (let [before (dataset-labels dataset-id)]
-             (is (= (dataset-state/day-stamp old-day) (get before "last_used")))
-             (set-dataset-labels! dataset-id (dataset-state/touched-labels before (LocalDate/now)))
-             (let [after (dataset-labels dataset-id)]
-               (is (= (dataset-state/day-stamp (LocalDate/now)) (get after "last_used")))
-               (is (dataset-state/ready? after))))))))))
+         (let [born (dataset-state/created (dataset-labels dataset-id))]
+           (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? false, :created born}))
+           (let [labels (dataset-labels dataset-id)]
+             (is (dataset-state/ready? labels))
+             (is (not (dataset-state/building? labels)))
+             (testing "the rest of the set survives the write, so publishing cannot lose the reaper's markers"
+               (is (not (dataset-state/ephemeral? labels))))
+             (testing "publishing preserves the creation date; resetting it would keep a dataset forever young"
+               (is (= born (dataset-state/created labels)))))))))))
 
 (deftest ^:synchronized ephemeral-dataset-gets-table-lifetime-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -106,7 +94,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "the reaper decides from the listing alone; if labels are not projected it silently reaps nothing"
       (do-with-scratch-dataset!
-       (dataset-state/ready-labels {:ephemeral? true, :today (LocalDate/now)})
+       (dataset-state/ready-labels {:ephemeral? true, :created (LocalDate/now)})
        (fn [dataset-id]
          (let [listed (first (filter (comp #{dataset-id} :dataset-id) (bigquery.tx/datasets-with-labels)))]
            (is (some? listed) "scratch dataset missing from datasets.list")
@@ -121,3 +109,4 @@
         (is (some? (dataset-labels dataset-id)))
         (delete-dataset! dataset-id)
         (is (nil? (dataset-labels dataset-id)))))))
+

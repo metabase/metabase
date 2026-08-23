@@ -160,7 +160,7 @@
 
 (def ^:private work-dataset-lifetime-ms
   "[[dataset-state/retention]]'s work lifetime as the bare millis `setDefaultTableLifetime` takes."
-  (.toMillis ^Duration (:work-retention dataset-state/retention)))
+  (.toMillis ^Duration (:work-lifetime dataset-state/retention)))
 
 (mu/defn- create-dataset!
   "Create `dataset-id` carrying `labels`, which [[dataset-state]] reads back to decide whether it is usable.
@@ -432,7 +432,7 @@
 
   Meant to run out of band on a schedule rather than from a test. It reads dataset labels only, so it costs one
   `datasets.list` and no query jobs, and it is safe to run while tests are going: a dataset in use is touched
-  by [[tx/track-dataset]] well inside its retention window."
+  rebuilt by [[tx/create-db!]] long before it reaches the reaping age."
   []
   (let [today (LocalDate/now)]
     (doseq [{:keys [dataset-id labels]} (datasets-with-labels)
@@ -451,19 +451,20 @@
 
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (dataset-state/ready? (dataset-labels (test-dataset-id db-def))))
+  (let [labels (dataset-labels (test-dataset-id db-def))]
+    (and (dataset-state/ready? labels)
+         ;; A dataset past its lifetime is rebuilt rather than reused, which is what keeps `created` meaning
+         ;; "recently wanted" and lets the reaper delete on age alone. See [[dataset-state]].
+         (not (dataset-state/stale? labels (LocalDate/now))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
-  [_driver db-def]
-  (let [dataset-id (test-dataset-id db-def)
-        today      (LocalDate/now)
-        labels     (dataset-labels dataset-id)
-        jitter     (dataset-state/random-touch-jitter)]
-    (when (and (seq labels) (dataset-state/needs-touch? labels today jitter))
-      ;; Best-effort. A lost race or a rejected write only means another test records the use a bit later, whereas
-      ;; failing the test over it would turn retention bookkeeping into a source of flakes.
-      (u/ignore-exceptions
-       (set-dataset-labels! dataset-id (dataset-state/touched-labels labels today))))))
+  [_driver _db-def]
+  ;; Empty on purpose. Retention is keyed on when a dataset was created rather than when it was last used, so there
+  ;; is no use to record, and a body here would put a metadata write on every dataset access with nothing reading
+  ;; it. That is what the `metabase_test_tracking` table was; its DML hit BigQuery's 20-outstanding-statements cap
+  ;; and failed builds. Before filling this in, change the retention policy in
+  ;; [[metabase.test.data.bigquery-cloud-sdk.dataset-state]] so that something reads what you write.
+  nil)
 
 (def ^:private publish-timeout-ms
   "How long to wait for another process to finish loading a dataset. Generous because loading `test-data` into a cold
@@ -519,7 +520,7 @@
       (try
         (let [start (System/nanoTime)]
           (load-dataset! driver dataset-id db-def)
-          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :today today}))
+          (set-dataset-labels! dataset-id (dataset-state/ready-labels {:ephemeral? ephemeral?, :created today}))
           ;; `println` rather than `log/info`, for the same reason as the one in [[destroy-dataset!]]: the console
           ;; appender in `test_config/log4j2-test.xml` filters at FATAL, and the appender that does accept INFO
           ;; writes `logs/test-log.json`, which `drivers.yml` never uploads. A logged line would be unreadable on CI,
@@ -561,15 +562,20 @@
         today      (LocalDate/now)
         labels     (dataset-labels dataset-id)]
     (cond
-      (dataset-state/ready? labels)
+      (and (dataset-state/ready? labels) (not (dataset-state/stale? labels today)))
       (log/infof "BigQuery dataset %s is already published; not reloading." dataset-id)
 
       (dataset-state/building? labels)
       (when (= :discarded (wait-for-publish! dataset-id))
         (build-dataset! driver dataset-id db-def ephemeral? today 1))
 
-      ;; It exists but says nothing about itself: either it predates this scheme or its publish never landed. Its
-      ;; tables cannot be trusted either way, and the cost of being wrong is a silently short dataset, so start over.
+      ;; Everything else that exists gets rebuilt from scratch:
+      ;;
+      ;; - published but past its lifetime. Rebuilding is what resets `created`, and that is the only reason a
+      ;;   dataset still in use never reaches the reaping age. Skipping it here would let the reaper delete a
+      ;;   dataset that tests are still reading.
+      ;; - carrying no state at all: it predates this scheme, or its publish never landed. Either way nothing can be
+      ;;   concluded about its tables, and the cost of being wrong is a silently short dataset.
       (some? labels)
       (do (delete-dataset! dataset-id)
           (build-dataset! driver dataset-id db-def ephemeral? today 1))
@@ -612,7 +618,6 @@
 (comment
   "REPL utilities for static datasets"
   (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-  (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data)))
   (dataset-labels (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
   (delete-old-datasets!)
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
