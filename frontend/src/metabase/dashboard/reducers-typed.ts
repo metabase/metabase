@@ -232,8 +232,6 @@ export const timelineEvents = createReducer(
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
     });
-    // once a card's visibility is written into its settings, the settings are
-    // the truth; a leftover session override would shadow them
     builder.addCase(
       setMultipleDashCardAttributes,
       (state, { payload: { dashcards } }) => {
