@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, RemoteSyncTask } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
@@ -366,7 +366,7 @@ export const pollForTask = (
   }
 
   return cy
-    .request("GET", "/api/ee/remote-sync/current-task")
+    .request<RemoteSyncTask | null>("GET", "/api/ee/remote-sync/current-task")
     .then((response) => {
       const { body } = response;
 
@@ -399,6 +399,12 @@ export const pollForTask = (
         if (body.status === "successful") {
           throw Error(
             `Task ${taskName} completed without the expected ${until}`,
+          );
+        }
+
+        if (body.status === "cancelled" || body.status === "timed-out") {
+          throw Error(
+            `Task ${taskName} ended with status ${body.status}: ${body.error_message || "Unknown error"}`,
           );
         }
 
