@@ -470,7 +470,7 @@
   [m dim->group-name]
   (mapv (fn [d]
           (let [group-name (dim->group-name (:id d))
-                own-name   (dimension-display-name d)]
+                own-name   (or (block/dimension-label d) "")]
             (cond-> {:id (:id d) :group group-name}
               (not= own-name group-name) (assoc :name own-name))))
         (:dimensions m)))
