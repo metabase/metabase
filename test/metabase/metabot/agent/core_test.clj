@@ -852,7 +852,6 @@
   (let [query (lib/native-query (mt/metadata-provider) "select 1")
         chart-config {:display_type "pie"
                       :query query
-                      :image_base_64 "asdf"
                       :series {}
                       :timeline_events []}
         memory (-> (#'agent/init-agent {:profile-id :internal

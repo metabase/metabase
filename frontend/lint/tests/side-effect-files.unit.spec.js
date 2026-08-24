@@ -3,6 +3,7 @@ import path from "path";
 
 import {
   diffRegistry,
+  enforcedStale,
   listSourceFiles,
   scanEffectFiles,
   unimportedPackages,
@@ -24,14 +25,47 @@ describe("side-effect-files.json", () => {
   const registry = loadRegistry(DEFAULT_REGISTRY_PATH);
   const effectFiles = [...scanEffectFiles().keys()];
 
-  it("lists every file the rule reports and nothing else", () => {
+  it("lists every file the rule reports, with no stale global or entry entries", () => {
     const { missing, stale } = diffRegistry(registry, effectFiles);
     const report = [
-      ...missing.map((file) => `unregistered effect file: ${file}`),
-      ...stale.map((file) => `registered but clean: ${file}`),
+      ...missing.map(
+        (file) =>
+          `${file} gained an import-time effect: run \`bun frontend/lint/scripts/side-effect-files.js --update\`, then classify the new entry`,
+      ),
+      ...enforcedStale(registry, stale).map(
+        (file) =>
+          `${file} no longer has an import-time effect: remove its entry with \`bun frontend/lint/scripts/side-effect-files.js --update\``,
+      ),
     ];
-    // Run `bun frontend/lint/scripts/side-effect-files.js --update`, then classify the new entries.
     expect(report).toEqual([]);
+  });
+
+  it("fails a stale global or entry entry but tolerates a stale self one", () => {
+    const stubRegistry = {
+      facades: [],
+      files: {
+        "frontend/src/clean-entry.ts": "entry",
+        "frontend/src/clean-global.ts": "global",
+        "frontend/src/clean-self.ts": "self",
+        "frontend/src/effect-file.ts": "global",
+      },
+      packages: {},
+      patterns: [],
+      unclassified: new Set(),
+    };
+    const { stale } = diffRegistry(stubRegistry, [
+      "frontend/src/effect-file.ts",
+    ]);
+    // diffRegistry reports all three, so --update prunes the self entry too.
+    expect(stale).toEqual([
+      "frontend/src/clean-entry.ts",
+      "frontend/src/clean-global.ts",
+      "frontend/src/clean-self.ts",
+    ]);
+    expect(enforcedStale(stubRegistry, stale)).toEqual([
+      "frontend/src/clean-entry.ts",
+      "frontend/src/clean-global.ts",
+    ]);
   });
 
   it("is well formed", () => {
