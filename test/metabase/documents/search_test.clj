@@ -87,45 +87,50 @@
                   "User with write permissions should see archived documents in accessible collections"))))))))
 
 (deftest document-view-tracking-integration-test
-  (testing "Document view tracking integrates with search"
-    (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
-                                                 :document (documents.test-util/text->prose-mirror-ast "content")
-                                                 :view_count 0}]
-      (testing "Document has initial state"
-        (let [doc (t2/select-one :model/Document :id doc-id)]
-          (is (= 0 (:view_count doc)))
-          ;; last_viewed_at has a default timestamp from migration, not nil
-          (is (some? (:last_viewed_at doc)))))
-      (testing "Publishing document-read event works without errors"
-        ;; The actual view count increment is batched and asynchronous
-        ;; So we test that the event publishes successfully
-        (is (some? (events/publish-event! :event/document-read
-                                          {:object-id doc-id
-                                           :user-id (mt/user->id :crowberto)}))
-            "Document read event should publish successfully"))
-      (testing "Document with higher view count appears in search"
-        ;; Manually set view count to test search integration
-        (t2/update! :model/Document doc-id {:view_count 5
-                                            :last_viewed_at (t/offset-date-time)})
-        (search.tu/with-temp-index-table
-          (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
-                doc-results (filter #(= "document" (:model %)) (:data results))]
-            (when (seq doc-results)
-              (let [doc-result (first doc-results)]
-                (is (= doc-id (:id doc-result)))
-                ;; View count affects scoring but isn't directly in result
-                (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
-      (testing "Document with recent view appears in search results"
-        (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
-          (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
+  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
+  ;; its rollback could not take the rows back and they would leak to every later test that walks the
+  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
+  (search.tu/with-temp-index-table
+    (testing "Document view tracking integrates with search"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
+                                                   :document (documents.test-util/text->prose-mirror-ast "content")
+                                                   :view_count 0}]
+        (testing "Document has initial state"
+          (let [doc (t2/select-one :model/Document :id doc-id)]
+            (is (= 0 (:view_count doc)))
+            ;; last_viewed_at has a default timestamp from migration, not nil
+            (is (some? (:last_viewed_at doc)))))
+        (testing "Publishing document-read event works without errors"
+          ;; The actual view count increment is batched and asynchronous
+          ;; So we test that the event publishes successfully
+          (is (some? (events/publish-event! :event/document-read
+                                            {:object-id doc-id
+                                             :user-id (mt/user->id :crowberto)}))
+              "Document read event should publish successfully"))
+        (testing "Document with higher view count appears in search"
+          ;; Manually set view count to test search integration
+          (t2/update! :model/Document doc-id {:view_count 5
+                                              :last_viewed_at (t/offset-date-time)})
           (search.tu/with-temp-index-table
             (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                   doc-results (filter #(= "document" (:model %)) (:data results))]
               (when (seq doc-results)
                 (let [doc-result (first doc-results)]
                   (is (= doc-id (:id doc-result)))
-                  ;; User recency affects scoring
-                  (is (some #(= "user-recency" (:name %)) (:scores doc-result))))))))))))
+                  ;; View count affects scoring but isn't directly in result
+                  (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
+        (testing "Document with recent view appears in search results"
+          (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
+            (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+            (search.tu/with-temp-index-table
+              (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
+                    doc-results (filter #(= "document" (:model %)) (:data results))]
+                (when (seq doc-results)
+                  (let [doc-result (first doc-results)]
+                    (is (= doc-id (:id doc-result)))
+                    ;; User recency affects scoring
+                    (is (some #(= "user-recency" (:name %)) (:scores doc-result)))))))))))))
 
 (deftest document-content-search-test
   (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
