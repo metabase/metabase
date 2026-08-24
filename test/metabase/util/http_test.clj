@@ -207,12 +207,11 @@
     (is (thrown? ExceptionInfo
                  (http/address-allowed-for-network-policy? :allow-everything (InetAddress/getByName "127.0.0.1"))))))
 
-(deftest ^:parallel default-network-policy-test
-  (testing "the policy applied when a caller names none refuses a non-public address"
-    ;; `localhost` resolves to loopback (no network needed) -> must be refused
-    (is (thrown? ExceptionInfo
-                 (.resolve ^DnsResolver (http/network-policy-dns-resolver @#'http/default-network-policy)
-                           "localhost")))))
+(deftest ^:parallel default-network-policy-fn-test
+  (testing "before injection the default fails closed"
+    (is (= :external-only (@#'http/policy-or-default nil (constantly :external-only)))))
+  (testing "a caller's policy wins over the deployment default"
+    (is (= :allow-all (@#'http/policy-or-default :allow-all (constantly :external-only))))))
 
 (deftest ^:parallel network-policy-dns-resolver-test
   (testing ":allow-all imposes no restriction, so there is no resolver (clj-http uses its default)"
@@ -291,12 +290,17 @@
       (f @port)
       (finally (.stop server)))))
 
-(deftest request-applies-a-policy-by-default-test
-  (testing "a caller that names no policy still gets one"
+(deftest request-consults-the-deployment-default-test
+  (testing "a caller that names no policy gets whatever the deployment default resolves to"
     (do-with-redirect-server
      (fn [port]
-       (let [e (is (thrown? Exception (http/get (str "http://localhost:" port "/final") {})))]
-         (is (blocked-address-ex? e)))))))
+       (let [url (str "http://localhost:" port "/final")]
+         (testing "default external-only -> refused"
+           (with-redefs [http/default-network-policy-fn (constantly :external-only)]
+             (is (blocked-address-ex? (is (thrown? Exception (http/get url {})))))))
+         (testing "default allow-all -> allowed"
+           (with-redefs [http/default-network-policy-fn (constantly :allow-all)]
+             (is (= 200 (:status (http/get url {})))))))))))
 
 (deftest request-honors-an-explicit-policy-test
   (testing ":allow-all reaches a loopback server"
@@ -313,7 +317,8 @@
                           (.add "localhost" (addresses "127.0.0.1")))
              e          (is (thrown? Exception
                                      (http/get (str "http://localhost:" port "/final")
-                                               {:dns-resolver permissive})))]
+                                               {:network-policy :external-only
+                                                :dns-resolver   permissive})))]
          (is (blocked-address-ex? e)))))))
 
 (deftest request-policy-gates-redirect-hops-test
@@ -331,7 +336,8 @@
                                       (let [ip (.getHostAddress addr)]
                                         (swap! checked conj ip)
                                         (= "127.0.0.1" ip)))]
-             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start") {})))]
+             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start")
+                                                      {:network-policy :external-only})))]
                (is (blocked-address-ex? e))
                (is (contains? @checked "127.0.0.2")
                    "the redirect target was put through the policy check")))))))))
@@ -340,7 +346,8 @@
   (testing "a host written as an IP literal is checked, not waved through for having no name to resolve"
     (do-with-redirect-server
      (fn [port]
-       (let [e (is (thrown? Exception (http/get (str "http://127.0.0.1:" port "/final") {})))]
+       (let [e (is (thrown? Exception (http/get (str "http://127.0.0.1:" port "/final")
+                                                {:network-policy :external-only})))]
          (is (blocked-address-ex? e)))))))
 
 (deftest request-policy-gates-a-redirect-to-an-ip-literal-test
@@ -357,7 +364,8 @@
                                       (let [ip (.getHostAddress addr)]
                                         (swap! checked conj ip)
                                         (= "127.0.0.1" ip)))]
-             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start-ip") {})))]
+             (let [e (is (thrown? Exception (http/get (str "http://start.test:" port "/start-ip")
+                                                      {:network-policy :external-only})))]
                (is (blocked-address-ex? e))
                (is (contains? @checked "127.0.0.2")
                    "the IP-literal redirect target was put through the policy check")))))))))

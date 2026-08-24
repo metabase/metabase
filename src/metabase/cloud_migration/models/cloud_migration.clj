@@ -150,7 +150,13 @@
       (let [[stream length] (if (and start end)
                               [(sub-stream file-stream start end) (- end start)]
                               [file-stream (.length file)])]
-        (u.http/request {:method :put, :url url, :headers headers, :length length, :body stream})))))
+        ;; presigned URL handed to us by the store, so it does not take the deployment default
+        (u.http/request {:method         :put
+                         :url            url
+                         :network-policy :external-only
+                         :headers        headers
+                         :length         length
+                         :body           stream})))))
 
 ;; ~100mb
 (def ^:private part-size 100e6)

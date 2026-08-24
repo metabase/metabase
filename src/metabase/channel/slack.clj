@@ -292,8 +292,9 @@
                                                      :length   (count file)}}))
 
 (defn- upload-file-to-url! [upload-url file]
-  ;; upload-url comes from Slack's response, so it keeps the default policy
-  (let [response (u.http/post upload-url {:multipart [{:name "file", :content file}]})]
+  ;; upload-url comes from Slack's response, so it does not take the deployment default
+  (let [response (u.http/post upload-url {:network-policy :external-only
+                                          :multipart      [{:name "file", :content file}]})]
     (if (= (:status response) 200)
       response
       (throw (ex-info "Failed to upload file to Slack:" (select-keys response [:status :body]))))))

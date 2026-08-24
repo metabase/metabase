@@ -5,11 +5,11 @@
   draws pin tiles for the live app); the new part is fetching + stitching the OSM basemap under the
   overlay."
   (:require
-   [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [metabase.util.web-mercator :as mercator])
   (:import
@@ -90,12 +90,14 @@
   (memoize/ttl
    (fn [template ^long z ^long x ^long y]
      (let [url  (expand-tile-url template z x y)
-           resp (http/get url {:as                 :byte-array
-                               :socket-timeout     5000
-                               :connection-timeout 5000
-                               :throw-exceptions   false
-                               ;; OSM rejects requests without a valid User-Agent.
-                               :headers            {"User-Agent" "Metabase static map renderer"}})]
+           ;; the tile server URL is admin-set, so it takes the deployment default: external-only on Cloud,
+           ;; unrestricted self-hosted, where an internal tile server is an ordinary setup
+           resp (u.http/get url {:as                 :byte-array
+                                 :socket-timeout     5000
+                                 :connection-timeout 5000
+                                 :throw-exceptions   false
+                                 ;; OSM rejects requests without a valid User-Agent.
+                                 :headers            {"User-Agent" "Metabase static map renderer"}})]
        (when-not (= 200 (:status resp))
          (throw (ex-info (format "Tile fetch failed with status %d" (:status resp))
                          {:url url :status (:status resp)})))

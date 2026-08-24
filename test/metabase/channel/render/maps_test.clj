@@ -6,11 +6,14 @@
    [metabase.channel.render.maps :as maps]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
-   [metabase.util.match :as match])
+   [metabase.util.match :as match]
+   [ring.adapter.jetty :as ring-jetty])
   (:import
    (java.awt Color)
-   (java.io ByteArrayInputStream)
-   (javax.imageio ImageIO)))
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayInputStream ByteArrayOutputStream)
+   (javax.imageio ImageIO)
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,3 +76,34 @@
           ^Color high (grid-color 10.0 0.0 10.0)]
       (is (> (.getGreen low) (.getRed low)) "low end is greenish")
       (is (> (.getRed high) (.getGreen high)) "high end is reddish"))))
+
+;;; ---------------------------------------- tile server network policy ----------------------------------------
+
+(defn- one-pixel-png ^bytes []
+  (let [out (ByteArrayOutputStream.)]
+    (ImageIO/write (BufferedImage. 1 1 BufferedImage/TYPE_INT_RGB) "png" out)
+    (.toByteArray out)))
+
+(defn- do-with-tile-server
+  "Calls `f` with a template pointing at a local server that serves a real PNG for any tile."
+  [f]
+  (let [png            (one-pixel-png)
+        ^Server server (ring-jetty/run-jetty (fn [_] {:status  200
+                                                      :headers {"Content-Type" "image/png"}
+                                                      :body    (ByteArrayInputStream. png)})
+                                             {:join? false, :port 0})]
+    (try
+      (f (str "http://localhost:" (.. server getURI getPort) "/{z}/{x}/{y}.png"))
+      (finally (.stop server)))))
+
+(deftest tile-fetch-follows-the-deployment-default-test
+  (testing "self-hosted, a tile server on the local network is fetched"
+    (do-with-tile-server
+     (fn [template]
+       (mt/with-premium-features #{}
+         (is (some? (#'maps/fetch-tile template 1 0 0)))))))
+  (testing "hosted, the same tile server is refused — an internal address there is not a tile server"
+    (do-with-tile-server
+     (fn [template]
+       (mt/with-premium-features #{:hosting}
+         (is (nil? (#'maps/fetch-tile template 2 0 0))))))))

@@ -175,13 +175,21 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:blocked-address true :policy policy :host host}))))))))
 
-(def ^:private default-network-policy
-  "The policy [[request]] applies when a caller does not name one."
-  :external-only)
+(def default-network-policy-fn
+  "Returns the policy [[request]] applies when a caller names none: the `outbound-http-allowed-networks` setting.
+  Dependency-injected by `metabase.premium-features.settings`, because `util` sits below `premium-features` in the
+  module graph and cannot ask whether we are hosted. Until that injection runs the answer is `:external-only`, which
+  fails closed."
+  (constantly :external-only))
 
 (def ^:private policy->dns-resolver
   "[[network-policy-dns-resolver]], cached per policy."
   (memoize network-policy-dns-resolver))
+
+(defn- policy-or-default
+  "`policy` if the caller named one, otherwise whatever `default-fn` resolves to."
+  [policy default-fn]
+  (or policy (default-fn)))
 
 (defn request
   "Make an outbound HTTP request. `opts` is a clj-http option map, plus:
@@ -200,7 +208,7 @@
   ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
   (when (nil? url)
     (throw (IllegalArgumentException. "Host URL cannot be nil")))
-  (let [resolver (policy->dns-resolver (or network-policy default-network-policy))]
+  (let [resolver (policy->dns-resolver (policy-or-default network-policy default-network-policy-fn))]
     (http/request (-> opts
                       (dissoc :network-policy :dns-resolver)
                       (m/assoc-some :dns-resolver resolver)))))
@@ -284,6 +292,8 @@
    (when (safe-url? url)
      (try
        (let [resp              (get url {:as                 :stream
+                                         ;; the URL is untrusted, so this does not take the deployment default
+                                         :network-policy     :external-only
                                          :redirect-strategy  :none
                                          :socket-timeout     timeout-ms
                                          :connection-timeout timeout-ms

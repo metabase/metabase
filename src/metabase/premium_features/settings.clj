@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.http :as u.http]
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
@@ -455,3 +456,35 @@
   :visibility :internal
   :export?    false
   :doc        false)
+
+;;; ---------------------------------------- outbound HTTP network policy ----------------------------------------
+
+(defsetting outbound-http-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may open outbound HTTP connections to.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+                     "A feature whose destination is not ours to trust may pin a stricter policy of its own."))
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  ;; No `:default`, because it depends on where we are running. On Cloud an internal destination is somebody
+  ;; reaching for our own infrastructure. Self-hosted, an internal service is the ordinary case, and defaulting to
+  ;; anything stricter would break working instances on upgrade.
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :outbound-http-allowed-networks)
+                    (if (is-hosted?)
+                      :external-only
+                      :allow-all)))
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru (str "Invalid outbound-http-allowed-networks! Only values of `external-only`, "
+                                    "`allow-private`, and `allow-all` are allowed."))))
+                (setting/set-value-of-type! :keyword :outbound-http-allowed-networks new-value)))
+
+;; `util.http` sits below `premium-features` in the module graph and cannot ask whether we are hosted, so hand it
+;; the getter. Until this runs its default is `:external-only`, which fails closed.
+(alter-var-root #'u.http/default-network-policy-fn (constantly outbound-http-allowed-networks))
