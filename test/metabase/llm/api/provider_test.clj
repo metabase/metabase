@@ -123,6 +123,17 @@
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
                (:required_any google)))))))
 
+(deftest provider-types-hosted-bedrock-test
+  (testing "the listed Bedrock entry carries hosted policy, so the form asks for the keys the backend will demand"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock (->> (mt/user-http-request :crowberto :get 200 "llm/provider-types")
+                         (filter #(= "bedrock" (:type %)))
+                         first)]
+        (is (= [["access-key-id" "secret-access-key"]]
+               (:required_any bedrock)))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (->> bedrock :fields (filter #(= "access-key-id" (:key %))) first :help)))))))
+
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
     (testing "the managed provider leads the list when the LLM proxy is configured"

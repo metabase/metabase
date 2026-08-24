@@ -205,6 +205,17 @@
       (is (false? (llm.provider/hosted?)))
       (is (nil? (llm.provider/validate-config! "bedrock" {}))))))
 
+(deftest provider-types-carry-hosted-policy-test
+  (testing "enumeration applies hosted policy too, so the connection form sees the same requirements as validation"
+    (mt/with-premium-features #{:hosting}
+      (let [bedrock (->> (llm.provider/provider-types) (filter #(= "bedrock" (:type %))) first)]
+        (is (= [[:access-key-id :secret-access-key]] (:required-any bedrock)))
+        (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+               (str (->> bedrock :fields (filter #(= :access-key-id (:key %))) first :help))))))
+    (testing "and leaves the self-hosted entry alone"
+      (let [bedrock (->> (llm.provider/provider-types) (filter #(= "bedrock" (:type %))) first)]
+        (is (nil? (:required-any bedrock)))))))
+
 (deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"
     (is (thrown-with-msg?

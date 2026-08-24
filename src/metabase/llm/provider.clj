@@ -332,7 +332,7 @@
 (defn provider-types
   "Every registered provider type."
   []
-  provider-type-registry)
+  (mapv (comp provider-type :type) provider-type-registry))
 
 (defn managed-type?
   "Whether `type-name` is the Metabase-managed provider, which authenticates with the instance token through the LLM
