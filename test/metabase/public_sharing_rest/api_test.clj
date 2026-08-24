@@ -157,8 +157,8 @@
                                :aggregation  [["count" {:lib/uuid string?}]]}]}
                   dataset_query)))))))
 
-(deftest fetch-card-strips-native-query-keeps-parameter-tags-test
-  (testing "GET /api/public/card/:uuid strips the native query text but keeps parameter template tags"
+(deftest fetch-card-strips-native-query-test
+  (testing "GET /api/public/card/:uuid strips the native query text and its template tags"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/NativeQuerySnippet snippet {:name "greeting" :content "'hello'"}]
         (with-temp-public-card
@@ -180,14 +180,11 @@
                                          :display-name "Snippet: Greeting"
                                          :snippet-id   (:id snippet)}}))})]
           (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
-            (is (=? {:lib/type "mbql/query"
-                     :database (mt/id)
-                     :stages   [{:lib/type      "mbql.stage/native"
-                                 :native        "{{price}}"
-                                 :template-tags [{:name        "price"
-                                                  :type        "dimension"
-                                                  :widget-type "category"}]}]}
-                    dataset_query))))))))
+            (is (= {:lib/type "mbql/query"
+                    :database (mt/id)
+                    :stages   [{:lib/type "mbql.stage/native"
+                                :native   "-"}]}
+                   dataset_query))))))))
 
 (deftest fetch-dashboard-strips-dataset-query-test
   (testing "GET /api/public/dashboard/:uuid replaces each Card's query with a blank query so its contents are not exposed"
