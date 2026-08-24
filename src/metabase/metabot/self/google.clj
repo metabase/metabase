@@ -371,23 +371,27 @@
   ;; the API is not available in this location.
   (contains? #{404 501} status))
 
+(defn- google-res->msg
+  "The `res->message` callback for [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]]."
+  [credentials]
+  (let [endpoint (delay (try (api-base-url credentials) (catch Exception _ nil)))]
+    (fn [res]
+      (cond-> (google-error-msg res)
+        (and (include-endpoint-in-msg? (:status res)) @endpoint)
+        (str " " (tru "(endpoint: {0})" @endpoint))))))
+
 (defn- rethrow-google-api-error!
   "Rethrows a Google HTTP exception like [[core/rethrow-api-error!]], with two changes:
 
   - For a status that satisfies [[include-endpoint-in-msg?]], the message includes the endpoint URL.
   - For 404s include a hint to check that the provided location is correct."
   [credentials e]
-  (let [data        (ex-data e)
-        location    (:location credentials)
-        known?      (conj multi-region-locations global-location)
-        endpoint    (delay (try (api-base-url credentials) (catch Exception _ nil)))
-        res->msg    (fn [res]
-                      (cond-> (google-error-msg res)
-                        (and (include-endpoint-in-msg? (:status res)) @endpoint)
-                        (str " " (tru "(endpoint: {0})" @endpoint))))]
+  (let [data     (ex-data e)
+        location (:location credentials)
+        known?   (conj multi-region-locations global-location)]
     (core/rethrow-api-error!
      "google"
-     res->msg
+     (google-res->msg credentials)
      (if (and location
               (= 404 (:status data))
               (not (known? location))
@@ -489,13 +493,14 @@
   `:ai-proxy?` is not supported and throws when it is true."
   [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
-  (let [family (model->family model)
-        req    (case family
-                 :anthropic (raw-predict/request-body (model-id model) opts)
-                 :google    (stream-generate-content/request-body opts))
-        method (case family
-                 :anthropic raw-predict-method
-                 :google    generate-content-method)]
+  (let [family   (model->family model)
+        req      (case family
+                   :anthropic (raw-predict/request-body (model-id model) opts)
+                   :google    (stream-generate-content/request-body opts))
+        method   (case family
+                   :anthropic raw-predict-method
+                   :google    generate-content-method)
+        res->msg (google-res->msg credentials)]
     (with-span :info {:name       :metabot.google/request
                       :model      model
                       :msg-count  (count input)
@@ -513,7 +518,8 @@
               (debug/capture-stream {:provider "google"
                                      :model    model
                                      :url      url
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "google" res->msg)))
         (catch Exception e
           (rethrow-google-api-error! credentials e))))))
 

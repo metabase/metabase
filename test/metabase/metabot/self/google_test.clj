@@ -14,6 +14,7 @@
   (:import
    (com.google.auth.oauth2 GoogleCredentials ServiceAccountCredentials)
    (java.io IOException)
+   (java.net SocketTimeoutException)
    (java.security KeyPairGenerator)
    (java.util Base64)))
 
@@ -111,9 +112,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:method  :post
                  :url     (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                                "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
@@ -127,9 +129,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                            "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
                 (google-raw {:input [{:role :user :content "hi"}]})))))))
@@ -140,9 +143,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (let [req (google-raw {:model "google/gemini-3.5-flash"
                                :input [{:role :user :content "hi"}]})]
           (is (=? {:as      :stream
@@ -157,9 +161,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            "us-central1"]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:url (str "https://us-central1-aiplatform.googleapis.com/v1/projects/my-project"
                            "/locations/us-central1/publishers/google/models"
                            "/gemini-3.5-flash:streamGenerateContent?alt=sse")}
@@ -172,9 +177,10 @@
                                          llm.settings/llm-google-service-account-key nil
                                          llm.settings/llm-google-project-id          "my-project"
                                          llm.settings/llm-google-location            location]
-        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                    debug/capture-stream    (fn [r _] r)
-                                    http/request            (fn [req] {:body req})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    http/request                        (fn [req] {:body req})]
           (is (=? {:url (format (str "https://aiplatform.%s.rep.googleapis.com"
                                      "/v1/projects/my-project/locations/%s"
                                      "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
@@ -269,9 +275,10 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            "us-central1"
                                        llm.settings/llm-google-api-base-url        "https://gemini.proxy.example.com"]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:url (str "https://gemini.proxy.example.com/v1/projects/my-project/locations/us-central1"
                            "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
                 (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
@@ -318,9 +325,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:method  :post
                  :url     (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                                "/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
@@ -334,9 +342,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (let [req  (google-raw {:model  "anthropic/claude-haiku-4-5@20251001"
                                 :system "You are terse."
                                 :input  [{:role :user :content "hi"}]})
@@ -359,9 +368,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
                                     "anthropic/claude-fable-5"             128000
                                     "anthropic/claude-haiku-4-5@20251001"   64000}]
@@ -428,9 +438,10 @@
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
-      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                  debug/capture-stream    (fn [r _] r)
-                                  http/request            (fn [req] {:body req})]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                                  debug/capture-stream                (fn [r _] r)
+                                  http/request                        (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
                            "/publishers/anthropic/models/claude-sonnet-4-5@20250929:streamRawPredict")}
                 (google-raw {:model "anthropic/claude-sonnet-4-5@20250929"
@@ -464,10 +475,11 @@
                                          llm.settings/llm-google-service-account-key sa-key
                                          llm.settings/llm-google-project-id          nil
                                          llm.settings/llm-google-location            nil]
-        (mt/with-dynamic-fn-redefs [self.core/sse-reducible     identity
-                                    debug/capture-stream        (fn [r _] r)
-                                    http/request                (fn [req] {:body req})
-                                    google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    http/request                        (fn [req] {:body req})
+                                    google/fresh-bearer-headers         (constantly {"Authorization" "Bearer test-sa-token"})]
           (is (=? {:url     (str "https://aiplatform.googleapis.com/v1/projects/json-project/locations/global"
                                  "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")
                    :headers {"Authorization" "Bearer test-sa-token"}}
@@ -480,10 +492,11 @@
                                          llm.settings/llm-google-service-account-key sa-key
                                          llm.settings/llm-google-project-id          "explicit-project"
                                          llm.settings/llm-google-location            nil]
-        (mt/with-dynamic-fn-redefs [self.core/sse-reducible     identity
-                                    debug/capture-stream        (fn [r _] r)
-                                    http/request                (fn [req] {:body req})
-                                    google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    http/request                        (fn [req] {:body req})
+                                    google/fresh-bearer-headers         (constantly {"Authorization" "Bearer test-sa-token"})]
           (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/explicit-project/locations/global"
                              "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
                   (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
@@ -495,10 +508,11 @@
                                          llm.settings/llm-google-service-account-key sa-key
                                          llm.settings/llm-google-project-id          nil
                                          llm.settings/llm-google-location            nil]
-        (mt/with-dynamic-fn-redefs [self.core/sse-reducible     identity
-                                    debug/capture-stream        (fn [r _] r)
-                                    http/request                (fn [req] {:body req})
-                                    google/fresh-bearer-headers (constantly {"Authorization" "Bearer test-sa-token"})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    http/request                        (fn [req] {:body req})
+                                    google/fresh-bearer-headers         (constantly {"Authorization" "Bearer test-sa-token"})]
           (is (=? {:headers {"Authorization" "Bearer test-sa-token"}}
                   (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]}))))))))
 
@@ -881,9 +895,10 @@
             inference-calls (atom [])]
         (mt/with-dynamic-fn-redefs [http/request (stub-error probe-calls 400 anthropic-validation-error-body)]
           (list-models {:model "anthropic/claude-haiku-4-5@20251001"}))
-        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
-                                    debug/capture-stream    (fn [r _] r)
-                                    http/request            (fn [req] (swap! inference-calls conj req) {:body req})]
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible             identity
+                                    self.core/reducible-with-api-errors (fn [r _ _] r)
+                                    debug/capture-stream                (fn [r _] r)
+                                    http/request                        (fn [req] (swap! inference-calls conj req) {:body req})]
           (google-raw {:model "anthropic/claude-haiku-4-5@20251001" :input [{:role :user :content "hi"}]}))
         (is (= (:url (first @inference-calls))
                (:url (first @probe-calls))))))))
@@ -1075,6 +1090,48 @@
                       "(endpoint: https://nowhere1-aiplatform.googleapis.com) — "
                       "check that \"nowhere1\" is a valid location")
                  (ex-message e))))))))
+
+(deftest google-raw-mid-stream-failure-is-translated-test
+  (testing "a failure while consuming the stream surfaces as a tagged Google error, not a raw IOException"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible (fn [_]
+                                                            (reify clojure.lang.IReduceInit
+                                                              (reduce [_ _rf _init]
+                                                                (throw (IOException. "Connection reset")))))
+                                  debug/capture-stream    (fn [r _] r)
+                                  http/request            (fn [_] {:body nil})]
+        (let [e (try (into [] (google-raw {:model "google/gemini-3.5-flash"
+                                           :input [{:role :user :content "hi"}]}))
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (=? {:api-error  true
+                   :provider   "google"
+                   :error-code :provider-request-failed}
+                  (ex-data e)))
+          (is (= "google API request failed: Connection reset" (ex-message e))))))))
+
+(deftest google-raw-anthropic-mid-stream-failure-is-translated-test
+  (testing "an Anthropic partner model's stream gets the same translation as a Gemini model's"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible (fn [_]
+                                                            (reify clojure.lang.IReduceInit
+                                                              (reduce [_ _rf _init]
+                                                                (throw (SocketTimeoutException. "Read timed out")))))
+                                  debug/capture-stream    (fn [r _] r)
+                                  http/request            (fn [_] {:body nil})]
+        (let [e (try (into [] (google-raw {:model "anthropic/claude-haiku-4-5@20251001"
+                                           :input [{:role :user :content "hi"}]}))
+                     (catch clojure.lang.ExceptionInfo e e))]
+          (is (=? {:api-error  true
+                   :provider   "google"
+                   :error-code :provider-request-failed}
+                  (ex-data e)))
+          (is (= "google API request failed: Read timed out" (ex-message e))))))))
 
 (deftest list-models-invalid-request-maps-to-google-error-test
   (testing "a 400 from the countTokens probe surfaces the canonical message with the upstream detail"
