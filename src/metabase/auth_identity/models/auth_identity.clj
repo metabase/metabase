@@ -7,6 +7,8 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -75,8 +77,11 @@
 
 (t2/define-before-insert :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
-  (provider/validate (provider/provider-string->keyword provider) auth-identity)
-  auth-identity)
+  (u/prog1 (cond-> auth-identity
+             (and (= provider "password")
+                  (contains? auth-identity :credentials))
+             (update :credentials hash-password-credentials))
+    (provider/validate (provider/provider-string->keyword provider) <>)))
 
 (t2/define-before-update :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
@@ -106,15 +111,6 @@
 (t2/define-after-update :model/AuthIdentity
   [{:keys [user_id provider credentials] :as auth-identity}]
   (cond
-    ;; Handle password provider - sync to User table
-    (= provider "password")
-    (let [{:keys [password_hash password_salt]} credentials]
-      (when (and password_hash password_salt)
-        (t2/update! :model/User user_id
-                    {:password password_hash
-                     :password_salt password_salt})))
-
-    ;; Handle emailed-secret-password-reset provider - sync reset tokens to User table
     (= provider "emailed-secret-password-reset")
     (let [{:keys [token_hash expires_at consumed_at]} credentials]
       (log/debugf "Syncing emailed-secret-password-reset AuthIdentity update to User %s" user_id)
@@ -133,3 +129,28 @@
                       {:reset_token token_hash
                        :reset_triggered reset-triggered})))))
   auth-identity)
+
+(mu/defn set-password!
+  "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
+  authoritative credential store — and invalidating any existing sessions. This is the only supported way to set a
+  user's password; the User model itself no longer stores, hashes, or mirrors passwords.
+
+  `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
+  support-access grants)."
+  ([user-id  :- ms/PositiveInt
+    password :- ms/NonBlankString]
+   (set-password! user-id password nil))
+
+  ([user-id  :- ms/PositiveInt
+    password :- ms/NonBlankString
+    opts     :- [:maybe
+                 [:map
+                  [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
+   (let [expires-at (:expires-at opts)
+         attrs      (cond-> {:credentials {:plaintext_password password}}
+                      (some? expires-at) (assoc :expires_at expires-at))]
+     (t2/with-transaction [_]
+       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
+         (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs)))
+       (t2/delete! :model/Session :user_id user-id)))))

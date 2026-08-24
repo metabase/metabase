@@ -2,6 +2,7 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
@@ -193,5 +194,5 @@
       (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
     (t2/with-transaction [_]
       (t2/update! :model/AuthIdentity (:id auth-identity) (mark-token-consumed auth-identity))
-      (t2/update! :model/User (:id user) {:password password})))
+      (auth-identity/set-password! (:id user) password)))
   result)

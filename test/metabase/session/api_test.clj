@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
@@ -415,7 +416,8 @@
     (mt/with-fake-inbox
       (let [password {:old "password"
                       :new "whateverUP12!!"}]
-        (mt/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+        (mt/with-temp [:model/User {:keys [email id]} {:reset_triggered (System/currentTimeMillis)}]
+          (auth-identity/set-password! id (:old password))
           (let [token (u/prog1 (str id "_" (random-uuid))
                         (t2/update! :model/User id {:reset_token <>}))
                 creds {:old {:password (:old password)
@@ -703,8 +705,9 @@
   (testing "LDAP login - fallback to local for broken LDAP settings"
     (ldap.test/with-ldap-server!
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                      :password "1234"}]
+        (mt/with-temp [:model/User {user-id :id} {:email    "sally.brown@metabase.com"
+                                                  :password "1234"}]
+          (auth-identity/set-password! user-id "1234")
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                       :password "1234"}))))))))
@@ -715,8 +718,9 @@
       (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
         (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
                                                                                       (Thread/sleep 500))]
-          (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                        :password "1234"}]
+          (mt/with-temp [:model/User {user-id :id} {:email    "sally.brown@metabase.com"
+                                                    :password "1234"}]
+            (auth-identity/set-password! user-id "1234")
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                         :password "1234"})))))))))

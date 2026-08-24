@@ -24,7 +24,6 @@
    [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
@@ -125,48 +124,12 @@
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 
-(defn- prepare-password-for-insert
-  "Hash password and prepare password fields for insertion.
-  Throws an exception if password_salt is already present (passwords should not be pre-hashed)."
+(defn- without-password-fields
+  "Remove password fields from a User map. Login passwords live only in the user's `password` AuthIdentity (set via
+  [[metabase.auth-identity.core/set-password!]]); the legacy `core_user.password` / `.password_salt` columns are no
+  longer read or written by this codebase, so we drop any incoming values rather than persisting them (as plaintext)."
   [user]
-  (when (contains? user :password_salt)
-    (throw (ex-info "Don't try to hash passwords yourself" {})))
-  (let [pw (or (:password user) (random-uuid))
-        salt (str (random-uuid))
-        hash (u.password/hash-bcrypt (str salt pw))]
-    {:password hash
-     :password_salt salt}))
-
-(defn- prepare-password-for-update
-  "Conditionally hash password for updates. Returns password fields or nil.
-  Only hashes if password is present and password_salt is not (indicating a plaintext password)."
-  [{:keys [password password_salt]}]
-  (when (and password (not password_salt))
-    (prepare-password-for-insert {:password password})))
-
-(defn- sync-password-to-auth-identity!
-  "Synchronize password changes to AuthIdentity model and invalidate sessions."
-  [user-id]
-  (let [{salt :password_salt password :password} (t2/select-one [:model/User :email :password :password_salt] user-id)
-        pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-    (when (and password salt)
-      (cond
-        (nil? pw-auth-identity)
-        (t2/with-transaction [_]
-          (t2/insert! :model/AuthIdentity {:user_id user-id
-                                           :provider "password"
-                                           :credentials {:password_hash password
-                                                         :password_salt salt}})
-          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
-
-        (or (not= password (get-in pw-auth-identity [:credentials :password_hash]))
-            (not= salt (get-in pw-auth-identity [:credentials :password_salt])))
-        (t2/with-transaction [_]
-          (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) {:credentials {:password_hash password
-                                                                                     :password_salt salt}})
-          (t2/delete! (t2/table-name :model/Session) :user_id user-id))
-
-        :else nil))))
+  (dissoc user :password :password_salt))
 
 ;;; -------------------------------------------------- Admin Group Management --------------------------------------------------
 
@@ -220,28 +183,12 @@
          (not (re-matches #"^\$2[ab]\$.*" (:reset_token user))))
     (update :reset_token u.password/hash-bcrypt)))
 
-(methodical/defmethod t2.pipeline/results-transform [#_query-type :toucan.query-type/insert.instances
-                                                     #_model :model/User]
-  "Create the initial :model/AuthIdenity from the results of saving a user. We have to do it here rather than in
-  define-after-insert because we need to get the hashed password and salt to save to the auth-identity model, and
-  those fields are removed by the default-files transformer before after-insert is called."
-  [query-type model]
-  (comp (map (fn [{:keys [password password_salt id] :as user}]
-               (u/prog1 user
-                 (when (and password password_salt)
-                   (t2/insert! :model/AuthIdentity {:user_id id
-                                                    :provider "password"
-                                                    :credentials {:password_hash password
-                                                                  :password_salt password_salt}})))))
-        (binding [t2.default-fields/*skip-default-fields* false]
-          (next-method query-type model))))
-
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)
   (-> (merge insert-default-values user)
       normalize-user-fields
-      (merge (prepare-password-for-insert user))))
+      without-password-fields))
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
@@ -262,8 +209,7 @@
       (perms/allow-changing-all-users-group-members
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    (sync-password-to-auth-identity! user-id)))
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -273,19 +219,16 @@
          active? :is_active} changes
         in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
                                               :group_id (:id (perms/admin-group))
-                                              :user_id id)
-        hashed-pw (prepare-password-for-update changes)]
+                                              :user_id id)]
     (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
-    (merge user
-           (normalize-user-fields (t2/changes user))
-           hashed-pw
-           (when (or hashed-pw (and (contains? changes :password) (contains? changes :password_salt)))
-             {:reset_token nil :reset_triggered nil})
-           (prepare-archival-timestamp active?))))
+    (-> user
+        (merge (normalize-user-fields (t2/changes user))
+               (prepare-archival-timestamp active?))
+        without-password-fields)))
 
 (t2/define-after-update :model/User
   [{:keys [id] :as user}]
@@ -295,7 +238,6 @@
         current-auth-identity (t2/select-one :model/AuthIdentity
                                              :user_id id
                                              :provider "emailed-secret-password-reset")]
-    (sync-password-to-auth-identity! id)
     (cond
       ;; Token being cleared - mark as consumed in AuthIdentity
       (and (nil? reset_token) current-auth-identity)
