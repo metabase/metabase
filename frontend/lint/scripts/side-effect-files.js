@@ -1,5 +1,5 @@
 // Generates frontend/lint/side-effect-files.json by linting the whole tree with `metabase/no-module-side-effects`.
-// Without a flag it exits 1 on drift, `--update` adds new files as unclassified and drops clean ones, `--verbose` prints every finding.
+// Without a flag it exits 1 when the registry has drifted, `--update` adds new files as unclassified and drops clean ones, and `--verbose` prints every finding.
 
 const fs = require("fs");
 const path = require("path");
@@ -70,7 +70,7 @@ function createLinter() {
   ];
   return (file) => {
     const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
-    // The registry records what a file itself does at import, so its imports of other listed files do not count.
+    // The registry records what a file itself does at import, so its imports of other listed files don't count.
     return linter
       .verify(source, config, { filename: path.join(REPO_ROOT, file) })
       .filter(
@@ -131,7 +131,7 @@ function diffRegistry(registry, effectFiles) {
   return { missing, stale };
 }
 
-// A stale "global" or "entry" entry keeps rejecting imports of a clean file, a stale "self" entry affects nothing.
+// A stale "global" or "entry" entry keeps rejecting imports of a clean file, whereas a stale "self" entry affects nothing.
 function enforcedStale(registry, stale) {
   return stale.filter((file) => classify(registry, file) !== "self");
 }

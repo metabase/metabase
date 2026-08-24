@@ -1,6 +1,5 @@
-// Reports code that runs at import time in a file declared side-effect free.
-// Rspack drops unused files in SIDE_EFFECT_FREE_PATHS from production bundles, so import-time work there is lost.
-// eslint.config.mjs applies the rule to those directories automatically.
+// Reports code that runs at import time in a file rspack treats as side-effect-free.
+// Rspack drops such a file from production bundles when nothing uses its exports, so anything it does at import is lost.
 
 const fs = require("fs");
 const path = require("path");
@@ -21,8 +20,8 @@ const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 
 const registries = new Map();
 
-// Calls to these only return a value, so a module-scope call to them is not reported.
-// A name matches the imported binding or a property called on it (`memo`, `Button.extend`).
+// Calls to these only return a value, so we don't report them at module scope.
+// A name matches the imported binding or a property called on it, so `extend` covers `Button.extend`.
 const DEFAULT_PURE_CALLEES = [
   {
     module: "react",
@@ -76,7 +75,7 @@ const DEFAULT_PURE_CALLEES = [
   { module: "underscore", names: ["compose", "memoize", "once"] },
 ];
 
-// These change their first argument, so it is the argument that gets judged.
+// These change their first argument, so we report on the argument rather than the call.
 const FIRST_ARGUMENT_MUTATORS = new Set([
   "Object.assign",
   "Object.defineProperty",
@@ -100,7 +99,7 @@ const CONTROL_FLOW_STATEMENTS = new Set([
   "DebuggerStatement",
 ]);
 
-// Function bodies run later, class bodies are not inspected, and a control-flow statement is reported once as a whole.
+// Anything under one of these is skipped: function bodies run later, class bodies aren't inspected, and a control-flow statement is reported once as a whole.
 const NOT_MODULE_SCOPE = new Set([
   "FunctionDeclaration",
   "FunctionExpression",
@@ -163,16 +162,16 @@ module.exports = {
           },
           internalModules: {
             type: "array",
-            // Alias roots that resolve inside the repo, such as "metabase".
+            // Import roots that resolve inside the repo, such as "metabase".
             items: { type: "string" },
           },
           sideEffectRegistry: {
-            // Default frontend/lint/side-effect-files.json.
+            // Defaults to frontend/lint/side-effect-files.json.
             type: "string",
           },
           sourceRoots: {
             type: "array",
-            // Default the tsconfig `*` roots.
+            // Defaults to the tsconfig `*` roots.
             items: { type: "string" },
           },
         },
@@ -181,21 +180,21 @@ module.exports = {
     ],
     messages: {
       bareImport:
-        "`import '{{source}}'` loads that file only for what it does at import, so move that work into a file listed in SIDE_EFFECT_PATHS or import it from an app entry.",
+        "`import '{{source}}'` is only there for what the file does at import, so move that work into a file in SIDE_EFFECT_PATHS or import it from an app entry.",
       callOnImport:
-        "`{{callee}}` is called at import time, so mark it `/* #__PURE__ */` or add it to pureCallees if it only returns a value, otherwise move it inside a function.",
+        "`{{callee}}` runs at import time. If it only returns a value, mark it `/* #__PURE__ */` or add it to pureCallees, otherwise move it inside a function.",
       callAtModuleScope:
-        "`{{callee}}` is called at import time with its result unused, so move it inside a function or into a file listed in SIDE_EFFECT_PATHS.",
+        "`{{callee}}` runs at import time and its result is thrown away, so move it inside a function or into a file in SIDE_EFFECT_PATHS.",
       assignToImport:
-        "`{{target}}` is an import changed at import time, so move the change into a file listed in SIDE_EFFECT_PATHS.",
+        "`{{target}}` is an import that gets changed at import time, so move the change into a file in SIDE_EFFECT_PATHS.",
       assignToGlobal:
-        "`{{target}}` is global state written at import time, so move the write into a file listed in SIDE_EFFECT_PATHS or an app entry.",
+        "`{{target}}` is global state written at import time, so move the write into a file in SIDE_EFFECT_PATHS or an app entry.",
       topLevelAwait:
         "Top-level await runs at import time, so move it into a function called from an app entry.",
       controlFlow:
-        "`{{kind}}` at module scope runs at import time, so move it inside a function or into a file listed in SIDE_EFFECT_PATHS.",
+        "`{{kind}}` at module scope runs at import time, so move it inside a function or into a file in SIDE_EFFECT_PATHS.",
       importsGlobalEffect:
-        "'{{source}}' does work at import that code outside it relies on, so import it from an app entry or list this file in SIDE_EFFECT_PATHS.",
+        "'{{source}}' does work at import that code outside it relies on, so import it from an app entry or add this file to SIDE_EFFECT_PATHS.",
       importsGlobalEffectPackage:
         "'{{source}}' does work at import that code outside it relies on, so import it from an app entry or through the vendor's facade.",
     },
@@ -226,7 +225,7 @@ module.exports = {
       );
     }
 
-    // Collected over the whole file before any expression is judged, so a function declared below its call site still counts as local.
+    // Collected over the whole file before anything is checked, so a function declared below its call site still counts as local.
     const localNames = new Set();
     const importBindings = new Map();
 
@@ -291,7 +290,7 @@ module.exports = {
       });
     }
 
-    // A call whose result is kept is reported only when it goes into a third-party package, our own code and `new` are trusted to only return a value.
+    // A call whose result is kept is only reported when it goes into a third-party package, since we trust our own code and `new` to only return a value.
     function checkCall(node, inStatement) {
       if (isPureAnnotated(node)) {
         return;
@@ -366,7 +365,7 @@ module.exports = {
       context.report({ node, messageId: "bareImport", data: { source } });
     }
 
-    // A file imported with bindings is dropped from the bundle together with this file.
+    // A file imported for its bindings is dropped from the bundle along with this file.
     function checkBindingImport(node) {
       const source = node.source.value;
       const target = resolveImport(source, path.dirname(filename), sourceRoots);
@@ -503,7 +502,7 @@ module.exports = {
   },
 };
 
-// "skipped" under a function, a class body or a control-flow statement, "statement" when the value is thrown away, "value" when it is kept.
+// Returns "skipped" under a function, a class body or a control-flow statement, "statement" when the value is thrown away, and "value" when it is kept.
 function placementOf(node) {
   let placement = null;
   for (let current = node; current.parent != null; current = current.parent) {

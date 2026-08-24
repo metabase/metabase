@@ -1211,7 +1211,7 @@ const configs = [
   // SIDE-EFFECT-FREE MODULES
   // ============================================
   {
-    // Rspack drops unused files in these directories from production bundles, so import-time work there is lost.
+    // Run the lint on the directories rspack treats as side-effect-free
     files: SIDE_EFFECT_FREE_PATHS.map(
       (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
     ),

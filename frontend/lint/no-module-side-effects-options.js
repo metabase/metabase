@@ -2,11 +2,10 @@ const {
   SIDE_EFFECT_PATHS,
 } = require("../build/shared/rspack/side-effect-free-modules.js");
 
-// The options eslint.config.mjs passes to `metabase/no-module-side-effects`.
-// The registry generator (scripts/side-effect-files.js) lints with the same object.
+// Options for metabase/no-module-side-effects, shared by eslint.config.mjs and the registry generator.
 const NO_MODULE_SIDE_EFFECTS_OPTIONS = {
   sideEffectPaths: SIDE_EFFECT_PATHS,
-  // A module-scope call into one of these counts as our own code.
+  // Calls into these count as our own code, which we trust to only return a value.
   internalModules: [
     "metabase",
     "metabase-lib",
