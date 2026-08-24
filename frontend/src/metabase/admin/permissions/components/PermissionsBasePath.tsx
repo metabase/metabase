@@ -21,10 +21,12 @@ type PermissionsBasePathProps = {
  * render before any effect runs, and their first render already builds URLs.
  * Only one permissions editor is mounted at a time, so the write is safe.
  *
- * Unmounting restores the admin default. Without that, a session that visited
- * the hub's Permissions tab would keep building hub URLs everywhere else —
+ * Admin wraps its own routes in this too, so navigating from the hub's tab back
+ * to `/admin/permissions` restores the default during admin's own render,
+ * before any child builds a URL. Unmounting resets it as well, which covers
+ * leaving the editor for somewhere that is not admin permissions —
  * `ConversationHeader` links a group to the permissions editor from Monitor,
- * and would send the user into the hub.
+ * and would otherwise send the user into the hub.
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
