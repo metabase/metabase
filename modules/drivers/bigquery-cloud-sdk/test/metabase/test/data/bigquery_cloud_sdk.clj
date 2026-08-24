@@ -465,6 +465,11 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
+  ;; BigQuery has a limit of 20 pending DML statements per table.
+  ;; https://cloud.google.com/blog/products/data-analytics/dml-without-limits-now-in-bigquery
+  ;; Repeatedly tracking the same dataset each time it's touched causes us to run up against
+  ;; that limit in CI. Debounce tracking recently tracked datasets so we don't create nearly as much
+  ;; dataset tracking noise.
   (when-not (contains? @recently-tracked-hashes (tx/hash-dataset db-def))
     (setup-tracking-dataset!)
     ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
