@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot.permissions
   "Enterprise implementation of metabot permission resolution.
-  Resolves per-group permissions from the database, taking the most permissive
-  value across all of a user's groups."
+  Resolves per-group permissions from the database, taking the most permissive value across the user's groups
+  that the active permission mode shows."
   (:require
    [metabase-enterprise.metabot.settings :as metabot-settings]
    [metabase.metabot.scope :as scope]
@@ -13,9 +13,9 @@
 (defn- group-id-clause
   "HoneySQL clause restricting resolution to the groups the current permission mode exposes in the admin UI.
   Simple mode only shows Administrators, All Users and All tenant users; group-level mode shows every group
-  except All Users and All tenant users. Rows for the groups a mode hides stay in the table, so they are
-  back in force after switching modes, but they must not resolve while hidden: a :yes nobody can see would
-  override every visible :no (#80394)."
+  except All Users and All tenant users. Group-level mode keeps the rows it hides, so they are back in force
+  if simple mode is restored; the switch back to simple mode drops the group-level rows. Hidden rows must not
+  resolve while they are hidden: a :yes nobody can see would override every visible :no (#80394)."
   []
   (let [default-group-ids [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))]]
     (if (metabot-settings/metabot-advanced-permissions)
@@ -23,9 +23,9 @@
       [:in :group_id (conj default-group-ids (u/the-id (perms/admin-group)))])))
 
 (defenterprise resolve-user-permissions
-  "Resolve the effective metabot permissions for a user by taking the most
-  permissive value across all their groups. Returns a map of perm-type → value,
-  with defaults filled in for any unset permission types."
+  "Resolve the effective metabot permissions for a user by taking the most permissive value across the groups
+  the active permission mode shows. Returns a map of perm-type → value, with defaults filled in for any unset
+  permission types."
   :feature :ai-controls
   [user-id]
   (if-not user-id
