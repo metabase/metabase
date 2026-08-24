@@ -386,7 +386,7 @@ describe("scenarios > embedding > embedding hub > permissions", () => {
       cy.visit("/embedding/permissions");
 
       cy.log("The editor renders at the hub's path, not admin's");
-      cy.url().should("include", "/embedding/permissions");
+      cy.location("pathname").should("match", /^\/embedding\/permissions/);
 
       walkThroughPermissionsEditor();
       assertStillInsideHub();
@@ -401,15 +401,14 @@ describe("scenarios > embedding > embedding hub > permissions", () => {
       cy.visit("/embedding/permissions");
 
       cy.log("The editor renders at the hub's path, not admin's");
-      cy.url().should("include", "/embedding/permissions");
+      cy.location("pathname").should("match", /^\/embedding\/permissions/);
 
       walkThroughPermissionsEditor();
 
       cy.log("Shared collections tab");
       cy.findByRole("tab", { name: "Shared collections" }).click();
       cy.findAllByRole("menuitem").first().click();
-      cy.url().should("include", "/embedding/permissions");
-      cy.url().should("not.include", "/admin/permissions");
+      cy.location("pathname").should("match", /^\/embedding\/permissions/);
 
       cy.log("Tenant collections tab");
       cy.findByRole("tab", { name: "Tenant collections" }).click();
@@ -427,8 +426,7 @@ function walkThroughPermissionsEditor() {
 
   cy.log("Drilling into a group's database entity stays in the hub");
   cy.findByTestId("permission-table").findByText("Sample Database").click();
-  cy.url().should("include", "/embedding/permissions");
-  cy.url().should("not.include", "/admin/permissions");
+  cy.location("pathname").should("match", /^\/embedding\/permissions/);
 
   cy.log("Data tab, Databases view");
   cy.findByRole("tab", { name: "Databases" }).click();
@@ -447,8 +445,7 @@ function walkThroughPermissionsEditor() {
 
 function assertStillInsideHub() {
   cy.log("Still inside the embedding hub throughout");
-  cy.url().should("include", "/embedding/permissions");
-  cy.url().should("not.include", "/admin/permissions");
+  cy.location("pathname").should("match", /^\/embedding\/permissions/);
   cy.findByTestId("embedding-hub-nav").should("be.visible");
 }
 
