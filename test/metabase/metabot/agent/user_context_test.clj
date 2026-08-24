@@ -8,6 +8,9 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (deftest ^:parallel format-current-time-test
@@ -474,6 +477,69 @@
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
 
+(deftest format-transform-source-permission-checks-database-test
+  (let [source {:type                  "query"
+                :transform-source-type :query
+                :query                 {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+    (testing "renders the query when the user can query its database"
+      (mt/with-test-user :crowberto
+        (is (str/includes? (user-context/format-transform-source source)
+                           "source-table"))))
+    (testing "omits the query when the user can view the database but not query it"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (mt/with-test-user :rasta
+          (is (not (str/includes? (user-context/format-transform-source source)
+                                  "source-table"))))))))
+
+(deftest format-transform-source-native-query-permission-test
+  (let [source    {:type                  "query"
+                   :transform-source-type :native
+                   :query                 {:database (mt/id)
+                                           :type     :native
+                                           :native   {:query "SELECT * FROM VENUES"}}}
+        exported? (fn []
+                    (mt/with-current-user (mt/user->id :rasta)
+                      (str/includes? (user-context/format-transform-source source) "VENUES")))]
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (testing "a native query is exported when the user has full database-level native permission"
+        (perms/set-database-permission! (perms-group/all-users) (mt/id)
+                                        :perms/create-queries :query-builder-and-native)
+        (is (exported?)))
+      (testing "and omitted when the user has only query-builder permission"
+        (perms/set-database-permission! (perms-group/all-users) (mt/id)
+                                        :perms/create-queries :query-builder)
+        (is (not (exported?))))
+      (testing "or native permission on only some tables, even the one the SQL names"
+        (perms/set-database-permission! (perms-group/all-users) (mt/id)
+                                        :perms/create-queries :no)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
+                                     :perms/create-queries :query-builder-and-native)
+        (is (not (exported?)))))))
+
+(deftest exportable-query-source-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :venues)}}}]
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (str "card__" card-id)}}]
+      (testing "a query sourced from a readable card is exportable even when its database is not queryable"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
+                                       :perms/manage-table-metadata :yes)
+          (mt/with-test-user :rasta
+            (is (not (mi/can-query? :model/Database (mt/id))))
+            (is (user-context/exportable-query? query)))))
+      (testing "and not exportable when the card is not readable"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (not (user-context/exportable-query? query))))))))))
+
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
     (let [out (user-context/format-viewing-context
@@ -483,24 +549,26 @@
       (is (str/includes? out "notebook editor"))
       (is (str/includes? out "source-table")))))
 
-(deftest adhoc-viewing-context-read-checks-database-test
-  (let [viewing (fn [db-id]
-                  {:user_is_viewing [{:type  "adhoc"
-                                      :query {:database db-id
-                                              :type     "query"
-                                              :query    {:source-table (mt/id :venues)}}}]})]
-    (testing "renders the query when the user can read its database"
+(deftest adhoc-viewing-context-permission-checks-database-test
+  (let [viewing {:user_is_viewing [{:type  "adhoc"
+                                    :query {:database (mt/id)
+                                            :type     "query"
+                                            :query    {:source-table (mt/id :venues)}}}]}]
+    (testing "renders the query when the user can query its database"
       (mt/with-test-user :crowberto
-        (let [out (user-context/format-viewing-context (viewing (mt/id)))]
+        (let [out (user-context/format-viewing-context viewing)]
           (is (str/includes? out "notebook editor"))
           (is (str/includes? out "source-table")))))
-    (testing "omits the query when the user cannot read its database"
-      (mt/with-temp [:model/Database {db-id :id} {}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-test-user :rasta
-            (let [out (user-context/format-viewing-context (viewing db-id))]
-              (is (str/includes? out "notebook editor"))
-              (is (not (str/includes? out "source-table"))))))))))
+    (testing "omits the query when the user can read the database but not query it"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
+                                     :perms/manage-table-metadata :yes)
+        (mt/with-test-user :rasta
+          (is (mi/can-read? :model/Database (mt/id)))
+          (is (not (mi/can-query? :model/Database (mt/id))))
+          (let [out (user-context/format-viewing-context viewing)]
+            (is (str/includes? out "notebook editor"))
+            (is (not (str/includes? out "source-table")))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

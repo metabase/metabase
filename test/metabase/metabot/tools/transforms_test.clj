@@ -10,6 +10,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
    [metabase.metabot.tools.transforms.write :as transforms-write]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
@@ -47,6 +49,31 @@
                    (get-in exported ["stages" 0 "source-table"])))
             (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
                           (tree-seq coll? seq exported)))))))))
+
+(deftest get-transform-details-source-permission-test
+  (testing "the tool refuses a transform whose stored query the user cannot run, even though
+           query access to one table in the database passes the transform read check"
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Orders Rollup"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+                (is (str/includes? output "name=\"Orders Rollup\""))
+                (is (not (str/includes? output "<query>")))
+                (is (not (str/includes? output "ORDERS")))))
+            (testing "and the query renders once the source table is granted"
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (str/includes? (:output (agent-transforms/get-transform-details-tool {:transform_id transform-id}))
+                                   "<query>"))))))))))
 
 (deftest get-transform-details-python-source-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}

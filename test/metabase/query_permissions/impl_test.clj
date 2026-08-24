@@ -368,3 +368,20 @@
                 :perms/create-queries {(mt/id :products) :query-builder}
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
+
+(deftest can-run-query?-calculation-errors-test
+  (let [broken {:database (mt/id) :type :query :query {:source-table "card__13371337"}}]
+    (testing "a query whose permissions cannot be calculated throws when the caller asks for it"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating permissions"
+                              (query-perms/can-run-query? broken false true)))))
+    (testing "without the flag the calculation failure stays folded into the permission answer"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (false? (query-perms/can-run-query? broken)))))))
+  (testing "a real permission denial reads as false in either mode"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [query (mt/mbql-query orders)]
+          (is (false? (query-perms/can-run-query? query)))
+          (is (false? (query-perms/can-run-query? query false true))))))))

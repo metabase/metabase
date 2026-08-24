@@ -6,10 +6,13 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -323,6 +326,62 @@
           (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
+(defn- conversation-query-state
+  [query]
+  (atom {:state {:queries {"q-1" query}
+                 :charts  {"chart-1" {:chart_id "chart-1"
+                                      :query_id "q-1"
+                                      :visualization_settings {:chart_type "line"}}}}}))
+
+(deftest read-conversation-query-resource-permission-test
+  (testing "a stored query the user may not run is refused"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (binding [tools.shared/*memory-atom*
+                  (conversation-query-state {:database (mt/id)
+                                             :type     "query"
+                                             :query    {:source-table (mt/id :orders)}})]
+          (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+            (let [result (read-resource/read-resource {:uris [uri]})]
+              (is (=? {:resources [{:error string?}]} result))
+              (is (not (str/includes? (:output result) "ORDERS"))))))))))
+
+(deftest read-conversation-source-card-query-resource-test
+  (testing "a query sourced from a readable card exports through the card's collection access alone,
+           with no database permission of any kind"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :orders)}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]]
+            (binding [tools.shared/*memory-atom*
+                      (conversation-query-state {:database database-id
+                                                 :type     :query
+                                                 :query    {:source-table (str "card__" card-id)}})]
+              (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+                (let [result (read-resource/read-resource {:uris [uri]})]
+                  (is (=? {:resources [{:content map?}]} result))
+                  (is (str/includes? (:output result) "source-card")))))))))))
+
+(deftest read-conversation-source-card-query-unreadable-card-test
+  (testing "a query sourced from a card in a collection the user cannot read is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:collection_id coll-id
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [tools.shared/*memory-atom*
+                    (conversation-query-state {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" card-id)}})]
+            (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+              (let [result (read-resource/read-resource {:uris [uri]})]
+                (is (=? {:resources [{:error string?}]} result))
+                (is (not (str/includes? (:output result) "ORDERS")))))))))))
+
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
@@ -342,6 +401,32 @@
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
+
+(deftest read-transform-resource-source-permission-test
+  (testing "the stored source query is withheld when the user cannot run it, even though query
+           access to one table in the database passes the transform read check"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Orders Rollup"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                (is (=? {:resources [{:content {:structured-output map?}}]} result))
+                (is (str/includes? (:output result) "Orders Rollup"))
+                (is (not (str/includes? (:output result) "ORDERS")))
+                (is (nil? (get-in result [:resources 0 :content :structured-output :source :query])))))
+            (testing "and the query renders once the source table is granted"
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+              (mt/with-current-user (mt/user->id :rasta)
+                (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                  (is (some? (get-in result [:resources 0 :content :structured-output :source :query]))))))))))))
 
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."

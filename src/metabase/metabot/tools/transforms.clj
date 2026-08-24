@@ -4,6 +4,7 @@
   Python transform tools use defenterprise (return nil/error in OSS, real impl in EE)."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
@@ -102,7 +103,8 @@
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
   (try
-    (add-output {:structured_output (transforms/get-transform transform_id)}
+    (add-output {:structured_output (user-context/transform-with-exportable-source
+                                     (transforms/get-transform transform_id))}
                 format-transform-details-output)
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))
