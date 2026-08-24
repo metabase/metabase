@@ -4,6 +4,9 @@ export const embedModalContent = () =>
 export const embedModalEnableEmbeddingCard = () =>
   cy.findByTestId("enable-embedding-card");
 
+const ACCEPT_TERMS_BUTTON_NAME =
+  /(Agree and (continue|enable)|Enable and continue)/;
+
 export const embedModalEnableEmbedding = () => {
   // Wait for the modal before reading the DOM below. That read is a snapshot
   // and does not retry, so on an empty body it takes the early return and the
@@ -19,19 +22,24 @@ export const embedModalEnableEmbedding = () => {
       return;
     }
 
-    // Wait for the actionable Agree/Enable button on the freshly mounted
-    // section for the currently-selected auth mode, then click it.
-    //
-    // We intentionally do NOT treat the disabled "Enabled" label as a
-    // terminal no-op: it appears legitimately after this helper clicks
-    // Agree (the section freezes via `useState`), but it ALSO appears
-    // transiently on the *stale* section from a previous auth-mode
-    // selection before React commits the unmount. Bailing on it was the
-    // original bug. Matching the actionable label scopes us to the new
-    // section automatically, since the stale one shows only "Enabled".
-    cy.findByRole("button", {
-      name: /(Agree and (continue|enable)|Enable and continue)/,
-    }).click();
+    // Match the actionable label, not the disabled "Enabled" one — the latter
+    // also shows transiently on the stale section after an auth-mode switch.
+    cy.findByRole("button", { name: ACCEPT_TERMS_BUTTON_NAME }).click();
+
+    // Retry until the acceptance registered (the clicked section freezes into
+    // a disabled "Enabled" button), so a lost click fails here instead of on
+    // a misleading iframe timeout downstream (EMB-2292).
+    cy.get("body", { timeout: 10_000 }).should(($body) => {
+      const isAcceptButtonStillActionable = $body
+        .find('[data-testid="enable-embedding-card"] button:enabled')
+        .toArray()
+        .some((button) =>
+          ACCEPT_TERMS_BUTTON_NAME.test(button.textContent ?? ""),
+        );
+
+      expect(isAcceptButtonStillActionable, "terms acceptance registered").to.be
+        .false;
+    });
   });
 };
 
