@@ -113,6 +113,11 @@ export interface LlmActiveModel {
   is_fallback: boolean;
 }
 
+export interface LlmActiveModels {
+  default: LlmActiveModel;
+  mini: LlmActiveModel;
+}
+
 export interface LlmModel {
   id: string;
   display_name: string;

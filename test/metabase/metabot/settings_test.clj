@@ -580,4 +580,22 @@
         (with-selected-model "anthropic/claude-sonnet-4-6"
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))
           (with-failing-connection "anthropic"
-            (is (= "openai/gpt-5.4" (metabot.settings/llm-mini-model)))))))))
+            (is (= {:model-ref          "openai/gpt-5.4"
+                    :selected-model-ref "anthropic/claude-haiku-4-5-20251001"
+                    :fallback           {:model                  "openai/gpt-5.4"
+                                         :model_name             "GPT-5.4"
+                                         :provider_name          "openai"
+                                         :previous_model         "anthropic/claude-haiku-4-5-20251001"
+                                         :previous_provider_name "anthropic"}}
+                   (metabot.settings/mini-model-selection)))))))))
+
+(deftest mini-model-setting-keeps-reading-the-preferred-model-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "the setting itself reads the admin's choice even while its provider is failing, so the admin UI shows
+              and edits the preference rather than the replacement"
+      (with-connections [configured-anthropic configured-openai]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (with-failing-connection "anthropic"
+            (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))
+            (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
+              (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-mini-model))))))))))

@@ -75,7 +75,7 @@
    [:env_fields [:sequential :string]]
    [:config [:map-of :keyword [:maybe :string]]]])
 
-(def ^:private active-model-response-schema
+(def ^:private active-model-schema
   [:map
    [:model_ref [:maybe :string]]
    [:model [:maybe :string]]
@@ -84,6 +84,11 @@
    [:connection_name [:maybe :string]]
    [:selected_model_ref [:maybe :string]]
    [:is_fallback :boolean]])
+
+(def ^:private active-model-response-schema
+  [:map
+   [:default active-model-schema]
+   [:mini active-model-schema]])
 
 (def ^:private llm-model-response-schema
   [:map
@@ -578,16 +583,9 @@
     (llm.provider/set-connections! (mapv by-key requested))
     (mapv connection-response (llm.provider/connections))))
 
-(api.macros/defendpoint :get "/active-model"
-  :- active-model-response-schema
-  "The model Metabot is running on right now, and the one it is configured to run on.
-
-  These differ when the selected connection cannot serve requests and `llm-provider-fallback-enabled?` moved
-  Metabot to the next connection in the list; `is_fallback` says whether that has happened."
-  []
-  (perms/check-has-application-permission :setting)
-  (let [{:keys [model-ref selected-model-ref fallback]} (metabot.settings/metabot-model-selection)
-        conn-key                                        (llm.provider/model-ref->connection-key model-ref)]
+(defn- active-model-response
+  [{:keys [model-ref selected-model-ref fallback]}]
+  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
     {:model_ref          model-ref
      :model              (llm.provider/model-ref->model model-ref)
      :model_name         (catalog/model-name model-ref)
@@ -595,6 +593,19 @@
      :connection_name    (:name (llm.provider/connection conn-key))
      :selected_model_ref selected-model-ref
      :is_fallback        (some? fallback)}))
+
+(api.macros/defendpoint :get "/active-model"
+  :- active-model-response-schema
+  "The models the AI features are running on right now, and the ones they are configured to run on — `default` for
+  Metabot itself, `mini` for quick background tasks.
+
+  A use case's `model_ref` differs from its `selected_model_ref` when the selected connection cannot serve requests
+  and `llm-provider-fallback-enabled?` moved it to the next connection in the list; `is_fallback` says whether that
+  has happened."
+  []
+  (perms/check-has-application-permission :setting)
+  {:default (active-model-response (metabot.settings/metabot-model-selection))
+   :mini    (active-model-response (metabot.settings/mini-model-selection))})
 
 (api.macros/defendpoint :get "/models"
   :- models-response-schema
