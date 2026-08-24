@@ -5,9 +5,17 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { metabaseReduxContext } from "metabase/redux/context";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { AdminPath } from "metabase/redux/store";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  CanAccessSettings,
   IsAuthenticated,
   IsNotAuthenticated,
   isBackendOnlyPath,
@@ -108,6 +116,53 @@ describe("route-guards", () => {
         expect.objectContaining({ redirect: "/dashboard/123" }),
       );
       expect(location.search).toContain("redirect");
+    });
+  });
+
+  describe("CanAccessSettings", () => {
+    const DATABASES_PATH: AdminPath = {
+      name: "Databases",
+      path: "/admin/databases",
+      key: "databases",
+    };
+
+    const Protected = () => <div>protected</div>;
+    const Unauthorized = () => <div>unauthorized</div>;
+
+    const setup = (paths: AdminPath[]) =>
+      renderWithProviders(
+        <>
+          <Route component={CanAccessSettings}>
+            <Route path="/admin/databases" component={Protected} />
+          </Route>
+          <Route path="/unauthorized" component={Unauthorized} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: false }),
+            settings: createMockSettingsState({ "has-user-setup": true }),
+            admin: createMockAdminState({
+              app: createMockAdminAppState({ paths }),
+            }),
+          }),
+          withRouter: true,
+          initialRoute: "/admin/databases",
+        },
+      );
+
+    it("lets a non-admin through when a permission grant left them an admin path", async () => {
+      const { history } = setup([DATABASES_PATH]);
+
+      expect(await screen.findByText("protected")).toBeInTheDocument();
+      expect(history?.getCurrentLocation().pathname).toBe("/admin/databases");
+    });
+
+    it("redirects a non-admin with no admin paths to /unauthorized", async () => {
+      const { history } = setup([]);
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
     });
   });
 
