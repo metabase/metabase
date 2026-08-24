@@ -1,11 +1,12 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
+import { cardHasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
   getDatasetEditorTab,
+  getFirstQueryResult,
   getPreviousQueryBuilderMode,
   getQueryBuilderMode,
   getQuestion,
@@ -45,7 +46,7 @@ export const onUpdateVisualizationSettings =
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
       updateQuestion(updatedQuestion, {
-        run: referencesNewForeignColumn(question, updatedQuestion),
+        run: shouldRunForGoalReferences(updatedQuestion, getState),
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -66,33 +67,17 @@ export const onReplaceAllVisualizationSettings =
           run:
             hasWritePermissions &&
             (newQuestion != null ||
-              (currentQuestion != null &&
-                referencesNewForeignColumn(currentQuestion, updatedQuestion))),
+              shouldRunForGoalReferences(updatedQuestion, getState)),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
 
-function referencesNewForeignColumn(
-  previousQuestion: Question,
-  nextQuestion: Question,
+function shouldRunForGoalReferences(
+  question: Question,
+  getState: GetState,
 ): boolean {
-  const previousSettings = previousQuestion.settings();
-  const nextSettings = nextQuestion.settings();
-  const previousKeys = getReferencedColumnKeys(previousSettings);
-
-  return Array.from(getReferencedColumnKeys(nextSettings)).some(
-    (key) => !previousKeys.has(key),
-  );
-}
-
-function getReferencedColumnKeys(settings: VisualizationSettings): Set<string> {
-  return new Set(
-    getReferencedEntitiesFromVizSettings(settings).flatMap(
-      ({ type, id, columns = [] }) => {
-        return columns.map((column) => `${type}:${id}:${column}`);
-      },
-    ),
-  );
+  const result = getFirstQueryResult(getState());
+  return cardHasUnresolvedGoalReferences(question.card(), result?.data);
 }

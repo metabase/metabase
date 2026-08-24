@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupCardDataset,
   setupCardEndpoints,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Card,
@@ -17,8 +19,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockField,
   createMockMeasure,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { ChartSettingSegmentsEditor } from "./ChartSettingSegmentsEditor";
@@ -34,6 +36,7 @@ const DEFAULT_VALUE = [
 
 const CARD_ID = 9;
 const MEASURE_ID = 4;
+const DATASET_QUERY = createMockStructuredDatasetQuery();
 
 type SetupOpts = {
   canRemoveAll?: boolean;
@@ -59,6 +62,7 @@ function setup({
     <ChartSettingSegmentsEditor
       canRemoveAll={canRemoveAll}
       data={data}
+      datasetQuery={DATASET_QUERY}
       value={value}
       onChange={onChange}
     />,
@@ -111,42 +115,26 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   describe("bound errors", () => {
-    const DATA = createMockDatasetData({
+    const data = createMockDatasetData({
       cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
       rows: [[10]],
     });
 
     it("reports a column of this question that no longer exists", () => {
-      setup({ value: [createMockSegment({ min: "gone" })], data: DATA });
+      setup({ value: [createMockSegment({ min: "gone" })], data: data });
 
       expect(
         screen.getByText("This column no longer exists"),
       ).toBeInTheDocument();
     });
 
-    const REFERENCES = [
+    const references = [
       {
         type: "card",
         id: CARD_ID,
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           card: { [CARD_ID]: result },
         }),
-        createEntityWithColumn: (
-          column: string,
-        ): Pick<SetupOpts, "card" | "measure"> => ({
-          card: createMockCard({
-            id: CARD_ID,
-            name: "Orders",
-            result_metadata: [
-              createMockField({
-                name: column,
-                display_name: column,
-                base_type: "type/Integer",
-              }),
-            ],
-          }),
-        }),
-        pillTooltip: "Orders → avg",
       },
       {
         type: "measure",
@@ -154,41 +142,22 @@ describe("ChartSettingSegmentsEditor", () => {
         createReferencedEntities: (result: ReferencedEntityResult) => ({
           measure: { [MEASURE_ID]: result },
         }),
-        createEntityWithColumn: (
-          column: string,
-        ): Pick<SetupOpts, "card" | "measure"> => ({
-          measure: createMockMeasure({
-            id: MEASURE_ID,
-            name: "Revenue",
-            result_column_name: column,
-          }),
-        }),
-        pillTooltip: "Revenue",
       },
     ] as const;
 
-    describe.each(REFERENCES)(
+    describe.each(references)(
       "$type reference",
-      ({
-        type,
-        id,
-        createReferencedEntities,
-        createEntityWithColumn,
-        pillTooltip,
-      }) => {
+      ({ type, id, createReferencedEntities }) => {
         function setupReference(
           column: string,
-          result?: ReferencedEntityResult,
-          entities?: Pick<SetupOpts, "card" | "measure">,
+          result: ReferencedEntityResult,
         ) {
           return setup({
             value: [createMockSegment({ min: { type, id, column } })],
             data: createMockDatasetData({
-              ...DATA,
-              referenced_entities:
-                result != null ? createReferencedEntities(result) : undefined,
+              ...data,
+              referenced_entities: createReferencedEntities(result),
             }),
-            ...entities,
           });
         }
 
@@ -225,17 +194,47 @@ describe("ChartSettingSegmentsEditor", () => {
           ).toBeInTheDocument();
         });
 
-        it("stays quiet while a reference is still resolving", () => {
-          setupReference("total");
+        function setupFreshAnswer(result: ReferencedEntityResult) {
+          setupCardDataset({
+            dataset: {
+              data: createMockDatasetData({
+                referenced_entities: createReferencedEntities(result),
+              }),
+            },
+          });
+        }
 
-          expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+        it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
+          setupFreshAnswer({
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "total" })],
+              rows: [[999]],
+            },
+          });
+          setup({
+            value: [createMockSegment({ min: { type, id, column: "total" } })],
+            data,
+          });
+
+          const pill = screen.getByRole("button", {
+            name: "Change value source",
+          });
+          expect(await within(pill).findByText("999")).toBeInTheDocument();
           expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(/no longer exists/),
-          ).not.toBeInTheDocument();
         });
 
-        it("reports a referenced column that no longer exists", async () => {
+        it("resolves a column the dataset predates from the fresh answer", async () => {
+          setupFreshAnswer({
+            status: "completed",
+            data: {
+              cols: [
+                createMockColumn({ name: "total" }),
+                createMockColumn({ name: "avg" }),
+              ],
+              rows: [[250, 12]],
+            },
+          });
           setupReference("avg", {
             status: "completed",
             data: {
@@ -244,33 +243,43 @@ describe("ChartSettingSegmentsEditor", () => {
             },
           });
 
+          const pill = screen.getByRole("button", {
+            name: "Change value source",
+          });
+          expect(await within(pill).findByText("12")).toBeInTheDocument();
+          expect(
+            screen.queryByText(/no longer exists/),
+          ).not.toBeInTheDocument();
+        });
+
+        it("reports a referenced column that no longer exists", async () => {
+          setupFreshAnswer({
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "total" })],
+              rows: [[250]],
+            },
+          });
+          setup({
+            value: [createMockSegment({ min: { type, id, column: "gone" } })],
+            data,
+          });
+
           expect(
             await screen.findByText("This column no longer exists"),
           ).toBeInTheDocument();
         });
 
-        it("stays quiet while the dataset predates the referenced column", async () => {
-          setupReference(
-            "avg",
-            {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
-              },
-            },
-            createEntityWithColumn("avg"),
-          );
+        it("reports a failure instead of spinning forever when the resolving query fails", async () => {
+          fetchMock.post("path:/api/dataset", 500);
+          setup({
+            value: [createMockSegment({ min: { type, id, column: "total" } })],
+            data,
+          });
 
-          await userEvent.hover(
-            screen.getByRole("button", { name: "Change value source" }),
-          );
-          expect(await screen.findByText(pillTooltip)).toBeInTheDocument();
-
-          expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
           expect(
-            screen.queryByText(/no longer exists/),
-          ).not.toBeInTheDocument();
+            await screen.findByText("Couldn't load this value"),
+          ).toBeInTheDocument();
         });
       },
     );

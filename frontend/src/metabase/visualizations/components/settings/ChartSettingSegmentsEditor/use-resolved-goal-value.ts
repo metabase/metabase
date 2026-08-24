@@ -1,9 +1,12 @@
-import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
+import { t } from "ttag";
+
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import {
   type ResolvedGoalValue,
   resolveGoalValue,
+  toReferencedEntity,
 } from "metabase/visualizations/lib/dynamic-goals";
-import type { DatasetData, GoalValue } from "metabase-types/api";
+import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 import { isGoalForeignColumnRef } from "metabase-types/guards";
 
 const RESOLVING: ResolvedGoalValue = {
@@ -12,58 +15,57 @@ const RESOLVING: ResolvedGoalValue = {
 };
 
 /**
- * Like `resolveGoalValue`, but a missing foreign column
- * is reported as still-resolving rather than an error.
+ * Like `resolveGoalValue`, but a foreign reference the query can't answer
+ * is resolved by re-running the question's query with the reference attached.
  */
 export function useResolvedGoalValue(
+  datasetQuery: DatasetQuery | undefined,
   data: DatasetData | undefined,
   value: GoalValue | null,
 ): ResolvedGoalValue {
-  const resolved =
+  const resolved: ResolvedGoalValue =
     data == null ? { value: null } : resolveGoalValue(data, value);
-  const missingColumnRef =
-    isGoalForeignColumnRef(value) &&
-    resolved.error?.reason === "column-not-found"
-      ? value
-      : null;
+  const isUnanswered =
+    resolved.isResolving === true ||
+    resolved.error?.reason === "column-not-found";
+  const unansweredRef =
+    isUnanswered && isGoalForeignColumnRef(value) ? value : null;
 
-  const { data: card, isError: isCardError } = useGetCardQuery(
-    missingColumnRef?.type === "card" ? { id: missingColumnRef.id } : skipToken,
+  const { data: freshDataset, isError } = useGetAdhocQueryQuery(
+    unansweredRef != null && datasetQuery != null
+      ? {
+          ...datasetQuery,
+          referenced_entities: [toReferencedEntity(unansweredRef)],
+          ignore_error: true,
+        }
+      : skipToken,
   );
 
-  const { data: measure, isError: isMeasureError } = useGetMeasureQuery(
-    missingColumnRef?.type === "measure" ? missingColumnRef.id : skipToken,
-  );
-
-  if (missingColumnRef == null) {
+  if (unansweredRef == null) {
     return resolved;
   }
 
-  if (missingColumnRef.type === "card") {
-    if (isCardError) {
+  if (isError || freshDataset?.error != null) {
+    if (resolved.error != null) {
       return resolved;
     }
 
-    if (card == null) {
-      return RESOLVING;
-    }
-
-    const columnExists = (card.result_metadata ?? []).some(
-      (column) => column.name === missingColumnRef.column,
-    );
-
-    return columnExists ? RESOLVING : resolved;
+    const { type, id, column } = unansweredRef;
+    return {
+      value: null,
+      error: {
+        type,
+        id,
+        column,
+        reason: "query-failed",
+        message: t`Couldn't load this value`,
+      },
+    };
   }
 
-  if (isMeasureError) {
-    return resolved;
-  }
-
-  if (measure == null) {
+  if (freshDataset?.data == null) {
     return RESOLVING;
   }
 
-  return measure.result_column_name === missingColumnRef.column
-    ? RESOLVING
-    : resolved;
+  return resolveGoalValue(freshDataset.data, unansweredRef);
 }

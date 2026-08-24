@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import {
+  setupCardDataset,
   setupCardEndpoints,
-  setupCardQueryEndpoints,
   setupMeasureEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -17,15 +17,20 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import type { DatasetData, GoalValue, SearchResult } from "metabase-types/api";
+import type {
+  DatasetData,
+  GoalValue,
+  ReferencedEntitiesResults,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
-  createMockDataset,
   createMockDatasetData,
   createMockField,
   createMockMeasure,
   createMockSearchResult,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { SegmentBoundInput } from "../SegmentBoundInput";
@@ -48,6 +53,8 @@ const DATA = createMockDatasetData({
   rows: [[10, 42]],
 });
 
+const DATASET_QUERY = createMockStructuredDatasetQuery();
+
 type SetupOpts = {
   data?: DatasetData;
   value?: GoalValue | null;
@@ -59,6 +66,7 @@ function setup({ data = DATA, value = 0 }: SetupOpts = {}) {
     <GoalValueInput
       aria-label="Min"
       data={data}
+      datasetQuery={DATASET_QUERY}
       id="goal-value"
       value={value}
       onChange={onChange}
@@ -173,27 +181,54 @@ describe("GoalValueInput", () => {
     expect(within(pill).getByText("250")).toBeInTheDocument();
   });
 
-  it("shows a loader in the pill while the reference is resolving", () => {
+  it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setupCardDatasetWithReferencedEntities({
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: [createMockColumn({ name: "total" })],
+            rows: [[250]],
+          },
+        },
+      },
+    });
     setup({ value: { type: "card", id: 9, column: "total" } });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(await within(pill).findByText("250")).toBeInTheDocument();
   });
 
-  it("keeps the loader while the dataset predates the referenced column", async () => {
-    setupCardEndpoints(
-      createMockCard({
-        id: 9,
-        name: "Orders",
-        result_metadata: [
-          createMockField({
-            name: "avg",
-            display_name: "Average",
-            base_type: "type/Integer",
-          }),
-        ],
-      }),
-    );
+  it("resolves a column the dataset predates from the card's fresh result", async () => {
+    const card = createMockCard({
+      id: 9,
+      name: "Orders",
+      result_metadata: [
+        createMockField({
+          name: "avg",
+          display_name: "Average",
+          base_type: "type/Integer",
+        }),
+      ],
+    });
+    setupCardEndpoints(card);
+    setupCardDatasetWithReferencedEntities({
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: [
+              createMockColumn({ name: "total" }),
+              createMockColumn({ name: "avg" }),
+            ],
+            rows: [[250, 12]],
+          },
+        },
+      },
+    });
     setup({
       data: createMockDatasetData({
         ...DATA,
@@ -212,16 +247,46 @@ describe("GoalValueInput", () => {
       value: { type: "card", id: 9, column: "avg" },
     });
 
-    await userEvent.hover(
-      screen.getByRole("button", { name: "Change value source" }),
-    );
-    expect(await screen.findByText("Orders → Average")).toBeInTheDocument();
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(await within(pill).findByText("12")).toBeInTheDocument();
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    await userEvent.hover(pill);
+    expect(await screen.findByText("Orders → Average")).toBeInTheDocument();
+  });
+
+  it("shows an error instead of spinning forever when the resolving query fails", async () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    fetchMock.post("path:/api/dataset", 500);
+    renderWithProviders(
+      <SegmentBoundInput
+        aria-label="Min"
+        data={DATA}
+        datasetQuery={DATASET_QUERY}
+        id="goal-value"
+        placeholder="Min"
+        value={{ type: "card", id: 9, column: "total" }}
+        onChange={jest.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Couldn't load this value"),
+    ).toBeInTheDocument();
   });
 
   it("shows an empty pill and an error for a referenced column that no longer exists", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setupCardDatasetWithReferencedEntities({
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: [createMockColumn({ name: "total" })],
+            rows: [[250]],
+          },
+        },
+      },
+    });
     renderWithProviders(
       <SegmentBoundInput
         aria-label="Min"
@@ -239,6 +304,7 @@ describe("GoalValueInput", () => {
             },
           },
         })}
+        datasetQuery={DATASET_QUERY}
         id="goal-value"
         placeholder="Min"
         value={{ type: "card", id: 9, column: "avg" }}
@@ -280,6 +346,7 @@ describe("GoalValueInput", () => {
         <GoalValueInput
           aria-label="Min"
           data={DATA}
+          datasetQuery={DATASET_QUERY}
           id="goal-value"
           value={value}
           onChange={setValue}
@@ -403,18 +470,20 @@ describe("GoalValueInput", () => {
       ],
     });
     setupCardEndpoints(otherCard);
-    setupCardQueryEndpoints(
-      otherCard,
-      createMockDataset({
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({ name: "revenue" }),
-            createMockColumn({ name: "target" }),
-          ],
-          rows: [[100, 200]],
-        }),
-      }),
-    );
+    setupCardDatasetWithReferencedEntities({
+      card: {
+        15: {
+          status: "completed",
+          data: {
+            cols: [
+              createMockColumn({ name: "revenue" }),
+              createMockColumn({ name: "target" }),
+            ],
+            rows: [[100, 200]],
+          },
+        },
+      },
+    });
     setup({
       data: createMockDatasetData({
         ...DATA,
@@ -501,18 +570,20 @@ describe("GoalValueInput", () => {
       ],
     });
     setupCardEndpoints(card);
-    setupCardQueryEndpoints(
-      card,
-      createMockDataset({
-        data: createMockDatasetData({
-          cols: [
-            createMockColumn({ name: "total" }),
-            createMockColumn({ name: "avg" }),
-          ],
-          rows: [[250, 12]],
-        }),
-      }),
-    );
+    setupCardDatasetWithReferencedEntities({
+      card: {
+        9: {
+          status: "completed",
+          data: {
+            cols: [
+              createMockColumn({ name: "total" }),
+              createMockColumn({ name: "avg" }),
+            ],
+            rows: [[250, 12]],
+          },
+        },
+      },
+    });
     setup({
       data: createMockDatasetData({
         ...DATA,
@@ -623,10 +694,14 @@ describe("GoalValueInput", () => {
   });
 });
 
-async function openMenu() {
-  await userEvent.click(
-    screen.getByRole("button", { name: "Pick a dynamic value" }),
-  );
+function setupCardDatasetWithReferencedEntities(
+  referencedEntities: ReferencedEntitiesResults,
+) {
+  setupCardDataset({
+    dataset: {
+      data: createMockDatasetData({ referenced_entities: referencedEntities }),
+    },
+  });
 }
 
 function setupEntityPicker(searchResults: SearchResult[]) {
@@ -642,4 +717,10 @@ async function pickEntity(name: string) {
     }),
   );
   await userEvent.click(await screen.findByText(name));
+}
+
+async function openMenu() {
+  await userEvent.click(
+    screen.getByRole("button", { name: "Pick a dynamic value" }),
+  );
 }

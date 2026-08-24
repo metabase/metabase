@@ -15,7 +15,11 @@ import {
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { DatasetData, GoalSegment } from "metabase-types/api";
+import type {
+  DatasetData,
+  DatasetQuery,
+  GoalSegment,
+} from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
@@ -25,6 +29,7 @@ const REMOVE_BUTTON_SIZE = 24;
 
 export type ChartSettingSegmentsEditorProps = {
   data?: DatasetData;
+  datasetQuery?: DatasetQuery;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
@@ -32,6 +37,7 @@ export type ChartSettingSegmentsEditorProps = {
 
 export const ChartSettingSegmentsEditor = ({
   data,
+  datasetQuery,
   value: segments,
   onChange,
   canRemoveAll = false,
@@ -90,6 +96,7 @@ export const ChartSettingSegmentsEditor = ({
                 <SegmentBoundInput
                   aria-label={t`Range ${index + 1} minimum`}
                   data={data}
+                  datasetQuery={datasetQuery}
                   id={`segment-min-${index}`}
                   placeholder={t`Min`}
                   value={segment.min}
@@ -103,6 +110,7 @@ export const ChartSettingSegmentsEditor = ({
                 <SegmentBoundInput
                   aria-label={t`Range ${index + 1} maximum`}
                   data={data}
+                  datasetQuery={datasetQuery}
                   id={`segment-max-${index}`}
                   placeholder={t`Max`}
                   value={segment.max}

@@ -2,12 +2,9 @@ import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type { GoalEntityRef } from "metabase-types/api";
 
-import type {
-  ColumnOption,
-  GoalEntityRef,
-  ReferencedEntityInfo,
-} from "./types";
+import type { ColumnOption, ReferencedEntityInfo } from "./types";
 
 export function useReferencedEntity(
   entity: GoalEntityRef | null,

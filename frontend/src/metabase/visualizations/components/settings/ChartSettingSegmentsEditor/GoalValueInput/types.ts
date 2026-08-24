@@ -1,9 +1,4 @@
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import type { CardId, MeasureId } from "metabase-types/api";
-
-export type GoalEntityRef =
-  | { type: "card"; id: CardId }
-  | { type: "measure"; id: MeasureId };
 
 export type ColumnOption = {
   name: string;

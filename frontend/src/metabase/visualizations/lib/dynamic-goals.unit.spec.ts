@@ -5,6 +5,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  cardHasUnresolvedGoalReferences,
   getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
   hasUnansweredGoalReferences,
@@ -515,5 +516,74 @@ describe("hasUnansweredGoalReferences", () => {
     };
 
     expect(hasUnansweredGoalReferences(settings, undefined)).toBe(false);
+  });
+});
+
+describe("cardHasUnresolvedGoalReferences", () => {
+  const settings: VisualizationSettings = {
+    "gauge.segments": [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ],
+  };
+  const gauge = { display: "gauge", visualization_settings: settings } as const;
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("ignores references on a display without dynamic goals", () => {
+    const card = {
+      display: "table",
+      visualization_settings: settings,
+    } as const;
+
+    expect(cardHasUnresolvedGoalReferences(card, undefined)).toBe(false);
+  });
+
+  it("is true without any result data", () => {
+    expect(cardHasUnresolvedGoalReferences(gauge, undefined)).toBe(true);
+  });
+
+  it("is true for a failed reference, so it gets retried", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
+  });
+
+  it("is true when the referenced column is missing from the entity's answer", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
+          },
+        },
+      },
+    });
+
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(true);
+  });
+
+  it("is false when every reference resolved", () => {
+    const data = createMockDatasetData({
+      ...baseData,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(cardHasUnresolvedGoalReferences(gauge, data)).toBe(false);
   });
 });

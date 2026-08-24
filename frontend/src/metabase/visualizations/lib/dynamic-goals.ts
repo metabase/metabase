@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
 import type {
+  Card,
   CardId,
   DatasetData,
+  GoalEntityRef,
   GoalForeignColumnRef,
   GoalSegment,
   GoalValue,
@@ -109,8 +111,9 @@ function resolveSelfColumnValue(
 
 function resolveForeignColumnRef(
   data: DatasetData,
-  { type, id, column }: GoalForeignColumnRef,
+  ref: GoalForeignColumnRef,
 ): ResolvedGoalValue {
+  const { type, id, column } = ref;
   const result = data.referenced_entities?.[type]?.[id];
 
   if (result == null) {
@@ -201,6 +204,13 @@ export function getGoalSegmentErrors(
   });
 }
 
+export function toReferencedEntity({
+  type,
+  id,
+}: GoalEntityRef): ReferencedEntity {
+  return { type, id };
+}
+
 type ReferencedEntityColumns =
   | { type: "card"; id: CardId; columns: Set<string> }
   | { type: "measure"; id: MeasureId; columns: Set<string> };
@@ -244,4 +254,22 @@ export function hasUnansweredGoalReferences(
   return getGoalForeignColumnRefs(settings).some(
     (ref) => data == null || resolveGoalValue(data, ref).isResolving === true,
   );
+}
+
+export function cardHasUnresolvedGoalReferences(
+  card: Pick<Card, "display" | "visualization_settings">,
+  data: DatasetData | undefined,
+): boolean {
+  if (card.display !== "gauge") {
+    return false;
+  }
+
+  return getGoalForeignColumnRefs(card.visualization_settings).some((ref) => {
+    if (data == null) {
+      return true;
+    }
+
+    const { error, isResolving } = resolveGoalValue(data, ref);
+    return isResolving === true || error != null;
+  });
 }

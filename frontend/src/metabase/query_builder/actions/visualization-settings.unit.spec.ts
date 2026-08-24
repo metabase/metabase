@@ -2,13 +2,22 @@ import { createMockEntitiesState } from "__support__/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Dataset,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import {
   createAdHocCard,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getQuestion } from "../selectors";
+import { getFirstQueryResult, getQuestion } from "../selectors";
 
 import * as core from "./core";
 import {
@@ -22,6 +31,7 @@ jest.mock("./core", () => ({
 
 jest.mock("../selectors", () => ({
   getQuestion: jest.fn(),
+  getFirstQueryResult: jest.fn(() => null),
   getPreviousQueryBuilderMode: jest.fn(() => "view"),
   getQueryBuilderMode: jest.fn(() => "view"),
   getDatasetEditorTab: jest.fn(() => null),
@@ -36,6 +46,34 @@ const DYNAMIC_SEGMENTS: VisualizationSettings = {
     { min: 0, max: { type: "card", id: 1, column: "total" }, color: "red" },
   ],
 };
+
+const RESULT_WITH_ANSWER = createMockDataset({
+  data: createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[10]],
+    referenced_entities: {
+      card: {
+        1: {
+          status: "completed",
+          data: {
+            cols: [createMockColumn({ name: "total" })],
+            rows: [[42]],
+          },
+        },
+      },
+    },
+  }),
+});
+
+const RESULT_WITH_FAILURE = createMockDataset({
+  data: createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[10]],
+    referenced_entities: {
+      card: { 1: { status: "failed", error: "boom" } },
+    },
+  }),
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -119,11 +157,65 @@ describe("onReplaceAllVisualizationSettings", () => {
     );
     expectRun(true);
   });
+
+  it("re-runs on an unrelated change while a reference is still unanswered", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(DYNAMIC_SEGMENTS),
+    );
+    expectRun(true);
+  });
+
+  it("does not re-run when the result already answers every reference", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(DYNAMIC_SEGMENTS),
+      { result: RESULT_WITH_ANSWER },
+    );
+    expectRun(false);
+  });
+
+  it("re-runs when the referenced query previously failed", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(DYNAMIC_SEGMENTS),
+      { result: RESULT_WITH_FAILURE },
+    );
+    expectRun(true);
+  });
+
+  it("does not re-run for a display that has no dynamic goals", async () => {
+    await dispatchWith(
+      STATIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(DYNAMIC_SEGMENTS),
+      { display: "table" },
+    );
+    expectRun(false);
+  });
 });
 
-function createGaugeQuestion(settings: VisualizationSettings) {
+async function dispatchWith(
+  settings: VisualizationSettings,
+  thunk: ReturnType<
+    | typeof onUpdateVisualizationSettings
+    | typeof onReplaceAllVisualizationSettings
+  >,
+  {
+    result = null,
+    display,
+  }: { result?: Dataset | null; display?: VisualizationDisplay } = {},
+) {
+  jest.mocked(getQuestion).mockReturnValue(createQuestion(display, settings));
+  jest.mocked(getFirstQueryResult).mockReturnValue(result);
+  await thunk(jest.fn(), jest.fn());
+}
+
+function createQuestion(
+  display: VisualizationDisplay = "gauge",
+  settings: VisualizationSettings,
+) {
   const card = createAdHocCard({
-    display: "gauge",
+    display,
     visualization_settings: settings,
   });
 
@@ -136,17 +228,6 @@ function createGaugeQuestion(settings: VisualizationSettings) {
   );
 
   return new Question(card, metadata);
-}
-
-async function dispatchWith(
-  current: VisualizationSettings,
-  thunk: ReturnType<
-    | typeof onUpdateVisualizationSettings
-    | typeof onReplaceAllVisualizationSettings
-  >,
-) {
-  jest.mocked(getQuestion).mockReturnValue(createGaugeQuestion(current));
-  await thunk(jest.fn(), jest.fn());
 }
 
 function expectRun(run: boolean) {

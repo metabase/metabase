@@ -1,24 +1,42 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetCardQueryQuery } from "metabase/api";
-import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
-import type { DatasetData } from "metabase-types/api";
-
-import type { GoalEntityRef } from "./types";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  resolveGoalValue,
+  toReferencedEntity,
+} from "metabase/visualizations/lib/dynamic-goals";
+import type {
+  DatasetData,
+  DatasetQuery,
+  GoalEntityRef,
+} from "metabase-types/api";
 
 type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
+  datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   entity: GoalEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { data: entityDataset } = useGetCardQueryQuery(
-    enabled && entity?.type === "card" ? { cardId: entity.id } : skipToken,
+  const { data: freshDataset } = useGetAdhocQueryQuery(
+    enabled && entity != null && datasetQuery != null
+      ? {
+          ...datasetQuery,
+          referenced_entities: [toReferencedEntity(entity)],
+          ignore_error: true,
+        }
+      : skipToken,
   );
 
+  const entityData =
+    entity != null
+      ? freshDataset?.data?.referenced_entities?.[entity.type]?.[entity.id]
+          ?.data
+      : undefined;
+
   const values = useMemo(() => {
-    const { cols = [], rows = [] } = entityDataset?.data ?? {};
+    const { cols = [], rows = [] } = entityData ?? {};
     const row = rows[0] ?? [];
 
     return new Map(
@@ -30,13 +48,11 @@ export function useEntityColumnValues(
         return [column.name, value];
       }),
     );
-  }, [entityDataset]);
+  }, [entityData]);
 
   return (column) => {
-    const value = values.get(column);
-
-    if (value != null) {
-      return value;
+    if (entityData != null) {
+      return values.get(column) ?? null;
     }
 
     if (entity == null) {

@@ -87,7 +87,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ data }]) => ({ data }),
+      getProps: ([{ card, data }]) => ({
+        data,
+        datasetQuery: card.dataset_query,
+      }),
       getWrapperStyle: () => ({
         marginLeft: 0,
         marginRight: 0,

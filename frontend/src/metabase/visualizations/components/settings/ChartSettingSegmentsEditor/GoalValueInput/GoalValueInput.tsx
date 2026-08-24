@@ -23,6 +23,8 @@ import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DatasetData,
+  DatasetQuery,
+  GoalEntityRef,
   GoalForeignColumnRef,
   GoalValue,
   MeasureId,
@@ -41,7 +43,7 @@ import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { ICON_BUTTON_SIZE } from "./constants";
-import type { ColumnOption, GoalEntityRef, PickedItem } from "./types";
+import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 
@@ -55,6 +57,7 @@ type PickedEntity = GoalEntityRef & { name: string };
 export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
+  datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder?: string;
   value: GoalValue | null;
@@ -64,6 +67,7 @@ export type GoalValueInputProps = {
 export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
+  datasetQuery,
   id,
   placeholder,
   value,
@@ -93,12 +97,17 @@ export const GoalValueInput = ({
   const entity: GoalEntityRef | null = pickedEntity ?? foreignRef;
   const entityInfo = useReferencedEntity(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
-  const resolveEntityColumnValue = useEntityColumnValues(data, entity, {
-    enabled:
-      menuLevel === "entity" && !entityInfo.isLoading && !entityInfo.hasError,
-  });
+  const resolveEntityColumnValue = useEntityColumnValues(
+    datasetQuery,
+    data,
+    entity,
+    {
+      enabled:
+        menuLevel === "entity" && !entityInfo.isLoading && !entityInfo.hasError,
+    },
+  );
 
-  const resolved = useResolvedGoalValue(data, value);
+  const resolved = useResolvedGoalValue(datasetQuery, data, value);
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))
