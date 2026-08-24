@@ -152,7 +152,10 @@
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
   [query      :- ::lib.schema/query
    legacy-ref :- ::legacy-ref]
-  (lib/metadata query (lib/->mbql5 legacy-ref)))
+  (let [field (lib/metadata query (lib/->mbql5 legacy-ref))]
+    (api/check-400 (not (:fk-field-id field))
+                   (tru "Fields referenced via implicit joins are not supported."))
+    field))
 
 (mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.

@@ -144,6 +144,59 @@
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
+(deftest fetch-card-strips-dataset-query-test
+  (testing "GET /api/public/card/:uuid replaces the Card's query with a blank query so its contents are not exposed"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid}]
+        (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  dataset_query)))))))
+
+(deftest fetch-card-strips-native-query-test
+  (testing "GET /api/public/card/:uuid strips the native query text and its template tags"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "greeting" :content "'hello'"}]
+        (with-temp-public-card
+         [{uuid :public_uuid}
+          (let [mp (mt/metadata-provider)]
+            {:dataset_query
+             (-> (lib/native-query mp "SELECT {{snippet: greeting}} FROM venues WHERE {{price}}")
+                 (lib/with-template-tags
+                   {"price"             {:id           "_PRICE_"
+                                         :name         "price"
+                                         :display-name "Price"
+                                         :type         :dimension
+                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :widget-type  :category}
+                    "snippet: greeting" {:type         :snippet
+                                         :name         "snippet: greeting"
+                                         :id           (str (random-uuid))
+                                         :snippet-name "greeting"
+                                         :display-name "Snippet: Greeting"
+                                         :snippet-id   (:id snippet)}}))})]
+          (let [{:keys [dataset_query]} (client/client :get 200 (str "public/card/" uuid))]
+            (is (= {:lib/type "mbql/query"
+                    :database (mt/id)
+                    :stages   [{:lib/type "mbql.stage/native"
+                                :native   "-"}]}
+                   dataset_query))))))))
+
+(deftest fetch-dashboard-strips-dataset-query-test
+  (testing "GET /api/public/dashboard/:uuid replaces each Card's query with a blank query so its contents are not exposed"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash _card]
+        (let [response (client/client :get 200 (str "public/dashboard/" (:public_uuid dash)))]
+          (is (=? {:lib/type "mbql/query"
+                   :database (mt/id)
+                   :stages   [{:lib/type     "mbql.stage/mbql"
+                               :source-table (mt/id :venues)
+                               :aggregation  [["count" {:lib/uuid string?}]]}]}
+                  (-> response :dashcards first :card :dataset_query))))))))
+
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1864,6 +1917,30 @@
             (is (png? (client/client :get 200 url
                                      :latField lat-field
                                      :lonField lon-field)))))))))
+
+(deftest card-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card _card {:dataset_query (tiles.api-test/implicit-join-query)
+                                          :public_uuid uuid}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/card/" uuid "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
+
+(deftest dashcard-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card          {card-id :id}      {:dataset_query (tiles.api-test/implicit-join-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 
