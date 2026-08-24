@@ -23,9 +23,9 @@ export function configureDbRoutingViaAPI({
 }
 
 /**
- * Grants a group the permissions a non-admin needs to manage a database:
- * `details` is what gates database management, and it is only honored
- * alongside `create-queries`.
+ * Grants a group database management permission, which the graph API exposes as
+ * `details` and stores as `:perms/manage-database`. Permissions that aren't named
+ * in the payload are left as they are.
  */
 export function grantDatabaseManagementViaAPI({
   groupId,
@@ -42,11 +42,7 @@ export function grantDatabaseManagementViaAPI({
           ...groups,
           [groupId]: {
             ...groups[groupId],
-            [databaseId]: {
-              "view-data": "unrestricted",
-              "create-queries": "query-builder-and-native",
-              details: "yes",
-            },
+            [databaseId]: { details: "yes" },
           },
         },
       });

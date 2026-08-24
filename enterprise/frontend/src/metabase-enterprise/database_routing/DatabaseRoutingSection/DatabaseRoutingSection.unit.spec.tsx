@@ -129,9 +129,7 @@ describe("DatabaseRoutingSection", () => {
     expect(
       await screen.findByTestId("db-routing-user-attribute"),
     ).toBeDisabled();
-    expect(
-      screen.queryByRole("button", { name: /Add/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Add/ })).not.toBeInTheDocument();
   });
 
   it("should let an admin change routing settings", async () => {

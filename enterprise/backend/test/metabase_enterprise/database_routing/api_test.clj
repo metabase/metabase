@@ -275,7 +275,6 @@
                    (mt/user-http-request :rasta :put 403 (str "database/" dest) {:name "Renamed"})))
             (is (= "Destination DB 1" (t2/select-one-fn :name :model/Database :id dest))))
           (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
-          (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :query-builder-and-native)
           (testing "with manage-database perms on the router the update succeeds"
             (is (=? {:id dest}
                     (mt/user-http-request :rasta :put 200 (str "database/" dest) {:name "Renamed"})))

@@ -129,7 +129,7 @@ describe("admin > database > database routing", () => {
       // bulk creation via api (this is how we expect most users to create destination dbs)
       cy.log("should be able to bulk create destination dbs via API");
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: _.range(2, 7).map((i) => ({
           ...BASE_POSTGRES_DESTINATION_DB_INFO,
           name: `Destination DB ${i}`,
@@ -210,15 +210,15 @@ describe("admin > database > database routing", () => {
 
     it("should not leak destinations databases in the application", () => {
       cy.log("setup db routing via API");
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       cy.log("disable model actions");
       cy.findByLabelText("Model actions").click({ force: true });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
       });
 
@@ -332,11 +332,11 @@ describe("admin > database > database routing", () => {
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
       cy.log("setup");
-      cy.request("PUT", "/api/database/2", {
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
         settings: { "database-enable-actions": false },
       });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
 
@@ -347,13 +347,15 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}/database/2`);
+      cy.visit(
+        `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${WRITABLE_DB_ID}`,
+      );
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit("/admin/permissions/data/database/2");
+      cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
@@ -378,7 +380,7 @@ describe("admin > database > database routing", () => {
         dbRoutingSection().should("not.exist");
       });
 
-      it("should keep the destination database remove route admin-only", () => {
+      it("should let a database manager edit but not remove a destination database", () => {
         cy.log("setup - routing enabled with one destination database");
         disableModelActionsViaApi(WRITABLE_DB_ID);
         configureDbRoutingViaAPI({
@@ -400,6 +402,14 @@ describe("admin > database > database routing", () => {
 
         cy.signOut();
         cy.signIn("normal");
+
+        cy.log("editing a destination database is allowed by direct URL");
+        cy.get("@destinationDbId").then((destinationDbId) => {
+          cy.visit(
+            `/admin/databases/${WRITABLE_DB_ID}/destination-databases/${destinationDbId}`,
+          );
+        });
+        H.modal().findByText("Edit destination database").should("be.visible");
 
         cy.log("removing a destination database is refused by direct URL");
         cy.get("@destinationDbId").then((destinationDbId) => {
@@ -564,7 +574,7 @@ describe("admin > database > database routing", () => {
 
   describe("OSS", { tags: ["@OSS"] }, () => {
     it("should not show the feature if not enabled in token features", () => {
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       dbConnectionInfoSection().should("exist");
       dbRoutingSection().should("not.exist");
     });
