@@ -3,7 +3,6 @@ export * from "./activity";
 export * from "./admin";
 export * from "./advanced-config";
 export * from "./advanced-permission";
-export * from "./ai-entity-analysis";
 export * from "./alert";
 export * from "./autocomplete";
 export * from "./automagic-dashboards";

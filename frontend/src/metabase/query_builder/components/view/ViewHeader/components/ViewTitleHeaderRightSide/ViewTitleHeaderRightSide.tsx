@@ -4,8 +4,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getUserCanWriteToCollections } from "metabase/current-user";
-import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
-import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
@@ -226,9 +224,6 @@ export function ViewTitleHeaderRightSide({
       {!isShowingNotebook && (hasSaveButton || isSaved) && (
         <QuestionSharingMenu question={question} />
       )}
-      {!isShowingNotebook && canAnalyzeQuestion(question.card().display) ? (
-        <AIQuestionAnalysisButton />
-      ) : null}
       {isSaved && (
         <QuestionActions
           question={question}
