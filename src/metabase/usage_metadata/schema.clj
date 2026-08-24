@@ -1,9 +1,7 @@
 (ns metabase.usage-metadata.schema
-  "Shared malli schemas for usage-metadata public API inputs and results.
-
-  These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
-  enforced inside `metabase.usage-metadata.insights` producers."
+  "Shared malli schemas for usage-metadata inputs and results."
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::source-type [:enum :table :card])
@@ -19,6 +17,15 @@
    [:bucket-end   {:optional true, :description "Inclusive upper bound on rollup bucket_date."}
     [:maybe :time/local-date]]
    [:limit        {:optional true, :description "Maximum number of results to return."}
+    [:maybe pos-int?]]])
+
+(mr/def ::candidate-opts
+  [:map {:closed true}
+   [:card-ids       {:optional true, :description "Explicit Card IDs controlling which questions and models are analyzed."}
+    [:maybe [:set pos-int?]]]
+   [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
+    [:maybe nat-int?]]
+   [:view-count-window-days {:optional true, :description "When set, use Card views within this many days instead of lifetime view_count."}
     [:maybe pos-int?]]])
 
 (mr/def ::source
@@ -37,9 +44,120 @@
    [:name         [:maybe :string]]
    [:display-name [:maybe :string]]])
 
+(mr/def ::candidate-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]
+   [:stage-numbers        [:sequential {:min 1} nat-int?]]
+   [:joined?              :boolean]
+   [:model-lineage        {:optional true}
+    [:sequential {:min 1}
+     [:map {:closed true}
+      [:id   pos-int?]
+      [:name [:maybe :string]]]]]])
+
+(mr/def ::candidate-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]])
+
+(mr/def ::candidate-table-model
+  [:map {:closed true}
+   [:id   pos-int?]
+   [:name [:maybe :string]]])
+
+(mr/def ::candidate-table-dependency-path
+  [:map {:closed true}
+   [:direct? :boolean]
+   [:models  [:sequential ::candidate-table-model]]])
+
+(mr/def ::candidate-table-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]
+   [:dependency-paths     [:sequential {:min 1} ::candidate-table-dependency-path]]])
+
+(mr/def ::candidate-table-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-table-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]])
+
+(mr/def ::candidate-table-metadata
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]])
+
+(mr/def ::candidate-table
+  [:map {:closed true}
+   [:table    ::candidate-table-metadata]
+   [:evidence ::candidate-table-evidence]])
+
+(mr/def ::unsupported-candidate-source-item
+  [:map {:closed true}
+   [:id            pos-int?]
+   [:name          [:maybe :string]]
+   [:type          [:enum :question :model]]
+   [:reason        [:enum :native-query :unreadable-query]]
+   [:model-lineage {:optional true} [:sequential {:min 1} ::candidate-table-model]]])
+
+(mr/def ::candidate-table-report
+  [:map {:closed true}
+   [:candidates               [:sequential ::candidate-table]]
+   [:unsupported-source-items [:sequential ::unsupported-candidate-source-item]]])
+
 (mr/def ::mbql-clause
   [:fn {:error/message "expected an MBQL clause"}
    (fn [x] (and (vector? x) (keyword? (first x))))])
+
+(mr/def ::candidate-metric-required-table
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]
+   [:published?     :boolean]])
+
+(mr/def ::candidate-metric
+  [:map {:closed true}
+   [:definition            :map]
+   [:suggested-name        ::lib.schema.common/non-blank-string]
+   [:suggested-description ::lib.schema.common/non-blank-string]
+   [:aggregation           ::mbql-clause]
+   [:temporal-breakout     {:optional true} ::mbql-clause]
+   [:required-tables       [:sequential {:min 1} ::candidate-metric-required-table]]
+   [:evidence              ::candidate-evidence]])
 
 (mr/def ::implicit-segment
   [:map {:closed true}

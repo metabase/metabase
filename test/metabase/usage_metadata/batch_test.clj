@@ -285,7 +285,7 @@
         old-day     (t/local-date "2026-04-10")
         valid-query (orders-query)
         query-hash  (lib-be.hash/query-hash valid-query)
-        original    usage-metadata.store/replace-day!]
+        original    (mt/original-fn #'usage-metadata.store/replace-day!)]
     (try
       (doseq [day [day-a day-b old-day]]
         (delete-query-executions-for-day! day)
@@ -303,10 +303,11 @@
                    :count          1})
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
-        (with-redefs [usage-metadata.store/replace-day! (fn [bucket-date payload]
-                                                          (if (= bucket-date day-b)
-                                                            (throw (ex-info "boom" {:bucket-date bucket-date}))
-                                                            (original bucket-date payload)))]
+        (mt/with-dynamic-fn-redefs
+          [usage-metadata.store/replace-day! (fn [bucket-date payload]
+                                               (if (= bucket-date day-b)
+                                                 (throw (ex-info "boom" {:bucket-date bucket-date}))
+                                                 (original bucket-date payload)))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                                 (usage-metadata.batch/run-batch!
                                  {:today              (t/local-date "2026-04-15")
@@ -362,7 +363,7 @@
         day-b       (t/local-date "2026-04-14")
         valid-query (orders-query)
         query-hash  (lib-be.hash/query-hash valid-query)
-        original    usage-metadata.store/replace-day!]
+        original    (mt/original-fn #'usage-metadata.store/replace-day!)]
     (try
       (doseq [day [day-a day-b]]
         (delete-query-executions-for-day! day)
@@ -372,10 +373,11 @@
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-14T12:00Z"))
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
-        (with-redefs [usage-metadata.store/replace-day! (fn [bucket-date payload]
-                                                          (if (= bucket-date day-b)
-                                                            (throw (ex-info "boom" {:bucket-date bucket-date}))
-                                                            (original bucket-date payload)))]
+        (mt/with-dynamic-fn-redefs
+          [usage-metadata.store/replace-day! (fn [bucket-date payload]
+                                               (if (= bucket-date day-b)
+                                                 (throw (ex-info "boom" {:bucket-date bucket-date}))
+                                                 (original bucket-date payload)))]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                                 (usage-metadata.batch/run-batch!
                                  {:today              (t/local-date "2026-04-15")
