@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useTenantUrls } from "metabase/common/tenants";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -21,18 +22,28 @@ import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
+// Registered at module load, so there is no route context here and no hook can
+// be called where the URL is built. The item is a component instead, which puts
+// the `useTenantUrls` call inside the render that actually happens under a host.
+function UnsubscribeUserMenuItem({ user }: { user: User }) {
+  const tenantUrls = useTenantUrls();
+
+  return (
+    <Menu.Item
+      component={ForwardRefLink}
+      to={
+        isInternalUser(user)
+          ? `/admin/people/${user.id}/unsubscribe`
+          : tenantUrls.unsubscribeUser(user.id)
+      }
+    >
+      {t`Unsubscribe from all subscriptions / alerts`}
+    </Menu.Item>
+  );
+}
+
 const getUserMenuItems = (user: User): React.ReactNode => [
-  <Menu.Item
-    component={ForwardRefLink}
-    to={
-      isInternalUser(user)
-        ? `/admin/people/${user.id}/unsubscribe`
-        : `/admin/people/tenants/people/${user.id}/unsubscribe`
-    }
-    key="unsubscribe"
-  >
-    {t`Unsubscribe from all subscriptions / alerts`}
-  </Menu.Item>,
+  <UnsubscribeUserMenuItem user={user} key="unsubscribe" />,
 ];
 
 /**
