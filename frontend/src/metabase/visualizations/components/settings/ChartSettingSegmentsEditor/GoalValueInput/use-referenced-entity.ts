@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { GoalEntityRef } from "metabase-types/api";
 
 import type { ColumnOption, ReferencedEntityInfo } from "./types";
+import { getNumericColumnOptions } from "./utils";
 
 export function useReferencedEntity(
   entity: GoalEntityRef | null,
@@ -26,10 +26,7 @@ export function useReferencedEntity(
 
   const columns: ColumnOption[] = useMemo(() => {
     if (entity?.type === "card") {
-      return (card?.result_metadata ?? []).filter(isNumeric).map((field) => ({
-        name: field.name,
-        label: field.display_name || field.name,
-      }));
+      return getNumericColumnOptions(card?.result_metadata ?? []);
     }
 
     if (measure?.result_column_name) {

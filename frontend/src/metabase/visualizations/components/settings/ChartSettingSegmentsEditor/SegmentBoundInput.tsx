@@ -1,13 +1,8 @@
-import { match } from "ts-pattern";
-import { t } from "ttag";
-
-import { Box, Text } from "metabase/ui";
-import type { GoalRefError } from "metabase/visualizations/lib/dynamic-goals";
+import { Box } from "metabase/ui";
 import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
 
 import { GoalValueInput } from "./GoalValueInput";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
-import { useResolvedGoalValue } from "./use-resolved-goal-value";
 
 type Props = {
   "aria-label"?: string;
@@ -28,8 +23,6 @@ export function SegmentBoundInput({
   value,
   onChange,
 }: Props) {
-  const { error } = useResolvedGoalValue(datasetQuery, data, value);
-
   return (
     <Box flex={1} miw={0}>
       {data == null ? (
@@ -51,20 +44,6 @@ export function SegmentBoundInput({
           onChange={onChange}
         />
       )}
-
-      {error != null && (
-        <Text c="error" fz="sm" mt="xs">
-          {getGoalErrorMessage(error)}
-        </Text>
-      )}
     </Box>
   );
-}
-
-function getGoalErrorMessage({ reason, message }: GoalRefError): string {
-  return match(reason)
-    .with("query-failed", () => message ?? t`Couldn't load this value`)
-    .with("column-not-found", () => t`This column no longer exists`)
-    .with("not-a-number", () => t`This value isn't a number`)
-    .exhaustive();
 }

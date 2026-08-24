@@ -24,8 +24,7 @@ import type {
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
-
-const REMOVE_BUTTON_SIZE = 24;
+import { ICON_BUTTON_SIZE } from "./constants";
 
 export type ChartSettingSegmentsEditorProps = {
   data?: DatasetData;
@@ -75,7 +74,7 @@ export const ChartSettingSegmentsEditor = ({
                     <Tooltip label={t`Remove range`}>
                       <ActionIcon
                         aria-label={t`Remove range ${index + 1}`}
-                        size={REMOVE_BUTTON_SIZE}
+                        size={ICON_BUTTON_SIZE}
                         onClick={() => {
                           const newSegments = segments.filter(
                             (_v, segmentIndex) => segmentIndex !== index,

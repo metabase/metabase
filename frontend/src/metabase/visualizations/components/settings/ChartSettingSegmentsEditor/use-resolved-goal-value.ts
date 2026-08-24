@@ -20,11 +20,10 @@ const RESOLVING: ResolvedGoalValue = {
  */
 export function useResolvedGoalValue(
   datasetQuery: DatasetQuery | undefined,
-  data: DatasetData | undefined,
+  data: DatasetData,
   value: GoalValue | null,
 ): ResolvedGoalValue {
-  const resolved: ResolvedGoalValue =
-    data == null ? { value: null } : resolveGoalValue(data, value);
+  const resolved = resolveGoalValue(data, value);
   const isUnanswered =
     resolved.isResolving === true ||
     resolved.error?.reason === "column-not-found";

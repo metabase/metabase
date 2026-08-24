@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetCardQuery, useLazyGetMeasureQuery } from "metabase/api";
@@ -16,9 +17,13 @@ import {
   Icon,
   Loader,
   Menu,
+  Text,
   Tooltip,
 } from "metabase/ui";
-import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
+import {
+  type GoalRefError,
+  resolveGoalValue,
+} from "metabase/visualizations/lib/dynamic-goals";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
@@ -36,16 +41,17 @@ import {
 } from "metabase-types/guards";
 
 import { StaticGoalValueInput } from "../StaticGoalValueInput";
+import { ICON_BUTTON_SIZE } from "../constants";
 import { useResolvedGoalValue } from "../use-resolved-goal-value";
 
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
-import { ICON_BUTTON_SIZE } from "./constants";
 import type { ColumnOption, PickedItem } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
+import { getNumericColumnOptions } from "./utils";
 
 const ROOT_MENU_MIN_WIDTH = 225;
 const COLUMN_MENU_MIN_WIDTH = 256;
@@ -83,12 +89,7 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns: ColumnOption[] = data.cols
-    .filter(isNumeric)
-    .map((column) => ({
-      name: column.name,
-      label: column.display_name || column.name,
-    }));
+  const selfColumns = getNumericColumnOptions(data.cols);
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);
@@ -375,9 +376,23 @@ export const GoalValueInput = ({
         onChange={handleEntityPicked}
         onClose={entityPicker.close}
       />
+
+      {resolved.error != null && (
+        <Text c="error" fz="sm" mt="xs">
+          {getGoalErrorMessage(resolved.error)}
+        </Text>
+      )}
     </Box>
   );
 };
+
+function getGoalErrorMessage({ reason, message }: GoalRefError): string {
+  return match(reason)
+    .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("column-not-found", () => t`This column no longer exists`)
+    .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+}
 
 function getPillTooltip({
   entityColumns,
