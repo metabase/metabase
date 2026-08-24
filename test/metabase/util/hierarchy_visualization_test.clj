@@ -1,8 +1,11 @@
-(ns dev.hierarchy-visualization-test
+(ns metabase.util.hierarchy-visualization-test
+  "Tests for the dev-only hierarchy renderers in [[dev.hierarchy-visualization]]."
   (:require
    [clojure.test :refer [deftest is testing]]
    [dev.hierarchy-visualization :as hierarchy.visualization]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private regular-hierarchy
   (-> (make-hierarchy)
