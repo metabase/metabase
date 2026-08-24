@@ -408,8 +408,8 @@
           (testing "long_name is self-describing (carries the dimension the heading drops)"
             (is (= #{"Revenue by Price" "Signups by Price"} (long-names dimension-block)))))))))
 
-(deftest exploration-dimension-group-heading-disambiguation-test
-  (testing "GET qualifies same-named dimension-anchored group headings by their source"
+(deftest exploration-dimension-group-heading-uses-curated-name-test
+  (testing "GET uses each dimension's curated display_name for dimension-anchored headings"
     (let [users-created  "00000000-0000-0000-0000-0000000a1111"
           orders-created "00000000-0000-0000-0000-0000000b2222"]
       (mt/with-temp
@@ -433,12 +433,12 @@
                               (filter #(= "dimension" (:type %)))
                               (map :name)
                               set))]
-          (testing "two dimension blocks sharing a base name → headings qualified by source"
-            (is (= #{"By Users - Created At" "By Orders - Created At"}
+          (testing "two dimension blocks sharing a display_name keep the curated heading (no group prefix)"
+            (is (= #{"By Created At"}
                    (headings {:name   "ambig-headings"
                               :blocks [(dim-grp users-created 1)
                                        (dim-grp orders-created 2)]}))))
-          (testing "a single dimension group keeps the plain heading even with a known source"
+          (testing "a single dimension group uses the curated heading"
             (is (= #{"By Created At"}
                    (headings {:name   "single-heading"
                               :blocks [(dim-grp users-created 1)]})))))))))
@@ -1033,8 +1033,8 @@
         (is (= (str "Revenue by " (duid "no-name")) (get by-dim (duid "no-name")))
             "falls back to dimension_id when display_name is absent")))))
 
-(deftest exploration-create-disambiguates-same-named-dimensions-test
-  (testing "POST / qualifies same-named dimensions with their group's display name"
+(deftest exploration-create-uses-curated-dimension-names-test
+  (testing "POST / stamps each query's :dimension_name from the dim's curated display_name"
     (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
           orders-created "00000000-0000-0000-0000-00000000bbbb"
           users-country  "00000000-0000-0000-0000-00000000cccc"]
@@ -1049,7 +1049,7 @@
                                       :group {:id "g-orders" :type "connection" :display-name "Orders"}}
                                      {:id users-country  :name "COUNTRY"    :display-name "Country"
                                       :group {:id "g-users"  :type "main"       :display-name "Users"}}])]
-        (testing "two dims sharing a display_name → both dimension_names get the group prefix"
+        (testing "two dims sharing a display_name keep the curated label (no group prefix)"
           (let [body {:name "ambig"
                       :metrics    [{:card_id (:id revenue)
                                     :dimension_mappings
@@ -1057,14 +1057,12 @@
                                      {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
                       :dimensions [{:dimension_id users-created  :display_name "Created At"}
                                    {:dimension_id orders-created :display_name "Created At"}]}
-                ;; :dimension_name is the API-computed dimension label (with disambiguation).
-                ;; The full query :name stored in DB is plain "Revenue by Created At".
                 by-dim (->> (create-exploration! u body)
                             :threads first :queries
                             (into {} (map (juxt :dimension_id :dimension_name))))]
-            (is (= "Users → Created At"  (get by-dim users-created)))
-            (is (= "Orders → Created At" (get by-dim orders-created)))))
-        (testing "distinct display_names → no qualification"
+            (is (= "Created At" (get by-dim users-created)))
+            (is (= "Created At" (get by-dim orders-created)))))
+        (testing "distinct display_names are used as-is"
           (let [body {:name "no-ambig"
                       :metrics    [{:card_id (:id revenue)
                                     :dimension_mappings
@@ -1076,34 +1074,7 @@
                             :threads first :queries
                             (into {} (map (juxt :dimension_id :dimension_name))))]
             (is (= "Created At" (get by-dim users-created)))
-            (is (= "Country"    (get by-dim users-country)))))
-        (testing "single dim → no qualification even when it has a group"
-          (let [body {:name "single"
-                      :metrics    [{:card_id (:id revenue)
-                                    :dimension_mappings
-                                    [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}]}]
-                      :dimensions [{:dimension_id users-created :display_name "Created At"}]}
-                q    (-> (create-exploration! u body)
-                         :threads first :queries first)]
-            (is (= "Created At" (:dimension_name q)))))))))
-
-(deftest exploration-create-name-falls-back-without-group-test
-  (testing "POST / leaves ambiguous dims unqualified when neither has a known :group (no NPE / no malformed name)"
-    (mt/with-temp
-      [:model/User u {:email "no-group@example.com"}
-       ;; `:dimensions` left absent (nil) — represents pre-existing Cards without computed groups.
-       :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")]
-      (let [body {:name "no-group"
-                  :metrics    [{:card_id (:id revenue)
-                                :dimension_mappings
-                                [{:dimension_id (duid "a") :table_id 1 :target ["field" {} 1]}
-                                 {:dimension_id (duid "b") :table_id 1 :target ["field" {} 2]}]}]
-                  :dimensions [{:dimension_id (duid "a") :display_name "Created At"}
-                               {:dimension_id (duid "b") :display_name "Created At"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
-                        :threads first :queries)]
-        (is (every? #(= "Revenue by Created At" (:name %)) queries)
-            "falls back to plain display_name when no :group is available")))))
+            (is (= "Country"    (get by-dim users-country)))))))))
 
 (deftest exploration-get-attaches-dimension-name-test
   (testing "hydrate-exploration assoc's :dimension_name onto each query using the dim's display_name"
@@ -1120,15 +1091,14 @@
                         :threads first :queries
                         (into {} (map (juxt :dimension_id :dimension_name))))]
         (is (= "Country" (get by-dim (duid "country")))
-            "ships the dim's display_name as :dimension_name when unambiguous")
+            "ships the dim's curated display_name as :dimension_name")
         (is (= (duid "no-name") (get by-dim (duid "no-name")))
             "falls back to dimension_id when display_name is missing")))))
 
-(deftest exploration-get-dimension-name-disambiguates-test
-  (testing "hydrate-exploration prefixes :dimension_name with the dim's group when two dims share a display_name"
+(deftest exploration-get-dimension-name-uses-curated-name-test
+  (testing "hydrate-exploration uses each dim's curated display_name even when two dims share it"
     (let [users-created  "00000000-0000-0000-0000-00000000dddd"
-          orders-created "00000000-0000-0000-0000-00000000eeee"
-          users-country  "00000000-0000-0000-0000-00000000ffff"]
+          orders-created "00000000-0000-0000-0000-00000000eeee"]
       (mt/with-temp
         [:model/User u {:email "dim-name-ambig@example.com"}
          :model/Card metric (assoc (valid-metric-card (:id u))
@@ -1136,35 +1106,19 @@
                                    [{:id users-created  :name "CREATED_AT" :display-name "Created At"
                                      :group {:id "g-users"  :type "main"       :display-name "Users"}}
                                     {:id orders-created :name "CREATED_AT" :display-name "Created At"
-                                     :group {:id "g-orders" :type "connection" :display-name "Orders"}}
-                                    {:id users-country  :name "COUNTRY"    :display-name "Country"
-                                     :group {:id "g-users"  :type "main"       :display-name "Users"}}])]
-        (testing "shared display_name → both :dimension_names carry the group prefix"
-          (let [body   {:name "ambig"
-                        :metrics    [{:card_id (:id metric)
-                                      :dimension_mappings
-                                      [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
-                                       {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
-                        :dimensions [{:dimension_id users-created  :display_name "Created At"}
-                                     {:dimension_id orders-created :display_name "Created At"}]}
-                by-dim (->> (create-exploration! u body)
-                            :threads first :queries
-                            (into {} (map (juxt :dimension_id :dimension_name))))]
-            (is (= "Users → Created At"  (get by-dim users-created)))
-            (is (= "Orders → Created At" (get by-dim orders-created)))))
-        (testing "distinct display_names → no qualification"
-          (let [body   {:name "no-ambig"
-                        :metrics    [{:card_id (:id metric)
-                                      :dimension_mappings
-                                      [{:dimension_id users-created :table_id 1 :target ["field" {} 1]}
-                                       {:dimension_id users-country :table_id 1 :target ["field" {} 3]}]}]
-                        :dimensions [{:dimension_id users-created :display_name "Created At"}
-                                     {:dimension_id users-country :display_name "Country"}]}
-                by-dim (->> (create-exploration! u body)
-                            :threads first :queries
-                            (into {} (map (juxt :dimension_id :dimension_name))))]
-            (is (= "Created At" (get by-dim users-created)))
-            (is (= "Country"    (get by-dim users-country))))))))) ; binding+let+with-temp+testing+deftest
+                                     :group {:id "g-orders" :type "connection" :display-name "Orders"}}])]
+        (let [body   {:name "ambig"
+                      :metrics    [{:card_id (:id metric)
+                                    :dimension_mappings
+                                    [{:dimension_id users-created  :table_id 1 :target ["field" {} 1]}
+                                     {:dimension_id orders-created :table_id 1 :target ["field" {} 2]}]}]
+                      :dimensions [{:dimension_id users-created  :display_name "Created At"}
+                                   {:dimension_id orders-created :display_name "Created At"}]}
+              by-dim (->> (create-exploration! u body)
+                          :threads first :queries
+                          (into {} (map (juxt :dimension_id :dimension_name))))]
+          (is (= "Created At" (get by-dim users-created)))
+          (is (= "Created At" (get by-dim orders-created))))))))
 
 (deftest exploration-get-includes-interestingness-on-queries-test
   (testing "GET /:id hydrates both interestingness scores on each nested query"
@@ -2358,8 +2312,8 @@
             (is (= "Number of venues → Category: gadget, Price: 2" (:name new-thread))
                 "top-level follow-up names all filters as Metric → Column: Value")))))))
 
-(deftest explore-further-disambiguates-same-named-filter-dimensions-test
-  (testing "POST /:id/explore-further qualifies ambiguous explore-filter dimension_names with the dim's group"
+(deftest explore-further-uses-curated-filter-dimension-names-test
+  (testing "POST /:id/explore-further labels explore-filter dimension_names with the curated display_name"
     (let [users-created  "00000000-0000-0000-0000-00000000aaaa"
           orders-created "00000000-0000-0000-0000-00000000bbbb"
           users-field    (mt/id :venues :latitude)
@@ -2384,18 +2338,26 @@
                                       {:dimension_id orders-created :display_name "Created At"}]}
               created     (create-exploration! u body)
               expl-id     (:id created)
-              page-id     (->> created :threads first :blocks first :pages
-                               (some #(when (= "Users → Created At" (:name %)) (:id %))))
-              _           (is (some? page-id) "find the users-created page by its disambiguated name")
+              ;; Pages for the two same-named dims share the short name "Created At"; pick the
+              ;; users-created page via its queries' :dimension_id.
+              page-id     (let [queries-by-id (into {} (map (juxt :id identity)
+                                                            (-> created :threads first :queries)))]
+                            (->> created :threads first :blocks first :pages
+                                 (some (fn [page]
+                                         (when (some #(= users-created
+                                                         (:dimension_id (get queries-by-id %)))
+                                                     (:query_ids page))
+                                           (:id page))))))
+              _           (is (some? page-id) "find the users-created page")
               filter-spec {:operator "=" :field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
               hydrated    (explore-further-and-hydrate! u expl-id page-id [filter-spec])
               new-thread  (->> hydrated :threads (sort-by :position) last)
               persisted   (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
-          (is (= "Revenue → Users → Created At: 40.7" (:name new-thread))
-              "thread name uses the group-qualified filter dimension label")
-          (is (= "Users → Created At"
+          (is (= "Revenue → Created At: 40.7" (:name new-thread))
+              "thread name uses the curated filter dimension label")
+          (is (= "Created At"
                  (:dimension_name (first (:explore_filters (first (:metrics persisted))))))
-              "persisted explore_filters carry the group-qualified dimension_name"))))))
+              "persisted explore_filters carry the curated dimension_name"))))))
 
 ;;; |                                 Create-time reference permission checks                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

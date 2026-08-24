@@ -510,18 +510,16 @@
 ;;; --------------------------------------- metric search matching ---------------------------------------
 
 (deftest metric-search-matches-displayed-names-test
-  (testing "search matches the '<group> - <dimension>' combination the picker displays"
+  (testing "search matches the metric name and each dimension's curated display_name"
     (let [matches? #(#'explorations.impl/metric-matches-search? %1 %2)
           metric   {:name       "Revenue"
                     :dimensions [{:display-name "Created At"
                                   :group        {:display-name "Orders"}}]}]
       (testing "metric name still matches"
         (is (matches? metric "revenue")))
-      (testing "the raw dimension name still matches"
+      (testing "the curated dimension name matches"
         (is (matches? metric "created at")))
-      (testing "the group name matches"
-        (is (matches? metric "orders")))
-      (testing "the displayed combination matches"
-        (is (matches? metric "orders - created")))
+      (testing "the source group name is not part of the search text"
+        (is (not (matches? metric "orders"))))
       (testing "non-matches stay non-matches"
         (is (not (matches? metric "customers")))))))
