@@ -11,6 +11,7 @@
    [metabase.api.settings :as api.auth]
    [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -22,18 +23,6 @@
 (defn- +slash-prefix [s]
   (cond->> s
     (not (str/starts-with? s "/")) (str "/")))
-
-(mu/defn- ->requestor [method]
-  (case method
-    :get     http/get
-    :head    http/head
-    :post    http/post
-    :put     http/put
-    :delete  http/delete
-    :options http/options
-    :copy    http/copy
-    :move    http/move
-    :patch   http/patch))
 
 (mu/defn- get-safe-status
   [response]
@@ -63,18 +52,20 @@
 
 (mr/def :hm-client/http-reply [:tuple [:enum :ok :error] :map])
 
-(defn- send-request [request-method-fn store-api-url url request]
+(defn- send-request [method store-api-url url request]
   (let [response (try
-                   (request-method-fn
-                    (str store-api-url (+slash-prefix url))
-                    request)
+                   ;; store-api-url is set in the environment, not through the API
+                   (u.http/request (assoc request
+                                          :method         method
+                                          :url            (str store-api-url (+slash-prefix url))
+                                          :network-policy :allow-all))
                    (catch Exception e
                      (log/errorf "Error making request to %s: %s" url (ex-message e))
                      {:ex-data (ex-data e)
                       :request request
                       :url     url}))]
     (log/info "Harbormaster API call:"
-              {:method   (m.util/upper-case-en (last (str/split (-> request-method-fn class .getSimpleName) #"\$")))
+              {:method   (m.util/upper-case-en (name method))
                :url      url
                :status   (:status response)})
     response))
@@ -116,8 +107,7 @@
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
                             body (assoc :body (json/encode (m.util/deep-snake-keys body))))
-        request-method-fn (->requestor method)
-        unparsed-response (send-request request-method-fn store-api-url url request)
+        unparsed-response (send-request method store-api-url url request)
         response          (m.util/deep-kebab-keys (decode-response unparsed-response url request))
         success?          (calculate-success response url request)]
     [(if success? :ok :error) response]))
