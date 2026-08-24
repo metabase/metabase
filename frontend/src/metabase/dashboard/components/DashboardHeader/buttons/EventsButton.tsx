@@ -10,8 +10,6 @@ export const EventsButton = () => {
   const { sidebar, closeSidebar } = useDashboardContext();
   const dispatch = useDispatch();
   const isEventsSidebarOpen = sidebar.name === SIDEBAR_NAME.events;
-  // only the dashboard-wide panel toggles closed; a dashcard-scoped events
-  // sidebar switches to the dashboard-wide one instead
   const isDashboardWideOpen =
     isEventsSidebarOpen && sidebar.props.dashcardId == null;
 
