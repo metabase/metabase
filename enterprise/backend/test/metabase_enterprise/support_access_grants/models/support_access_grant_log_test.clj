@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag-log]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -15,6 +16,7 @@
       (mt/with-temp-env-var-value! [:mb-support-access-grant-email "support@metabase.test"]
         (let [support-user (sag-log/fetch-or-create-support-user!)
               support-user-id (:id support-user)]
+          (auth-identity/set-password! support-user-id "test-password")
           (mt/with-temp [:model/User {grant-creator-id :id} {}
                          :model/SupportAccessGrantLog {grant-id :id}
                          {:user_id grant-creator-id
@@ -40,6 +42,7 @@
       (mt/with-model-cleanup [:model/User]
         (let [support-user (sag-log/fetch-or-create-support-user!)
               support-user-id (:id support-user)]
+          (auth-identity/set-password! support-user-id "test-password")
           (mt/with-temp [:model/User {grant-creator-id :id} {}
                          :model/User {other-user-id :id} {}
                          :model/SupportAccessGrantLog {grant-id :id}

@@ -132,8 +132,8 @@
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
-  authoritative credential store — and invalidating any existing sessions. This is the only supported way to set a
-  user's password; the User model itself no longer stores, hashes, or mirrors passwords.
+  authoritative credential store. This is the only supported way to set a user's password; the User model itself no
+  longer stores, hashes, or mirrors passwords.
 
   `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
   support-access grants)."
@@ -149,8 +149,6 @@
    (let [expires-at (:expires-at opts)
          attrs      (cond-> {:credentials {:plaintext_password password}}
                       (some? expires-at) (assoc :expires_at expires-at))]
-     (t2/with-transaction [_]
-       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
-         (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs)))
-       (t2/delete! :model/Session :user_id user-id)))))
+     (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+       (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
+       (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))))
