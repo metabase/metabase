@@ -37,7 +37,13 @@
         (assoc :attribute-firstname (get attribute-map "first_name"))
 
         (get attribute-map "last_name")
-        (assoc :attribute-lastname (get attribute-map "last_name"))))))
+        (assoc :attribute-lastname (get attribute-map "last_name"))
+
+        (some? (:auto-link-verified-email provider-config))
+        (assoc :auto-link-verified-email (:auto-link-verified-email provider-config))
+
+        (seq (:trusted-email-domains provider-config))
+        (assoc :trusted-email-domains (:trusted-email-domains provider-config))))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 

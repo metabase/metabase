@@ -2,6 +2,7 @@
   "Base OIDC authentication provider. Provides generic OIDC support that concrete
    implementations (Auth0, Okta, etc.) can derive from."
   (:require
+   [clojure.string :as str]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.common :as oidc.common]
    [metabase.sso.oidc.discovery :as oidc.discovery]
@@ -9,8 +10,10 @@
    [metabase.sso.oidc.schema :as oidc.schema]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.oidc.tokens :as oidc.tokens]
+   [metabase.util :as u]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
@@ -68,12 +71,13 @@
 
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------
 
-(defn- verified-email-claim?
-  "Check the id-token `email_verified` claim (OIDC Core §5.1). A token that explicitly marks the email as
-   unverified is rejected; a missing claim is accepted since the claim is optional."
+(defn- email-verified-claim
+  "Normalize the id-token `email_verified` claim (OIDC Core §5.1) to true, false, or nil when absent."
   [claims]
-  (let [verified (:email_verified claims)]
-    (or (nil? verified) (true? verified) (= verified "true"))))
+  (case (:email_verified claims)
+    (true "true")   true
+    (false "false") false
+    nil))
 
 (defn- extract-user-data
   "Extract user data from ID token claims.
@@ -95,11 +99,82 @@
         last-name (get claims (keyword lastname-attr))
         provider-id (:sub claims)]
     (when email
-      {:email email
-       :first_name first-name
-       :last_name last-name
-       :provider-id provider-id
-       :sso_source :oidc})))
+      (cond-> {:email email
+               :first_name first-name
+               :last_name last-name
+               :provider-id provider-id
+               :sso_source :oidc}
+        (:iss claims) (assoc :provider-metadata {:iss (:iss claims)})))))
+
+;;; -------------------------------------------------- Identity Linking --------------------------------------------------
+
+(defn- trusted-email-domain?
+  "True if `email`'s domain is listed in the provider's `:trusted-email-domains` (\"*\" trusts every domain)."
+  [email domains]
+  (boolean
+   (when email
+     (some (fn [domain]
+             (or (= domain "*")
+                 (str/ends-with? (u/lower-case-en email) (str "@" (u/lower-case-en domain)))))
+           domains))))
+
+(defn- may-auto-link?
+  "Whether this token may establish a new link between the email-resolved user and its (iss, sub) identity."
+  [claims config email]
+  (or (and (not (false? (:auto-link-verified-email config)))
+           (true? (email-verified-claim claims)))
+      (trusted-email-domain? email (:trusted-email-domains config))))
+
+(defn- link-identity!
+  "Point the user's single AuthIdentity row for `provider` (unique per user+provider) at (iss, sub)."
+  [provider user-id auth-identity sub iss]
+  (if auth-identity
+    (t2/update! :model/AuthIdentity (:id auth-identity)
+                {:provider_id sub
+                 :metadata    (assoc (:metadata auth-identity) :iss iss)})
+    (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                     :provider    (name provider)
+                                     :provider_id sub
+                                     :metadata    {:iss iss}})))
+
+(defn- verify-or-link-identity!
+  "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
+   first when the provider's linking policy allows. Returns {:success? true} or a failure map."
+  [provider user claims config email]
+  (let [sub           (:sub claims)
+        iss           (:iss claims)
+        auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider (name provider))
+        stored-iss    (get-in auth-identity [:metadata :iss])
+        ;; rows created before iss tracking have no :iss in metadata and count for any issuer
+        same-iss?     (and (:provider_id auth-identity)
+                           (or (nil? stored-iss) (= stored-iss iss)))]
+    (cond
+      (str/blank? sub)
+      {:success? false
+       :error :invalid-token
+       :message "ID token is missing the sub claim"}
+
+      (and same-iss? (= (:provider_id auth-identity) sub))
+      (do (when (nil? stored-iss)
+            (t2/update! :model/AuthIdentity (:id auth-identity)
+                        {:metadata (assoc (:metadata auth-identity) :iss iss)}))
+          {:success? true})
+
+      same-iss?
+      (do (log/warnf "OIDC login rejected: token subject does not match the identity linked to user %d" (:id user))
+          {:success? false
+           :error :identity-mismatch
+           :message "This identity provider account is linked to a different identity for this Metabase account. Please contact your administrator."})
+
+      (may-auto-link? claims config email)
+      (do (link-identity! provider (:id user) auth-identity sub iss)
+          {:success? true})
+
+      :else
+      (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
+          {:success? false
+           :error :account-linking-required
+           :message "Your identity provider account is not linked to this Metabase account. Please contact your administrator."}))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -145,7 +220,7 @@
                    :message (:error validation-result)}
                   ;; Extract user data from claims
                   (let [claims (:claims validation-result)]
-                    (if-not (verified-email-claim? claims)
+                    (if (false? (email-verified-claim claims))
                       {:success? false
                        :error :email-not-verified
                        :message "Email address is not verified by the identity provider"}
@@ -157,6 +232,7 @@
                           {:success? true
                            :claims claims
                            :user-data user-data
+                           :oidc-config config
                            :provider-id (:provider-id user-data)}))))))))))
 
       ;; Initiate authorization flow
@@ -186,6 +262,18 @@
              :nonce nonce}))))))
 
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
+
+(methodical/defmethod auth-identity/login! :provider/oidc
+  [provider {:keys [user claims] :as request}]
+  ;; `user` was resolved by email alone; before provisioning/session creation, require the token's
+  ;; (iss, sub) to match (or establish, per policy) that user's linked identity
+  (if-not (and (true? (:success? request)) user claims)
+    (next-method provider request)
+    (let [result (verify-or-link-identity! provider user claims (:oidc-config request)
+                                           (get-in request [:user-data :email]))]
+      (if (:success? result)
+        (next-method provider request)
+        result))))
 
 (methodical/defmethod auth-identity/login! :around :provider/oidc
   [provider {:keys [code state] :as request}]

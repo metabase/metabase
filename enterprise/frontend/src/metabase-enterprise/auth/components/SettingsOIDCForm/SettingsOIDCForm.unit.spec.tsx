@@ -247,3 +247,74 @@ describe("SettingsOIDCForm - Group Sync", () => {
     });
   });
 });
+
+describe("SettingsOIDCForm - Account linking", () => {
+  it("defaults to auto-linking verified emails with no trusted domains", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await userEvent.click(screen.getByText("Account linking"));
+
+    expect(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    ).toBeChecked();
+    expect(screen.getByLabelText("Trusted email domains")).toHaveValue("");
+  });
+
+  it("populates account linking fields from existing provider config", async () => {
+    await setup({
+      providers: [
+        {
+          ...EXISTING_PROVIDER,
+          "auto-link-verified-email": false,
+          "trusted-email-domains": ["mycompany.com", "example.org"],
+        },
+      ],
+    });
+
+    await userEvent.click(screen.getByText("Account linking"));
+
+    expect(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("Trusted email domains")).toHaveValue(
+      "mycompany.com, example.org",
+    );
+  });
+
+  it("includes account linking settings in form submission", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await userEvent.click(screen.getByText("Account linking"));
+    await userEvent.click(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    );
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "mycompany.com, example.org",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      const puts = await getOidcPutCalls();
+      expect(puts.length).toBeGreaterThan(0);
+    });
+
+    const puts = await getOidcPutCalls();
+    const lastPut = puts[puts.length - 1];
+    expect(lastPut.body["auto-link-verified-email"]).toBe(false);
+    expect(lastPut.body["trusted-email-domains"]).toEqual([
+      "mycompany.com",
+      "example.org",
+    ]);
+  });
+});

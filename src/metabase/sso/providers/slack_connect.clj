@@ -175,9 +175,11 @@
   (when (:success? result)
     (when-let [user-id (or (some-> result :user :id)
                            (some-> result :authenticated-user deref :id))]
-      (t2/update! :model/AuthIdentity
-                  {:user_id user-id :provider provider-name}
-                  {:metadata {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}})))
+      ;; merge into existing metadata so the :iss stored by OIDC identity linking survives
+      (when-let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name)]
+        (t2/update! :model/AuthIdentity (:id auth-identity)
+                    {:metadata (assoc (:metadata auth-identity)
+                                      :signing_secret_version (server.settings/slack-connect-signing-secret-version))}))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

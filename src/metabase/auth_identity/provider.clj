@@ -295,7 +295,7 @@
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/pending? :mfa/methods :mfa/first-factor
-   :jwt-data :claims
+   :jwt-data :claims :oidc-config
    :tenant-slug :tenant-attributes :user-provisioning-enabled?])
 
 (methodical/defmethod login! :around ::provider
@@ -344,7 +344,8 @@
                  [:is_active {:optional true} :boolean]
                  [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
-                 [:provider-id {:optional true} [:maybe :string]]]
+                 [:provider-id {:optional true} [:maybe :string]]
+                 [:provider-metadata {:optional true} [:maybe :map]]]
    provider :- :keyword]
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
@@ -354,7 +355,8 @@
                     reactivating? (assoc :is_superuser false))))
     (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+                                        (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
+                                        (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data)))))
     (t2/select-one [:model/User :id :is_active :last_login] user-id)))
 
 (mu/defn- create-user!
@@ -367,6 +369,7 @@
                  [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:provider-id {:optional true} [:maybe :string]]
+                 [:provider-metadata {:optional true} [:maybe :map]]
                  [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
   (let [insert-fields (sso-user-fields)]
@@ -383,7 +386,8 @@
         (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
                                        (select-keys user-data insert-fields))
         (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                          (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+                                          (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
+                                          (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data))))
         (notification/with-skip-sending-notification true
           (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
                                                                      :sso_source (name provider))}))))))

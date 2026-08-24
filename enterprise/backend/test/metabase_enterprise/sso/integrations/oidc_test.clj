@@ -60,7 +60,10 @@
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success? true
-     :claims {}
+     :claims {:sub "test-oidc-provider-id"
+              :iss "https://test.idp.example.com"
+              :email "oidcuser@example.com"
+              :email_verified true}
      :user-data {:email "oidcuser@example.com"}
      :provider-id "test-oidc-provider-id"}
     {:success? :redirect
@@ -201,7 +204,11 @@
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success?    true
-     :claims      *group-sync-claims*
+     :claims      (merge {:sub            "test-oidc-provider-id"
+                          :iss            "https://test.idp.example.com"
+                          :email          *group-sync-email*
+                          :email_verified true}
+                         *group-sync-claims*)
      :user-data   {:email      *group-sync-email*
                    :first_name "OIDC"
                    :last_name  "GroupUser"}

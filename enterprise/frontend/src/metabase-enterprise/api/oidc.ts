@@ -32,6 +32,8 @@ export interface CustomOidcConfig {
   scopes?: string[];
   enabled?: boolean;
   "attribute-map"?: Record<string, string>;
+  "auto-link-verified-email"?: boolean;
+  "trusted-email-domains"?: string[];
   "group-sync"?: {
     enabled?: boolean;
     "group-attribute"?: string;

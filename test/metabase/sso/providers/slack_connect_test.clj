@@ -319,7 +319,9 @@
                                          :claims {:sub slack-user-id
                                                   :iss "https://slack.com"
                                                   :aud "test-client-id"
-                                                  :email "existing-slack@example.com"}})]
+                                                  :email "existing-slack@example.com"
+                                                  ;; required to auto-link the identity to the existing user
+                                                  :email_verified true}})]
             (let [request {:code "test-code"
                            :state "test-state"
                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
