@@ -904,13 +904,20 @@ describe("Remote Sync", () => {
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
+      cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
+      cy.intercept("GET", "/api/transform*").as("getTransforms");
+
       H.DataStudio.Transforms.visit();
+      cy.wait("@getTransforms");
 
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
       H.clickPullOption();
+
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import", until: "conflict" });
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
@@ -930,13 +937,17 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
 
+      cy.log("wait for the forced import to replace local state");
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import" });
+
       cy.findByRole("treegrid").within(() => {
+        cy.log("check remote transform was pulled in");
+        cy.findByText("Imported Simple SQL transform").should("be.visible");
         cy.log(
           "check existing transform was removed after pulling from remote",
         );
         cy.findByText("Batman's Existing Transform").should("not.exist");
-        cy.log("check remote transform was pulled in");
-        cy.findByText("Imported Simple SQL transform").should("be.visible");
       });
     });
 
