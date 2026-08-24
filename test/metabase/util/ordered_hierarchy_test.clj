@@ -56,3 +56,47 @@
             :right-angled-triangle [:triangle]
             :obtuse-triangle       [:triangle]}
            (update-vals (:parents polygons) vec)))))
+
+(deftest root-order-test
+  (testing "A root without children is included"
+    (is (= [:root]
+           (vec (ordered-hierarchy/sorted-tags
+                 (ordered-hierarchy/make-hierarchy [:root]))))))
+  (testing "Root order remains stable after the underlying map grows"
+    (let [roots     (mapv #(keyword (str "root-" %)) (range 12))
+          hierarchy (apply ordered-hierarchy/make-hierarchy
+                           (map (fn [root]
+                                  [root (keyword (str (name root) "-child"))])
+                                roots))]
+      (is (= roots
+             (filterv (set roots) (ordered-hierarchy/sorted-tags hierarchy)))))))
+
+(deftest hierarchy-syntax-validation-test
+  (testing "A basis must be a vector"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Hierarchy basis must be a vector"
+                          (ordered-hierarchy/make-hierarchy :root))))
+  (testing "Vector tags must be keywords"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Hierarchy vectors must begin with a keyword tag"
+                          (ordered-hierarchy/make-hierarchy [])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Hierarchy vectors must begin with a keyword tag"
+                          (ordered-hierarchy/make-hierarchy [:root []]))))
+  (testing "Children must be keywords or vectors"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Hierarchy children must be keywords or vectors"
+                          (ordered-hierarchy/make-hierarchy [:root 1]))))
+  (testing "Children may only be declared at a tag's first occurrence"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Children of :child may only be listed at its first occurrence"
+                          (ordered-hierarchy/make-hierarchy [:root :child [:child :grandchild]]))))
+  (testing "Repeating a tag without listing children is allowed"
+    (is (= [:child :root]
+           (vec (ordered-hierarchy/sorted-tags
+                 (ordered-hierarchy/make-hierarchy [:root :child [:child]])))))))
+
+(deftest derive-validation-test
+  (is (thrown-with-msg? AssertionError
+                        #"Tag must be a keyword"
+                        (ordered-hierarchy/derive (ordered-hierarchy/make-hierarchy) 'child :parent))))
