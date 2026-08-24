@@ -219,6 +219,8 @@ config:
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-deepseek-api-base-url: https://api.deepseek.com
+    llm-deepseek-api-key: null
     llm-google-api-base-url: https://aiplatform.googleapis.com
     llm-google-location: null
     llm-google-oauth-access-token: null
