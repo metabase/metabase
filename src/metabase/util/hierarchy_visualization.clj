@@ -49,8 +49,9 @@
 (defn hierarchy->graph
   "Returns the direct relationships in `hierarchy` as `:nodes`, `:roots`, and `:children`.
 
-  Ordered hierarchies retain their derivation order. Regular Clojure hierarchies are ordered by `pr-str` unless
-  `:sort-by` supplies another node sort key. Transitive `:ancestors` and `:descendants` relationships are ignored."
+  Ordered hierarchies retain their derivation order.
+  Regular Clojure hierarchies are ordered by `pr-str` unless `:sort-by` supplies another node sort key.
+  Transitive `:ancestors` and `:descendants` relationships are ignored."
   ([hierarchy]
    (hierarchy->graph hierarchy nil))
   ([hierarchy {:keys [sort-by]}]
@@ -97,9 +98,11 @@
 (defn tree-str
   "Returns a root-to-leaf tree representation of `hierarchy`.
 
-  Because a hierarchy can be a DAG, a node is expanded only at its first occurrence by default; later occurrences are
-  marked with `↩`. Set `:repeat-shared?` to expand shared subtrees each time. `:max-depth` counts the roots as depth 0,
-  and `:max-nodes` limits the number of rendered node occurrences.
+  Because a hierarchy can be a DAG, a node is expanded only at its first occurrence by default.
+  Later occurrences are marked with `↩`.
+  Set `:repeat-shared?` to expand shared subtrees each time.
+  `:max-depth` counts the roots as depth 0.
+  `:max-nodes` limits the number of rendered node occurrences.
 
   Options are `:label-fn`, `:sort-by`, `:ascii?`, `:repeat-shared?`, `:max-depth`, and `:max-nodes`."
   ([hierarchy]
