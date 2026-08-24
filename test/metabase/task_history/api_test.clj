@@ -8,7 +8,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success" :logs nil :run_id false})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil
+   :status "success" :logs nil :run_id false})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
@@ -496,6 +497,67 @@
           (is (=? [{:duration 10000}]
                   (-> response :data vec))))))))
 
+(deftest ^:synchronized sort-tasks-by-task-and-status-test
+  (t2/delete! :model/TaskHistory)
+  (let [now       (t/zoned-date-time)
+        ;; shared random token as prefix (so rows are unique / filterable) with ordered a<b<c suffixes
+        token     (mt/random-name)
+        task-a    (str token "-a")
+        task-b    (str token "-b")
+        task-c    (str token "-c")
+        my-tasks  #{task-a task-b task-c}]
+    (mt/with-temp [:model/TaskHistory _ {:task task-b :status :success :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task task-a :status :failed  :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task task-c :status :started :started_at now}]
+      (letfn [(rows [& args]
+                (->> (apply mt/user-http-request :crowberto :get 200 "task/" args)
+                     :data
+                     (filter (comp my-tasks :task))))]
+        (testing "sort by task"
+          (is (= [task-a task-b task-c] (map :task (rows :sort_column :task :sort_direction :asc))))
+          (is (= [task-c task-b task-a] (map :task (rows :sort_column :task :sort_direction :desc)))))
+        (testing "sort by status (alphabetical: failed < started < success)"
+          (is (= ["failed" "started" "success"] (map :status (rows :sort_column :status :sort_direction :asc))))
+          (is (= ["success" "started" "failed"] (map :status (rows :sort_column :status :sort_direction :desc)))))))))
+
+(deftest ^:synchronized sort-tasks-by-db-test
+  (t2/delete! :model/TaskHistory)
+  (let [now (t/zoned-date-time)]
+    (mt/with-temp [:model/Database db-a {:name "Albatross DB"}
+                   :model/Database db-b {:name "Wren DB"}
+                   :model/TaskHistory _ {:task "t-a"   :status :success :db_id (:id db-a) :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "t-b"   :status :success :db_id (:id db-b) :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "t-nil" :status :success :started_at now :ended_at now}]
+      (let [tracked (fn [& args]
+                      (->> (apply mt/user-http-request :crowberto :get 200 "task/" args)
+                           :data
+                           (map :task)
+                           (filter #{"t-a" "t-b" "t-nil"})
+                           vec))]
+        (testing "sort by db_name; nil db_id row is present and does not error"
+          (let [asc  (tracked :sort_column :db_name :sort_direction :asc)
+                desc (tracked :sort_column :db_name :sort_direction :desc)]
+            (is (= #{"t-a" "t-b" "t-nil"} (set asc)))
+            (is (= 3 (count asc)))
+            ;; Albatross DB before Wren DB, and reversed for desc (nil position is DB-dependent, so only
+            ;; assert the two named)
+            (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
+            (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc)))))
+        (testing "sort by db_engine (aaa-engine < zzz-engine)"
+          ;; Relabel engines via raw SQL (no Toucan hooks, so no driver init) purely to exercise ordering on the
+          ;; `engine` column; reset to h2 before with-temp teardown so deletion doesn't init a bogus driver.
+          (t2/query {:update :metabase_database :set {:engine "aaa-engine"} :where [:= :id (:id db-a)]})
+          (t2/query {:update :metabase_database :set {:engine "zzz-engine"} :where [:= :id (:id db-b)]})
+          (try
+            (let [asc  (tracked :sort_column :db_engine :sort_direction :asc)
+                  desc (tracked :sort_column :db_engine :sort_direction :desc)]
+              (is (= 3 (count asc)))
+              (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
+              (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc))))
+            (finally
+              (t2/query {:update :metabase_database :set {:engine "h2"}
+                         :where  [:in :id [(:id db-a) (:id db-b)]]}))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Task Runs API tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -810,3 +872,86 @@
                                                :started-at "past7days")]
             (is (= 1 (count response)))
             (is (= "DB2" (-> response first :entity_name)))))))))
+
+(deftest ^:synchronized runs-sort-test
+  (t2/delete! :model/TaskRun)
+  (t2/delete! :model/TaskHistory)
+  (let [now (t/zoned-date-time)]
+    (mt/with-temp [:model/Database db {:name "Wren DB"}
+                   :model/Card card {:name "Albatross Card"}
+                   :model/TaskRun run-db {:run_type    :sync
+                                          :entity_type :database
+                                          :entity_id   (:id db)
+                                          :status      :success
+                                          :started_at  (t/minus now (t/hours 2))
+                                          :ended_at    (t/minus now (t/hours 1))}
+                   :model/TaskRun run-card {:run_type    :fingerprint
+                                            :entity_type :card
+                                            :entity_id   (:id card)
+                                            :status      :failed
+                                            :started_at  (t/minus now (t/hours 1))
+                                            :ended_at    now}
+                   ;; run-db has 2 child tasks, run-card has 1
+                   :model/TaskHistory _ {:task "a" :status :success :run_id (:id run-db)
+                                         :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "b" :status :success :run_id (:id run-db)
+                                         :started_at now :ended_at now}
+                   :model/TaskHistory _ {:task "c" :status :success :run_id (:id run-card)
+                                         :started_at now :ended_at now}]
+      (let [my-ids #{(:id run-db) (:id run-card)}
+            ids    (fn [& args] (->> (apply mt/user-http-request :crowberto :get 200 "task/runs" args)
+                                     :data
+                                     (map :id)
+                                     (filter my-ids)))]
+        (testing "default order is started_at desc when no sort params given"
+          (is (= [(:id run-card) (:id run-db)] (ids))))
+        (testing "sort by started_at asc"
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :started_at :sort-direction :asc))))
+        (testing "sort by ended_at asc"
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :ended_at :sort-direction :asc))))
+        (testing "sort by status (failed < success)"
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :status :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :status :sort-direction :desc))))
+        (testing "sort by run_type (fingerprint < sync)"
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :run_type :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :run_type :sort-direction :desc))))
+        (testing "sort by entity_name across entity types (Albatross Card < Wren DB)"
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :entity_name :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :entity_name :sort-direction :desc))))
+        (testing "sort by task_count (run-card=1 < run-db=2)"
+          (is (= [(:id run-card) (:id run-db)] (ids :sort-column :task_count :sort-direction :asc)))
+          (is (= [(:id run-db) (:id run-card)] (ids :sort-column :task_count :sort-direction :desc))))
+        (testing "invalid sort_column returns 400"
+          (is (=? {:errors {:sort-column some?}}
+                  (mt/user-http-request :crowberto :get 400 "task/runs" :sort-column :bogus))))))))
+
+(deftest ^:synchronized runs-filter-with-sort-test
+  ;; the entity_name/task_count sorts add joins, so filter columns must stay unambiguous. Notably `report_card` and
+  ;; `report_dashboard` have their own `entity_id` column.
+  (t2/delete! :model/TaskRun)
+  (t2/delete! :model/TaskHistory)
+  (let [now (t/zoned-date-time)]
+    (mt/with-temp [:model/Database db {:name "Some DB"}
+                   :model/Card card {:name "Some Card"}
+                   :model/TaskRun run-db {:run_type    :sync
+                                          :entity_type :database
+                                          :entity_id   (:id db)
+                                          :status      :success
+                                          :started_at  now}
+                   :model/TaskRun run-card {:run_type    :fingerprint
+                                            :entity_type :card
+                                            :entity_id   (:id card)
+                                            :status      :failed
+                                            :started_at  now}]
+      (letfn [(ids [& args]
+                (->> (apply mt/user-http-request :crowberto :get 200 "task/runs" args)
+                     :data
+                     (map :id)
+                     (filter #{(:id run-db) (:id run-card)})))]
+        (testing "entity filter composes with the entity_name sort joins"
+          (is (= [(:id run-db)]
+                 (ids :entity-type "database" :entity-id (:id db)
+                      :sort-column :entity_name :sort-direction :asc))))
+        (testing "status filter composes with the task_count sort join"
+          (is (= [(:id run-card)]
+                 (ids :status "failed" :sort-column :task_count :sort-direction :asc))))))))

@@ -10,7 +10,6 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -27,18 +26,6 @@
                      (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled) query)))))]
       (qp query rff*))))
 
-(mu/defn- add-preprocessed-query-to-result-metadata-for-userland-query :- ::qp.schema/qp
-  [qp :- ::qp.schema/qp]
-  (fn [query rff]
-    (letfn [(rff* [metadata]
-              {:pre [(map? metadata)]}
-              (rff (cond-> metadata
-                     ;; process-userland-query needs the preprocessed-query to find field usages
-                     ;; it'll then be removed from the result
-                     (qp.util/userland-query? query)
-                     (assoc :preprocessed_query query))))]
-      (qp query rff*))))
-
 (def ^:private middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
@@ -53,12 +40,10 @@
   ;; to execute INSIDE the `binding` blocks established by the EE postprocessing middlewares below. See
   ;; [[metabase.query-processor.middleware.process-userland-query/capture-execution-context-middleware]] for why.
   [#'qp.process-userland-query/capture-execution-context-middleware
-   #'qp.middleware.enterprise/apply-workspace-sql-remapping-middleware
    #'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
-   #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
    #'qp.middleware.enterprise/check-download-permissions-middleware])

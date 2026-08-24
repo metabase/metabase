@@ -1,12 +1,10 @@
-import type * as Lib from "metabase-lib";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { MeasureId } from "./measure";
 import type { MetricId } from "./metric";
-import type { Parameter } from "./parameters";
+import type { NormalizedQueryParameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
 
@@ -22,7 +20,7 @@ export interface StructuredDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
 }
 
 export interface NativeDatasetQuery {
@@ -31,12 +29,22 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
 }
 
 export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
 
 export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+
+// Audit-only query shape accepted by /api/dataset.
+// `fn` names a backend function.
+export interface InternalDatasetQuery {
+  type: "internal";
+  fn: string;
+  args: string[];
+  limit?: number;
+  offset?: number;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare const OpaqueDatasetQuerySymbol: unique symbol;
@@ -311,6 +319,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 export type JoinStrategy =
   | "left-join"
   | "right-join"
@@ -543,7 +553,7 @@ export type TestJoinSpec = {
 };
 
 type TestJoinConditionSpec = {
-  operator: Lib.JoinConditionOperator;
+  operator: JoinConditionOperator;
   left: TestColumnWithBinningSpec | TestExpressionSpec;
   right: TestColumnWithBinningSpec | TestExpressionSpec;
 };

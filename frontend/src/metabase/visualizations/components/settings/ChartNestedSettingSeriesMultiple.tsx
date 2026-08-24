@@ -75,6 +75,7 @@ export const ChartNestedSettingSeriesMultiple = ({
                   className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                   // set vertical padding to 0 and use align-self-stretch to match siblings
                   style={{ paddingTop: 0, paddingBottom: 0 }}
+                  resetOnEsc
                   value={settings.title}
                   description={
                     seriesCardName === settings.title ? "" : seriesCardName

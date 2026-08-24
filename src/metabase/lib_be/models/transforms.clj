@@ -1,26 +1,27 @@
 (ns metabase.lib-be.models.transforms
-  (:refer-clojure :exclude [some empty?])
+  (:refer-clojure :exclude [empty?])
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.bootstrap :as lib-be.bootstrap]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some empty?]]))
+   [metabase.util.performance :refer [empty?]]))
 
 (set! *warn-on-reflection* true)
 
-(defn- has-normalized-key? [m k]
-  (or (get m k)
-      (get m (u/qualified-name k))))
-
-(defn- has-any-of-these-normalized-keys? [m ks]
-  (some (partial has-normalized-key? m) ks))
+(defn- normalize-mbql
+  [query]
+  (case (lib/normalized-query-type query)
+    :mbql/query      (lib.schema.common/normalize-map-no-kebab-case query)
+    (:query :native) (mbql.normalize/normalize query)
+    (lib.schema.common/normalize-map-no-kebab-case query)))
 
 (mu/defn normalize-query :- [:maybe
                              [:multi {:dispatch (comp boolean empty?)}
@@ -50,35 +51,37 @@
           (empty? query)
           {}
 
-          (not (has-normalized-key? query :database))
-          (throw (ex-info "Query must include :database" {:query query}))
-
-          (not (has-any-of-these-normalized-keys? query #{:lib/type :type}))
-          (throw (ex-info "Query must include :lib/type or :type" {:query query}))
-
-          (and (has-normalized-key? query :lib/type)
-               (has-any-of-these-normalized-keys? query #{:type :query :native}))
+          (and (:lib/type query)
+               (or (:type query) (:query query) (:native query)))
           (throw (ex-info "MBQL 4 keys like :type, :query, or :native are not allowed in MBQL 5 queries with :lib/type"
                           {:query query}))
 
-          (and (has-normalized-key? query :type)
-               (has-normalized-key? query :stages))
+          (and (:type query) (:stages query))
           (throw (ex-info "MBQL 5 :stages is not allowed in an MBQL 4 query with :type" {:query query}))
 
-          (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
-          (lib/normalize ::lib.schema/query query)
-
           :else
-          (->> query
-               (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
-                                                    metadata-providerable))
-               (lib/query metadata-providerable)))))
+          (let [query (normalize-mbql query)]
+            (cond
+              (not (or (:lib/type query) (:type query)))
+              (throw (ex-info "Query must include :lib/type or :type" {:query query}))
+
+              (not (:database query))
+              (throw (ex-info "Query must include :database" {:query query}))
+
+              (lib/cached-metadata-provider-with-cache? (:lib/metadata query))
+              (lib/normalize ::lib.schema/query query)
+
+              :else
+              (->> query
+                   (lib-be.bootstrap/resolve-database (when (lib/metadata-provider? metadata-providerable)
+                                                        metadata-providerable))
+                   (lib/query metadata-providerable)))))))
     ;; Normalization failed. Degrade to {} so bad stored data can't break callers,
     ;; but in strict mode (saving) rethrow rather than persist a query we couldn't parse.
     (fn [e]
       (when strict?
         (throw e))
-      (log/errorf e "Error normalizing query %s" (pr-str query))
+      (log/errorf "Error normalizing query: %s" (ex-message e))
       {}))))
 
 (defn- transform-query-in [query]
@@ -99,9 +102,11 @@
            (throw (ex-info (format "Expected deserialized query to be a map, got ^%s %s"
                                    (.getCanonicalName (class query)) (pr-str query))
                            {:query query})))
-         (normalize-query query)))
+         (-> query
+             normalize-query
+             lib/prepare-after-deserialization)))
      (fn [e]
-       (log/errorf e "Error deserializing dataset_query from app DB: %s" (ex-message e))
+       (log/errorf "Error deserializing dataset_query from app DB: %s" (ex-message e))
        {}))))
 
 (def transform-query

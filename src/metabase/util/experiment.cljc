@@ -129,7 +129,7 @@
                   match?            (outcomes-match? comparator-fn control-outcome candidate-outcome)]
               (when-not match?
                 (if (contains? candidate-outcome :error)
-                  (log/warnf "Experiment %s: candidate threw %s" name (str (:error candidate-outcome)))
+                  (log/warnf "Experiment %s: candidate threw %s" name (ex-message (:error candidate-outcome)))
                   (log/warnf "Experiment %s: result MISMATCH" name)))
               (when report-fn
                 (report-fn {:name                  name

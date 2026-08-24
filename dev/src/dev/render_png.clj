@@ -13,6 +13,7 @@
    [metabase.channel.render.style :as style]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.core :as qp]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2])
@@ -85,7 +86,7 @@
                                                                   :font-style              "normal"
                                                                   :color                   "#4c5773"
                                                                   :-moz-osx-font-smoothing "grayscale"})}
-                                       (markdown/process-markdown (:text dashboard-result) :html)]
+                                       (markdown/process-markdown (:text dashboard-result) :html (system/site-url))]
                          :attachments nil})
             png-bytes (-> render (png/render-html-to-png 1000))
             tmp-file  (java.io.File/createTempFile "card-png" ".png")]
@@ -150,7 +151,7 @@
                                     :font-style              "normal"
                                     :color                   "#4c5773"
                                     :-moz-osx-font-smoothing "grayscale"})}
-         (markdown/process-markdown (:text dashboard-result) :html)])
+         (markdown/process-markdown (:text dashboard-result) :html (system/site-url))])
        (cellfn nil)])))
 
 (defn render-dashboard-to-hiccup

@@ -94,10 +94,7 @@ const baseConfig = {
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
     "<rootDir>/release/.*",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -130,7 +127,6 @@ const baseConfig = {
   ],
   coveragePathIgnorePatterns: [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
     "/target/cljs_dev/",
     "/target/cljs_release/",
     "/frontend/test/",
@@ -141,10 +137,8 @@ const baseConfig = {
 /** @type {import('jest').Config} */
 const config = {
   // `addFileAttribute` makes jest-junit emit the source path as a `file`
-  // attribute on each <testcase>. Additive — it leaves classname/name untouched,
-  // so Trunk's existing test identity is preserved — and it lets both Trunk
-  // (codeowners/file attribution) and the ci-conductor reporter resolve a real
-  // source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
+  // attribute on each <testcase>, which lets the ci-conductor reporter resolve a
+  // real source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
   reporters: ["default", ["jest-junit", { addFileAttribute: "true" }]],
   coverageReporters: ["html", "lcov"],
   watchPlugins: [
@@ -158,9 +152,9 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{ts,tsx}",
       ],
 
       setupFiles: [
@@ -177,6 +171,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/frontend/test/jest-setup-env-core.js",
+      ],
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
         "<rootDir>/frontend/src/embedding-sdk-bundle",

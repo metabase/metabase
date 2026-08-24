@@ -5,6 +5,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -44,7 +45,8 @@ const setup = async (props: { versionTag: string }) => {
     ),
   );
 
-  renderWithProviders(<UpdatesNavItem />, {
+  renderWithProviders(<Route path="*" element={<UpdatesNavItem />} />, {
+    withRouter: true,
     storeInitialState: {
       settings: createMockSettingsState(settings),
     },

@@ -1,24 +1,19 @@
-import type { Location } from "history";
-
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import { push } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate } from "metabase/router";
 
 import AccountLayout from "../../components/AccountLayout";
 
-interface OwnProps {
-  location: Location;
+export function AccountApp() {
+  const navigate = useNavigate();
+  const user = useSelector(getUser);
+  const { pathname } = useLocation();
+
+  return (
+    <AccountLayout
+      user={user}
+      path={pathname}
+      onChangeLocation={(nextLocation) => navigate(nextLocation)}
+    />
+  );
 }
-
-const mapStateToProps = (state: State, props: OwnProps) => ({
-  user: getUser(state),
-  path: props.location.pathname,
-});
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(AccountLayout);

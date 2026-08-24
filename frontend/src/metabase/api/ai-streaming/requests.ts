@@ -65,6 +65,11 @@ export async function aiStreamingQuery(
     });
 
     if (!response.ok) {
+      // ensure we reach the global 401 handler, so the user can sign in if session is expired
+      if (response.status === 401) {
+        api.emit(401, req.url);
+      }
+
       // Mirror the legacy client's error shape (`{ status, data }`) so streaming
       // and non-streaming callers handle failures the same way. A non-JSON or
       // empty error body leaves `data` undefined; the status still identifies it.

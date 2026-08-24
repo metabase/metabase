@@ -1,8 +1,7 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { Alert } from "metabase/common/components/Alert";
-import { Anchor, Box } from "metabase/ui";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
 export interface DatabaseEngineWarningProps {
@@ -70,7 +69,7 @@ interface NewEngineWarningProps {
 
 const NewEngineWarning = ({ engineName, onChange }: NewEngineWarningProps) => (
   <Box mb="xl">
-    <Alert>
+    <Alert size="compact" variant="light">
       {t`This driver will be removed in a future release.`}{" "}
       {jt`We recommend you upgrade to the ${(
         <Anchor
@@ -94,7 +93,7 @@ interface OldEngineWarningProps {
 
 const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
   <Box mb="xl">
-    <Alert>
+    <Alert variant="light">
       {t`This is our new ${engineName} driver.`}{" "}
       {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
       {jt`If you really need to use it, you can ${(
@@ -114,7 +113,7 @@ const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
 
 const CommunityEngineWarning = () => (
   <Box mb="xl">
-    <Alert icon="info">
+    <Alert variant="light" icon={<Icon name="info" />}>
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
       {t`This is a community-developed driver and not supported by Metabase. `}
     </Alert>

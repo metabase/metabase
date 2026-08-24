@@ -23,9 +23,7 @@ import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./use-chart-events";
 
-Object.assign(PieChart, PIE_CHART_DEFINITION);
-
-export function PieChart(props: VisualizationProps) {
+function PieChartComponent(props: VisualizationProps) {
   const {
     fontFamily,
     rawSeries,
@@ -193,7 +191,6 @@ export function PieChart(props: VisualizationProps) {
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}
-        display="pie"
         option={option}
         onInit={handleInit}
         onResize={handleResize}
@@ -207,3 +204,5 @@ export function PieChart(props: VisualizationProps) {
     </ChartWithLegend>
   );
 }
+
+export const PieChart = Object.assign(PieChartComponent, PIE_CHART_DEFINITION);

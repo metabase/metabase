@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -120,6 +120,12 @@ export function getTransformRunName(run: TransformRun): string {
 
 export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
+}
+
+export function isActiveRunStatus(
+  status: TransformRunStatus | null | undefined,
+) {
+  return status === "started" || status === "canceling";
 }
 
 export function isTransformRunning(transform: Transform) {

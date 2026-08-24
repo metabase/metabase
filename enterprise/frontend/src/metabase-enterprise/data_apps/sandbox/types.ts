@@ -10,12 +10,6 @@ export const DATA_APP_PROVIDER_PROP_KEYS = [
   "errorComponent",
 ] as const satisfies readonly (keyof DataAppMetabaseProviderProps)[];
 
-/**
- * Structural mirror of the `MetabaseProviderProps` subset a data app may
- * customize. Declared here (not as a `Pick` of the bundle type) so this
- * contract has no app-tier dependency; keep it in sync with
- * `MetabaseProviderProps` by hand until the props move to a shared tier.
- */
 export type DataAppMetabaseProviderProps = {
   theme?: MetabaseEmbeddingTheme;
   allowedCustomVisualizations?: `custom:${string}`[];
@@ -35,3 +29,30 @@ export type DataAppFactory = () => {
   component: React.ComponentType<Record<string, unknown>>;
   providerProps?: DataAppMetabaseProviderProps;
 };
+
+/**
+ * The slice of the sandbox's realm the network wrappers touch: the native
+ * `fetch`/`XMLHttpRequest` they wrap, and the location a relative request URL
+ * resolves against. A real `Window & typeof globalThis` satisfies it.
+ */
+export interface SandboxRealm {
+  fetch: typeof fetch;
+  XMLHttpRequest: typeof XMLHttpRequest;
+  location: { href: string; origin: string };
+}
+
+export interface SandboxBlockedNetworkInfo {
+  api: "fetch" | "xhr";
+  url: string;
+  reason: string;
+}
+
+export type SandboxBlockedNetworkListener = (
+  info: SandboxBlockedNetworkInfo,
+) => void;
+
+export type SandboxBlockedEvent =
+  | { type: "api"; message: string }
+  | ({ type: "network" } & SandboxBlockedNetworkInfo);
+
+export type SandboxBlockedListener = (event: SandboxBlockedEvent) => void;

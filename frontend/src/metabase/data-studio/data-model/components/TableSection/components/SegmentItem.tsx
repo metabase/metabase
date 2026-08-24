@@ -1,4 +1,4 @@
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 

@@ -1,27 +1,39 @@
 (ns metabase.transforms.schema
   (:require
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(mr/def ::lookback
+  "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
+  so late-arriving rows older than the watermark still get picked up. Only supported for
+  temporal checkpoint columns."
+  [:map
+   [:value pos-int?]
+   [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["checkpoint" ::checkpoint-strategy]])
 
 (mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:query
     [:map
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
-     [:query ::queries.schema/query]
+     [:query ::lib-be.schema/maybe-legacy-query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map
@@ -48,7 +60,8 @@
    [:unique-key [:sequential ::merge-key-column]]])
 
 (mr/def ::target-incremental-strategy
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["append" ::append-config]
    ["merge"  ::merge-config]])
 
@@ -68,7 +81,8 @@
    [:target-incremental-strategy ::target-incremental-strategy]])
 
 (mr/def ::transform-target
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
 

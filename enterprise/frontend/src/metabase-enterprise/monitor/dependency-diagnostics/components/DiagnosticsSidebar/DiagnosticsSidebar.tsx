@@ -12,47 +12,34 @@ import { FieldsSection } from "./FieldsSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type DiagnosticsSidebarProps = {
   node: DependencyNode;
   mode: DependencyDiagnosticsMode;
-  containerWidth: number;
-  onResizeStart: () => void;
-  onResizeStop: () => void;
   onClose: () => void;
 };
 
 export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
   node,
   mode,
-  containerWidth,
-  onResizeStart,
-  onResizeStop,
   onClose,
 }: DiagnosticsSidebarProps) {
   return (
-    <SidebarResizableBox
-      containerWidth={containerWidth}
-      onResizeStart={onResizeStart}
-      onResizeStop={onResizeStop}
+    <Stack
+      className={S.sidebar}
+      p="lg"
+      gap="xl"
+      bg="background_page-primary"
+      data-testid="dependency-list-sidebar"
     >
-      <Stack
-        className={S.sidebar}
-        p="lg"
-        gap="xl"
-        bg="background_page-primary"
-        data-testid="dependency-list-sidebar"
-      >
-        <Stack gap="lg">
-          <SidebarHeader node={node} onClose={onClose} mode={mode} />
-          <LocationSection node={node} />
-          <InfoSection node={node} />
-        </Stack>
-        {mode === "broken" && <ErrorsSection node={node} />}
-        {mode === "broken" && <BrokenDependentsSection node={node} />}
-        {mode === "unreferenced" && <FieldsSection node={node} />}
+      <Stack gap="lg">
+        <SidebarHeader node={node} onClose={onClose} mode={mode} />
+        <LocationSection node={node} />
+        <InfoSection node={node} />
       </Stack>
-    </SidebarResizableBox>
+      {mode === "broken" && <ErrorsSection node={node} />}
+      {mode === "broken" && <BrokenDependentsSection node={node} />}
+      {mode === "unreferenced" && <FieldsSection node={node} />}
+    </Stack>
   );
 });

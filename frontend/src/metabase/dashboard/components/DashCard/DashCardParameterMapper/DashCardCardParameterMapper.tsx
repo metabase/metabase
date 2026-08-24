@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import { skipToken } from "metabase/api";
+import { useListMetricDimensionsQuery } from "metabase/api/metric";
 import {
   getDashcardParameterMappingOptions,
   getEditingParameter,
@@ -25,10 +28,12 @@ import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targ
 import type {
   Card,
   DashboardCard,
+  MetricDimension,
   Parameter,
   ParameterTarget,
   VirtualCard,
 } from "metabase-types/api";
+import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";
@@ -79,14 +84,27 @@ export function DashCardCardParameterMapper({
   editingParameterInlineDashcard,
   compact,
 }: DashcardCardParameterMapperProps) {
+  const metricId = card.type === "metric" ? card.id : undefined;
+  const isMetric = metricId != null;
+  const { data: metricDimensionsData } = useListMetricDimensionsQuery(
+    isMetric ? { metricId } : skipToken,
+  );
+  const visibleMappingOptions = useMemo(() => {
+    return isMetric
+      ? getMetricMappingOptions(
+          mappingOptions,
+          metricDimensionsData?.added ?? [],
+        )
+      : mappingOptions;
+  }, [isMetric, mappingOptions, metricDimensionsData?.added]);
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isAction = isActionDashCard(dashcard);
-  const isDisabled = mappingOptions.length === 0 || isAction;
+  const isDisabled = visibleMappingOptions.length === 0 || isAction;
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
   const selectedMappingOption = getMappingOptionByTarget(
-    mappingOptions,
+    visibleMappingOptions,
     target,
     question,
     editingParameter ?? undefined,
@@ -130,7 +148,7 @@ export function DashCardCardParameterMapper({
         dashcard={dashcard}
         question={question}
         editingParameter={editingParameter}
-        mappingOptions={mappingOptions}
+        mappingOptions={visibleMappingOptions}
         isQuestion={isQuestion}
         editingParameterInlineDashcard={editingParameterInlineDashcard}
         card={card}
@@ -180,6 +198,43 @@ export function DashCardCardParameterMapper({
         )}
     </Flex>
   );
+}
+
+function getMetricMappingOptions(
+  mappingOptions: ParameterMappingOption[],
+  dimensions: MetricDimension[],
+): ParameterMappingOption[] {
+  const optionByFieldId = new Map<number, ParameterMappingOption>();
+  for (const option of mappingOptions) {
+    if (!isStructuredDimensionTarget(option.target)) {
+      continue;
+    }
+    const fieldReference = option.target[1];
+    if (
+      fieldReference[0] === "field" &&
+      typeof fieldReference[1] === "number" &&
+      !optionByFieldId.has(fieldReference[1])
+    ) {
+      optionByFieldId.set(fieldReference[1], option);
+    }
+  }
+
+  return dimensions.flatMap((dimension) => {
+    for (const source of dimension.sources ?? []) {
+      const mappingOption = optionByFieldId.get(source["field-id"]);
+      if (mappingOption) {
+        return [
+          {
+            name: dimension.display_name,
+            icon: mappingOption.icon,
+            isForeign: false,
+            target: mappingOption.target,
+          },
+        ];
+      }
+    }
+    return [];
+  });
 }
 
 export const DashCardCardParameterMapperConnected = connect(mapStateToProps)(

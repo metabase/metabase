@@ -36,7 +36,8 @@
         (is (malli= [:map
                      [:native ms/NonBlankString]
                      [:params [:= ["G%"]]]]
-                    (qp.native/expand-stage mp (lib/query-stage query 0))))))))
+                    (-> (qp.native/expand-stage query 0)
+                        (lib/query-stage 0))))))))
 
 (deftest ^:parallel native-query-with-card-template-tag-include-referenced-card-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
@@ -66,4 +67,5 @@
         ;; this SHOULD NOT include `1`, because Card 1 is only referenced indirectly; if you have permissions to run
         ;; Card 2 that should be sufficient to run it even if it references Card 1 (see #15131)
         (is (=? {:query-permissions/referenced-card-ids #{Integer/MAX_VALUE 2}}
-                (qp.native/expand-stage mp (lib/query-stage query 0))))))))
+                (-> (qp.native/expand-stage query 0)
+                    (lib/query-stage 0))))))))

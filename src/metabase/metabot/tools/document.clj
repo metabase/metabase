@@ -123,7 +123,7 @@
            :structured-output {:database_id database-id
                                :sql_engine  (:engine db)}})))
     (catch Exception e
-      (log/error e "Error collecting document schema")
+      (log/errorf "Error collecting document schema: %s" (ex-message e))
       {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
 
 (def ^:private sql-chart-schema
@@ -173,7 +173,7 @@
             {:output "Draft chart payload generated from SQL query."
              :structured-output structured}))))
     (catch Exception e
-      (log/error e "Error constructing SQL chart draft")
+      (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
@@ -220,7 +220,7 @@
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e
-      (log/error e "Error constructing model chart draft")
+      (log/errorf "Error constructing model chart draft: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))

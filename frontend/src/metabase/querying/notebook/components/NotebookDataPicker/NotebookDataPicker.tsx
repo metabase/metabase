@@ -9,15 +9,16 @@ import {
   shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerSearchParams } from "metabase/common/components/Pickers/MiniPicker/context";
 import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
+import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -33,6 +34,10 @@ import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
 import { isObjectWithModel } from "./utils";
+
+const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
+  filter_items_in_personal_collection: "exclude-others",
+};
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -238,6 +243,7 @@ function ModernDataPicker({
         // minipicker doesn't support picking a database
         models={miniPickerModelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
+        searchParams={DATA_SOURCE_SEARCH_PARAMS}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
         onChange={(value: MiniPickerPickableItem) => {

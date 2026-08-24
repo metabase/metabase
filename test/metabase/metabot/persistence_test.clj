@@ -30,11 +30,11 @@
      (mt/with-current-user (mt/user->id :rasta)
        ~@body)))
 
-(deftest ^:parallel first-valid-user-message-test
+(deftest ^:parallel first-non-forked-user-message-test
   (testing "returns the first non-blank user message from a replayable, live turn"
     (let [deleted-at (t/offset-date-time)]
       (is (= {:content "keep this prompt" :profile-id "internal"}
-             (metabot-persistence/first-valid-user-message
+             (metabot-persistence/first-non-forked-user-message
               [{:id 1 :role :user :profile_id "default"
                 :data [{:type "text" :text "errored prompt"}]}
                {:id 2 :role :assistant :finished true :error "boom" :data []}
@@ -51,9 +51,23 @@
                 :data [{:type "text" :text "keep this prompt"}]}
                {:id 10 :role :assistant :finished false :data []}])))))
   (testing "returns nil when no live replayable turn has a non-blank user message"
-    (is (nil? (metabot-persistence/first-valid-user-message
+    (is (nil? (metabot-persistence/first-non-forked-user-message
                [{:id 1 :role :user :data [{:type "text" :text "failed"}]}
-                {:id 2 :role :assistant :finished true :error "boom" :data []}])))))
+                {:id 2 :role :assistant :finished true :error "boom" :data []}]))))
+  (testing "skips messages cloned from the source conversation on a fork"
+    (is (= {:content "the new direction" :profile-id "default"}
+           (metabot-persistence/first-non-forked-user-message
+            [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+              :data [{:type "text" :text "inherited prompt"}]}
+             {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}
+             {:id 3 :role :user :profile_id "default"
+              :data [{:type "text" :text "the new direction"}]}
+             {:id 4 :role :assistant :finished true :data []}]))))
+  (testing "returns nil for a fork with no post-fork user message yet"
+    (is (nil? (metabot-persistence/first-non-forked-user-message
+               [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+                 :data [{:type "text" :text "inherited prompt"}]}
+                {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}])))))
 
 (deftest ^:parallel message->chat-messages-test
   (testing "text part on a user row renders as a user message"
@@ -129,10 +143,10 @@
 
 (deftest ^:parallel message->chat-messages-test-9
   (testing "data parts are converted to data_part chat messages"
-    (let [blocks [{:type "data-navigate_to" :data "/question/1"}
+    (let [blocks [{:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "data-navigate_to" :data "/question/1"}}
+      (is (=? [{:role "agent" :type "data_part" :part {:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
                {:role "agent" :type "data_part" :part {:type "data-todo_list"   :data [{:id "t1"}]}}
                {:role "agent" :type "data_part" :part {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}}]
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
@@ -315,6 +329,16 @@
            (metabot-persistence/parts->storable-content
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type :tool-output :id "c1" :result nil}])))))
+
+(deftest ^:parallel parts->storable-content-drops-reasoning-test
+  (testing "reasoning parts are dropped and don't warn as unknown"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= [{:type "text" :text "hi" :state "done"}]
+             (metabot-persistence/parts->storable-content
+              [{:type :reasoning :id "r1" :text "thinking"}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "s"}}}
+               {:type :text :text "hi"}])))
+      (is (not-any? #(re-find #"Dropping internal part" (:message %)) (logs))))))
 
 (deftest ^:parallel parts->storable-content-emits-step-start-boundaries-test
   (testing "each :start becomes a step-start boundary, in stream order"

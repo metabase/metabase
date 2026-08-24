@@ -1,25 +1,42 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
-import { ArchivedSnippetsPage } from "./pages/ArchivedSnippetsPage";
-import { EditSnippetPage } from "./pages/EditSnippetPage";
-import { NewSnippetPage } from "./pages/NewSnippetPage";
-import { SnippetDependenciesPage } from "./pages/SnippetDependenciesPage";
+/**
+ * The snippet pages, in one chunk. They are small and always reached from the
+ * same place, so one name keeps them to a single request.
+ */
+const newSnippetPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/NewSnippetPage"
+  ).then(({ NewSnippetPage }) => ({ Component: NewSnippetPage }));
 
-const RoutedNewSnippetPage = withRouteProps(NewSnippetPage);
-const RoutedEditSnippetPage = withRouteProps(EditSnippetPage);
-const RoutedSnippetDependenciesPage = withRouteProps(SnippetDependenciesPage);
+const archivedSnippetsPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/ArchivedSnippetsPage"
+  ).then(({ ArchivedSnippetsPage }) => ({ Component: ArchivedSnippetsPage }));
+
+const editSnippetPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/EditSnippetPage"
+  ).then(({ EditSnippetPage }) => ({ Component: EditSnippetPage }));
+
+const snippetDependenciesPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-snippets" */ "./pages/SnippetDependenciesPage"
+  ).then(({ SnippetDependenciesPage }) => ({
+    Component: SnippetDependenciesPage,
+  }));
 
 export function getDataStudioSnippetRoutes() {
   return (
     <>
-      <Route path="snippets/new" element={<RoutedNewSnippetPage />} />
-      <Route path="snippets/archived" element={<ArchivedSnippetsPage />} />
-      <Route path="snippets/:snippetId" element={<RoutedEditSnippetPage />} />
+      <Route path="snippets/new" lazy={newSnippetPage} />
+      <Route path="snippets/archived" lazy={archivedSnippetsPage} />
+      <Route path="snippets/:snippetId" lazy={editSnippetPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path="snippets/:snippetId/dependencies"
-          element={<RoutedSnippetDependenciesPage />}
+          lazy={snippetDependenciesPage}
         >
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>

@@ -6,7 +6,7 @@ import cloud from "assets/img/metabot-cloud-96x96.svg?component";
 import happy from "assets/img/metabot-happy.svg?component";
 import sad from "assets/img/metabot-sad.svg?component";
 import cool from "assets/img/metabot-shades.svg?component";
-import { useMetabotName } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 
 import Styles from "./MetabotLogo.module.css";
 
@@ -31,7 +31,7 @@ export const MetabotLogo = forwardRef(function MetabotLogo(
   ref: Ref<any>,
 ) {
   const MetabotComponent = urlByVariant[variant];
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
 
   return (
     <MetabotComponent

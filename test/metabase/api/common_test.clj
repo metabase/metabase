@@ -21,7 +21,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false nil) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false nil false) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -102,10 +102,10 @@
 
 (deftest check-functions-publish-events
   ;; setup - derive events so they get dispatched to our test method
-  (derive ::permission-failure-event :metabase/event)
-  (derive :event/write-permission-failure ::permission-failure-event)
-  (derive :event/update-permission-failure ::permission-failure-event)
-  (derive :event/create-permission-failure ::permission-failure-event)
+  (events/derive! ::permission-failure-event :metabase/event)
+  (events/derive! :event/write-permission-failure ::permission-failure-event)
+  (events/derive! :event/update-permission-failure ::permission-failure-event)
+  (events/derive! :event/create-permission-failure ::permission-failure-event)
   (try
     (binding [api/*current-user-id* 1]
       (with-redefs [mi/can-read? (constantly false)
@@ -133,10 +133,10 @@
                      @*events*)))))))
     (finally
       ;; teardown - underive events so they aren't dispatched in other tests
-      (underive ::permission-failure-event :metabase/event)
-      (underive :event/write-permission-failure ::permission-failure-event)
-      (underive :event/update-permission-failure ::permission-failure-event)
-      (underive :event/create-permission-failure ::permission-failure-event))))
+      (events/underive! ::permission-failure-event :metabase/event)
+      (events/underive! :event/write-permission-failure ::permission-failure-event)
+      (events/underive! :event/update-permission-failure ::permission-failure-event)
+      (events/underive! :event/create-permission-failure ::permission-failure-event))))
 
 ;;; ---------------------------------------- query-check tests ----------------------------------------
 

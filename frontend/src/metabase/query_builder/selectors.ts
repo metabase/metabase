@@ -1,25 +1,23 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
+import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
   isQuestionDirty,
   isQuestionRunnable,
-  isSavedQuestionChanged,
 } from "metabase/querying/common/utils/question";
 import type { State } from "metabase/redux/store";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -49,6 +47,8 @@ import {
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Bookmark,
+  ColumnFormattingSetting,
+  ColumnSettings,
   Dataset,
   DatasetColumn,
   DatasetQuery,
@@ -61,10 +61,30 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
+import {
+  getCard,
+  getOriginalCard,
+  getOriginalQuestion,
+  getParameterValues,
+  getQueryBuilderMode,
+  getQuestion,
+  getQuestionWithoutComposing,
+  getUiControls,
+} from "./selectors/question";
 import { getWritableColumnProperties } from "./utils";
 
-// This selector can be called from public questions / dashboards, which do not have state.qb
-export const getUiControls = (state: State) => state.qb?.uiControls;
+export {
+  getCard,
+  getIsSavedQuestionChanged,
+  getOriginalCard,
+  getOriginalQuestion,
+  getParameterValues,
+  getQueryBuilderMode,
+  getQuestion,
+  getQuestionWithoutComposing,
+  getUiControls,
+} from "./selectors/question";
+
 export const getQueryStatus = (state: State) => state.qb.queryStatus;
 export const getLoadingControls = (state: State) => state.qb.loadingControls;
 
@@ -87,7 +107,6 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
-  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
@@ -105,11 +124,7 @@ export const getIsRunning = (state: State) => getUiControls(state).isRunning;
 export const getIsLoadingComplete = (state: State) =>
   getQueryStatus(state) === "complete";
 
-export const getCard = (state: State) => state.qb.card;
-export const getOriginalCard = (state: State) => state.qb.originalCard;
 export const getLastRunCard = (state: State) => state.qb.lastRunCard;
-
-export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
@@ -128,11 +143,6 @@ export const getIsBookmarked = (
     (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  (uiControls) => uiControls.queryBuilderMode,
-);
 
 export const getQueryStartTime = (state: State) => state.qb.queryStartTime;
 
@@ -165,12 +175,6 @@ export const getDatasetEditorTab = createSelector(
   (uiControls) => uiControls.datasetEditorTab,
 );
 
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    (metadata && card && new Question(card, metadata)) ?? undefined,
-);
-
 export const getOriginalQuestionWithParameterValues = createSelector(
   [getMetadata, getOriginalCard, getParameterValues],
   (metadata, card, parameterValues) =>
@@ -181,40 +185,6 @@ export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
     card && metadata && new Question(card, metadata, parameterValues),
-);
-
-export const getQuestionWithoutComposing = createSelector(
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) => {
-    if (!card || !metadata) {
-      return;
-    }
-    return new Question(card, metadata, parameterValues);
-  },
-);
-
-export const getQuestion = createSelector(
-  [getQuestionWithoutComposing, getQueryBuilderMode],
-  (question, queryBuilderMode) => {
-    if (!question) {
-      return;
-    }
-
-    const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
-    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
-      return isModel ? question.lockDisplay() : question;
-    }
-
-    // When opening a model or a metric, we construct a question
-    // with a clean, ad-hoc, query.
-    // This has to be skipped for users without data permissions.
-    // See https://github.com/metabase/metabase/issues/20042
-    const composedQuestion =
-      isModel || isMetric ? question.composeQuestion() : question;
-    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
-    return isEditable ? composedQuestion : question;
-  },
 );
 
 /**
@@ -627,11 +597,6 @@ export const getIsDirty = createSelector(
   isQuestionDirty,
 );
 
-export const getIsSavedQuestionChanged = createSelector(
-  [getQuestion, getOriginalQuestion],
-  isSavedQuestionChanged,
-);
-
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
   isQuestionRunnable,
@@ -700,18 +665,65 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
   },
 );
 
+// the card's dataset_query is updated on every native query keystroke
+// but getRawSeries doesn't usually use the updated dataset_query (it prefers lastRunDatasetQuery)
+// so we use this equality check to avoid re-rendering the visualization on every keystroke
+function areRawSeriesEqual(a: Series | null, b: Series | null) {
+  if (a === b) {
+    return true;
+  }
+  if (a == null || b == null || a.length !== 1 || b.length !== 1) {
+    return false;
+  }
+  const {
+    card: {
+      visualization_settings: settingsA,
+      parameters: parametersA,
+      ...cardRestA
+    },
+    ...restA
+  } = a[0];
+  const {
+    card: {
+      visualization_settings: settingsB,
+      parameters: parametersB,
+      ...cardRestB
+    },
+    ...restB
+  } = b[0];
+  return (
+    shallowEqual(restA, restB) &&
+    // getRawSeries creates new cards and visualization_settings
+    shallowEqual(cardRestA, cardRestB) &&
+    shallowEqual(settingsA, settingsB) &&
+    // applyTemplateTagParameters creates completely new parameters - we need deep equality here
+    _.isEqual(parametersA, parametersB)
+  );
+}
+
+const EMPTY_COLUMN_FORMATTING: ColumnFormattingSetting[] = [];
+const EMPTY_COLUMN_SETTINGS: ColumnSettings = {};
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
   [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
-  (card, queryResult, lastRunDatasetQuery, isShowingRawTable): Series => {
+  (
+    card,
+    queryResult,
+    lastRunDatasetQuery,
+    isShowingRawTable,
+  ): Series | null => {
+    if (card == null) {
+      return null;
+    }
     const rawSeries = createRawSeries({
-      card: card!,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
-    if (isShowingRawTable && rawSeries?.length > 0) {
+    if (isShowingRawTable && rawSeries != null && rawSeries.length > 0) {
       const [{ card, ...rest }] = rawSeries;
       return [
         {
@@ -722,14 +734,19 @@ export const getRawSeries = createSelector(
             visualization_settings: {
               ...card.visualization_settings,
               "table.pivot": false,
-              "table.column_formatting": [],
-              column_settings: {},
+              "table.column_formatting": EMPTY_COLUMN_FORMATTING,
+              column_settings: EMPTY_COLUMN_SETTINGS,
             },
           },
         },
       ];
     }
     return rawSeries;
+  },
+  {
+    memoizeOptions: {
+      resultEqualityCheck: areRawSeriesEqual,
+    },
   },
 );
 
@@ -803,7 +820,7 @@ export const getTimeseriesDataInterval = createSelector(
     if (!isTimeseries || !xValues) {
       return null;
     }
-    const columns = series[0]?.data?.cols ?? [];
+    const columns = series?.[0]?.data?.cols ?? [];
     const dimensions = settings?.["graph.dimensions"] ?? [];
     const dimensionColumns = dimensions.map((dimension) =>
       columns.find((column) => column != null && column.name === dimension),
@@ -1068,19 +1085,19 @@ export const getTimeoutId = createSelector(
 );
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.header,
 );
 
 export const getIsActionListVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.action_buttons,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
+  [selectIsWithinIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || embedOptions.additional_info,
 );

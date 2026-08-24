@@ -10,8 +10,8 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
@@ -19,12 +19,11 @@ import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
-import { Outlet, useRouter } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { Outlet, useParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
@@ -50,11 +49,11 @@ function DatabaseEditAppInner({
   updateDatabase,
   deleteDatabase,
 }: DatabaseEditAppProps) {
-  const { params } = useRouter();
+  const params = useParams();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
-  const databaseId = parseInt(params.databaseId, 10);
+  const databaseId = parseInt(params.databaseId ?? "", 10);
   const fromEmbeddingSetupGuide = new URLSearchParams(
     window.location.search,
   ).has(RETURN_TO_SETUP_GUIDE_PARAM);
@@ -116,10 +115,6 @@ function DatabaseEditAppInner({
                   <DatabaseConnectionInfoSection database={database} />
 
                   <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
-                    database={database}
-                  />
-
-                  <PLUGIN_WORKSPACES.WorkspaceDatabaseSection
                     database={database}
                   />
 

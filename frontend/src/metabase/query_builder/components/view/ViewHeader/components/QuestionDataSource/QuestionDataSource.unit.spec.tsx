@@ -4,9 +4,10 @@ import { Component } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
+  setupListDatabaseSchemasEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -246,6 +247,11 @@ function setup({
   const originalQuestion = originalCard && new Question(originalCard, metadata);
 
   setupCardEndpoints(SOURCE_CARD);
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
+  setupListDatabaseSchemasEndpoint(MULTI_SCHEMA_DB_ID, [
+    MULTI_SCHEMA_TABLE1.schema,
+    MULTI_SCHEMA_TABLE2.schema,
+  ]);
   setupTableEndpoints(ORDERS_TABLE);
   setupTableEndpoints(PRODUCTS_TABLE);
   setupTableEndpoints(PEOPLE_TABLE);
@@ -411,9 +417,11 @@ describe("QuestionDataSource", () => {
               .metadata()
               .table(Lib.sourceTableOrCardId(question.query())),
           );
-          const node = await screen.findByText(new RegExp(table.displayName()));
-          expect(node).toBeInTheDocument();
-          expect(node.closest("a")).not.toBeInTheDocument();
+          await waitFor(() => {
+            const node = screen.getByText(new RegExp(table.displayName()));
+            expect(node).toBeInTheDocument();
+            expect(node.closest("a")).not.toBeInTheDocument();
+          });
         });
 
         it("displays table link in subhead variant", async () => {

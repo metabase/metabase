@@ -13,7 +13,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TokenFeatures } from "metabase-types/api";
@@ -26,8 +26,6 @@ import {
 import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
-
-const RoutedPublicOrEmbeddedQuestion = withRouteProps(PublicOrEmbeddedQuestion);
 
 function VisualizationMock({
   onUpdateVisualizationSettings,
@@ -115,7 +113,7 @@ export async function setup(
   renderWithProviders(
     <Route
       path="public/question/:uuid"
-      element={<RoutedPublicOrEmbeddedQuestion />}
+      element={<PublicOrEmbeddedQuestion />}
     />,
     {
       storeInitialState: createMockState({ settings }),

@@ -1,23 +1,11 @@
-import type { MetricPageParams } from "metabase/common/metrics/types";
 import { MetricQueryPage } from "metabase/metrics/pages/MetricQueryPage";
-import type { Route } from "metabase/router";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";
 
-interface DataStudioMetricQueryPageProps {
-  params: MetricPageParams;
-  route: Route;
-}
-
-export function DataStudioMetricQueryPage({
-  params,
-  route,
-}: DataStudioMetricQueryPageProps) {
+export function DataStudioMetricQueryPage() {
   return (
     <MetricQueryPage
-      params={params}
-      route={route}
       urls={dataStudioMetricUrls}
       showAppSwitcher
       showDataStudioLink={false}

@@ -9,7 +9,6 @@ import {
   cardApi,
   dashboardApi,
   embedApi,
-  makePivotAwareQueryRunner,
   publicApi,
 } from "metabase/api";
 import { isAbortError } from "metabase/api/client";
@@ -35,6 +34,7 @@ import {
 } from "metabase/dashboard/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -47,8 +47,6 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -59,9 +57,11 @@ import type {
   DashboardId,
   Dataset,
   JsonQuery,
+  ParameterId,
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -393,6 +393,7 @@ export const fetchCardDataAction = createAsyncThunk<
         result = (await fetchDataOrError(
           runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
             cardId: card.id,
+            dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
           }),
         )) as Dataset | { error: unknown };
@@ -662,7 +663,7 @@ function getDatasetQueryParams(datasetQuery?: JsonQuery) {
     .sort(sortById);
 }
 
-function sortById(a: UiParameter, b: UiParameter) {
+function sortById(a: { id: ParameterId }, b: { id: ParameterId }) {
   return a.id.localeCompare(b.id);
 }
 

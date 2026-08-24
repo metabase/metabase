@@ -2,34 +2,30 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import type {
-  Collection,
-  CollectionItem,
-  CollectionItemModel,
-  Database,
-} from "metabase-types/api";
+import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
-  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDocument,
 } from "metabase-types/api/mocks";
 
-import ActionMenu from "./ActionMenu";
+import { ActionMenu } from "./ActionMenu";
 
 interface SetupOpts {
   item: CollectionItem;
   collection?: Collection;
   databases?: Database[];
   isXrayEnabled?: boolean;
+  withBookmarks?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: jest.Mock;
 }
 
 const setup = ({
@@ -37,6 +33,9 @@ const setup = ({
   collection = createMockCollection({ can_write: true }),
   databases = [],
   isXrayEnabled = false,
+  withBookmarks = false,
+  isSelected,
+  onToggleSelected,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -47,135 +46,183 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
+  const createBookmark = withBookmarks ? jest.fn() : undefined;
+  const deleteBookmark = withBookmarks ? jest.fn() : undefined;
 
   renderWithProviders(
     <ActionMenu
       item={item}
       collection={collection}
-      databases={metadata.databasesList()}
+      databases={databases}
       onCopy={onCopy}
       onMove={onMove}
+      createBookmark={createBookmark}
+      deleteBookmark={deleteBookmark}
+      isSelected={isSelected}
+      onToggleSelected={onToggleSelected}
     />,
     { storeInitialState },
   );
 
-  return { onCopy, onMove };
+  return { onCopy, onMove, createBookmark, deleteBookmark };
 };
 
 describe("ActionMenu", () => {
-  describe("preview", () => {
-    it.each<CollectionItemModel>(["card", "metric"])(
-      "should show an option to hide preview for a pinned %s",
-      async (model) => {
-        const item = createMockCollectionItem({
-          model,
-          collection_position: 1,
-          collection_preview: true,
-        });
-        setupCardEndpoints(createMockCard({ id: item.id }));
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-        setup({ item });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
-        await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(
-          await screen.findByText("Don’t show visualization"),
-        );
-
-        await waitFor(() =>
-          expect(
-            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
-              method: "PUT",
-            }),
-          ).toHaveLength(1),
-        );
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/card/${item.id}`,
-          { method: "PUT" },
-        );
-        // Unjustified type cast. FIXME
-        expect(JSON.parse(call?.options.body as string)).toEqual({
-          collection_preview: false,
-        });
-      },
-    );
-
-    it("should show a tooltip for the disabled preview action", async () => {
+  describe("bookmarks", () => {
+    it("should bookmark an item with its id and model", async () => {
       const item = createMockCollectionItem({
-        collection_position: 1,
-        collection_preview: false,
-        fully_parameterized: false,
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        can_write: true,
       });
-      setupCardEndpoints(createMockCard({ id: item.id }));
 
+      const { createBookmark } = setup({ item, withBookmarks: true });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Bookmark"));
+
+      expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
+  describe("pinning", () => {
+    it("tracks a successful pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/1", {});
       setup({ item });
 
       await userEvent.click(getIcon("ellipsis"));
-      const menuItem = await screen.findByText("Show visualization");
-      await userEvent.hover(menuItem);
+      await userEvent.click(await screen.findByText("Pin this"));
 
-      const tooltip = await screen.findByText(
-        "Open this question and fill in its variables to see it.",
-      );
-      await waitFor(() => expect(tooltip).toBeVisible());
-
-      await userEvent.click(menuItem);
-
-      expect(
-        fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(0);
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
+        });
+      });
     });
 
-    it.each<CollectionItemModel>(["card", "metric"])(
-      "should show an option to show preview for a pinned %s",
-      async (model) => {
-        const item = createMockCollectionItem({
-          model,
-          collection_position: 1,
-          collection_preview: false,
+    it("tracks a successful unpin and normalizes questions", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 2,
+        name: "Question",
+        model: "card",
+        collection_position: 1,
+      });
+      fetchMock.put("path:/api/card/2", {});
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Unpin"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_unpinned",
+          event_detail: "question",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
         });
-        setupCardEndpoints(createMockCard({ id: item.id }));
+      });
+    });
 
-        setup({ item });
+    it("tracks a failed pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 3,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/3", {
+        status: 500,
+        body: { message: "Something went wrong" },
+      });
+      setup({ item });
 
-        await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Show visualization"));
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Pin this"));
 
-        await waitFor(() =>
-          expect(
-            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
-              method: "PUT",
-            }),
-          ).toHaveLength(1),
-        );
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/card/${item.id}`,
-          { method: "PUT" },
-        );
-        // Unjustified type cast. FIXME
-        expect(JSON.parse(call?.options.body as string)).toEqual({
-          collection_preview: true,
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "failure",
         });
-      },
-    );
+      });
+    });
+  });
 
-    it("should not show an option to hide preview for a pinned model", async () => {
+  describe("selection", () => {
+    const item = createMockCollectionItem({
+      id: 1,
+      name: "Dashboard",
+      model: "dashboard",
+      can_write: true,
+    });
+
+    it("should select an item in a writable collection", async () => {
+      const onToggleSelected = jest.fn();
+      setup({ item, onToggleSelected });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Select"));
+
+      expect(onToggleSelected).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).toHaveBeenCalledWith();
+    });
+
+    it("should show Deselect for a selected item", async () => {
+      setup({ item, isSelected: true, onToggleSelected: jest.fn() });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Deselect")).toBeInTheDocument();
+    });
+
+    it("should not show selection in a read-only collection", async () => {
       setup({
-        item: createMockCollectionItem({
-          model: "dataset",
-          collection_position: 1,
-        }),
+        item,
+        collection: createMockCollection({ can_write: false }),
+        onToggleSelected: jest.fn(),
       });
 
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(
-        screen.queryByText("Don’t show visualization"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
+
+    it("should not show selection without a toggle callback", async () => {
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
     });
   });
 
@@ -232,9 +279,11 @@ describe("ActionMenu", () => {
         personal_owner_id: 1,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -246,11 +295,25 @@ describe("ActionMenu", () => {
         can_write: false,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    it("should not render the menu at all when no actions are available", () => {
+      const item = createMockCollectionItem({
+        name: "My Read Only collection",
+        model: "collection",
+        can_write: false,
+      });
+
+      setup({ item, withBookmarks: false });
+
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
     });
   });
 

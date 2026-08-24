@@ -22,10 +22,8 @@ export const useCreateQuestion = ({
 
   return useCallback(
     async (newQuestion: Question, options?: OnCreateOptions) => {
-      const shouldBePinned =
-        newQuestion.type() === "model" || newQuestion.type() === "metric";
       const createdQuestion = await dispatch(
-        apiCreateQuestion(newQuestion.setPinned(shouldBePinned), options),
+        apiCreateQuestion(newQuestion.setPinned(false), options),
       );
       await dispatch(setUIControls({ isModifiedFromNotebook: false }));
 

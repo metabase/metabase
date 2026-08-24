@@ -222,8 +222,14 @@
                                                                    org.apache.hadoop.thirdparty/hadoop-shaded-guava]}
 
   ;; Third-party deps required by hive-jdbc at runtime, pinned at safe versions.
-  org.apache.thrift/libthrift                        {:mvn/version "0.16.0"
-                                                      :exclusions [org.apache.commons/commons-lang3]}
+  ;; libthrift 0.24.0 declares runtime deps (httpclient5, httpcore5, jakarta.servlet-api)
+  ;; that only serve its THttpClient/TServlet classes; hive-jdbc is built against
+  ;; httpclient 4.x and cannot use them, so exclude them to keep the jar lean.
+  org.apache.thrift/libthrift                        {:mvn/version "0.24.0"
+                                                      :exclusions [jakarta.servlet/jakarta.servlet-api
+                                                                   org.apache.commons/commons-lang3
+                                                                   org.apache.httpcomponents.client5/httpclient5
+                                                                   org.apache.httpcomponents.core5/httpcore5]}
   org.apache.httpcomponents/httpclient               {:mvn/version "4.5.14"
                                                       :exclusions [org.apache.commons/commons-lang3]}
   org.apache.httpcomponents/httpcore                  {:mvn/version "4.4.16"}
@@ -245,11 +251,12 @@
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.
-  io.netty/netty-common                              {:mvn/version "4.2.15.Final"}
-  io.netty/netty-handler                             {:mvn/version "4.2.15.Final"}
-  io.netty/netty-transport                           {:mvn/version "4.2.15.Final"}
-  io.netty/netty-buffer                              {:mvn/version "4.2.15.Final"}
-  io.netty/netty-codec                               {:mvn/version "4.2.15.Final"}
-  io.netty/netty-resolver                            {:mvn/version "4.2.15.Final"}
-  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.15.Final"}
-  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.15.Final"}}}
+  io.netty/netty-common                              {:mvn/version "4.2.16.Final"}
+  io.netty/netty-handler                             {:mvn/version "4.2.16.Final"}
+  io.netty/netty-transport                           {:mvn/version "4.2.16.Final"}
+  io.netty/netty-buffer                              {:mvn/version "4.2.16.Final"}
+  io.netty/netty-codec                               {:mvn/version "4.2.16.Final"}
+  io.netty/netty-codec-compression                   {:mvn/version "4.2.16.Final"}
+  io.netty/netty-resolver                            {:mvn/version "4.2.16.Final"}
+  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.16.Final"}
+  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.16.Final"}}}

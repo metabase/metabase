@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useEffect } from "react";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import type { EmbeddingHashOptions } from "metabase/embedding/types";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
+import type { Location } from "metabase/router";
 import { parseHashOptions } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
 

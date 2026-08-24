@@ -10,6 +10,7 @@ src/metabase/query_processor @metabase/core-backend-querying-platform
 src/metabase/graph @metabase/graphy
 enterprise/backend/src/metabase_enterprise/dependencies @metabase/graphy
 enterprise/frontend/src/metabase-enterprise/dependencies @metabase/graphy
+enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/graphy
 
 # @metabase/embedding
 
@@ -41,6 +42,8 @@ docs/api.json # auto-generated
 docs/configuring-metabase/environment-variables.md # auto-generated
 docs/configuring-metabase/config-template.md # auto-generated
 docs/installation-and-operation/commands.md # auto-generated
+docs/embedding/sdk/api # auto-generated
+docs/embedding/eajs/snippets # auto-generated
 
 # @metabase/devexp
 .github @metabase/devexp
@@ -49,5 +52,5 @@ docs/installation-and-operation/commands.md # auto-generated
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 
 # @metabase/metabot-frontend
-enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend 
+enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend

@@ -2,6 +2,7 @@ import { once } from "underscore";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider";
+import { SdkThemeProviderWithStore } from "embedding-sdk-package/data-app-dev/components/SdkThemeProviderWithStore/SdkThemeProviderWithStore";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 const registerDataAppDevContext = once((appSlug: string) => {
@@ -14,14 +15,6 @@ export type DataAppDevProviderProps = MetabaseProviderProps & {
   appSlug: string;
 };
 
-/**
- * Provider for the data-app local dev preview (`npm run dev`). Wraps
- * `MetabaseProvider` and reports the page's traffic as the data app, so query
- * executions are attributed to the app (as "data-app-preview") instead of the
- * React SDK.
- *
- * Intended only for the local Vite dev server.
- */
 export const DataAppDevProvider = ({
   appSlug,
   children,
@@ -29,5 +22,11 @@ export const DataAppDevProvider = ({
 }: DataAppDevProviderProps) => {
   registerDataAppDevContext(appSlug);
 
-  return <MetabaseProvider {...props}>{children}</MetabaseProvider>;
+  return (
+    <MetabaseProvider {...props}>
+      <SdkThemeProviderWithStore theme={props.theme}>
+        {children}
+      </SdkThemeProviderWithStore>
+    </MetabaseProvider>
+  );
 };

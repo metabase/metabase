@@ -4,8 +4,7 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting/strings";
 import type { DataSegregationStrategy } from "metabase-types/api";
@@ -38,14 +37,14 @@ export const TenantsSummaryOnboardingStep = ({
   rlsTableNames?: string[];
   rlsColumnName?: string | null;
 }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: tenantsData } = useListTenantsQuery(
     { status: "active" },
     { skip: tenants.length > 0 },
   );
 
-  const onDone = () => dispatch(push("/admin/embedding/setup-guide"));
+  const onDone = () => navigate("/admin/embedding/setup-guide");
 
   const tenantsToShow = useMemo(() => {
     // If we have tenants from the flow, use them

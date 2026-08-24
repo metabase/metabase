@@ -6,7 +6,7 @@ import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Tenant } from "metabase-types/api";
+import type { GroupId, GroupInfo, Tenant, User } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTenant,
@@ -36,12 +36,18 @@ const USER = createMockUser({
 
 interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  initialValues?: typeof USER;
+  initialValues?: Partial<User>;
   external?: boolean;
   tenants?: Tenant[];
   hideNameFields?: boolean;
   hideAttributes?: boolean;
   tokenFeatures?: Parameters<typeof createMockTokenFeatures>[0];
+  groups?: GroupInfo[];
+  inviteTargetAccess?: {
+    groupIds: GroupId[];
+    sectionLabel: string;
+    warningMessage: string;
+  };
 }
 
 const setup = ({
@@ -53,11 +59,11 @@ const setup = ({
   hideNameFields = false,
   hideAttributes = false,
   tokenFeatures = { sandboxes: true, tenants: true },
+  groups = GROUPS,
+  inviteTargetAccess,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
-
-  fetchMock.get("path:/api/permissions/group", GROUPS);
 
   setupTenantEntpoints(tenants);
 
@@ -81,6 +87,8 @@ const setup = ({
       external={external}
       hideNameFields={hideNameFields}
       hideAttributes={hideAttributes}
+      groups={groups}
+      inviteTargetAccess={inviteTargetAccess}
     />,
     {
       storeInitialState: state,
@@ -113,8 +121,7 @@ describe("UserForm", () => {
     });
 
     it("should not show validation errors before fields are touched (UXW-3719)", async () => {
-      // Unjustified type cast. FIXME
-      setup({ initialValues: {} as typeof USER });
+      setup({ initialValues: {} });
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
@@ -402,6 +409,96 @@ describe("UserForm", () => {
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
+    });
+
+    it("scopes the picker to provided groups without fetching the full list", async () => {
+      setup({
+        initialValues: {},
+        groups: [createMockGroup({ id: 7, name: "scoped" })],
+      });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "scoped" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "foo" }),
+      ).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/permissions/group")).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("item access marking (UXW-4533)", () => {
+    const INVITE_TARGET_ACCESS = {
+      groupIds: [4], // bar
+      sectionLabel: "Can view this dashboard",
+      warningMessage: "None of the selected groups can view this dashboard.",
+    };
+
+    it("warns while no selected group grants access, and clears once one is added", async () => {
+      // USER belongs to All Users (1) and foo (3); neither grants access.
+      setup({ inviteTargetAccess: INVITE_TARGET_ACCESS });
+
+      expect(
+        await screen.findByText(INVITE_TARGET_ACCESS.warningMessage),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+
+      expect(
+        screen.queryByText(INVITE_TARGET_ACCESS.warningMessage),
+      ).not.toBeInTheDocument();
+    });
+
+    it("counts the Administrators group's implicit access", async () => {
+      setup({
+        inviteTargetAccess: { ...INVITE_TARGET_ACCESS, groupIds: [] },
+        initialValues: {
+          ...USER,
+          user_group_memberships: [
+            { id: 1, is_group_manager: false },
+            { id: 2, is_group_manager: false },
+          ],
+        },
+      });
+
+      expect(await screen.findByRole("list")).toBeInTheDocument();
+      expect(
+        screen.queryByText(INVITE_TARGET_ACCESS.warningMessage),
+      ).not.toBeInTheDocument();
+    });
+
+    it("places Administrators in the access section implicitly", async () => {
+      setup({ inviteTargetAccess: INVITE_TARGET_ACCESS });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      const accessSection = await screen.findByRole("group", {
+        name: INVITE_TARGET_ACCESS.sectionLabel,
+      });
+
+      // Administrators joins bar (the granted group) in the access section.
+      expect(
+        within(accessSection).getByRole("option", { name: "Administrators" }),
+      ).toBeInTheDocument();
+      expect(
+        within(accessSection).getByRole("option", { name: "bar" }),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("group", { name: "Other groups" })).getByRole(
+          "option",
+          { name: "foo" },
+        ),
+      ).toBeInTheDocument();
     });
   });
 

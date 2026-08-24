@@ -96,7 +96,7 @@ describe(suiteTitle, () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

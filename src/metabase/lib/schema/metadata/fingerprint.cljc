@@ -1,7 +1,8 @@
 (ns metabase.lib.schema.metadata.fingerprint
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
@@ -59,8 +60,12 @@
 (mr/def ::fingerprint.type-specific
   "Schema for type-specific fingerprint information."
   [:and
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:map-of ::lib.schema.common/base-type :map]
+   ;; the keys are base types, and prod has fingerprints stored under lower-cased ones (#63397), so normalize them
+   ;; here -- a `[:map-of ::lib.schema.common/base-type ...]` conjunct would do it too, but `:map-of` silently drops
+   ;; the entries it can't normalize instead of surfacing them
+   {:decode/normalize (fn [m]
+                        (some-> (lib.schema.common/normalize-map-no-kebab-case m)
+                                (perf/update-keys lib.schema.common/normalize-base-type)))}
    [:map
     [:type/Number   {:optional true} [:ref ::fingerprint.number]]
     [:type/Text     {:optional true} [:ref ::fingerprint.text]]

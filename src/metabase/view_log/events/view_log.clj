@@ -63,7 +63,7 @@
                                                                           cnt->ids))]}
                        :where  [:in :id (apply concat (vals cnt->ids))]})))))
     (catch Exception e
-      (log/error e "Failed to increment view counts"))))
+      (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
 (def ^:private increment-view-count-interval-seconds 20)
 
@@ -90,7 +90,7 @@
   (try
     (t2/insert! :model/ViewLog views)
     (catch Exception e
-      (log/error e "Failed to record views"))))
+      (log/errorf "Failed to record views: %s" (ex-message e)))))
 
 (defonce ^:private record-view-queue
   (delay (grouper/start!
@@ -123,8 +123,8 @@
    :context    context
    :tenant_id  (:tenant_id @api/*current-user*)})
 
-(derive ::card-read-event :metabase/event)
-(derive :event/card-read ::card-read-event)
+(events/derive! ::card-read-event :metabase/event)
+(events/derive! :event/card-read ::card-read-event)
 
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
@@ -137,10 +137,10 @@
       (increment-view-counts! :model/Card object-id)
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(derive ::card-query-model-view :metabase/event)
-(derive :event/card-query ::card-query-model-view)
+(events/derive! ::card-query-model-view :metabase/event)
+(events/derive! :event/card-query ::card-query-model-view)
 
 (m/defmethod events/publish-event! ::card-query-model-view
   "Log a view for models, which are opened as ad-hoc `card__id` queries that fire :event/card-query but never
@@ -159,10 +159,10 @@
                                       :user-id   user-id
                                       :context   :question)))
       (catch Throwable e
-        (log/warnf e "Failed to process card query view event. %s" topic)))))
+        (log/warnf "Failed to process card query view event. %s: %s" topic (ex-message e))))))
 
-(derive ::dashboard-queried :metabase/event)
-(derive :event/dashboard-queried ::dashboard-queried)
+(events/derive! ::dashboard-queried :metabase/event)
+(events/derive! :event/dashboard-queried ::dashboard-queried)
 
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
 
@@ -187,7 +187,7 @@
                             :updated_at :updated_at}
                    :where  [:in :id (keys dashboard-id->timestamp)]}))
       (catch Exception e
-        (log/error e "Failed to update dashboard last_viewed_at")))))
+        (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
@@ -208,10 +208,10 @@
   (try
     (update-dashboard-last-viewed-at! object-id)
     (catch Throwable e
-      (log/warnf e "Failed to process dashboard query event. %s" topic))))
+      (log/warnf "Failed to process dashboard query event. %s: %s" topic (ex-message e)))))
 
-(derive ::collection-read-event :metabase/event)
-(derive :event/collection-read ::collection-read-event)
+(events/derive! ::collection-read-event :metabase/event)
+(events/derive! :event/collection-read ::collection-read-event)
 
 (m/defmethod events/publish-event! ::collection-read-event
   "Handle processing for a generic read event notification"
@@ -221,10 +221,10 @@
         generate-view
         record-views!)
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
-(derive ::read-permission-failure :metabase/event)
-(derive :event/read-permission-failure ::read-permission-failure)
+(events/derive! ::read-permission-failure :metabase/event)
+(events/derive! :event/read-permission-failure ::read-permission-failure)
 
 (m/defmethod events/publish-event! ::read-permission-failure
   "Handle processing for a generic read event notification"
@@ -237,10 +237,10 @@
           generate-view
           record-views!))
     (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+      (log/warnf "Failed to process view event. %s: %s" topic (ex-message e)))))
 
-(derive ::dashboard-read :metabase/event)
-(derive :event/dashboard-read ::dashboard-read)
+(events/derive! ::dashboard-read :metabase/event)
+(events/derive! :event/dashboard-read ::dashboard-read)
 
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
@@ -253,10 +253,10 @@
       (increment-view-counts! :model/Dashboard object-id)
       (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(derive ::table-read :metabase/event)
-(derive :event/table-read ::table-read)
+(events/derive! ::table-read :metabase/event)
+(events/derive! :event/table-read ::table-read)
 
 (m/defmethod events/publish-event! ::table-read
   "Handle processing for the table read event. Does a basic permissions check to see if the the user has data perms for
@@ -277,4 +277,4 @@
             generate-view
             record-views!))
       (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+        (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))

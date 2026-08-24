@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
-   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
@@ -365,113 +364,14 @@
       (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
 
-;;; ---------------------- Workspace isolation orphan cleanup ----------------------
-;;;
-;;; Split into pure enumerators (`orphan-isolation-*`) and destructive drops
-;;; (`drop-orphan-isolation-*!`). REPL-preview without the destructive side:
-;;;
-;;;     (#'bq-tx/orphan-isolation-datasets)
-;;;     ;; => ("mb__isolation_..." ...)
-;;;     (#'bq-tx/orphan-isolation-service-accounts)
-;;;     ;; => ("mb-ws-..." ...)
-;;;
-;;; The whole-orchestration entry point is the existing
-;;; [[delete-old-datasets-if-needed!]].
-
-(defn- orphan-isolation-datasets
-  "Return iso dataset names (`mb__isolation_*`) older than 3 hours.
-   Pure: queries `INFORMATION_SCHEMA.SCHEMATA`, returns a seq of strings."
-  []
-  (->> (execute!
-        (str "SELECT schema_name FROM `%s`.INFORMATION_SCHEMA.SCHEMATA "
-             ;; Prefix must match driver.u/workspace-isolated-prefix
-             "WHERE schema_name LIKE 'mb__isolation_%%' "
-             "AND creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -3 hour)")
-        (project-id))
-       (map first)))
-
-(defn- orphan-isolation-service-accounts
-  "Return iso SA email addresses (`mb-ws-*@...`) older than 3 hours.
-
-   Age comes from the `created-at:<iso-instant>` marker encoded in the SA
-   `description` field by
-   [[metabase.driver.bigquery-cloud-sdk/ws-sa-description->created-at]].
-   SAs without that marker are NOT returned (we don't know their age).
-
-   Pure: lists SAs via the IAM client and filters in-memory."
-  []
-  (let [details    (test-db-details)
-        iam-client (#'bigquery.ws/ws-database-details->iam-client details)
-        proj-name  (format "projects/%s" (project-id))
-        threshold  (.minus (java.time.Instant/now) 3 java.time.temporal.ChronoUnit/HOURS)]
-    (try
-      (let [request  (-> (com.google.iam.admin.v1.ListServiceAccountsRequest/newBuilder)
-                         (.setName proj-name)
-                         (.build))
-            response (.listServiceAccounts ^com.google.cloud.iam.admin.v1.IAMClient iam-client request)]
-        (->> (.iterateAll response)
-             (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
-                     (let [sa-email   (.getEmail sa)
-                           created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
-                       (when (and (str/starts-with? sa-email "mb-ws-")
-                                  created-at
-                                  (.isBefore ^java.time.Instant created-at threshold))
-                         sa-email))))
-             ;; Realize before the iam-client is closed in `finally`.
-             vec))
-      (finally
-        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
-
-(defn- drop-orphan-isolation-datasets!
-  "Destroy iso datasets returned by [[orphan-isolation-datasets]].
-   Per-entry try/catch: one failure won't block the others."
-  []
-  (doseq [dataset-name (orphan-isolation-datasets)]
-    (log/info (u/format-color 'blue "Deleting orphan workspace isolation dataset older than 3h: %s" dataset-name))
-    (try
-      (destroy-dataset! dataset-name)
-      (catch Throwable e
-        (log/warnf "Failed to drop orphan iso dataset %s: %s" dataset-name (ex-message e))))))
-
-(defn- drop-orphan-isolation-service-accounts!
-  "Delete iso service accounts returned by [[orphan-isolation-service-accounts]].
-   Per-entry try/catch: one failure won't block the others. Opens its own IAM
-   client (separate from the enumerator's) so the lifecycle is local."
-  []
-  (let [details    (test-db-details)
-        iam-client (#'bigquery.ws/ws-database-details->iam-client details)]
-    (try
-      (doseq [sa-email (orphan-isolation-service-accounts)]
-        (log/info (u/format-color 'blue "Deleting orphan workspace isolation SA older than 3h: %s" sa-email))
-        (try
-          (let [del-req (-> (com.google.iam.admin.v1.DeleteServiceAccountRequest/newBuilder)
-                            (.setName (format "projects/%s/serviceAccounts/%s" (project-id) sa-email))
-                            (.build))]
-            (.deleteServiceAccount ^com.google.cloud.iam.admin.v1.IAMClient iam-client del-req))
-          (catch Throwable e
-            (log/warnf "Failed to delete orphan iso SA %s: %s" sa-email (ex-message e)))))
-      (finally
-        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
-
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
 (defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]] (+ workspace-iso sweep), only if we haven't
-  done so already."
+  "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
   (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)
-    ;; Sweep orphan workspace-isolation resources. Per-entry try/catch already
-    ;; inside each `drop-orphan-*!`; the outer try/catch here guards against
-    ;; an enumerator-side failure (e.g. transient IAM 5xx) blocking test-data
-    ;; setup.
-    (try (drop-orphan-isolation-datasets!)
-         (catch Throwable e
-           (log/warnf "drop-orphan-isolation-datasets! failed: %s" (ex-message e))))
-    (try (drop-orphan-isolation-service-accounts!)
-         (catch Throwable e
-           (log/warnf "drop-orphan-isolation-service-accounts! failed: %s" (ex-message e))))))
+    (delete-old-datasets!)))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

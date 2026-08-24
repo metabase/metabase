@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
+import { formatPercent as formatPercentDefault } from "metabase/utils/formatting";
 import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapPercentOfTotalFormatter } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import { hasChildren } from "metabase/visualizations/echarts/graph/treemap/model/tree";

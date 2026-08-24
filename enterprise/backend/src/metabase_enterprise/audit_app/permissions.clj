@@ -33,7 +33,8 @@
     "v_metabot_conversations"
     "v_metabot_messages"
     "v_ai_usage_log"
-    "v_mcp_tool_calls"})
+    "v_mcp_tool_calls"
+    "v_agent_api_calls"})
 
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.

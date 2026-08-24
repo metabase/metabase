@@ -83,12 +83,16 @@
       (do
         (log/infof "Starting migration from version %d to %d."
                    db-version semantic.db.migration.impl/schema-version)
-        (semantic.db.migration.impl/migrate-schema! tx opts)
+        (semantic.db.migration.impl/migrate-schema! tx (assoc opts :from-version db-version))
         (write-successful-migration! index-metadata tx))
 
       :else
       (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
-                 db-version semantic.db.migration.impl/schema-version)))
+                 db-version semantic.db.migration.impl/schema-version))
+    ;; Existing schema-version-2 databases predate these additive columns. This compatibility pass must also
+    ;; run when the migration version already matches; newer schemas remain untouched by older code.
+    (when (<= db-version semantic.db.migration.impl/schema-version)
+      (semantic.db.migration.impl/ensure-schema-compatibility! tx opts)))
   nil)
 
 (defn- index-metadata-table-exists?

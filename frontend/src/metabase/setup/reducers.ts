@@ -6,6 +6,7 @@ import {
   loadLocaleDefaults,
   selectStep,
   skipDatabase,
+  startAiConfig,
   submitDatabase,
   submitLicenseToken,
   submitUsageReason,
@@ -44,6 +45,7 @@ const initialState: SetupState = {
   step: getInitialStep(),
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  isAiConfigRequested: false,
   user: getUserFromQueryParams(),
   isEmbeddingUseCase,
 };
@@ -94,6 +96,9 @@ export const reducer = createReducer(initialState, (builder) => {
   builder.addCase(skipDatabase.pending, (state) => {
     state.database = undefined;
     state.invite = undefined;
+  });
+  builder.addCase(startAiConfig.pending, (state) => {
+    state.isAiConfigRequested = true;
   });
   builder.addCase(updateTracking.fulfilled, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;

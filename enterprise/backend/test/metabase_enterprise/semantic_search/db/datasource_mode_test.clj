@@ -10,9 +10,39 @@
    [metabase.test :as mt]
    [next.jdbc :as jdbc])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(defn- stub-connection
+  "The support check borrows a connection to bound it at the socket level; these tests stub every statement
+  on it, so it only has to close, report its timeout, and record the ones it is handed."
+  (^Connection [] (stub-connection 0 (atom [])))
+  (^Connection [initial-ms timeouts]
+   (reify Connection
+     (getNetworkTimeout [_] initial-ms)
+     (setNetworkTimeout [_ _ ms] (swap! timeouts conj ms))
+     (close [_] nil))))
+
+(deftest probe-connection-restores-its-timeout-test
+  (testing "the probe's socket bound is lifted before check-in, so the next borrower keeps the app db's own"
+    (let [with-probe-connection @#'semantic.db.datasource/with-probe-connection
+          probe-bound           @#'semantic.db.datasource/probe-network-timeout-ms]
+      (doseq [initial-ms [0 300000]]
+        (testing (format "from an existing timeout of %dms" initial-ms)
+          (let [timeouts (atom [])]
+            (with-redefs [mdb/data-source     (constantly ::app-pool)
+                          jdbc/get-connection (fn [_] (stub-connection initial-ms timeouts))]
+              (is (= ::probed (with-probe-connection (constantly ::probed))))
+              (is (= [probe-bound initial-ms] @timeouts))))))
+      (testing "and when the probe throws, which is how a stuck read ends"
+        (let [timeouts (atom [])]
+          (with-redefs [mdb/data-source     (constantly ::app-pool)
+                        jdbc/get-connection (fn [_] (stub-connection 300000 timeouts))]
+            (is (thrown? ExceptionInfo
+                         (with-probe-connection (fn [_] (throw (ex-info "stuck" {}))))))
+            (is (= [probe-bound 300000] @timeouts))))))))
 
 (defmacro ^:private with-support-cache
   "Run body with all three pieces of app-db probe state rebound to fresh atoms: the support cache (holding
@@ -57,7 +87,8 @@
   (testing "supported only when the vector extension and the semantic_search schema exist or can be created"
     (letfn [(check [] (semantic.db.datasource/check-app-db-pgvector-support))
             (catalog [m] (fn [& _] m))]
-      (with-redefs [mdb/data-source (constantly ::app-pool)]
+      (with-redefs [mdb/data-source      (constantly ::app-pool)
+                    jdbc/get-connection (fn [_] (stub-connection))]
         (testing "extension neither installed nor available → unsupported, no provisioning probe"
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available false :schema-exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector?

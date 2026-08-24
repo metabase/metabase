@@ -17,13 +17,12 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -54,14 +53,13 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import ActionCreatorModal from "../ActionCreatorModal";
+
 import ModelActions from "./ModelActions";
 
-const RoutedModelActions = withRouteProps(ModelActions);
-
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/actions/containers/ActionCreator", () => () => (
-  <div data-testid="mock-action-editor" />
-));
+jest.mock("metabase/querying/action-creator", () => ({
+  ActionCreator: () => <div data-testid="mock-action-editor" />,
+}));
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 1;
@@ -221,15 +219,15 @@ async function setup({
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
-        <Route path="actions" element={<RoutedModelActions />}>
-          {modalRoute("new", ActionCreator, {
+        <Route path="actions" element={<ModelActions />}>
+          {modalRoute("new", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
-          {modalRoute(":actionId", ActionCreator, {
+          {modalRoute(":actionId", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
         </Route>
@@ -241,7 +239,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions };
+  return { model, router, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -697,13 +695,11 @@ describe("ModelActions", () => {
 
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
-      const { model: question, history } = await setup({
+      const { model: question, router } = await setup({
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(
-        Urls.question(question),
-      );
+      expect(router?.location.pathname).toBe(Urls.question(question));
     });
 
     it("shows 404 when opening an archived model", async () => {

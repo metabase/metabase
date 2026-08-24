@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Requires: BASE_REF, CURRENT_VERSION (for master)
 # Optional: PR_LABELS (comma-separated, for backport handling)
+#           OLDEST_SUPPORTED_VERSION (required when PR_LABELS contains `backport`)
 
 if [[ -z "${BASE_REF:-}" ]]; then
     echo "ERROR: BASE_REF is not set." >&2
@@ -39,30 +40,53 @@ elif [[ "$BASE_REF" == "master" ]]; then
     fi
     echo "CURRENT_VERSION: ${CURRENT_VERSION}"
 
-    matches=0
-    for l in backport single-backport double-backport triple-backport; do
-        if [[ ",$labels," == *",$l,"* ]]; then
-            # N.B. not ((matches++)) — that exits 1 when matches=0 under set -e
-            matches=$((matches + 1))
+    # Backport labels shift the target version back so migrations land on the earliest release
+    # branch the backport will reach. `backport` targets every supported release line (see
+    # .github/workflows/auto-backport.yml), so its floor is the oldest supported major from
+    # version-info.json, passed in as OLDEST_SUPPORTED_VERSION. The legacy depth labels keep
+    # their fixed offsets from CURRENT_VERSION.
+    candidates=()
+    if [[ ",$labels," == *",backport,"* ]]; then
+        if [[ -z "${OLDEST_SUPPORTED_VERSION:-}" ]]; then
+            echo "ERROR: PR has the 'backport' label but OLDEST_SUPPORTED_VERSION is not set." >&2
+            exit 1
         fi
-    done
+        if ! [[ "$OLDEST_SUPPORTED_VERSION" =~ ^[1-9][0-9]*$ ]]; then
+            echo "ERROR: OLDEST_SUPPORTED_VERSION must be a positive integer, got: '${OLDEST_SUPPORTED_VERSION}'" >&2
+            exit 1
+        fi
+        echo "OLDEST_SUPPORTED_VERSION: ${OLDEST_SUPPORTED_VERSION}"
+        candidates+=("$OLDEST_SUPPORTED_VERSION")
+    fi
+    [[ ",$labels," == *",single-backport,"* ]] && candidates+=("$CURRENT_VERSION")
+    [[ ",$labels," == *",double-backport,"* ]] && candidates+=($((CURRENT_VERSION - 1)))
+    [[ ",$labels," == *",triple-backport,"* ]] && candidates+=($((CURRENT_VERSION - 2)))
 
     constraint="="
     version=$((CURRENT_VERSION + 1))
-    # Backport labels shift the target version back so migrations land on the correct release branch.
-    [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
-    [[ ",$labels," == *",single-backport,"* ]] && version=$((CURRENT_VERSION))
-    [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
-    [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
+    # ${arr[@]+...} guards the empty-array case, which trips `set -u` on bash < 4.4
+    for candidate in ${candidates[@]+"${candidates[@]}"}; do
+        [[ "$candidate" -lt "$version" ]] && version=$candidate
+    done
 
-    [[ $matches -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using the earliest version (v${version})." >&2
+    [[ ${#candidates[@]} -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using the earliest version (v${version})." >&2
 else
     echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
     exit 0
 fi
 
+# Per-feature migration directories (resources/migrations/NNN/) start at v60. Older versions keep a
+# single shared file (resources/migrations/0NN_update_migrations.yaml), and pre-60 release branches
+# only load those shared files (endsWithFilter: "_update_migrations.yaml"), so a per-feature file
+# targeting a pre-60 version would be silently ignored there.
+DIR_LAYOUT_FLOOR=60
+
 expected_dir=$(printf "%03d" "$version")
-echo "Expected directory: ${constraint} ${expected_dir}"
+if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+    echo "Expected location: resources/migrations/${expected_dir}_update_migrations.yaml (per-feature directories start at v${DIR_LAYOUT_FLOOR})"
+else
+    echo "Expected directory: ${constraint} ${expected_dir}"
+fi
 echo ""
 
 # Check that new migration files are in the correct directory
@@ -84,9 +108,16 @@ while IFS= read -r file; do
     dir_version=$((10#$dir))
     dir=$(printf "%03d" "$dir_version")
 
-    if [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
+    if [[ "$dir_version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "ERROR: ${file} targets v${dir_version}, but per-feature directories start at v${DIR_LAYOUT_FLOOR} — a pre-${DIR_LAYOUT_FLOOR} changeset goes in resources/migrations/${dir}_update_migrations.yaml" >&2
+        errors=$((errors + 1))
+    elif [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
         [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
-        echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+        if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+            echo "ERROR: ${file} is in ${dir} but the changeset belongs in resources/migrations/${expected_dir}_update_migrations.yaml" >&2
+        else
+            echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+        fi
         errors=$((errors + 1))
     fi
 done <<<"$changed_files"
@@ -98,19 +129,24 @@ if [[ "$errors" -gt 0 ]]; then
     echo "Why: Migration files must be in the directory matching the target release version." >&2
     echo "A misplaced migration misrepresents when it was introduced and will break downgrades spanning more than one version." >&2
     echo "" >&2
-    if [[ "$constraint" == "<=" ]]; then
-        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory." >&2
+    if [[ "$version" -lt "$DIR_LAYOUT_FLOOR" ]]; then
+        echo "To fix: append the changeset(s) to resources/migrations/${expected_dir}_update_migrations.yaml." >&2
+        echo "Pre-${DIR_LAYOUT_FLOOR} releases only load the shared per-version files, not NNN/ directories." >&2
+    elif [[ "$constraint" == "<=" ]]; then
+        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory (>= 0${DIR_LAYOUT_FLOOR})." >&2
     else
         echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
     fi
     echo "" >&2
     echo "If this PR will be backported, ensure the correct backport label is applied" >&2
-    echo "(backport, single-backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
-    echo "plan to create the backport PRs manually. Base the label on the oldest" >&2
-    echo "release you're targeting, and simply close any unwanted PRs." >&2
+    echo "and re-run CI, even if you plan to create the backport PRs manually:" >&2
+    echo "  - backport: all supported release lines (the check targets the oldest one)" >&2
+    echo "  - single-backport: the current release only" >&2
+    echo "  - double-backport / triple-backport: 1 or 2 releases before the current one" >&2
+    echo "Base the label on the oldest release you're targeting, and simply close any unwanted PRs." >&2
     echo "" >&2
-    echo "If you are backporting more than 3 releases back, or this is an exceptional" >&2
-    echo "circumstance, you will need to either update this script or force merge." >&2
+    echo "If none of the labels matches the releases you're targeting, or this is an" >&2
+    echo "exceptional circumstance, you will need to either update this script or force merge." >&2
     exit 1
 fi
 

@@ -39,6 +39,7 @@ export function useModelsAndOption(
     gridSize,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
+  hoveredTimelineEventIds?: TimelineEventId[],
 ) {
   const tc = useTranslateContent();
 
@@ -132,6 +133,19 @@ export function useModelsAndOption(
     );
   }, [chartModel, settings, card.display, containerRef]);
 
+  const markedTimelineEventIds = useMemo(() => {
+    if (
+      card.display === "bar" ||
+      hoveredTimelineEventIds == null ||
+      hoveredTimelineEventIds.length === 0
+    ) {
+      return selectedTimelineEventIds;
+    }
+    return [
+      ...new Set([...selectedTimelineEventIds, ...hoveredTimelineEventIds]),
+    ];
+  }, [selectedTimelineEventIds, hoveredTimelineEventIds, card.display]);
+
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -150,7 +164,7 @@ export function useModelsAndOption(
           chartLayout,
           hasTimelineEvents,
           timelineEventsModel,
-          selectedTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           shouldAnimate,
           renderingContext,
@@ -163,7 +177,7 @@ export function useModelsAndOption(
           chartLayout,
           hasTimelineEvents,
           timelineEventsModel,
-          selectedTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -177,7 +191,7 @@ export function useModelsAndOption(
           chartLayout,
           hasTimelineEvents,
           timelineEventsModel,
-          selectedTimelineEventIds,
+          markedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -198,7 +212,7 @@ export function useModelsAndOption(
     chartLayout,
     hasTimelineEvents,
     timelineEventsModel,
-    selectedTimelineEventIds,
+    markedTimelineEventIds,
     settings,
     renderingContext,
   ]);

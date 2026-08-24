@@ -8,6 +8,44 @@ import type {
 
 import { appBar } from "./e2e-ui-elements-helpers";
 
+type LlmProviderConnectionInput = {
+  key: string;
+  type?: string;
+  name?: string;
+  config?: Record<string, string>;
+};
+
+export function setLlmProviders(connections: LlmProviderConnectionInput[]) {
+  return cy.request("PUT", "/api/setting/llm-providers", {
+    value: connections.map(({ key, type = key, name = key, config = {} }) => ({
+      key,
+      type,
+      name,
+      config,
+    })),
+  });
+}
+
+export function setupAnthropicLlmProvider({
+  apiKey = "sk-ant-test-key",
+  baseUrl,
+}: { apiKey?: string; baseUrl?: string } = {}) {
+  return setLlmProviders([
+    {
+      key: "anthropic",
+      type: "anthropic",
+      name: "Anthropic",
+      config: baseUrl
+        ? { "api-key": apiKey, "base-url": baseUrl }
+        : { "api-key": apiKey },
+    },
+  ]);
+}
+
+export function clearLlmProviders() {
+  return setLlmProviders([]);
+}
+
 export function metabotChatSidebar() {
   return cy.findByTestId("metabot-chat");
 }
@@ -111,7 +149,7 @@ const lifecycleFinishFor = (events: SSEEvent[]): (SSEEvent | "[DONE]")[] => {
  * Arguments are flattened one level, so parts compose without spreading:
  *   createMetabotSSEBody(
  *     metabotTextPart("Here is the link"),
- *     metabotDataPart("navigate_to", path),
+ *     metabotDataPart("generated_entity", card),
  *   )
  *
  * Each event is emitted as a `data: {JSON}\n\n` chunk, wrapped in the backend

@@ -60,7 +60,7 @@
                (try
                  (maybe-infer-semantic-type (col->ResultColumnMetadata col))
                  (catch Throwable e
-                   (log/errorf e "Error generating insights for column: %s" col)
+                   (log/errorf "Error generating insights for column %s: %s" (pr-str (:name col)) (ex-message e))
                    col)))]
     (redux/post-complete
      (redux/juxt

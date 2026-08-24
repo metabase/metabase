@@ -30,8 +30,6 @@ export const getPkRef = (fields?: Field[]) => fields?.find(isPK)?.field_ref;
 
 export const fieldHasIndex = (
   modelIndexes: ModelIndex[] | undefined,
-  field: Field,
+  field: Pick<Field, "field_ref">,
 ) =>
-  !!modelIndexes?.some((index: any) =>
-    _.isEqual(index.value_ref, field.field_ref),
-  );
+  !!modelIndexes?.some((index) => _.isEqual(index.value_ref, field.field_ref));

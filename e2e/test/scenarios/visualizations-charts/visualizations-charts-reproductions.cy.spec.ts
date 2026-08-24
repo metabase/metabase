@@ -787,14 +787,11 @@ describe("UXW-2696", () => {
     assertDataVisible();
   });
 
-  it("should show the message on pinned cards", () => {
+  it("should be able to open the menu on pinned cards", () => {
     H.visitCollection("root");
     H.openCollectionItemMenu(QUESTION_NAME);
     H.popover().findByText("Pin this").click();
 
-    H.getPinnedSection().within(() => {
-      assertNoPoints();
-    });
     // assert that the menu trigger is not covered
     H.openPinnedItemMenu(QUESTION_NAME);
     H.popover().should("exist");
