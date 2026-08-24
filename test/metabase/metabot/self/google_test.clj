@@ -4,12 +4,11 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google :as google]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
@@ -72,6 +71,35 @@
       "google/gemini-3.6-flash" 1048576
       "google/gemini-3.7-flash" 1048576
       "google/gemini-unknown"   nil)))
+
+(deftest context-window-tokens-anthropic-test
+  (testing "an Anthropic partner model takes the window the Messages API adapter records for its model,
+           including when the platform dates it in the `@` spelling"
+    (are [model window] (= window (google/context-window-tokens model))
+      "anthropic/claude-fable-5"            1000000
+      "anthropic/claude-opus-5"             1000000
+      "anthropic/claude-opus-4-6"           1000000
+      "anthropic/claude-sonnet-5"           1000000
+      "anthropic/claude-sonnet-4-6"         1000000
+      "anthropic/claude-haiku-4-5@20251001"  200000
+      "anthropic/claude-unknown"            nil)))
+
+(deftest context-window-tokens-unqualified-test
+  (testing "a model with no publisher qualifier is not treated as an Anthropic one"
+    (is (nil? (google/context-window-tokens "claude-sonnet-4-6")))
+    (is (nil? (google/context-window-tokens nil)))))
+
+(deftest context-window-tokens-unsupported-publisher-test
+  (testing "an unsupported publisher answers nil rather than throwing"
+    (is (nil? (google/context-window-tokens "mistralai/mistral-large")))
+    (is (nil? (google/context-window-tokens "Google/gemini-3.5-flash")))))
+
+(deftest every-offered-model-has-a-context-window-test
+  (testing "every model the provider registry offers has a context window under the id the registry uses"
+    (is (= [] (into []
+                    (comp (map :id)
+                          (remove google/context-window-tokens))
+                    (llm.provider/fixed-models "google"))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth / HTTP tests
@@ -248,8 +276,44 @@
                            "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
                 (google-raw {:model "google/gemini-3.5-flash" :input [{:role :user :content "hi"}]})))))))
 
-(deftest google-raw-non-google-publisher-model-test
-  (testing "the publisher comes from the model ID's {publisher}/{model} qualifier"
+(deftest google-raw-unsupported-publisher-rejected-test
+  (testing "a Model Garden publisher this adapter cannot speak to is rejected rather than sent a Gemini body"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (doseq [model ["mistralai/mistral-large"
+                       "meta/llama-4-scout"
+                       "qwen/qwen3-next"
+                       "Google/gemini-3.5-flash"
+                       "../../../v1beta1/evil"]]
+          (let [e (try (google-raw {:model model :input [{:role :user :content "hi"}]})
+                       nil
+                       (catch Exception e e))]
+            (is (= (str "Unsupported Google model " (pr-str model)
+                        ". Only google/* and anthropic/* models are supported.")
+                   (ex-message e)))
+            (is (=? {:api-error   true
+                     :status-code 400
+                     :error-code  :unsupported-model
+                     :model       model}
+                    (ex-data e)))))))))
+
+(deftest list-models-unsupported-publisher-rejected-test
+  (testing "connecting rejects an unsupported publisher before any HTTP call"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unsupported Google model \"mistralai/mistral-large\"\. Only google/\* and anthropic/\* models are supported\."
+             (list-models {:model "mistralai/mistral-large"})))))))
+
+(deftest google-raw-anthropic-model-stream-raw-predict-test
+  (testing "an anthropic model is served by its own streamRawPredict method rather than streamGenerateContent"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
@@ -257,9 +321,54 @@
       (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
                                   debug/capture-stream    (fn [r _] r)
                                   http/request            (fn [req] {:body req})]
-        (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                           "/publishers/anthropic/models/claude-sonnet-4-6:streamGenerateContent?alt=sse")}
+        (is (=? {:method  :post
+                 :url     (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
+                               "/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict")
+                 :headers {"Authorization" "Bearer ya29.pasted-access-token"}}
                 (google-raw {:model "anthropic/claude-sonnet-4-6" :input [{:role :user :content "hi"}]})))))))
+
+(deftest google-raw-anthropic-request-body-test
+  (testing "an anthropic model gets the Anthropic Messages body, with the model in the URL instead of the body and
+           the platform's pinned anthropic_version in its place"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  debug/capture-stream    (fn [r _] r)
+                                  http/request            (fn [req] {:body req})]
+        (let [req  (google-raw {:model  "anthropic/claude-haiku-4-5@20251001"
+                                :system "You are terse."
+                                :input  [{:role :user :content "hi"}]})
+              body (json/decode+kw (:body req))]
+          (is (=? {:as      :stream
+                   :headers {"Content-Type" "application/json"}}
+                  req))
+          (is (=? {:anthropic_version "vertex-2023-10-16"
+                   :stream            true
+                   :messages          [{:role "user" :content [{:type "text" :text "hi"}]}]
+                   :system            [{:type "text" :text "You are terse." :cache_control {:type "ephemeral"}}]}
+                  body))
+          (is (not (contains? body :model))
+              "the URL names the model; a model in the body is rejected by the platform"))))))
+
+(deftest google-raw-anthropic-max-tokens-test
+  (testing "the Anthropic model whitelist supplies max_tokens for a bare current-generation ID, and the @-versioned
+           spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  debug/capture-stream    (fn [r _] r)
+                                  http/request            (fn [req] {:body req})]
+        (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
+                                    "anthropic/claude-fable-5"             128000
+                                    "anthropic/claude-haiku-4-5@20251001"   64000}]
+          (testing model
+            (is (= max-tokens
+                   (:max_tokens (json/decode+kw (:body (google-raw {:model model
+                                                                    :input [{:role :user :content "hi"}]}))))))))))))
 
 (def ^:private bare-model-id-message-re
   "The message [[metabase.metabot.self.google/model-resource-path]] throws for an unqualified model ID."
@@ -297,12 +406,11 @@
                                        llm.settings/llm-google-location            nil]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
         (doseq [model ["google/../../../v1beta1/evil"
-                       "../../../v1beta1/evil"
                        "google/models/gemini-3.5-flash"
                        "google/gemini-3.5-flash?alt=json"
                        "google/gemini-3.5-flash#"
                        "google/gemini 3.5 flash"
-                       "Google/gemini-3.5-flash"]]
+                       "anthropic/claude sonnet 4-6"]]
           (let [e (try (google-raw {:model model :input [{:role :user :content "hi"}]})
                        nil
                        (catch Exception e e))]
@@ -324,7 +432,7 @@
                                   debug/capture-stream    (fn [r _] r)
                                   http/request            (fn [req] {:body req})]
         (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                           "/publishers/anthropic/models/claude-sonnet-4-5@20250929:streamGenerateContent?alt=sse")}
+                           "/publishers/anthropic/models/claude-sonnet-4-5@20250929:streamRawPredict")}
                 (google-raw {:model "anthropic/claude-sonnet-4-5@20250929"
                              :input [{:role :user :content "hi"}]})))))))
 
@@ -523,17 +631,18 @@
 
 (defn- aisdk-parts-for!
   "The AISDK parts [[metabase.metabot.self.google/google]] yields for an SSE stream of `events`."
-  [events]
-  (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
-                                     llm.settings/llm-google-service-account-key nil
-                                     llm.settings/llm-google-project-id          "my-project"
-                                     llm.settings/llm-google-location            nil]
-    (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
-                                http/request         (fn [_] (sse-response-for events))]
-      (into []
-            (self.core/aisdk-xf)
-            (google {:model "google/gemini-3.5-flash"
-                     :input [{:role :user :content "hi"}]})))))
+  ([events] (aisdk-parts-for! "google/gemini-3.5-flash" events))
+  ([model events]
+   (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                      llm.settings/llm-google-service-account-key nil
+                                      llm.settings/llm-google-project-id          "my-project"
+                                      llm.settings/llm-google-location            nil]
+     (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
+                                 http/request         (fn [_] (sse-response-for events))]
+       (into []
+             (self.core/aisdk-xf)
+             (google {:model model
+                      :input [{:role :user :content "hi"}]}))))))
 
 (deftest google-text-stream-test
   (testing "streamed text off the wire arrives as one coalesced text part with usage"
@@ -562,6 +671,79 @@
                                        :parts [{:functionCall {:name "get_time" :args {:tz "UTC"}}}]}
                              :finishReason "STOP"}]
                :usageMetadata {:promptTokenCount 8 :candidatesTokenCount 4}}])))))
+
+(deftest google-anthropic-text-stream-test
+  (testing "an anthropic model's SSE events off the wire are translated by the Claude chunk translation"
+    (is (=? [{:type :start :id "msg_vrtx_011"}
+             {:type :text :text "Hello"}
+             {:type  :usage
+              :model "claude-haiku-4-5-20251001"
+              :usage {:promptTokens 17 :completionTokens 5}}]
+            (aisdk-parts-for!
+             "anthropic/claude-haiku-4-5@20251001"
+             [{:type "message_start" :message {:id    "msg_vrtx_011"
+                                               :model "claude-haiku-4-5-20251001"
+                                               :usage {:input_tokens 17 :output_tokens 1}}}
+              {:type "content_block_start" :index 0 :content_block {:type "text" :text ""}}
+              {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hel"}}
+              {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "lo"}}
+              {:type "content_block_stop" :index 0}
+              {:type "message_delta"
+               :delta {:stop_reason "end_turn"}
+               :usage {:input_tokens 17 :output_tokens 5}}
+              {:type "message_stop"}])))))
+
+(deftest google-anthropic-tool-call-stream-test
+  (testing "an anthropic model's streamed tool_use block arrives as a tool-input part with parsed arguments"
+    (is (=? [{:type :start :id "msg_vrtx_012"}
+             {:type      :tool-input
+              :function  "get_time"
+              :arguments {:tz "UTC"}}
+             {:type :usage :usage {:promptTokens 8 :completionTokens 4}}]
+            (aisdk-parts-for!
+             "anthropic/claude-haiku-4-5@20251001"
+             [{:type "message_start" :message {:id    "msg_vrtx_012"
+                                               :model "claude-haiku-4-5-20251001"
+                                               :usage {:input_tokens 8 :output_tokens 1}}}
+              {:type "content_block_start" :index 0 :content_block {:type "tool_use"
+                                                                    :id   "toolu_01"
+                                                                    :name "get_time"}}
+              {:type "content_block_delta" :index 0 :delta {:type "input_json_delta" :partial_json "{\"tz\":"}}
+              {:type "content_block_delta" :index 0 :delta {:type "input_json_delta" :partial_json "\"UTC\"}"}}
+              {:type "content_block_stop" :index 0}
+              {:type "message_delta"
+               :delta {:stop_reason "tool_use"}
+               :usage {:input_tokens 8 :output_tokens 4}}
+              {:type "message_stop"}])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; reasoning-model? tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest reasoning-model?-anthropic-test
+  (testing "an Anthropic partner model reasons when the Messages API adapter says its model does"
+    (is (true? (google/reasoning-model? "anthropic/claude-sonnet-4-6")))
+    (is (false? (google/reasoning-model? "anthropic/claude-haiku-4-5")))))
+
+(deftest reasoning-model?-anthropic-platform-spelling-test
+  (testing "a dated partner model is recognized in the platform's `@` spelling"
+    (is (true? (google/reasoning-model? "anthropic/claude-sonnet-4-6@20250929")))
+    (is (false? (google/reasoning-model? "anthropic/claude-haiku-4-5@20251001")))))
+
+(deftest reasoning-model?-gemini-test
+  (testing "Gemini sends thinking only as :thought parts, which the adapter drops"
+    (is (false? (google/reasoning-model? "google/gemini-3.5-flash")))
+    (is (false? (google/reasoning-model? "google/gemini-3.6-pro")))))
+
+(deftest reasoning-model?-unqualified-test
+  (testing "a model with no publisher qualifier is not treated as an Anthropic one"
+    (is (false? (google/reasoning-model? "claude-sonnet-4-6")))
+    (is (false? (google/reasoning-model? nil)))))
+
+(deftest reasoning-model?-unsupported-publisher-test
+  (testing "an unsupported publisher answers false rather than throwing"
+    (is (false? (google/reasoning-model? "mistralai/mistral-large")))
+    (is (false? (google/reasoning-model? "Google/gemini-3.5-flash")))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models tests
@@ -593,6 +775,131 @@
                     :body    (json/encode {:contents [{:role "user" :parts [{:text "hi"}]}]})}]
                   @calls)))))))
 
+(def ^:private anthropic-validation-error-body
+  "Anthropic error for empty probe body when the request reached the model."
+  (json/encode {:type  "error"
+                :error {:type "invalid_request_error" :message "messages: Field required"}}))
+
+(def ^:private not-servable-in-region-body
+  "Google's error envelope for a model the location does not serve."
+  (json/encode {:error {:code    400
+                        :message (str "Publisher Model `projects/my-project/locations/us-central1/publishers/anthropic"
+                                      "/models/claude-haiku-4-5@20251001` is not servable in region us-central1.")
+                        :status  "FAILED_PRECONDITION"}}))
+
+(defn- stub-error
+  "An `http/request` stub that throws an exception with `status` and `body`, recording every request into `calls`."
+  [calls status body]
+  (fn [req]
+    (swap! calls conj req)
+    (throw (ex-info (str "clj-http: status " status)
+                    {:status  status
+                     :headers {"content-type" "application/json"}
+                     :body    body}))))
+
+(deftest list-models-anthropic-empty-body-probe-test
+  (testing "an anthropic model is probed by posting an empty body to its own streamRawPredict route"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [http/request (stub-error calls 400 anthropic-validation-error-body)]
+          (is (= {:models []}
+                 (list-models {:model "anthropic/claude-haiku-4-5@20251001"})))
+          (is (=? [{:method  :post
+                    :url     (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
+                                  "/publishers/anthropic/models/claude-haiku-4-5@20251001:streamRawPredict")
+                    :headers {"Authorization" "Bearer ya29.pasted-access-token"}
+                    :body    "{}"}]
+                  @calls)))))))
+
+(deftest list-models-anthropic-spends-no-tokens-test
+  (testing "the anthropic probe body names no messages, so it cannot reach inference"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (let [calls (atom [])]
+        (mt/with-dynamic-fn-redefs [http/request (stub-error calls 400 anthropic-validation-error-body)]
+          (list-models {:model "anthropic/claude-haiku-4-5@20251001"})
+          (is (= {} (json/decode+kw (:body (first @calls))))))))))
+
+(deftest list-models-anthropic-not-servable-in-region-rejected-test
+  (testing "a 400 in Google's error format means the location does not serve the model, and is surfaced"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"]
+      (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 400 not-servable-in-region-body)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Google API rejected the request as invalid"
+             (list-models {:model "anthropic/claude-haiku-4-5@20251001"})))))))
+
+(deftest list-models-anthropic-model-not-found-rejected-test
+  (testing "a 404 for a model this project cannot reach is surfaced rather than swallowed"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 404 (json/encode {:error {:code 404 :message "Publisher model was not found"}}))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Google API endpoint is unavailable or the model was not found"
+             (list-models {:model "anthropic/claude-sonnet-4-6"})))))))
+
+(deftest list-models-anthropic-unauthenticated-rejected-test
+  (testing "a 401 from an expired credential is surfaced rather than read as a model verdict"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.expired"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 401 (json/encode {:error {:code 401 :message "invalid authentication credentials"}}))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Google API credentials expired or invalid"
+             (list-models {:model "anthropic/claude-haiku-4-5@20251001"})))))))
+
+(deftest list-models-anthropic-unexpected-success-accepted-test
+  (testing "a 2xx also proves the model resolved, even though the empty body should never earn one"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "{}"})]
+        (is (= {:models []}
+               (list-models {:model "anthropic/claude-haiku-4-5@20251001"})))))))
+
+(deftest list-models-anthropic-probe-uses-inference-method-test
+  (testing "the probe and inference hit the same streamRawPredict verb, so the probe validates what will run"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (let [probe-calls     (atom [])
+            inference-calls (atom [])]
+        (mt/with-dynamic-fn-redefs [http/request (stub-error probe-calls 400 anthropic-validation-error-body)]
+          (list-models {:model "anthropic/claude-haiku-4-5@20251001"}))
+        (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                    debug/capture-stream    (fn [r _] r)
+                                    http/request            (fn [req] (swap! inference-calls conj req) {:body req})]
+          (google-raw {:model "anthropic/claude-haiku-4-5@20251001" :input [{:role :user :content "hi"}]}))
+        (is (= (:url (first @inference-calls))
+               (:url (first @probe-calls))))))))
+
+(deftest list-models-anthropic-invalid-model-rejected-test
+  (testing "an anthropic model whose ID cannot be a path segment is rejected before any HTTP call"
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid Google model \"anthropic/claude bad model\""
+             (list-models {:model "anthropic/claude bad model"})))))))
+
 (deftest list-models-bare-model-throws-test
   (testing "a bare model ID throws before any HTTP call"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
@@ -605,27 +912,11 @@
              bare-model-id-message-re
              (list-models {:model "gemini-3.5-flash"})))))))
 
-(deftest list-models-defaults-to-saved-model-test
-  (testing "without a model in opts the probe runs against the model the saved reference names"
-    (llm.tu/with-connections [(llm.tu/connection "google")]
-      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
-                                         llm.settings/llm-google-service-account-key nil
-                                         llm.settings/llm-google-project-id          "my-project"
-                                         llm.settings/llm-google-location            nil
-                                         metabot.settings/llm-metabot-provider       "google/google/gemini-3.6-flash"]
-        (let [calls (atom [])]
-          (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens calls)]
-            (is (= {:models []} (list-models)))
-            (is (=? [{:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                                "/publishers/google/models/gemini-3.6-flash:countTokens")}]
-                    @calls))))))))
-
 (deftest list-models-no-model-skips-probe-test
-  (testing "with no candidate model and a non-Google provider configured no call is made"
+  (testing "with no candidate model there is nothing to probe and no call is made"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
-                                       llm.settings/llm-google-project-id          "my-project"
-                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+                                       llm.settings/llm-google-project-id          "my-project"]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
         (is (= {:models []} (list-models)))))))
 

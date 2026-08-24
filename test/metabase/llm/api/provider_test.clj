@@ -112,7 +112,13 @@
         (testing "and the catalog rides along so the connection form can offer the model to validate against"
           (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
                   {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
+                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}
+                  {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                  {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                  {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                  {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                  {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                  {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
                  (:models google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
@@ -865,7 +871,13 @@
                    :type   "google"
                    :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
                             {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]}]
+                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}
+                            {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
+                            {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
+                            {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
+                            {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
+                            {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                            {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "google/gemini-3.5-flash" @probed)))))))
 
