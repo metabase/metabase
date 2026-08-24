@@ -261,7 +261,7 @@
                       "[x](javascript&#58;alert(1))"
                       "[x](vbscript:msgbox(1))"
                       "[x](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)"
-                      "![x](data:image/svg+xml;base64,PHN2Zy8+)"]
+                      "![x](data:text/html;base64,PHNjcmlwdD4=)"]
             :let     [rendered (u/lower-case-en (html markdown))]
             scheme   ["javascript" "vbscript" "data:"]]
       (testing (str markdown " does not render " scheme)
@@ -275,6 +275,13 @@
 (deftest ^:parallel process-markdown-allowed-scheme-case-test
   (testing "Scheme allow-listing is case-insensitive for allowed schemes too"
     (is (= "<p><a href=\"HTTPS://metabase.com\">x</a></p>\n" (html "[x](HTTPS://metabase.com)")))))
+
+(deftest ^:parallel process-markdown-data-image-test
+  (testing "Inline base64 images render like they do in the app's markdown renderer"
+    (is (= "<p><img src=\"data:image/png;base64,iVBORw0KGgo=\" alt=\"x\" /></p>\n"
+           (html "![x](data:image/png;base64,iVBORw0KGgo=)" "https://example.com")))
+    (is (= "<p><img src=\"data:image/svg+xml;base64,PHN2Zy8+\" alt=\"x\" /></p>\n"
+           (html "![x](data:image/svg+xml;base64,PHN2Zy8+)" "https://example.com")))))
 
 (deftest ^:parallel process-markdown-malformed-uri-test
   (testing "A link destination that isn't a parseable URI drops the link instead of aborting the render"

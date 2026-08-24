@@ -206,6 +206,12 @@
   "URI schemes markdown links/images may use in rendered notifications; links with other schemes are dropped."
   #{"http" "https" "mailto"})
 
+(def ^:private data-image-uri-pattern
+  "Inline base64 images, allowed in addition to [[allowed-link-schemes]]. Keep in sync with
+  DATA_IMAGE_URI_PATTERN in frontend/src/metabase/visualizations/lib/utils.ts so notifications render
+  the same markdown the app does."
+  #"(?i)^data:image/(?:png|jpeg|jpg|gif|svg\+xml|webp);base64,")
+
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email. Returns nil for URIs that are malformed or whose scheme isn't in
@@ -215,13 +221,15 @@
                                       (cond-> s
                                         (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (try
-        (let [scheme (.getScheme (URI. uri))]
-          (when (or (nil? scheme) (allowed-link-schemes (u/lower-case-en scheme)))
-            (if-let [site-url (ensure-slash *site-url*)]
-              (.. (URI. site-url) (resolve uri) toString)
-              uri)))
-        (catch URISyntaxException _ nil)))))
+      (if (re-find data-image-uri-pattern uri)
+        uri
+        (try
+          (let [scheme (.getScheme (URI. uri))]
+            (when (or (nil? scheme) (allowed-link-schemes (u/lower-case-en scheme)))
+              (if-let [site-url (ensure-slash *site-url*)]
+                (.. (URI. site-url) (resolve uri) toString)
+                uri)))
+          (catch URISyntaxException _ nil))))))
 
 (defn- ^:private strip-tag
   "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
