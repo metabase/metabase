@@ -1,6 +1,5 @@
 (ns metabase.channel.slack
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -9,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -58,7 +58,7 @@
         (assoc body ::headers headers)
         (handle-error body)))))
 
-(defn- do-slack-request [request-fn endpoint request]
+(defn- do-slack-request [method endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
                   (channel.settings/unobfuscated-slack-app-token))]
@@ -74,19 +74,19 @@
                       :socket-timeout 10000}
                      (m/dissoc-in request [:query-params :token]))]
         (try
-          (handle-response (request-fn url request))
+          (handle-response (u.http/request (assoc request :method method, :url url)))
           (catch Throwable e
             (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url}) e))))))))
 
 (defn GET
   "Make a GET request to the Slack API."
   [endpoint & {:as query-params}]
-  (do-slack-request http/get endpoint {:query-params query-params}))
+  (do-slack-request :get endpoint {:query-params query-params}))
 
 (defn- POST
   "Make a POST request to the Slack API."
   [endpoint body]
-  (do-slack-request http/post endpoint body))
+  (do-slack-request :post endpoint body))
 
 (defn- oauth-scopes
   "Returns the set of scopes associated with the current token"
@@ -292,7 +292,8 @@
                                                      :length   (count file)}}))
 
 (defn- upload-file-to-url! [upload-url file]
-  (let [response (http/post upload-url {:multipart [{:name "file", :content file}]})]
+  ;; upload-url comes from Slack's response, so it keeps the default policy
+  (let [response (u.http/post upload-url {:multipart [{:name "file", :content file}]})]
     (if (= (:status response) 200)
       response
       (throw (ex-info "Failed to upload file to Slack:" (select-keys response [:status :body]))))))
