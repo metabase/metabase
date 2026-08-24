@@ -366,6 +366,8 @@
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
         (try
+          ;; the SSE stream is long-lived and idle between events, so override the 5s read timeout
+          ;; from dev-http-opts (0 = no read timeout)
           (let [resp (http/get sse-url (merge cache/dev-http-opts
                                               {:as             :stream
                                                :socket-timeout 0
