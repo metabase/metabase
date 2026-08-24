@@ -613,5 +613,7 @@ export const segmentIsValid = (
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };
 
+// Keep in sync with data-image-uri-pattern in src/metabase/util/markdown.clj,
+// so notifications render the same markdown the app does.
 export const DATA_IMAGE_URI_PATTERN =
   /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
