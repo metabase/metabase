@@ -210,6 +210,12 @@
           (> (+ total n) max) nil
           :else               (do (.write out buf 0 n) (recur (+ total n))))))))
 
+(defn response-content-type
+  "Return the lower-case media type from a clj-http response, without parameters."
+  [resp]
+  (some-> (get-in resp [:headers :content-type])
+          (str/split #";") first str/trim lower-case-en))
+
 (defn fetch-bytes
   "SSRF-hardened GET of `url`. Returns `{:bytes <byte[]> :content-type <lower-cased string>}` on a
   200 response whose (parameter-stripped, lower-cased) content-type is allowed and whose body is
@@ -235,8 +241,7 @@
                                               :throw-exceptions   false
                                               :headers            {"User-Agent" user-agent}
                                               :dns-resolver       ssrf-safe-dns-resolver})
-             ctype             (some-> (get-in resp [:headers :content-type])
-                                       (str/split #";") first str/trim lower-case-en)
+             ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try
            (when (and (= 200 (:status resp))

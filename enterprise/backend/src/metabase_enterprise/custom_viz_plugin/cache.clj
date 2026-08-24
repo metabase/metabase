@@ -349,15 +349,9 @@
 (def ^:private manifest-content-types
   #{"application/json" "text/json"})
 
-(defn response-content-type
-  "Return the lower-case media type from a clj-http response, without parameters."
-  [resp]
-  (some-> (get-in resp [:headers :content-type])
-          (str/split #";") first str/trim u/lower-case-en))
-
 (defn- check-content-type!
   [resp allowed ^String url]
-  (let [ctype (response-content-type resp)]
+  (let [ctype (u.http/response-content-type resp)]
     (when-not (contains? allowed ctype)
       (throw (ex-info (str "Dev bundle URL returned " (or ctype "no content type")
                            ", expected " (str/join " or " (sort allowed)))

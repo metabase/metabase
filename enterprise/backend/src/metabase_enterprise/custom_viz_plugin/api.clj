@@ -12,6 +12,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.server.streaming-response :as sr]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -371,7 +372,7 @@
                                                :headers        {"Accept" "text/event-stream"}}))]
             (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
-              (if-not (= "text/event-stream" (cache/response-content-type resp))
+              (if-not (= "text/event-stream" (u.http/response-content-type resp))
                 (sr/write-error! os {:message "Dev server did not return an event stream"} nil 400)
                 (loop []
                   (when-not (a/poll! canceled-chan)
