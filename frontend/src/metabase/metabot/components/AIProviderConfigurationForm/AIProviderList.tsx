@@ -44,7 +44,6 @@ import type {
 
 import S from "./AIProviderList.module.css";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
-import { ProviderFallbackSettings } from "./ProviderFallbackSettings";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { getAddableProviderTypes } from "./addable-provider-types";
 
@@ -226,7 +225,7 @@ export function AIProviderList() {
         </Button>
       </Stack>
 
-      {hasConnections && <ProviderFallbackSettings />}
+      {hasConnections && <PLUGIN_METABOT.ProviderFallbackSettings />}
 
       {(isAdding || editing) && (
         <ProviderConnectionModal
