@@ -6,7 +6,6 @@ import { usePermissionsIsEmbeddingHub } from "metabase/admin/permissions/utils/i
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 
 import type {
   DataPermissionValue,
@@ -238,7 +237,9 @@ const EntityRow = memo(function EntityRow({
             onClick={() => onSelect?.(entity)}
             // The hub overrides the link's default admin purple with its own
             // blue, both colors the design system already owns.
-            style={isEmbeddingHub ? { color: color("brand") } : undefined}
+            style={
+              isEmbeddingHub ? { color: "var(--mb-color-brand)" } : undefined
+            }
           >
             {entityName}
           </EntityNameLink>
