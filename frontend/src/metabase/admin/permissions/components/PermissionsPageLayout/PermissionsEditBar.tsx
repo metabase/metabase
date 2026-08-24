@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { usePermissionsIsEmbeddingHub } from "metabase/admin/permissions/utils/is-embedding-hub";
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
 import { Button } from "metabase/ui";
@@ -23,7 +23,7 @@ export function PermissionsEditBar({
   onSave,
 }: PermissionsEditBarProps) {
   const [modelOpened, { open: openModal, close: closeModal }] = useDisclosure();
-  const isEmbeddingHub = usePermissionsIsEmbeddingHub();
+  const isEmbeddingHub = isEmbeddingHubPermissions();
   const saveButton = (
     <Button
       key="save"
