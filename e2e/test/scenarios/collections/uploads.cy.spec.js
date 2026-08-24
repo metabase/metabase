@@ -387,15 +387,15 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
       .findAllByText(/star_wars_characters/i)
       .should("have.length", 2);
 
-    // multiple delete
+    // multiple delete: pick one row of each table so the counts below follow
+    // from the selection rather than from row order
     cy.findByTestId("upload-tables-table")
-      .findAllByRole("checkbox")
-      .first()
+      .contains("tr", /dog_breeds/i)
+      .findByRole("checkbox")
       .click();
     cy.findByTestId("upload-tables-table")
-      .findAllByRole("checkbox")
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      .last()
+      .contains("tr", /star_wars_characters/i)
+      .findByRole("checkbox")
       .click();
 
     cy.findByTestId("toast-card").button("Delete").click();
