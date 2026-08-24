@@ -6,7 +6,15 @@ import {
   applyHostStyleVariables,
   useApp,
 } from "@modelcontextprotocol/ext-apps/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { type CardDisplayType, isCardDisplayType } from "metabase-types/api";
+
+import { fetchQueryByHandle } from "../api";
+import {
+  getMcpQueryFetchErrorMessage,
+  getMcpQueryFetchErrorType,
+} from "../utils/getMcpQueryFetchError";
 
 export interface McpAppState {
   query: string | null;
@@ -17,17 +25,42 @@ export interface McpAppState {
    */
   prompt: string | null;
 
+  /**
+   * Chart type the tool asked for, when it asked for one. Absent means the
+   * visualization infers one from the result shape.
+   */
+  display: CardDisplayType | null;
+
+  /**
+   * Why the query could not be resolved, when it could not be. The route has no
+   * other signal to render — without one it would sit on the loading indicator
+   * forever.
+   */
+  queryError: string | null;
+
   hostContext: McpUiHostContext | null;
   app: App | null;
 }
 
-type VisualizeQueryToolInput = {
-  query?: string;
-};
+interface McpGlobalConfig {
+  instanceUrl?: string;
+  uiCredential?: string;
+  mcpSessionId?: string;
+}
 
-type VisualizeQueryToolResult = {
+/**
+ * The two tool payload shapes the iframe has to accept.
+ *
+ * v1 inlines the base64 `query` in both the tool arguments and the tool result.
+ * v2 passes a `query_handle` instead and keeps the query out of the model's
+ * context entirely, so the iframe resolves it over the callback API. One bundle
+ * serves both surfaces, so both shapes stay supported.
+ */
+type VisualizeQueryToolPayload = {
   query?: string;
+  query_handle?: string;
   prompt?: string;
+  display?: unknown;
 };
 
 function applyHostContext(ctx: McpUiHostContext) {
@@ -47,7 +80,90 @@ function applyHostContext(ctx: McpUiHostContext) {
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [display, setDisplay] = useState<CardDisplayType | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
+
+  /** The handle whose resolution is still wanted; older ones are discarded. */
+  const pendingQueryHandleRef = useRef<string | null>(null);
+
+  const applyPayload = useCallback(
+    async ({
+      query,
+      query_handle: queryHandle,
+      prompt,
+      display,
+    }: VisualizeQueryToolPayload) => {
+      if (!query && !queryHandle) {
+        return;
+      }
+
+      // Set for every payload that names a query, not only those asking for a
+      // chart type: `render_drill_through` never asks for one, and without the
+      // reset the previous query's display would be applied to the new results.
+      // The tool's display enum and this bundle's list are versioned separately,
+      // so an unrecognized value falls back to the inferred display.
+      setDisplay(isCardDisplayType(display) ? display : null);
+
+      // Cleared for either shape: the retry the host sends on `ontoolresult` may
+      // carry the query inline rather than as a handle, and a stale failure left
+      // standing would render over a query that has since loaded.
+      setQueryError(null);
+
+      if (query) {
+        // A newer payload supersedes any handle still in flight, so its
+        // resolution must not overwrite this query when it lands.
+        pendingQueryHandleRef.current = null;
+        setQuery(query);
+        setPrompt(prompt ?? null);
+        return;
+      }
+
+      if (!queryHandle) {
+        return;
+      }
+
+      pendingQueryHandleRef.current = queryHandle;
+
+      const { instanceUrl, uiCredential, mcpSessionId } =
+        // Unjustified type cast. FIXME
+        (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
+
+      if (!instanceUrl || !uiCredential || !mcpSessionId) {
+        setQueryError(getMcpQueryFetchErrorMessage("network"));
+        return;
+      }
+
+      try {
+        const resolved = await fetchQueryByHandle({
+          instanceUrl,
+          uiCredential,
+          mcpSessionId,
+          queryHandle,
+        });
+
+        // `applyPayload` runs on both `ontoolinput` and `ontoolresult`, so two
+        // resolutions can be in flight at once. Drop this one if a newer payload
+        // has arrived, rather than overwriting it with older results.
+        if (pendingQueryHandleRef.current !== queryHandle) {
+          return;
+        }
+
+        setQuery(resolved.query);
+        setPrompt(resolved.prompt ?? prompt ?? null);
+      } catch (error) {
+        if (pendingQueryHandleRef.current !== queryHandle) {
+          return;
+        }
+
+        console.error("Error resolving MCP query handle", error);
+        setQueryError(
+          getMcpQueryFetchErrorMessage(getMcpQueryFetchErrorType(error)),
+        );
+      }
+    },
+    [],
+  );
 
   const { app } = useApp({
     appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
@@ -61,13 +177,20 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolinput = (params) => {
-        const { query } =
+        const args =
           // Unjustified type cast. FIXME
-          (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
+          (params.arguments as VisualizeQueryToolPayload | undefined) ?? {};
 
-        if (query) {
-          setQuery(query);
-          setPrompt(null);
+        // v2's `query` argument is an MBQL object, not the base64 string the
+        // card is built from — only the handle is renderable from the input.
+        // A model that passed an inline query is served by ontoolresult below.
+        if (args.query_handle) {
+          void applyPayload({
+            query_handle: args.query_handle,
+            display: args.display,
+          });
+        } else if (typeof args.query === "string") {
+          void applyPayload({ query: args.query });
         }
       };
 
@@ -75,15 +198,12 @@ export function useMcpApp(): McpAppState {
       // (notification sent before the app finishes connecting).
       // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
-        const { query, prompt } =
+        const result =
           // Unjustified type cast. FIXME
-          (params.structuredContent as VisualizeQueryToolResult | undefined) ??
+          (params.structuredContent as VisualizeQueryToolPayload | undefined) ??
           {};
 
-        if (query) {
-          setQuery(query);
-          setPrompt(prompt ?? null);
-        }
+        void applyPayload(result);
       };
     },
   });
@@ -100,5 +220,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, prompt, hostContext, app };
+  return { query, prompt, display, queryError, hostContext, app };
 }

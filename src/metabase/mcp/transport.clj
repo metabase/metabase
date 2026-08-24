@@ -1,6 +1,9 @@
-(ns metabase.mcp.api
-  "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints."
+(ns metabase.mcp.transport
+  "MCP (Model Context Protocol) Streamable HTTP transport.
+
+  Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
+  session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
+  SSE responses and the GET keepalive stream, and OAuth discovery hints on 401s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -11,11 +14,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
-   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
-   [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.usage :as mcp.usage]
-   [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
@@ -26,8 +26,9 @@
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
-   (java.io BufferedWriter OutputStreamWriter)
-   (java.nio.charset StandardCharsets)))
+   (java.io BufferedWriter OutputStreamWriter Writer)
+   (java.nio.charset StandardCharsets)
+   (java.util.concurrent ExecutorService Executors)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,105 +48,58 @@
 
 (def ^:private protocol-version "2025-03-26")
 
-(defn- jsonrpc-response [id result]
+(defn jsonrpc-response
+  "Wrap `result` as a JSON-RPC 2.0 success response for request `id`."
+  [id result]
   {:jsonrpc "2.0" :id id :result result})
 
-(defn- jsonrpc-error [id code message]
+(defn jsonrpc-error
+  "Build a JSON-RPC 2.0 error response for request `id`."
+  [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn- handle-initialize [id params]
+(defn handle-initialize
+  "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
+
+  - `capabilities` is per-surface — a surface must only advertise the methods it dispatches.
+  - `instructions` rides the result as the MCP `instructions` field."
+  [id params capabilities instructions]
   (when-let [client-info (:clientInfo params)]
     (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
   (jsonrpc-response
    id
-   {:protocolVersion protocol-version
-    :capabilities    {:tools {:listChanged true} :resources {}}
-    :serverInfo      server-info}))
+   (cond-> {:protocolVersion protocol-version
+            :capabilities    capabilities
+            :serverInfo      server-info}
+     instructions (assoc :instructions instructions))))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
-  ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
-  ;; namespaced keyword `:io.modelcontextprotocol/ui`.
+  ;; The wire key is the JSON string `"io.modelcontextprotocol/ui"`; keywordizing preserves the slash, so the lookup
+  ;; below is a namespaced keyword rather than the dotted `:io.modelcontextprotocol.ui` it might look like a typo for.
   (contains?
    (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))
 
-(defn- handle-tools-list [id _params session-id token-scopes]
-  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
-                                                                     supports-mcp-ui?})})))
-
-(defn- handle-tools-call [id params session-id token-scopes request-context]
-  (let [tool-name        (:name params)
-        arguments        (or (:arguments params) {})
-        ;; RC clients carry their identity per-call in `_meta`; the recorder falls back to the
-        ;; session's stored identity when it's absent. (`json/decode+kw` preserves the slash in
-        ;; the extension key, so it's the namespaced keyword `:io.modelcontextprotocol/clientInfo`.)
-        client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
-        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes
-                                              session-id
-                                              tool-name
-                                              arguments
-                                              {:supports-mcp-ui? supports-mcp-ui?
-                                               :client-info      client-info
-                                               :request-context  request-context}))))
-
-(defn- handle-resources-list [id _params token-scopes]
-  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
-
-(defn- handle-resources-read [id params session-id token-scopes]
-  (let [uri (:uri params)]
-    (if (or (not (string? uri)) (str/blank? uri))
-      (jsonrpc-error id -32602 "Missing required parameter: uri")
-      (let [user-id     api/*current-user-id*
-            options     {:ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
-                         :session-id    session-id}
-            result      (mcp.resources/read-resource uri token-scopes options)]
-        (case (:status result)
-          (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
-          :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
-
-(defn- handle-ping [id _params]
-  (jsonrpc-response id {}))
-
 (defn- eval-session-override
-  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and
-  later fetch) the trace itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates
-  the `Mcp-Session-Id` internally, so without this the harness can't know which `<uuid>.jsonl` to read.
+  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and later fetch) the trace
+  itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates the `Mcp-Session-Id` internally, so
+  without this the harness can't know which `<uuid>.jsonl` to read.
 
-  Validates through `ait/checked-session-id` — the mint-time boundary, and the single source of truth
-  for the safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls
-  back to the Mcp-Session-Id correlator rather than 500ing ahead of `dispatch-request`'s try/catch. The
-  `when-let` guards the absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid
-  branch (which would invent a trace file the harness never named)."
+  Validates through [[ait/checked-session-id]] — the mint-time boundary, and the single source of truth for the
+  safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls back to the
+  Mcp-Session-Id correlator rather than 500ing ahead of [[dispatch-request]]'s try/catch. The `when-let` guards the
+  absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid branch (which would invent a trace
+  file the harness never named)."
   [request]
   (when-let [id (get-in request [:headers "x-eval-session-id"])]
     (try (ait/checked-session-id id) (catch Exception _ nil))))
 
-(defn- dispatch-method
-  "Route a single JSON-RPC `method` to its handler, returning a response map or nil (notifications).
-  A handler that throws is turned into a JSON-RPC internal error rather than propagating."
-  [id method params session-id token-scopes request-context]
-  (try
-    (case method
-      "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params session-id token-scopes)
-      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-      "resources/list"            (handle-resources-list id params token-scopes)
-      "resources/read"            (handle-resources-read id params session-id token-scopes)
-      "ping"                      (handle-ping id params)
-      (if id
-        (jsonrpc-error id -32601 (str "Method not found: " method))
-        nil))
-    (catch Throwable e
-      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
-      (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
-
 (defn- dispatch-request
-  "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [{:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
+  "Dispatch a single JSON-RPC request through the surface's `dispatch-method-fn`.
+  Returns a response map or nil for notifications."
+  [dispatch-method-fn {:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session and open a per-request root
   ;; span; tool/resource/agent-api spans nest under it automatically. Key on the harness-supplied
   ;; `eval-session-id` when given (so it owns the trace file name), else the MCP session's UUID
@@ -165,7 +119,11 @@
                                         :mcp/params     params
                                         :mcp/user-id    api/*current-user-id*
                                         :mcp/scopes     token-scopes}
-                   (let [response (dispatch-method id method params session-id token-scopes request-context)]
+                   (let [response (try
+                                    (dispatch-method-fn id method params session-id token-scopes request-context)
+                                    (catch Throwable e
+                                      (log/error "Error dispatching JSON-RPC method" method (ex-message e))
+                                      (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
                      ;; record the materialized JSON-RPC result/error (the request's output)
                      (ait/record! {:mcp/response response})
                      response))))
@@ -186,7 +144,8 @@
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
-(defn- json-response
+(defn json-response
+  "Build a Ring response with a JSON-encoded `body`."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
@@ -209,9 +168,9 @@
 
 (defn- normalize-domain
   "Extract and lowercase the domain from a URL or Host-style header value.
-   Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
-   Uses `try-parse-url` (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
-   are expected and shouldn't spam the error logs."
+  Bracketed IPv6 forms (`[::1]:3000`) and ports are handled correctly. Returns nil for unparsable input.
+  Uses [[mw.security/try-parse-url]] (the silent variant) — `Origin`/`Host` are client-controlled, so malformed inputs
+  are expected and shouldn't spam the error logs."
   [url]
   (some-> url str mw.security/try-parse-url :domain u/lower-case-en))
 
@@ -264,7 +223,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [user-id request]
+  [{:keys [dispatch-method-fn capabilities instructions]} user-id request]
   (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
@@ -290,7 +249,7 @@
             supports-mcp-ui? (mcp-app-ui-capability? params)
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
-            init-response (handle-initialize (:id body) params)]
+            init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.
         (mcp.usage/record-mcp-session!
@@ -315,7 +274,7 @@
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
                 dispatch-msg    (fn [msg]
-                                  (dispatch-request msg session-id (:token-scopes request)
+                                  (dispatch-request dispatch-method-fn msg session-id (:token-scopes request)
                                                     request-context eval-session-id))
                 responses       (into [] (keep dispatch-msg) messages)]
             (cond
@@ -334,13 +293,43 @@
 (def ^:private tools-list-changed-notification
   {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
 
+(def ^:private keepalive-interval-ms
+  "How often the GET stream emits an SSE comment. Clients drop an idle stream without periodic traffic, so this
+  cadence is a protocol obligation and not tunable downward for the sake of cancellation latency."
+  30000)
+
+(defonce ^:private ^ExecutorService keepalive-executor
+  ;; A keepalive stream blocks for the life of the client's connection, not the life of a query. Running it on the
+  ;; shared streaming-response pool — a fixed pool of `mb-jetty-maxthreads`/50 threads that also serves query
+  ;; downloads — lets a handful of idle MCP sessions occupy every thread and stall exports instance-wide. Virtual
+  ;; threads have no such ceiling and cost nothing while parked.
+  (Executors/newThreadPerTaskExecutor (.. (Thread/ofVirtual) (name "mcp-keepalive-" 0) factory)))
+
+(defn- keepalive-loop!
+  "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
+  Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
+  previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
+  [^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  (loop [last-hash (tools-hash-fn token-scopes)]
+    (.write writer ": keepalive\n\n")
+    (.flush writer)
+    ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
+    ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
+    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
+      (when-not (= port canceled-chan)
+        (let [current-hash (tools-hash-fn token-scopes)]
+          (when (not= current-hash last-hash)
+            (.write writer ^String (sse-body [tools-list-changed-notification]))
+            (.flush writer))
+          (recur current-hash))))))
+
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
    Polls the tool manifest hash on each keepalive tick — if the visible tool set has
    changed since the previous tick, emits an MCP `notifications/tools/list_changed`
    message so the client knows to refetch `tools/list`. Stateless: each connection
    tracks its own last-seen hash; no shared registry."
-  [user-id request respond raise]
+  [tools-hash-fn user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
         token-scopes (:token-scopes request)
         {:keys [error]} (require-valid-session user-id session-id)]
@@ -352,19 +341,11 @@
       (let [resp (streaming-response/streaming-response
                   {:content-type "text/event-stream"
                    :headers      {"Cache-Control" "no-cache"}
-                   :status       200}
+                   :status       200
+                   :executor     keepalive-executor}
                   [os canceled-chan]
-                   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
-                       (when-not (a/poll! canceled-chan)
-                         (.write writer ": keepalive\n\n")
-                         (.flush writer)
-                         (Thread/sleep 30000)
-                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
-                           (when (not= current-hash last-hash)
-                             (.write writer ^String (sse-body [tools-list-changed-notification]))
-                             (.flush writer))
-                           (recur current-hash))))))]
+                   (keepalive-loop! (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+                                    tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
@@ -385,6 +366,7 @@
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check counts every
 ;; request (not just failures) which is correct here — we want to cap total throughput
 ;; regardless of success to prevent resource exhaustion from a compromised token.
+;; One throttler covers every MCP surface, so the cap bounds a user's total MCP throughput.
 (def ^:private one-minute-ms (* 60 1000))
 
 (def ^:private mcp-throttler
@@ -404,31 +386,49 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-;; Source of truth for the route aliases — keep in sync with the route-map in
-;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
-(def ^:private endpoint-paths
-  "URL paths that serve the MCP endpoint, relative to site-url.
-   `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
-   back-compat with existing clients."
-  #{"/api/metabase-mcp" "/api/mcp"})
-
 (defn- www-authenticate-discovery
   "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
-   A client connecting via an alias is pointed at that same alias as the protected resource."
-  [request]
+   A client connecting via an alias is pointed at that same alias as the protected resource;
+   any other path falls back to `default-path` (the surface's canonical URL).
+
+   `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
+  [endpoint-paths default-path default-ask-scopes request]
   ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
   ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
   (let [uri  (str/replace (:uri request) #"/+$" "")
-        path (if (contains? endpoint-paths uri) uri "/api/metabase-mcp")]
-    (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
+        path (if (contains? endpoint-paths uri) uri default-path)]
+    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+    ;; uses commas and the stricter parsers proposed upstream would not.
+    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
+         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+         ;; which is what lets a surface ask for less than it accepts: the wider set stays
+         ;; advertised and requestable, this is only what an uninstructed client asks for.
+         (when (seq default-ask-scopes)
+           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
 
-(def +mcp-enabled
-  "Wrap routes so they may only be accessed when the MCP server is enabled."
-  mcp.validation/+mcp-enabled)
+(defn make-handler
+  "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
+   so the OpenAPI spec is empty.
 
-(def ^{:arglists '([request respond raise])} handler
-  "Ring async handler for the MCP endpoint.
-   Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
+   Options:
+   - `:dispatch-method-fn` — `(fn [id method params session-id token-scopes request-context])`
+     returning a JSON-RPC response map, or nil for notifications. `initialize` is handled by the
+     transport itself and never reaches this fn.
+   - `:capabilities` — the server capabilities the `initialize` handshake advertises. Must match
+     what `:dispatch-method-fn` actually serves (e.g. advertise `:resources` only when the
+     surface dispatches `resources/*`).
+   - `:instructions` — optional string returned as the `initialize` result's `instructions`
+     field, surfaced to the model by clients that support it.
+   - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
+     polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
+   - `:endpoint-paths` — the URL paths (relative to site-url) this surface is served at.
+   - `:default-path` — the canonical path advertised when the request URI matches no entry in
+     `:endpoint-paths`.
+   - `:default-ask-scopes` — optional scopes emitted as the `scope` parameter of the 401
+     `WWW-Authenticate` challenge, i.e. what a client that has not been told otherwise asks for.
+     Omit to let clients ask for everything the resource metadata advertises."
+  [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (let [origin-error (validate-origin request)
@@ -443,10 +443,10 @@
                        (let [request (assoc request :token-scopes token-scopes)]
                          (cond
                            (= :post (:request-method request))
-                           (respond (handle-post user-id request))
+                           (respond (handle-post opts user-id request))
 
                            (= :get (:request-method request))
-                           (handle-get user-id request respond raise)
+                           (handle-get tools-hash-fn user-id request respond raise)
 
                            (= :delete (:request-method request))
                            (respond (handle-delete user-id request))
@@ -462,6 +462,8 @@
            ;; Respect the scope set attached to an authenticated request. Sessions without one
            ;; retain unrestricted access.
            session-auth
+           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
+           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
            (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
 
            ;; Bearer token auth — validate and extract scopes
@@ -474,5 +476,6 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery request)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery endpoint-paths default-path
+                                                                                   default-ask-scopes request)}))))))
    (constantly nil)))

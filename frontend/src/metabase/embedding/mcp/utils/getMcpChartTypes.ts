@@ -39,6 +39,13 @@ interface GetMcpChartTypesProps {
   defaultDisplay: CardDisplayType | null;
   sensibleVisualizations: CardDisplayType[];
   canShowTable: boolean;
+
+  /**
+   * The display currently rendered, when it isn't one the slots below would
+   * offer — e.g. a chart type `visualize_query` asked for. Without it the
+   * picker would have no option matching what's on screen.
+   */
+  activeDisplay?: CardDisplayType | null;
 }
 
 function getChartTypeIcon(type: CardDisplayType) {
@@ -51,6 +58,7 @@ export function getMcpChartTypes({
   defaultDisplay,
   sensibleVisualizations,
   canShowTable,
+  activeDisplay = null,
 }: GetMcpChartTypesProps): McpChartTypeEntry[] {
   const candidates = MCP_ALTERNATIVE_CHART_TYPES.filter(
     (type) => type !== defaultDisplay,
@@ -66,6 +74,10 @@ export function getMcpChartTypes({
 
     // Slot 3: show table when it has enough data to be useful.
     canShowTable ? "table" : null,
+
+    // Slot 4: whatever is actually on screen, so the picker always has a
+    // matching option. Deduped below when it's already one of the above.
+    activeDisplay,
   ];
 
   return Array.from(new Set(chartTypes))

@@ -18,6 +18,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -35,6 +36,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
@@ -69,7 +71,7 @@
                            :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
                            :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
                            :COLUMN_6 [{:name "No source ID"}]}
-          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+          result (#'dashboards.write/update-colvalmap-setting col->val-source id->new-card)]
       (testing "should update valid card IDs that exist in the map"
         (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
         (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
@@ -1532,7 +1534,13 @@
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
                   ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count))))))))))))
+                  (is (= 2 (->> resp :uncopied count)))
+                  (let [by-id (m/index-by :id (:uncopied resp))]
+                    (testing "an unreadable card reveals nothing but its id"
+                      (is (= [:id] (vec (keys (get by-id (u/the-id total-card)))))
+                          "must not leak the card's name, query, or entity_id"))
+                    (testing "a readable card kept out because its series base is unreadable is still whole"
+                      (is (contains? (get by-id (u/the-id avg-card)) :name)))))))))))))
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
@@ -1666,7 +1674,7 @@
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy true dashcards))))))
+               (#'dashboards.write/cards-to-copy true dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
@@ -1675,7 +1683,7 @@
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :reference {}
                   :discard [{:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards))))))
+                 (#'dashboards.write/cards-to-copy true dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:card_id 3 :card (card-model {:id 3})}]]
@@ -1683,7 +1691,7 @@
           (is (= {:copy {3 {:id 3}}
                   :reference {}
                   :discard [{:id 1} {:id 2}]}
-                 (#'api.dashboard/cards-to-copy true dashcards)))))))
+                 (#'dashboards.write/cards-to-copy true dashcards)))))))
   (testing "Identifies cards to be referenced"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:card_id 3 :card (card-model {:id 3})}]]
@@ -1693,7 +1701,7 @@
                             3 {:id 3}}
                 :copy {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy false dashcards))))))
+               (#'dashboards.write/cards-to-copy false dashcards))))))
   (testing "Identifies cards that cannot be referenced"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:card_id 3 :card (card-model {:id 3})}]]
@@ -1702,54 +1710,54 @@
                             3 {:id 3}}
                 :copy {}
                 :discard [{:id 2}]}
-               (#'api.dashboard/cards-to-copy false dashcards)))))))
+               (#'dashboards.write/cards-to-copy false dashcards)))))))
 
 (deftest update-cards-for-copy-test
   (testing "Returns the original dashcards for referenced dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                      {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
-             (api.dashboard/update-cards-for-copy dashcards
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  nil))))
+             (dashboards.write/update-cards-for-copy dashcards
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
               {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
-             (api.dashboard/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
-                                                   {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
-                                                  nil
-                                                  {1 {:id 1}
-                                                   2 {:id 2}
-                                                   3 {:id 3}}
-                                                  {1 10
-                                                   2 20}))))))
+             (dashboards.write/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
+                                                      {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
+                                                     nil
+                                                     {1 {:id 1}
+                                                      2 {:id 2}
+                                                      3 {:id 3}}
+                                                     {1 10
+                                                      2 20}))))))
 
 (deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 5}
-                                                     2 {:id 6}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 5}
+                                                        2 {:id 6}}
+                                                       nil
+                                                       nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                        {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 7}
-                                                     2 {:id 8}
-                                                     3 {:id 9}
-                                                     ;; not copying id 4 which is the base of the following two
-                                                     5 {:id 10}
-                                                     6 {:id 11}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 7}
+                                                        2 {:id 8}
+                                                        3 {:id 9}
+                                                        ;; not copying id 4 which is the base of the following two
+                                                        5 {:id 10}
+                                                        6 {:id 11}}
+                                                       nil
+                                                       nil)))))
     (testing "Updates parameter mappings to new card ids"
       (let [dashcards [{:card_id            1
                         :card               {:id 1}
@@ -1763,10 +1771,10 @@
                                        :card_id      2
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 2}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 2}}
+                                                       nil
+                                                       nil)))))
     (testing "Does not think action cards are text cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings {:virtual_card {:display "text"}
@@ -1775,20 +1783,20 @@
                                                  :text         "keep me!"}}
                        {:action_id 123}]]
         (is (= (butlast dashcards)
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))
     (testing "Copies iframe cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
                        {:visualization_settings
                         {:virtual_card {:display "iframe"}
                          :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
         (is (= dashcards
-               (api.dashboard/update-cards-for-copy dashcards
-                                                    {1 {:id 1}}
-                                                    nil
-                                                    nil)))))))
+               (dashboards.write/update-cards-for-copy dashcards
+                                                       {1 {:id 1}}
+                                                       nil
+                                                       nil)))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
@@ -2435,6 +2443,52 @@
                      :parameter_mappings mappings}]
                    (dashcards)))))))))
 
+(deftest add-virtual-card-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "A user without data permissions on a table may not add a parameter mapping targeting one of its fields,
+             even when the mapping is on a virtual dashcard (nil card_id)"
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                            :slug "category_id"
+                                                                            :id   "_CATEGORY_ID_"
+                                                                            :type "category"}]}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (is (=? {:message "You must have data permissions to add a parameter referencing the Table \"VENUES\"."}
+                    (mt/user-http-request
+                     :rasta :put 403 (format "dashboard/%d" dashboard-id)
+                     {:dashcards [{:id                     -1
+                                   :card_id                nil
+                                   :row                    0
+                                   :col                    0
+                                   :size_x                 4
+                                   :size_y                 4
+                                   :parameter_mappings     [{:parameter_id "_CATEGORY_ID_"
+                                                             :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]
+                                   :visualization_settings {:virtual_card {:display "text"}
+                                                            :text         "Hello"}}]
+                      :tabs      []})))
+            (is (= []
+                   (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
+            (testing "and may add it once they do have data permissions"
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+              (is (=? [{:card_id            nil
+                        :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                              :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]
+                      (:dashcards (mt/user-http-request
+                                   :rasta :put 200 (format "dashboard/%d" dashboard-id)
+                                   {:dashcards [{:id                     -1
+                                                 :card_id                nil
+                                                 :row                    0
+                                                 :col                    0
+                                                 :size_x                 4
+                                                 :size_y                 4
+                                                 :parameter_mappings     [{:parameter_id "_CATEGORY_ID_"
+                                                                           :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]
+                                                 :visualization_settings {:virtual_card {:display "text"}
+                                                                          :text         "Hello"}}]
+                                    :tabs      []})))))))))))
+
 (deftest adding-archived-cards-to-dashboard-is-not-allowed
   (mt/with-temp
     [:model/Dashboard {dashboard-id :id} {}
@@ -2452,6 +2506,25 @@
                                                                                    :target       [:dimension [:template-tag "foo"]]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
+
+(deftest adding-archived-cards-as-series-to-dashboard-is-not-allowed
+  (testing "GHY-4334: the archived check covers a dashcard's series cards, not just its main card"
+    (mt/with-temp
+      [:model/Dashboard {dashboard-id :id} {}
+       :model/Card      {card-id :id}      {}
+       :model/Card      {series-id :id}    {:archived true}]
+      (is (= "The object has been archived."
+             (:message (mt/user-http-request :rasta :put 404 (format "dashboard/%d" dashboard-id)
+                                             {:dashcards [{:id                     -1
+                                                           :card_id                card-id
+                                                           :row                    4
+                                                           :col                    4
+                                                           :size_x                 4
+                                                           :size_y                 4
+                                                           :series                 [{:id series-id}]
+                                                           :visualization_settings {}}]
+                                              :tabs      []}))))
+      (is (zero? (t2/count :model/DashboardCard :dashboard_id dashboard-id))))))
 
 ;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
@@ -4643,11 +4716,11 @@
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
                     ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
-                    (sort-by :id (#'api.dashboard/broken-pulses dash-id {param-id param})))))
+                    (sort-by :id (#'pulse.broken-subscriptions/broken-pulses dash-id {param-id param})))))
           (testing "We can gather all needed data regarding broken params"
             (let [bad-pulses    (mapv
                                  #(update % :affected-users (partial sort-by :email))
-                                 (sort-by :pulse-id (#'api.dashboard/broken-subscription-data dash-id {param-id param})))
+                                 (sort-by :pulse-id (#'pulse.broken-subscriptions/broken-subscription-data dash-id {param-id param})))
                   bad-pulse-ids (set (map :pulse-id bad-pulses))]
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))

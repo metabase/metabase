@@ -62,9 +62,12 @@
     (lint* node current-ns config required-namespaces)))
 
 (defn- lint-requiring-resolve* [node current-ns config]
-  (let [[_requiring-resolve symb-node] (:children node)
-        required-namespace             (unwrap-require symb-node)]
-    (lint* node current-ns config [required-namespace])))
+  (let [[_requiring-resolve symb-node] (:children node)]
+    ;; `unwrap-require` returns nil when the target isn't a statically-knowable symbol (e.g.
+    ;; `(requiring-resolve (symbol ns-str fn-str))`) — nothing to module-check, so skip it rather
+    ;; than tripping `lint*`'s simple-symbol precondition.
+    (when-let [required-namespace (unwrap-require symb-node)]
+      (lint* node current-ns config [required-namespace]))))
 
 (defn lint-require [x]
   (lint-require* (:node x) (:ns x) (modules/config x))

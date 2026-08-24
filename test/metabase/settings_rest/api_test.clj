@@ -32,6 +32,10 @@
   :visibility :public
   :type :integer)
 
+(defsetting test-api-v2-setting
+  (deferred-tru "Setting to test that names containing digits are addressable by the API. This only shows up in dev.")
+  :encryption :when-encryption-key-set)
+
 (defsetting test-settings-manager-visibility
   (deferred-tru "Setting to test the `:settings-manager` visibility level. This only shows up in dev.")
   :visibility :settings-manager
@@ -205,6 +209,18 @@
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
+
+(deftest digit-containing-setting-name-test
+  (testing "a setting whose name contains a digit is addressed by its exact name (the kebab
+            fallback would split it into `test-api-v-2-setting` and fail to resolve)"
+    (mt/user-http-request :crowberto :put 204 "setting/test-api-v2-setting" {:value "NICE!"})
+    (is (= "NICE!" (test-api-v2-setting)))
+    (is (= "NICE!" (fetch-setting :test-api-v2-setting 200))))
+  (testing "the snake_case form of a digit-bearing name also resolves (a plain `_`->`-` candidate is
+            tried before the letter-digit-splitting kebab conversion, which would yield
+            `test-api-v-2-setting`)"
+    (mt/user-http-request :crowberto :put 204 "setting/test_api_v2_setting" {:value "ALSO NICE!"})
+    (is (= "ALSO NICE!" (test-api-v2-setting)))))
 
 (deftest update-setting-without-premium-feature-test
   (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"

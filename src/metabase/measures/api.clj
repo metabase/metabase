@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
@@ -41,15 +42,16 @@
                    (lib/primary-source-table-id normalized-definition))
                  (tru "Measure definition must specify a source table.")))
 
-(api.macros/defendpoint :post "/" :- ::measure
-  "Create a new `Measure`. The Measure's table is derived from its `definition`."
-  [_route-params
-   _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ::measures.schema/definition]
-                                                       [:description {:optional true} [:maybe :string]]]]
-  (let [table-id (definition-table-id definition)]
+(defn create-measure!
+  "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
+  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
+  the create-check runs wherever a Measure is authored."
+  [{:keys [name description definition], :as body}]
+  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
+  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
+  ;; `definition-table-id` requires a normalized definition.
+  (let [definition (lib-be/normalize-query definition)
+        table-id   (definition-table-id definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
                    (first (t2/insert-returning-instances! :model/Measure
@@ -59,6 +61,16 @@
                                                           :definition  definition)))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
+
+(api.macros/defendpoint :post "/" :- ::measure
+  "Create a new `Measure`. The Measure's table is derived from its `definition`."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:name        ms/NonBlankString]
+            [:definition  ::measures.schema/definition]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-measure! body))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
@@ -99,14 +111,19 @@
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
 
-(defn- write-check-and-update-measure!
+(defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure."
+  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
+  wherever a Measure is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
-        clean-body (u/select-keys-when body
-                                       :present #{:description}
-                                       :non-nil #{:archived :definition :name})
+        ;; Normalized for the same reason as in `create-measure!` — non-REST callers (MCP's
+        ;; measure_write) arrive undecoded, and both the stored definition and the table-id
+        ;; derivation below need MBQL 5.
+        clean-body (cond-> (u/select-keys-when body
+                                               :present #{:description}
+                                               :non-nil #{:archived :definition :name})
+                     (some? (:definition body)) (update :definition lib-be/normalize-query))
         new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]

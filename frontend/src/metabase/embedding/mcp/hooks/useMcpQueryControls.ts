@@ -1,10 +1,14 @@
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { useDateFilter } from "./useDateFilter";
 import { useMcpVisualizationSelector } from "./useMcpVisualizationSelector";
 import { useTemporalGranularity } from "./useTemporalGranularity";
 
-export function useMcpQueryControls(queryKey: string | null) {
+export function useMcpQueryControls(
+  queryKey: string | null,
+  requestedDisplay: CardDisplayType | null = null,
+) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
   const { sensibleChartTypes, selectedChartType, handleDisplayChange } =
@@ -13,6 +17,7 @@ export function useMcpQueryControls(queryKey: string | null) {
       queryResults,
       updateQuestion,
       queryKey,
+      requestedDisplay,
     });
 
   const {

@@ -1,0 +1,625 @@
+(ns metabase.mcp.v2.common
+  "Shared conventions for v2 MCP tools: the list envelope, teaching errors, id resolution,
+   `response_format`/`fields` plumbing, `_write` method dispatch, and the MCP response-channel
+   helpers. Tool namespaces add domain logic only and never re-derive these shapes.
+
+   Scope-binding rule: scopes are never renamed. Issued OAuth tokens carry literal strings (a
+   token holding `agent:question:create` satisfies no other name), so renaming one strands every
+   existing token. Add new leaf scopes for net-new capability; never rename."
+  (:require
+   [clojure.string :as str]
+   [metabase.agent-api.query-guards :as query-guards]
+   [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.api.common :as api]
+   [metabase.channel.urls :as channel.urls]
+   [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.core :as eid-translation]
+   [metabase.lib.core :as lib]
+   [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.recovery-hints :as v2.recovery-hints]
+   [metabase.metabot.tools.construct :as metabot.construct]
+   [metabase.models.serialization.resolve :as serdes.resolve]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (org.apache.commons.text.similarity LevenshteinDistance)))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Response channels ---------------------------------------------
+
+;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
+(def error-code-invalid-request
+  "JSON-RPC -32600: request rejected before dispatch (e.g. insufficient scope)." -32600)
+(def error-code-method-not-found
+  "JSON-RPC -32601: unknown or disabled tool." -32601)
+(def error-code-invalid-params
+  "JSON-RPC -32602: invalid arguments, including teaching errors and not-found." -32602)
+(def error-code-internal
+  "JSON-RPC -32603: unexpected server-side failure." -32603)
+
+(defn error-content
+  "Wrap an error message as MCP error content. The JSON-RPC `code` (default: internal error) is
+   carried under the namespaced `::error-code` key for usage logging and stripped from the
+   response before it reaches the client (see the registry's call-tool)."
+  ([message] (error-content message error-code-internal))
+  ([message code] {:content [{:type "text" :text message}] :isError true ::error-code code}))
+
+(defn success-content
+  "Assemble the two MCP response channels deliberately. When `structuredContent` is present,
+   clients may hand the model that channel alone — the MCP spec defines the text block as the
+   backwards-compat serialization of `structuredContent`, so structured is the primary channel
+   whenever both exist, and a structured payload that is a subset of the text silently hides
+   the rest from the model. Tools therefore default to text-only (omit `structured`), with
+   `text` self-sufficient: everything the model needs to reason or make its next call. Pass
+   `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
+   and make it a faithful mirror of the text — never a subset, never the sole home of anything
+   the model needs."
+  ([text] (success-content text nil))
+  ([text structured]
+   (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
+     (some? structured) (assoc :structuredContent structured))))
+
+;;; ------------------------------------------------ Teaching errors -----------------------------------------------
+
+(defn throw-teaching-error
+  "Throw an `ex-info` whose message is a complete caller-facing sentence naming the fix.
+   Surfaced to the MCP client as `isError` content by [[->mcp-error-content]]."
+  ([msg] (throw-teaching-error msg nil))
+  ([msg data]
+   (throw (ex-info msg (merge {:status-code 400} data)))))
+
+(defn throw-not-found
+  "Throw the collapsed not-found teaching error. Deliberately identical for \"doesn't exist\"
+   and \"exists but not readable\", so responses never form an existence oracle across the
+   permission boundary."
+  [model id]
+  (throw (ex-info (format "%s %s not found — it may not exist, or you may not have access to it."
+                          (name model) id)
+                  {:status-code 404})))
+
+(defn- status-code->error-code
+  [status-code]
+  (cond
+    (contains? #{401 402 403 409} status-code) error-code-invalid-request
+    (contains? #{400 404} status-code)         error-code-invalid-params
+    :else                                      error-code-internal))
+
+(def ^:private client-error-status-codes
+  "Status codes that mark an exception as deliberately caller-facing — its message is safe to
+   return. Everything else is an internal failure whose message may embed SQL, schema, or
+   connection detail. 402 (missing premium feature) and 409 (conflict) are included because their
+   messages name the missing feature or clashing state — information the agent needs to recover."
+  #{400 401 402 403 404 409})
+
+(defn ->mcp-error-content
+  "Convert a caught exception into MCP error content, and the single point where an exception
+   message is judged safe to return. Only deliberately caller-facing errors surface their
+   message: an explicit `::error-code` (other than internal) or a client (4xx) `:status-code`
+   in `ex-data` — teaching errors, not-found, scope denials. Every other exception — incidental
+   `ex-info`s from libraries (whose messages may embed SQL or connection detail), 5xx
+   invariants, and non-`ex-info` failures like JDBC or NPE — becomes a generic internal error;
+   the real exception is logged server-side for debugging but never returned to the client."
+  [e]
+  (let [{::keys [error-code] :keys [status-code]} (ex-data e)
+        code (or (when (and error-code (not= error-code error-code-internal)) error-code)
+                 (when (contains? client-error-status-codes status-code)
+                   (status-code->error-code status-code)))]
+    (if code
+      (error-content (or (ex-message e) "Internal error") code)
+      (do
+        (log/error e "Unhandled error dispatching MCP v2 tool call")
+        (error-content "Internal error" error-code-internal)))))
+
+;;; ------------------------------------------------ List envelope -------------------------------------------------
+
+(defn truncation-line
+  "The steering sentence appended to a truncated list response: names the narrowing `param` when
+   one narrows this list, and always the next offset. Returns nil when the page isn't truncated
+   (or `total` is unknown). `:total-floor?` marks `total` as a lower bound rather than an exact
+   count — e.g. a search total capped at the ranking limit — so the sentence reads \"at least N\"."
+  ;; A list with nothing to narrow by still has to say more exists — without a line the caller
+  ;; reads a truncated page as the whole set.
+  [{:keys [param offset limit total total-floor?]}]
+  (let [offset (or offset 0)]
+    (when (and total limit (< (+ offset limit) total))
+      (let [returned  (min limit (- total offset))
+            total-str (str (when total-floor? "at least ") total)
+            next      (+ offset limit)]
+        (if param
+          (format "Returned %d of %s — narrow with `%s`, or continue with `offset: %d`."
+                  returned total-str (name param) next)
+          (format "Returned %d of %s — continue with `offset: %d`."
+                  returned total-str next))))))
+
+(defn list-envelope
+  "The literal list-response envelope `{:data … :returned … :total?}`. `total` is included
+   when known (offset pagination over the app db usually can count)."
+  ([data] (list-envelope data nil))
+  ([data total]
+   (cond-> {:data data :returned (count data)}
+     (some? total) (assoc :total total))))
+
+(defn list-content
+  "Build the MCP success content for a list response: the envelope (compact JSON) in the text
+   block, with a steering line appended. `data` is already the page; `opts` carries
+   `:offset`/`:limit`, an optional `:param` naming what narrows this list, and an optional
+   `:empty-hint` used in place of the truncation line when nothing matched at all. Text-only —
+   list data never rides `structuredContent` by reflex."
+  [data total {:keys [empty-hint] :as opts}]
+  (let [envelope (list-envelope data total)
+        line     (if (and empty-hint (= 0 total))
+                   empty-hint
+                   (truncation-line (assoc opts :total total)))]
+    (success-content (cond-> (json/encode envelope)
+                       line (str "\n" line)))))
+
+;;; ------------------------------------------------ Id resolution -------------------------------------------------
+
+(def ^:private entity-id-re
+  "NanoID shape used by `entity_id` columns."
+  #"^[A-Za-z0-9_-]{21}$")
+
+(defn entity-id?
+  "Is `x` a 21-character entity_id string?"
+  [x]
+  (boolean (and (string? x) (re-matches entity-id-re x))))
+
+(defn resolve-id-or-404
+  "Resolve a numeric id or 21-char entity_id to the numeric id for `model`. Throws the
+   collapsed not-found error when an entity_id doesn't resolve, and a teaching error for any
+   other shape.
+
+   This is translation only — it must always be followed by the object's read check. Prefer
+   [[resolve-and-read]], which enforces that pairing."
+  [model id-or-eid]
+  (cond
+    (int? id-or-eid)
+    id-or-eid
+
+    (entity-id? id-or-eid)
+    (try
+      (eid-translation/->id-or-404 model id-or-eid)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= 404 (:status-code (ex-data e)))
+          (throw-not-found model id-or-eid)
+          (throw e))))
+
+    :else
+    (throw-teaching-error (format "Invalid id %s — pass a numeric id or a 21-character entity_id."
+                                  (pr-str id-or-eid)))))
+
+(defn resolve-and-read-with
+  "Resolve `id-or-eid` for `model`, then return the object from `read-check-fn`, which must
+   enforce at least what the corresponding REST endpoint enforces. \"Doesn't exist\" and
+   \"exists but not readable\" collapse into the same not-found error, so the response never
+   leaks existence across the permission boundary.
+
+   Reach for [[resolve-and-read]] first; use this only when the read genuinely differs (a
+   module fetch fn that runs its own checks, a write check, an extra existence predicate)."
+  [model id-or-eid read-check-fn]
+  (let [id (resolve-id-or-404 model id-or-eid)]
+    (try
+      (let [result (read-check-fn id)]
+        (if (nil? result)
+          (throw-not-found model id-or-eid)
+          result))
+      (catch clojure.lang.ExceptionInfo e
+        (if (contains? #{403 404} (:status-code (ex-data e)))
+          (throw-not-found model id-or-eid)
+          (throw e))))))
+
+(defn resolve-and-read
+  "Resolve `id-or-eid` for `model` and return the row from behind its `api/read-check` — what
+   nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]."
+  [model id-or-eid]
+  (resolve-and-read-with model id-or-eid
+                         (fn [id] (api/read-check (t2/select-one model :id id)))))
+
+(defn resolve-collection-id
+  "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
+   collection and resolve to nil without a DB translation; `\"trash\"` resolves to
+   `:trash-collection-id` when the caller allows it (the tool passes the id from the
+   collections module) and is a teaching error otherwise.
+
+   A numeric id is checked for existence here. [[resolve-id-or-404]] translates entity_ids but
+   passes numbers straight through, so without this an id for no collection at all travelled on
+   into the write, where it fails a `mu/defn` schema or a permission check and reaches the caller
+   as the sanitized \"Internal error\". Permissions stay the caller's job afterwards, unchanged."
+  ([id-or-sentinel] (resolve-collection-id id-or-sentinel nil))
+  ([id-or-sentinel {:keys [trash-collection-id]}]
+   (cond
+     (or (nil? id-or-sentinel) (= "root" id-or-sentinel))
+     nil
+
+     (= "trash" id-or-sentinel)
+     (or trash-collection-id
+         (throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
+
+     :else
+     (let [id (resolve-id-or-404 :model/Collection id-or-sentinel)]
+       (when-not (t2/exists? :model/Collection :id id)
+         (throw-not-found :model/Collection id-or-sentinel))
+       id))))
+
+(defn resolve-collection-id-or-personal
+  "Like [[resolve-collection-id]], but an absent argument means the caller's personal collection
+   instead of the root collection. Explicit `\"root\"` still resolves to the root collection, so
+   callers keep a way to ask for it. Arguments arrive with top-level nils stripped at the
+   registry boundary, so a nil here is always an omitted argument rather than an explicit null.
+
+   For create paths only. On update an absent collection argument must leave content where it is,
+   so update paths guard [[resolve-collection-id]] with `contains?` instead.
+
+   API-key users have no personal collection; that nil is a teaching error here rather than a
+   silent write into the root collection."
+  [id-or-sentinel]
+  (if (some? id-or-sentinel)
+    (resolve-collection-id id-or-sentinel)
+    (or (:id (collection/user->personal-collection api/*current-user-id*))
+        (throw-teaching-error
+         (str "The current user has no personal collection. Pass an explicit collection_id "
+              "(or \"root\" for the root collection) instead.")))))
+
+;;; ------------------------------------------------- Frontend URLs ------------------------------------------------
+
+(defn frontend-url
+  "Prefix a `channel.urls` relative `path` with the configured site URL, returning it relative
+   when site-url is unset so a tool never emits an absolute URL with an empty host. Always build
+   a tool's `:url` this way — `channel.urls`' own `*-url` fns interpolate site-url directly and
+   render `nil` as the literal string \"null\", which site-url is whenever it is unconfigured or
+   fails validation."
+  [path]
+  (let [base (channel.urls/site-url)]
+    (if (str/blank? base)
+      path
+      (str base path))))
+
+;;; --------------------------------------------- response_format --------------------------------------------------
+
+(defn response-format
+  "Read `:response_format` from tool arguments: `:concise` (default) or `:detailed`; anything
+   else is a teaching error."
+  [args]
+  (case (get args :response_format)
+    (nil "concise") :concise
+    "detailed"      :detailed
+    (throw-teaching-error (format "Invalid response_format %s — use \"concise\" or \"detailed\"."
+                                  (pr-str (get args :response_format))))))
+
+;;; ------------------------------------------------ fields resolver -----------------------------------------------
+
+(def ^:private ^LevenshteinDistance levenshtein
+  (LevenshteinDistance/getDefaultInstance))
+
+(defn- nearest-paths
+  [^String path catalog]
+  (->> catalog
+       (sort-by #(.apply levenshtein path ^String %))
+       (take 3)))
+
+(defn- valid-path?
+  "A requested path is valid when it is a catalog entry or a segment-aligned prefix of one
+   (selecting a whole subtree)."
+  [path catalog]
+  (boolean (some #(or (= % path) (str/starts-with? % (str path "."))) catalog)))
+
+(defn- add-path
+  "Merge one path (a vector of segments) into the selection tree. `::all` marks a
+   whole-subtree selection; it absorbs any narrower path at the same node, in either
+   insertion order, so `[\"parameters\" \"parameters.name\"]` selects all of `parameters`."
+  [tree segs]
+  (cond
+    (= ::all tree) ::all
+    (empty? segs)  ::all
+    :else          (update tree (first segs) #(add-path (or % {}) (rest segs)))))
+
+(defn- paths->tree
+  [paths]
+  (reduce (fn [tree path] (add-path tree (str/split path #"\.")))
+          {}
+          paths))
+
+(defn- select-tree
+  [node tree]
+  (cond
+    (= ::all tree)     node
+    ;; Arrays are item-relative: apply the selection to every item.
+    (sequential? node) (mapv #(select-tree % tree) node)
+    (map? node)        (into {}
+                             (keep (fn [[seg subtree]]
+                                     (let [k (keyword seg)]
+                                       (when (contains? node k)
+                                         [k (select-tree (get node k) subtree)]))))
+                             tree)
+    :else              node))
+
+(defn select-fields
+  "Narrow `response-map` (the permission-filtered built response for one item of `type`,
+   never a raw model row) to the requested `fields` dot-paths. Paths are validated against
+   `type`'s catalog; an unknown path is a teaching error naming the nearest valid paths.
+   `fields` is mutually exclusive with `response_format` and `include` — the caller passes
+   what was present and combining them is a teaching error."
+  ([type response-map fields]
+   (select-fields type response-map fields nil))
+  ([type response-map fields {:keys [response-format include]}]
+   (when (or response-format include)
+     (throw-teaching-error "Use `fields` OR `response_format`/`include`, not both."))
+   (when (empty? fields)
+     (throw-teaching-error "`fields` must name at least one path."))
+   (let [catalog (or (projections/catalog type)
+                     (throw-teaching-error (format "`fields` is not supported for type %s." (name type))))]
+     (doseq [path fields]
+       (when-not (valid-path? path catalog)
+         (throw-teaching-error (format "Unknown field path %s for type %s. Nearest valid paths: %s."
+                                       (pr-str path) (name type)
+                                       (str/join ", " (nearest-paths path catalog))))))
+     (select-tree response-map (paths->tree fields)))))
+
+;;; ------------------------------------------------ Raw-SQL kill switch -------------------------------------------
+
+(defn check-execute-sql-enabled!
+  "Throw a 403 unless the instance-level `mcp-execute-sql-enabled` kill switch is on. `subject`
+   opens the refusal sentence, naming what the instance refused. Every v2 path that runs or stores
+   raw SQL consults this one gate — a switch an admin turned off must not be reachable by a
+   second route."
+  [subject]
+  (when-not (agent-api.settings/mcp-execute-sql-enabled)
+    (throw (ex-info (format (str "%s is disabled on this instance — an admin can re-enable it "
+                                 "with the mcp-execute-sql-enabled setting.")
+                            subject)
+                    {:status-code 403}))))
+
+;;; ------------------------------------------------ _write dispatch -----------------------------------------------
+
+(defn readback
+  "`row` when `token-scopes` could read the entity back through the read tools, else a
+   minimal `{id, url?, note}` acknowledgement — a write succeeding must never double as a read,
+   or the write scope becomes a read oracle for content the token's read scopes deny (a no-op
+   update would return the full entity). `read-scopes` is everything the read path would demand:
+   the read tool's own scope plus any per-type extra. Unscoped callers (cookie sessions bind the
+   unrestricted sentinel) always get the row."
+  [token-scopes read-scopes row]
+  (let [missing (remove #(mcp.scope/matches? token-scopes %) read-scopes)]
+    (if (empty? missing)
+      row
+      (assoc (select-keys row [:id :url])
+             :note (format "Written. Reading it back requires the %s scope%s this token doesn't have."
+                           (str/join " and " missing)
+                           (if (next missing) "s" ""))))))
+
+(defn- expand-clear
+  "Turn a `clear` list of property names into explicit nils on `args`. Null can't carry this
+   meaning itself: the registry strips nulls at the boundary because strict clients flood every
+   declared property with null, so `description: null` cannot be told apart from \"didn't touch
+   it\". A list of names survives that stripping and says it unambiguously. The nils are what the
+   tools' update paths already read — they test `contains?` (or `select-keys`), so a present-but-nil
+   key sets the column to nil without any per-tool change."
+  [args clearable clear]
+  (if (empty? clear)
+    (dissoc args :clear)
+    (let [clearable (set clearable)
+          fields    (map keyword clear)]
+      (doseq [field fields]
+        (when-not (contains? clearable field)
+          (throw-teaching-error
+           (if (seq clearable)
+             (format "`%s` can't be cleared. This tool can clear: %s."
+                     (name field) (str/join ", " (sort (map name clearable))))
+             (format "`%s` can't be cleared — this tool has no clearable properties."
+                     (name field)))))
+        (when (some? (get args field))
+          (throw-teaching-error
+           (format "`%s` is both set and cleared in the same call — pass one or the other."
+                   (name field)))))
+      (reduce #(assoc %1 %2 nil) (dissoc args :clear) fields))))
+
+(defn dispatch-write
+  "Shared `method` dispatch for `_write` tools. `entry` carries the tool's write contract:
+   `:create-required` (arg keys enforced at create with teaching errors — the \"(create)\" markers
+   in the spec) and `:clearable` (the property names `clear` may name — see [[expand-clear]]). The
+   tool's single write `:scope` is enforced at the registry gate, so dispatch itself does no scope
+   checking.
+
+   Returns `[:create args]` or `[:update id args]` (with `:method`/`:id`/`:clear` stripped, and any
+   cleared property present as an explicit nil), or throws a teaching error. Does not itself touch
+   the DB — the tool handler consumes the result."
+  [{:keys [create-required clearable]} {:keys [method id clear] :as args}]
+  (case method
+    "create"
+    (do
+      (when (seq clear)
+        (throw-teaching-error
+         "`clear` applies to method \"update\" only — a new object has nothing set to clear."))
+      (doseq [k create-required]
+        (when (nil? (get args k))
+          (throw-teaching-error (format "`%s` is required when method is \"create\"." (name k)))))
+      [:create (dissoc args :method :clear)])
+
+    "update"
+    (do
+      (when (nil? id)
+        (throw-teaching-error "`id` is required when method is \"update\"."))
+      [:update id (-> (dissoc args :method :id)
+                      (expand-clear clearable clear))])
+
+    (throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+
+;;; -------------------------------------------- Representations pipeline ------------------------------------------
+
+(defn ellipsize
+  "`s` truncated to `limit` characters, with an ellipsis marking the cut."
+  [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit)
+      (str (subs s 0 limit) "…")
+      s)))
+
+(defn humanize-detail
+  "Flatten a [[malli.error/humanize]] explanation into one line of `path: expectation`.
+
+   Sequential positions are labelled `[i]` and satisfied entries dropped, so a failure inside a
+   multi-element collection names which element it is in; a run of plain strings is a single
+   value's alternative messages and joins without positions."
+  [errors]
+  (cond
+    (map? errors)
+    (str/join "; " (map (fn [[k v]] (str (u/qualified-name k) ": " (humanize-detail v))) errors))
+
+    (and (sequential? errors) (every? string? errors))
+    (str/join ", " errors)
+
+    (sequential? errors)
+    (str/join "; " (keep-indexed (fn [i v]
+                                   (when (some? v)
+                                     (format "[%d] %s" i (humanize-detail v))))
+                                 errors))
+
+    :else
+    (str errors)))
+
+(def ^:private max-schema-detail-length
+  "Character budget for the humanized schema explanation appended to a structural failure. A
+   deeply nested query explains in kilobytes; the leading paths are the ones worth fixing first,
+   and an unbounded dump would crowd out the rest of the agent's context."
+  500)
+
+(defn- with-schema-detail
+  "`e` with its humanized schema explanation folded into the message, or unchanged when it carries
+   none. The representations pipeline computes the explanation and files it under `:humanized` but
+   states only the bare verdict, which leaves an agent nothing to edit; only structural validation
+   failures carry the key, so the dialect steering is always apt where it lands."
+  [^clojure.lang.ExceptionInfo e]
+  (if-let [humanized (:humanized (ex-data e))]
+    (ex-info (str (ex-message e)
+                  " Invalid at " (ellipsize (humanize-detail humanized) max-schema-detail-length)
+                  ". Fix the named paths, or call `learn` with \"query-dialect\" for the clause shapes.")
+             (ex-data e)
+             (ex-cause e))
+    e))
+
+(defn execute-representations-query
+  "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
+   the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
+   dialect on, and supplies v2's recovery sentences so a resolution failure names `browse_data` /
+   `search` rather than v1's `read_resource` / `metabase://` URIs. A structural failure gains the
+   offending paths ([[with-schema-detail]]), which the pipeline computes but does not state."
+  [external-query]
+  (binding [serdes.resolve/*numeric-ids-allowed?* true]
+    (try
+      (metabot.construct/execute-representations-query
+       external-query
+       {:recovery-hint v2.recovery-hints/recovery-hint})
+      (catch clojure.lang.ExceptionInfo e
+        (throw (with-schema-detail e))))))
+
+;;; ------------------------------------------------ Shared schemas ------------------------------------------------
+
+(def card-display-values
+  "Visualization types a card (or an MCP Apps visualization) can render as."
+  ["table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
+   "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
+
+(def card-display-enum
+  "[[card-display-values]] as an undescribed Malli enum."
+  (into [:enum] card-display-values))
+
+;;; ------------------------------------------------ Portable queries ----------------------------------------------
+
+(defn portable-query?
+  "True when `query` is a full query whose first stage names its source the way the portable
+   external dialect does — an FK path `[db schema table]` or a card entity_id — rather than a
+   numeric id."
+  [query]
+  (let [stage (first (:stages query))]
+    (or (vector? (:source-table stage))
+        (string? (:source-card stage)))))
+
+(defn resolve-external-query
+  "Resolve a full query in the portable external dialect through the same pipeline `execute_query`
+   runs a fresh `query` through — repair, portable-FK resolution, and the runnable/editor gates —
+   and return the serialized MBQL 5 query. Resolution only: the pipeline does not execute.
+
+   The pipeline's own agent-facing failures become a teaching error about the `definition`
+   argument, ending in `hint` (a sentence naming the shapes the calling tool accepts); permission
+   failures and anything unrecognized pass through."
+  [external-query hint]
+  (try
+    ;; Through the v2 entry point, not the raw pipeline: a `definition` gets the same numeric-id
+    ;; dialect and the same v2 recovery sentences a fresh `execute_query` body would.
+    (-> (execute-representations-query external-query)
+        (get-in [:structured-output :query])
+        lib/prepare-for-serialization)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:agent-error? (ex-data e))
+        (throw-teaching-error
+         (format "`definition` could not be resolved: %s %s" (ellipsize (ex-message e) 300) hint))
+        (throw e)))))
+
+;;; ------------------------------------------------ Query handles -------------------------------------------------
+
+(defn encode-serialized-query
+  "Base64-encode a serialized MBQL query map ([[metabase.lib.core/prepare-for-serialization]] output)
+   for storage in the query-handle store. The inverse of the decode step in [[resolve-query-handle!]]."
+  [serialized-query]
+  (-> serialized-query json/encode u/encode-base64))
+
+(defn mint-query-handle!
+  "Store `encoded-query` (base64 serialized MBQL, exactly what ran — see [[encode-serialized-query]])
+   under a fresh handle owned by `user-id`, with the user's original `prompt` alongside for the
+   visualization feedback flow. Returns the handle UUID string. Execute tools mint on every call,
+   including `validate_only`, so what the agent later saves or visualizes through the handle is
+   byte-identical to what ran."
+  ([mcp-session-id user-id encoded-query]
+   (mint-query-handle! mcp-session-id user-id encoded-query nil))
+  ([mcp-session-id user-id encoded-query prompt]
+   (mcp.session/store-handle! mcp-session-id user-id encoded-query prompt)))
+
+(defn- decode-stored-query
+  "Decode a stored handle's base64 query payload to a map, surfacing garbage as a teaching error
+   rather than a decode exception."
+  [encoded]
+  (let [decoded (try
+                  (-> encoded u/decode-base64 json/decode+kw)
+                  (catch Exception _ ::invalid))]
+    (if (map? decoded) ;; catch ::invalid and non-map values
+      decoded
+      (throw-teaching-error "Query handle contents are invalid — run the query again to get a fresh handle."))))
+
+(defn resolve-query-handle!
+  "Resolve `handle` for `user-id` and re-run the fresh-query guards on the stored query, so a
+   handle can never smuggle native SQL past the MBQL-scoped tools or grant access the caller has
+   since lost. Returns `{:query <decoded MBQL map> :prompt <string-or-nil>}`, or throws a teaching
+   error (unknown/expired handle, native query, malformed query, or missing permissions).
+
+   MBQL-path callers only: the MCP Apps UI tools read handles directly through
+   [[metabase.mcp.session/resolve-query-handle]] — a native/SQL handle is visualizable by design,
+   so the native-reject guard must never move into the store's read path."
+  [mcp-session-id user-id handle]
+  (let [{:keys [encoded_query prompt]}
+        (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
+            (throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+        query (decode-stored-query encoded_query)]
+    (query-guards/reject-native-query! query)
+    (query-guards/validate-serialized-query! query)
+    (query-guards/check-token-query-permissions! query)
+    {:query query :prompt prompt}))
+
+(defn resolve-query-handle-for-save!
+  "Like [[resolve-query-handle!]] but for the save/write path: resolves `handle` for `user-id`,
+   re-runs the shape and permission guards, and — unlike the MBQL read path — DOES allow a native
+   query through. `execute_sql` mints handles specifically so their SQL can be saved; the
+   native-reject guard would otherwise make those handles unsaveable. Returns
+   `{:query <decoded map> :prompt <string-or-nil>}`, or throws a teaching error."
+  [mcp-session-id user-id handle]
+  (let [{:keys [encoded_query prompt]}
+        (or (mcp.session/resolve-query-handle mcp-session-id user-id handle)
+            (throw-teaching-error "Query handle not found — it may have expired; run the query again."))
+        query (decode-stored-query encoded_query)]
+    (query-guards/validate-serialized-query! query)
+    (query-guards/check-token-query-permissions! query)
+    {:query query :prompt prompt}))
