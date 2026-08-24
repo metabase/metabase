@@ -8,7 +8,7 @@
   [hierarchy]
   (boolean (:metabase.util.ordered-hierarchy/ordered? (meta hierarchy))))
 
-(defn- hierarchy-nodes
+(defn- node-set
   [hierarchy]
   (let [parents  (:parents hierarchy)
         children (:children hierarchy)]
@@ -58,7 +58,7 @@
    (hierarchy->graph hierarchy nil))
   ([hierarchy {:keys [sort-by]}]
    (let [ordered?     (ordered-hierarchy? hierarchy)
-         node-set     (hierarchy-nodes hierarchy)
+         node-set     (node-set hierarchy)
          sort-key     (or sort-by (when-not ordered? pr-str))
          order-nodes  (fn [nodes]
                         (cond->> nodes
@@ -78,6 +78,55 @@
                            (remove #(seq (get-in hierarchy [:parents %])))
                            order-nodes)]
      {:nodes nodes, :roots roots, :children children})))
+
+(defn- toposort-nodes
+  "Returns the nodes reachable from `roots` in leaves-to-roots order, as a depth-first post-order walk.
+
+  `children` and `roots` already carry the hierarchy's tie-break order, so this only fixes the direction.
+  `nodes` is a fallback traversal order: a malformed hierarchy can strand nodes in a cycle or leave them
+  unreachable from any root, and they still have to appear somewhere."
+  [roots children nodes]
+  (letfn [(visit [{:keys [path seen] :as state} node]
+            (if (or (contains? seen node) (contains? path node))
+              state
+              (as-> state $
+                (update $ :path conj node)
+                (reduce visit $ (get children node))
+                (update $ :path disj node)
+                (update $ :seen conj node)
+                (update $ :sorted conj node))))]
+    (:sorted (reduce visit {:path #{}, :seen #{}, :sorted []} (concat roots nodes)))))
+
+(defn nodes
+  "Returns every node in `hierarchy` as a flat vector.
+
+  `:order` is `:topological` (the default) or `:alphabetical`.
+  Topological order runs leaves-to-roots, so a node always precedes its parents, matching
+  [[metabase.util.ordered-hierarchy/sorted-tags]].
+  Ordered hierarchies break ties by derivation order, and others break them by `:sort-by`.
+
+  Options are `:order` and `:sort-by`."
+  ([hierarchy]
+   (nodes hierarchy nil))
+  ([hierarchy {:keys [order sort-by] :or {order :topological}}]
+   (case order
+     :alphabetical (vec (clojure.core/sort-by (or sort-by pr-str) (node-set hierarchy)))
+     :topological  (let [{graph-nodes :nodes, :keys [children roots]} (hierarchy->graph hierarchy {:sort-by sort-by})]
+                     (toposort-nodes roots children graph-nodes))
+     (throw (ex-info (format "Unsupported node order: %s" order)
+                     {:order order, :allowed #{:alphabetical :topological}})))))
+
+(defn print-nodes
+  "Prints each node of `hierarchy` on its own line and returns nil.
+
+  Takes [[nodes]]'s options, plus `:label-fn`."
+  ([hierarchy]
+   (print-nodes hierarchy nil))
+  ([hierarchy {:keys [label-fn] :or {label-fn pr-str} :as options}]
+   ;; This function exists specifically for interactive REPL output; logging would add unwanted formatting and context.
+   (println (if-let [labels (seq (map (comp str label-fn) (nodes hierarchy options)))]
+              (str/join "\n" labels)
+              "(empty hierarchy)"))))
 
 (def ^:private unicode-tree-style
   {:branch      "├── "
