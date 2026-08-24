@@ -107,28 +107,6 @@ jobs:
           e2e-infra-touched: ${{ needs.files-changed.outputs.e2e_infra }}
           shared-sources-touched: ${{ needs.files-changed.outputs.shared_sources }}
 
-  upload-affected-tests-stats:
-    needs: create-test-plan
-    # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: |
-      !cancelled() &&
-      needs.create-test-plan.result == 'success' &&
-      github.event.pull_request.head.repo.full_name == 'metabase/metabase'
-    # Stats upload is best-effort — a failure here shouldn't fail the PR run.
-    continue-on-error: true
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-      - name: Upload affected tests stats
-        env:
-          STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          API_KEY: ${{ secrets.STATS_API_KEY }}
-        run: node .github/scripts/upload-affected-tests-stats.js
-
   uberjar:
     needs: [should-run, files-changed]
     if: |
