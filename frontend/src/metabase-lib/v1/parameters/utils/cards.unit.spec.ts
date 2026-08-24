@@ -6,7 +6,7 @@ import {
   createMockField,
   createMockParameter,
 } from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
+import { ORDERS, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { getCardUiParameters } from "./cards";
 
@@ -26,17 +26,25 @@ describe("parameters/utils/cards", () => {
       type: "number/=",
       target: ["variable", ["template-tag", "limit"]],
     });
-    const quantityTagQuery = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-      query: "SELECT * FROM ORDERS WHERE {{quantity}}",
-      templateTags: {
-        quantity: {
-          id: "tag-id",
-          type: "dimension",
-          dimension: ORDERS.QUANTITY,
-          "widget-type": "number/=",
+    const quantityTagQuery = Lib.toJsQuery(
+      Lib.withTemplateTags(
+        Lib.nativeQuery(
+          SAMPLE_DB_ID,
+          SAMPLE_PROVIDER,
+          "SELECT * FROM ORDERS WHERE {{quantity}}",
+        ),
+        {
+          quantity: {
+            id: "tag-id",
+            name: "quantity",
+            "display-name": "Quantity",
+            type: "dimension",
+            dimension: ["field", ORDERS.QUANTITY, null],
+            "widget-type": "number/=",
+          },
         },
-      },
-    });
+      ),
+    );
 
     describe("saved cards", () => {
       it("should get parameter fields from param_fields via metadata", () => {
