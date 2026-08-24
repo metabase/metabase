@@ -15,8 +15,8 @@ The collection browser lets people navigate through collections they have permis
 
 There are two ways to embed a collection browser:
 
-- [Web component](#web-component-collection-browser)
-- [React SDK](#react-sdk-collection-browser)
+- **[Web component](#web-component-collection-browser)**: a whole browser. Clicking an item opens it inside the embed, with breadcrumbs, create buttons, and [saving](#let-people-save-changes) already built.
+- **[React SDK](#react-sdk-collection-browser)**: a list of items with breadcrumbs, plus a click handler. Nothing opens on its own, so you decide what a click does and build any create or save flow in your own app.
 
 To see a collection browser, people need Metabase accounts, because Metabase uses [collection permissions](../permissions/collections.md) to work out what each person can see. So a collection browser only works in an [embed that signs people in with SSO](./introduction.md#components-with-sso-authentication); it won't work in a [guest embed](./guest-embedding.md).
 

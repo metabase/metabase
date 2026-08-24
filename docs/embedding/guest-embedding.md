@@ -398,6 +398,13 @@ app.post("/api/metabase-guest-token", (req, res) => {
 
   const { entityType, entityId, customContext } = req.body;
 
+  // Authorize the request. The browser picks the entityType and entityId, so
+  // check them against your own rule before signing for them.
+  // This is just an example
+  if (!userCanView(user, entityType, entityId)) {
+    return res.status(403).json({ error: "Not allowed" });
+  }
+
   const payload = {
     resource: { [entityType]: entityId },
     params: paramsFor(user, customContext),
@@ -411,6 +418,7 @@ app.post("/api/metabase-guest-token", (req, res) => {
 Because the embed's request includes your app's session cookie, your endpoint can:
 
 - Refuse to issue a JWT (with a `403`) for visitors who aren't signed in to your app.
+- Refuse to issue a JWT for a dashboard or question that this visitor shouldn't see. The `entityType` and `entityId` arrive from the browser, so an endpoint that signs them unchecked will give any signed-in visitor a token for any published item.
 - Compute different `params` (i.e., locked filter values) per visitor.
 
 ### Sending custom context

@@ -121,6 +121,13 @@ app.post("/api/metabase-guest-token", (req, res) => {
 
   const { entityType, entityId } = req.body;
 
+  // Authorize the request. The browser picks the entityType and entityId, so
+  // check them against your own rule before signing for them.
+  // This is just an example:
+  if (!customerCanView(customerId, entityType, entityId)) {
+    return res.status(403).json({ error: "Not allowed" });
+  }
+
   const payload = {
     resource: { [entityType]: entityId },
     params: {
@@ -135,6 +142,8 @@ app.post("/api/metabase-guest-token", (req, res) => {
 ```
 
 Your endpoint has to return an object with a single `jwt` field. Return anything else and the embed shows an error instead of the dashboard.
+
+Remember to check permissions! With guest authentication, your endpoint is the only thing deciding who gets a token for which dashboard. An endpoint that signs whatever `entityId` it's handed will give anyone signed in to your app a token for any published dashboard.
 
 For more on signing, check out [Locked parameters](./guest-embedding.md#locked-parameters) and the [example token endpoint](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server). To get the signing code from the in-app wizard, set the **Customer** filter to **Locked**. To see the whole thing running, check out our [sample apps](./securing-embeds.md#sample-apps).
 
