@@ -893,6 +893,13 @@
   body preview into the message the caller sees."
   #{401 403})
 
+(defn decode-error-body
+  "The response map on a provider HTTP exception's ex-data, with its body decoded for
+  inspection. Consumes and closes a streamed body, so a caller that swallows the
+  exception (e.g. to retry) does not leak the connection."
+  [e]
+  (decode-bounded-body (ex-data e)))
+
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.

@@ -494,6 +494,13 @@
       (and temperature (not thinking) (model-supports-temperature? model))
       (assoc :temperature temperature))))
 
+(defn- fast-mode-rejection?
+  "Whether a decoded 400 reads as Anthropic rejecting fast mode itself (account not in the
+  research preview, beta header not recognized) rather than some unrelated malformed request."
+  [res]
+  (boolean (re-find #"(?i)fast[ _-]?mode|\bspeed\b"
+                    (str (get-in res [:body :error :message])))))
+
 (mu/defn claude-raw
   "Perform a streaming request to Claude API.
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
@@ -530,12 +537,15 @@
                                      :request  req})
               (core/reducible-with-api-errors "anthropic" anthropic-error-msg)))
         (catch Exception e
-          ;; a 400 on a fast request is usually a fast-mode rejection (account not in the
-          ;; research preview, or on a Priority Tier commitment): retry once at standard speed
-          (if (and (:speed req) (= 400 (:status (ex-data e))))
-            (do (log/warn "Anthropic rejected the fast-mode request; retrying at standard speed")
-                (claude-raw (assoc opts :fast? false)))
-            (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))))
+          ;; decoding the error body also closes the streamed response, so the connection is
+          ;; not leaked when the exception is swallowed by the retry below
+          (let [res (when (and (:speed req) (= 400 (:status (ex-data e))))
+                      (core/decode-error-body e))]
+            (if (fast-mode-rejection? res)
+              (do (log/warn "Anthropic rejected the fast-mode request; retrying at standard speed")
+                  (claude-raw (assoc opts :fast? false)))
+              (core/rethrow-api-error! "anthropic" anthropic-error-msg
+                                       (if res (ex-info (str (ex-message e)) res e) e)))))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"

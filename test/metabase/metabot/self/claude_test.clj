@@ -336,20 +336,34 @@
     (testing "no speed through the AI proxy"
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
 
+(defn- close-tracking-json-body
+  "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
+  response body the adapter must not leak."
+  [closed? m]
+  (proxy [java.io.ByteArrayInputStream] [(.getBytes (json/encode m) "UTF-8")]
+    (close []
+      (reset! closed? true)
+      (proxy-super close))))
+
+(defn- reject-400
+  [closed? message]
+  (ex-info "clj-http: status 400"
+           {:status  400
+            :headers {"content-type" "application/json"}
+            :body    (close-tracking-json-body
+                      closed?
+                      {:type  "error"
+                       :error {:type "invalid_request_error" :message message}})}))
+
 (deftest claude-raw-fast-mode-fallback-test
-  (testing "a 400 on a fast-mode request is retried once at standard speed"
-    (let [requests (atom [])]
+  (testing "a fast-mode rejection 400 is retried once at standard speed, closing the failed body"
+    (let [requests (atom [])
+          closed?  (atom false)]
       (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
                                   http/request            (fn [req]
                                                             (swap! requests conj req)
                                                             (if (:speed (json/decode+kw (:body req)))
-                                                              (throw (ex-info "clj-http: status 400"
-                                                                              {:status  400
-                                                                               :headers {"content-type" "application/json"}
-                                                                               :body    (json/encode
-                                                                                         {:type  "error"
-                                                                                          :error {:type    "invalid_request_error"
-                                                                                                  :message "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"}})}))
+                                                              (throw (reject-400 closed? "Unexpected value(s) `fast-mode-2026-02-01` for the `anthropic-beta` header"))
                                                               {:body req}))]
         (claude/claude-raw {:model       "claude-opus-5"
                             :fast?       true
@@ -357,10 +371,27 @@
                             :input       [{:role :user :content "hi"}]})
         (let [[fast-req retry-req] @requests]
           (is (= 2 (count @requests)))
+          (is (true? @closed?))
           (is (= "fast" (:speed (json/decode+kw (:body fast-req)))))
           (is (= "fast-mode-2026-02-01" (get-in fast-req [:headers "anthropic-beta"])))
           (is (nil? (:speed (json/decode+kw (:body retry-req)))))
           (is (nil? (get-in retry-req [:headers "anthropic-beta"]))))))))
+
+(deftest claude-raw-unrelated-400-not-retried-test
+  (testing "a 400 that does not read as a fast-mode rejection surfaces instead of retrying"
+    (let [requests (atom [])
+          closed?  (atom false)]
+      (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                  http/request            (fn [req]
+                                                            (swap! requests conj req)
+                                                            (throw (reject-400 closed? "max_tokens: Input should be greater than 0")))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Anthropic API error \(HTTP 400\)"
+                              (claude/claude-raw {:model       "claude-opus-5"
+                                                  :fast?       true
+                                                  :credentials byok-credentials
+                                                  :input       [{:role :user :content "hi"}]})))
+        (is (= 1 (count @requests)))
+        (is (true? @closed?))))))
 
 (deftest claude-fast-mode-beta-header-test
   (let [headers (fn [opts]
