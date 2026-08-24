@@ -72,7 +72,7 @@ describe("openSamlLoginPopup", () => {
     expect(popup.close).toHaveBeenCalledTimes(1);
   });
 
-  it("reports an unexpected popup origin", async () => {
+  it("ignores message events from a different origin", async () => {
     const login = openSamlLoginPopup(idpUrl, instanceUrl);
 
     window.dispatchEvent(
@@ -87,7 +87,7 @@ describe("openSamlLoginPopup", () => {
     jest.advanceTimersByTime(1000);
 
     await expect(login).rejects.toMatchObject({
-      code: "SAML_POPUP_ORIGIN_MISMATCH",
+      code: "SAML_POPUP_CLOSED",
     });
   });
 

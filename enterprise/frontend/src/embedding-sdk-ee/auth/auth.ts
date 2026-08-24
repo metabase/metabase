@@ -285,15 +285,15 @@ const getRefreshToken = async ({
   } = urlResponseJson || {};
 
   if (method === "saml") {
-    const token = await openSamlLoginPopup(
+    const sessionToken = await openSamlLoginPopup(
       responseUrl,
       metabaseInstanceUrl,
       samlPopupUrl,
     );
 
-    samlTokenStorage.set(token);
+    samlTokenStorage.set(sessionToken);
 
-    return token;
+    return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(

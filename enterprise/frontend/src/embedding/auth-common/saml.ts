@@ -28,7 +28,6 @@ export const openSamlLoginPopup = async (
       return;
     }
 
-    let receivedUnexpectedOrigin = false;
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
@@ -55,7 +54,6 @@ export const openSamlLoginPopup = async (
       }
 
       if (event.origin !== expectedOrigin) {
-        receivedUnexpectedOrigin = true;
         return;
       }
 
@@ -76,11 +74,7 @@ export const openSamlLoginPopup = async (
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
 
-        reject(
-          receivedUnexpectedOrigin
-            ? MetabaseError.SAML_POPUP_ORIGIN_MISMATCH()
-            : MetabaseError.SAML_POPUP_CLOSED(),
-        );
+        reject(MetabaseError.SAML_POPUP_CLOSED());
       }
     }, 1000);
 

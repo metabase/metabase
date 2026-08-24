@@ -53,7 +53,7 @@ export class EmbedAuthManager {
     sessionToken: MetabaseEmbeddingSessionToken;
   }> {
     const {
-      instanceUrl,
+      instanceUrl: metabaseInstanceUrl,
       preferredAuthMethod,
       fetchRequestToken,
       jwtProviderUri,
@@ -63,7 +63,7 @@ export class EmbedAuthManager {
 
     const urlResponseJson = shouldSkipSsoDiscovery
       ? { method: "jwt", url: jwtProviderUri }
-      : await connectToInstanceAuthSso(instanceUrl, {
+      : await connectToInstanceAuthSso(metabaseInstanceUrl, {
           headers: this.getAuthRequestHeader(),
           preferredAuthMethod,
         });
@@ -78,7 +78,7 @@ export class EmbedAuthManager {
     if (method === "saml") {
       const sessionToken = await openSamlLoginPopup(
         responseUrl,
-        instanceUrl,
+        metabaseInstanceUrl,
         samlPopupUrl,
       );
 
@@ -88,7 +88,7 @@ export class EmbedAuthManager {
     if (method === "jwt" && responseUrl) {
       const sessionToken = await jwtDefaultRefreshTokenFunction(
         responseUrl,
-        instanceUrl,
+        metabaseInstanceUrl,
         this.getAuthRequestHeader(hash),
         fetchRequestToken,
       );

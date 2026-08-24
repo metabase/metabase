@@ -14,13 +14,6 @@ export function SAML_POPUP_CLOSED() {
   );
 }
 
-export function SAML_POPUP_ORIGIN_MISMATCH() {
-  return new MetabaseError(
-    "SAML_POPUP_ORIGIN_MISMATCH",
-    "SAML authentication could not be completed because the popup is not opened from the expected origin.",
-  );
-}
-
 export function SAML_SITE_URL_MISMATCH() {
   return new MetabaseError(
     "SAML_SITE_URL_MISMATCH",
