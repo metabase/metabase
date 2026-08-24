@@ -1,6 +1,6 @@
 // Appends the test-plan stats row produced by create-test-plan.ts to the
 // "FE Affected Tests" table in eng-stats-importer.
-// Reads STATS_JSON, TRIGGERED_BY, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
+// Reads STATS_JSON, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
 
 import type { TestPlanStats } from "./affected-tests";
 import { importStats } from "./stats-import";
