@@ -1,6 +1,7 @@
 (ns metabase.public-sharing-rest.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [clojure.string :as str]
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -12,6 +13,8 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
@@ -62,8 +65,30 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
+(defn- blank-dataset-query
+  "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
+  filters, aggregations, etc.) are never exposed to the general public. Native queries keep their parameter template
+  tags so the frontend can still derive parameters from them. MBQL queries keep only their source table or source
+  card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can still tell MBQL and
+  native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
+  [query]
+  (if (lib/native? query)
+    (let [text (->> (lib/template-tags query)
+                    (filter queries/parameter-template-tag?)
+                    (map #(str "{{" (:name %) "}}"))
+                    (str/join " "))]
+      (lib/with-native-query query (if (str/blank? text) "-" text)))
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+                        (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
+      (reduce lib/aggregate
+              (lib/query query source)
+              (repeatedly (count (lib/aggregations query -1)) lib/count))
+      (lib/native-query query "-"))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
@@ -74,8 +99,11 @@
     (mi/instance
      :model/Card
      (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
-         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
+         (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
+                       :dataset_query])
+         (update :dataset_query (fn [query]
+                                  (cond-> query
+                                    (seq query) blank-dataset-query)))))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -85,9 +113,9 @@
     (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
                                              :visualization_settings :card_schema]
                               :archived false, conditions))
-        remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (t2/hydrate :param_fields))))
+        (t2/hydrate :param_fields)
+        remove-card-non-public-columns)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
