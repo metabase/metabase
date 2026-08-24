@@ -1,6 +1,7 @@
 (ns metabase.metabot.self.catalog-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.catalog :as catalog]
    [metabase.test :as mt]
@@ -36,3 +37,14 @@
       (is (= "claude-2" (catalog/model-name "anthropic/claude-2"))))
     (testing "a named one shows its name"
       (is (= "Claude Sonnet 4.6" (catalog/model-name "anthropic/claude-sonnet-4-6"))))))
+
+(deftest every-whitelist-backed-type-is-wired-into-the-catalog-test
+  (testing "a provider type whose models come from an adapter whitelist must be dispatched here, or its models
+            would silently show as raw ids the moment Metabot switches to it. Types whose models the connection
+            itself names (Azure, Google, vLLM) or the registry fixes (the managed provider) are exempt: the id is
+            already the human-facing name."
+    (doseq [{:keys [type default-model model-fields models managed?]} (llm.provider/provider-types)
+            :when (and default-model (nil? model-fields) (nil? models) (not managed?))]
+      (testing type
+        (is (some? (#'catalog/provider-model-display-name type default-model))
+            (str "the " type " adapter's whitelist is not wired into catalog/provider-model-display-name"))))))
