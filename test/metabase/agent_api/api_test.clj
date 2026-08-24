@@ -493,14 +493,16 @@
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
-                        {:lib/type "mbql/query"
+                        {:database (mt/id)
+                         :lib/type "mbql/query"
                          :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
-                       ["MBQL 5 native stage nested in a join"
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql"
-                                     :joins    [{:lib/type "mbql/join"
-                                                 :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]
+                       ["native source-query nested in a join"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-table (mt/id :checkins)
+                                    :joins        [{:source-query {:native "select 1"}
+                                                    :alias        "j"
+                                                    :condition    [:= [:field (mt/id :checkins :id) nil]
+                                                                   [:field (mt/id :checkins :id) {:join-alias "j"}]]}]}}]
                        ["legacy nested native source-query"
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
@@ -1855,3 +1857,17 @@
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
+                                                 :type     "query"
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :a            1
+                                                            :a/b          2}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :a)))
+      (is (not (contains? q :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
+          "undeclared properties are stripped from every stage"))))

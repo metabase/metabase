@@ -107,7 +107,6 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
-  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
