@@ -359,8 +359,9 @@
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str}, or nil when the dev server is transiently
-   unavailable (e.g. mid-rebuild)."
+   Returns {:content str :hash str}, or nil when the dev server is unreachable or
+   responds with an error status (e.g. mid-rebuild). Throws a 400 when the URL is
+   disallowed or the response has an unexpected content type."
   [^String base-url]
   ;; build (and thereby validate) the URL outside the try -- validation failures must surface as the 400s
   ;; they are, not be swallowed by the catch as a dev server that happens to be down
@@ -378,8 +379,10 @@
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure. Throws ex-info with
-   `:status-code 400` when the manifest is structurally invalid."
+   Returns the parsed manifest map, or nil when the dev server is unreachable or
+   responds with an error status. Throws ex-info with `:status-code 400` when the
+   URL is disallowed, the response has an unexpected content type, or the
+   manifest is structurally invalid."
   [^String base-url]
   ;; as in [[fetch-dev-bundle]], validate the URL outside the try
   (let [url (dev-url base-url (manifest/manifest-path))]
@@ -398,7 +401,8 @@
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.
-   Returns the bytes or nil on failure."
+   Returns the bytes. Throws on fetch failure; disallowed addresses and
+   unexpected content types surface as 400s."
   ^bytes [^String base-url ^String asset-name]
   (let [url  (dev-url base-url (asset-rel-path asset-name))
         resp (try
