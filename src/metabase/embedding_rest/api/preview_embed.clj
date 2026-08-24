@@ -15,6 +15,7 @@
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -69,9 +70,12 @@
                                  [:token     string?]
                                  [:param-key ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-values {:unsigned-token unsigned-token
                                          :card           card
                                          :param-key      param-key})))
@@ -87,9 +91,12 @@
                                  [:param-key ms/NonBlankString]]
    {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
                                                  :card           card
                                                  :param-key      param-key
