@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
@@ -92,13 +92,38 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const [resetKey, setResetKey] = useState(0);
   const displayValue = settingDetails?.value ?? initialValue;
+  // The server value stays stale until the refetch that follows a write, so a change is
+  // compared against the last value we sent rather than against it.
+  const sent = useRef<{ value: EnterpriseSettingValue } | null>(null);
+  const writes = useRef(Promise.resolve());
+
+  useEffect(() => {
+    if (sent.current?.value === displayValue) {
+      sent.current = null;
+    }
+  }, [displayValue]);
 
   const handleChange = (newValue: EnterpriseSettingValue) => {
-    if (newValue === initialValue) {
+    if (newValue === (sent.current ? sent.current.value : displayValue)) {
       return;
     }
-    updateSetting({ key: name, value: newValue });
+    sent.current = { value: newValue };
+    // chained so the writes reach the server in the order they were made, leaving the
+    // value the user picked last as the one that sticks
+    writes.current = writes.current
+      .then(async () => {
+        const { error } = await updateSetting({ key: name, value: newValue });
+        if (error) {
+          sent.current = null;
+          if (inputType === "boolean") {
+            // remount resets a toggle; a text input would lose what the user typed
+            setResetKey((key) => key + 1);
+          }
+        }
+      })
+      .catch(() => undefined);
   };
 
   if (hidden || isLoading) {
@@ -117,6 +142,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <BasicAdminSettingInput
+          key={resetKey}
           name={name}
           value={displayValue}
           onChange={handleChange}
