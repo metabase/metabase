@@ -1,34 +1,24 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
-} from "__support__/server-mocks";
-import {
-  setupLlmActiveModelEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
   setupReorderLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
-import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
-  LlmActiveModel,
   LlmConnectionModels,
   LlmProviderConnection,
 } from "metabase-types/api";
 import {
-  createMockLlmActiveModel,
   createMockLlmConnectionModels,
   createMockLlmProviderConnection,
   createMockLlmProviderType,
-  createMockSettingDefinition,
   createMockSettings,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -38,34 +28,14 @@ type SetupOpts = {
   usable?: boolean;
   models?: LlmConnectionModels[];
   connections?: LlmProviderConnection[];
-  activeModel?: LlmActiveModel;
-  isFallbackEnabled?: boolean;
-  hasAiControls?: boolean;
 };
 
-const setup = ({
-  usable = true,
-  models = [],
-  connections,
-  activeModel = createMockLlmActiveModel(),
-  isFallbackEnabled = true,
-  hasAiControls = true,
-}: SetupOpts = {}) => {
+const setup = ({ usable = true, models = [], connections }: SetupOpts = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const sessionProperties = createMockSettings({
-    "llm-provider-fallback-enabled?": hasAiControls && isFallbackEnabled,
-    "token-features": createMockTokenFeatures({ ai_controls: hasAiControls }),
-  });
+  const sessionProperties = createMockSettings();
   setupPropertiesEndpoints(sessionProperties);
-  setupSettingsEndpoints([
-    createMockSettingDefinition({
-      key: "llm-provider-fallback-enabled?",
-      value: isFallbackEnabled,
-    }),
-  ]);
-  setupUpdateSettingEndpoint();
   setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
   setupLlmProvidersEndpoint(
     connections ?? [
@@ -83,7 +53,6 @@ const setup = ({
     ],
   );
   setupLlmModelsEndpoint(models);
-  setupLlmActiveModelEndpoint(activeModel);
   setupReorderLlmProvidersEndpoint([]);
 
   renderWithProviders(<AIProviderList />, {
@@ -259,62 +228,12 @@ describe("AIProviderList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("turns the fallback off through the setting", async () => {
+  it("offers no fallback section without the enterprise plugin", async () => {
     setup();
-
-    const toggle = await screen.findByLabelText(
-      "Fall back to the next provider",
-    );
-    // The switch stays disabled until the setting definitions land, and clicking it before then does nothing.
-    await waitFor(() => expect(toggle).toBeEnabled());
-    expect(toggle).toBeChecked();
-
-    await userEvent.click(toggle);
-
-    await waitFor(async () => {
-      const puts = await findRequests("PUT");
-      expect(puts).toEqual([
-        expect.objectContaining({
-          url: expect.stringContaining(
-            "/setting/llm-provider-fallback-enabled%3F",
-          ),
-          body: { value: false },
-        }),
-      ]);
-    });
-  });
-
-  it("offers no fallback section without the AI Controls feature", async () => {
-    setup({ hasAiControls: false });
 
     expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
     expect(
       screen.queryByTestId("provider-fallback-settings"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("names the provider and model in use while the fallback is carrying requests", async () => {
-    setup({
-      activeModel: createMockLlmActiveModel({
-        connection_name: "OpenAI",
-        model: "gpt-5.4",
-        model_name: "GPT-5.4",
-        is_fallback: true,
-      }),
-    });
-
-    const notice = await screen.findByTestId("active-provider-notice");
-    expect(notice).toHaveTextContent(
-      "Metabot is currently running on OpenAI using GPT-5.4.",
-    );
-  });
-
-  it("says nothing about the model in use while the selected provider is serving requests", async () => {
-    setup({ activeModel: createMockLlmActiveModel({ is_fallback: false }) });
-
-    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("active-provider-notice"),
     ).not.toBeInTheDocument();
   });
 
