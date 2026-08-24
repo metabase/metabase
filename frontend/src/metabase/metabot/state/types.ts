@@ -31,6 +31,15 @@ export type MetabotDataPartMetadata = {
   suggestionId?: string;
 };
 
+/** Error codes the backend stamps on a failed turn's finish metadata. The wire stays open — `type` below is any
+ * string — but client behavior keyed on a code should name it from here. */
+export type MetabotKnownTurnErrorCode =
+  | "conversation_out_of_sync"
+  | "metabase_ai_managed_locked"
+  | "ai_usage_limit_reached"
+  | "permission_denied"
+  | "provider_error";
+
 export type MetabotAgentTurnError = {
   message?: string;
   type?: string;
