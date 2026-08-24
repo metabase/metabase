@@ -1,7 +1,6 @@
 (ns metabase.cloud-migration.models.cloud-migration
   "A model representing a migration to cloud."
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
@@ -15,6 +14,7 @@
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -150,7 +150,7 @@
       (let [[stream length] (if (and start end)
                               [(sub-stream file-stream start end) (- end start)]
                               [file-stream (.length file)])]
-        (http/put url {:headers headers :length length :body stream})))))
+        (u.http/request {:method :put, :url url, :headers headers, :length length, :body stream})))))
 
 ;; ~100mb
 (def ^:private part-size 100e6)
@@ -177,9 +177,12 @@
                                (conj file-length)))
 
             {:keys [multipart-upload-id multipart-urls]}
-            (-> (http/put (migration-url external_id "/multipart")
-                          {:form-params  {:part_count (count parts)}
-                           :content-type :json})
+            (-> (u.http/request {:method         :put
+                                 :url            (migration-url external_id "/multipart")
+                                 ;; store-api-url is set in the environment, not through the API
+                                 :network-policy :allow-all
+                                 :form-params    {:part_count (count parts)}
+                                 :content-type   :json})
                 :body
                 json/decode+kw
                 ;; This endpoint, and only this one in this ns, needs a backwards and forward compatible
@@ -204,10 +207,12 @@
                                                                 :headers (-> resp :headers keys)})))]
                                   [part-id etag])))
                  (into {}))]
-        (http/put (migration-url external_id "/multipart/complete")
-                  {:form-params  {:multipart_upload_id multipart-upload-id
-                                  :multipart_etags     etags}
-                   :content-type :json})))))
+        (u.http/request {:method         :put
+                         :url            (migration-url external_id "/multipart/complete")
+                         :network-policy :allow-all
+                         :form-params    {:multipart_upload_id multipart-upload-id
+                                          :multipart_etags     etags}
+                         :content-type   :json})))))
 
 (defn migrate!
   "Migrate this instance to Metabase Cloud.
@@ -241,7 +246,9 @@
       (set-progress id :upload 50)
       (upload migration dump-file)
       (log/info "Notifying store that upload is done")
-      (http/put (migration-url external_id "/uploaded"))
+      (u.http/request {:method         :put
+                       :url            (migration-url external_id "/uploaded")
+                       :network-policy :allow-all})
       ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
       ;; after finishing the dump to h2 migration
       (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
@@ -265,9 +272,10 @@
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
   (-> (migration-url)
-      (http/post {:form-params  {:local_mb_version (or (cloud-migration.settings/migration-dump-version)
-                                                       (config/mb-version-info :tag))}
-                  :content-type :json})
+      (u.http/post {:network-policy :allow-all
+                    :form-params    {:local_mb_version (or (cloud-migration.settings/migration-dump-version)
+                                                           (config/mb-version-info :tag))}
+                    :content-type   :json})
       :body
       json/decode+kw
       (select-keys [:id :upload_url])
