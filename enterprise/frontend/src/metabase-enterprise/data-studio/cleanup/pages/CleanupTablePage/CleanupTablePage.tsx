@@ -1,6 +1,4 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -14,6 +12,7 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
+import { dayjs } from "metabase/dayjs";
 import { isCypressActive } from "metabase/env";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
@@ -48,12 +47,11 @@ import {
 import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCandidateAction } from "../../hooks/useCandidateAction";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
+import { useOnChange } from "../../hooks/useOnChange";
 import { useUsageMetadataCandidates } from "../../hooks/useUsageMetadataList";
 import { parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
-
-dayjs.extend(relativeTime);
 
 type CleanupTablePageParams = {
   tableId: string;
@@ -67,7 +65,6 @@ export function CleanupTablePage() {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const params = parseCleanupParams(searchParams);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const previousSnapshotId = useRef<number | null | undefined>(undefined);
   const refresh = useCleanupRefresh();
   const [dismissCandidate, dismissState] =
     useDismissUsageMetadataCandidateMutation();
@@ -155,22 +152,18 @@ export function CleanupTablePage() {
     });
   };
 
-  useEffect(() => {
-    if (!hasCandidateData) {
-      return;
-    }
-    if (
-      previousSnapshotId.current !== undefined &&
-      previousSnapshotId.current !== snapshotId &&
-      params.candidateId != null
-    ) {
-      closeCandidate();
-    }
-    previousSnapshotId.current = snapshotId;
-    // Only react to the snapshot identity; params are intentionally read from
-    // the current render so a completed refresh closes an obsolete report.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCandidateData, snapshotId]);
+  // The callback below always runs with the current render's params/closeCandidate,
+  // so a completed refresh closes an obsolete report even though useOnChange only
+  // reacts to the snapshot identity.
+  useOnChange(
+    snapshotId,
+    () => {
+      if (params.candidateId != null) {
+        closeCandidate();
+      }
+    },
+    { enabled: hasCandidateData },
+  );
 
   if (tableId == null) {
     return (

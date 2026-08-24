@@ -40,13 +40,17 @@ export function CleanupFilters({
     }
   }, [debouncedSearch, onChangeRef, paramsRef]);
 
-  useEffect(() => {
-    const urlSearch = params.search ?? "";
-    if (urlSearch !== lastPushedSearch.current) {
-      lastPushedSearch.current = urlSearch;
+  // Adjusted during render, not via an effect keyed on params.search: this only
+  // needs to resync `search` when the URL changes from outside this component
+  // (e.g. the back button), and doing it here shows the synced value in the
+  // same render instead of one render late.
+  const urlSearch = params.search ?? "";
+  if (urlSearch !== lastPushedSearch.current) {
+    lastPushedSearch.current = urlSearch;
+    if (search !== urlSearch) {
       setSearch(urlSearch);
     }
-  }, [params.search]);
+  }
 
   const update = (values: Partial<Urls.DataStudioCleanupParams>) =>
     onChange({ ...params, ...values, candidateId: undefined });
