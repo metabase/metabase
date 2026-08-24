@@ -255,7 +255,7 @@
                           :previous-object existing-notification
                           :user-id         api/*current-user-id*}))
 
-(defn- inject-authoritative-ids
+(defn- body-with-authoritative-ids
   "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
   payload."
   [body {:keys [id payload_id]}]
@@ -281,7 +281,7 @@
   (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
-    (let [body (inject-authoritative-ids body existing-notification)]
+    (let [body (body-with-authoritative-ids body existing-notification)]
       (models.notification/update-notification! existing-notification body)
       (u/prog1 (get-notification id)
         (publish-notification-update! <> existing-notification)))))
