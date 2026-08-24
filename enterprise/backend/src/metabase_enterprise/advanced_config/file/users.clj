@@ -38,22 +38,24 @@
 
 (defn- init-from-config-file!
   [user]
-  (let [password (:password user)
-        user-id  (if-let [existing-user (select-user (:email user))]
-                   (do
-                     (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
-                     (let [new-user (update user :login_attributes
-                                            #(merge % (:login_attributes existing-user)))]
-                       (t2/update! :model/User (:id existing-user) new-user))
-                     (:id existing-user))
-                   ;; create a new user. If they are the first non-internal User, force them to be an admin.
-                   (let [user (cond-> user
-                                (not (setup/has-user-setup)) (assoc :is_superuser true))]
-                     (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
-                     (log/info (u/colorize :green "Creating new User"))
-                     (u/the-id (t2/insert-returning-instance! :model/User user))))]
-    ;; passwords live in the AuthIdentity, not on the User row
-    (auth-identity/set-password! user-id password)))
+  ;; the profile write and the password write must land together — initialize! runs no transaction of its own
+  (t2/with-transaction [_]
+    (let [password (:password user)
+          user-id  (if-let [existing-user (select-user (:email user))]
+                     (do
+                       (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
+                       (let [new-user (update user :login_attributes
+                                              #(merge % (:login_attributes existing-user)))]
+                         (t2/update! :model/User (:id existing-user) new-user))
+                       (:id existing-user))
+                     ;; create a new user. If they are the first non-internal User, force them to be an admin.
+                     (let [user (cond-> user
+                                  (not (setup/has-user-setup)) (assoc :is_superuser true))]
+                       (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
+                       (log/info (u/colorize :green "Creating new User"))
+                       (u/the-id (t2/insert-returning-instance! :model/User user))))]
+      ;; passwords live in the AuthIdentity, not on the User row
+      (auth-identity/set-password! user-id password))))
 
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]
