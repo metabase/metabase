@@ -382,7 +382,20 @@ describe("scenarios > embedding > embedding hub > permissions", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("keeps the permissions editor's links inside the hub", () => {
+    it("navigates every tab and level of the editor without leaving the hub", () => {
+      cy.visit("/embedding/permissions");
+
+      cy.log("The editor renders at the hub's path, not admin's");
+      cy.url().should("include", "/embedding/permissions");
+
+      walkThroughPermissionsEditor();
+      assertStillInsideHub();
+    });
+
+    it("navigates every tab and level of the editor with tenants enabled", () => {
+      // The tenant-only tabs (Shared collections, Tenant collections) only
+      // show up once tenants are on, so this is the full tab set -- the
+      // other test is the narrower one licensing alone shows.
       H.updateSetting("use-tenants", true);
 
       cy.visit("/embedding/permissions");
@@ -390,41 +403,54 @@ describe("scenarios > embedding > embedding hub > permissions", () => {
       cy.log("The editor renders at the hub's path, not admin's");
       cy.url().should("include", "/embedding/permissions");
 
-      cy.log("Drilling into a group stays in the hub");
-      cy.findByTestId("permission-table").findAllByRole("link").first().click();
+      walkThroughPermissionsEditor();
 
+      cy.log("Shared collections tab");
+      cy.findByRole("tab", { name: "Shared collections" }).click();
+      cy.findAllByRole("menuitem").first().click();
       cy.url().should("include", "/embedding/permissions");
       cy.url().should("not.include", "/admin/permissions");
-    });
 
-    it("navigates every tab and level of the editor without leaving the hub", () => {
-      cy.visit("/embedding/permissions");
-
-      cy.log("Data tab, Groups view: lands here by default");
+      cy.log("Tenant collections tab");
+      cy.findByRole("tab", { name: "Tenant collections" }).click();
       cy.findAllByRole("menuitem").first().click();
-      cy.findByTestId("permission-table").should("be.visible");
 
-      cy.log("Data tab, Databases view");
-      cy.findByRole("tab", { name: "Databases" }).click();
-      cy.findAllByRole("menuitem").first().click();
-      cy.findByTestId("permission-table").should("be.visible");
-
-      cy.log("Collections tab");
-      cy.findByRole("tab", { name: "Collections" }).click();
-      cy.findAllByRole("menuitem").first().click();
-      cy.findByTestId("permission-table").should("be.visible");
-
-      cy.log("Application tab");
-      cy.findByRole("tab", { name: "Application" }).click();
-      cy.findByTestId("permission-table").should("be.visible");
-
-      cy.log("Still inside the embedding hub throughout");
-      cy.url().should("include", "/embedding/permissions");
-      cy.url().should("not.include", "/admin/permissions");
-      cy.findByTestId("embedding-hub-nav").should("be.visible");
+      assertStillInsideHub();
     });
   });
 });
+
+function walkThroughPermissionsEditor() {
+  cy.log("Data tab, Groups view: lands here by default");
+  cy.findAllByRole("menuitem").first().click();
+  cy.findByTestId("permission-table").should("be.visible");
+
+  cy.log("Drilling into a group's database entity stays in the hub");
+  cy.findByTestId("permission-table").findByText("Sample Database").click();
+  cy.url().should("include", "/embedding/permissions");
+  cy.url().should("not.include", "/admin/permissions");
+
+  cy.log("Data tab, Databases view");
+  cy.findByRole("tab", { name: "Databases" }).click();
+  cy.findAllByRole("menuitem").first().click();
+  cy.findByTestId("permission-table").should("be.visible");
+
+  cy.log("Collections tab");
+  cy.findByRole("tab", { name: "Collections" }).click();
+  cy.findAllByRole("menuitem").first().click();
+  cy.findByTestId("permission-table").should("be.visible");
+
+  cy.log("Application tab");
+  cy.findByRole("tab", { name: "Application" }).click();
+  cy.findByTestId("permission-table").should("be.visible");
+}
+
+function assertStillInsideHub() {
+  cy.log("Still inside the embedding hub throughout");
+  cy.url().should("include", "/embedding/permissions");
+  cy.url().should("not.include", "/admin/permissions");
+  cy.findByTestId("embedding-hub-nav").should("be.visible");
+}
 
 function configureSaml() {
   cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8").then(
