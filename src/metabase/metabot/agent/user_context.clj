@@ -273,24 +273,25 @@
 
 (defn- queryable-normalized-query
   [query]
-  (let [raw-database-id (and (map? query) (:database query))]
-    (when (pos-int? raw-database-id)
-      (try
-        (let [normalized  (lib-be/normalize-query query)
-              database-id (:database normalized)]
-          (when (and (pos-int? database-id)
-                     (query-perms/can-run-query? normalized))
-            (let [{:keys [table card field]} (exported-entity-ids normalized)
-                  field-table (metabot.perms/field-id->table-id field)
-                  table-ids   (into (set table) (vals field-table))]
-              (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                         (sandbox-visible-fields? field-table)
-                         (every? #(mi/can-read? :model/Card %) card))
-                [normalized (lib-be/application-database-metadata-provider database-id)]))))
-        (catch Exception e
-          (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
-                      (ex-message e))
-          nil)))))
+  ;; the raw :database may be the legacy virtual id -1337; normalizing resolves it through
+  ;; the source card, so the id is only gated after normalization
+  (when (and (map? query) (:database query))
+    (try
+      (let [normalized  (lib-be/normalize-query query)
+            database-id (:database normalized)]
+        (when (and (pos-int? database-id)
+                   (query-perms/can-run-query? normalized))
+          (let [{:keys [table card field]} (exported-entity-ids normalized)
+                field-table (metabot.perms/field-id->table-id field)
+                table-ids   (into (set table) (vals field-table))]
+            (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
+                       (sandbox-visible-fields? field-table)
+                       (every? #(mi/can-read? :model/Card %) card))
+              [normalized (lib-be/application-database-metadata-provider database-id)]))))
+      (catch Exception e
+        (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
+                    (ex-message e))
+        nil))))
 
 (defn exportable-query?
   "May the current user run `query`? Queries with no :database only ever pprint

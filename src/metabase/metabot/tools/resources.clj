@@ -759,8 +759,6 @@
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
     (do
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
       (api/check-403 (user-context/exportable-query? query))
       (entity-result
        {:type        "conversation-query"
@@ -777,8 +775,6 @@
   (if-let [chart (get (shared/current-charts-state) chart-id)]
     (let [query (or (first (:queries chart))
                     (get (shared/current-queries-state) (:query_id chart)))]
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
       (api/check-403 (user-context/exportable-query? query))
       (entity-result
        {:type        "conversation-chart"

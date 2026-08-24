@@ -6,12 +6,11 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -325,44 +324,61 @@
           (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
 
+(defn- conversation-query-state
+  [query]
+  (atom {:state {:queries {"q-1" query}
+                 :charts  {"chart-1" {:chart_id "chart-1"
+                                      :query_id "q-1"
+                                      :visualization_settings {:chart_type "line"}}}}}))
+
 (deftest read-conversation-query-resource-permission-test
-  (testing "a stored query the user may not run is refused, even when the database is readable"
+  (testing "a stored query the user may not run is refused"
     (mt/with-no-data-perms-for-all-users!
-      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
-                                   :perms/manage-table-metadata :yes)
       (mt/with-current-user (mt/user->id :rasta)
         (binding [tools.shared/*memory-atom*
-                  (atom {:state {:queries {"q-1" {:database (mt/id)
-                                                  :type     "query"
-                                                  :query    {:source-table (mt/id :orders)}}}
-                                 :charts  {"chart-1" {:chart_id "chart-1"
-                                                      :query_id "q-1"
-                                                      :visualization_settings {:chart_type "line"}}}}})]
+                  (conversation-query-state {:database (mt/id)
+                                             :type     "query"
+                                             :query    {:source-table (mt/id :orders)}})]
           (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
             (let [result (read-resource/read-resource {:uris [uri]})]
               (is (=? {:resources [{:error string?}]} result))
               (is (not (str/includes? (:output result) "ORDERS"))))))))))
 
 (deftest read-conversation-source-card-query-resource-test
-  (testing "a query sourced from a readable card exports even when its database is not queryable"
+  (testing "a query sourced from a readable card exports through the card's collection access alone,
+           with no database permission of any kind"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :query
                                                               :query    {:source-table (mt/id :orders)}}}]
       (mt/with-no-data-perms-for-all-users!
-        (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
-                                     :perms/manage-table-metadata :yes)
+        (mt/with-current-user (mt/user->id :rasta)
+          (doseq [database-id [(mt/id) lib.schema.id/saved-questions-virtual-database-id]]
+            (binding [tools.shared/*memory-atom*
+                      (conversation-query-state {:database database-id
+                                                 :type     :query
+                                                 :query    {:source-table (str "card__" card-id)}})]
+              (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
+                (let [result (read-resource/read-resource {:uris [uri]})]
+                  (is (=? {:resources [{:content map?}]} result))
+                  (is (str/includes? (:output result) "source-card")))))))))))
+
+(deftest read-conversation-source-card-query-unreadable-card-test
+  (testing "a query sourced from a card in a collection the user cannot read is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {card-id :id} {:collection_id coll-id
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}]
         (mt/with-current-user (mt/user->id :rasta)
           (binding [tools.shared/*memory-atom*
-                    (atom {:state {:queries {"q-1" {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (str "card__" card-id)}}}
-                                   :charts  {"chart-1" {:chart_id "chart-1"
-                                                        :query_id "q-1"
-                                                        :visualization_settings {:chart_type "line"}}}}})]
+                    (conversation-query-state {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" card-id)}})]
             (doseq [uri ["metabase://query/q-1" "metabase://chart/chart-1"]]
               (let [result (read-resource/read-resource {:uris [uri]})]
-                (is (=? {:resources [{:content map?}]} result))
-                (is (str/includes? (:output result) "source-card"))))))))))
+                (is (=? {:resources [{:error string?}]} result))
+                (is (not (str/includes? (:output result) "ORDERS")))))))))))
 
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}
