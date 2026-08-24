@@ -319,8 +319,6 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
   });
 
   it("renders the exploration template with isSaveEnabled=true, targetCollection, entityTypes", () => {
-    cy.intercept("GET", "/api/pulse/form_input").as("pulseFormInput");
-
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
         {
@@ -337,10 +335,12 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
     frame.within(() => {
       cy.findByText("Pick your starting data").should("be.visible");
-
       H.popover().findByText("Orders").click();
+
+      // if we don't limit this query, layout shifts can push the first row out of the viewport
+      cy.icon("list").click();
+      cy.findByPlaceholderText("Enter a limit").type("5").blur({ force: true }); // blur hack
       H.visualize();
-      cy.wait("@pulseFormInput");
 
       cy.log("1. clicking on the filter should drill down");
       cy.findByText("37.65").should("be.visible").click();
