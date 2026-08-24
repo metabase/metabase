@@ -17,11 +17,18 @@
 }
 
 .truncated {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Holds its width so a long entity name truncates before the location does. */
 .dependencyLocation {
+  flex-shrink: 0;
   white-space: nowrap;
+}
+
+.dependencyIcon {
+  align-self: center;
 }
