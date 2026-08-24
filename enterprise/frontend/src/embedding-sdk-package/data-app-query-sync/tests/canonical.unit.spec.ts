@@ -73,4 +73,14 @@ describe("query canonicalization", () => {
     expect(normalized(first)).toBe(normalized(same));
     expect(normalized(first)).not.toBe(normalized(different));
   });
+
+  it("omits empty lib/metadata from query", () => {
+    expect(
+      getCanonicalQueryJson({
+        database: 1,
+        stages: [],
+        "lib/metadata": null,
+      }),
+    ).toBe(getCanonicalQueryJson({ database: 1, stages: [] }));
+  });
 });
