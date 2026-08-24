@@ -100,10 +100,10 @@ Toggling off Metabot only turns off in-app Metabot features. People can still us
 
 _Embedded tab._
 
-The **Embedded Metabot is enabled** toggle turns embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
+The **Enable Embedded Metabot** toggle turns embedded Metabot on or off. The toggle affects both full-app embeds and modular embeds.
 
 - [Full-app embedding](../embedding/full-app-embedding.md): The Metabot icon and keyboard shortcuts are only available when Metabot is enabled. Turning off Embedded Metabot will hide these icons and disable the keyboard shortcuts.
-- [Modular embedding](../embedding/modular-embedding.md): The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/sdk/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
+- [Modular embedding](../embedding/modular-embedding.md): The toggle doesn't add Metabot anywhere; you have to explicitly include a chat component (like the SDK's [`MetabotQuestion`](../embedding/ai-chat.md)) in your application. If, however, you've added a component, and you turn off the Embedded Metabot toggle, your chat component will stop working, so you should also remove or hide the component in your application.
 
 ### Verified content
 
@@ -127,7 +127,9 @@ People can still @-mention items outside of this collection when prompting in AI
 
 _Embedded tab._
 
-If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries. Click **Pick a different collection** to choose the collection (and its subcollections) that embedded Metabot can query.
+If you're embedding the Metabot component in an app, you can point embedded Metabot at a different collection to use for creating queries. Click **Pick a different collection** to choose the collection (and its subcollections) that embedded Metabot searches for models and metrics.
+
+This setting narrows where embedded Metabot looks; it's not a permission boundary. Embedded Metabot can still reach anything the person using it has permissions for. To control what people can get to in an embed, set [data permissions](../permissions/embedding.md).
 
 ### Prompt suggestions
 

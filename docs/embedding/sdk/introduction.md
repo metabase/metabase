@@ -105,7 +105,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 - [Authentication](../authentication.md)
 - [Embed a chart](../chart.md)
-- [AI chat](./ai-chat.md)
+- [Embed an AI chat](../ai-chat.md)
 - [Embed a dashboard](../dashboard.md)
 - [Actions](./actions.md)
 - [Appearance](../appearance.md)
