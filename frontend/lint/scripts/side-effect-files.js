@@ -1,12 +1,5 @@
-/**
- * @fileoverview Generates frontend/lint/side-effect-files.json, the registry of source files that run code at import time.
- * It lints the whole tree with `metabase/no-module-side-effects` under the options from eslint.config.mjs and compares the reported files with the registry.
- * Run `--update` after adding or removing import-time work in a source file, since frontend/lint/tests/side-effect-files.unit.spec.js fails when the registry is out of date.
- *
- *   bun frontend/lint/scripts/side-effect-files.js --check    exit 1 on drift, listing it
- *   bun frontend/lint/scripts/side-effect-files.js --update   add new files as unclassified, drop clean ones
- *   bun frontend/lint/scripts/side-effect-files.js --verbose  also print every finding
- */
+// Generates frontend/lint/side-effect-files.json by linting the whole tree with `metabase/no-module-side-effects`.
+// Without a flag it exits 1 on drift, `--update` adds new files as unclassified and drops clean ones, `--verbose` prints every finding.
 
 const fs = require("fs");
 const path = require("path");
@@ -88,7 +81,6 @@ function createLinter() {
   };
 }
 
-// Repo-relative path -> messages, for every source file the rule reports.
 function scanEffectFiles() {
   const lint = createLinter();
   const findings = new Map();
@@ -101,8 +93,7 @@ function scanEffectFiles() {
   return findings;
 }
 
-// Listed packages that no source file imports, so the hand-written list cannot keep dead entries.
-// A specifier is imported when it appears quoted, alone or with a subpath, anywhere in a source file.
+// Listed packages that no source file imports.
 function unimportedPackages(registry, files) {
   const unseen = new Map(
     Object.keys(registry.packages).map((specifier) => [
@@ -128,7 +119,6 @@ function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// { missing: effect files the registry does not list, stale: exact entries whose file is clean }
 function diffRegistry(registry, effectFiles) {
   const effectSet = new Set(effectFiles);
   const missing = effectFiles.filter(
@@ -141,9 +131,7 @@ function diffRegistry(registry, effectFiles) {
   return { missing, stale };
 }
 
-// The stale entries the registry test fails on.
-// The rule rejects imports of a file classified "global" or "entry", so a stale entry of those kinds keeps rejecting imports of a file that is clean,
-// while a stale "self" entry affects nothing and can wait for an --update sweep.
+// A stale "global" or "entry" entry keeps rejecting imports of a clean file, a stale "self" entry affects nothing.
 function enforcedStale(registry, stale) {
   return stale.filter((file) => classify(registry, file) !== "self");
 }
