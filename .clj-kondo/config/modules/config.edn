@@ -2710,8 +2710,7 @@
            util
            enterprise/advanced-permissions}
    :model-exports #{:model/User :model/UserParameterValue}
-   :model-imports #{:model/AuthIdentity
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
                     :model/Tenant}}
@@ -2739,6 +2738,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
+                    :model/Session
                     :model/User}}
 
   util

@@ -621,7 +621,7 @@
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id id))})
+                             {:object (assoc user :token (auth-identity/reset-token-hash id))})
       {:password_reset_url password-reset-url})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

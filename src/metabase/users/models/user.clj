@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -21,7 +20,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
@@ -124,12 +122,13 @@
 
 ;;; -------------------------------------------------- Password Management --------------------------------------------------
 
-(defn- without-password-fields
-  "Remove password fields from a User map. Login passwords live only in the user's `password` AuthIdentity (set via
-  [[metabase.auth-identity.core/set-password!]]); the legacy `core_user.password` / `.password_salt` columns are no
-  longer read or written by this codebase, so we drop any incoming values rather than persisting them (as plaintext)."
+(defn- without-credential-fields
+  "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
+  (via [[metabase.auth-identity.core/set-password!]]) and reset tokens in their `emailed-secret-password-reset`
+  AuthIdentity; the legacy `core_user.password` / `.password_salt` / `.reset_token` / `.reset_triggered` columns are no
+  longer read or written by this codebase, so we drop any incoming values rather than persisting them."
   [user]
-  (dissoc user :password :password_salt))
+  (dissoc user :password :password_salt :reset_token :reset_triggered))
 
 ;;; -------------------------------------------------- Admin Group Management --------------------------------------------------
 
@@ -173,22 +172,18 @@
 ;;; -------------------------------------------------- Field Normalization --------------------------------------------------
 
 (defn- normalize-user-fields
-  "Normalize email, locale, and reset token for database storage."
+  "Normalize email and locale for database storage."
   [user]
   (cond-> user
     (:email user) (update :email u/lower-case-en)
-    (:locale user) (update :locale i18n/normalized-locale-string)
-    ;; Only hash reset_token if it's not already a bcrypt hash (starts with $2a$ or $2b$)
-    (and (:reset_token user)
-         (not (re-matches #"^\$2[ab]\$.*" (:reset_token user))))
-    (update :reset_token u.password/hash-bcrypt)))
+    (:locale user) (update :locale i18n/normalized-locale-string)))
 
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)
   (-> (merge insert-default-values user)
       normalize-user-fields
-      without-password-fields))
+      without-credential-fields))
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
@@ -228,44 +223,7 @@
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))
-        without-password-fields)))
-
-(t2/define-after-update :model/User
-  [{:keys [id] :as user}]
-  ;; Query the database to check if we need to sync reset token changes
-  ;; We can't rely on t2/changes in after-update hooks, so we compare current state
-  (let [{:keys [email reset_token reset_triggered]} (t2/select-one [:model/User :email :reset_token :reset_triggered] :id id)
-        current-auth-identity (t2/select-one :model/AuthIdentity
-                                             :user_id id
-                                             :provider "emailed-secret-password-reset")]
-    (cond
-      ;; Token being cleared - mark as consumed in AuthIdentity
-      (and (nil? reset_token) current-auth-identity)
-      (do
-        (log/debugf "Syncing User %s reset_token clear to AuthIdentity - marking token consumed" id)
-        (t2/update! :model/AuthIdentity (:id current-auth-identity)
-                    {:credentials (assoc (:credentials current-auth-identity) :consumed_at (t/instant))}))
-
-      ;; Token being set - create or update AuthIdentity
-      (and reset_token reset_triggered)
-      (let [ttl-ms (* 48 60 60 1000)
-            expires-at (t/plus (t/instant reset_triggered) (t/millis ttl-ms))
-            credentials {:token_hash reset_token
-                         :expires_at expires-at
-                         :consumed_at nil}]
-        (if current-auth-identity
-          (do
-            (log/debugf "Syncing User %s reset_token update to existing AuthIdentity %s" id (:id current-auth-identity))
-            (t2/update! :model/AuthIdentity (:id current-auth-identity)
-                        {:credentials credentials}))
-          (do
-            (log/debugf "Syncing User %s reset_token insert to new AuthIdentity" id)
-            (t2/insert! :model/AuthIdentity
-                        {:user_id id
-                         :provider "emailed-secret-password-reset"
-                         :credentials credentials
-                         :metadata {:email email}}))))))
-  user)
+        without-credential-fields)))
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.

@@ -12,7 +12,8 @@
 (p/import-vars
  [auth-identity
   hash-password-credentials
-  set-password!])
+  set-password!
+  reset-token-hash])
 
 ;; ==============================================================================
 ;; Provider Multimethod System

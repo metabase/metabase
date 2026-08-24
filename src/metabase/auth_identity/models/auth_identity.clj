@@ -6,7 +6,6 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
@@ -91,45 +90,6 @@
              (update :credentials hash-password-credentials))
     (provider/validate (provider/provider-string->keyword provider) <>)))
 
-(t2/define-after-insert :model/AuthIdentity
-  [{:keys [user_id provider credentials] :as auth-identity}]
-  (when (= provider "emailed-secret-password-reset")
-    (let [{:keys [token_hash expires_at consumed_at]} credentials]
-      ;; Only sync to User if token is not consumed
-      (when-not consumed_at
-        (log/debugf "Syncing emailed-secret-password-reset AuthIdentity insert to User %s" user_id)
-        ;; Calculate reset_triggered from expires_at (work backward from expiration)
-        (let [ttl-ms (* 48 60 60 1000) ; 48 hours in milliseconds
-              reset-triggered (-> (t/instant expires_at)
-                                  (t/minus (t/millis ttl-ms))
-                                  t/to-millis-from-epoch)]
-          (t2/update! :model/User user_id
-                      {:reset_token token_hash
-                       :reset_triggered reset-triggered})))))
-  auth-identity)
-
-(t2/define-after-update :model/AuthIdentity
-  [{:keys [user_id provider credentials] :as auth-identity}]
-  (cond
-    (= provider "emailed-secret-password-reset")
-    (let [{:keys [token_hash expires_at consumed_at]} credentials]
-      (log/debugf "Syncing emailed-secret-password-reset AuthIdentity update to User %s" user_id)
-      (if consumed_at
-        ;; Token consumed - clear User table
-        (t2/update! :model/User
-                    {:id user_id
-                     :reset_token [:not= nil]}
-                    {:reset_token nil
-                     :reset_triggered nil})
-        ;; Token updated - sync to User table
-        (let [ttl-ms (* 48 60 60 1000)
-              reset-triggered (t/to-millis-from-epoch (t/minus expires_at (t/millis ttl-ms)))]
-          (t2/update! :model/User
-                      {:id user_id}
-                      {:reset_token token_hash
-                       :reset_triggered reset-triggered})))))
-  auth-identity)
-
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no
@@ -152,3 +112,11 @@
      (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
        (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
        (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))))
+
+(mu/defn reset-token-hash :- [:maybe :string]
+  "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
+  AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
+  without reading the legacy `core_user.reset_token` column."
+  [user-id :- ms/PositiveInt]
+  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
+          [:credentials :token_hash]))

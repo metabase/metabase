@@ -259,10 +259,9 @@
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
-                  (let [{:keys [reset_token reset_triggered]} (t2/select-one [:model/User :reset_token :reset_triggered]
-                                                                             :id (mt/user->id :rasta))]
-                    (boolean (and reset_token reset_triggered))))]
-          (t2/update! :model/User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
+                  (boolean (t2/select-one :model/AuthIdentity :user_id (mt/user->id :rasta)
+                                          :provider "emailed-secret-password-reset")))]
+          (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "emailed-secret-password-reset")
           (assert (not (reset-fields-set?)))
           (is (= nil
                  (mt/user-http-request :rasta :post 204 "session/forgot_password"
@@ -270,7 +269,7 @@
               "Request should return no content")
           (is (true?
                (reset-fields-set?))
-              "User `:reset_token` and `:reset_triggered` should be updated")
+              "the password-reset AuthIdentity should be created")
           (is (mt/received-email-subject? :rasta #"Password Reset")))))))
 
 (deftest forgot-password-uses-site-url-test
@@ -390,7 +389,7 @@
             (is (=? {:topic    :password-reset-initiated
                      :model_id rasta-id
                      :model    "User"
-                     :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                     :details  {:token (auth-identity/reset-token-hash rasta-id)}}
                     (mt/latest-audit-log-entry :password-reset-initiated rasta-id)))))))))
 
 (deftest forgot-password-throttling-test
@@ -416,10 +415,9 @@
     (mt/with-fake-inbox
       (let [password {:old "password"
                       :new "whateverUP12!!"}]
-        (mt/with-temp [:model/User {:keys [email id]} {:reset_triggered (System/currentTimeMillis)}]
+        (mt/with-temp [:model/User {:keys [email id]} {}]
           (auth-identity/set-password! id (:old password))
-          (let [token (u/prog1 (str id "_" (random-uuid))
-                        (t2/update! :model/User id {:reset_token <>}))
+          (let [token (auth-identity/create-password-reset! id)
                 creds {:old {:password (:old password)
                              :username email}
                        :new {:password (:new password)
@@ -433,9 +431,10 @@
                    (mt/client :post 401 "session" (:old creds))))
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" (:new creds))))
-            (is (= {:reset_token     nil
-                    :reset_triggered nil}
-                   (mt/derecordize (t2/select-one [:model/User :reset_token :reset_triggered], :id id))))))))))
+            (is (some? (get-in (t2/select-one-fn :credentials :model/AuthIdentity
+                                                 :user_id id :provider "emailed-secret-password-reset")
+                               [:consumed_at]))
+                "the reset token should be marked consumed")))))))
 
 (deftest reset-password-throttling-test
   (testing "POST /api/session/reset_password - endpoint is throttled"
@@ -462,10 +461,10 @@
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
-            (mt/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-              (let [token       (u/prog1 (str id "_" (random-uuid))
-                                  (t2/update! :model/User id {:reset_token <> :last_login :%now}))
-                    reset-token (t2/select-one-fn :reset_token :model/User :id id)]
+            (mt/with-temp [:model/User {:keys [id]} {}]
+              (t2/update! :model/User id {:last_login :%now})
+              (let [token       (auth-identity/create-password-reset! id)
+                    reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
                                                                :password (:new password)})
                 (is (= {:topic    :password-reset-successful
@@ -491,8 +490,11 @@
               (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                              :password "whateverUP12!!"}))))
     (testing "Test that an expired token doesn't work"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
@@ -500,16 +502,18 @@
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
+      (let [token (auth-identity/create-password-reset! (mt/user->id :rasta))]
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
     (testing "Check that an expired but valid token returns false"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 

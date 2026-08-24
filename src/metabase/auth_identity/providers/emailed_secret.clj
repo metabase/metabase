@@ -190,7 +190,7 @@
   [_provider {:keys [user password auth-identity] :as result}]
   (when (:success? result)
     (if (:last_login user)
-      (events/publish-event! :event/password-reset-successful {:object (assoc user :token (t2/select-one-fn :reset_token :model/User (:id user)))})
+      (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
       (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
     (t2/with-transaction [_]
       (t2/update! :model/AuthIdentity (:id auth-identity) (mark-token-consumed auth-identity))
