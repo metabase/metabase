@@ -206,11 +206,15 @@
     :usage                 chunk
     ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
     ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
-    ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
-    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    ;; `{:error {:message ...}}` part instead, so translate here, tagging the error as the provider's: an
+    ;; errorText chunk exists only because a provider answered and failed, and its message is the provider's
+    ;; own — which the client shows, where an internal error's would stay behind the generic alert.
+    ;; Internally-generated error parts (usage limits, agent-loop exceptions) already carry an `:error` map
+    ;; and whatever `:error-code` fits; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
-                             {:type :error :error {:message (:errorText chunk)}})
+                             {:type :error :error {:message    (:errorText chunk)
+                                                   :error-code "provider_error"}})
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)

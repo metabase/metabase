@@ -355,6 +355,18 @@
       (finally
         (.stop server)))))
 
+(deftest lite-aisdk-xf-error-tagging-test
+  (testing "tags an adapter-streamed error as the provider's, so the client shows its message"
+    (is (= [{:type :error :error {:message    "Your account is not active, please check your billing details"
+                                  :error-code "provider_error"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :errorText "Your account is not active, please check your billing details"}]))))
+  (testing "an error part that already carries an :error map — a pre-flight gate, the agent loop's catch — passes
+            through with whatever code fits it"
+    (is (= [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}])))))
+
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
     (let [chunks [{:type :start :messageId "msg-1"}

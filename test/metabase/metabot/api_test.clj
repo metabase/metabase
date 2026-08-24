@@ -1391,3 +1391,22 @@
               (is (str/includes? response "\"errorCode\":\"provider_error\"")
                   "the finish metadata names the error class")
               (is (str/includes? response "\"finishReason\":\"error\"")))))))))
+
+(deftest agent-streaming-streamed-provider-error-carries-its-code-test
+  (testing "a provider that fails by streaming an error event — rather than by rejecting the request — reaches the
+            client with the same code, so the alert shows its message instead of the generic one"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       llm.settings/llm-provider-fallback-enabled? false
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (mut/mock-llm-response
+                                       [{:type :error :errorText "Your account is not active, please check your billing details"}]))
+                                    conversation-title/submit! (constantly nil)]
+          (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                 (agent-request (str (random-uuid)) "hello"))]
+              (is (str/includes? response "account is not active"))
+              (is (str/includes? response "\"errorCode\":\"provider_error\""))
+              (is (str/includes? response "\"finishReason\":\"error\"")))))))))
