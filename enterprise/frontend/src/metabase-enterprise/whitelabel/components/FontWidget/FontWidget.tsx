@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
+import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box } from "metabase/ui";
 
 import { FontFilesWidget } from "./FontFilesWidget";

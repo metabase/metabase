@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import {
   NumberInput,
   SegmentedControl,

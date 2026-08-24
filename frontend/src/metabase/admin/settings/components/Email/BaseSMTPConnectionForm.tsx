@@ -17,11 +17,10 @@ import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/settings";
+import { SetByEnvVarWrapper } from "metabase/settings-components/AdminSettingInput";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
-
-import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 type GetFullFormKey = (
   shortFormKey: "port" | "host" | "username" | "security" | "password",

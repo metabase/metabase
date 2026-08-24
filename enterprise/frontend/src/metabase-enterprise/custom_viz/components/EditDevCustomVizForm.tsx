@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useDeleteCustomVizPluginMutation,

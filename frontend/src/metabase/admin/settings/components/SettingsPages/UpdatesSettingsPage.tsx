@@ -1,16 +1,16 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 import { useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 import { NewVersionInfo } from "../widgets/VersionUpdateNotice/VersionUpdateNotice";
 

@@ -2,10 +2,10 @@ import { forwardRef } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 

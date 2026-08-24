@@ -17,6 +17,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting, useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
   Alert,
   Box,
@@ -35,8 +36,6 @@ import type {
   SettingValue,
   UploadsSettings,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+} from "metabase/settings-components/SettingsSection";
 import { TextInput } from "metabase/ui";
 import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 

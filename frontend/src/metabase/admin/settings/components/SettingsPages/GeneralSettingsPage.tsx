@@ -1,9 +1,5 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -11,11 +7,15 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_EMBEDDING_SDK, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
 import { useAdminSetting, useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 import { Group, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";

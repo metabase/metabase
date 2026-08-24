@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListLlmProvidersQuery } from "metabase/api";
 import { AIProviderList } from "metabase/metabot";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {
   const { data: connections = [] } = useListLlmProvidersQuery();

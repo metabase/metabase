@@ -3,12 +3,12 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
+import { BasicAdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,

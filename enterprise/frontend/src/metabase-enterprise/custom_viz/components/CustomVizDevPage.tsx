@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { useListAllCustomVizPluginsQuery } from "metabase-enterprise/api";
 
 import { AddDevCustomVizForm } from "./AddDevCustomVizForm";

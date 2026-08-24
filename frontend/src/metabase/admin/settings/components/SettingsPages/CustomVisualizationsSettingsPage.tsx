@@ -1,12 +1,12 @@
 import { jt, t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature, useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import {
   Alert,
   Button,

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 
 import { GeneralLimitsSettingsSection } from "./GeneralLimitsSettingsSection";
 import { GroupLimitsSettingsSection } from "./GroupLimitsSettingsSection";

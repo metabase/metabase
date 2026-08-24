@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+} from "metabase/settings-components/SettingsSection";
 import { Box } from "metabase/ui";
 
 import { getLoadingMessageOptions } from "../lib/loading-message";

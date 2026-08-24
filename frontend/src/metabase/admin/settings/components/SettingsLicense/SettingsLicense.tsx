@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Box, Button, Divider, Flex, Text } from "metabase/ui";
-
-import { SettingHeader } from "../SettingHeader";
 
 import { ExplorePlansIllustration } from "./ExplorePlansIllustration";
 

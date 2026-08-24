@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   ACTIVE_STATUS,
   type ActiveStatus,
@@ -10,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 

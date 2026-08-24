@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { Textarea } from "metabase/ui";
 import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 

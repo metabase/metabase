@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -10,6 +9,7 @@ import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import {
   Box,
   Button,

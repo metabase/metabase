@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import { Box, Flex } from "metabase/ui";
 
 import { rootId } from "../constants/simple";

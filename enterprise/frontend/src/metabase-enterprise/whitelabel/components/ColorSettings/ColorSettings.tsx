@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Stack, Tabs } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 

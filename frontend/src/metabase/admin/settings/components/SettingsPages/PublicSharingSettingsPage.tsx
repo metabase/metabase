@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useSetting } from "metabase/settings";
+} from "metabase/settings-components/SettingsSection";
 
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {
   PublicLinksActionListing,
   PublicLinksDashboardListing,
