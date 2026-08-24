@@ -2,14 +2,9 @@ import { t } from "ttag";
 
 import { PermissionsBasePath } from "metabase/admin/permissions/components/PermissionsBasePath";
 import { Box, Stack, Title } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 
 const TAB_LABEL_INSET = "2.5rem";
-
-// The hub is built on Metabase blue, not admin's purple. Drop this constant
-// and the `accentColor` prop below to fall back to admin's default.
-const HUB_ACCENT_COLOR: ColorName = "brand";
 
 /**
  * The admin permissions editor, mounted a second time under the hub. Admin
@@ -46,10 +41,7 @@ export function EmbeddingHubPermissionsPage() {
           as soon as the content moves. Its own toolbar padding is the
           compromise. */}
       <Box style={{ flex: 1, minHeight: 0 }}>
-        <PermissionsBasePath
-          basePath={Urls.embeddingHubPermissions()}
-          accentColor={HUB_ACCENT_COLOR}
-        />
+        <PermissionsBasePath basePath={Urls.embeddingHubPermissions()} isHub />
       </Box>
     </Stack>
   );
