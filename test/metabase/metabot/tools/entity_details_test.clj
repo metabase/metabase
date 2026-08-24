@@ -578,6 +578,27 @@
             (is (vector? (get-in exported ["stages" 0 "source-table"])))
             (is (not (contains? exported "lib/metadata")))))))))
 
+(deftest card-details-tolerates-a-query-that-will-not-build-test
+  (testing "a Card whose stored query has no stages drops `:query_json` instead of failing the whole response"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {broken-id :id} {:name "Broken", :type :question, :dataset_query {}}
+                       :model/Card {good-id :id}   {:database_id   (mt/id)
+                                                    :type          :question
+                                                    :name          "Venues by Price"
+                                                    :dataset_query (mt/mbql-query venues
+                                                                     {:aggregation [[:count]]
+                                                                      :breakout    [$price]})}]
+          (let [broken (-> (entity-details/get-table-details {:entity-type :question :entity-id broken-id})
+                           :structured-output)
+                good   (-> (entity-details/get-table-details {:entity-type :question :entity-id good-id})
+                           :structured-output)]
+            (testing "the broken card still answers, without a query"
+              (is (= "Broken" (:name broken)))
+              (is (nil? (:query_json broken))))
+            (testing "and the card beside it is unaffected"
+              (is (map? (:query_json good))))))))))
+
 (deftest card-details-exposes-query-json-native-test
   (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
     (mt/test-driver :h2
