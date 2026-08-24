@@ -3490,7 +3490,7 @@
     ;; lazily, and a run that creates it inside a `with-temp` discards it again.
     (mt/with-temp-vals-in-db :model/FieldValues (field-values/get-or-create-full-field-values!
                                                  (t2/select-one :model/Field :id (mt/id :categories :name)))
-      {:values ["Good" "Bad"]}
+                             {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
