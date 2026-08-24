@@ -45,7 +45,7 @@ By default, people won't be able to save questions to the collection.
 
 ### Let people save changes
 
-Set `read-only="false"`, and people can edit _and_ save the dashboards and questions they open:
+If you want people to be able to edit _and_ save the dashboards and questions they open, set `read-only="false"`:
 
 ```html
 <metabase-browser initial-collection="123" read-only="false"></metabase-browser>
