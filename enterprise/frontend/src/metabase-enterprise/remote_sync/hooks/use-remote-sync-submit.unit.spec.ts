@@ -26,6 +26,7 @@ const UNSYNCED_DEPENDENCIES_BODY: RemoteSyncDependencyErrorResponse = {
               type: "collection",
               collection: { id: 7, name: "Regular", personal: false },
             },
+            used_by: [],
           },
         ],
       },

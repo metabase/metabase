@@ -111,6 +111,42 @@
                                                                                         :personal false}}}]}]}}
                 (ex-data ex)))))))
 
+(deftest bulk-set-remote-sync-dependency-names-what-uses-it-test
+  (testing "each dependency names the entity that references it, not only the collection it lives in"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id regular-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id synced-id
+                                                        :database_id (mt/id)
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        (is (=? {:errors {:collections [{:dependencies [{:id      source-card-id
+                                                         :used_by [{:model "card"
+                                                                    :id    dependent-card-id
+                                                                    :name  "Dependent Card"}]}]}]}}
+                (ex-data ex)))))))
+
+(deftest bulk-set-remote-sync-dependency-used-by-drops-nested-models-test
+  (testing "a dashboard dependent is reported as the dashboard — the dashcard in the same path has no name to show"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id regular-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard {dashboard-id :id} {:name "Revenue" :collection_id synced-id}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id source-card-id}]
+      (let [ex    (is (thrown? clojure.lang.ExceptionInfo
+                               (core/bulk-set-remote-sync {synced-id true})))
+            [dep] (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
+        (is (= source-card-id (:id dep)))
+        (is (= [{:model "dashboard" :id dashboard-id :name "Revenue"}] (:used_by dep)))))))
+
 (deftest bulk-set-remote-sync-dependency-model-follows-card-type-test
   (testing "a Card dependency reports the collection-item model its type implies, not the Toucan name"
     (doseq [[card-type expected] {:model  "dataset"
@@ -242,7 +278,9 @@
                  :errors      {:collections [{:collection {:id coll1-id :name "Collection 1"}}]}}
                 (ex-data ex)))
         (testing "the dependents are named, and nested models resolve to something an admin can open"
+          ;; Only the identifying keys — dependents also carry display hints this assertion isn't about.
           (is (contains? (into #{}
+                               (map #(select-keys % [:model :id :name]))
                                (get-in (ex-data ex) [:errors :collections 0 :dependents]))
                          {:model "card" :id dependent-card-id :name "Dependent Card"})))))))
 

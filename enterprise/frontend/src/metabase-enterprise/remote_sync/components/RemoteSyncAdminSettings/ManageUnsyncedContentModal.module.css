@@ -1,0 +1,27 @@
+/* Refusals can name dozens of entities, so the list scrolls rather than growing the modal. */
+.groupList {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.groupHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.dependencyRow:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.group:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.truncated {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependencyLocation {
+  white-space: nowrap;
+}

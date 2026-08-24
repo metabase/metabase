@@ -155,13 +155,27 @@ export type RemoteSyncDependencyRemedy =
   | { type: "library" }
   | { type: "none" };
 
+export type RemoteSyncDependentModel =
+  | RemoteSyncDependencyModel
+  | "collection"
+  | "timeline";
+
+export type RemoteSyncDependencyEntity = {
+  model: RemoteSyncDependentModel;
+  id: number;
+  name: string;
+  display?: CardDisplayType;
+};
+
 export type RemoteSyncIneligibleDependency = {
   model: RemoteSyncDependencyModel;
   id: number;
   name: string;
   /** `null` is the root collection; absent means the backend couldn't resolve one. */
   collection?: RemoteSyncCollectionRef | null;
+  display?: CardDisplayType;
   remedy: RemoteSyncDependencyRemedy;
+  used_by: RemoteSyncDependencyEntity[];
 };
 
 export type RemoteSyncDependencyFailure = {

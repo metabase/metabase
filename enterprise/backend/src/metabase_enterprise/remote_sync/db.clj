@@ -267,7 +267,7 @@
 (mu/defn card-types
   "The `:id`, `:type`, and `:card_schema` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :type :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
 (mu/defn field-user-settings-exist?
   "Whether the Field with `field-id` has FieldUserSettings."

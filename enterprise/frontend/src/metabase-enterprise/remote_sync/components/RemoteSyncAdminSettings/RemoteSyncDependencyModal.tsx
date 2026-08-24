@@ -17,12 +17,15 @@ import {
 import S from "./RemoteSyncDependencyModal.module.css";
 
 interface RemoteSyncDependencyModalProps {
-  /** Why the last save was refused, one entry per collection. */
   failures?: RemoteSyncDependencyFailure[];
+  isOpen: boolean;
+  onManageContent: () => void;
 }
 
 export const RemoteSyncDependencyModal = ({
   failures,
+  isOpen,
+  onManageContent,
 }: RemoteSyncDependencyModalProps) => {
   const { values, setValues, submitForm } =
     useFormikContext<RemoteSyncSettingsFormState>();
@@ -30,7 +33,7 @@ export const RemoteSyncDependencyModal = ({
   const [dismissedFailures, setDismissedFailures] =
     useState<RemoteSyncDependencyFailure[]>();
 
-  if (!failures?.length || failures === dismissedFailures) {
+  if (!isOpen || !failures?.length || failures === dismissedFailures) {
     return null;
   }
 
@@ -100,21 +103,20 @@ export const RemoteSyncDependencyModal = ({
           </Card>
         )}
 
-        <Group justify={canSync ? "space-between" : "end"} gap="sm">
-          <>
+        <Group justify="space-between" gap="sm">
+          <Button variant="subtle" onClick={onManageContent}>
+            {t`Manage unsynced content`}
+          </Button>
+          <Group gap="sm">
             {canSync && (
               <Button onClick={handleSyncAndSave}>
                 {t`Sync required collections`}
               </Button>
             )}
-            <Button
-              variant="filled"
-              onClick={handleDismiss}
-              style={{ justifySelf: "end" }}
-            >
+            <Button variant="filled" onClick={handleDismiss}>
               {canSync ? t`Cancel` : t`Back`}
             </Button>
-          </>
+          </Group>
         </Group>
       </Stack>
     </Modal>

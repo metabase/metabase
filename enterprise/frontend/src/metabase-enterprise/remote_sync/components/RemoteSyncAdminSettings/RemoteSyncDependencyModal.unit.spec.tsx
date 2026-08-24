@@ -23,6 +23,7 @@ const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
     type: "collection",
     collection: { ...REQUIRED_COLLECTION, personal: false },
   },
+  used_by: [],
 };
 
 const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
@@ -34,6 +35,7 @@ const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
     type: "collection",
     collection: { id: 5, name: "Nick's stuff", personal: true },
   },
+  used_by: [],
 };
 
 // `collection: null` is the root collection
@@ -43,6 +45,7 @@ const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
   name: "Orphaned",
   collection: null,
   remedy: { type: "none" },
+  used_by: [],
 };
 
 // The backend sends no id for the Library, so there is nothing to switch on.
@@ -51,6 +54,7 @@ const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
   id: 3,
   name: "active_users",
   remedy: { type: "library" },
+  used_by: [],
 };
 
 const createRefusal = (
