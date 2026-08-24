@@ -30,7 +30,7 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { getValue, radians } from "./utils";
+import { getSegmentsRange, getValue, radians } from "./utils";
 
 function GaugeComponent({
   className,
@@ -74,16 +74,8 @@ function GaugeComponent({
   const segments =
     goalSegments.status === "resolved" ? goalSegments.segments : [];
   const gaugeRange = settings["gauge.range"];
-  const segmentBounds = segments.flatMap((segment) => [
-    segment.min,
-    segment.max,
-  ]);
   const range: number[] =
-    segmentBounds.length > 0
-      ? [Math.min(...segmentBounds), Math.max(...segmentBounds)]
-      : isGaugeRange(gaugeRange)
-        ? gaugeRange
-        : [];
+    getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
 
   // value to angle in radians, clamped
   const angle = d3

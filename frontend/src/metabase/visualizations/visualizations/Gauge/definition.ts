@@ -15,6 +15,8 @@ import {
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
+import { getSegmentsRange } from "./utils";
+
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
   identifier: "gauge",
@@ -55,13 +57,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
           series[0].data,
           vizSettings["gauge.segments"],
         );
-        const values = [
-          ...segments.map((segment) => segment.max),
-          ...segments.map((segment) => segment.min),
-        ];
-        return values.length > 0
-          ? [Math.min(...values), Math.max(...values)]
-          : [0, 1];
+        return getSegmentsRange(segments) ?? [0, 1];
       },
       readDependencies: ["gauge.segments"],
     },
