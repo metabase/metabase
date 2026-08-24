@@ -24,12 +24,12 @@
                                        {:select [:group_id]
                                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                                         :where  [:= :user_id user-id]}]
-                                      ;; Rows for a group the active mode hides must not resolve, since a :yes
-                                      ;; nobody can see would override every visible :no (#80394). Switching
-                                      ;; modes deletes them, but they come back: a serialization import, a
-                                      ;; `PUT /api/setting` mode change, or an API write against a hidden group
-                                      ;; all make them, and instances that switched modes before this fix still
-                                      ;; hold theirs.
+                                      ;; Ignore permission rows for groups hidden by the active mode. An unseen
+                                      ;; :yes would otherwise override every visible :no (#80394). Mode switches
+                                      ;; delete these rows, but serialization imports and API writes for hidden
+                                      ;; groups can recreate them. A mode change through `PUT /api/setting` can
+                                      ;; leave them behind. They can also remain on instances that switched modes
+                                      ;; before this fix.
                                       (metabot-perms/visible-groups-clause
                                        (metabot-settings/metabot-advanced-permissions))]})
           by-type (group-by :perm_type stored)]

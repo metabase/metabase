@@ -85,9 +85,10 @@
   (permissions-response))
 
 (defn- switch-mode!
-  "Write the permission mode and drop the rows the mode being switched to hides, in one transaction.
-  The setting write goes last, and a failure reloads the settings cache, since writing the setting updates the
-  cache in place and this node would otherwise keep serving a mode the database rolled back."
+  "Switch permission modes and delete rows hidden by the destination mode in a single transaction.
+
+  The setting is written last. If the transaction fails, the settings cache is reloaded because the setting write
+  updates it in place; otherwise, this node could continue using the rolled-back mode."
   [advanced?]
   (try
     (t2/with-transaction [_conn]

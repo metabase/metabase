@@ -19,22 +19,24 @@
    :perm_value mi/transform-keyword})
 
 (defn- default-group-ids
-  "IDs of the groups simple mode owns: All Users and, under tenants, All tenant users."
+  "Return the IDs of groups visible only in simple mode: All Users and, on tenant instances, All tenant users."
   []
   [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
 (defn visible-groups-clause
-  "HoneySQL predicate on `:group_id` matching the groups `advanced?` mode shows in the admin UI.
-  Simple mode shows Administrators, All Users and All tenant users; group-level mode shows every group but the
-  last two."
+  "Return a HoneySQL predicate that matches groups visible in the admin UI for the mode selected by `advanced?`.
+
+  Simple mode shows Administrators, All Users, and All tenant users. Group-level mode shows all other groups."
   [advanced?]
   (if advanced?
     [:not-in :group_id (default-group-ids)]
     [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
 (defn hidden-groups-clause
-  "HoneySQL predicate on `:group_id` matching the groups `advanced?` mode hides -- the complement of
-  `visible-groups-clause`. Switching into a mode deletes the rows it matches."
+  "Return a HoneySQL predicate that matches groups hidden in the admin UI for the mode selected by `advanced?`.
+
+  This is the complement of `visible-groups-clause`. Rows that match this predicate are deleted when switching
+  modes."
   [advanced?]
   [:not (visible-groups-clause advanced?)])
 
