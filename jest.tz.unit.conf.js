@@ -10,7 +10,8 @@ module.exports = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    // this config runs without the compiled cljs bundle; see the mock for details
+    "^cljs/(.*)$": "<rootDir>/frontend/test/__mocks__/cljsMock.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
   },
