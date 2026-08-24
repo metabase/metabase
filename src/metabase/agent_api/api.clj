@@ -20,6 +20,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
@@ -450,6 +451,17 @@
          :constraints {:max-results           page-size
                        :max-results-bare-rows page-size}))
 
+(defn- normalize-and-validate-query
+  "Normalize a decoded query map to a well-formed MBQL 5 query and return it, stripping undeclared keys and
+  throwing a 400 if it is not valid. Also converts legacy MBQL to MBQL 5."
+  [q]
+  (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query q))
+
+(defn- decode-and-validate-query
+  "Decode a base64-encoded JSON query string into a validated MBQL query map."
+  [s]
+  (normalize-and-validate-query (-> s u/decode-base64 json/decode)))
+
 (mr/def ::query-request
   "Request body for /v2/query, one of three shapes:
     - `{:continuation_token <string>}` from a prior response (pagination);
@@ -473,39 +485,23 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
-(defn- native-marker?
-  "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
-   across legacy and MBQL 5 native forms), a legacy `:type :native`, or an MBQL 5 `:mbql.stage/native`
-   `:lib/type`. Membership tests cover the keyword and json-decoded string forms and never coerce, so
-   junk values don't throw. A legitimate serialized MBQL query carries none of these."
-  [node]
-  (and (map? node)
-       (or (contains? node :native)
-           (contains? #{:native "native"} (:type node))
-           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type node)))))
-
-(defn- native-query?
-  "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere in its tree —
-   legacy top-level `:type :native`, a legacy nested `:source-query`'s `:native`, or an MBQL 5
-   `:mbql.stage/native` stage, including inside joins or nested joins.
-   A whole-tree scan, because these endpoints are MBQL-only by scope: a native marker at any depth
-   means the payload is smuggling raw SQL, regardless of how it's nested."
-  [query-map]
-  (boolean (some native-marker? (tree-seq coll? seq query-map))))
-
 (defn- reject-native-query!
-  "Throw a 400 if `query-map` is a native query.
+  "Throw a 400 if `query-map` is a native query anywhere — top-level, nested, or in a join, in either the
+  legacy or the MBQL 5 form. Normalizes the payload to MBQL 5 (best-effort) and checks for a native stage
+  with [[lib/any-native-stage?]], so the check reads keyword `:lib/type`s regardless of how the JSON was
+  decoded; a payload too malformed to normalize is left for the shape and validation checks that follow.
 
   `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
   `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry a native query — legacy top-level `:type :native`
-  or an MBQL 5 native stage; allowing either would let a token without the SQL-execution scope run
-  raw SQL, defeating the scope split and bypassing the execute-sql kill switch. Force native
-  execution onto `/v1/execute-sql`, which is correctly scoped."
+  query_handle, a continuation token) could carry a native query; allowing it would let a token
+  without the SQL-execution scope run raw SQL, defeating the scope split and bypassing the
+  execute-sql kill switch. Force native execution onto `/v1/execute-sql`, which is correctly scoped."
   [query-map]
-  (when (native-query? query-map)
+  (when (some-> (u/ignore-exceptions (lib-be/normalize-query query-map))
+                not-empty
+                lib/any-native-stage?)
     (throw (ex-info "Native queries are not supported here; use execute_sql instead."
-                    {:status-code 400 :query-map query-map}))))
+                    {:status-code 400}))))
 
 (defn- validate-serialized-query!
   "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
@@ -555,14 +551,18 @@
     (let [{:keys [query pagination]} (decode-continuation-token (:continuation_token body))]
       (reject-native-query! query)
       (validate-serialized-query! query)
-      (check-token-query-permissions! query)
-      {:query query :total-limit (:limit pagination) :page (:page pagination)})
+      (let [query (normalize-and-validate-query query)]
+        (check-token-query-permissions! query)
+        {:query query :total-limit (:limit pagination) :page (:page pagination)}))
 
     (string? (:query body))
     (let [query (decode-base64-json-map (:query body))]
       (reject-native-query! query)
       (validate-serialized-query! query)
-      {:query query :total-limit (clamp-total-limit (serialized-query-limit query)) :page 1})
+      (let [query (normalize-and-validate-query query)]
+        {:query       query
+         :total-limit (clamp-total-limit (serialized-query-limit query))
+         :page        1}))
 
     :else
     (let [live-query (evaluate-external-query-to-live-query body)]
@@ -669,12 +669,11 @@
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
-  (let [query (-> encoded-query
-                  u/decode-base64
-                  json/decode+kw)]
-    (reject-native-query! query)
-    (qp.streaming/streaming-response [rff :api]
-      (qp/process-query (prepare-combined-query query) rff))))
+  (let [decoded (-> encoded-query u/decode-base64 json/decode)]
+    (reject-native-query! decoded)
+    (let [query (normalize-and-validate-query decoded)]
+      (qp.streaming/streaming-response [rff :api]
+        (qp/process-query (prepare-combined-query query) rff)))))
 
 ;;; --------------------------------------------------- Execute SQL --------------------------------------------------
 
@@ -831,7 +830,7 @@
   agent side unless we dedup against REST too."
   [{:keys [query display description visualization_settings] card-name :name :as body}
    {:keys [card-type default-display validate-query!]}]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
+  (let [dataset-query (decode-and-validate-query query)
         ;; `nil` means the root collection, so only default to the personal collection when the
         ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
         collection_id (if (contains? body :collection_id)
@@ -870,7 +869,7 @@
         ;; validation, cycle detection, permission check) see the canonical MBQL shape regardless of
         ;; whether the LLM sent legacy or MBQL 5.
         new-query   (when (contains? body :query)
-                      (-> (:query body) u/decode-base64 json/decode+kw lib-be/normalize-query))
+                      (decode-and-validate-query (:query body)))
         _           (when (and new-query validate-query!)
                       (validate-query! new-query))
         raw-updates (cond-> {}

@@ -394,10 +394,9 @@
 
 (defn chart-config->chart
   "Create chart structure from chart-config"
-  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  [id {:keys [query timeline_events] :as chart-config}]
   {:chart_id id
    :queries [query]
-   :image_base_64 image_base_64
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
    ;;                           what is the reason behind that if any and either add it or drop.

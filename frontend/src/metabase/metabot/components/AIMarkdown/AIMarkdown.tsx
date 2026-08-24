@@ -1,5 +1,3 @@
-// TODO: consolidate this component w/ AIAnalysisContent
-
 import cx from "classnames";
 import {
   Children,

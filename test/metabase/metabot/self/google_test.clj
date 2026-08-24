@@ -65,6 +65,14 @@
 (defn- google [opts]
   (google/google (with-settings-credentials opts)))
 
+(deftest context-window-tokens-test
+  (testing "returns documented context windows for known Google models"
+    (are [model window] (= window (google/context-window-tokens model))
+      "google/gemini-3.5-flash" 1048576
+      "google/gemini-3.6-flash" 1048576
+      "google/gemini-3.7-flash" 1048576
+      "google/gemini-unknown"   nil)))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth / HTTP tests
 ;;; ──────────────────────────────────────────────────────────────────
