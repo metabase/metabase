@@ -190,16 +190,16 @@
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
+  "Whether we should always run driver tests because `updated-files` touches something important like
   `deps.edn`."
-  [git-ref]
+  [updated-files]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
                     (str/includes? filename "modules/drivers/"))
             (when-not *github-output-only?*
               (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
-        (u/updated-files (or git-ref "master"))))
+        updated-files))
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
@@ -229,7 +229,7 @@
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (u/exit (cond
-              (changes-important-file-for-drivers? git-ref) 1
+              (changes-important-file-for-drivers? updated-files) 1
               drivers-affected? 1
               :else 0))))
 
@@ -310,13 +310,12 @@
 
 (defn- drivers-with-file-changes
   "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
-  [git-ref]
-  (let [updated-files (u/updated-files (or git-ref "master"))]
-    (into #{}
-          (mapcat (fn [filename]
-                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
-                      (get driver-directory->drivers dir-name))))
-          updated-files)))
+  [updated-files]
+  (into #{}
+        (mapcat (fn [filename]
+                  (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                    (get driver-directory->drivers dir-name))))
+        updated-files))
 
 ;;; driver status
 
@@ -508,25 +507,32 @@
         git-ref (get options :git-ref "master")
         force-run (parse-bool (:force-run options))
         only-driver (parse-only-driver (:only-driver options))
-        ;; Detect file changes for ALL drivers via git diff
-        particular-driver-changed? (drivers-with-file-changes git-ref)
+        ;; force-run and --only-driver each decide every driver on their own, so neither the change
+        ;; analysis nor the remote skip list is consulted there.
+        analysis (when-not (or force-run only-driver)
+                   (let [updated-files (u/updated-files git-ref)
+                         updated (updated-files->updated-modules updated-files)
+                         driver-affected? (driver-deps-affected? updated)
+                         important-file-changed? (changes-important-file-for-drivers? updated-files)]
+                     {:particular-driver-changed? (drivers-with-file-changes updated-files)
+                      :updated updated
+                      :driver-affected? driver-affected?
+                      :important-file-changed? important-file-changed?
+                      :skipped (skip-drivers)}))
+        {:keys [particular-driver-changed? updated driver-affected? important-file-changed? skipped]} analysis
         ctx {:git-ref git-ref
              :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? particular-driver-changed?
+             :particular-driver-changed? (or particular-driver-changed? #{})
              :only-driver only-driver}
-        ;; force-run decides every driver on its own, so the remote skip list is neither fetched
-        ;; nor honored there.
-        skipped (if force-run #{} (skip-drivers))
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        driver-affected? (driver-deps-affected? updated)
-        important-file-changed? (changes-important-file-for-drivers? git-ref)
-        ;; For module dependency check, combine both conditions
-        effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? skipped updated)
+                          (assoc (driver-decision driver
+                                                  ctx
+                                                  ;; module dependency check combines both conditions
+                                                  (boolean (or driver-affected? important-file-changed?))
+                                                  (or skipped #{})
+                                                  (or updated #{}))
                                  :driver driver))
                         all-drivers)]
     (if github-output-only?
@@ -535,12 +541,13 @@
         (println (str (name driver) "-should-run=" should-run)))
       (do
         ;; Print module analysis summary
-        (println "")
-        (println "=== Module Analysis ===")
-        (println "Changed modules:" (pr-str updated))
-        (println "Driver module affected:" driver-affected?)
-        (println "Important file changed:" (boolean important-file-changed?))
-        (println "Drivers with file changes:" (pr-str particular-driver-changed?))
+        (when analysis
+          (println "")
+          (println "=== Module Analysis ===")
+          (println "Changed modules:" (pr-str updated))
+          (println "Driver module affected:" driver-affected?)
+          (println "Important file changed:" (boolean important-file-changed?))
+          (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
         (println "")
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
