@@ -280,7 +280,8 @@
       (let [normalized  (lib-be/normalize-query query)
             database-id (:database normalized)]
         (when (and (pos-int? database-id)
-                   (query-perms/can-run-query? normalized))
+                   ;; throw on a calculation failure so only a denial reads as false
+                   (query-perms/can-run-query? normalized false true))
           (let [{:keys [table card field]} (exported-entity-ids normalized)
                 field-table (metabot.perms/field-id->table-id field)
                 table-ids   (into (set table) (vals field-table))]
@@ -300,11 +301,22 @@
   (or (not (and (map? query) (:database query)))
       (some? (queryable-normalized-query query))))
 
-(defn- exported-query-text
-  "Render a query for the LLM when the user may query it."
+(defn exported-query-text
+  "Render a query for the LLM when the user may run it, nil when they may not."
   [query]
-  (when (exportable-query? query)
+  (if (and (map? query) (:database query))
+    (when-let [[normalized mp] (queryable-normalized-query query)]
+      (llm-shape/export-normalized-query-for-llm mp normalized))
     (llm-shape/export-query-for-llm query)))
+
+(defn transform-with-exportable-source
+  "`transform` with its stored source query withheld unless the current user may run it.
+  Reading a transform is authorized per database, but rendering its source resolves table
+  and field ids to names; the rest of the transform stays readable either way."
+  [transform]
+  (if (exportable-query? (get-in transform [:source :query]))
+    transform
+    (update transform :source dissoc :query)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"

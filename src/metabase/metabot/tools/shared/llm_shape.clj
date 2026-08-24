@@ -82,6 +82,19 @@
   [query]
   (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
 
+(defn export-normalized-query-for-llm
+  "Render an already-normalized MBQL 5 query through `mp` for the LLM: the export half of
+  [[export-query-for-llm]], for callers that have normalized and built a provider already."
+  [mp normalized]
+  (try
+    (let [exported (repr.resolve/export-query mp normalized shared.content-store/default-store)]
+      (or (repr-data->llm-block exported)
+          (query-edn-fallback normalized)))
+    (catch Exception e
+      (when-not (= 403 (:status-code (ex-data e)))
+        (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+        (query-edn-fallback normalized)))))
+
 (defn export-query-for-llm
   "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
   map with a `:database` is normalized and exported to the portable representations form
@@ -95,10 +108,8 @@
     (and (map? query) (:database query))
     (try
       (let [normalized (lib-be/normalize-query query)
-            mp         (lib-be/application-database-metadata-provider (:database normalized))
-            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
-        (or (repr-data->llm-block exported)
-            (query-edn-fallback normalized)))
+            mp         (lib-be/application-database-metadata-provider (:database normalized))]
+        (export-normalized-query-for-llm mp normalized))
       (catch Exception e
         (when-not (= 403 (:status-code (ex-data e)))
           (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))

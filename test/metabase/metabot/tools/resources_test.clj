@@ -11,6 +11,8 @@
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -399,6 +401,32 @@
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
+
+(deftest read-transform-resource-source-permission-test
+  (testing "the stored source query is withheld when the user cannot run it, even though query
+           access to one table in the database passes the transform read check"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Orders Rollup"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-no-data-perms-for-all-users!
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                (is (=? {:resources [{:content {:structured-output map?}}]} result))
+                (is (str/includes? (:output result) "Orders Rollup"))
+                (is (not (str/includes? (:output result) "ORDERS")))
+                (is (nil? (get-in result [:resources 0 :content :structured-output :source :query])))))
+            (testing "and the query renders once the source table is granted"
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+              (mt/with-current-user (mt/user->id :rasta)
+                (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                  (is (some? (get-in result [:resources 0 :content :structured-output :source :query]))))))))))))
 
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."

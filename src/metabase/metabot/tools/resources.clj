@@ -602,6 +602,7 @@
 
 (defn- fetch-transform [id-str]
   {:structured-output (-> (transforms/get-transform (parse-long id-str))
+                          user-context/transform-with-exportable-source
                           (assoc :result-type :entity :type :transform))})
 
 (defn- fetch-transform-sources [id-str]
@@ -752,18 +753,25 @@
                           (str/join "\n" (map-indexed document-block-line blocks)))
                      "The document is empty.")})))
 
+(defn- checked-query-text
+  "Export a conversation-state query for the LLM, 403 when the user may not run it."
+  [query]
+  (let [text (user-context/exported-query-text query)]
+    (when (and (map? query) (:database query))
+      (api/check-403 (some? text)))
+    text))
+
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
   as a chart mention). Exporting resolves table/field names, so it requires the user to be
   able to run the query, the same check the viewing-context formatter applies."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
-    (do
-      (api/check-403 (user-context/exportable-query? query))
+    (let [text (checked-query-text query)]
       (entity-result
        {:type        "conversation-query"
         :id          query-id
-        :description (llm-shape/export-query-for-llm query)}))
+        :description text}))
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -773,9 +781,8 @@
   pasted as a mention). Falls back to the queries state when the id is actually a query id."
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
-    (let [query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))]
-      (api/check-403 (user-context/exportable-query? query))
+    (let [text (checked-query-text (or (first (:queries chart))
+                                       (get (shared/current-queries-state) (:query_id chart))))]
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
@@ -783,7 +790,7 @@
                           (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
                               "table")
                           "\nQuery:\n"
-                          (llm-shape/export-query-for-llm query))}))
+                          text)}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----
