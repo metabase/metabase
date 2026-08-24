@@ -110,7 +110,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Actions](./actions.md)
 - [Appearance](../appearance.md)
 - [Embed a collection browser](../browser.md)
-- [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
 - [Config](./config.md)
 - [Versioning](./version.md)
