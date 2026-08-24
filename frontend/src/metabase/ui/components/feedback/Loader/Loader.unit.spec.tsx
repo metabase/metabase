@@ -9,7 +9,7 @@ type SetupOpts = LoaderProps & {
 };
 
 function setup({ withTheme = false, ...props }: SetupOpts = {}) {
-  const theme = withTheme ? { components: { ...loaderOverrides } } : undefined;
+  const theme = withTheme ? { components: loaderOverrides } : undefined;
 
   function wrap(loaderProps: LoaderProps) {
     return (

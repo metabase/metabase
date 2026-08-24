@@ -2,8 +2,7 @@ import type { LoaderProps as MantineLoaderProps } from "@mantine/core";
 import { Loader as MantineLoader, Stack, Text } from "@mantine/core";
 import type React from "react";
 
-export interface LoaderProps extends Omit<MantineLoaderProps, "size" | "type"> {
-  size?: MantineLoaderProps["size"];
+export interface LoaderProps extends Omit<MantineLoaderProps, "type"> {
   type?: "oval" | "dots";
   label?: string;
   "data-testid"?: string;
