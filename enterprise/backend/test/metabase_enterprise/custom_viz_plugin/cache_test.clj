@@ -159,6 +159,19 @@
       (is (thrown-with-msg? Exception #"is invalid"
                             (cache/fetch-dev-manifest "http://localhost:5174"))))))
 
+(deftest dev-fetch-surfaces-validation-errors-test
+  (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --
+            DNS can change between saving the URL and fetching from it"
+    (with-redefs [http/get (fn [& _] (throw (Exception. "should not be reached")))]
+      (doseq [[url pattern] [["https://8.8.8.8" #"loopback or private"]
+                             ["file:///etc/passwd" #"http or https"]]]
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-bundle url)))]
+          (is (= 400 (:status-code (ex-data e)))))
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-manifest url)))]
+          (is (= 400 (:status-code (ex-data e)))))
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-asset url "icon.svg")))]
+          (is (= 400 (:status-code (ex-data e)))))))))
+
 (deftest dev-fetch-requires-the-dev-servers-content-type-test
   (testing "a response that isn't what the dev server would have served is refused, not parsed --
             a dev URL may still be pointed at an internal service, and this bounds what it can hand back"

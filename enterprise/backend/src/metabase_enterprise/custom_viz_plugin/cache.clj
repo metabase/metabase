@@ -368,44 +368,47 @@
    Returns {:content str :hash str}, or nil when the dev server is transiently
    unavailable (e.g. mid-rebuild)."
   [^String base-url]
-  (when-let [resp (try
-                    (http/get (dev-url base-url bundle-rel-path)
-                              (assoc dev-http-opts :as :string))
-                    (catch Exception e
-                      (rethrow-if-refused! e base-url)
-                      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
-                      nil))]
-    (check-content-type! resp bundle-content-types base-url)
-    (let [content (:body resp)]
-      {:content content
-       :hash    (string-hash content)})))
+  ;; build (and thereby validate) the URL outside the try -- validation failures must surface as the 400s
+  ;; they are, not be swallowed by the catch as a dev server that happens to be down
+  (let [url (dev-url base-url bundle-rel-path)]
+    (when-let [resp (try
+                      (http/get url (assoc dev-http-opts :as :string))
+                      (catch Exception e
+                        (rethrow-if-refused! e base-url)
+                        (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
+                        nil))]
+      (check-content-type! resp bundle-content-types base-url)
+      (let [content (:body resp)]
+        {:content content
+         :hash    (string-hash content)}))))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.
    Returns the parsed manifest map or nil on failure. Throws ex-info with
    `:status-code 400` when the manifest is structurally invalid."
   [^String base-url]
-  (when-let [parsed (when-let [resp (try
-                                      (http/get (dev-url base-url (manifest/manifest-path))
-                                                (assoc dev-http-opts :as :string))
-                                      (catch Exception e
-                                        (rethrow-if-refused! e base-url)
-                                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-                                        nil))]
-                      (check-content-type! resp manifest-content-types base-url)
-                      (manifest/parse-manifest (:body resp)))]
-    (when-let [error (manifest/validation-error parsed)]
-      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                      {:status-code 400})))
-    parsed))
+  ;; as in [[fetch-dev-bundle]], validate the URL outside the try
+  (let [url (dev-url base-url (manifest/manifest-path))]
+    (when-let [parsed (when-let [resp (try
+                                        (http/get url (assoc dev-http-opts :as :string))
+                                        (catch Exception e
+                                          (rethrow-if-refused! e base-url)
+                                          (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+                                          nil))]
+                        (check-content-type! resp manifest-content-types base-url)
+                        (manifest/parse-manifest (:body resp)))]
+      (when-let [error (manifest/validation-error parsed)]
+        (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                        {:status-code 400})))
+      parsed)))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.
    Returns the bytes or nil on failure."
   ^bytes [^String base-url ^String asset-name]
-  (let [resp (try
-               (http/get (dev-url base-url (asset-rel-path asset-name))
-                         (assoc dev-http-opts :as :byte-array))
+  (let [url  (dev-url base-url (asset-rel-path asset-name))
+        resp (try
+               (http/get url (assoc dev-http-opts :as :byte-array))
                (catch Exception e
                  (rethrow-if-refused! e base-url)
                  (throw e)))]
