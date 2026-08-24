@@ -99,8 +99,9 @@
       (throw e))))
 
 (defn- check-mode-switchable!
-  "Throw a 400 when `metabot-advanced-permissions` is forced by an env var, since writing the setting would then have no
-  effect and the row deletions that go with the switch would leave the instance in a state neither mode describes."
+  "Throw a 400 when [[metabot-settings/metabot-advanced-permissions]] is forced by an environment variable.
+  Writing the setting would then have no effect, while the associated row deletions would leave the instance in a
+  state that neither mode describes."
   []
   (api/check-400 (not (setting/env-var-value :metabot-advanced-permissions))
                  (tru "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable.")))

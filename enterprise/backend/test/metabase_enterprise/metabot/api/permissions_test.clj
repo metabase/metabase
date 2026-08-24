@@ -113,7 +113,7 @@
       (mt/assert-has-premium-feature-error "AI Controls"
                                            (mt/user-http-request :crowberto :delete 402 "ee/ai-controls/permissions/advanced")))))
 
-(defn- do-with-metabot-permissions-snapshot
+(defn- do-with-metabot-permissions-snapshot!
   "Snapshot all rows in `metabot_permissions` before `thunk`, and restore them afterwards.
 
   `DELETE /advanced` deletes rows outside any `with-temp` scope, which would wipe the migration-seeded rows
@@ -131,7 +131,7 @@
 (defmacro ^:private with-metabot-permissions-snapshot
   "Wrap `body` in a snapshot/restore of the `metabot_permissions` table."
   [& body]
-  `(do-with-metabot-permissions-snapshot (fn [] ~@body)))
+  `(do-with-metabot-permissions-snapshot! (fn [] ~@body)))
 
 (defn- group-perm-values
   "The `perm_value`s a permissions response reports for `group-id`, as a perm_type → perm_value map."

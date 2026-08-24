@@ -60,7 +60,7 @@
                    :permission/metabot-nlq            :yes}
                   (scope/resolve-user-permissions user-id))))))))
 
-(defn- do-with-empty-metabot-permissions
+(defn- do-with-empty-metabot-permissions!
   "Run `thunk` with the `metabot_permissions` table emptied, restoring the migration-seeded rows afterwards."
   [thunk]
   (let [snapshot (t2/select :model/MetabotPermissions)]
@@ -75,7 +75,7 @@
 
 (deftest resolve-user-permissions-mode-scoping-test
   (mt/with-premium-features #{:ai-controls}
-    (do-with-empty-metabot-permissions
+    (do-with-empty-metabot-permissions!
      (fn []
        (let [all-users-id    (u/the-id (perms/all-users-group))
              data-analyst-id (u/the-id (perms/data-analyst-group))]
