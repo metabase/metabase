@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { Box, Group, Loader, type LoaderProps } from "metabase/ui";
+import { Box, Loader, type LoaderProps } from "metabase/ui";
 import {
   StoryJsx,
   StorySection,
@@ -39,7 +39,7 @@ export const Default = {
   render: (args: LoaderProps) => <Loader {...args} />,
 };
 
-const gridStyle2Columns = {
+const grid2Columns = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
   columnGap: "2rem",
@@ -50,7 +50,7 @@ const gridStyle2Columns = {
 } as const;
 
 const grid3Columns = {
-  ...gridStyle2Columns,
+  ...grid2Columns,
   gridTemplateColumns: "1fr 1fr 1fr",
 } as const;
 
@@ -69,21 +69,19 @@ const OverviewTemplate = () => (
     </StorySection>
 
     <StorySection title="Types">
-      <Group>
+      <Box style={grid2Columns}>
         <StoryJsx>{`<Loader type="oval" />`}</StoryJsx>
         <Loader type="oval" />
-      </Group>
-      <Group>
         <StoryJsx>{`<Loader type="dots" />`}</StoryJsx>
         <Loader type="dots" />
-      </Group>
+      </Box>
     </StorySection>
 
     <StorySection
       title="Color"
       description="Defaults to the icon-brand token. An explicit color prop overrides it."
     >
-      <Box style={gridStyle2Columns}>
+      <Box style={grid2Columns}>
         <StoryJsx>{`<Loader />`}</StoryJsx>
         <Loader />
         <StoryJsx>{`<Loader color="text-secondary" />`}</StoryJsx>
@@ -95,7 +93,7 @@ const OverviewTemplate = () => (
       title="Label"
       description="Renders the loader stacked above a caption. The caption follows the loader’s size token."
     >
-      <Box style={gridStyle2Columns}>
+      <Box style={grid2Columns}>
         {SIZES.map((size) => (
           <Fragment key={size}>
             <StoryJsx>{`<Loader size="${size}" label="Loading…" />`}</StoryJsx>
