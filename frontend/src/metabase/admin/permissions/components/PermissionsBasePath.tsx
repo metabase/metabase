@@ -10,8 +10,6 @@ import { Outlet } from "metabase/router";
 
 type PermissionsBasePathProps = {
   basePath?: string;
-  /** True when mounted in the embedding hub rather than admin. See
-   * `is-embedding-hub.tsx`. */
   isEmbeddingHub?: boolean;
   children?: ReactNode;
 };
