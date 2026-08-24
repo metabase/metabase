@@ -408,6 +408,23 @@ describe("ChartSettingSegmentsEditor", () => {
     );
   });
 
+  it("clears the bound instead of committing NaN for a partial number", async () => {
+    const { onChange } = setup();
+
+    const min = await screen.findByDisplayValue("0");
+
+    await userEvent.clear(min);
+    await userEvent.type(min, "-");
+    fireEvent.blur(min);
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ ...DEFAULT_VALUE[0], min: null }),
+        expect.objectContaining(DEFAULT_VALUE[1]),
+      ]),
+    );
+  });
+
   it("Should not call onChange when blurring without changing value", async () => {
     const { onChange } = setup();
 

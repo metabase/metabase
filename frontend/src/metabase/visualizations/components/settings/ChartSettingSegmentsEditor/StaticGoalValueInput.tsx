@@ -38,8 +38,8 @@ export function StaticGoalValueInput({
       value={numericValue ?? ""}
       w="100%"
       onBlur={(event) => {
-        const rawValue = event.target.value;
-        const newValue = rawValue === "" ? null : parseFloat(rawValue);
+        const parsedValue = parseFloat(event.target.value);
+        const newValue = Number.isNaN(parsedValue) ? null : parsedValue;
         if (newValue !== numericValue) {
           onChange(newValue);
         }
