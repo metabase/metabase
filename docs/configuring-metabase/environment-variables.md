@@ -1613,18 +1613,14 @@ Backed by the openrouter connection in the admin AI settings provider list: read
 
 ### `MB_LLM_PROVIDER_FALLBACK_ENABLED`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
-- Default: `true`
+- Default: `false`
 - [Exported as](../installation-and-operation/serialization.md): `llm-provider-fallback-enabled`.
 - [Configuration file name](./config-file.md): `llm-provider-fallback-enabled`
 
-Whether Metabot switches to the next connected provider when the one it is set to use is failing.
-
-Only available on plans with the AI Controls feature; without it the fallback is off and this setting reads as false.
-
-When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
-
-`llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.
+Whether Metabot falls back to the next connected provider, in list order, when the one it is set to use is failing. On by default for plans with the AI Controls feature.
 
 ### `MB_LLM_PROVIDERS`
 

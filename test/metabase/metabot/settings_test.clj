@@ -561,6 +561,10 @@
     (mt/with-premium-features #{}
       (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "true"]
         (is (false? (llm.settings/llm-provider-fallback-enabled?)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting llm-provider-fallback-enabled\? is not enabled because feature :ai-controls is not available"
+             (llm.settings/llm-provider-fallback-enabled?! false)))
         (with-connections [configured-anthropic configured-openai]
           (with-selected-model "anthropic/claude-sonnet-4-6"
             (with-failing-connection "anthropic"

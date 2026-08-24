@@ -514,18 +514,20 @@
   ([thunk] (with-mock-streaming-provider! [] thunk))
   ([responses thunk]
    (let [queue (atom (vec responses))]
+     ;; the fallback pin is a raw value: the setter rejects writes without the :ai-controls feature these tests
+     ;; do not grant, and the raw "false" holds even for ones that do
      (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
-                                        llm.settings/llm-provider-fallback-enabled? false
                                         metabot.settings/llm-metabot-provider test-provider]
-       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-         (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                     (fn [_]
-                                       (let [[[parts]] (swap-vals! queue (comp vec rest))]
-                                         (mut/mock-llm-response (or parts default-mock-parts))))
-                                     conversation-title/submit! (constantly nil)]
-           (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-             (thunk)
-             (is (empty? @queue) "unconsumed mock LLM responses"))))))))
+       (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+           (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                       (fn [_]
+                                         (let [[[parts]] (swap-vals! queue (comp vec rest))]
+                                           (mut/mock-llm-response (or parts default-mock-parts))))
+                                       conversation-title/submit! (constantly nil)]
+             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+               (thunk)
+               (is (empty? @queue) "unconsumed mock LLM responses")))))))))
 
 (deftest agent-streaming-rejects-stale-parent-message-id-test
   (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
@@ -1377,36 +1379,39 @@
             the alert can show the reason and offer the retry that lands on the fallback"
     (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
                                        metabot.settings/llm-metabot-provider test-provider]
-      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-        (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (fn [_]
-                                      (throw (ex-info "OpenRouter API error (HTTP 400) — credit balance too low"
-                                                      {:api-error true :status 400})))
-                                    conversation-title/submit! (constantly nil)]
-          (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                                 (agent-request (str (random-uuid)) "hello"))]
-              (is (str/includes? response "credit balance too low")
-                  "the provider's message reaches the client verbatim")
-              (is (str/includes? response "\"errorCode\":\"provider_error\"")
-                  "the finish metadata names the error class")
-              (is (str/includes? response "\"finishReason\":\"error\"")))))))))
+      ;; raw pin: the setter needs :ai-controls, which this test does not grant
+      (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (throw (ex-info "OpenRouter API error (HTTP 400) — credit balance too low"
+                                                        {:api-error true :status 400})))
+                                      conversation-title/submit! (constantly nil)]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   (agent-request (str (random-uuid)) "hello"))]
+                (is (str/includes? response "credit balance too low")
+                    "the provider's message reaches the client verbatim")
+                (is (str/includes? response "\"errorCode\":\"provider_error\"")
+                    "the finish metadata names the error class")
+                (is (str/includes? response "\"finishReason\":\"error\""))))))))))
 
 (deftest agent-streaming-streamed-provider-error-carries-its-code-test
   (testing "a provider that fails by streaming an error event — rather than by rejecting the request — reaches the
             client with the same code, so the alert shows its message instead of the generic one"
     (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
-                                       llm.settings/llm-provider-fallback-enabled? false
                                        metabot.settings/llm-metabot-provider test-provider]
-      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-        (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (fn [_]
-                                      (mut/mock-llm-response
-                                       [{:type :error :errorText "Your account is not active, please check your billing details"}]))
-                                    conversation-title/submit! (constantly nil)]
-          (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                                 (agent-request (str (random-uuid)) "hello"))]
-              (is (str/includes? response "account is not active"))
-              (is (str/includes? response "\"errorCode\":\"provider_error\""))
-              (is (str/includes? response "\"finishReason\":\"error\"")))))))))
+      ;; raw pin: the setter needs :ai-controls, which this test does not grant
+      (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                      (fn [_]
+                                        (mut/mock-llm-response
+                                         [{:type :error :errorText "Your account is not active, please check your billing details"}]))
+                                      conversation-title/submit! (constantly nil)]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   (agent-request (str (random-uuid)) "hello"))]
+                (is (str/includes? response "account is not active"))
+                (is (str/includes? response "\"errorCode\":\"provider_error\""))
+                (is (str/includes? response "\"finishReason\":\"error\""))))))))))

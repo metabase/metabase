@@ -472,22 +472,21 @@
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
 
 (defsetting llm-provider-fallback-enabled?
-  (deferred-tru "Whether Metabot switches to the next connected provider when the one it is set to use is failing.")
+  (deferred-tru "Whether Metabot falls back to the next connected provider, in list order, when the one it is set to use is failing. On by default for plans with the AI Controls feature.")
   :type       :boolean
-  :default    true
+  ;; `:feature` serves `:default` to instances without it, so the default is the OSS value — off — and the getter
+  ;; supplies the on-by-default the entitled get: it reads the raw stored/env value itself, because
+  ;; `get-value-of-type` would fill an unset value with this same `:default` and make "never touched" and
+  ;; "turned off" indistinguishable.
+  :feature    :ai-controls
+  :default    false
   :visibility :settings-manager
   :export?    true
-  ;; Gated through the getter rather than `:feature`, which serves the *default* — true — to instances without the
-  ;; feature: exactly the ones the fallback must stay off for. Reading as false is the single gate every caller
-  ;; shares, [[metabase.metabot.settings/effective-model-ref]] included.
   :getter     (fn []
-                (and (premium-features/enable-ai-controls?)
-                     (setting/get-value-of-type :boolean :llm-provider-fallback-enabled?)))
-  :doc        "Only available on plans with the AI Controls feature; without it the fallback is off and this setting reads as false.
-
-When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
-
-`llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.")
+                (let [stored (some-> (or (setting/env-var-value :llm-provider-fallback-enabled?)
+                                         (setting/db-stored-value :llm-provider-fallback-enabled?))
+                                     setting/string->boolean)]
+                  (if (some? stored) stored true))))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
