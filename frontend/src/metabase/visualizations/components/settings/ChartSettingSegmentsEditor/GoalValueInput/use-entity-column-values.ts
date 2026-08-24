@@ -19,7 +19,7 @@ export function useEntityColumnValues(
   entity: GoalEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { data: freshDataset } = useGetAdhocQueryQuery(
+  const { currentData: freshDataset } = useGetAdhocQueryQuery(
     enabled && entity != null && datasetQuery != null
       ? {
           ...datasetQuery,

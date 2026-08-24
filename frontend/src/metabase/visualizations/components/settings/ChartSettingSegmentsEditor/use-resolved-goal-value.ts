@@ -31,7 +31,7 @@ export function useResolvedGoalValue(
   const unansweredRef =
     isUnanswered && isGoalForeignColumnRef(value) ? value : null;
 
-  const { data: freshDataset, isError } = useGetAdhocQueryQuery(
+  const { currentData: freshDataset, isError } = useGetAdhocQueryQuery(
     unansweredRef != null && datasetQuery != null
       ? {
           ...datasetQuery,

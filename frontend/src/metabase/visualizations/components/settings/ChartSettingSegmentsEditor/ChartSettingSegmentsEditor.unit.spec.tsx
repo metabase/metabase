@@ -194,22 +194,18 @@ describe("ChartSettingSegmentsEditor", () => {
           ).toBeInTheDocument();
         });
 
-        function setupFreshAnswer(result: ReferencedEntityResult) {
+        it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
           setupCardDataset({
             dataset: {
               data: createMockDatasetData({
-                referenced_entities: createReferencedEntities(result),
+                referenced_entities: createReferencedEntities({
+                  status: "completed",
+                  data: {
+                    cols: [createMockColumn({ name: "total" })],
+                    rows: [[999]],
+                  },
+                }),
               }),
-            },
-          });
-        }
-
-        it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
-          setupFreshAnswer({
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [[999]],
             },
           });
           setup({
@@ -225,14 +221,20 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("resolves a column the dataset predates from the fresh answer", async () => {
-          setupFreshAnswer({
-            status: "completed",
-            data: {
-              cols: [
-                createMockColumn({ name: "total" }),
-                createMockColumn({ name: "avg" }),
-              ],
-              rows: [[250, 12]],
+          setupCardDataset({
+            dataset: {
+              data: createMockDatasetData({
+                referenced_entities: createReferencedEntities({
+                  status: "completed",
+                  data: {
+                    cols: [
+                      createMockColumn({ name: "total" }),
+                      createMockColumn({ name: "avg" }),
+                    ],
+                    rows: [[250, 12]],
+                  },
+                }),
+              }),
             },
           });
           setupReference("avg", {
@@ -253,11 +255,17 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("reports a referenced column that no longer exists", async () => {
-          setupFreshAnswer({
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [[250]],
+          setupCardDataset({
+            dataset: {
+              data: createMockDatasetData({
+                referenced_entities: createReferencedEntities({
+                  status: "completed",
+                  data: {
+                    cols: [createMockColumn({ name: "total" })],
+                    rows: [[250]],
+                  },
+                }),
+              }),
             },
           });
           setup({

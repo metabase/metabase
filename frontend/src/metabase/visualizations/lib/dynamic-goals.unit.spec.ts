@@ -8,6 +8,7 @@ import {
   cardHasUnresolvedGoalReferences,
   getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
+  getUnansweredGoalEntities,
   hasUnansweredGoalReferences,
   resolveGoalSegments,
   resolveGoalValue,
@@ -448,6 +449,7 @@ describe("malformed persisted segments", () => {
 
     expect(resolveGoalSegments(data, segments)).toEqual([]);
     expect(getGoalSegmentErrors(data, segments)).toEqual([]);
+    expect(getUnansweredGoalEntities(data, segments)).toEqual([]);
     expect(getReferencedEntitiesFromVizSettings(settings)).toEqual([]);
   });
 
@@ -461,6 +463,68 @@ describe("malformed persisted segments", () => {
     expect(resolveGoalSegments(data, segments)).toEqual([
       { min: 0, max: 100, color: "red", label: undefined },
     ]);
+  });
+});
+
+describe("getUnansweredGoalEntities", () => {
+  const DATA = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+  const SEGMENTS = [
+    {
+      min: { type: "card", id: 9, column: "goal" },
+      max: { type: "card", id: 9, column: "target" },
+      color: "red",
+    } as const,
+    {
+      min: 0,
+      max: { type: "measure", id: 4, column: "sum" },
+      color: "green",
+    } as const,
+  ];
+
+  it("returns the distinct entities the dataset has no answer for", () => {
+    expect(getUnansweredGoalEntities(DATA, SEGMENTS)).toEqual([
+      { type: "card", id: 9 },
+      { type: "measure", id: 4 },
+    ]);
+  });
+
+  it("skips entities that resolved", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [
+                createMockColumn({ name: "goal" }),
+                createMockColumn({ name: "target" }),
+              ],
+              rows: [[250, 300]],
+            },
+          },
+        },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
+      { type: "measure", id: 4 },
+    ]);
+  });
+
+  it("skips entities that failed: the dataset answered them", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+        measure: { 4: { status: "failed", error: "boom" } },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([]);
   });
 });
 

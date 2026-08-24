@@ -206,6 +206,24 @@ export function getGoalSegmentErrors(
   });
 }
 
+export function getUnansweredGoalEntities(
+  data: DatasetData,
+  segments: GoalSegment[] | undefined,
+): ReferencedEntity[] {
+  const unansweredRefs = validGoalSegments(segments)
+    .flatMap((segment) => [segment.min, segment.max])
+    .filter(isGoalForeignColumnRef)
+    .filter((ref) => resolveGoalValue(data, ref).isResolving === true);
+  const entities = new Map(
+    unansweredRefs.map((ref) => [
+      `${ref.type}:${ref.id}`,
+      toReferencedEntity(ref),
+    ]),
+  );
+
+  return Array.from(entities.values());
+}
+
 export function toReferencedEntity({
   type,
   id,
