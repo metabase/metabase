@@ -1,7 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import { type CSSProperties, forwardRef } from "react";
 
+import { usePermissionsSelectionColors } from "metabase/admin/permissions/utils/selection-color";
 import { Tree } from "metabase/common/components/tree";
+import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { color } from "metabase/ui/utils/colors";
 
 export const FilterableTreeRoot = styled.div`
@@ -28,18 +31,35 @@ export const EmptyStateContainer = styled.div`
   margin-top: 6.25rem;
 `;
 
-export const AdminTreeNode = styled(Tree.Node)`
+const StyledTreeNode = styled(Tree.Node)<{ style?: CSSProperties }>`
   color: ${(props) =>
-    // TODO: We should really come up with a better solution for this, but since admin-navbar is currently not determined by
-    // user whitelabelling, this is somewhat safe (and consistent with what is in the admin header nav)
     props.isSelected ? "var(--mantine-color-white)" : color("text-secondary")};
   background-color: ${(props) =>
-    props.isSelected ? color("navbar-admin") : "unset"};
+    props.isSelected ? "var(--permissions-tree-node-selected)" : "unset"};
 
   &:hover {
     background-color: ${(props) =>
       props.isSelected
-        ? color("navbar-admin")
-        : color("navbar-admin-secondary")};
+        ? "var(--permissions-tree-node-selected)"
+        : "var(--permissions-tree-node-hover)"};
   }
 `;
+
+// Reads the selection colors from context rather than hardcoding admin's
+// purple, so the embedding hub can mount this same tree with its own brand
+// color. See `selection-color.tsx`.
+export const AdminTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
+  function AdminTreeNode(props, ref) {
+    const { selected, hover } = usePermissionsSelectionColors();
+
+    // CSS custom properties aren't part of React's CSSProperties type.
+    const selectionColorVariables = {
+      "--permissions-tree-node-selected": color(selected),
+      "--permissions-tree-node-hover": color(hover),
+    } as CSSProperties;
+
+    return (
+      <StyledTreeNode {...props} ref={ref} style={selectionColorVariables} />
+    );
+  },
+);

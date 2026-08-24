@@ -1,10 +1,12 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { memo, useCallback, useRef, useState } from "react";
+import { type CSSProperties, memo, useCallback, useRef, useState } from "react";
 
+import { usePermissionsSelectionColors } from "metabase/admin/permissions/utils/selection-color";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import type {
   DataPermissionValue,
@@ -217,6 +219,7 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
+  const { link } = usePermissionsSelectionColors();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
@@ -231,7 +234,15 @@ const EntityRow = memo(function EntityRow({
     <PermissionsTableRow aria-label={`${entity.name} permissions`}>
       <PermissionsTableCell>
         {entity.canSelect ? (
-          <EntityNameLink onClick={() => onSelect?.(entity)}>
+          <EntityNameLink
+            onClick={() => onSelect?.(entity)}
+            style={
+              // CSS custom properties aren't part of React's CSSProperties type.
+              {
+                "--permissions-entity-link-color": color(link),
+              } as CSSProperties
+            }
+          >
             {entityName}
           </EntityNameLink>
         ) : (
