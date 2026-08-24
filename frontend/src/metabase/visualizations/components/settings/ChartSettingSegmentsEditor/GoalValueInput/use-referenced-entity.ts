@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
-import type { GoalEntityRef } from "metabase-types/api";
+import type { GoalForeignEntityRef } from "metabase-types/api";
 
 import type { ColumnOption, ReferencedEntityInfo } from "./types";
 import { getNumericColumnOptions } from "./utils";
 
 export function useReferencedEntity(
-  entity: GoalEntityRef | null,
+  entity: GoalForeignEntityRef | null,
 ): ReferencedEntityInfo {
   const { data: card, isError: isCardError } = useGetCardQuery(
     entity?.type === "card" ? { id: entity.id } : skipToken,

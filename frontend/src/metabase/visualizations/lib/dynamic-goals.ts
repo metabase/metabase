@@ -5,8 +5,8 @@ import type {
   Card,
   CardId,
   DatasetData,
-  GoalEntityRef,
   GoalForeignColumnRef,
+  GoalForeignEntityRef,
   GoalSegment,
   GoalValue,
   MeasureId,
@@ -227,7 +227,7 @@ export function getUnansweredGoalEntities(
 export function toReferencedEntity({
   type,
   id,
-}: GoalEntityRef): ReferencedEntity {
+}: GoalForeignEntityRef): ReferencedEntity {
   return { type, id };
 }
 

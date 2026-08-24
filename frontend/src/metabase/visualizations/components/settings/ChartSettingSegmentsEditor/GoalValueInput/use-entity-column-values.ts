@@ -8,7 +8,7 @@ import {
 import type {
   DatasetData,
   DatasetQuery,
-  GoalEntityRef,
+  GoalForeignEntityRef,
 } from "metabase-types/api";
 
 type ResolveColumnValue = (column: string) => number | null;
@@ -16,7 +16,7 @@ type ResolveColumnValue = (column: string) => number | null;
 export function useEntityColumnValues(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
-  entity: GoalEntityRef | null,
+  entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
   const { currentData: freshDataset } = useGetAdhocQueryQuery(

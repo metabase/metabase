@@ -29,8 +29,8 @@ import type {
   CardId,
   DatasetData,
   DatasetQuery,
-  GoalEntityRef,
   GoalForeignColumnRef,
+  GoalForeignEntityRef,
   GoalValue,
   MeasureId,
   ReferencedEntityType,
@@ -58,7 +58,7 @@ const COLUMN_MENU_MIN_WIDTH = 256;
 
 type MenuLevel = "root" | "self" | "entity";
 
-type PickedEntity = GoalEntityRef & { name: string };
+type PickedEntity = GoalForeignEntityRef & { name: string };
 
 export type GoalValueInputProps = {
   "aria-label"?: string;
@@ -95,7 +95,7 @@ export const GoalValueInput = ({
     selfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
 
-  const entity: GoalEntityRef | null = pickedEntity ?? foreignRef;
+  const entity: GoalForeignEntityRef | null = pickedEntity ?? foreignRef;
   const entityInfo = useReferencedEntity(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
   const resolveEntityColumnValue = useEntityColumnValues(
