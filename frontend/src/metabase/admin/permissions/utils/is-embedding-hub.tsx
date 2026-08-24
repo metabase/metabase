@@ -12,10 +12,11 @@ import { createContext, useContext } from "react";
  * value), so context's automatic cleanup on unmount is simpler and safer
  * than a manual reset.
  */
-const PermissionsIsHubContext = createContext(false);
+const PermissionsIsEmbeddingHubContext = createContext(false);
 
-export const PermissionsIsHubProvider = PermissionsIsHubContext.Provider;
+export const PermissionsIsEmbeddingHubProvider =
+  PermissionsIsEmbeddingHubContext.Provider;
 
-export function usePermissionsIsHub() {
-  return useContext(PermissionsIsHubContext);
+export function usePermissionsIsEmbeddingHub() {
+  return useContext(PermissionsIsEmbeddingHubContext);
 }

@@ -5,14 +5,14 @@ import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/admin/permissions/utils/base-path";
-import { PermissionsIsHubProvider } from "metabase/admin/permissions/utils/is-hub";
+import { PermissionsIsEmbeddingHubProvider } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { Outlet } from "metabase/router";
 
 type PermissionsBasePathProps = {
   basePath?: string;
   /** True when mounted in the embedding hub rather than admin. See
-   * `is-hub.tsx`. */
-  isHub?: boolean;
+   * `is-embedding-hub.tsx`. */
+  isEmbeddingHub?: boolean;
   children?: ReactNode;
 };
 
@@ -34,7 +34,7 @@ type PermissionsBasePathProps = {
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
-  isHub = false,
+  isEmbeddingHub = false,
   children = <Outlet />,
 }: PermissionsBasePathProps) {
   setPermissionsBasePath(basePath);
@@ -42,8 +42,8 @@ export function PermissionsBasePath({
   useEffect(() => resetPermissionsBasePath, []);
 
   return (
-    <PermissionsIsHubProvider value={isHub}>
+    <PermissionsIsEmbeddingHubProvider value={isEmbeddingHub}>
       {children}
-    </PermissionsIsHubProvider>
+    </PermissionsIsEmbeddingHubProvider>
   );
 }
