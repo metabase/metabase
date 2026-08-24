@@ -3253,7 +3253,7 @@
            warehouse-schema
            enterprise/sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
 
   enterprise/internal-stats
   {:team "UX West"
