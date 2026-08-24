@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalValue,
-  isUnansweredGoalValue,
+  needsAnswer,
   resolveGoalValue,
 } from "metabase/visualizations/lib/dynamic-goals";
 import type {
@@ -17,7 +17,7 @@ import { isGoalForeignColumnRef } from "metabase-types/guards";
 
 const RESOLVING: ResolvedGoalValue = {
   value: null,
-  isResolving: true,
+  isUnanswered: true,
 };
 
 /**
@@ -32,9 +32,7 @@ export function useResolvedGoalValue(
 ): ResolvedGoalValue {
   const resolved = resolveGoalValue(data, value);
   const unansweredRef =
-    isUnansweredGoalValue(resolved) && isGoalForeignColumnRef(value)
-      ? value
-      : null;
+    needsAnswer(resolved) && isGoalForeignColumnRef(value) ? value : null;
 
   const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
     datasetQuery,
@@ -54,9 +52,7 @@ export function useResolvedGoalValue(
   }
 
   const fresh = resolveGoalValue(freshDataset.data, unansweredRef);
-
-  // a completed response without an answer for this reference would otherwise resolve forever
-  return fresh.isResolving === true ? queryFailed(unansweredRef) : fresh;
+  return fresh.isUnanswered === true ? queryFailed(unansweredRef) : fresh;
 }
 
 function queryFailed({

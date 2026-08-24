@@ -57,7 +57,7 @@ export type GoalRefError =
 export type ResolvedGoalValue = {
   value: number | null;
   error?: GoalRefError;
-  isResolving?: boolean;
+  isUnanswered?: boolean;
 };
 
 export function resolveGoalValue(
@@ -120,7 +120,7 @@ function resolveForeignColumnRef(
   const result = data.referenced_entities?.[type]?.[id];
 
   if (result == null) {
-    return { value: null, isResolving: true };
+    return { value: null, isUnanswered: true };
   }
 
   if (result.status === "failed" || result.data == null) {
@@ -213,9 +213,9 @@ export function getGoalSegmentErrors(
   });
 }
 
-export function isUnansweredGoalValue(resolved: ResolvedGoalValue): boolean {
+export function needsAnswer(resolved: ResolvedGoalValue): boolean {
   return (
-    resolved.isResolving === true ||
+    resolved.isUnanswered === true ||
     resolved.error?.reason === "column-not-found"
   );
 }
@@ -227,7 +227,7 @@ export function getUnansweredGoalEntities(
   const unansweredRefs = validGoalSegments(segments)
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isGoalForeignColumnRef)
-    .filter((ref) => isUnansweredGoalValue(resolveGoalValue(data, ref)));
+    .filter((ref) => needsAnswer(resolveGoalValue(data, ref)));
   const entities = new Map(
     unansweredRefs.map((ref) => [
       `${ref.type}:${ref.id}`,
@@ -286,7 +286,7 @@ export function hasUnansweredGoalReferences(
   data: DatasetData | undefined,
 ): boolean {
   return getGoalForeignColumnRefs(settings).some(
-    (ref) => data == null || resolveGoalValue(data, ref).isResolving === true,
+    (ref) => data == null || resolveGoalValue(data, ref).isUnanswered === true,
   );
 }
 
@@ -294,7 +294,7 @@ export function cardHasUnresolvedGoalReferences(
   card: Pick<Card, "display" | "visualization_settings">,
   data: DatasetData | undefined,
 ): boolean {
-  if (card.display !== "gauge") {
+  if (!supportsDynamicGoals(card.display)) {
     return false;
   }
 
@@ -303,8 +303,8 @@ export function cardHasUnresolvedGoalReferences(
       return true;
     }
 
-    const { error, isResolving } = resolveGoalValue(data, ref);
-    return isResolving === true || error != null;
+    const { error, isUnanswered } = resolveGoalValue(data, ref);
+    return isUnanswered === true || error != null;
   });
 }
 

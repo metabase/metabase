@@ -147,7 +147,7 @@ describe("resolveGoalValue", () => {
       column: "total",
     });
 
-    expect(goalValue).toEqual({ value: null, isResolving: true });
+    expect(goalValue).toEqual({ value: null, isUnanswered: true });
   });
 
   it("is resolving while referenced results are unavailable", () => {
@@ -158,7 +158,7 @@ describe("resolveGoalValue", () => {
       column: "total",
     });
 
-    expect(goalValue).toEqual({ value: null, isResolving: true });
+    expect(goalValue).toEqual({ value: null, isUnanswered: true });
   });
 
   it("errors for a foreign column reference that does not exist", () => {

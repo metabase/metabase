@@ -353,25 +353,29 @@ export const GoalValueInput = ({
 
               <Menu.Divider />
 
-              {entityInfo.hasError ? (
-                <Menu.Item disabled>{t`Couldn't load this source`}</Menu.Item>
-              ) : entityInfo.isLoading ? (
-                <Group justify="center" p="md">
-                  <Loader size="sm" />
-                </Group>
-              ) : entityInfo.columns.length > 0 ? (
-                entityInfo.columns.map((column) => (
-                  <GoalColumnMenuItem
-                    key={column.name}
-                    label={column.label}
-                    resolvedValue={resolveEntityColumnValue(column.name)}
-                    selected={foreignRef?.column === column.name}
-                    onClick={() => selectEntityColumn(column.name)}
-                  />
+              {match(entityInfo)
+                .with({ hasError: true }, () => (
+                  <Menu.Item disabled>{t`Couldn't load this source`}</Menu.Item>
                 ))
-              ) : (
-                <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
-              )}
+                .with({ isLoading: true }, () => (
+                  <Group justify="center" p="md">
+                    <Loader size="sm" />
+                  </Group>
+                ))
+                .with({ columns: [] }, () => (
+                  <Menu.Item disabled>{t`No numeric columns`}</Menu.Item>
+                ))
+                .otherwise(({ columns }) => {
+                  return columns.map((column) => (
+                    <GoalColumnMenuItem
+                      key={column.name}
+                      label={column.label}
+                      resolvedValue={resolveEntityColumnValue(column.name)}
+                      selected={foreignRef?.column === column.name}
+                      onClick={() => selectEntityColumn(column.name)}
+                    />
+                  ));
+                })}
             </>
           )}
         </Menu.Dropdown>
