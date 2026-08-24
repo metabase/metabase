@@ -93,11 +93,15 @@ const OverviewTemplate = () => (
 
     <StorySection
       title="Label"
-      description="Renders the loader stacked above a caption."
+      description="Renders the loader stacked above a caption. The caption follows the loader’s size token."
     >
       <Box style={gridStyle2Columns}>
-        <StoryJsx>{`<Loader label="Loading…" />`}</StoryJsx>
-        <Loader label="Loading…" />
+        {SIZES.map((size) => (
+          <Fragment key={size}>
+            <StoryJsx>{`<Loader size="${size}" label="Loading…" />`}</StoryJsx>
+            <Loader size={size} label="Loading…" />
+          </Fragment>
+        ))}
       </Box>
     </StorySection>
   </StoryShowcase>

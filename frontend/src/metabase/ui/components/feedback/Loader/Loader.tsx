@@ -27,10 +27,12 @@ export const Loader = ({
     return <CustomLoader label={label} />;
   }
 
+  const labelSize = typeof size === "string" ? size : "md";
+
   return label ? (
     <Stack justify="center" align="center" gap="sm" mt="xl">
       <MantineLoader {...props} data-testid={dataTestId} size={size} />
-      <Text c="text-disabled" size="xl">
+      <Text c="text-disabled" size={labelSize}>
         {label}
       </Text>
     </Stack>

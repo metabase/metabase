@@ -148,11 +148,32 @@ describe("Loader", () => {
   });
 
   describe("label", () => {
+    function getLabelFontSize(label: string) {
+      return screen.getByText(label).style.getPropertyValue("--text-fz");
+    }
+
     it("renders the label alongside the loader", () => {
       setup({ label: "Loading…" });
 
       expect(screen.getByText("Loading…")).toBeInTheDocument();
       expect(getLoader()).toBeInTheDocument();
+    });
+
+    it.each(["xs", "sm", "md", "lg", "xl"] as const)(
+      "sizes the label with the loader's %s token",
+      (size) => {
+        setup({ label: "Loading…", size });
+
+        expect(getLabelFontSize("Loading…")).toBe(
+          `var(--mantine-font-size-${size})`,
+        );
+      },
+    );
+
+    it("falls back to the md label size for numeric loader sizes", () => {
+      setup({ label: "Loading…", size: 48 });
+
+      expect(getLabelFontSize("Loading…")).toBe("var(--mantine-font-size-md)");
     });
   });
 });
