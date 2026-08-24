@@ -138,14 +138,28 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (if (= 403 (:status-code (ex-data e)))
-        (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
-                        (:type entity) (:id entity))
-            nil)
-        (do (log/error "Error fetching entity details for viewing context"
-                       {:type (:type entity) :id (:id entity)}
-                       (ex-message e))
-            (format-simple-entity entity))))))
+      (let [status-code (:status-code (ex-data e))]
+        (cond
+          (= 403 status-code)
+          (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
+                          (:type entity) (:id entity))
+              nil)
+
+          ;; A 404 is always an intentional, expected signal here (from api/check-404), never an
+          ;; accidental failure -- either the entity plainly doesn't exist, or (per
+          ;; check-resource-database) it's a routing-internal destination database masquerading as
+          ;; "not found" so as not to disclose its existence. Neither warrants an ERROR log; both
+          ;; still render best-effort from the caller's own claimed fields, same as before.
+          (= 404 status-code)
+          (do (log/debugf "Falling back to simple rendering for an unresolvable viewing-context entity: %s %s"
+                          (:type entity) (:id entity))
+              (format-simple-entity entity))
+
+          :else
+          (do (log/error "Error fetching entity details for viewing context"
+                         {:type (:type entity) :id (:id entity)}
+                         (ex-message e))
+              (format-simple-entity entity)))))))
 
 (defmethod format-entity "table"
   [entity]
