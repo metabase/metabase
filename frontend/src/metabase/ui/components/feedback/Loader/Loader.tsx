@@ -2,6 +2,8 @@ import type { LoaderProps as MantineLoaderProps } from "@mantine/core";
 import { Loader as MantineLoader, Stack, Text } from "@mantine/core";
 import type React from "react";
 
+import { isLoaderNamedSize } from "./Loader.config";
+
 export interface LoaderProps extends Omit<MantineLoaderProps, "type"> {
   type?: "oval" | "dots";
   label?: string;
@@ -26,7 +28,7 @@ export const Loader = ({
     return <CustomLoader label={label} />;
   }
 
-  const labelSize = typeof size === "string" ? size : "md";
+  const labelSize = isLoaderNamedSize(size) ? size : "md";
 
   return label ? (
     <Stack justify="center" align="center" gap="sm" mt="xl">

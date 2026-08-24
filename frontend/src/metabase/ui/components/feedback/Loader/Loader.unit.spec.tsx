@@ -141,9 +141,7 @@ describe("Loader", () => {
     it("is overridden by an explicit color prop", () => {
       setup({ withTheme: true, color: "text-secondary" });
 
-      expect(getLoaderVar("--loader-color")).not.toBe(
-        "var(--mb-color-icon-brand)",
-      );
+      expect(getLoaderVar("--loader-color")).toBe("text-secondary");
     });
   });
 
@@ -170,10 +168,15 @@ describe("Loader", () => {
       },
     );
 
-    it("falls back to the md label size for numeric loader sizes", () => {
-      setup({ label: "Loading…", size: 48 });
+    it.each([48, "3rem"])(
+      "falls back to the md label size for unnamed loader size %p",
+      (size) => {
+        setup({ label: "Loading…", size });
 
-      expect(getLabelFontSize("Loading…")).toBe("var(--mantine-font-size-md)");
-    });
+        expect(getLabelFontSize("Loading…")).toBe(
+          "var(--mantine-font-size-md)",
+        );
+      },
+    );
   });
 });

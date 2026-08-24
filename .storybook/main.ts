@@ -1,16 +1,16 @@
 import path from "path";
 
+import type { StorybookConfig } from "@storybook/react-webpack5";
 import remarkGfm from "remark-gfm";
 
-import type { StorybookConfig } from "@storybook/react-webpack5";
-const appConfig = require("../rspack.main.config.js");
-const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const webpack = require("webpack");
 
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("../frontend/build/shared/rspack/side-effect-free-modules");
+const appConfig = require("../rspack.main.config.js");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",

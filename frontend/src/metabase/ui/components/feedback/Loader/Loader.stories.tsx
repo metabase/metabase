@@ -6,16 +6,11 @@ import {
   StorySection,
   StoryShowcase,
 } from "metabase/ui/stories/showcase";
+import { getObjectKeys } from "metabase/utils/objects";
 
-const SIZES = ["xs", "sm", "md", "lg", "xl"] as const;
+import { LOADER_SIZES } from "./Loader.config";
 
-const SIZE_PX: Record<(typeof SIZES)[number], string> = {
-  xs: "12px",
-  sm: "14px",
-  md: "16px",
-  lg: "18px",
-  xl: "22px",
-};
+const SIZES = getObjectKeys(LOADER_SIZES);
 
 const args = {
   size: "md",
@@ -61,7 +56,7 @@ const OverviewTemplate = () => (
         {SIZES.map((size) => (
           <Fragment key={size}>
             <StoryJsx>{`<Loader size="${size}" />`}</StoryJsx>
-            <StoryJsx>{SIZE_PX[size]}</StoryJsx>
+            <StoryJsx>{`${LOADER_SIZES[size]}px`}</StoryJsx>
             <Loader size={size} />
           </Fragment>
         ))}
