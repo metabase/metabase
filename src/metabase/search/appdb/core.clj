@@ -87,9 +87,9 @@
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
+                   [:!= :search_index.model "table"]
                    [:and
-                    [:= :search_index.model [:inline "table"]]
+                    [:= :search_index.model "table"]
                     clause]]))))
 
 (def null-collection-id-should-be-ignored-for-unpublished-tables-clause
@@ -97,7 +97,7 @@
 
   For tables, this means there is no associated collection and the collection_id should be completely ignored."
   [:and
-   [:= :model [:inline "table"]]
+   [:= :model "table"]
    [:= :is_published false]])
 
 (defn add-collection-join-and-where-clauses

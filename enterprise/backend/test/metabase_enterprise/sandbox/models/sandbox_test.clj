@@ -141,3 +141,38 @@
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
                   {:view-data :unrestricted}}}))))))))
+
+(deftest only-admins-can-change-a-card-a-sandbox-is-built-out-of-test
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-temp [:model/Card    {source-id :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card    {card-id :id}   {:dataset_query (mt/mbql-query nil {:source-table (str "card__" source-id)})}
+                   :model/Card    {other-id :id}  {:dataset_query (mt/mbql-query venues)}
+                   :model/Sandbox _               {:table_id (mt/id :venues)
+                                                   :group_id (u/the-id (perms-group/all-users))
+                                                   :card_id  card-id}]
+      (mt/with-test-user :rasta
+        (testing "a non-admin cannot rewrite the query of the Card a sandbox is built out of"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to modify a question that is used for row and column level security"
+               (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query checkins)}))))
+        (testing "nor of a Card that one reads, however deep"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to modify a question that is used for row and column level security"
+               (t2/update! :model/Card source-id {:dataset_query (mt/mbql-query checkins)}))))
+        (testing "nor archive it, which would leave the sandbox filtering nothing"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to modify a question that is used for row and column level security"
+               (t2/update! :model/Card card-id {:archived true}))))
+        (testing "nor delete it"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to modify a question that is used for row and column level security"
+               (t2/delete! :model/Card :id card-id))))
+        (testing "a Card no sandbox is built out of is none of this check's business"
+          (is (pos? (t2/update! :model/Card other-id {:dataset_query (mt/mbql-query checkins)})))))
+      (testing "an admin may do it"
+        (mt/with-test-user :crowberto
+          (is (pos? (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues {:fields [$id]})}))))))))

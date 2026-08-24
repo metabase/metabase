@@ -10,6 +10,8 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -45,6 +47,42 @@
 (defn- drop-table-if-exists!
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
+
+(deftest ^:parallel exactly-named-datasets-agrees-with-scan-test
+  (testing "a filter of plain names selects exactly the datasets a scan of the whole project would keep"
+    (let [universe ["orders" "orders_v2" "ORDERS" "public" "public_archive" "a_b" "x1"]]
+      (doseq [patterns ["orders" "ORDERS" "orders,public" "  orders , public  " "a_b" "x1,orders_v2"
+                        ;; naming something absent is fine -- it just selects nothing
+                        "not_a_dataset" "orders,not_a_dataset"]]
+        (testing (pr-str patterns)
+          (let [named (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                          :dataset-filters-patterns patterns})]
+            (is (some? named)
+                "should be recognized as naming its datasets outright")
+            ;; only names that exist can come back from a lookup, so compare within the universe
+            (is (= (set (filter #(driver.s/include-schema? patterns nil %) universe))
+                   (set (filter (set universe) named)))))))))
+  (testing "a dataset named twice is looked up once, as a scan would yield it once"
+    (is (= ["orders" "public"]
+           (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                               :dataset-filters-patterns "orders,public,orders"}))))
+  (testing "filters that a name lookup cannot answer fall through to a scan"
+    (doseq [[patterns why] {"orders*"        "wildcard"
+                            "*"              "wildcard"
+                            "a,b*"           "wildcard in one segment"
+                            "crazy\\*schema" "escaped asterisk is not a legal dataset ID"
+                            "_hidden"        "leading underscore means hidden; a scan never lists it"
+                            "orders,_hidden" "one hidden name is enough to need a scan"
+                            ""               "blank means include everything"
+                            nil              "blank means include everything"}]
+      (testing why
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                      :dataset-filters-patterns patterns}))))))
+  (testing "only inclusion filters name datasets; anything else needs a scan"
+    (doseq [filters-type ["exclusion" "all" nil]]
+      (testing (pr-str filters-type)
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     filters-type
+                                                      :dataset-filters-patterns "orders"})))))))
 
 (deftest ^:parallel sanity-check-test
   (mt/test-driver
@@ -1417,3 +1455,8 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
+
+(deftest ^:parallel create-schema-quotes-schema-name-test
+  (testing "create-schema-if-needed! quotes the target :schema"
+    (is (= "`zinj\\`; DROP SCHEMA victim; CREATE SCHEMA \\`zz`"
+           (sql.u/quote-name :bigquery-cloud-sdk :table "zinj`; DROP SCHEMA victim; CREATE SCHEMA `zz")))))

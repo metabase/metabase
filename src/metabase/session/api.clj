@@ -136,7 +136,8 @@
       (do-login)
       (http-401-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   username]
+                                   ;; normalized so case-permuting the username can't dodge the throttle
+                                   (login-throttlers :username)   (u/lower-case-en username)]
           (do-login))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -149,9 +150,13 @@
   [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
-        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
-    (api/check-404 (> rows-deleted 0))
-    (request/clear-session-cookie api/generic-204-no-content)))
+        rows-deleted (t2/delete! :model/Session :key_hashed session-key-hashed)]
+    ;; clear the cookie even when no row matched (e.g. a session hashed under a previous secret), or the browser
+    ;; would keep resending the dead cookie
+    (request/clear-session-cookie
+     (if (pos? rows-deleted)
+       api/generic-204-no-content
+       {:status 404, :body "Not found."}))))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -161,7 +166,9 @@
 ;; There's also no need to salt the token because it's already random <3
 
 (def ^:private forgot-password-throttlers
-  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms 1000)
+  ;; :attempt-ttl-ms was 1000ms (1 second) instead of 1 hour, letting one email get bombed with
+  ;; reset emails indefinitely at ~3/second
+  {:email      (throttle/make-throttler :email :attempts-threshold 3 :attempt-ttl-ms (* 1000 60 60))
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- password-reset-disabled?
@@ -230,16 +237,19 @@
   "Reset password with a reset token."
   [_route-params
    _query-params
-   request-body :- [:map
+   ;; This body has exactly two fields. Request decoding drops every other key before the handler
+   ;; runs, so only these two reach it.
+   request-body :- [:map {:closed true}
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
    request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
+  ;; Forward only what the reset providers consume -- belt and braces alongside the decoding above.
   (let [auth-result (auth-identity/with-fallback auth-identity/login!
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
-                      request-body)]
+                      (select-keys request-body [:token :password]))]
     (if (:success? auth-result)
       (request/set-session-cookies request
                                    {:success true :session_id (get-in auth-result [:session :key])}

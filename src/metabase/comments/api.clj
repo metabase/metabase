@@ -10,9 +10,11 @@
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.users-rest.api :as api.user]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -43,7 +45,7 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map]]
+    ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CreateComment
@@ -116,6 +118,15 @@
                        (t2/hydrate :creator :reactions))]
       {:comments (render-comments comments)})))
 
+(defn- mentioned-ids-who-can-read
+  "Restrict mentioned user ids to active users who can themselves read `entity`."
+  [entity mention-ids]
+  (when (seq mention-ids)
+    (->> (t2/select-pks-set :model/User :id [:in mention-ids] :is_active true)
+         (filterv (fn [user-id]
+                    (request/with-current-user user-id
+                      (mi/can-read? entity)))))))
+
 (defn notify-comment!
   "Send a notification about comment"
   [{:keys [target_type target_id parent_comment_id] :as comment}
@@ -125,14 +136,16 @@
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     {:where [:in :id ^:allow-subquery
+                              {:from   [:comment]
+                               :select [:creator_id]
+                               :where  [:or
+                                        [:= :id parent_comment_id]
+                                        [:= :parent_comment_id parent_comment_id]]}]}
                      ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
                      {:where [:= :id (:creator_id entity)]})
-        mentions   (comment/mentions (:content comment))
+        mentions   (->> (comment/mentions (:content comment))
+                        (mentioned-ids-who-can-read entity))
         recipients (-> (t2/select-fn-set :email [:model/User :email]
                                          (cond-> clause
                                            (seq mentions) (sql.helpers/where :or [:in :id mentions])))
@@ -281,6 +294,21 @@
 
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
+(defn- restrict-to-visible-users
+  "Narrow user-listing `clauses` to the users the current user should see, matching the scoping used by
+  `GET /api/user/recipients`: superusers see everyone; everyone else is limited to their own tenant and
+  further narrowed by the `user-visibility` setting."
+  [clauses]
+  (if api/*is-superuser?*
+    clauses
+    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+      (case (users.settings/user-visibility)
+        :all   clauses
+        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                                 (set)
+                                                                 (conj api/*current-user-id*))])
+        :none (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -290,11 +318,10 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-
-  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
-                                                      :offset (request/offset)})]
-    ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
-    ;; do not forget to uncomment tests (both api and e2e)
+  (let [clauses (->
+                 (user/filter-clauses nil nil nil nil {:limit  (request/limit)
+                                                       :offset (request/offset)})
+                 restrict-to-visible-users)]
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
                              (-> clauses
                                  (sql.helpers/order-by [:%lower.first_name :asc]

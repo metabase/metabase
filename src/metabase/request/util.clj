@@ -92,10 +92,11 @@
                             remote-addr
                             header-ip-address)]
     (some-> source-address
-            ;; first IP (if there are multiple) is the actual client -- see
-            ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
             (str/split #"\s*,\s*")
-            first
+            ;; last entry is our own proxy's, the only hop we can trust -- everything earlier,
+            ;; including the "first" entry conventionally called the client, is attacker-suppliable
+            ;;. Assumes a single trusted hop.
+            last
             ;; strip out non-ip-address characters like square brackets which we get sometimes
             (str/replace #"[^0-9a-fA-F.:]" ""))))
 

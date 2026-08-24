@@ -53,6 +53,10 @@
   :getter     (fn []
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
+                  ;; An unparseable stored value returns nil. This used to re-open the header-derivation window in
+                  ;; [[metabase.server.middleware.misc/maybe-set-site-url*]] to anyone on a live instance; that
+                  ;; middleware now requires either a pre-setup instance or an authenticated superuser, so a nil here
+                  ;; can no longer be repointed by an unauthenticated request.
                   (catch clojure.lang.ExceptionInfo e
                     (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
   :setter     (fn [new-value]

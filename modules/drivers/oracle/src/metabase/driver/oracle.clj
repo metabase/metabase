@@ -319,7 +319,7 @@
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
-          [:from_tz expr (or source-timezone (driver-api/results-timezone-id))])
+          [:from_tz expr (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 

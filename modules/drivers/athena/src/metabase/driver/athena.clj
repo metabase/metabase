@@ -370,7 +370,9 @@
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  ;; compile the pattern through ->honeysql so a non-string pattern (e.g. a stored [:raw ...] form spliced in from a
+  ;; source card) is rejected at multimethod dispatch instead of being emitted verbatim as SQL.
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.

@@ -377,7 +377,7 @@
 
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
-  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
+  [:and [:not= (h2x/identifier :field table-alias :type) "internal"]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -543,6 +543,21 @@
    [:like :%lower.first_name (wildcard-query query)]
    [:like :%lower.last_name  (wildcard-query query)]
    [:like :%lower.email      (wildcard-query query)]])
+
+(defn same-groups-user-ids
+  "Return a list of all user-ids in the same group with the user with id `user-id`.
+  Ignore the All-user groups."
+  [user-id]
+  (map :user_id
+       (t2/query {:select-distinct [:permissions_group_membership.user_id]
+                  :from [:permissions_group_membership]
+                  :where [:in :permissions_group_membership.group_id
+                          ;; get all the groups ids that the current user is in
+                          ^:allow-subquery
+                          {:select-distinct [:permissions_group_membership.group_id]
+                           :from  [:permissions_group_membership]
+                           :where [:and [:= :permissions_group_membership.user_id user-id]
+                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
 (defn filter-clauses
   "Honeysql clauses for filtering on users

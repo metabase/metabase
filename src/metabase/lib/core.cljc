@@ -453,6 +453,7 @@
  [lib.segment
   available-segments]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage
@@ -501,6 +502,7 @@
   all-implicitly-joined-table-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids

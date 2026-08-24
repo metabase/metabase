@@ -57,10 +57,8 @@
   All of these middlewares assume MBQL 5."
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'normalize/normalize-preprocessing-middleware
-   #'qp.perms/remove-permissions-key
-   #'qp.perms/remove-source-card-keys
-   #'qp.perms/remove-sandboxed-table-keys
-   #'qp.perms/remove-persisted-info-native-keys
+   #'qp.perms/remove-internal-keys
+   #'qp.perms/record-referenced-card-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
@@ -76,7 +74,6 @@
    #'qp.middleware.enterprise/apply-impersonation
    #'qp.middleware.enterprise/attach-destination-db-middleware
    #'qp.middleware.enterprise/apply-sandboxing
-   #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
@@ -95,6 +92,7 @@
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs
    ;; yes, this is called a second time, because we need to handle any joins that got added
    #'qp.middleware.enterprise/apply-sandboxing
+   #'qp.persistence/substitute-persisted-query
    #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
    #'qp.wrap-value-literals/wrap-value-literals
    #'auto-parse-filter-values/auto-parse-filter-values

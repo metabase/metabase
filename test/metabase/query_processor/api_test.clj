@@ -20,12 +20,14 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.settings :as qp.settings]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -75,10 +77,6 @@
             (Thread/sleep 100)
             (recur (dec retries)))))))
 
-(def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true
-                :js-int-to-string? true}})
-
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
@@ -94,11 +92,13 @@
                 :row_count              1
                 :status                 "completed"
                 :context                "ad-hoc"
-                :json_query             (-> (mt/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
+                :json_query             {:lib/type   "mbql/query"
+                                         :database   (mt/id)
+                                         :stages     [{:lib/type     "mbql.stage/mbql"
+                                                       :source-table (mt/id :checkins)
+                                                       :aggregation  [["count" {:lib/uuid string?}]]}]
+                                         :middleware {:add-default-userland-constraints? true
+                                                      :js-int-to-string?                 true}}
                 :started_at             true
                 :running_time           true
                 :average_execution_time nil
@@ -132,50 +132,54 @@
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
+    ;; (Upstream 63 returns 400 here; on this branch a failure during streaming still yields 202.)
     (testing "\nEven if a query fails we still expect a 202 response from the API"
-      ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
-      ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [query  {:database (mt/id)
-                    :type     "native"
-                    :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (malli= [:map
-                       [:data        [:map
-                                      [:rows [:= []]]
-                                      [:cols [:= []]]]]
-                       [:row_count   [:= 0]]
-                       [:status      [:= "failed"]]
-                       [:context     [:= "ad-hoc"]]
-                       [:error       #"Syntax error in SQL statement"]
-                       [:json_query  [:map
-                                      [:database   [:= (mt/id)]]
-                                      [:type       [:= "native"]]
-                                      [:native     [:map
-                                                    [:query [:= "foobar"]]]]
-                                      [:middleware [:map
-                                                    [:add-default-userland-constraints? [:= true]]
-                                                    [:js-int-to-string?                 [:= true]]]]]]
-                       [:database_id [:= (mt/id)]]
-                       [:state       [:= "42000"]]
-                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
-                      result)))
-        (testing "\nSaved QueryExecution"
-          (is (malli=
-               [:map
-                [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
-                [:id           ms/PositiveInt]
-                [:result_rows  [:= 0]]
-                [:row_count    [:= 0]]
-                [:context      [:= :ad-hoc]]
-                [:error        #"Syntax error in SQL statement"]
-                [:database_id  [:= (mt/id)]]
-                [:executor_id  [:= (mt/user->id :crowberto)]]
-                [:native       [:= true]]
-                [:pulse_id     nil?]
-                [:card_id      nil?]
-                [:dashboard_id nil?]]
-               (most-recent-query-execution-for-query query))))))))
+      ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
+        ;; that it exists and contains the substring "Syntax error in SQL statement"
+        (let [query  {:database (mt/id)
+                      :type     "native"
+                      :native   {:query "foobar"}}
+              result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (malli= [:map
+                         [:data        [:map
+                                        [:rows [:= []]]
+                                        [:cols [:= []]]]]
+                         [:row_count   [:= 0]]
+                         [:status      [:= "failed"]]
+                         [:context     [:= "ad-hoc"]]
+                         [:error       #"Syntax error in SQL statement"]
+                         [:json_query  [:map
+                                        [:database   [:= (mt/id)]]
+                                        [:lib/type   [:= "mbql/query"]]
+                                        [:stages     [:sequential [:map
+                                                                   [:lib/type [:= "mbql.stage/native"]]
+                                                                   [:native   [:= "foobar"]]]]]
+                                        [:middleware [:map
+                                                      [:add-default-userland-constraints? [:= true]]
+                                                      [:js-int-to-string?                 [:= true]]]]]]
+                         [:database_id [:= (mt/id)]]
+                         [:state       [:= "42000"]]
+                         [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                        result)))
+          (testing "\nSaved QueryExecution"
+            (is (malli=
+                 [:map
+                  [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
+                  [:id           ms/PositiveInt]
+                  [:result_rows  [:= 0]]
+                  [:row_count    [:= 0]]
+                  [:context      [:= :ad-hoc]]
+                  [:error        #"Syntax error in SQL statement"]
+                  [:database_id  [:= (mt/id)]]
+                  [:executor_id  [:= (mt/user->id :crowberto)]]
+                  [:native       [:= true]]
+                  [:pulse_id     nil?]
+                  [:card_id      nil?]
+                  [:dashboard_id nil?]]
+                 (most-recent-query-execution-for-query query)))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -293,12 +297,51 @@
                     :row_count   5
                     :status      "completed"
                     :context     "ad-hoc"
-                    :json_query  (merge query-defaults card-query)
+                    :json_query  {:lib/type   "mbql/query"
+                                  :database   (mt/id)
+                                  :stages     [{:lib/type    "mbql.stage/mbql"
+                                                :source-card (u/the-id card)}]
+                                  :middleware {:add-default-userland-constraints? true
+                                               :js-int-to-string?                 true}}
                     :database_id (mt/id)}
                    (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
                        (update-in [:data :native_form :query]
                                   #(str/split-lines (or (driver/prettify-native-form :h2 %)
                                                         "error: no query generated")))))))))))))
+
+(deftest native-checks-source-card-read-permission-test
+  (testing "POST /api/dataset/native requires read permission on a referenced source Card"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)
+                                           :database_id   (mt/id)
+                                           :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder-and-native)
+        (is (false? (mt/with-test-user :rasta (mi/can-read? card))))
+        (testing "source-table card__N"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}})))
+        (testing "card template tag"
+          (is (mt/user-http-request :rasta :post 403 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query "SELECT * FROM {{#c}}"
+                                                :template-tags {"#c" {:id "x" :name "#c" :display-name "c"
+                                                                      :type "card" :card-id (:id card)}}}})))))))
+
+(deftest native-compiles-readable-source-card-test
+  (testing "POST /api/dataset/native returns the compiled query when the user can read the source Card"
+    (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                     :dataset_query (mt/native-query {:query "SELECT 1 AS n"})}]
+      (is (=? {:query some?}
+              (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                    {:database (mt/id)
+                                     :type     "query"
+                                     :query    {:source-table (str "card__" (:id card))}}))))))
 
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
@@ -995,6 +1038,19 @@
           ;; The venues table has 100+ rows, so we should get more than default constraints (10)
           (is (> (count (csv/read-csv result)) 10)))))))
 
+(deftest ^:parallel adhoc-pivot-download-json-encoded-query-test
+  (testing "POST /api/dataset/csv accepts the JSON-encoded MBQL 5 :json_query from a pivot response (metabase#70757)"
+    (let [{:keys [json_query]} (mt/user-http-request :crowberto :post 202 "dataset/pivot"
+                                                     (qp.pivot.test-util/pivot-query))
+          {:keys [visualization_settings]} (qp.pivot.test-util/pivot-card)
+          result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                       {:query                  (json/encode json_query)
+                                        :pivot_results          true
+                                        :format_rows            true
+                                        :visualization_settings (json/encode visualization_settings)})
+          rows   (csv/read-csv result)]
+      (is (> (count rows) 1)))))
+
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"
     (is (=? {:databases [{:id (mt/id)}]
@@ -1096,3 +1152,45 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+(deftest ^:synchronized row-limit-ignores-request-options-test
+  (testing "POST /api/dataset"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))
+            base      (mt/mbql-query venues)]
+        (testing "the row limit applies to an ordinary query"
+          (is (= 5 (row-count base))))
+        (testing ":middleware options in the request body do not change it"
+          (is (= 5 (row-count (assoc-in base [:middleware :disable-max-results?] true)))))
+        (testing ":constraints in the request body do not change it either"
+          (is (= 5 (row-count (assoc base :constraints {:max-results           10000
+                                                        :max-results-bare-rows 10000})))))))))
+
+(deftest ^:synchronized pivot-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/pivot"
+    ;; on this branch an unaggregated pivot query does not pass through as plain rows, so cap an aggregated
+    ;; one instead (each pivot subquery is capped by :max-results / aggregated-query-row-limit)
+    (mt/with-temporary-setting-values [aggregated-query-row-limit   5
+                                       unaggregated-query-row-limit 5]
+      (let [row-count (fn [query]
+                        (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset/pivot" query))))
+            base      (-> (mt/mbql-query orders {:aggregation [[:count]]
+                                                 :breakout    [$product_id]})
+                          (assoc :pivot_rows [] :pivot_cols []))
+            capped    (row-count base)]
+        (testing "sanity: the row limit caps the pivot subqueries (200 products in the sample data)"
+          (is (<= capped 10)))
+        (testing ":middleware options in the request body do not change it"
+          (is (= capped (row-count (assoc-in base [:middleware :disable-max-results?] true)))))))))
+
+(deftest ^:synchronized export-row-limit-ignores-request-options-test
+  (testing "POST /api/dataset/csv"
+    (binding [qp.settings/*minimum-download-row-limit* 5]
+      (mt/with-temporary-setting-values [download-row-limit 5]
+        (let [query (-> (mt/mbql-query venues)
+                        (assoc-in [:middleware :disable-max-results?] true))
+              rows  (csv/read-csv (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                                        {:query (json/encode query)}))]
+          (testing "the download limit applies, not counting the header row"
+            (is (= 5 (dec (count rows))))))))))

@@ -220,8 +220,20 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
+// site-url is null on instances where it was never set, and GlobalStyles calls this above any error
+// boundary, so throwing here white-screens the whole app. The sub-path is cosmetic; fall back to the root.
 export function getSitePath() {
-  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 function isMetabaseUrl(url) {

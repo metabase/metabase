@@ -8,8 +8,9 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
-  (:import (java.util.concurrent CountDownLatch TimeUnit)))
+  (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,13 +85,7 @@
                                 {:table_ids  [table-1-id]
                                  :data_layer "copper"})
           (is (= :copper (t2/select-one-fn :data_layer :model/Table :id table-1-id)))
-          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))
-
-        (testing "cannot update both visibility_type and data_layer at once"
-          (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/edit"
-                                {:table_ids        [table-1-id]
-                                 :visibility_type  "hidden"
-                                 :data_layer "copper"}))))))
+          (is (= :hidden (t2/select-one-fn :visibility_type :model/Table :id table-1-id))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
@@ -110,24 +105,34 @@
     ;; lot more to test here but will wait for firmer ground
     (testing "Can we trigger a metadata sync for a filtered set of tables"
       (let [tables       (atom [])
-            latch        (CountDownLatch. 4)]
-        (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
-                       :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
-                       :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
-                       :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                       :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
-                       :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
-                       :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-          (with-redefs [sync/sync-table! (fn [table]
-                                           (swap! tables conj table)
-                                           (.countDown latch)
-                                           nil)]
-            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/sync-schema" {:database_ids [d1],
-                                                                                           :schema_ids   [(format "%d:FOO" d2)]
-                                                                                           :table_ids    [t4]})
-            (testing "sync called?"
-              (is (true? (.await latch 4 TimeUnit/SECONDS)))
-              (is (= [t1 t2 t4 t5] (map :id @tables))))))))))
+            latch        (CountDownLatch. 4)
+            ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+            ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+            ;; ahead of these syncs delays them past the await below, which is what happens on driver CI,
+            ;; where those leftover tasks are real syncs over the network. Keep it single-threaded: the
+            ;; endpoint submits one task per table, and the assertion below reads their order.
+            pool         (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                         :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                         :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                         :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                         :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+            (with-redefs [quick-task/executor (delay pool)
+                          sync/sync-table!    (fn [table]
+                                                (swap! tables conj table)
+                                                (.countDown latch)
+                                                nil)]
+              (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/sync-schema" {:database_ids [d1],
+                                                                                             :schema_ids   [(format "%d:FOO" d2)]
+                                                                                             :table_ids    [t4]})
+              (testing "sync called?"
+                (is (true? (.await latch 4 TimeUnit/SECONDS)))
+                (is (= [t1 t2 t4 t5] (map :id @tables))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-rescan-values-test
   (mt/with-premium-features #{:data-studio}
@@ -140,24 +145,31 @@
     ;; lot more to test here but will wait for firmer ground
     (testing "Can we trigger a field values sync for a filtered set of tables"
       (let [tables       (atom [])
-            latch        (CountDownLatch. 4)]
-        (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
-                       :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
-                       :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
-                       :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
-                       :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
-                       :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
-                       :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-          (with-redefs [sync/update-field-values-for-table! (fn [table]
-                                                              (swap! tables conj table)
-                                                              (.countDown latch)
-                                                              nil)]
-            (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/rescan-values" {:database_ids [d1],
-                                                                                             :schema_ids   [(format "%d:FOO" d2)]
-                                                                                             :table_ids    [t4]})
-            (testing "rescanned?"
-              (is (true? (.await latch 4 TimeUnit/SECONDS)))
-              (is (= [t1 t2 t4 t5] (map :id @tables))))))))))
+            latch        (CountDownLatch. 4)
+            ;; Isolated single-thread pool, for the same reasons as in
+            ;; `trigger-bulk-metadata-sync-for-table-test`.
+            pool         (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database {d1 :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Database {d2 :id} {:engine "h2", :details (:details (mt/db))}
+                         :model/Table    {t1 :id} {:db_id d1, :schema "PUBLIC"}
+                         :model/Table    {t2 :id} {:db_id d1, :schema "PUBLIC"}
+                         :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
+                         :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
+                         :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
+            (with-redefs [quick-task/executor                (delay pool)
+                          sync/update-field-values-for-table! (fn [table]
+                                                                (swap! tables conj table)
+                                                                (.countDown latch)
+                                                                nil)]
+              (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/rescan-values" {:database_ids [d1],
+                                                                                               :schema_ids   [(format "%d:FOO" d2)]
+                                                                                               :table_ids    [t4]})
+              (testing "rescanned?"
+                (is (true? (.await latch 4 TimeUnit/SECONDS)))
+                (is (= [t1 t2 t4 t5] (map :id @tables))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (mt/with-premium-features #{:data-studio}

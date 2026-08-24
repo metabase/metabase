@@ -483,6 +483,11 @@ function(bin) {
     (or (nil? value) (= value ""))
     value
 
+    (coll? value)
+    (throw (ex-info (tru "Invalid filter value: expected a scalar literal.")
+                    {:type driver-api/qp.error-type.invalid-query
+                     :value value}))
+
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
@@ -865,6 +870,9 @@ function(bin) {
                    [:>= field min-val]
                    [:<= field max-val]]))
 
+(defn- escape-regex-literal [s]
+  (str/replace (str s) #"[.*+?^${}()|\[\]\\]" "\\\\$0"))
+
 (defn- str-match-pattern [field options prefix value suffix]
   (if (driver-api/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
@@ -873,7 +881,7 @@ function(bin) {
               "Wrong prefix or suffix value.")
       {$regexMatch {"input" (->rvalue field)
                     "regex" (if (= (first value) :value)
-                              (str prefix (->rvalue value) suffix)
+                              (str prefix (escape-regex-literal (->rvalue value)) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
                                                                (->rvalue value)
                                                                (when (some? suffix) {$literal suffix})])})
@@ -908,12 +916,22 @@ function(bin) {
            (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
+(defn- literal-value?
+  "Whether the `value` argument of a comparison filter clause is a literal — a `:value` clause or a bare scalar."
+  [value]
+  (or (driver-api/is-clause? :value value)
+      (not (driver-api/mbql-clause? value))))
+
 (defn- filter-expr [operator field value]
-  (let [field-rvalue (->rvalue field)
-        value-rvalue (->rvalue value)]
+  (let [field-rvalue          (->rvalue field)
+        value-rvalue          (->rvalue value)
+        literal-value-rvalue? (and (literal-value? value)
+                                   (string? value-rvalue)
+                                   (str/starts-with? value-rvalue "$"))]
     (if (and (rvalue-is-field? field-rvalue)
-             (not (rvalue-is-field? value-rvalue))
-             (rvalue-can-be-compared-directly? value-rvalue))
+             (or literal-value-rvalue?
+                 (and (not (rvalue-is-field? value-rvalue))
+                      (rvalue-can-be-compared-directly? value-rvalue))))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$lte 100}}
@@ -925,7 +943,8 @@ function(bin) {
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
       ;;    {$expr {$lte [{$add [$field 1]} 100]}}
-      {$expr {operator [field-rvalue value-rvalue]}})))
+      {$expr {operator [field-rvalue (cond->> value-rvalue
+                                       literal-value-rvalue? (array-map $literal))]}})))
 
 (defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
 (defmethod compile-filter :!= [[_ field value]] (filter-expr $ne field value))
